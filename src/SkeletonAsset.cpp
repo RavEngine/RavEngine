@@ -16,7 +16,9 @@
 #include <ozz/animation/runtime/local_to_model_job.h>
 #include "VirtualFileSystem.hpp"
 #include <glm/gtc/type_ptr.hpp>
-#include "RenderEngine.hpp"
+#if !RVE_SERVER
+    #include "RenderEngine.hpp"
+#endif
 
 using namespace RavEngine;
 using namespace std;
@@ -179,7 +181,7 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 	}
 	
 	assert(bindposes.size() * sizeof(bindposes[0]) < numeric_limits<uint32_t>::max());
-
+#if !RVE_SERVER
 	bindpose = GetApp()->GetDevice()->CreateBuffer({
 		uint32_t(bindposes.size()),
 		{.StorageBuffer = true},
@@ -199,13 +201,16 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 		RGL::BufferAccess::Private
 	});
 	boneHierarchy->SetBufferData({parents.data(), parents.size() * sizeof(parents[0])});
+#endif
 }
 
 RavEngine::SkeletonAsset::~SkeletonAsset()
 {
+#if !RVE_SERVER
 	auto& gcbuffers = GetApp()->GetRenderEngine().gcBuffers;
 	gcbuffers.enqueue(bindpose);
 	gcbuffers.enqueue(boneHierarchy);
+#endif
 }
 
 

@@ -14,9 +14,14 @@
 #include "AddRemoveAction.hpp"
 #include "PolymorphicIndirection.hpp"
 #include "SparseSet.hpp"
-#include "VRAMSparseSet.hpp"
-#include "BuiltinMaterials.hpp"
-#include "Light.hpp"
+#if !RVE_SERVER
+    #include "VRAMSparseSet.hpp"
+    #include "BuiltinMaterials.hpp"
+    #include "Light.hpp"
+#else
+    #include "Ref.hpp"
+#endif
+#include "Function.hpp"
 #include "Utilities.hpp"
 #include "CallableTraits.hpp"
 
@@ -242,6 +247,7 @@ namespace RavEngine {
         
 		locked_node_hashmap<RavEngine::ctti_t, AnySparseSet,SpinLock> componentMap;
 
+#if !RVE_SERVER
         friend class StaticMesh;
         friend class SkinnedMeshComponent;
         friend class RenderEngine;
@@ -316,6 +322,7 @@ namespace RavEngine {
         void updateSkinnedMeshMaterial(entity_t localId, decltype(RenderData::skinnedMeshRenderData)::key_type oldMat, decltype(RenderData::skinnedMeshRenderData)::key_type newMat, Ref<MeshAssetSkinned> mesh, Ref<SkeletonAsset> skeleton);
         void StaticMeshChangedVisibility(const StaticMesh*);
         void SkinnedMeshChangedVisibility(const SkinnedMeshComponent*);
+#endif
         
     public:
         struct PolymorphicIndirection{
@@ -534,7 +541,7 @@ namespace RavEngine {
                     polymorphicQueryMap[id].template Emplace<T>(local_id, this);
                 }
             }
-            
+#if !RVE_SERVER
             // if it's a light, register it in the container
             if constexpr (std::is_same_v<T, DirectionalLight>){
                 if (renderData) {
@@ -556,7 +563,7 @@ namespace RavEngine {
                     renderData->spotLightData.Emplace(local_id, decltype(RenderData::spotLightData)::value_type{});
                 }
             }
-            
+#endif
             //detect if T constructor's first argument is an entity_t, if it is, then we need to pass that before args (pass local_id again)
             if constexpr(std::is_constructible<T,entity_t, A...>::value || (sizeof ... (A) == 0 && std::is_constructible<T,entity_t>::value)){
                 return ptr->Emplace(local_id, localToGlobal[local_id], args...);
@@ -609,7 +616,7 @@ namespace RavEngine {
                 auto& comp = setptr->GetComponent(local_id);
                 DestroySkinnedMeshRenderData(comp, local_id);
             }
-            
+#if !RVE_SERVER
             // if it's a light, register it in the container
             if constexpr (std::is_same_v<T, DirectionalLight>){
                 if (renderData) {
@@ -631,6 +638,7 @@ namespace RavEngine {
                     renderData->spotLightData.EraseAtSparseIndex(local_id);
                 }
             }
+#endif
             
             setptr->Destroy(local_id);
             // does this component have alternate query types
@@ -998,12 +1006,14 @@ namespace RavEngine {
 		std::atomic<bool> isRendering = false;
         char worldIDbuf [id_size]{0};
 		tf::Taskflow masterTasks;
+#if !RVE_SERVER
         tf::Taskflow renderTasks;
         tf::Taskflow audioTasks;
-        tf::Taskflow ECSTasks;
         tf::Task renderTaskModule;
-        tf::Task ECSTaskModule;
         tf::Task audioTaskModule;
+#endif
+        tf::Taskflow ECSTasks;
+        tf::Task ECSTaskModule;
         
         struct TypeErasureIterator{
             constexpr static auto size = sizeof(EntitySparseSet<size_t>::const_iterator);
@@ -1052,8 +1062,10 @@ namespace RavEngine {
 		std::unique_ptr<PhysicsSolver> Solver;
 		
 		//fire-and-forget audio
+#if !RVE_SERVER
 		LinkedList<InstantaneousAudioSource> instantaneousToPlay;
 		LinkedList<InstantaneousAmbientAudioSource> ambientToPlay;
+#endif
 
 		/**
 		Called before ticking components and entities synchronously
@@ -1061,8 +1073,10 @@ namespace RavEngine {
 		 */
 		virtual void PreTick(float fpsScale) {}
 		void TickECS(float);
-		
+#if !RVE_SERVER
+
 		void setupRenderTasks();
+#endif
 		
 		/**
 		 Called after physics and rendering synchronously
@@ -1122,10 +1136,11 @@ namespace RavEngine {
 		World(const decltype(skybox)& sk) : World() {
 			skybox = sk;
 		}
-
+#if !RVE_SERVER
         void PlaySound(const InstantaneousAudioSource& ias);
 
         void PlayAmbientSound(const InstantaneousAmbientAudioSource& iaas);
+#endif
 		
 		/**
 		 Called by GameplayStatics when the final world is being deallocated

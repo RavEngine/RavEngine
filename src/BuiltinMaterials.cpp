@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #include "BuiltinMaterials.hpp"
 #include <glm/gtc/type_ptr.hpp>
 #include <RGL/Pipeline.hpp>
@@ -138,3 +139,4 @@ RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : Materi
     textureBindings[5] = Texture::Manager::defaultTexture;
     textureBindings[6] = Texture::Manager::defaultTexture;
 }
+#endif

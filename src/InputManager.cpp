@@ -1,4 +1,4 @@
-
+#if !RVE_SERVER
 #include "InputManager.hpp"
 #include <SDL_events.h>
 #include <SDL.h>
@@ -175,3 +175,4 @@ void RavEngine::InputManager::SetRelativeMouseMode(bool mode){
 bool InputManager::GetRelativeMouseMode(){
 	return SDL_GetRelativeMouseMode();
 }
+#endif

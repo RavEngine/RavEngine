@@ -8,7 +8,9 @@
 #include "Filesystem.hpp"
 #include "Debug.hpp"
 #include <span>
-#include <RGL/Types.hpp>
+#if !RVE_SERVER
+    #include <RGL/Types.hpp>
+#endif
 #include "MeshAllocation.hpp"
 
 struct aiMesh;
@@ -69,14 +71,17 @@ public:
 
     
 protected:
+#if !RVE_SERVER
     RGLBufferPtr vertexBuffer, indexBuffer;
+#endif
 
 	size_t totalVerts = 0, totalIndices = 0;
     Bounds bounds;
 
 	friend class RenderEngine;
-
+#if !RVE_SERVER
     MeshRange meshAllocation;
+#endif
 	
 	/**
 	 Initialize from multiple meshs consisting of a single vertex and index list
@@ -149,7 +154,7 @@ public:
         InitializeFromRawMeshView(mesh,options);
     }
     
-	
+#if !RVE_SERVER
 	/**
 	 Move a MeshAsset's data into this MeshAsset.
 	 @param other the other MeshAsset, which will become invalid after this call and should not be used.
@@ -166,6 +171,7 @@ public:
         other->vertexBuffer.reset();
 		other->indexBuffer.reset();
 	}
+#endif
     
     constexpr inline const decltype(bounds)& GetBounds() const{
         return bounds;

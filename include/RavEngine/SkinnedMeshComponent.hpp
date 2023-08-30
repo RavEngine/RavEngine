@@ -11,24 +11,28 @@ namespace RavEngine {
 class SkinnedMeshComponent : public ComponentWithOwner, public Queryable<SkinnedMeshComponent>, public Disableable{
 private:
     Ref<MeshAssetSkinned> mesh;
+#if !RVE_SERVER
     Ref<MaterialInstance> mat;
+#endif
     Ref<SkeletonAsset> skeleton;
+#if !RVE_SERVER
 	void updateMaterialInWorldRenderData(Ref<MaterialInstance> newMat);
+#endif
 public:
 	
 	SkinnedMeshComponent(entity_t owner, Ref<SkeletonAsset> sk, Ref<MeshAssetSkinned> mesh) : ComponentWithOwner(owner), skeleton(sk), mesh(mesh){}
-	
+#if !RVE_SERVER
 	inline void SetMaterial(Ref<MaterialInstance> newMat){
 		updateMaterialInWorldRenderData(newMat);
 		mat = newMat;
 	}
-		
 	/**
 	 @returns the currently assigned material
 	 */
 	inline auto GetMaterial() const{
 		return mat;
 	}
+#endif
 	
 	inline Ref<MeshAssetSkinned> GetMesh() const{
 		return mesh;

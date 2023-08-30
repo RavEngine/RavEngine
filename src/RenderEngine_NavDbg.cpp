@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #include "RenderEngine.hpp"
 #include "Utilities.hpp"
 #include "Debug.hpp"
@@ -82,3 +83,4 @@ void RenderEngine::end(){
     bgfx::destroy(vb);
 #endif
 }
+#endif

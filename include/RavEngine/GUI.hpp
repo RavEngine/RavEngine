@@ -1,4 +1,5 @@
 #pragma once
+#if !RVE_SERVER
 #include <RmlUi/Core.h>
 #include "SpinLock.hpp"
 #include "DataStructures.hpp"
@@ -180,4 +181,4 @@ public:
 	bool Render();
 };
 }
-
+#endif

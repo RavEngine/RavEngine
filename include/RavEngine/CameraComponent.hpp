@@ -1,4 +1,6 @@
 #pragma once
+#if !RVE_SERVER
+
 #include "Entity.hpp"
 #include "Transform.hpp"
 #include "ComponentWithOwner.hpp"
@@ -118,3 +120,4 @@ namespace RavEngine {
 		bool active = false;
 	};
 }
+#endif

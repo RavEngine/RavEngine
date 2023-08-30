@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #include "VRAMVector.hpp"
 #include "GetApp.hpp"
 #include "App.hpp"
@@ -23,3 +24,4 @@ namespace RavEngine {
         owningDevice = GetApp()->GetDevice();
     }
 }
+#endif

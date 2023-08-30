@@ -5,7 +5,7 @@
 //
 //  Copyright © 2020 Ravbug.
 //
-
+#if !RVE_SERVER
 #include "Ref.hpp"
 #include <RmlUi/Core/SystemInterface.h>
 #include <RmlUi/Core/RenderInterface.h>
@@ -275,3 +275,4 @@ namespace RavEngine {
 	
     };
 }
+#endif

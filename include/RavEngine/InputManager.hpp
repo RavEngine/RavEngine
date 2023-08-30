@@ -1,9 +1,10 @@
 #pragma once
+#if !RVE_SERVER
 #include "Ref.hpp"
-#include <SDL_scancode.h>
-#include <SDL_mouse.h>
-#include <SDL_events.h>
-#include <SDL_gamecontroller.h>
+    #include <SDL_scancode.h>
+    #include <SDL_mouse.h>
+    #include <SDL_events.h>
+    #include <SDL_gamecontroller.h>
 #include "Function.hpp"
 #include "IInputListener.hpp"
 #include "SpinLock.hpp"
@@ -12,6 +13,7 @@
 #include "WeakRef.hpp"
 
 namespace RavEngine {
+
 	enum ActionState{
 		Released = 0,
 		Pressed = 1
@@ -417,4 +419,5 @@ namespace RavEngine {
 		}
     };
 }
+#endif
 

@@ -1,8 +1,11 @@
 #pragma once
 #include <cstdint>
 #include <cstddef>
+#if !RVE_SERVER
 #include <RGL/Types.hpp>
+#endif
 
+#if !RVE_SERVER
 /**
  Resize a metal layer manually. Required on iOS
  @param ptr the pointer to the CAMetalLayer
@@ -22,6 +25,7 @@ float GetWindowScaleFactor(void* window);
  SDL opts-out of inertial scrolling on macOS. This function re-enables it.
  */
 void enableSmoothScrolling();
+#endif
 
 struct AppleOSVersion{
     uint16_t major = 0, minor = 0, patch = 0;
@@ -37,10 +41,12 @@ uint32_t GetAppleSystemRAM();
 
 void AppleCPUName(char* buffer, size_t size);
 
+#if !RVE_SERVER
 bool AppleGPUMeetsMinSpec(RGLDevicePtr);
 
 uint32_t AppleVRAMUsed();
 uint32_t AppleVRAMTotal();
+#endif
 
 void AppleAutoreleasePoolInit();
 void AppleAutoreleasePoolDrain();

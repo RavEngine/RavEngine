@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #include "Texture.hpp"
 #include "App.hpp"
 //#define STB_IMAGE_IMPLEMENTATION // don't define here, because rlottie & bimg define them
@@ -6,10 +7,12 @@
 #include <lunasvg.h>
 #include "Filesystem.hpp"
 #include "VirtualFileSystem.hpp"
+#if !RVE_SERVER
 #include <RGL/TextureFormat.hpp>
 #include "RenderEngine.hpp"
 #include <RGL/Device.hpp>
 #include <RGL/Texture.hpp>
+#endif
 
 using namespace std;
 using namespace RavEngine;
@@ -98,3 +101,4 @@ Texture::~Texture() {
 		app->GetRenderEngine().gcTextures.enqueue(texture);
 	}
 }
+#endif

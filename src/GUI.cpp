@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #include "GUI.hpp"
 #include "App.hpp"
 #include "Debug.hpp"
@@ -296,3 +297,4 @@ void GUIComponent::Debug(){
 	Rml::Debugger::SetVisible(true);
 #endif
 }
+#endif

@@ -4,8 +4,11 @@
 #include "Debug.hpp"
 #include <cstring>
 #include "Defines.hpp"
+#if !RVE_SERVER
+
 #include "RenderEngine.hpp"
 #include <RGL/Device.hpp>
+#endif
 
 #ifdef _WIN32
     #include <PortableDeviceApi.h>
@@ -184,6 +187,7 @@ uint32_t SystemInfo::SystemRAM(){
     return 0;
 }
 
+#if !RVE_SERVER
 
 std::string SystemInfo::GPUBrandString(){
     return GetApp()->GetDevice()->GetBrandString();
@@ -196,7 +200,7 @@ uint32_t SystemInfo::GPUVRAM(){
 uint32_t SystemInfo::GPUVRAMinUse(){
     return GetApp()->GetRenderEngine().GetCurrentVRAMUse();
 }
-
+#endif
 
 SystemInfo::GPUFeatures SystemInfo::GetSupportedGPUFeatures(){
     SystemInfo::GPUFeatures features;
@@ -213,6 +217,7 @@ SystemInfo::GPUFeatures SystemInfo::GetSupportedGPUFeatures(){
 #endif
     return features;
 }
+#if !RVE_SERVER
 
 SystemInfo::PCIDevice RavEngine::SystemInfo::GPUPCIData()
 {
@@ -222,3 +227,4 @@ SystemInfo::PCIDevice RavEngine::SystemInfo::GPUPCIData()
 #endif
     return {};
 }
+#endif

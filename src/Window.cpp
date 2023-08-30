@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #include "Window.hpp"
 #include <SDL.h>
 #include "Debug.hpp"
@@ -141,3 +142,4 @@ namespace RavEngine {
 		
 	}
 }
+#endif

@@ -1,3 +1,5 @@
+#if !RVE_SERVER
+
 #include "AudioRoom.hpp"
 #include "AudioRoomSyncSystem.hpp"
 #include "mathtypes.hpp"
@@ -54,3 +56,4 @@ void AudioRoomSyncSystem::operator()(AudioRoom& room, Transform& tr) const{
     room.data->audioEngine->SetReflectionProperties(ref_data);
     room.data->audioEngine->SetReverbProperties(rev_data);
 }
+#endif

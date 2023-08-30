@@ -5,7 +5,7 @@
 //  Copyright © 2020 Ravbug.
 //	Some code adapted from: https://github.com/pezcode/Cluster/blob/master/src/Renderer/DeferredRenderer.cpp
 //
-
+#if !RVE_SERVER
 #include "RenderEngine.hpp"
 #include <string>
 #include "CameraComponent.hpp"
@@ -1487,3 +1487,4 @@ void RavEngine::RenderEngine::SyncVideoSettings()
 {
 	//TODO: implement
 }
+#endif

@@ -1,32 +1,35 @@
 #include "App.hpp"
-#include "RenderEngine.hpp"
-#include <SDL_events.h>
+#if !RVE_SERVER
+    #include "RenderEngine.hpp"
+    #include <SDL_events.h>
+    #include "Texture.hpp"
+    #include <RmlUi/Core.h>
+    #include "GUI.hpp"
+    #include "Material.hpp"
+    #include "RMLFileInterface.hpp"
+    #include "InputManager.hpp"
+    #include "Skybox.hpp"
+    #include <SDL.h>
+    #include "AudioPlayer.hpp"
+    #include "Window.hpp"
+    #include <RGL/Swapchain.hpp>
+    #include <RGL/CommandBuffer.hpp>
+    #include "OpenXRIntegration.hpp"
+#endif
 #include <algorithm>
 #include "MeshAsset.hpp"
-#include "InputManager.hpp"
-#include "Material.hpp"
 #include <physfs.h>
-#include "Texture.hpp"
-#include <RmlUi/Core.h>
-#include "GUI.hpp"
-#include "RMLFileInterface.hpp"
 #include <steam/steamnetworkingsockets.h>
 #include <steam/isteamnetworkingutils.h>
-#include "Skybox.hpp"
-#include <SDL.h>
 #include <filesystem>
 #include "Function.hpp"
 #include "World.hpp"
 #include "GetApp.hpp"
 #include "Defines.hpp"
 #include "VirtualFileSystem.hpp"
-#include "AudioPlayer.hpp"
 #include "MeshAssetSkinned.hpp"
-#include "Window.hpp"
-#include <RGL/Swapchain.hpp>
-#include <RGL/CommandBuffer.hpp>
+
 #include "CameraComponent.hpp"
-#include "OpenXRIntegration.hpp"
 #include <csignal>
 #include "Debug.hpp"
 
@@ -68,7 +71,11 @@ static void DebugOutput( ESteamNetworkingSocketsDebugOutputType eType, const cha
 	}
 }
 
-App::App() : player(std::make_unique<AudioPlayer>()){
+App::App()
+#if !RVE_SERVER
+: player(std::make_unique<AudioPlayer>())
+#endif
+{
     currentApp = this;
 	// crash signal handlers
 	::signal(SIGSEGV, &crash_signal_handler);
@@ -76,12 +83,13 @@ App::App() : player(std::make_unique<AudioPlayer>()){
 
 	//initialize virtual file system library 
 	PHYSFS_init("");
-
+#if !RVE_SERVER
 	Resources = std::make_unique<VirtualFilesystem>();
+#endif
 }
 
 int App::run(int argc, char** argv) {
-
+#if !RVE_SERVER
 	// initialize SDL2
 	if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS | SDL_INIT_HAPTIC | SDL_INIT_VIDEO) != 0) {
 		Debug::Fatal("Unable to initialize SDL2: {}", SDL_GetError());
@@ -172,7 +180,7 @@ int App::run(int argc, char** argv) {
 
 	//setup Audio
 	player->Init();
-
+#endif
 	//setup networking
 	SteamDatagramErrMsg errMsg;
 	if (!GameNetworkingSockets_Init(nullptr, errMsg)) {
@@ -186,6 +194,7 @@ int App::run(int argc, char** argv) {
 	SetProcessDPIAware();
 	//SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 #endif
+#if !RVE_SERVER
 
 	{
 		//make the default texture white
@@ -195,12 +204,14 @@ int App::run(int argc, char** argv) {
 		uint8_t normalData[] = {256/2,256/2, 0xFF,0xFF};
 		Texture::Manager::defaultNormalTexture = New<RuntimeTexture>(1,1,false,1, normalData);
 	}
+#endif
 
 	//invoke startup hook
 	OnStartup(argc, argv);
 	
 	lastFrameTime = clocktype::now();
-    
+   
+#if !RVE_SERVER
 	bool exit = false;
 	SDL_Event event;
 	while (!exit) {
@@ -260,10 +271,11 @@ int App::run(int argc, char** argv) {
 
 		auto windowSize = window->GetSizeInPixels();
 		auto scale = window->GetDPIScale();
-
+#endif
 		//tick all worlds
 		for (const auto world : loadedWorlds) {
 			world->Tick(currentScale);
+#if !RVE_SERVER
 			world->Filter([=](GUIComponent& gui) {
 				if (gui.Mode == GUIComponent::RenderMode::Screenspace) {
 					gui.SetDimensions(windowSize.width, windowSize.height);
@@ -271,6 +283,7 @@ int App::run(int argc, char** argv) {
 				}
 				gui.Update();
 			});
+#endif
 		}
 
 		//process main thread tasks
@@ -280,7 +293,7 @@ int App::run(int argc, char** argv) {
 				front();
 			}
 		}
-
+#if !RVE_SERVER
 		auto nextTexture = window->GetNextSwapchainImage();
 		mainWindowView.collection.finalFramebuffer = nextTexture.texture;
 
@@ -334,7 +347,6 @@ int App::run(int argc, char** argv) {
 #endif
 
 		player->SetWorld(renderWorld);
-
 		//make up the difference
 		//can't use sleep because sleep is not very accurate
 		/*clocktype::duration work_time;
@@ -354,6 +366,7 @@ int App::run(int argc, char** argv) {
 		}	// end of @autoreleasepool
 #endif
 	}
+#endif  // !RVE_SERVER
 	
     return OnShutdown();
 }
@@ -436,41 +449,58 @@ void RavEngine::App::AddReplaceWorld(Ref<World> oldWorld, Ref<World> newWorld) {
 }
 
 void App::Quit(){
+#if !RVE_SERVER
 	SDL_Event event;
 	event.type = SDL_QUIT;
 	SDL_PushEvent(&event);
+#else
+    Debug::Fatal("Quit is not implemented on the server (TODO)");
+#endif
 }
 
 App::~App(){
     if (!PHYSFS_isInit()){  // unit tests do not initialize the vfs, so we don't want to procede here
         return;
     }
+#if !RVE_SERVER
 	inputManager = nullptr;
+#endif
 	renderWorld = nullptr;
 	loadedWorlds.clear();
+#if !RVE_SERVER
 #ifndef NDEBUG
 	Renderer->DeactivateDebugger();
 #endif
+#endif
     MeshAsset::Manager::Clear();
     MeshAssetSkinned::Manager::Clear();
+    
+#if !RVE_SERVER
+
 	Texture::Manager::defaultTexture.reset();
     Texture::Manager::Clear();
 	player->Shutdown();
+#endif
 	networkManager.server.reset();
 	networkManager.client.reset();
 	GameNetworkingSockets_Kill();
 	PHYSFS_deinit();
+#if !RVE_SERVER
+
 	auto fsi = Rml::GetFileInterface();
 	Rml::Shutdown();
     Renderer.reset();
-	delete fsi;
+    delete fsi;
+#endif
 
 	currentApp = nullptr;
 }
 
+#if !RVE_SERVER
 void App::SetWindowTitle(const char *title){
 	SDL_SetWindowTitle(window->window, title);
 }
+#endif
 
 std::optional<Ref<World>> RavEngine::App::GetWorldByName(const std::string& name) {
 	std::optional<Ref<World>> value;

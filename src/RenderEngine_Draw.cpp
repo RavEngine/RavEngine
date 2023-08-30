@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE 1
 #include "RenderEngine.hpp"
 #include <RGL/CommandBuffer.hpp>
@@ -929,3 +930,4 @@ void RavEngine::RenderEngine::DebugRender(const Im3d::DrawList& drawList)
 #endif
 
 }
+#endif

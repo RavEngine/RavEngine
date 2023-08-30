@@ -9,6 +9,7 @@
 #include "Tween.hpp"
 #include "App.hpp"
 #include "Function.hpp"
+#include "Queryable.hpp"
 
 namespace RavEngine{
 
@@ -109,7 +110,15 @@ private:
 	clamped_vec2 blend_pos;
 };
 
-class AnimatorComponent : public ComponentWithOwner, public IDebugRenderable, public Queryable<AnimatorComponent,IDebugRenderable>{
+class AnimatorComponent : public ComponentWithOwner,
+#if !RVE_SERVER
+public IDebugRenderable,
+#endif
+public Queryable<AnimatorComponent
+#if !RVE_SERVER
+,IDebugRenderable
+#endif
+>{
 protected:
 	double lastPlayTime = 0;
 	Ref<SkeletonAsset> skeleton;
@@ -246,8 +255,10 @@ public:
     inline decltype(skeleton) GetSkeleton() const{
 		return skeleton;
 	}
-    
+#if !RVE_SERVER
+
     virtual void DebugDraw(RavEngine::DebugDrawer& dbg, const Transform&) const override;
+#endif
 	
 	void UpdateSocket(const std::string&, Transform&) const;
 

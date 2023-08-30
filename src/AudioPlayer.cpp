@@ -1,5 +1,7 @@
 #include "AudioPlayer.hpp"
+#if !RVE_SERVER
 #include <SDL.h>
+#endif
 #include "Debug.hpp"
 #include "World.hpp"
 #include "AudioSource.hpp"
@@ -37,7 +39,7 @@ struct AudioWorker : public tf::WorkerInterface{
     void scheduler_epilogue(tf::Worker& worker, std::exception_ptr ptr) final{};
 };
 
-
+#if !RVE_SERVER
 AudioPlayer::AudioPlayer() : audioExecutor{2, std::make_shared<AudioWorker>()}{
     
 }
@@ -264,3 +266,4 @@ void AudioPlayer::Init(){
 void AudioPlayer::Shutdown(){
 	SDL_CloseAudioDevice(device);
 }
+#endif

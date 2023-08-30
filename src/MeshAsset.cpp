@@ -9,9 +9,11 @@
 #include <filesystem>
 #include "Debug.hpp"
 #include "VirtualFileSystem.hpp"
-#include "RenderEngine.hpp"
-#include <RGL/Buffer.hpp>
-#include <RGL/Device.hpp>
+#if !RVE_SERVER
+    #include "RenderEngine.hpp"
+    #include <RGL/Buffer.hpp>
+    #include <RGL/Device.hpp>
+#endif
 
 using namespace RavEngine;
 
@@ -153,23 +155,20 @@ MeshAsset::MeshAsset(const Filesystem::Path& path, const std::string& name, cons
 
 RavEngine::MeshAsset::~MeshAsset()
 {
+#if !RVE_SERVER
 	if (auto app = GetApp()) {
 		auto& gcBuffers = app->GetRenderEngine().gcBuffers;
 		gcBuffers.enqueue(vertexBuffer);
 		gcBuffers.enqueue(indexBuffer);
 		app->GetRenderEngine().DeallocateMesh(meshAllocation);
 	}
-	
+#endif
 }
 
 MeshAsset::MeshAsset(const string& name, const string& meshName, const MeshAssetOptions& options){
 	auto scene = LoadScene(name);
 	
 	InitPart(scene, meshName, name, options);
-#if 0
-	bgfx::setName(vertexBuffer, fmt::format("MeshAsset-FS {} ({}) VB", meshName, name).c_str());
-	bgfx::setName(indexBuffer, fmt::format("MeshAsset-FS {} ({}) IB", meshName, name).c_str());
-#endif
 }
 
 
@@ -277,7 +276,7 @@ void MeshAsset::InitializeFromRawMeshView(const MeshPartView& allMeshes, const M
         auto& i = allMeshes.indices;
         totalVerts = v.size();
         totalIndices = i.size();
-
+#if !RVE_SERVER
 		auto device = GetApp()->GetDevice();
 
 		vertexBuffer = device->CreateBuffer({
@@ -302,5 +301,6 @@ void MeshAsset::InitializeFromRawMeshView(const MeshPartView& allMeshes, const M
 		indexBuffer->SetBufferData({ i.data(), i.size_bytes() });
 
 		meshAllocation = GetApp()->GetRenderEngine().AllocateMesh(v, i);
+#endif
     }
 }

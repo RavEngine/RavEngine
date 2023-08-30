@@ -1,3 +1,5 @@
+#if !RVE_SERVER
+
 #pragma once
 #include "CTTI.hpp"
 
@@ -10,3 +12,4 @@ public:
 };
 
 }
+#endif

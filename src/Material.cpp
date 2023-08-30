@@ -1,4 +1,4 @@
-
+#if !RVE_SERVER
 #include "Material.hpp"
 #include <sstream>
 #include <fstream>
@@ -91,3 +91,4 @@ Material::~Material() {
     renderer.gcRenderPipeline.enqueue(renderPipeline);
     renderer.gcRenderPipeline.enqueue(shadowRenderPipeline);
 }
+#endif

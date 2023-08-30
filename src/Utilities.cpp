@@ -1,12 +1,14 @@
 #include "Utilities.hpp"
+#if !RVE_SERVER
 #include <RGL/RGL.hpp>
 #include <RGL/Device.hpp>
-#include "App.hpp"
 #include "RenderEngine.hpp"
+#endif
+#include "App.hpp"
 #include "VirtualFileSystem.hpp"
 
 using namespace RavEngine;
-
+#if !RVE_SERVER
 auto GetShader(const std::string& name) {
     auto getShaderPathname = [](const std::string& name) {
         const char* backendPath;
@@ -77,3 +79,4 @@ RGLShaderLibraryPtr RavEngine::LoadShaderByFilename(const std::string& name, RGL
     Debug::Fatal("Failed to load shader: engine is not compiled correctly");
     return nullptr;
 }
+#endif

@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #if defined _M_ARM64 && _M_ARM64
 #define ARCH_CPU_LITTLE_ENDIAN 1
 #endif
@@ -152,3 +153,4 @@ void SampledAudioDataProvider::ProvideBufferData(PlanarSampleBufferInlineView& b
     }
     AudioGraphComposed::Render(buffer,scratchSpace, asset->GetNChanels());
 }
+#endif

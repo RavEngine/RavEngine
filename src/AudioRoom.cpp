@@ -1,3 +1,5 @@
+#if !RVE_SERVER
+
 #include "AudioRoom.hpp"
 #include "Entity.hpp"
 #include "AudioSource.hpp"
@@ -73,3 +75,4 @@ void AudioRoom::RoomData::Simulate(PlanarSampleBufferInlineView& buffer, PlanarS
 //{
 //	dbg.DrawRectangularPrism(tr.CalculateWorldMatrix(), debug_color, data->roomDimensions);
 //}
+#endif

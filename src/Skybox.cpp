@@ -1,3 +1,5 @@
+#if !RVE_SERVER
+
 #include "Skybox.hpp"
 #include "MeshAsset.hpp"
 #include "RenderEngine.hpp"
@@ -41,3 +43,5 @@ RavEngine::ISkyMaterial::ISkyMaterial(const std::string& shaderpath) : Material(
     )
 {
 }
+
+#endif

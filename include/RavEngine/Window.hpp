@@ -1,4 +1,5 @@
 #pragma once
+#if !RVE_SERVER
 #include <RGL/Types.hpp>
 #include <RGL/Swapchain.hpp>
 #include <string_view>
@@ -54,3 +55,4 @@ namespace RavEngine {
 
 
 }
+#endif

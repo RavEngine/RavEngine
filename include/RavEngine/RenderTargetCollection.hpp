@@ -1,4 +1,5 @@
 #pragma once
+#if !RVE_SERVER
 #include <RGL/Types.hpp>
 #include "mathtypes.hpp"
 
@@ -25,3 +26,4 @@ namespace RavEngine{
 		dim_t<int> pixelDimensions;
 	};
 }
+#endif

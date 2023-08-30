@@ -1,3 +1,5 @@
+#if !RVE_SERVER
+
 #include "StaticMesh.hpp"
 #include "World.hpp"
 #include "SkinnedMeshComponent.hpp"
@@ -43,3 +45,4 @@ void RavEngine::SkinnedMeshComponent::SetEnabled(bool in){
 	world->SkinnedMeshChangedVisibility(this);
 }
 
+#endif

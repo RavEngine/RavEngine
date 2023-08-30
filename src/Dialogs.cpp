@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #include "Dialogs.hpp"
 #include "App.hpp"
 #include <SDL_messagebox.h>
@@ -22,3 +23,4 @@ static inline auto MessageBoxToSDLFlag(Dialog::MessageBoxType type){
 void Dialog::ShowBasic(const std::string_view& title, const std::string_view& msg, MessageBoxType type){
     SDL_ShowSimpleMessageBox(MessageBoxToSDLFlag(type), title.data(), msg.data(), nullptr);
 }
+#endif

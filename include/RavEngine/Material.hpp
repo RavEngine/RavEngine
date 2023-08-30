@@ -1,4 +1,5 @@
 #pragma once
+#if !RVE_SERVER
 #include "Ref.hpp"
 #include "WeakRef.hpp"
 #include "DataStructures.hpp"
@@ -120,3 +121,4 @@ namespace RavEngine {
 		Ref<Material> mat;
 	};
 }
+#endif

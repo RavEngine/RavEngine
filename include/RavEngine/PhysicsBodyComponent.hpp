@@ -28,14 +28,27 @@ namespace RavEngine {
 		ContactPairPoint(){}
 	};
 
-	class PhysicsBodyComponent : public ComponentWithOwner, public IDebugRenderable, public Queryable<PhysicsBodyComponent,IDebugRenderable>
+	class PhysicsBodyComponent : public ComponentWithOwner,
+#if !RVE_SERVER
+public IDebugRenderable,
+#endif
+
+public Queryable<PhysicsBodyComponent
+#if !RVE_SERVER
+,IDebugRenderable
+#endif
+>
 	{
 	protected:
         UnorderedSet<std::shared_ptr<PhysicsCallback>> receivers;
         Colony<std::shared_ptr<PhysicsCollider>> colliders;
         void CompleteConstruction();
 	public:
-		using Queryable<PhysicsBodyComponent,IDebugRenderable>::GetQueryTypes;
+		using Queryable<PhysicsBodyComponent
+#if !RVE_SERVER
+        ,IDebugRenderable
+#endif
+        >::GetQueryTypes;
 		
 		physx::PxRigidActor* rigidActor = nullptr;
 		physx::PxU32 filterGroup = -1;
@@ -169,11 +182,13 @@ namespace RavEngine {
 		}
 		
 		void DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const {
+#if !RVE_SERVER
 			LockRead([&] {
 				for (const auto& collider : colliders) {
                     collider->DebugDraw(dbg, debug_color, tr);
 				}
 			});
+#endif
 		}
 	protected:
 		bool wantsContactData = false;

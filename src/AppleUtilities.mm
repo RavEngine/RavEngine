@@ -1,11 +1,16 @@
 #include "AppleUtilities.h"
-#import <QuartzCore/CAMetalLayer.h>
-#import <Metal/Metal.h>
-#include <SDL_syswm.h>
+#if !RVE_SERVER
+    #import <QuartzCore/CAMetalLayer.h>
+    #import <Metal/Metal.h>
+    #include <SDL_syswm.h>
+    #include <RGL/RGL.hpp>
+    #include <RGL/Device.hpp>
+#else
+    #include <Foundation/NSProcessInfo.h>
+#endif
 #include "Debug.hpp"
 #include <sys/utsname.h>
-#include <RGL/RGL.hpp>
-#include <RGL/Device.hpp>
+
 
 #if TARGET_OS_IOS || TARGET_OS_TV
 #define TARGET_OS_NONOSX 1
@@ -33,7 +38,7 @@ void AppleAutoreleasePoolDrain(){
     //[pool drain];
 }
 
-
+#if !RVE_SERVER
 void resizeMetalLayer(void* ptr, int width, int height){
 	// on mac, auto resizing mask takes care of this
 #if TARGET_OS_NONOSX
@@ -41,7 +46,6 @@ void resizeMetalLayer(void* ptr, int width, int height){
 	layer.frame = CGRectMake(0, 0, width, height);
 #endif
 }
-
 float GetWindowScaleFactor(void* window){
 	SDL_SysWMinfo wmi;
 	SDL_VERSION(&wmi.version);
@@ -59,7 +63,7 @@ float GetWindowScaleFactor(void* window){
 void enableSmoothScrolling(){
     [[NSUserDefaults standardUserDefaults] setBool: YES forKey: @"AppleMomentumScrollSupported"];
 }
-
+#endif
 AppleOSVersion GetAppleOSVersion(){
     auto p = [[NSProcessInfo processInfo] operatingSystemVersion];
 
@@ -102,6 +106,7 @@ void AppleCPUName(char* buffer, size_t size){
 	}
 }
 
+#if !RVE_SERVER
 bool AppleGPUMeetsMinSpec(RGLDevicePtr deviceWrapper){
     auto internalData = deviceWrapper->GetDeviceData();
     
@@ -122,3 +127,4 @@ bool AppleGPUMeetsMinSpec(RGLDevicePtr deviceWrapper){
     };
 #endif
 }
+#endif

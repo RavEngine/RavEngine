@@ -14,6 +14,11 @@
 using namespace RavEngine;
 using namespace std;
 
+// needed for linker
+const std::string_view RVE_VFS_get_name(){
+    return "";
+}
+
 #undef assert
 
 #define assert(cond) \

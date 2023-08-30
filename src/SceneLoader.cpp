@@ -62,6 +62,7 @@ RavEngine::SceneLoader::~SceneLoader()
 {
 	aiReleaseImport(scene);
 }
+#if !RVE_SERVER
 
 void RavEngine::SceneLoader::LoadMeshes(const Function<bool(const PreloadedAsset&)>& filterFunc, const Function<void(Ref<MeshAsset>, Ref<PBRMaterialInstance>, const PreloadedAsset&)>& constructionFunc)
 {
@@ -76,7 +77,6 @@ void RavEngine::SceneLoader::LoadMeshes(const Function<bool(const PreloadedAsset
 		if (filterFunc(pa)) {
 			auto mp = MeshAsset::AIMesh2MeshPart(scene->mMeshes[i],identity);
 			auto asset = New<MeshAsset>(std::move(mp));
-
 			// load the material data
 			auto idx = scene->mMeshes[i]->mMaterialIndex;
 			Ref<PBRMaterialInstance> matinst;
@@ -106,6 +106,7 @@ void RavEngine::SceneLoader::LoadMeshes(const Function<bool(const PreloadedAsset
 		}
 	}
 }
+#endif
 
 
 void RavEngine::SceneLoader::LoadLocators(const Function<void(const Locator&)>& func)

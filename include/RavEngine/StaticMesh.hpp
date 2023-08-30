@@ -1,4 +1,6 @@
 #pragma once
+#if !RVE_SERVER
+
 #include "Material.hpp"
 #include "MeshAsset.hpp"
 #include "BuiltinMaterials.hpp"
@@ -9,7 +11,8 @@
 namespace RavEngine {
     class StaticMesh : public ComponentWithOwner, public Disableable{
     private:
-        std::tuple<Ref<MeshAsset>, Ref<MaterialInstance>> tuple;
+        Ref<MeshAsset> meshAsset;
+        Ref<MaterialInstance> materialInstance;
         StaticMesh(entity_t owner, Ref<MeshAsset> m) : ComponentWithOwner(owner){
             SetMesh(m);
         }
@@ -22,11 +25,11 @@ namespace RavEngine {
 		virtual ~StaticMesh(){}
 		
 		inline Ref<MeshAsset> GetMesh() const{
-			return std::get<0>(tuple);
+            return mesh;
 		}
 
         inline void SetMesh(Ref<MeshAsset> m) {
-            std::get<0>(tuple) = m;
+            mesh = m;
             //TODO: notify world render datastructure of this change
         }
 
@@ -36,7 +39,7 @@ namespace RavEngine {
         */
 		inline void SetMaterial(Ref<MaterialInstance> mat){
             updateMaterialInWorldRenderData(mat);
-			std::get<1>(tuple) = mat;
+			material = mat;
 		}
 
         /**
@@ -45,12 +48,10 @@ namespace RavEngine {
         inline auto GetMaterial() const{
 			return std::get<1>(tuple);
         }
-		
-        constexpr inline const auto& getTuple() const{
-			return tuple;
-		}
+    
 		
 		// shadow Disableable::SetEnabled
 		void SetEnabled(bool);
     };
 }
+#endif

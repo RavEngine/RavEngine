@@ -1,5 +1,6 @@
 #include "AnimationAsset.hpp"
 #include "App.hpp"
+#include "Function.hpp"
 #include <ozz/base/io/archive.h>
 #include <ozz/base/maths/simd_math.h>
 #include <ozz/animation/runtime/blending_job.h>

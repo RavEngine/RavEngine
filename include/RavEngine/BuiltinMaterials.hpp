@@ -1,4 +1,5 @@
 #pragma once
+#if !RVE_SERVER
 #include "Material.hpp"
 #include "Common3D.hpp"
 
@@ -79,3 +80,4 @@ namespace RavEngine {
 		PBRPushConstantData pushConstantData;
 	};
 }
+#endif

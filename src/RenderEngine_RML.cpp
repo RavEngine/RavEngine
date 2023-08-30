@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #include "RenderEngine.hpp"
 #include "App.hpp"
 #include <RGL/RGL.hpp>
@@ -254,3 +255,4 @@ void RenderEngine::SetTransform(const Rml::Matrix4f* transform){
 	currentGUIMatrix = glm::make_mat4(data);
 	Debug::Fatal("Local transformations not supported yet");
 }
+#endif

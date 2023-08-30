@@ -9,12 +9,14 @@
 	#undef SDL_MAIN_AVAILABLE
 	#define _WINRT 1
 #endif
+#if !RVE_SERVER
 #include <SDL_main.h>
-#include <optional>
-#include "AudioSnapshot.hpp"
-#include "GetApp.hpp"
 #include <RGL/Types.hpp>
 #include "RenderTargetCollection.hpp"
+#include "AudioSnapshot.hpp"
+#endif
+#include <optional>
+#include "GetApp.hpp"
 
 namespace RavEngine {
 
@@ -44,8 +46,9 @@ struct AudioPlayer;
 
 	class App {
 		friend class NetworkManager;
-        
+#if !RVE_SERVER
         std::unique_ptr<RenderEngine> Renderer;
+#endif
         std::unique_ptr<VirtualFilesystem> Resources;
 	public:
         App();
@@ -112,17 +115,23 @@ struct AudioPlayer;
         inline VirtualFilesystem& GetResources(){
             return *Resources.get();
         }
-        
+#if !RVE_SERVER
         inline RenderEngine& GetRenderEngine(){
             return *Renderer.get();
         }
-        
+#endif
+#if !RVE_SERVER
         inline auto& GetAudioPlayer(){
             return player;
         }
+#endif
         
         inline bool HasRenderEngine(){
+#if !RVE_SERVER
             return static_cast<bool>(Renderer);
+#else
+            return false;
+#endif
         }
 		
 		/**
@@ -148,8 +157,9 @@ struct AudioPlayer;
         float GetCurrentFPSScale() const{
             return currentScale;
         }
-		
+#if !RVE_SERVER
 		Ref<InputManager> inputManager;
+#endif
 
 		/**
 		Set the current world to tick automatically
@@ -181,19 +191,22 @@ struct AudioPlayer;
 		 */
 		void AddReplaceWorld(Ref<World> oldWorld, Ref<World> newWorld);
 		
+#if !RVE_SERVER
+
 		/**
 		 Set the window titlebar text
 		 @param title the text for the titlebar
 		 @note Do not call this every frame. To update periodically with data such as frame rates, use a scheduled system.
 		 */
         void SetWindowTitle(const char* title);
+#endif
 		
 		std::optional<Ref<World>> GetWorldByName(const std::string& name);
 
 		auto GetCurrentRenderWorld()  {
 			return renderWorld;
 		}
-		
+#if !RVE_SERVER
         inline void SwapCurrrentAudioSnapshot(){
             audiomtx1.lock();
             std::swap(acurrent,ainactive);
@@ -210,6 +223,7 @@ struct AudioPlayer;
         inline AudioSnapshot* GetRenderAudioSnapshot(){
             return arender;
         }
+#endif
 
 	private:
         float currentScale = 0.01f;
@@ -222,20 +236,24 @@ struct AudioPlayer;
 		std::chrono::duration<double, std::micro> min_tick_time{ std::chrono::duration<double,std::milli>(1.0 / 90 * 1000)};
 		
 		locked_hashset<Ref<World>,SpinLock> loadedWorlds;
-        
+#if !RVE_SERVER
         AudioSnapshot a1, a2, a3, *acurrent = &a1, *ainactive = &a2, *arender = &a3;
         SpinLock audiomtx1, audiomtx2;
+#endif
 	protected:
+#if !RVE_SERVER
 		RGLDevicePtr device;
 		std::unique_ptr<Window> window;
 		RenderViewCollection mainWindowView;
 
 		std::vector<RenderViewCollection> xrRenderViewCollections;
+#endif
 
 		virtual AppConfig OnConfigure(int argc, char** argv) { return AppConfig{}; }
-		
+#if !RVE_SERVER
 		//plays the audio generated in worlds
 		std::unique_ptr<AudioPlayer> player;
+#endif
 		
 		/**
 		The startup hook.
@@ -255,12 +273,14 @@ struct AudioPlayer;
 		
 		double time = 0;
 	public:
+#if !RVE_SERVER
 		auto GetDevice() {
 			return device;
 		}
         const auto& GetMainWindow() const{
             return window;
         }
+#endif
 	};
 }
 #ifdef _WINRT

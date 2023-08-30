@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #include "RenderEngine.hpp"
 #include <RGL/Span.hpp>
 #include <mutex>
@@ -251,3 +252,4 @@ namespace RavEngine {
 		fence->Wait();
 	}
 }
+#endif

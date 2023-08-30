@@ -5,14 +5,17 @@ project(RavEngine)
 set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps")
-set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${DEPS_DIR}")
+set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}"
+"${DEPS_DIR}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>)
 set(CMAKE_XCODE_VERSION "12.0.0" CACHE INTERNAL "")
 set(CMAKE_XCODE_GENERATE_TOP_LEVEL_PROJECT_ONLY ON CACHE INTERNAL "")
 
 OPTION( BUILD_SHARED_LIBS "Build package with shared libraries." OFF)
+
 OPTION( RAVENGINE_BUILD_TESTS "Build tests" OFF)
+option( RAVENGINE_SERVER "Build as a headless server" ${RAVENGINE_BUILD_TESTS})
 
 # ban in-source builds
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
@@ -98,7 +101,8 @@ if(MSVC)
 endif()
 
 # ==================== Dependencies =====================
-set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE INTERNAL "")
+set(CMAKE_OSX_ARCHITECTURES "x86_64"
+"arm64" CACHE INTERNAL "")
 
 # ============ build machine tools ==============
 
@@ -121,7 +125,7 @@ if (VS_CROSSCOMP AND CMAKE_HOST_WIN32)
 endif()
 
 # ninja does not use separate config directories for some reason
-if (CMAKE_CROSSCOMPILING)
+if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	set(TOOLS_DIR ${CMAKE_BINARY_DIR}/host-tools CACHE INTERNAL "")
 	if (CMAKE_HOST_WIN32)
 		set(rglc_ext ".exe")
@@ -160,8 +164,11 @@ endif()
 
 set_tools()
 
-set(DISABLE_RTTI_AND_EXCEPTIONS OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/RmlUi-freetype" EXCLUDE_FROM_ALL)
+if (NOT RAVENGINE_SERVER)
+	set(DISABLE_RTTI_AND_EXCEPTIONS OFF CACHE INTERNAL "")
+	add_subdirectory("${DEPS_DIR}/RmlUi-freetype" EXCLUDE_FROM_ALL)
+	set(RML_LIB "RmlCore")
+endif()
 
 # no extra flags required
 add_subdirectory("${DEPS_DIR}/im3d-cmake" EXCLUDE_FROM_ALL)
@@ -225,13 +232,15 @@ if (UWP)
 	set(WINDOWS_STORE ON CACHE INTERNAL "")
 endif()
 # ensure library is built correctly for static
-set(SDL_STATIC ON CACHE INTERNAL "" FORCE)
-set(SDL_SHARED OFF CACHE INTERNAL "" FORCE)
-set(SDL_LIBC ON CACHE BOOL "" FORCE)
-add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
-	set(SDL2STATIC_LIB 	"SDL2-static")
-	if (NOT UWP)
-		set(SDL2MAIN_LIB "SDL2main")
+if (NOT RAVENGINE_SERVER)
+	set(SDL_STATIC ON CACHE INTERNAL "" FORCE)
+	set(SDL_SHARED OFF CACHE INTERNAL "" FORCE)
+	set(SDL_LIBC ON CACHE BOOL "" FORCE)
+	add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
+		set(SDL2STATIC_LIB 	"SDL2-static")
+		if (NOT UWP)
+			set(SDL2MAIN_LIB "SDL2main")
+		endif()
 	endif()
 endif()
 
@@ -258,14 +267,17 @@ SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/libnyquist" EXCLUDE_FROM_ALL)
 
 # RavEngine Graphics Library (RGL)
-if (NOT CMAKE_CROSSCOMPILING)
+if (NOT CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	set(RGL_ENABLE_RGLC ON CACHE INTERNAL "")
 else()
 	set(RGL_ENABLE_RGLC OFF CACHE INTERNAL "")
 endif()
 set(SPIRV_SKIP_TESTS ON CACHE INTERNAL "")
 set(SPIRV_SKIP_EXECUTABLES ON CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/RGL")
+if (NOT RAVENGINE_SERVER)
+	add_subdirectory("${DEPS_DIR}/RGL")
+	set(RGL_LIB "RGL")
+endif()
 
 
 if(CMAKE_CROSSCOMPILING)
@@ -275,9 +287,15 @@ else()
 endif()
 add_subdirectory("${DEPS_DIR}/GameNetworkingSockets" EXCLUDE_FROM_ALL)
 if (CMAKE_CROSSCOMPILING)
-	add_custom_target("GNS_Deps" DEPENDS "${PROTOC_CMD}" "${rglc_path}")
+	if (NOT RAVENGINE_SERVER)
+		set(test_rglc "${rglc_path}")
+	endif()
+	add_custom_target("GNS_Deps" DEPENDS "${PROTOC_CMD}" "${test_rglc}")
 else()
-	add_custom_target("GNS_Deps" DEPENDS "rglc" "protoc")
+	if (NOT RAVENGINE_SERVER)
+		set(test_rglc "rglc")
+	endif()
+	add_custom_target("GNS_Deps" DEPENDS "${test_rglc}" "protoc")
 endif()
 add_dependencies("GameNetworkingSockets_s" "GNS_Deps")
 
@@ -401,6 +419,13 @@ set(UWP_SDL2MAIN "${DEPS_DIR}/SDL2/src/main/winrt/SDL_winrt_main_NonXAML.cpp" CA
 add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} ${SHADERS} "deps/parallel-hashmap/phmap.natvis")
 rve_enable_IPO(${PROJECT_NAME})
 
+# set server define
+if(RAVENGINE_SERVER)
+	target_compile_definitions(${PROJECT_NAME} PUBLIC "RVE_SERVER=1")
+else()
+	target_compile_definitions(${PROJECT_NAME} PUBLIC "RVE_SERVER=0")
+endif()
+
 # disable RTTI
 # target_compile_definitions(${PROJECT_NAME} PUBLIC "RMLUI_USE_CUSTOM_RTTI")
 # if (NOT MSVC)
@@ -522,7 +547,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"SadieHrtfsObj"
 	"ResonanceAudioObj"
 	#"PhysXGPU"
-	"RmlCore"
+	${RML_LIB}
 	"libnyquist"
 	"GameNetworkingSockets_s"
 	${SDL2MAIN_LIB}
@@ -533,7 +558,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"fmt"
 	"tweeny"
 	${SDL2STATIC_LIB}
-	"RGL"
+	${RGL_LIB}
 	"Recast"
 	"Detour"
 	"DetourCrowd"
@@ -614,58 +639,166 @@ endmacro()
 # unity builds
 macro(enable_unity targets)
 	foreach(target ${targets})
-		set_target_properties("${target}" PROPERTIES UNITY_BUILD ON)
+		if(TARGET ${target})
+			set_target_properties("${target}" PROPERTIES UNITY_BUILD ON)
+		endif()
 	endforeach()
 endmacro()
 
-set(all_unity "LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;im3d;SadieHrtfsObj;ResonanceAudioObj;libnyquist;Detour;ozz_animation;ozz_animation_offline;\
-ozz_animation_tools;ozz_base;ozz_geometry;ozz_options;json;libopus;DebugUtils;DetourCrowd;DetourTileCache;harfbuzz;")
+set(all_unity 
+	"LowLevel"
+	"FastXml"
+	"SceneQuery"
+	"SimulationController"
+	"PhysXTask"
+	"PhysXCharacterKinematic"
+	"im3d"
+	"SadieHrtfsObj"
+	"ResonanceAudioObj"
+	"libnyquist"
+	"Detour"
+	"ozz_animation"
+	"ozz_animation_offline"
+	"ozz_animation_tools"
+	"ozz_base"
+	"ozz_geometry"
+	"ozz_options"
+	"json"
+	"libopus"
+	"DebugUtils"
+	"DetourCrowd"
+	"DetourTileCache"
+	"harfbuzz"
+)
 
 if ((CMAKE_SYSTEM_NAME STREQUAL "Windows"))
 	set(platform_unity "")	 
 endif()
 
-enable_unity("${all_unity};${platform_unity}")
+enable_unity("${all_unity}"
+"${platform_unity}")
 
 # project organization
 SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
-group_in("Libraries" "assimp;assimp_cmd;DebugUtils;Detour;DetourCrowd;DetourTileCache;fmt;freetype;GameNetworkingSockets_s;GNS_Deps;\
-im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
-Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
-test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
-sdl_headers_copy;libprotoc;protoc;
-")
+group_in("Libraries" 
+	"assimp"
+	"assimp_cmd"
+	"DebugUtils"
+	"Detour"
+	"DetourCrowd"
+	"DetourTileCache"
+	"fmt"
+	"freetype"
+	"GameNetworkingSockets_s"
+	"GNS_Deps"
+	"im3d"
+	"libnyquist"
+	"libopus"
+	"libprotobuf"
+	"libprotobuf-lite"
+	"libwavpack"
+	"openssl"
+	"PffftObj"
+	"physfs"
+	"physfs-static"
+	"BUILD_FUSE_ALL"
+	"Recast"
+	"ResonanceAudioObj"
+	"ResonanceAudioShared"
+	"ResonanceAudioStatic"
+	"lunasvg"
+	"rlottie"
+	"rlottie-image-loader"
+	"RmlCore"
+	"SadieHrtfsObj"
+	"ssl"
+	"test_physfs"
+	"tweeny-dummy"
+	"zlib"
+	"zlibstatic"
+	"SDL2-static"
+	"json"
+	"physfs_uninstall"
+	"dist"
+	"SDL2main"
+	"BUILD_CLANG_FORMAT"
+	"crypto"
+	"r8brain"
+	"harfbuzz"
+	"harfbuzz-subset"
+	"sdl_headers_copy"
+	"libprotoc"
+	"protoc"
+)
 
-group_in("Libraries/PhysX SDK" "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\
-PhysXCooking;PhysXExtensions;PhysXFoundation;PhysXPvdSDK;PhysXTask;PhysXVehicle;SceneQuery;SimulationController;PhysXVehicle2")
+group_in("Libraries/PhysX SDK" 
+	"FastXml"
+	"LowLevel"
+	"LowLevelAABB"
+	"LowLevelDynamics"
+	"PhysX"
+	"PhysXCharacterKinematic"
+	"PhysXCommon"
+	"PhysXCooking"
+	"PhysXExtensions"
+	"PhysXFoundation"
+	"PhysXPvdSDK"
+	"PhysXTask"
+	"PhysXVehicle"
+	"SceneQuery"
+	"SimulationController"
+	"PhysXVehicle2"
+)
 
-group_in("Libraries/ozz" "ozz_animation;ozz_animation_offline;ozz_base;ozz_geometry;ozz_options")
-group_in("Libraries/ozz/tools" "dump2ozz;gltf2ozz;ozz_animation_tools")
-group_in("Libraries/ozz/fuse" "BUILD_FUSE_ozz_animation;BUILD_FUSE_ozz_animation_offline;BUILD_FUSE_ozz_animation_tools;\
-BUILD_FUSE_ozz_base;BUILD_FUSE_ozz_geometry;BUILD_FUSE_ozz_options")
+group_in("Libraries/ozz" 
+	"ozz_animation"
+	"ozz_animation_offline"
+	"ozz_base"
+	"ozz_geometry"
+	"ozz_options"
+)
+group_in("Libraries/ozz/tools" 
+	"dump2ozz"
+	"gltf2ozz"
+	"ozz_animation_tools"
+)
+group_in("Libraries/ozz/fuse"
+	"BUILD_FUSE_ozz_animation"
+	"BUILD_FUSE_ozz_animation_offline"
+	"BUILD_FUSE_ozz_animation_tools"
+	"BUILD_FUSE_ozz_base"
+	"BUILD_FUSE_ozz_geometry"
+	"BUILD_FUSE_ozz_options"
+)
 
 group_in("Libraries/openxr" "openxr_loader" "generate_openxr_header" "xr_global_generated_files")
 
 macro(shader_compile infile stage api extension binary)
-	set(bindir "${shader_target}_ShaderIntermediate")
-	set(shader_inc_dir "${eng_dir}/shaders")
+	if (NOT RAVENGINE_SERVER)
+		set(bindir "${shader_target}_ShaderIntermediate")
+		set(shader_inc_dir "${eng_dir}/shaders")
 
-	get_filename_component(name_only ${infile} NAME)
-	set(outname "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}.${extension}")
-	set(finalrootpath "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}")
-	if (${api} MATCHES "Metal")
-		STRING(REPLACE "." "_" name_fixed ${name_only} )
-		set(entrypoint "--entrypoint" "${name_fixed}")
+		get_filename_component(name_only ${infile} NAME)
+		set(outname "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}.${extension}")
+		set(finalrootpath "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}")
+		if (${api} MATCHES "Metal")
+			STRING(REPLACE "." "_" name_fixed ${name_only} )
+			set(entrypoint "--entrypoint" "${name_fixed}")
+		endif()
+		add_custom_command(
+			PRE_BUILD
+			OUTPUT "${outname}"
+			DEPENDS ${infile} GNS_Deps "${eng_dir}/shaders/ravengine_shader.glsl" "${eng_dir}/shaders/ravengine_fsh.h" "${eng_dir}/shaders/ravengine_vsh.h" "${eng_dir}/shaders/ravengine_shader_defs.h" "${eng_dir}/shaders/lightingbindings_shared.h" "${eng_dir}/shaders/BRDF.glsl" "${eng_dir}/shaders/lighting_preamble.glsl"
+			COMMAND ${rglc_path} -f "${infile}" -o "${outname}" --api ${api} --stage ${stage} --include "${shader_inc_dir}" --debug ${binary} ${entrypoint}
+		)
 	endif()
-	add_custom_command(
-		PRE_BUILD
-		OUTPUT "${outname}"
-		DEPENDS ${infile} GNS_Deps "${eng_dir}/shaders/ravengine_shader.glsl" "${eng_dir}/shaders/ravengine_fsh.h" "${eng_dir}/shaders/ravengine_vsh.h" "${eng_dir}/shaders/ravengine_shader_defs.h" "${eng_dir}/shaders/lightingbindings_shared.h" "${eng_dir}/shaders/BRDF.glsl" "${eng_dir}/shaders/lighting_preamble.glsl"
-		COMMAND ${rglc_path} -f "${infile}" -o "${outname}" --api ${api} --stage ${stage} --include "${shader_inc_dir}" --debug ${binary} ${entrypoint}
-	)
 endmacro()
 
 function(declare_shader infile shader_target)
+	if (RAVENGINE_SERVER)
+		return()
+	endif()
+
 	get_filename_component(shader_ext ${infile} EXT)
 
 	if (shader_ext MATCHES "vsh")
@@ -881,14 +1014,18 @@ function(pack_resources)
 		#include <span>
 		#include <string_view>
 		#include <string>
-		CMRC_DECLARE(${rve_cmrc_resource_name});
+		CMRC_DECLARE(${rve_cmrc_resource_name})"
+"
 		#define CMRC_NS cmrc::${rve_cmrc_resource_name}
 
 		const std::span<const char> cmrc_get_file_data(const std::string_view& path){
-			auto fs = CMRC_NS::get_filesystem();
-			auto file = fs.open(std::string(path));
+			auto fs = CMRC_NS::get_filesystem()"
+"
+			auto file = fs.open(std::string(path))"
+"
 
-			return {file.begin(),file.size()};
+			return {file.begin(),file.size()}"
+"
 		}
 		")
 		target_sources(${rve_cmrc_resource_name} PRIVATE "${cmrc_shader_libfn_cpp}")
@@ -899,7 +1036,8 @@ function(pack_resources)
 	file(GENERATE OUTPUT "${rve_externs_cpp}" CONTENT "
 	#include <string_view>
 	const std::string_view RVE_VFS_get_name(){
-		return \"${ARGS_TARGET}\";
+		return \"${ARGS_TARGET}\""
+"
 	}
 	")
 	set(rve_externs_lib "${ARGS_TARGET}_Externs")
@@ -936,7 +1074,8 @@ function(pack_resources)
 	set_target_properties(${ARGS_TARGET} PROPERTIES 
 		MACOSX_BUNDLE TRUE
 		#XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH $<$<OR:$<CONFIG:DEBUG>,$<CONFIG:CHECKED>,$<CONFIG:PROFILE>>:YES>
-		OSX_ARCHITECTURES "arm64;x86_64"
+		OSX_ARCHITECTURES "arm64"
+"x86_64"
 		VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 		XCODE_GENERATE_SCHEME ON	# create a scheme in Xcode
 	)

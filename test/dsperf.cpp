@@ -5,10 +5,14 @@
 #include <typeinfo>
 #include <RavEngine/AnimatorComponent.hpp>
 #include <RavEngine/unordered_vector.hpp>
-#include <boost/container/vector.hpp>
 
 using namespace RavEngine;
 using namespace std;
+
+// needed for linker
+const std::string_view RVE_VFS_get_name(){
+    return "";
+}
 
 static std::chrono::system_clock timer;
 
@@ -72,18 +76,6 @@ int main(int argc, const char** argv){
 	{
 		cout << "\nozz vector\n";
 		ozz::vector<int> vec;
-		
-		do_test(vec,[&](int i){
-			vec.push_back(i);
-		},[&](int i){
-			vec.erase(std::remove(vec.begin(),vec.end(),i),vec.end());
-		});
-	}
-	
-	// boost vector
-	{
-        cout << "\nboost vector\n";
-		boost::container::vector<int> vec;
 		
 		do_test(vec,[&](int i){
 			vec.push_back(i);

@@ -8,9 +8,11 @@
 #include <assimp/mesh.h>
 #include "Filesystem.hpp"
 #include "VirtualFileSystem.hpp"
-#include "RenderEngine.hpp"
-#include <RGL/Device.hpp>
-#include <RGL/Buffer.hpp>
+#if !RVE_SERVER
+    #include "RenderEngine.hpp"
+    #include <RGL/Device.hpp>
+    #include <RGL/Buffer.hpp>
+#endif
 #include "SkeletonAsset.hpp"
 
 using namespace RavEngine;
@@ -18,9 +20,11 @@ using namespace std;
 
 RavEngine::MeshAssetSkinned::~MeshAssetSkinned()
 {
+#if !RVE_SERVER
 	if (auto app = GetApp()) {
 		app->GetRenderEngine().gcBuffers.enqueue(weightsBuffer);
 	}
+#endif
 }
 
 //TODO: avoid opening the file twice -- this is a double copy and repeats work, therefore slow
@@ -102,6 +106,7 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 	struct wrapper{
 		vweights::vw w[4];
 	};
+#if !RVE_SERVER
 	//make gpu version
     std::vector<wrapper> weightsgpu;
 	weightsgpu.reserve(allweights.size());
@@ -120,7 +125,6 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 	}
 	
 	//map to GPU
-	//TODO: make buffer Private
 	weightsBuffer = GetApp()->GetDevice()->CreateBuffer({
 		uint32_t(weightsgpu.size()),
 		{.StorageBuffer = true},
@@ -129,5 +133,6 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 		{.Writable = false}
 	});
 	weightsBuffer->SetBufferData({ weightsgpu.data(),weightsgpu.size() * sizeof(decltype(weightsgpu)::value_type)});
+#endif
 }
 

@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #pragma once
 #include "Material.hpp"
 
@@ -40,3 +41,4 @@ namespace RavEngine {
 
 	
 }
+#endif

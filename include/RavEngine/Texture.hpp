@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #pragma once
 #include "Ref.hpp"
 #include "Manager.hpp"
@@ -61,3 +62,4 @@ public:
 };
 
 }
+#endif

@@ -5,6 +5,8 @@
 #include "ComponentWithOwner.hpp"
 #include "Queryable.hpp"
 #include "AudioRoomMaterial.hpp"
+#if !RVE_SERVER
+
 #include "AudioSource.hpp"
 #include "Types.hpp"
 #include "DebugDrawer.hpp"
@@ -113,3 +115,4 @@ public:
 };
 
 }
+#endif

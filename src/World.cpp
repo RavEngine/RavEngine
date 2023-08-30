@@ -28,7 +28,11 @@
 #include "RenderEngine.hpp"
 #include "Skybox.hpp"
 #include "PhysicsSolver.hpp"
-#include "VRAMSparseSet.hpp"
+#if !RVE_SERVER
+    #include "VRAMSparseSet.hpp"
+#else
+    #include "Transform.hpp"
+#endif
 #include "PhysicsBodyComponent.hpp"
 
 using namespace std;
@@ -56,10 +60,12 @@ void RavEngine::World::Tick(float scale) {
 
 RavEngine::World::World() : Solver(std::make_unique<PhysicsSolver>()){
     // init render data if the render engine is online
+#if !RVE_SERVER
+
     if (GetApp() && GetApp()->GetDevice()) {
         renderData.emplace();
     }
-
+#endif
     SetupTaskGraph();
     EmplacePolymorphicSystem<ScriptSystem>();
     EmplaceSystem<AnimatorSystem>();
@@ -68,12 +74,17 @@ RavEngine::World::World() : Solver(std::make_unique<PhysicsSolver>()){
     CreateDependency<AnimatorSystem,PhysicsLinkSystemRead>();	// run physics reads before animator
     CreateDependency<PhysicsLinkSystemWrite,ScriptSystem>();	// run physics write before scripts
 	CreateDependency<SocketSystem, AnimatorSystem>();			// run animator before socket system
-        
+#if !RVE_SERVER
+
     EmplaceSystem<AudioRoomSyncSystem>();
+#endif
     EmplaceSystem<RPCSystem>();
+#if !RVE_SERVER
+
     if (PHYSFS_isInit()){
         skybox = make_shared<Skybox>();
     }
+#endif
 }
 
 void World::NetworkingSpawn(ctti_t id, Entity& handle){
@@ -132,14 +143,18 @@ bool RavEngine::World::InitPhysics() {
 void World::SetupTaskGraph(){
     masterTasks.name("RavEngine Master Tasks");
 	
+#if !RVE_SERVER
     //TODO: FIX (use conditional tasking here)
     setupRenderTasks();
+#endif
     
     ECSTasks.name("ECS");
     ECSTaskModule = masterTasks.composed_of(ECSTasks).name("ECS");
     
     // ensure Systems run before rendering
+#if !RVE_SERVER
     renderTaskModule.succeed(ECSTaskModule);
+#endif
     
     // process any dispatched coroutines
     auto updateAsyncIterators = ECSTasks.emplace([&]{
@@ -178,6 +193,7 @@ void World::SetupTaskGraph(){
     physicsRootTask.precede(read.first,write.first);
 	read.second.succeed(RunPhysics);	// if checkRunPhysics returns a 1, it goes here anyways.
     
+#if !RVE_SERVER
     // setup audio tasks
     audioTasks.name("Audio");
     
@@ -241,7 +257,9 @@ void World::SetupTaskGraph(){
     
     audioTaskModule = masterTasks.composed_of(audioTasks).name("Audio");
     audioTaskModule.succeed(ECSTaskModule);
+#endif
 }
+#if !RVE_SERVER
 
 void World::setupRenderTasks(){
 	//render engine data collector
@@ -398,6 +416,7 @@ void World::setupRenderTasks(){
     // attatch the renderTasks module to the masterTasks
     renderTaskModule = masterTasks.composed_of(renderTasks).name("Render");
 }
+#endif
 
 void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
     auto time = GetApp()->GetCurrentTime();
@@ -405,7 +424,7 @@ void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
         async_tasks.insert(make_shared<dispatched_func>(time + delaySeconds,func));
     });
 }
-
+#if !RVE_SERVER
 void DestroyMeshRenderDataGeneric(const auto& mesh, auto material, auto&& renderData, entity_t local_id, auto&& iteratorComparator){
     
     bool removeContains = false;
@@ -546,6 +565,7 @@ void World::SkinnedMeshChangedVisibility(const SkinnedMeshComponent* mesh){
 		DestroySkinnedMeshRenderData(*mesh, owner.GetIdInWorld());
 	}
 }
+#endif
 
 
 entity_t World::CreateEntity(){
@@ -570,7 +590,7 @@ World::~World() {
         }
     }
 }
-
+#if !RVE_SERVER
 void RavEngine::World::PlaySound(const InstantaneousAudioSource& ias) {
     instantaneousToPlay.push_back(ias);
 }
@@ -578,10 +598,12 @@ void RavEngine::World::PlaySound(const InstantaneousAudioSource& ias) {
 void RavEngine::World::PlayAmbientSound(const InstantaneousAmbientAudioSource& iaas) {
     ambientToPlay.push_back(iaas);
 }
+#endif
 
 void World::DeallocatePhysics(){
     Solver->DeallocatePhysx();
 }
+#if !RVE_SERVER
 
 RavEngine::World::MDICommandBase::~MDICommandBase()
 {
@@ -593,3 +615,4 @@ RavEngine::World::MDICommandBase::~MDICommandBase()
     }
   
 }
+#endif

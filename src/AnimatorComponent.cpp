@@ -299,6 +299,7 @@ bool AnimBlendTree::Sample(float t, float start, float speed, bool looping, ozz:
 	// TODO: proper end detection for trees
 	return false;
 }
+#if !RVE_SERVER
 
 void AnimatorComponent::DebugDraw(RavEngine::DebugDrawer &dbg, const Transform&) const{
     auto& pose = GetPose();
@@ -306,3 +307,4 @@ void AnimatorComponent::DebugDraw(RavEngine::DebugDrawer &dbg, const Transform&)
         dbg.DrawSphere(p, debug_color, 0.1);
     }
 }
+#endif

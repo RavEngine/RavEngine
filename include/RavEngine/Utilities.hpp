@@ -3,7 +3,9 @@
 #include <fmt/format.h>
 #include <sstream>
 #include <type_traits>
+#if !RVE_SERVER
 #include <RGL/Types.hpp>
+#endif
 
 namespace RavEngine{
 
@@ -64,6 +66,8 @@ Load a shader given its filename (ie "myshader.vsh"). Must include extension.
 @param name filename of the shader
 @return RGLShaderLibrary
 */
+#if !RVE_SERVER
 RGLShaderLibraryPtr LoadShaderByFilename(const std::string& name, RGLDevicePtr device);
+#endif
 
 }

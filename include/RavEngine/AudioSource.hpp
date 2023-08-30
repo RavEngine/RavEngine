@@ -1,4 +1,5 @@
 #pragma once
+#if !RVE_SERVER
 #include "Queryable.hpp"
 #include <string>
 #include "mathtypes.hpp"
@@ -234,3 +235,4 @@ struct InstantaneousAmbientAudioSource : public AudioSourceBase {
 };
 
 }
+#endif
