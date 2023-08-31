@@ -253,10 +253,6 @@ if (NOT TARGET_APPLE AND NOT TARGET_WINDOWS AND NOT TARGET_UWP AND NOT TARGET_EM
 	endif()
 endif()
 
-if(TARGET_LINUX)
-	find_package(LibUUID REQUIRED)
-endif()
-
 set(PHYSFS_BUILD_TEST OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/physfs" EXCLUDE_FROM_ALL)
 
@@ -403,6 +399,10 @@ if(TARGET_WINDOWS AND NOT RAVENGINE_SERVER)
 	set(OPENXR_LOADER openxr_loader)
 endif()
 
+if(TARGET_LINUX)
+	set(LibUUID_LIBRARIES "uuid")
+endif()
+
 # ========== Building engine ==============
 
 # get all sources for the library with glob
@@ -492,7 +492,6 @@ target_include_directories("${PROJECT_NAME}"
 	"${DEPS_DIR}/resonance-audio/"
 	"${DEPS_DIR}/GameNetworkingSockets/GameNetworkingSockets/include"
 	"${DEPS_DIR}/date/include"
-	${LibUUID_INCLUDE_DIRS}
 	PRIVATE
 	"include/${PROJECT_NAME}/"
 	"${DEPS_DIR}/miniz-cpp/"	
