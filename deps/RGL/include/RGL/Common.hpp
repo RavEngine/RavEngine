@@ -1,5 +1,15 @@
 #pragma once
 
+// grrr
+#undef Never
+#undef Less
+#undef Equal
+#undef LessOrEqual
+#undef Greater
+#undef NotEqual
+#undef GreaterOrEqual
+#undef Always
+
 namespace RGL {
 	enum class DepthCompareFunction : uint8_t {
 		Never = 0,			// matches the values of VkCompareOp
