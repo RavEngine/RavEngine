@@ -3,10 +3,8 @@
 #ifdef _WIN32
 #include <rpc.h>
 #include <rpcdce.h>
-#elif __APPLE__
+#elif __APPLE__ || __linux__ || __EMSCRIPTEN__
 #include <uuid/uuid.h>
-#elif __linux__ || __EMSCRIPTEN__
-#include <uuid.h>
 #else
 #error UUID: Unsupported platform
 #endif
