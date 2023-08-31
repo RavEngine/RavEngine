@@ -45,7 +45,7 @@ jobs:
         with:
           submodules: true
       - name: Install Dependencies
-        run: sudo apt-get update && sudo apt-get install cmake clang python3 libgl1-mesa-dev libwayland-dev libxkbcommon-dev libegl-dev -y --no-install-recommends
+        run: sudo apt-get update && sudo apt-get install cmake clang python3 libgl1-mesa-dev uuid-dev libwayland-dev libxkbcommon-dev libegl-dev -y --no-install-recommends
       - name: Setup Emscripten
         run: git clone https://github.com/emscripten-core/emsdk.git --depth=1 && cd emsdk && ./emsdk install latest && ./emsdk activate latest && source ./emsdk_env.sh
       - name: Configure
