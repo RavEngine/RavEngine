@@ -52,6 +52,9 @@ namespace RavEngine {
 #endif
 			true
 		);
+        // re-query the window size because some platforms (like iOS) ignore the passed window size
+        SDL_GetWindowSize(window, &width, &height);
+        
         windowdims = {width, height};
         currentScaleFactor = QueryScaleFactor();
         auto size = GetSizeInPixels();
