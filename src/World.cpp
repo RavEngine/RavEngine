@@ -339,16 +339,20 @@ void World::setupRenderTasks(){
                     auto rot = owner.GetTransform().WorldUp();
 
                     // use local ID here, no need for local-to-global translation
-                    renderData->directionalLightData.GetForSparseIndex(ptr->GetOwner(i)).direction = rot;
+                    renderData->directionalLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).direction = rot;
                 }
                 if (ptr->Get(i).isInvalidated()){
                     // update color data if it has changed
                     auto& lightdata = ptr->Get(i);
                     auto& color = lightdata.GetColorRGBA();
-                    auto& dirLightUploadData = renderData->directionalLightData.GetForSparseIndex(ptr->GetOwner(i));
+                    auto owner = ptr->GetOwner(i);
+                    auto& dirLightUploadData = renderData->directionalLightData.uploadData.GetForSparseIndex(owner);
+                    auto& dirLightAuxData = renderData->directionalLightData.auxData.GetForSparseIndex(owner);
                     dirLightUploadData.colorIntensity = {color.R, color.G, color.B, lightdata.GetIntensity()};
                     dirLightUploadData.castsShadows = lightdata.CastsShadows();
                     lightdata.clearInvalidate();
+                    
+                    dirLightAuxData.shadowDistance = lightdata.GetShadowDistance();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this
             }
@@ -362,13 +366,13 @@ void World::setupRenderTasks(){
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
-                    renderData->spotLightData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.CalculateWorldMatrix();
+                    renderData->spotLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.CalculateWorldMatrix();
                 }
                 if (ptr->Get(i).isInvalidated()){
                     // update color data if it has changed
                     auto& lightData = ptr->Get(i);
                     auto& colorData = lightData.GetColorRGBA();
-                    auto& denseData = renderData->spotLightData.GetForSparseIndex(ptr->GetOwner(i));
+                    auto& denseData = renderData->spotLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i));
                     denseData.coneAndPenumbra = { lightData.GetConeAngle(), lightData.GetPenumbraAngle() };
                     denseData.colorIntensity = { colorData.R,colorData.G,colorData.B,lightData.GetIntensity()};
                     denseData.castsShadows = lightData.CastsShadows();
@@ -386,13 +390,13 @@ void World::setupRenderTasks(){
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
-                    renderData->pointLightData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.CalculateWorldMatrix();
+                    renderData->pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.CalculateWorldMatrix();
                 }
                 if (ptr->Get(i).isInvalidated()){
                     // update color data if it has changed
                     auto& lightData = ptr->Get(i);
                     auto& colorData = lightData.GetColorRGBA();
-                    renderData->pointLightData.GetForSparseIndex(ptr->GetOwner(i)).colorIntensity = { colorData.R,colorData.G,colorData.B,lightData.GetIntensity()};
+                    renderData->pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).colorIntensity = { colorData.R,colorData.G,colorData.B,lightData.GetIntensity()};
                     ptr->Get(i).clearInvalidate();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this
@@ -406,7 +410,7 @@ void World::setupRenderTasks(){
                 auto ownerLocalId = ptr->GetOwner(i);
                 auto& light = ptr->Get(i);
                 auto& color = light.GetColorRGBA();
-                renderData->ambientLightData.GetForSparseIndex(ownerLocalId) = {color.R, color.G, color.B, light.GetIntensity()};
+                renderData->ambientLightData.uploadData.GetForSparseIndex(ownerLocalId) = {color.R, color.G, color.B, light.GetIntensity()};
                 light.clearInvalidate();
             }
         }

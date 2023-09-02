@@ -5,7 +5,6 @@
 #include <RGL/Swapchain.hpp>
 #include <RGL/RenderPass.hpp>
 #include "World.hpp"
-#include "CameraComponent.hpp"
 #include "Skybox.hpp"
 #include "DebugDraw.h"
 #include "DebugDrawer.hpp"
@@ -20,6 +19,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <chrono>
 #include <numbers>
+#include "Transform.hpp"
 
 
 namespace RavEngine {
@@ -452,7 +452,7 @@ namespace RavEngine {
 					});
 
 				// ambient lights
-				if (worldOwning->renderData->ambientLightData.DenseSize() > 0) {
+				if (worldOwning->renderData->ambientLightData.uploadData.DenseSize() > 0) {
 					mainCommandBuffer->BeginRendering(ambientLightRenderPass);
 					mainCommandBuffer->BeginRenderDebugMarker("Render Ambient Lights");
 					mainCommandBuffer->BindRenderPipeline(ambientLightRenderPipeline);
@@ -464,11 +464,11 @@ namespace RavEngine {
 					mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 					mainCommandBuffer->SetVertexBytes(ambientUBO, 0);
 					mainCommandBuffer->SetFragmentBytes(ambientUBO, 0);
-					mainCommandBuffer->SetVertexBuffer(worldOwning->renderData->ambientLightData.GetDense().get_underlying().buffer, {
+					mainCommandBuffer->SetVertexBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer, {
 						.bindingPosition = 1
 						});
 					mainCommandBuffer->Draw(3, {
-						.nInstances = worldOwning->renderData->ambientLightData.DenseSize()
+						.nInstances = worldOwning->renderData->ambientLightData.uploadData.DenseSize()
 						});
 					mainCommandBuffer->EndRenderDebugMarker();
 					mainCommandBuffer->EndRendering();
@@ -481,7 +481,7 @@ namespace RavEngine {
 				};
 
 				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target, &fullSizeScissor, &fullSizeViewport, &renderArea](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
-					if (lightStore.DenseSize() > 0) {
+					if (lightStore.uploadData.DenseSize() > 0) {
 						LightingUBO lightUBO{
 							.viewProj = viewproj,
 							.viewRect = viewRect,
@@ -490,8 +490,16 @@ namespace RavEngine {
 
 						shadowRenderPass->SetDepthAttachmentTexture(shadowTexture.get());
 						lightUBO.isRenderingShadows = true;
-						for (uint32_t i = 0; i < lightStore.DenseSize(); i++) {
-							const auto& light = lightStore.GetDense()[i];
+						for (uint32_t i = 0; i < lightStore.uploadData.DenseSize(); i++) {
+							const auto& light = lightStore.uploadData.GetDense()[i];
+                            
+                            using lightadt_t = std::remove_reference_t<decltype(lightStore)>;
+                            
+                            void* aux_data = nullptr;
+                            if constexpr (lightadt_t::hasAuxData){
+                                aux_data = &lightStore.auxData.GetDense()[i];
+                            }
+                            
 							if (!light.castsShadows) {
 								continue;
 							}
@@ -500,7 +508,7 @@ namespace RavEngine {
 								glm::mat4 lightViewProj;
 							} lightExtras;
 
-							lightViewProjResult lightMats = genLightViewProj(light);
+							lightViewProjResult lightMats = genLightViewProj(light,aux_data);
 
 							auto lightSpaceMatrix = lightMats.lightProj * lightMats.lightView;
 							lightUBO.camPos = lightMats.camPos;
@@ -535,7 +543,7 @@ namespace RavEngine {
 							bindpolygonBuffers(mainCommandBuffer);
 							mainCommandBuffer->SetVertexBytes(lightUBO, 0);
 							mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
-							mainCommandBuffer->SetVertexBuffer(lightStore.GetDense().get_underlying().buffer, {
+							mainCommandBuffer->SetVertexBuffer(lightStore.uploadData.GetDense().get_underlying().buffer, {
 								.bindingPosition = 1,
 								.offsetIntoBuffer = uint32_t(dataBufferStride * i)
 								});
@@ -560,10 +568,10 @@ namespace RavEngine {
 						bindpolygonBuffers(mainCommandBuffer);
 						mainCommandBuffer->SetVertexBytes(lightUBO, 0);
 						mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
-						mainCommandBuffer->SetVertexBuffer(lightStore.GetDense().get_underlying().buffer, {
+						mainCommandBuffer->SetVertexBuffer(lightStore.uploadData.GetDense().get_underlying().buffer, {
 							.bindingPosition = 1
 							});
-						drawCall(mainCommandBuffer, lightStore.DenseSize());
+						drawCall(mainCommandBuffer, lightStore.uploadData.DenseSize());
 						mainCommandBuffer->EndRendering();
 					}
 				};
@@ -579,10 +587,12 @@ namespace RavEngine {
 							.nInstances = nInstances
 							});
 					},
-					[&camPos](const RavEngine::World::DirLightUploadData& light) {
+					[&camPos](const RavEngine::World::DirLightUploadData& light, auto auxDataPtr) {
 						auto dirvec = light.direction;
+                    
+                        auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
 
-						constexpr auto lightArea = 30;
+                        auto lightArea = auxdata->shadowDistance;
 
 						auto lightProj = RMath::orthoProjection<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
 						auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
@@ -610,7 +620,7 @@ namespace RavEngine {
 							.nInstances = nInstances
 						});
 					},
-					[](const RavEngine::World::SpotLightDataUpload& light) {
+					[](const RavEngine::World::SpotLightDataUpload& light, auto unusedAux) {
 
 						auto lightProj = RMath::perspectiveProjection<float>(light.coneAndPenumbra.x * 2, 1, 0.1, 100);
 
@@ -642,7 +652,7 @@ namespace RavEngine {
 							.nInstances = nInstances
 						});
 					},
-					[](const RavEngine::World::PointLightUploadData& light) {
+					[](const RavEngine::World::PointLightUploadData& light, auto unusedAux) {
 						// TODO: need to do this 6 times and make a cubemap
 						auto lightProj = RMath::perspectiveProjection<float>(90, 1, 0.1, 100);
 

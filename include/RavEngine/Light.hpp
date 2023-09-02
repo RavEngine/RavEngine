@@ -9,8 +9,8 @@ class CameraComponent;
 class Light : public Queryable<Light,IDebugRenderable>, public IDebugRenderable {
     ColorRGBA color{1,1,1,1};
 	float Intensity = 1.0;
-    bool tickInvalidated = true;    // trigger the world to update its parallel datastructure
 protected:
+    bool tickInvalidated = true;    // trigger the world to update its parallel datastructure
     constexpr inline void invalidate(){tickInvalidated = true;}
 public:
     constexpr void SetColorRGBA(const decltype(color)& inColor) {
@@ -66,12 +66,6 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
 	
-	static inline constexpr size_t ShadowDataSize() {
-		// ambient light needs:
-		// nothing (does not cast shadows)
-		return 0;
-	}
-	
 	/**
 	 Set BGFX state needed to draw this light
 	 */
@@ -85,6 +79,18 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,DirectionalLight>{
 	using light_t = DirectionalLight;
 	using QueryableDelta<QueryableDelta<Light,ShadowLight>,DirectionalLight>::GetQueryTypes;
+private:
+    float shadowDistance = 30;
+public:
+    
+    float SetShadowDistance(decltype(shadowDistance) distance){
+        tickInvalidated = true;
+        shadowDistance = distance;
+    }
+    
+    auto GetShadowDistance() const{
+        return shadowDistance;
+    }
 	
 	/**
 	 Directional lights are always in the frustum
@@ -104,12 +110,6 @@ struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDel
 		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_BLEND_ADD | BGFX_STATE_DEPTH_TEST_GREATER);
 #endif
 	}
-
-	static inline constexpr size_t ShadowDataSize() {
-		// directional light needs:
-		// the world-space direction (3 floats)
-		return sizeof(float) * 3;
-	}
 };
 
 struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>{
@@ -123,25 +123,7 @@ struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Lig
 		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_GEQUAL | BGFX_STATE_CULL_CCW | BGFX_STATE_BLEND_ADD);
 #endif
 	}
-	
-	/**
-	 Calculate the Stride, or the number of bytes needed for each instance
-	 */
-	static inline constexpr size_t InstancingStride(){
-		//point light needs:
-		//mvp matrix (1 float[16], but we don't encode every value because the last row is always [0,0,0,1])
-		//light color (3 floats)
-		//light intensity (1 float)
-		
-		return sizeof(float) * (3+1) + sizeof(float[16-4]);
-	}
 
-	static inline constexpr size_t ShadowDataSize() {
-		// Point light needs:
-		// the world-space location (3 floats)
-		return sizeof(float) * 3;
-	}
-	
 	/**
 	 Calculate the shader's matrix
 	 @param mat input transformation matrix
@@ -196,27 +178,8 @@ public:
 	@endcode
 	*/
 	void AddInstanceData(float* offset) const;
-	
-	/**
-	 Calculate the Stride, or the number of bytes needed for each instance
-	 */
-	static inline constexpr size_t InstancingStride(){
-		//point light needs:
-		//mvp matrix (1 float[16]) (but 4 floats are not sent)
-		//light color (3 floats)
-		//light penumbra (1 float)
-		//light coneAngle (1 float)
-		//light intensity (1 float)
-		
-		return sizeof(float) * (3+1+1+1) + sizeof(float[16-4]);
-	}
 
-	static inline constexpr size_t ShadowDataSize() {
-		// Spot light needs:
-		// the world-space location (3 floats)
-		return sizeof(float) * 3;
-	}
-	
+
 	static inline void SetState(){
 #if 0
 		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_GEQUAL | BGFX_STATE_CULL_CCW | BGFX_STATE_BLEND_ADD);

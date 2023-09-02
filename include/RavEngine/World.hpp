@@ -288,6 +288,9 @@ namespace RavEngine {
             int castsShadows;
         };
 
+        struct DirLightAuxData {
+            float shadowDistance = 0;
+        };
 
         struct PointLightUploadData {
             glm::mat4 worldTransform;
@@ -304,10 +307,40 @@ namespace RavEngine {
 
         // data for the render engine
         struct RenderData{
-            VRAMSparseSet<entity_t, DirLightUploadData> directionalLightData;
-            VRAMSparseSet<entity_t, glm::vec4> ambientLightData;
-            VRAMSparseSet<entity_t, PointLightUploadData> pointLightData;
-            VRAMSparseSet<entity_t, SpotLightDataUpload> spotLightData;
+            template<typename uploadType, typename auxType>
+            struct LightDataType{
+                using upload_data_t = uploadType;
+                using aux_data_t = auxType;
+                
+                uploadType uploadData;
+                auxType auxData;
+                
+                constexpr static bool hasAuxData = ! std::is_same_v<auxType,void*>;
+                
+                void DefaultAddAt(entity_t sparseIndex){
+                    uploadData.Emplace(sparseIndex);
+                    if constexpr(hasAuxData){
+                        auxData.Emplace(sparseIndex);
+                    }
+                }
+                
+                void EraseAtSparseIndex(entity_t sparseIndex){
+                    uploadData.EraseAtSparseIndex(sparseIndex);
+                    if constexpr(hasAuxData){
+                        auxData.EraseAtSparseIndex(sparseIndex);
+                    }
+                }
+                
+            };
+            
+            
+            LightDataType<VRAMSparseSet<entity_t, DirLightUploadData>, UnorderedSparseSet<entity_t, DirLightAuxData>> directionalLightData;
+            
+            LightDataType<VRAMSparseSet<entity_t, glm::vec4>, void*> ambientLightData;
+            
+            LightDataType<VRAMSparseSet<entity_t, PointLightUploadData>, void*> pointLightData;
+             
+            LightDataType<VRAMSparseSet<entity_t, SpotLightDataUpload>, void*> spotLightData;
 
             // uses world-local ID
             VRAMVector<matrix4> worldTransforms;
@@ -545,22 +578,22 @@ namespace RavEngine {
             // if it's a light, register it in the container
             if constexpr (std::is_same_v<T, DirectionalLight>){
                 if (renderData) {
-                    renderData->directionalLightData.Emplace(local_id, decltype(RenderData::directionalLightData)::value_type{});
+                    renderData->directionalLightData.DefaultAddAt(local_id);
                 }
             }
             else if constexpr (std::is_same_v<T, AmbientLight>){
                 if (renderData) {
-                    renderData->ambientLightData.Emplace(local_id);
+                    renderData->ambientLightData.DefaultAddAt(local_id);
                 }
             }
             else if constexpr (std::is_same_v<T, PointLight>){
                 if (renderData) {
-                    renderData->pointLightData.Emplace(local_id, decltype(RenderData::pointLightData)::value_type{});
+                    renderData->pointLightData.DefaultAddAt(local_id);
                 }
             }
             else if constexpr (std::is_same_v<T, SpotLight>){
                 if (renderData) {
-                    renderData->spotLightData.Emplace(local_id, decltype(RenderData::spotLightData)::value_type{});
+                    renderData->spotLightData.DefaultAddAt(local_id);
                 }
             }
 #endif
