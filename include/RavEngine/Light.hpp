@@ -83,7 +83,7 @@ private:
     float shadowDistance = 30;
 public:
     
-    float SetShadowDistance(decltype(shadowDistance) distance){
+    void SetShadowDistance(decltype(shadowDistance) distance){
         tickInvalidated = true;
         shadowDistance = distance;
     }
