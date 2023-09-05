@@ -14,4 +14,4 @@
     float roughness = roughnessSpecularMetallicAO.x;
     float specular = roughnessSpecularMetallicAO.y;
     float metallic = roughnessSpecularMetallicAO.z;
-    float AO = roughnessSpecularMetallicAO.w;
+    float ao = roughnessSpecularMetallicAO.w;

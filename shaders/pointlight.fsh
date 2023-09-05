@@ -38,5 +38,5 @@ void main()
 
 	float pcfFactor = 1;
 	//TODO: shadow testing
-	outcolor = vec4(result * pcfFactor, 1);
+	outcolor = vec4(result * pcfFactor * ao, 1);
 }

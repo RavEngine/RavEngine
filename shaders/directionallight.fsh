@@ -41,6 +41,6 @@ void main()
         pcfFactor = pcfForShadow(sampledPos, constants[0].lightViewProj, shadowSampler, t_depthshadow);
     }
     
-    outcolor = vec4(result * pcfFactor, 1);
-	
+    outcolor = vec4(result * pcfFactor * ao, 1);
+    
 }

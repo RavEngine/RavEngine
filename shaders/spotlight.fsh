@@ -48,6 +48,6 @@ void main()
 	float pixelAngle = dot(-forward,toLight);
 	pcfFactor = pcfFactor * (int(pixelAngle > coneDotFactor));
 
-	outcolor = vec4(result * pcfFactor, 1);
+	outcolor = vec4(result * pcfFactor * ao, 1);
 
 	}
