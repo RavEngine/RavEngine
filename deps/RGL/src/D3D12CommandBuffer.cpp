@@ -222,20 +222,24 @@ namespace RGL {
 	}
 	void CommandBufferD3D12::SetResourceBarrier(const ResourceBarrierConfig& config)
 	{
-		auto totalBarriers = config.buffers.size() + config.textures.size();
-		stackarray(barriers, D3D12_RESOURCE_BARRIER, totalBarriers);
+		auto totalBarriers = 0;
+		stackarray(barriers, D3D12_RESOURCE_BARRIER, config.buffers.size() + config.textures.size());
 
 		uint32_t i = 0;
 		for (const auto& bufferBase : config.buffers) {
 			auto buffer = std::static_pointer_cast<BufferD3D12>(bufferBase);
-			barriers[i] = {
-				.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
-				.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-				.UAV = {
-					.pResource = buffer->buffer.Get(),
-				}
-			};
-			i++;
+			bool bufferNeedsBarrier = buffer->isWritable;
+			if (bufferNeedsBarrier) {
+				barriers[i] = {
+					.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
+					.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+					.UAV = {
+						.pResource = buffer->buffer.Get(),
+					}
+				};
+				i++;
+				totalBarriers++;
+			}
 		}
 
 		i = config.buffers.size();
@@ -248,9 +252,12 @@ namespace RGL {
 					.pResource = texture->texture.Get()
 				}
 			};
+			i++;
+			totalBarriers++;
 		}
-
-		commandList->ResourceBarrier(totalBarriers, barriers);
+		if (totalBarriers > 0) {
+			commandList->ResourceBarrier(totalBarriers, barriers);
+		}
 	}
 	void CommandBufferD3D12::SetRenderPipelineBarrier(const PipelineBarrierConfig&)
 	{

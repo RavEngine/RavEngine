@@ -39,7 +39,7 @@ namespace RGL {
             vertexBufferView.SizeInBytes = size_bytes;
             vertexBufferView.StrideInBytes = config.stride;
         }
-        const bool isWritable = config.options.Writable;
+        isWritable = config.options.Writable;
 
         CD3DX12_HEAP_PROPERTIES heapProperties(D3D12_HEAP_TYPE_DEFAULT);    // default to PRIVATE
         initialState = D3D12_RESOURCE_STATE_COMMON;
