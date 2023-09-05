@@ -177,6 +177,15 @@ namespace RavEngine {
 			}
 			mainCommandBuffer->EndComputeDebugMarker();
 			mainCommandBuffer->EndCompute();
+			// resource sync
+			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+				for (auto& command : drawcommand.commands) {
+					if (auto mesh = command.mesh.lock()) {
+						mainCommandBuffer->SetResourceBarrier({ .buffers = {drawcommand.cullingBuffer, drawcommand.indirectBuffer} });
+					}
+				}
+			}
+			
 		};
 
 		auto poseSkeletalMeshes = [this,&worldOwning]() {
@@ -311,8 +320,8 @@ namespace RavEngine {
 						mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
 						CullingUBO cubo{
 							.viewProj = viewproj,
+							.camPos = camPos,
 							.indirectBufferOffset = 0,
-							.camPos = camPos
 						};
 						static_assert(sizeof(cubo) <= 128, "CUBO is too big!");
 						for (auto& command : drawcommand.commands) {
@@ -535,6 +544,7 @@ namespace RavEngine {
 							lightExtras.lightViewProj = lightSpaceMatrix;
 
 							auto transientOffset = WriteTransient(lightExtras);
+							mainCommandBuffer->SetResourceBarrier({ .buffers = {transientBuffer} });
 
 							mainCommandBuffer->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::DepthAttachmentOptimal, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
 							mainCommandBuffer->BeginRendering(lightingRenderPass);
