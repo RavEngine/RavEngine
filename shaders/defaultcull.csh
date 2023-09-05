@@ -96,7 +96,7 @@ void main() {
     float radius = 0;
     for(uint i = 0; i < radvecs.length(); i++){
         radvecs[i] = modelNoTranslate * radvecs[i];
-        radius = max(radius, radvecs[i].length());
+        radius = max(radius, length(radvecs[i]));
     }
     vec3 center = (model * vec4(0,0,0,1)).xyz;
     
