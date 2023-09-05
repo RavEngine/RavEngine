@@ -159,7 +159,15 @@ namespace RavEngine {
 
 						cubo.numObjects = command.entities.DenseSize();
 						mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
-						mainCommandBuffer->SetComputeBytes(cubo, 0);
+                        cubo.radius = mesh->radius;
+#if __APPLE__
+                        constexpr size_t byte_size = closest_multiple_of<ssize_t>(sizeof(cubo), 16);
+                        std::byte bytes[byte_size]{};
+                        std::memcpy(bytes, &cubo, sizeof(cubo));
+                        mainCommandBuffer->SetComputeBytes({bytes, sizeof(bytes)}, 0);
+#else
+                        mainCommandBuffer->SetComputeBytes(cubo, 0);
+#endif
 						mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 						cubo.indirectBufferOffset += lodsForThisMesh;
 						cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
@@ -313,14 +321,19 @@ namespace RavEngine {
 
 							if (auto mesh = command.mesh.lock()) {
 								uint32_t lodsForThisMesh = mesh->GetNumLods();
-								auto& bounds = mesh->bounds;
-
-								cubo.bbmin = { bounds.min[0],bounds.min[1],bounds.min[2] };
-								cubo.bbmax = { bounds.max[0],bounds.max[1],bounds.max[2] };
 
 								cubo.numObjects = command.entities.DenseSize();
 								mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
-								mainCommandBuffer->SetComputeBytes(cubo, 0);
+                                cubo.radius = mesh->radius;
+                                
+#if __APPLE__
+                                constexpr size_t byte_size = closest_multiple_of<ssize_t>(sizeof(cubo), 16);
+                                std::byte bytes[byte_size]{};
+                                std::memcpy(bytes, &cubo, sizeof(cubo));
+                                mainCommandBuffer->SetComputeBytes({bytes, sizeof(bytes)}, 0);
+#else
+                                mainCommandBuffer->SetComputeBytes(cubo, 0);
+#endif
 								mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 								cubo.indirectBufferOffset += lodsForThisMesh;
 								cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();

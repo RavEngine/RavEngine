@@ -267,6 +267,8 @@ void MeshAsset::InitializeFromRawMeshView(const MeshPartView& allMeshes, const M
         bounds.min[0] = std::min<decimalType>(bounds.min[0],vert.position[0]);
         bounds.min[1] = std::min<decimalType>(bounds.min[1],vert.position[1]);
         bounds.min[2] = std::min<decimalType>(bounds.min[2],vert.position[2]);
+        
+        radius = std::max(radius, glm::distance(glm::vec3(vert.position[0],vert.position[1],vert.position[2]), glm::vec3(0,0,0)));
     }
     
     if (options.uploadToGPU){

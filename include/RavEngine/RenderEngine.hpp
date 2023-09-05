@@ -116,12 +116,11 @@ namespace RavEngine {
 
 		struct CullingUBO {
 			glm::mat4 viewProj;
-			glm::vec3 bbmin;
-			uint32_t indirectBufferOffset = 0;	// needs to be like this because of padding / alignment
-			glm::vec3 bbmax;
-			uint32_t numObjects = 0;
 			glm::vec3 camPos;
+			uint32_t indirectBufferOffset = 0;	// needs to be like this because of padding / alignment
+			uint32_t numObjects = 0;
 			uint32_t cullingBufferOffset = 0;
+            float radius = 0;
 		};
 
 		struct SkinningPrepareUBO {

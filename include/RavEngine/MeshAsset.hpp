@@ -77,6 +77,7 @@ protected:
 
 	size_t totalVerts = 0, totalIndices = 0;
     Bounds bounds;
+    float radius = 0;
 
 	friend class RenderEngine;
 #if !RVE_SERVER
