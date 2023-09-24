@@ -584,6 +584,7 @@ namespace RavEngine {
 						mainCommandBuffer->SetFragmentTexture(target.diffuseTexture.get(), 2);
 						mainCommandBuffer->SetFragmentTexture(target.normalTexture.get(), 3);
 						mainCommandBuffer->SetFragmentTexture(target.depthStencil.get(), 4);
+						mainCommandBuffer->SetFragmentTexture(target.roughnessSpecularMetallicAOTexture.get(), 6);
 						mainCommandBuffer->SetFragmentTexture(shadowTexture.get(), 5);
 
 						mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
