@@ -86,9 +86,11 @@ RavEngine::Material::Material(const std::string_view vsh_name, const std::string
 
 Material::~Material() {
     // enqueue the pipeline and layout for deletion
-    auto& renderer = GetApp()->GetRenderEngine();
-    renderer.gcPipelineLayout.enqueue(pipelineLayout);
-    renderer.gcRenderPipeline.enqueue(renderPipeline);
-    renderer.gcRenderPipeline.enqueue(shadowRenderPipeline);
+    if (auto app = GetApp()){
+        auto& renderer = app->GetRenderEngine();
+        renderer.gcPipelineLayout.enqueue(pipelineLayout);
+        renderer.gcRenderPipeline.enqueue(renderPipeline);
+        renderer.gcRenderPipeline.enqueue(shadowRenderPipeline);
+    }
 }
 #endif
