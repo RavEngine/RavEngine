@@ -17,7 +17,7 @@ RGLSurfacePtr RGL::CreateVKSurfaceFromPlatformData(const CreateSurfaceConfig& co
 {
     VkSurfaceKHR surface;
 #ifdef _WIN32
-    auto hwnd = *static_cast<HWND*>(config.pointer);
+    auto hwnd = *static_cast<const HWND*>(config.pointer);
     VkWin32SurfaceCreateInfoKHR createInfo{
         .sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
          .hinstance = GetModuleHandle(nullptr),

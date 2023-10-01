@@ -34,12 +34,13 @@ namespace RGL {
 	{
 
 	}
-	TextureD3D12::TextureD3D12(decltype(texture) image, const TextureConfig& config, std::shared_ptr<IDevice> indevice) : owningDevice(std::static_pointer_cast<DeviceD3D12>(indevice)), ITexture({config.width, config.height}), texture(image)
+	TextureD3D12::TextureD3D12(decltype(texture) image, const TextureConfig& config, std::shared_ptr<IDevice> indevice, D3D12_RESOURCE_STATES nativeStateOverride) : owningDevice(std::static_pointer_cast<DeviceD3D12>(indevice)), ITexture({config.width, config.height}), texture(image)
 	{
 		// make the heap and SRV 
 		bool canBeshadervisible = config.usage.Sampled;
 		auto format = rgl2dxgiformat_texture(config.format);
 		PlaceInHeaps(owningDevice, format, config);
+		nativeState = nativeStateOverride;
 	}
 	TextureD3D12::TextureD3D12(decltype(owningDevice) owningDevice, const TextureConfig& config, untyped_span bytes) : TextureD3D12(owningDevice, config)
 	{
@@ -51,9 +52,14 @@ namespace RGL {
 		D3D12_SUBRESOURCE_DATA initData = { bytes.data(), bytes.size() / config.height, bytes.size()};
 		upload.Upload(texture.Get(), 0, &initData, 1);
 
+		constexpr static auto endState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
 		upload.Transition(texture.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST,
-			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			endState
+			);
+
+		nativeState = endState;
 
 		auto finish = upload.End(owningDevice->internalQueue->m_d3d12CommandQueue.Get());
 		finish.wait();
@@ -91,19 +97,19 @@ namespace RGL {
 			.Format = format,
 		};
 
-		initialState = rgl2d3d12resourcestate(ResourceLayout::Undefined);
+		nativeState = rgl2d3d12resourcestate(ResourceLayout::Undefined);
 		if (isDS) {
 			resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 			optimizedClearValue.DepthStencil = { 1,0 };
 			if (!config.usage.Sampled) {
-				initialState |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
+				nativeState |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
 			}
 		}
 
 		if (config.usage.ColorAttachment) {
 			resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 			std::fill(optimizedClearValue.Color, optimizedClearValue.Color + std::size(optimizedClearValue.Color), 0);
-			//initialState |= D3D12_RESOURCE_STATE_RENDER_TARGET;
+			//nativeState |= D3D12_RESOURCE_STATE_RENDER_TARGET;
 		}
 
 
@@ -114,7 +120,7 @@ namespace RGL {
 
 		HRESULT hr = owningDevice->allocator->CreateResource(
 			&allocDesc, &resourceDesc,
-			initialState, (resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL || resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) ? &optimizedClearValue : nullptr,
+			nativeState, (resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL || resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) ? &optimizedClearValue : nullptr,
 			&allocation, IID_PPV_ARGS(&texture));
 
 		std::wstring wide;

@@ -3,12 +3,15 @@
 #include <RGL/Types.hpp>
 #include <RGL/CommandBuffer.hpp>
 #include "RGLD3D12.hpp"
+#include "D3D12TrackedResource.hpp"
 #include <d3d12.h>
 #include <memory>
+#include <unordered_map>
 
 namespace RGL {
 	struct CommandQueueD3D12;
 	struct TextureD3D12;
+	struct BufferD3D12;
 
 	struct CommandBufferD3D12 : public ICommandBuffer {
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> commandList;
@@ -17,6 +20,14 @@ namespace RGL {
 		std::shared_ptr<struct RenderPassD3D12> currentRenderPass;
 		std::shared_ptr<struct RenderPipelineD3D12> currentRenderPipeline;
 		std::shared_ptr<struct ComputePipelineD3D12> currentComputePipeline;
+
+		//TODO: also store if the last use was a write or a read
+		//if a read, then we need to insert a standard barrier even if it's already in the right state
+		struct ResourceLastUse {
+			D3D12_RESOURCE_STATES state;
+			bool written = false;
+		};
+		std::unordered_map<const struct D3D12TrackedResource*, ResourceLastUse> activeResources;
 
 		bool ended = false;
 
@@ -61,16 +72,9 @@ namespace RGL {
 		void SetViewport(const Viewport&) final;
 		void SetScissor(const Rect&) final;
 
-		void SetResourceBarrier(const ResourceBarrierConfig&) final;
-
-		void SetRenderPipelineBarrier(const PipelineBarrierConfig&) final;
-
 		void CopyTextureToBuffer(RGL::ITexture* sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr desetBuffer) final;
 
 		void CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size) final;
-
-		void TransitionResource(const ITexture* texture, RGL::ResourceLayout current, RGL::ResourceLayout target, TransitionPosition position) final;
-		void TransitionResources(std::initializer_list<ResourceTransition> transitions, TransitionPosition position) final;
 
 		// submit onto the queue that created this command buffer
 		void Commit(const CommitConfig&) final;
@@ -85,5 +89,9 @@ namespace RGL {
 		void EndComputeDebugMarker() final;
 
 		virtual ~CommandBufferD3D12() {}
+	private:
+		void SyncIfNeeded(const BufferD3D12* buffer, D3D12_RESOURCE_STATES needed, bool written = false);
+		void SyncIfNeeded(const TextureD3D12* texture, D3D12_RESOURCE_STATES needed, bool written = false);
+		D3D12_RESOURCE_STATES GetCurrentResourceState(const struct D3D12TrackedResource*);
 	};
 }

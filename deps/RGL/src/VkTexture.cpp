@@ -88,7 +88,7 @@ namespace RGL {
 		endSingleTimeCommands(commandBuffer, graphicsQueue, device, commandPool);
 	}
 
-	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue) {
+	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue, VkImageAspectFlags createdAspect) {
 		VkCommandBuffer commandBuffer = beginSingleTimeCommands(device, commandPool);
 
 		VkImageMemoryBarrier barrier{};
@@ -98,36 +98,23 @@ namespace RGL {
 		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.image = image;
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.aspectMask = createdAspect;
 		barrier.subresourceRange.baseMipLevel = 0;
 		barrier.subresourceRange.levelCount = 1;
 		barrier.subresourceRange.baseArrayLayer = 0;
 		barrier.subresourceRange.layerCount = 1;
 
-		VkPipelineStageFlags sourceStage;
-		VkPipelineStageFlags destinationStage;
+		barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-		if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-			barrier.srcAccessMask = 0;
-			barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.oldLayout = oldLayout;
+		barrier.newLayout = newLayout;
 
-			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-			destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		}
-		else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-			destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-		}
-		else {
-			throw std::invalid_argument("unsupported layout transition!");
-		}
 
 		vkCmdPipelineBarrier(
 			commandBuffer,
-			sourceStage, destinationStage,
+			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,		// src stage
+			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,		// dst stage
 			0,
 			0, nullptr,
 			0, nullptr,
@@ -137,8 +124,12 @@ namespace RGL {
 		endSingleTimeCommands(commandBuffer,graphicsQueue,device,commandPool);
 	}
 
-	TextureVk::TextureVk(decltype(vkImageView) imageView, decltype(vkImage) image, const Dimension& size) : vkImageView(imageView), vkImage(image), createdConfig({}), ITexture(size)
+	TextureVk::TextureVk(decltype(owningDevice) owningDevice, decltype(vkImageView) imageView, decltype(vkImage) image, const Dimension& size) : owningDevice(owningDevice), vkImageView(imageView), vkImage(image), createdConfig({}), ITexture(size)
 	{
+		// swapchain calls this
+		nativeFormat = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+		transitionImageLayout(vkImage, format, VK_IMAGE_LAYOUT_UNDEFINED, nativeFormat, owningDevice->device, owningDevice->commandPool, owningDevice->presentQueue, createdAspectVk);
 	}
 	TextureVk::TextureVk(decltype(owningDevice) owningDevice, const TextureConfig& config, untyped_span bytes) : TextureVk(owningDevice, config)
 	{
@@ -155,14 +146,19 @@ namespace RGL {
 		memcpy(data, bytes.data(), bytes.size());
 		vmaUnmapMemory(owningDevice->vkallocator, allocation);
 
-		auto format = RGL2VkTextureFormat(config.format);
+		format = RGL2VkTextureFormat(config.format);
 
 		// TODO: these probably should share the same command buffer
-		transitionImageLayout(vkImage, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, device, owningDevice->commandPool, owningDevice->presentQueue);
+		// note that nativeFormat is set in the delegated constructor
+		// so we have to be aware of that when copying the data
+		transitionImageLayout(vkImage, format, nativeFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, device, owningDevice->commandPool, owningDevice->presentQueue, createdAspectVk);
 
 		copyBufferToImage(stagingBuffer, vkImage, static_cast<uint32_t>(config.width), static_cast<uint32_t>(config.height), device, owningDevice->commandPool, owningDevice->presentQueue);
 
-		transitionImageLayout(vkImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,device, owningDevice->commandPool, owningDevice->presentQueue);
+		transitionImageLayout(vkImage, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,device, owningDevice->commandPool, owningDevice->presentQueue, createdAspectVk);
+
+		// we can predict that a data texture will be used primarily for reading
+		nativeFormat = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 		// cleanup
 		vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -170,7 +166,7 @@ namespace RGL {
 	}
 	TextureVk::TextureVk(decltype(owningDevice) owningDevice, const TextureConfig& config) : owningDevice(owningDevice), owning(true), ITexture(Dimension{ .width = config.width,.height = config.height }), createdConfig(config)
 	{
-		const auto format = RGL2VkTextureFormat(config.format);
+		format = RGL2VkTextureFormat(config.format);
 
 		//TODO: read other options from config
 		VkImageCreateInfo imageInfo{
@@ -226,6 +222,18 @@ namespace RGL {
 			owningDevice->SetDebugNameForResource(vkImage, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, config.debugName);
 			owningDevice->SetDebugNameForResource(vkImageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, config.debugName);
 		}
+
+		if (createdConfig.usage.ColorAttachment) {
+			nativeFormat = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		}
+		else if (createdConfig.usage.DepthStencilAttachment) {
+			nativeFormat = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+		}
+		else if (createdConfig.usage.Sampled) {
+			nativeFormat = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		}
+
+		transitionImageLayout(vkImage, format, VK_IMAGE_LAYOUT_UNDEFINED, nativeFormat, owningDevice->device, owningDevice->commandPool, owningDevice->presentQueue, createdAspectVk);
 
 	}
 	Dimension TextureVk::GetSize() const

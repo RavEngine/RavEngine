@@ -4,6 +4,7 @@
 #include <vulkan/vulkan.h>
 #include "RGLVk.hpp"
 #include <unordered_set>
+#include <unordered_map>
 
 namespace RGL {
 	struct DeviceVk;
@@ -20,6 +21,143 @@ namespace RGL {
 		std::shared_ptr<struct ComputePipelineVk> currentComputePipeline = nullptr;
 
 		std::unordered_set<struct SwapchainVK*> swapchainsToSignal;
+		std::unordered_set<const struct TextureVk*> swapchainImages;
+
+		struct TextureLastUse {
+			VkImageLayout lastLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			bool written = false;
+		};
+
+		struct BufferLastUse {
+			bool written = false;
+		};
+
+		std::unordered_map<const struct TextureVk*, TextureLastUse> activeTextures;
+		std::unordered_set<const struct BufferVk*, BufferLastUse> activeBuffers;
+
+		struct CmdSetVertexBuffer {
+			RGLBufferPtr buffer;
+			const VertexBufferBinding bindingInfo;
+		};
+		struct CmdSetIndexBuffer {
+			RGLBufferPtr buffer;
+		};
+
+		struct CmdBindRenderPipeline {
+			RGLRenderPipelinePtr generic_pipeline;
+		};
+
+		struct CmdBindBuffer {
+			RGLBufferPtr buffer;
+			const uint32_t offsetIntoBuffer;
+			const uint32_t bindingOffset;
+			VkPipelineBindPoint bindPoint;
+		};
+
+		struct CmdSetPushConstantData {
+			std::byte data[128]{ };
+			uint32_t size = 0;
+			uint32_t offset = 0;
+		};
+		
+		struct CmdSetSampler {
+			RGLSamplerPtr sampler;
+			uint32_t index;
+		};
+
+		struct CmdSetTexture {
+			const ITexture* texture;
+			uint32_t index;
+		};
+
+		struct CmdDraw {
+			uint32_t nVertices;
+			const DrawInstancedConfig config;
+		};
+
+		struct CmdDrawIndexed {
+			uint32_t nIndices;
+			const DrawIndexedInstancedConfig config;
+		};
+
+		struct CmdExecuteIndirect {
+			const IndirectConfig config;
+		};
+
+		struct CmdExecuteIndirectIndexed {
+			const IndirectConfig config;
+		};
+
+		struct CmdBeginDebugMarker {
+			const std::string label;
+		};
+		struct CmdEndDebugMarker {};
+
+		struct CmdBeginRendering {
+			RGLRenderPassPtr pass;
+		};
+
+		struct CmdBeginCompute {
+			RGLComputePipelinePtr inPipeline;
+		};
+
+		struct CmdEndCompute {};
+
+		struct CmdDispatch {
+			uint32_t threadsX;
+			uint32_t threadsY;
+			uint32_t threadsZ;
+		};
+
+		struct CmdSetViewport {
+			const Viewport viewport;
+		};
+
+		struct CmdSetScissor {
+			const Rect scissor;
+		};
+
+		struct CmdCopyTextureToBuffer {
+			struct TextureVk* sourceTexture;
+			const Rect sourceRect;
+			size_t offset;
+			RGLBufferPtr destBuffer;
+		};
+
+		struct CmdCopyBufferToBuffer {
+			BufferCopyConfig from;
+			BufferCopyConfig to;
+			uint32_t size;
+		};
+
+		std::vector<std::variant<
+			CmdSetVertexBuffer, 
+			CmdBeginRendering,
+			CmdSetIndexBuffer,
+			CmdSetSampler,
+			CmdSetTexture,
+			CmdDraw,
+			CmdDrawIndexed,
+			CmdBindBuffer,
+			CmdExecuteIndirect,
+			CmdExecuteIndirectIndexed,
+			CmdSetPushConstantData,
+			CmdBindRenderPipeline,
+			CmdBeginDebugMarker,
+			CmdEndDebugMarker,
+			CmdBeginCompute,
+			CmdEndCompute,
+			CmdDispatch,
+			CmdCopyTextureToBuffer,
+			CmdSetViewport,
+			CmdSetScissor,
+			CmdCopyBufferToBuffer
+			>
+		> renderCommands;
+
+		void EncodeCommand(auto&& commandValue) {
+			renderCommands.push_back(commandValue);
+		}
 
 		CommandBufferVk(decltype(owningQueue) owningQueue);
 
@@ -43,7 +181,7 @@ namespace RGL {
 		void BindComputeBuffer(RGLBufferPtr buffer, uint32_t binding, uint32_t offsetIntoBuffer = 0) final;
 		void SetVertexBuffer(RGLBufferPtr buffer, const VertexBufferBinding& bindingInfo = {}) final;
 
-		void setPushConstantData(const RGL::untyped_span& data, const uint32_t& offset, VkShaderStageFlags stages);
+		void setPushConstantData(const RGL::untyped_span& data, const uint32_t& offset);
 
 		void SetVertexBytes(const untyped_span data, uint32_t offset) final;
 		void SetFragmentBytes(const untyped_span data, uint32_t offset) final;
@@ -60,9 +198,6 @@ namespace RGL {
 		void Draw(uint32_t nVertices, const DrawInstancedConfig & = {}) final;
 		void DrawIndexed(uint32_t nIndices, const DrawIndexedInstancedConfig & = {}) final;
 
-		void TransitionResource(const ITexture* texture, RGL::ResourceLayout current, RGL::ResourceLayout target, TransitionPosition position) final;
-		void TransitionResources(std::initializer_list<ResourceTransition> transitions, TransitionPosition position) final;
-
 		void CopyTextureToBuffer(RGL::ITexture* sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr destBuffer) final;
 		void CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size) final;
 
@@ -70,9 +205,6 @@ namespace RGL {
 		void SetScissor(const Rect&) final;
 
 		void Commit(const CommitConfig&) final;
-
-		void SetResourceBarrier(const ResourceBarrierConfig&) final;
-		void SetRenderPipelineBarrier(const PipelineBarrierConfig&) final;
 
 		void ExecuteIndirectIndexed(const IndirectConfig&) final;
 		void ExecuteIndirect(const IndirectConfig&) final;
@@ -85,5 +217,8 @@ namespace RGL {
 
 	private:
 		void GenericBindBuffer(RGLBufferPtr& buffer, const uint32_t& offsetIntoBuffer, const uint32_t& bindingOffset, VkPipelineBindPoint bindPoint);
+		void RecordBufferBinding(const BufferVk* buffer, BufferLastUse usage);
+		void RecordTextureBinding(const TextureVk* texture, TextureLastUse usage);
+		void EndContext();
 	};
 }

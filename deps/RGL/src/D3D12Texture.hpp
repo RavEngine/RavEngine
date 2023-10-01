@@ -3,6 +3,7 @@
 #include <RGL/Types.hpp>
 #include <RGL/Texture.hpp>
 #include "RGLD3D12.hpp"
+#include "D3D12TrackedResource.hpp"
 #include <d3d12.h>
 #include <RGL/Span.hpp>
 #undef max
@@ -14,9 +15,8 @@ namespace D3D12MA {
 namespace RGL {
 	struct IDevice;
 	struct DeviceD3D12;
-	struct TextureD3D12 : public ITexture {
+	struct TextureD3D12 : public ITexture, public D3D12TrackedResource {
 		friend class SwapchainD3D12;
-		D3D12_RESOURCE_STATES initialState;
 		Microsoft::WRL::ComPtr<ID3D12Resource> texture;
 		const std::shared_ptr<DeviceD3D12> owningDevice;
 		D3D12MA::Allocation* allocation = nullptr;
@@ -36,7 +36,7 @@ namespace RGL {
 		}
 
 		TextureD3D12(decltype(texture) image, const Dimension& size, decltype(rtvIDX), decltype(owningDevice));
-		TextureD3D12(decltype(texture) image, const TextureConfig& config, std::shared_ptr<IDevice> device);	// for externally-managed rendertargets
+		TextureD3D12(decltype(texture) image, const TextureConfig& config, std::shared_ptr<IDevice> device, D3D12_RESOURCE_STATES nativeStateOverride = D3D12_RESOURCE_STATE_COMMON);	// for externally-managed rendertargets
 		TextureD3D12(decltype(owningDevice), const TextureConfig&, untyped_span bytes);
 		TextureD3D12(decltype(owningDevice), const TextureConfig&);
 
@@ -45,5 +45,9 @@ namespace RGL {
 
 		Dimension GetSize() const final;
 		virtual ~TextureD3D12();
+
+		ID3D12Resource* GetResource() const final {
+			return texture.Get();
+		}
 	};
 }

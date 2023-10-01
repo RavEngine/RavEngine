@@ -42,7 +42,7 @@ namespace RGL {
         isWritable = config.options.Writable;
 
         CD3DX12_HEAP_PROPERTIES heapProperties(D3D12_HEAP_TYPE_DEFAULT);    // default to PRIVATE
-        initialState = D3D12_RESOURCE_STATE_COMMON;
+        nativeState = D3D12_RESOURCE_STATE_COMMON;
         // if writable, must be constructed with a UAV, otherwise use a standard SRV
         auto resourceDescriptor = CD3DX12_RESOURCE_DESC::Buffer(size_bytes, isWritable ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE);
 
@@ -50,26 +50,26 @@ namespace RGL {
         if (config.options.ReadbackTarget) {
             // readback requires D3D12_RESOURCE_STATE_COPY_DEST and cannot be transitioned away from this state
             heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
-            initialState = D3D12_RESOURCE_STATE_COPY_DEST;
+            nativeState = D3D12_RESOURCE_STATE_COPY_DEST;
         }
         else if (config.access == RGL::BufferAccess::Shared) {
             heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-            initialState = D3D12_RESOURCE_STATE_GENERIC_READ;   // UPLOAD requires this state, and resources cannot leave this state
+            nativeState = D3D12_RESOURCE_STATE_GENERIC_READ;   // UPLOAD requires this state, and resources cannot leave this state
         }
 
         if (config.type.IndirectBuffer) {
-            initialState |= D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+            nativeState |= D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
         }
 
         if (config.options.PixelShaderResource) {
-            initialState |= (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            nativeState |= (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         }
 
         DX_CHECK(device->device->CreateCommittedResource(
             &heapProperties,
             D3D12_HEAP_FLAG_NONE,
             &resourceDescriptor,
-            initialState,
+            nativeState,
             nullptr,
             IID_PPV_ARGS(&buffer)));
 
@@ -162,7 +162,7 @@ namespace RGL {
             // upload the data to the GPU
             auto commandList = owningDevice->internalQueue->CreateCommandList();
 
-            auto state = initialState;
+            auto state = nativeState;
             auto beginTransition = CD3DX12_RESOURCE_BARRIER::Transition(
                 buffer.Get(),
                 state,

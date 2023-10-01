@@ -3,7 +3,7 @@
 
 using namespace RGL;
 
-RGLSurfacePtr RGL::CreateD3D12SurfaceFromPlatformData(void* HWNDptr)
+RGLSurfacePtr RGL::CreateD3D12SurfaceFromPlatformData(const void* HWNDptr)
 {
 	return std::make_shared<SurfaceD3D12>(HWNDptr);
 }

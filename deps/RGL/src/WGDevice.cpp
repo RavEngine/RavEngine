@@ -3,10 +3,15 @@
 #include "RGLCommon.hpp"
 #include "RGLWG.hpp"
 #include "WGCommandQueue.hpp"
+#include "WGFence.hpp"
+#include "WGSwapchain.hpp"
+#include "WGShaderLibrary.hpp"
+#include "WGBuffer.hpp"
 #include <cassert>
 #include <format>
 #include <iostream>
 #include <semaphore>
+#include <emscripten.h>
 
 namespace RGL{
     /**
@@ -34,17 +39,14 @@ namespace RGL{
         // provided as the last argument of wgpuInstanceRequestAdapter and received
         // by the callback as its last argument.
         auto onAdapterRequestEnded = [](WGPURequestAdapterStatus status, WGPUAdapter adapter, char const * message, void * pUserData) {
-            std::cout << "in callback" << std::endl;
             UserData& userData = *reinterpret_cast<UserData*>(pUserData);
             if (status == WGPURequestAdapterStatus_Success) {
                 userData.adapter = adapter;
-                std::cout << "got adapter" << std::endl;
             } else {
-                std::cout << "no adapter" << std::endl;
                 FatalError(std::string("Could not get WebGPU adapter: ") + message);
             }
-            userData.sem.release();
             userData.requestEnded = true;
+            userData.sem.release();
         };
 
         // Call to the WebGPU request adapter procedure
@@ -54,13 +56,8 @@ namespace RGL{
             onAdapterRequestEnded,
             (void*)&userData
         );
-        std::cout << "waiting for adapter" << std::endl;
+        emscripten_sleep(100);
         userData.sem.acquire();
-
-        // In theory we should wait until onAdapterReady has been called, which
-        // could take some time (what the 'await' keyword does in the JavaScript
-        // code). In practice, we know that when the wgpuInstanceRequestAdapter()
-        // function returns its callback has been called.
         assert(userData.requestEnded);
 
         return userData.adapter;
@@ -77,6 +74,7 @@ namespace RGL{
         struct UserData {
             WGPUDevice device = nullptr;
             bool requestEnded = false;
+            std::binary_semaphore sem{0};
         };
         UserData userData;
 
@@ -88,6 +86,7 @@ namespace RGL{
                 FatalError(std::string( "Could not get WebGPU adapter: " ) + message);
             }
             userData.requestEnded = true;
+            userData.sem.release();
         };
 
         wgpuAdapterRequestDevice(
@@ -96,7 +95,8 @@ namespace RGL{
             onDeviceRequestEnded,
             (void*)&userData
         );
-
+        emscripten_sleep(300);
+        userData.sem.acquire();
         assert(userData.requestEnded);
 
         return userData.device;
@@ -108,7 +108,14 @@ namespace RGL{
     }
 
     DeviceWG::DeviceWG() {
-        WGPURequestAdapterOptions adapterOpts{};
+        WGPURequestAdapterOptions adapterOpts{
+            .nextInChain = nullptr,
+            .compatibleSurface = nullptr,
+            .powerPreference = WGPUPowerPreference_HighPerformance,
+            .backendType = WGPUBackendType_WebGPU,
+            .forceFallbackAdapter = false,
+            .compatibilityMode = false
+        };
         adapter = requestAdapter(instance,&adapterOpts);
 
         WGPUDeviceDescriptor deviceDesc{
@@ -133,11 +140,23 @@ namespace RGL{
     }
 
 std::string DeviceWG::GetBrandString() {
-   return "Unknown WebGPU device";
+    /*
+    WGPUAdapterProperties properties;
+    wgpuAdapterGetProperties(adapter,&properties);
+    return properties.name;
+    */
+    return "Unknown WebGPU device";
+}
+
+size_t DeviceWG::GetTotalVRAM() const{
+    return 0;
+}
+size_t DeviceWG::GetCurrentVRAMInUse() const{
+    return 0;
 }
 
 RGLSwapchainPtr DeviceWG::CreateSwapchain(RGLSurfacePtr isurface, RGLCommandQueuePtr presentQueue, int width, int height){
-  
+    return std::make_shared<SwapchainWG>(std::static_pointer_cast<SurfaceWG>(isurface), width, height, shared_from_this());
 }
 
 RGLPipelineLayoutPtr DeviceWG::CreatePipelineLayout(const PipelineLayoutDescriptor& desc) {
@@ -154,26 +173,31 @@ RGLShaderLibraryPtr DeviceWG::CreateDefaultShaderLibrary() {
 }
 
 RGLShaderLibraryPtr DeviceWG::CreateShaderLibraryFromName(const std::string_view& name){
+    FatalError("CreateShaderLibraryFromName not implemented");
 }
 
 RGLShaderLibraryPtr DeviceWG::CreateShaderLibraryFromBytes(const std::span<const uint8_t>) {
-    FatalError("Not Implemented");
+    FatalError("CreateShaderLibraryFromBytes not mplemented");
 }
 
 RGLShaderLibraryPtr DeviceWG::CreateShaderLibrarySourceCode(const std::string_view source, const FromSourceConfig& config) {
+    return std::make_shared<ShaderLibraryWG>(shared_from_this(),source, config);
 }
 
-RGLShaderLibraryPtr DeviceWG::CreateShaderLibraryFromPath(const std::filesystem::path&) {
-    FatalError("ShaderLibraryMTL");
+RGLShaderLibraryPtr DeviceWG::CreateShaderLibraryFromPath(const std::filesystem::path& path) {
+     return std::make_shared<ShaderLibraryWG>(shared_from_this(),path);
 }
 
 RGLBufferPtr DeviceWG::CreateBuffer(const BufferConfig& config) {
+    return std::make_shared<BufferWG>(shared_from_this(), config);
 }
 
 RGLCommandQueuePtr DeviceWG::CreateCommandQueue(QueueType type) {
+    return std::make_shared<CommandQueueWG>(shared_from_this());
 }
 
 RGLFencePtr DeviceWG::CreateFence(bool preSignaled) {
+    return std::make_shared<FenceWG>();
 }
 
 RGLTexturePtr DeviceWG::CreateTextureWithData(const TextureConfig& config, untyped_span data){

@@ -10,7 +10,7 @@ namespace RGL {
 		SurfaceMTL(decltype(layer) layer ): layer(layer){}
 	};
 
-	RGLSurfacePtr CreateMTLSurfaceFromPlatformHandle(void* pointer, bool createSurfaceObject);
+	RGLSurfacePtr CreateMTLSurfaceFromPlatformHandle(const void* pointer, bool createSurfaceObject);
 }
 
 #endif

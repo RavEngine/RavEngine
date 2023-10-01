@@ -47,11 +47,6 @@ namespace RGL {
 		RGLFencePtr signalFence;
 	};
 
-	enum class TransitionPosition : uint8_t {
-		Top,
-		Bottom
-	};
-
 	struct ResourceBarrierConfig {
 		std::initializer_list<RGLBufferPtr> buffers;
 		std::initializer_list<RGLTexturePtr> textures;
@@ -141,17 +136,6 @@ namespace RGL {
 		virtual void SetVertexBytes(const untyped_span data, uint32_t offset) = 0;
 		virtual void SetFragmentBytes(const untyped_span data, uint32_t offset) = 0;
 		virtual void SetComputeBytes(const untyped_span data, uint32_t offset) = 0;
-		virtual void TransitionResource(const ITexture* texture, RGL::ResourceLayout current, RGL::ResourceLayout target, TransitionPosition position) = 0;
-
-		struct ResourceTransition {
-			const ITexture* texture;
-			RGL::ResourceLayout from, to;
-		};
-		virtual void TransitionResources(std::initializer_list<ResourceTransition> transitions, TransitionPosition position) = 0;
-
-		virtual void SetResourceBarrier(const ResourceBarrierConfig&) = 0;
-
-		virtual void SetRenderPipelineBarrier(const PipelineBarrierConfig&) = 0;
 
 		virtual void ExecuteIndirectIndexed(const IndirectConfig&) = 0;
 		virtual void ExecuteIndirect(const IndirectConfig&) = 0;

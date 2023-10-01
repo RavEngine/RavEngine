@@ -286,7 +286,8 @@ namespace RavEngine {
 							.height = xr.viewConfigurationViews[i].recommendedImageRectHeight,
 							.format = RGL::TextureFormat::BGRA8_Unorm,
 					},
-						config.device
+						config.device,
+						D3D12_RESOURCE_STATE_RENDER_TARGET
 					);
 #elif RGL_VK_AVAILABLE
 					Fatal("Vk: not implemented");
@@ -324,10 +325,6 @@ namespace RavEngine {
 				xr.rglDepthSwapchainImages[i].resize(depth_swapchain_length);
 				XR_CHECK(xrEnumerateSwapchainImages(xr.depth_swapchains[i], depth_swapchain_length, &depth_swapchain_length, (XrSwapchainImageBaseHeader*)xr.depthSwapchainImages[i].data()));
 
-				auto tmpqueue = config.device->CreateCommandQueue({});
-				auto tmpcmd = tmpqueue->CreateCommandBuffer();
-				auto tmpfence = config.device->CreateFence(false);
-				tmpcmd->Begin();
 				for (uint32_t j = 0; j < depth_swapchain_length; j++) {
 					auto& img = xr.depthSwapchainImages[i][j];
 					if (currentAPI == RGL::API::Direct3D12) {
@@ -339,7 +336,8 @@ namespace RavEngine {
 								.height = xr.viewConfigurationViews[i].recommendedImageRectHeight,
 								.format = RGL::TextureFormat::D32SFloat
 						},
-							config.device
+							config.device,
+							D3D12_RESOURCE_STATE_DEPTH_WRITE
 						);
 #endif
 					}
@@ -366,17 +364,11 @@ namespace RavEngine {
 						};
 						VkImageView imageView;
 						vkCreateImageView(*(VkDevice*)(devicedata.vkData.device), &createInfo, nullptr, &imageView);
-						xr.rglDepthSwapchainImages[i][j] = std::make_unique<RGL::TextureVk>(imageView, img.vkImage.image, RGL::Dimension{ xr.viewConfigurationViews[i].recommendedImageRectWidth, xr.viewConfigurationViews[i].recommendedImageRectHeight});
+						xr.rglDepthSwapchainImages[i][j] = std::make_unique<RGL::TextureVk>(std::reinterpret_pointer_cast <RGL::DeviceVk>(config.device), imageView, img.vkImage.image, RGL::Dimension{ xr.viewConfigurationViews[i].recommendedImageRectWidth, xr.viewConfigurationViews[i].recommendedImageRectHeight});
 #endif
 					}
-					tmpcmd->TransitionResource(xr.rglDepthSwapchainImages[i][j].get(), RGL::ResourceLayout::DepthAttachmentOptimal, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
 					
 				}
-				tmpcmd->End();
-				tmpcmd->Commit({
-					.signalFence = tmpfence
-					});
-				tmpfence->Wait();
 			}
 
 			// a stereo configuration means two views, but we can handle any number

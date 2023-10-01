@@ -14,7 +14,7 @@ namespace RGL {
 		struct SwapchainVK* owningSwapchain = nullptr;	// will remain null if the texture is not created by a swapchain
 		const std::shared_ptr<DeviceVk> owningDevice;
 		bool owning = false;
-		TextureVk(decltype(vkImageView) imageView, decltype(vkImage) image, const Dimension& size);
+		TextureVk(decltype(owningDevice), decltype(vkImageView) imageView, decltype(vkImage) image, const Dimension& size);
 		TextureVk(decltype(owningDevice), const TextureConfig&, untyped_span bytes);
 		TextureVk(decltype(owningDevice), const TextureConfig&);
 		Dimension GetSize() const final;
@@ -22,6 +22,9 @@ namespace RGL {
 
 		const TextureConfig createdConfig;
 		VkImageAspectFlags createdAspectVk = VK_IMAGE_ASPECT_COLOR_BIT;
+		VkFormat format;
+
+		VkImageLayout nativeFormat = VK_IMAGE_LAYOUT_UNDEFINED;
 
 		VmaAllocation alloc = VK_NULL_HANDLE;
 	};

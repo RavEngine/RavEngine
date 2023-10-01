@@ -4,7 +4,7 @@
 
 #if __has_include(<librglc.hpp>)
 #include <librglc.hpp>
-#define RGL_CAN_RUNTIME_COMPILE
+#define RGL_CAN_RUNTIME_COMPILE 1
 #endif
 
 namespace RGL {

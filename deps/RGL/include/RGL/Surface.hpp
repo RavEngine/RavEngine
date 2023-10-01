@@ -10,7 +10,7 @@ namespace RGL {
 	};
 
 	struct CreateSurfaceConfig {
-		void* pointer = nullptr;
+		const void* pointer = nullptr;
 		uintptr_t pointer2 = 0;
 	};
 

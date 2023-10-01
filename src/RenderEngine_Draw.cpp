@@ -116,7 +116,6 @@ namespace RavEngine {
 			SkinningPrepareUBO ubo;
 			uint32_t baseInstance = 0;
 			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
-
 				mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 0, 0);
 				for (auto& command : drawcommand.commands) {
 					const auto objectCount = command.entities.DenseSize();
@@ -177,15 +176,6 @@ namespace RavEngine {
 			}
 			mainCommandBuffer->EndComputeDebugMarker();
 			mainCommandBuffer->EndCompute();
-			// resource sync
-			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
-				for (auto& command : drawcommand.commands) {
-					if (auto mesh = command.mesh.lock()) {
-						mainCommandBuffer->SetResourceBarrier({ .buffers = {drawcommand.cullingBuffer, drawcommand.indirectBuffer} });
-					}
-				}
-			}
-			
 		};
 
 		auto poseSkeletalMeshes = [this,&worldOwning]() {
@@ -312,10 +302,6 @@ namespace RavEngine {
 					.offset = 0
 				}, drawcommand.indirectStagingBuffer->getBufferSize());
 
-						mainCommandBuffer->SetResourceBarrier({
-							.buffers = {drawcommand.indirectBuffer}
-							});
-
 						mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
 						mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
 						CullingUBO cubo{
@@ -349,7 +335,6 @@ namespace RavEngine {
 							}
 						}
 						mainCommandBuffer->EndCompute();
-						mainCommandBuffer->SetResourceBarrier({ .buffers = {drawcommand.cullingBuffer, drawcommand.indirectBuffer} });
 					}
 				};
 				auto renderTheRenderData = [this, &viewproj, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor](auto&& renderData, RGLBufferPtr vertexBuffer) {
@@ -426,13 +411,6 @@ namespace RavEngine {
 					cullSkeletalMeshes(viewproj);
 				}
 
-				if (sharedSkinnedMeshVertexBuffer) {
-					mainCommandBuffer->SetResourceBarrier({
-						.buffers = {
-							sharedSkinnedMeshVertexBuffer,
-						}
-						});
-				}
 
 				// do rendering operations
 				mainCommandBuffer->BeginRendering(renderPass);
@@ -468,10 +446,6 @@ namespace RavEngine {
 				};
 
 				auto invviewproj = glm::inverse(viewproj);
-
-				mainCommandBuffer->SetRenderPipelineBarrier({
-					.Fragment = true
-					});
 
 				// ambient lights
 				if (worldOwning->renderData->ambientLightData.uploadData.DenseSize() > 0) {
@@ -535,8 +509,6 @@ namespace RavEngine {
 							auto lightSpaceMatrix = lightMats.lightProj * lightMats.lightView;
 							lightUBO.camPos = lightMats.camPos;
 
-							mainCommandBuffer->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::ResourceLayout::DepthAttachmentOptimal, RGL::TransitionPosition::Top);
-
 							renderFromPerspective(lightSpaceMatrix, lightMats.camPos, shadowRenderPass, [](Ref<Material>&& mat) {
 								return mat->GetShadowRenderPipeline();
 								}, { 0, 0, shadowMapSize,shadowMapSize });
@@ -544,9 +516,7 @@ namespace RavEngine {
 							lightExtras.lightViewProj = lightSpaceMatrix;
 
 							auto transientOffset = WriteTransient(lightExtras);
-							mainCommandBuffer->SetResourceBarrier({ .buffers = {transientBuffer} });
 
-							mainCommandBuffer->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::DepthAttachmentOptimal, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
 							mainCommandBuffer->BeginRendering(lightingRenderPass);
 							//reset viewport and scissor
 							mainCommandBuffer->SetViewport(fullSizeViewport);
@@ -812,62 +782,11 @@ namespace RavEngine {
 
 			mainCommandBuffer->BeginRenderDebugMarker("Deferred Pass");
 
-			mainCommandBuffer->TransitionResources({
-				{
-					.texture = target.diffuseTexture.get(),
-					.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
-					.to = RGL::ResourceLayout::ColorAttachmentOptimal,
-				},
-				{
-					.texture = target.normalTexture.get(),
-					.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
-					.to = RGL::ResourceLayout::ColorAttachmentOptimal,
-				},
-				{
-					.texture = target.roughnessSpecularMetallicAOTexture.get(),
-					.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
-					.to = RGL::ResourceLayout::ColorAttachmentOptimal,
-				},
-				{
-					.texture = target.depthStencil.get(),
-					.from = RGL::ResourceLayout::DepthReadOnlyOptimal,
-					.to = RGL::ResourceLayout::DepthAttachmentOptimal
-				},
-				}, RGL::TransitionPosition::Top
-			);
 			mainCommandBuffer->BeginRendering(deferredClearRenderPass);
 			mainCommandBuffer->EndRendering();
 			for (const auto& camdata : view.camDatas) {
 				doPassWithCamData(camdata, renderDeferredPass);
 			}
-			mainCommandBuffer->TransitionResources({
-				{
-					.texture = target.diffuseTexture.get(),
-					.from = RGL::ResourceLayout::ColorAttachmentOptimal,
-					.to = RGL::ResourceLayout::ShaderReadOnlyOptimal,
-				},
-				{
-					.texture = target.normalTexture.get(),
-					.from = RGL::ResourceLayout::ColorAttachmentOptimal,
-					.to = RGL::ResourceLayout::ShaderReadOnlyOptimal,
-				},
-				{
-					.texture = target.roughnessSpecularMetallicAOTexture.get(),
-					.from = RGL::ResourceLayout::ColorAttachmentOptimal,
-					.to = RGL::ResourceLayout::ShaderReadOnlyOptimal,
-				},
-				{
-					.texture = target.lightingTexture.get(),
-					.from = RGL::ResourceLayout::ShaderReadOnlyOptimal,
-					.to = RGL::ResourceLayout::ColorAttachmentOptimal,
-				},
-				{
-					.texture = target.depthStencil.get(),
-					.from = RGL::ResourceLayout::DepthAttachmentOptimal,
-					.to = RGL::ResourceLayout::DepthReadOnlyOptimal,
-				}
-				}, RGL::TransitionPosition::Top
-			);
 			mainCommandBuffer->EndRenderDebugMarker();
 
 			// lighting pass
@@ -895,8 +814,6 @@ namespace RavEngine {
 
 			mainCommandBuffer->BeginRenderDebugMarker("Forward Pass");
 			mainCommandBuffer->BeginRenderDebugMarker("Transition Lighting texture");
-			mainCommandBuffer->TransitionResource(target.lightingTexture.get(), RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Bottom);
-			mainCommandBuffer->TransitionResource(target.finalFramebuffer, RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::TransitionPosition::Top);
 			mainCommandBuffer->EndRenderDebugMarker();
 
 			mainCommandBuffer->BeginRendering(finalClearRenderPass);
@@ -906,7 +823,6 @@ namespace RavEngine {
 				doPassWithCamData(camdata, renderFinalPass);
 			}
 			mainCommandBuffer->EndRenderDebugMarker();
-			mainCommandBuffer->TransitionResource(target.finalFramebuffer, RGL::ResourceLayout::ColorAttachmentOptimal, RGL::ResourceLayout::Present, RGL::TransitionPosition::Bottom);
 
 		}
 		mainCommandBuffer->End();

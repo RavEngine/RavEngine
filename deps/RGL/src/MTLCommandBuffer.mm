@@ -267,43 +267,12 @@ void CommandBufferMTL::CopyTextureToBuffer(RGL::ITexture *sourceTexture, const R
     [blitencoder endEncoding];
 }
 
-void CommandBufferMTL::SetResourceBarrier(const ResourceBarrierConfig& config){
-#if 0
-    auto size = config.buffers.size() + config.textures.size();
-    stackarray(resources, id<MTLResource>, size);
-    
-    uint32_t i = 0;
-    for(const auto& bufferBase : config.buffers){
-        resources[i] = std::static_pointer_cast<BufferMTL>(bufferBase)->buffer;
-    }
-    i = config.buffers.size();
-    for(const auto& textureBase : config.textures){
-        resources[i] = std::static_pointer_cast<TextureMTL>(textureBase)->texture;
-    }
-    
-    constexpr auto stages = MTLRenderStageVertex | MTLRenderStageFragment;
-    [currentCommandEncoder memoryBarrierWithResources:resources count:size afterStages:stages beforeStages:stages];
-#endif
-}
-
-void CommandBufferMTL::SetRenderPipelineBarrier(const PipelineBarrierConfig&) {
-
-}
-
 void CommandBufferMTL::CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size){
     auto blitEncoder = [currentCommandBuffer blitCommandEncoder];
     auto fromBuffer = std::static_pointer_cast<BufferMTL>(from.buffer);
     auto toBuffer = std::static_pointer_cast<BufferMTL>(to.buffer);
     [blitEncoder copyFromBuffer:fromBuffer->buffer sourceOffset:from.offset toBuffer:toBuffer->buffer destinationOffset:to.offset size:size];
     [blitEncoder endEncoding];
-}
-
-void CommandBufferMTL::TransitionResource(const ITexture* texture, RGL::ResourceLayout current, RGL::ResourceLayout target, TransitionPosition position) {
-    // no effect on Metal
-}
-void CommandBufferMTL::TransitionResources(std::initializer_list<ResourceTransition> transitions, TransitionPosition position)
-{
-    // no effect on Metal
 }
 
 void CommandBufferMTL::BeginRenderDebugMarker(const std::string &label){

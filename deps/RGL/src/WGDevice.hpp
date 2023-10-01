@@ -31,6 +31,8 @@ namespace RGL{
 
         RGLCommandQueuePtr CreateCommandQueue(QueueType type) final;
         
+        size_t GetTotalVRAM() const;
+        size_t GetCurrentVRAMInUse() const;
         DeviceData GetDeviceData() final;
 
         RGLFencePtr CreateFence(bool preSignaled) final;

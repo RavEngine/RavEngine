@@ -16,7 +16,7 @@ RGLSurfacePtr CreateMTLSurfaceFromLayer(CAMetalLayer* layer){
 	return std::make_shared<RGL::SurfaceMTL>(layer);
 }
 
-RGLSurfacePtr RGL::CreateMTLSurfaceFromPlatformHandle(void* pointer, bool createSurfaceObject){
+RGLSurfacePtr RGL::CreateMTLSurfaceFromPlatformHandle(const void* pointer, bool createSurfaceObject){
 	if (createSurfaceObject){
 #if TARGET_OS_OSX
         NSWindow* window = (__bridge NSWindow*)(pointer);

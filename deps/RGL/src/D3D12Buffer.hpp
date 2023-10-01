@@ -3,6 +3,7 @@
 #include <RGL/Types.hpp>
 #include <RGL/Buffer.hpp>
 #include "RGLD3D12.hpp"
+#include "D3D12TrackedResource.hpp"
 #include <d3d12.h>
 #include <directx/d3dx12.h>
 #include <memory>
@@ -10,13 +11,12 @@
 namespace RGL {
 	struct DeviceD3D12;
 
-	struct BufferD3D12 : public IBuffer {
+	struct BufferD3D12 : public IBuffer, public D3D12TrackedResource {
 		Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
 		D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
 		D3D12_INDEX_BUFFER_VIEW indexBufferView{};	// TODO: Union or something to optimize this
 		BufferConfig::Type myType;
 		const RGL::BufferAccess accessType;
-		D3D12_RESOURCE_STATES initialState;
 		bool isWritable = false;
 
 		const std::shared_ptr<DeviceD3D12> owningDevice;
@@ -53,5 +53,9 @@ namespace RGL {
         void SignalRangeChanged(const Range&) final;
 
 		virtual ~BufferD3D12();
+
+		ID3D12Resource* GetResource() const final {
+			return buffer.Get();
+		}
 	};
 }

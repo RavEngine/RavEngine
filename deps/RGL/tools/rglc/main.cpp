@@ -98,7 +98,7 @@ int main(int argc, const char** argv) {
 		includepaths = args["include"].as<decltype(includepaths)>();
 	}
 	catch (exception& e) {
-		FATAL("could not load include paths");
+		//FATAL("could not load include paths");
 	}
 
 	// get the target API

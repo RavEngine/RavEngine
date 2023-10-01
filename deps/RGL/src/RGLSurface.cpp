@@ -14,6 +14,10 @@
 #include "MTLSurface.hpp"
 #endif
 
+#if RGL_WEBGPU_AVAILABLE
+#include "WGSurface.hpp"
+#endif
+
 using namespace RGL;
 
 RGLSurfacePtr RGL::CreateSurfaceFromPlatformHandle(const CreateSurfaceConfig& pointer, bool createSurfaceObject)
@@ -30,6 +34,10 @@ RGLSurfacePtr RGL::CreateSurfaceFromPlatformHandle(const CreateSurfaceConfig& po
 #if RGL_DX12_AVAILABLE
     case API::Direct3D12:
         return CreateD3D12SurfaceFromPlatformData(pointer.pointer);
+#endif
+#if RGL_WEBGPU_AVAILABLE
+    case API::WebGPU:
+        return CreateWGSurfaceFromPlatformHandle(pointer.pointer);
 #endif
     default:
         FatalError("Invalid API");

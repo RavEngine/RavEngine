@@ -339,16 +339,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.debugName = "Shadow Texture"
 	});
 
-	auto tmpcmd = mainCommandQueue->CreateCommandBuffer();
-	auto tmpfence = device->CreateFence(false);
-	tmpcmd->Begin();
-	tmpcmd->TransitionResource(shadowTexture.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
-	tmpcmd->End();
-	tmpcmd->Commit({
-		.signalFence = tmpfence
-		});
-	tmpfence->Wait();
-
 
 	// create "fixed-function" pipeline layouts
 	auto ambientLightRenderPipelineLayout = device->CreatePipelineLayout({
@@ -1371,21 +1361,6 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 		.debugName = "Lighting texture"
 		}
 	);
-
-	auto tmpcmd = mainCommandQueue->CreateCommandBuffer();
-	auto tmpfence = device->CreateFence(false);
-	tmpcmd->Begin();
-	for (const auto& ptr : { collection.diffuseTexture , collection.normalTexture, collection.lightingTexture, collection.roughnessSpecularMetallicAOTexture }) {
-		tmpcmd->TransitionResource(ptr.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::ShaderReadOnlyOptimal, RGL::TransitionPosition::Top);
-	}
-	if (createDepth){
-		tmpcmd->TransitionResource(collection.depthStencil.get(), RGL::ResourceLayout::Undefined, RGL::ResourceLayout::DepthReadOnlyOptimal, RGL::TransitionPosition::Top);
-	}
-	tmpcmd->End();
-	tmpcmd->Commit({
-		.signalFence = tmpfence
-		});
-	tmpfence->Wait();
 
 	return collection;
 }
