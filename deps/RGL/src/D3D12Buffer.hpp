@@ -18,6 +18,7 @@ namespace RGL {
 		BufferConfig::Type myType;
 		const RGL::BufferAccess accessType;
 		bool isWritable = false;
+		bool canBeTransitioned = true;
 
 		const std::shared_ptr<DeviceD3D12> owningDevice;
 		MutableSpan mappedMemory;
