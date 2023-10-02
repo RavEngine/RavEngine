@@ -813,8 +813,6 @@ namespace RavEngine {
 			finalClearRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
 
 			mainCommandBuffer->BeginRenderDebugMarker("Forward Pass");
-			mainCommandBuffer->BeginRenderDebugMarker("Transition Lighting texture");
-			mainCommandBuffer->EndRenderDebugMarker();
 
 			mainCommandBuffer->BeginRendering(finalClearRenderPass);
 			mainCommandBuffer->EndRendering();

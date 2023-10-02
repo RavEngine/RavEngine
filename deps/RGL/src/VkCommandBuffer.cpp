@@ -604,10 +604,17 @@ namespace RGL {
 				auto texture = arg.texture;
 				auto index = arg.index;
 				auto castedImage = static_cast<const TextureVk*>(texture);
+
+				auto it = activeTextures.find(castedImage);
+				auto layout = castedImage->nativeFormat;
+				if (it != activeTextures.end()) {
+					layout = it->second.lastLayout;
+				}
+
 				VkDescriptorImageInfo imginfo{
 							.sampler = VK_NULL_HANDLE,
 							.imageView = castedImage->vkImageView,
-							.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+							.imageLayout = layout,
 				};
 				VkWriteDescriptorSet writeinfo{
 						.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
