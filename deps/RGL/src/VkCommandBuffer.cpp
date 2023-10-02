@@ -134,6 +134,7 @@ namespace RGL {
 
 	void CommandBufferVk::GenericBindBuffer(RGLBufferPtr& buffer, const uint32_t& offsetIntoBuffer, const uint32_t& bindingOffset, VkPipelineBindPoint bindPoint)
 	{
+		RecordBufferBinding(std::static_pointer_cast<BufferVk>(buffer).get(), { .written = true });
 		EncodeCommand(CmdBindBuffer{buffer, offsetIntoBuffer, bindingOffset, bindPoint});
 	}
 
@@ -144,7 +145,7 @@ namespace RGL {
 
 	void CommandBufferVk::SetVertexBuffer(RGLBufferPtr buffer, const VertexBufferBinding& bindingInfo)
 	{
-		//TODO: check if buffer needs a barrier
+		RecordBufferBinding(std::static_pointer_cast<BufferVk>(buffer).get(), { .written = true });
 		EncodeCommand(CmdSetVertexBuffer{ buffer,bindingInfo });
 	}
 
@@ -175,7 +176,7 @@ namespace RGL {
 	}
 	void CommandBufferVk::SetIndexBuffer(RGLBufferPtr buffer)
 	{
-		//TODO: check if buffer needs a barrier
+		RecordBufferBinding(std::static_pointer_cast<BufferVk>(buffer).get(), { .written = true });
 		EncodeCommand( CmdSetIndexBuffer{buffer} );
 	}
 	void CommandBufferVk::SetVertexSampler(RGLSamplerPtr sampler, uint32_t index)
@@ -243,130 +244,10 @@ namespace RGL {
 		vmaSetCurrentFrameIndex(owningQueue->owningDevice->vkallocator, owningQueue->owningDevice->frameIndex++);
 		swapchainsToSignal.clear();
 	}
-	/*
-	void CommandBufferVk::SetResourceBarrier(const ResourceBarrierConfig& config)
-	{
-		/*
-		stackarray(bufferBarriers, VkBufferMemoryBarrier2, config.buffers.size());
 
-		uint32_t i = 0;
-		for (const auto& bufferBase : config.buffers) {
-			auto buffer = std::static_pointer_cast<BufferVk>(bufferBase);
-			auto owningDeviceFamily = buffer->owningDevice->indices.graphicsFamily.value();
-			bufferBarriers[i] = {
-				.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
-				.pNext = nullptr,
-				.srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-				.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_HOST_WRITE_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-				.dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-				.dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_INDEX_READ_BIT | VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_HOST_READ_BIT | VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
-				.srcQueueFamilyIndex = owningDeviceFamily,
-				.dstQueueFamilyIndex = owningDeviceFamily,
-				.buffer = buffer->buffer,
-				.offset = 0,
-				.size = buffer->getBufferSize()
-			};
-			i++;
-		}
-
-
-		stackarray(textureBarriers, VkImageMemoryBarrier2, config.textures.size());
-		i = 0;
-		for (const auto& textureBase : config.textures) {
-			auto image = std::static_pointer_cast<TextureVk>(textureBase);
-			textureBarriers[i] = {
-				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-				.pNext = nullptr,
-				.srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-				.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
-				.dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-				.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,
-				.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,	// if these are set to the same value, no transition is executed
-				.newLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-				.srcQueueFamilyIndex = 0,
-				.dstQueueFamilyIndex = 0,
-				.image = image->vkImage,
-				.subresourceRange = {
-					.aspectMask = image->createdAspectVk,
-					.baseMipLevel = 0,
-					.levelCount = 1,
-					.baseArrayLayer = 0,
-					.layerCount = 1,
-				}
-			};
-			i++;
-		}
-
-		//TODO: don't use all_commands or all_stages bit because it's inefficient
-		VkMemoryBarrier2 memBarrier{
-			.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
-			.pNext = nullptr,
-			.srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,		// wait for all work submitted before
-			.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,			// make writes available
-			.dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,		// all work submitted after needs to wait for the results of this barrier
-			.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,			// make reads available
-		};
-
-		VkDependencyInfo depInfo{
-			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-			.pNext = nullptr,
-			.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
-			.memoryBarrierCount = 1,
-			.pMemoryBarriers = &memBarrier,
-			.bufferMemoryBarrierCount = static_cast<uint32_t>(config.buffers.size()),
-			.pBufferMemoryBarriers = bufferBarriers,
-			.imageMemoryBarrierCount = static_cast<uint32_t>(config.textures.size()),
-			.pImageMemoryBarriers = textureBarriers
-		};
-		vkCmdPipelineBarrier2(
-			commandBuffer,
-			&depInfo
-		);
-		
-	}
-	*/
-	/*
-	void CommandBufferVk::SetRenderPipelineBarrier(const PipelineBarrierConfig& config)
-	{
-		VkPipelineStageFlagBits2 stageFlags = 0;
-		if (config.Vertex) {
-			stageFlags |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
-		}
-		if (config.Fragment) {
-			stageFlags |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-		}
-		if (config.Compute) {
-			stageFlags |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-		}
-
-		VkMemoryBarrier2 memBarrier{
-			.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
-			.pNext = nullptr,
-			.srcStageMask = 0,				// sync before
-			.srcAccessMask = 0,				// access before
-			.dstStageMask = stageFlags,		// sync after
-			.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,				// access after
-		};
-
-		VkDependencyInfo depInfo{
-			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-			.pNext = nullptr,
-			.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
-			.memoryBarrierCount = 1,
-			.pMemoryBarriers = &memBarrier,
-			.bufferMemoryBarrierCount = 0,
-			.imageMemoryBarrierCount = 0,
-		};
-
-		vkCmdPipelineBarrier2(
-			commandBuffer,
-			&depInfo
-		);
-		
-	}
-	*/
 	void CommandBufferVk::ExecuteIndirect(const IndirectConfig& config)
 	{
+		RecordBufferBinding(std::static_pointer_cast<BufferVk>(config.indirectBuffer).get(), { .written = true });
 		EncodeCommand(CmdExecuteIndirect{ config });
 	}
 	void CommandBufferVk::BeginRenderDebugMarker(const std::string& label)
@@ -391,6 +272,7 @@ namespace RGL {
 	}
 	void CommandBufferVk::ExecuteIndirectIndexed(const IndirectConfig& config)
 	{
+		RecordBufferBinding(std::static_pointer_cast<BufferVk>(config.indirectBuffer).get(), { .written = true });
 		EncodeCommand(CmdExecuteIndirectIndexed{ config });
 	}
 	CommandBufferVk::CommandBufferVk(decltype(owningQueue) owningQueue) : owningQueue(owningQueue)
@@ -411,7 +293,46 @@ namespace RGL {
 
 	void CommandBufferVk::RecordBufferBinding(const BufferVk* buffer, BufferLastUse usage)
 	{
+		return;
+		//TODO: don't use all_commands or all_stages bit because it's inefficient
+		VkMemoryBarrier2 memBarrier{
+			.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+			.pNext = nullptr,
+			.srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,		// wait for all work submitted before
+			.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,			// make writes available
+			.dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,		// all work submitted after needs to wait for the results of this barrier
+			.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,			// make reads available
+		};
+		auto owningDeviceFamily = buffer->owningDevice->indices.graphicsFamily.value();
+		VkBufferMemoryBarrier2 bufferBarrier{
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+				.pNext = nullptr,
+				.srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+				.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_HOST_WRITE_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+				.dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+				.dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_2_INDEX_READ_BIT | VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_2_UNIFORM_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_HOST_READ_BIT | VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+				.srcQueueFamilyIndex = owningDeviceFamily,
+				.dstQueueFamilyIndex = owningDeviceFamily,
+				.buffer = buffer->buffer,
+				.offset = 0,
+				.size = buffer->getBufferSize()
+		};
 
+		VkDependencyInfo depInfo{
+			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+			.pNext = nullptr,
+			.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+			.memoryBarrierCount = 1,
+			.pMemoryBarriers = &memBarrier,
+			.bufferMemoryBarrierCount = 1,
+			.pBufferMemoryBarriers = &bufferBarrier,
+			.imageMemoryBarrierCount = 0,
+			.pImageMemoryBarriers = nullptr
+		};
+		vkCmdPipelineBarrier2(
+			commandBuffer,
+			&depInfo
+		);
 	}
 
 	void CommandBufferVk::RecordTextureBinding(const TextureVk* texture, TextureLastUse usage)
