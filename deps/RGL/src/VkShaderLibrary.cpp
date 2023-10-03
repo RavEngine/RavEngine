@@ -7,6 +7,7 @@
 #define RGL_CAN_RUNTIME_COMPILE 1
 #endif
 #include <fstream>
+#include <spirv_reflect.h>
 
 static std::vector<uint8_t> readFile(const std::filesystem::path& filename) {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -24,13 +25,42 @@ static std::vector<uint8_t> readFile(const std::filesystem::path& filename) {
 }
 
 namespace RGL {
-	static void ShaderLibraryFromBytes(VkDevice device, VkShaderModule& module, const std::span<const uint8_t, std::dynamic_extent> code) {
+	 void ShaderLibraryVk::ShaderLibraryFromBytes(VkDevice device, VkShaderModule& module, const std::span<const uint8_t, std::dynamic_extent> code) {
 		VkShaderModuleCreateInfo createInfo{
 		   .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
 		   .codeSize = code.size(),    // in bytes, not multiples of uint32
 		   .pCode = reinterpret_cast<const uint32_t*>(code.data())
 		};
-		VK_CHECK(vkCreateShaderModule(device, &createInfo, nullptr, &module))
+		VK_CHECK(vkCreateShaderModule(device, &createInfo, nullptr, &module));
+
+		// get reflection data
+		SpvReflectShaderModule spvModule;
+		SpvReflectResult result = spvReflectCreateShaderModule(code.size_bytes(), code.data(), &spvModule);
+		if (result != SPV_REFLECT_RESULT_SUCCESS) {
+			throw std::runtime_error("SPIRV reflection capture failed");
+		}
+
+		
+		auto setdata = spvReflectGetDescriptorSet(&spvModule, 0, &result);
+		bindingInfo = std::make_shared<decltype(bindingInfo)::element_type>();
+		if (result == SPV_REFLECT_RESULT_SUCCESS) {	// otherwise there are no descriptor sets
+			for (uint32_t i = 0; i < setdata->binding_count; i++) {
+				switch (setdata->bindings[i]->descriptor_type) {
+				case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+				case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+				case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+				case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+				{
+					bool writable = (setdata->bindings[i]->resource_type & SPV_REFLECT_RESOURCE_FLAG_UAV);
+					auto slot = setdata->bindings[i]->binding;
+					(*bindingInfo)[slot] = { writable };
+				}
+				break;
+				default:
+					break;
+				}
+			}
+		}
 	}
 
 	ShaderLibraryVk::ShaderLibraryVk(decltype(owningDevice) device) : owningDevice(device)

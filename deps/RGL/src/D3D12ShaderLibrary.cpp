@@ -6,6 +6,8 @@
 #include <librglc.hpp>
 #define RGL_CAN_RUNTIME_COMPILE 1
 #endif
+#include <dxcapi.h>
+#include <atlbase.h>
 
 namespace RGL {
 	ShaderLibraryD3D12::ShaderLibraryD3D12()
@@ -33,12 +35,18 @@ namespace RGL {
 		DX_CHECK(D3DReadFileToBlob(path.c_str(), &shaderBlob));
 		auto size = shaderBlob->GetBufferSize();
 		shaderBytecode = CD3DX12_SHADER_BYTECODE(shaderBlob.Get());
+		ShaderReflect();
 	}
 	void ShaderLibraryD3D12::InitFromBytes(const std::span<const uint8_t, std::dynamic_extent> bytes)
 	{
 		D3DCreateBlob(bytes.size_bytes(), &shaderBlob);
 		std::memcpy(shaderBlob->GetBufferPointer(), bytes.data(), bytes.size_bytes());
 		shaderBytecode = CD3DX12_SHADER_BYTECODE(shaderBlob.Get());
+		ShaderReflect();
+	}
+	void ShaderLibraryD3D12::ShaderReflect()
+	{
+		
 	}
 }
 

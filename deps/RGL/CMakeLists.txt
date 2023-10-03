@@ -150,6 +150,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	${QZC_LIB}
 	${X11_LIBRARIES}
     ${RGL_RUNTIME_COMPILER_LIB}
+	SPIRV-Reflect
 )
 
 if (APPLE)

@@ -22,5 +22,7 @@ namespace RGL {
 		void InitFromBytes(const std::span<const uint8_t, std::dynamic_extent>);
 
 		~ShaderLibraryD3D12() {}
+	private:
+		void ShaderReflect();
 	};
 }

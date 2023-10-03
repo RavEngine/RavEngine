@@ -4,6 +4,7 @@
 #include "VkDevice.hpp"
 #include "VkRenderPass.hpp"
 #include <unordered_map>
+#include "VkPipelineLibraryShared.hpp"
 
 namespace RGL {
 
@@ -22,6 +23,8 @@ namespace RGL {
 		const std::shared_ptr<DeviceVk> owningDevice;
 		const std::shared_ptr<PipelineLayoutVk> pipelineLayout;
 		VkPipeline graphicsPipeline = VK_NULL_HANDLE;
+
+		BufferBindingStore vsBufferBindings, fsBufferBindings;
 
 		RenderPipelineVk(decltype(owningDevice), const RenderPipelineDescriptor&);
 		virtual ~RenderPipelineVk();

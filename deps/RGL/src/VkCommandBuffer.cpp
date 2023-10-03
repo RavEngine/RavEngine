@@ -73,6 +73,7 @@ namespace RGL {
 	}
 	void CommandBufferVk::BindRenderPipeline(RGLRenderPipelinePtr generic_pipeline)
 	{
+		currentRenderPipeline = std::static_pointer_cast<RenderPipelineVk>(generic_pipeline);
 		EncodeCommand(CmdBindRenderPipeline{ generic_pipeline });
 	}
 	void CommandBufferVk::BeginRendering(RGLRenderPassPtr renderPassPtr)
@@ -117,11 +118,13 @@ namespace RGL {
 	}
 	void CommandBufferVk::BeginCompute(RGLComputePipelinePtr inPipeline)
 	{
+		currentComputePipeline = std::static_pointer_cast<ComputePipelineVk>(inPipeline);
 		EncodeCommand(CmdBeginCompute{ inPipeline });
 	}
 	void CommandBufferVk::EndCompute()
 	{
 		EncodeCommand(CmdEndCompute{});
+		currentComputePipeline = nullptr;
 	}
 	void CommandBufferVk::DispatchCompute(uint32_t threadsX, uint32_t threadsY, uint32_t threadsZ,  uint32_t threadsPerThreadgroupX, uint32_t threadsPerThreadgroupY, uint32_t threadsPerThreadgroupZ)
 	{

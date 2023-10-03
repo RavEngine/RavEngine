@@ -61,12 +61,19 @@ namespace RGL {
         shaderStages.reserve(desc.stages.size());
 
         for (const auto& stage : desc.stages) {
+            auto smodule = std::static_pointer_cast<ShaderLibraryVk>(stage.shaderModule);
             shaderStages.push_back(VkPipelineShaderStageCreateInfo{
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                 .stage = RGL2VKshader(stage.type),
-                .module = std::static_pointer_cast<ShaderLibraryVk>(stage.shaderModule)->shaderModule,
+                .module = smodule->shaderModule,
                 .pName = "main"
             });
+            if (stage.type == RGL::ShaderStageDesc::Type::Vertex) {
+                vsBufferBindings = smodule->bindingInfo;
+            }
+            else {
+                fsBufferBindings = smodule->bindingInfo;
+            }
         }
 
         // this allows for some minor tweaks to the pipeline object after it's created
