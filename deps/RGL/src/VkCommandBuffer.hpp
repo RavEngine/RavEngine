@@ -33,7 +33,7 @@ namespace RGL {
 		};
 
 		std::unordered_map<const struct TextureVk*, TextureLastUse> activeTextures;
-		std::unordered_set<const struct BufferVk*, BufferLastUse> activeBuffers;
+		std::unordered_map<const struct BufferVk*, BufferLastUse> activeBuffers;
 
 		struct CmdSetVertexBuffer {
 			RGLBufferPtr buffer;
@@ -220,5 +220,6 @@ namespace RGL {
 		void RecordBufferBinding(const BufferVk* buffer, BufferLastUse usage);
 		void RecordTextureBinding(const TextureVk* texture, TextureLastUse usage);
 		void EndContext();
+		bool IsBufferSlotWritable(uint32_t slot);
 	};
 }

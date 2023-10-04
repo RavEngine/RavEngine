@@ -70,6 +70,7 @@ namespace RGL {
 		activeTextures.clear();
 
 		VK_CHECK(vkEndCommandBuffer(commandBuffer));
+		activeBuffers.clear();
 	}
 	void CommandBufferVk::BindRenderPipeline(RGLRenderPipelinePtr generic_pipeline)
 	{
@@ -137,7 +138,7 @@ namespace RGL {
 
 	void CommandBufferVk::GenericBindBuffer(RGLBufferPtr& buffer, const uint32_t& offsetIntoBuffer, const uint32_t& bindingOffset, VkPipelineBindPoint bindPoint)
 	{
-		RecordBufferBinding(std::static_pointer_cast<BufferVk>(buffer).get(), { .written = true });
+		RecordBufferBinding(std::static_pointer_cast<BufferVk>(buffer).get(), { .written = IsBufferSlotWritable(bindingOffset)});
 		EncodeCommand(CmdBindBuffer{buffer, offsetIntoBuffer, bindingOffset, bindPoint});
 	}
 
@@ -148,7 +149,7 @@ namespace RGL {
 
 	void CommandBufferVk::SetVertexBuffer(RGLBufferPtr buffer, const VertexBufferBinding& bindingInfo)
 	{
-		RecordBufferBinding(std::static_pointer_cast<BufferVk>(buffer).get(), { .written = true });
+		RecordBufferBinding(std::static_pointer_cast<BufferVk>(buffer).get(), { .written = false });
 		EncodeCommand(CmdSetVertexBuffer{ buffer,bindingInfo });
 	}
 
@@ -179,7 +180,7 @@ namespace RGL {
 	}
 	void CommandBufferVk::SetIndexBuffer(RGLBufferPtr buffer)
 	{
-		RecordBufferBinding(std::static_pointer_cast<BufferVk>(buffer).get(), { .written = true });
+		RecordBufferBinding(std::static_pointer_cast<BufferVk>(buffer).get(), { .written = false });
 		EncodeCommand( CmdSetIndexBuffer{buffer} );
 	}
 	void CommandBufferVk::SetVertexSampler(RGLSamplerPtr sampler, uint32_t index)
@@ -250,7 +251,7 @@ namespace RGL {
 
 	void CommandBufferVk::ExecuteIndirect(const IndirectConfig& config)
 	{
-		RecordBufferBinding(std::static_pointer_cast<BufferVk>(config.indirectBuffer).get(), { .written = true });
+		RecordBufferBinding(std::static_pointer_cast<BufferVk>(config.indirectBuffer).get(), { .written = false });
 		EncodeCommand(CmdExecuteIndirect{ config });
 	}
 	void CommandBufferVk::BeginRenderDebugMarker(const std::string& label)
@@ -275,7 +276,7 @@ namespace RGL {
 	}
 	void CommandBufferVk::ExecuteIndirectIndexed(const IndirectConfig& config)
 	{
-		RecordBufferBinding(std::static_pointer_cast<BufferVk>(config.indirectBuffer).get(), { .written = true });
+		RecordBufferBinding(std::static_pointer_cast<BufferVk>(config.indirectBuffer).get(), { .written = false });
 		EncodeCommand(CmdExecuteIndirectIndexed{ config });
 	}
 	CommandBufferVk::CommandBufferVk(decltype(owningQueue) owningQueue) : owningQueue(owningQueue)
@@ -296,15 +297,31 @@ namespace RGL {
 
 	void CommandBufferVk::RecordBufferBinding(const BufferVk* buffer, BufferLastUse usage)
 	{
-		return;
-		//TODO: don't use all_commands or all_stages bit because it's inefficient
+		auto recUsage = [&]() {
+			activeBuffers[buffer] = usage;
+		};
+
+		auto it = activeBuffers.find(buffer);
+
+		if (it == activeBuffers.end()) {
+			// record the usage but don't set a barrier
+			recUsage();
+			return;
+		}
+
+		if (!it->second.written) {
+			recUsage();
+			return;
+		}
+		
+		// a previous usage might have changed the data, so we need to sync
 		VkMemoryBarrier2 memBarrier{
-			.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
-			.pNext = nullptr,
-			.srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,		// wait for all work submitted before
-			.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,			// make writes available
-			.dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,		// all work submitted after needs to wait for the results of this barrier
-			.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,			// make reads available
+		.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+		.pNext = nullptr,
+		.srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,		// wait for all work submitted before
+		.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,			// make writes available
+		.dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,		// all work submitted after needs to wait for the results of this barrier
+		.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,			// make reads available
 		};
 		auto owningDeviceFamily = buffer->owningDevice->indices.graphicsFamily.value();
 		VkBufferMemoryBarrier2 bufferBarrier{
@@ -336,6 +353,7 @@ namespace RGL {
 			commandBuffer,
 			&depInfo
 		);
+		recUsage();
 	}
 
 	void CommandBufferVk::RecordTextureBinding(const TextureVk* texture, TextureLastUse usage)
@@ -738,6 +756,41 @@ namespace RGL {
 		}
 
 		renderCommands.clear();
+	}
+	bool CommandBufferVk::IsBufferSlotWritable(uint32_t slot)
+	{
+		auto findWritten = [&](auto&& bindingStore, bool& out) {
+			if (!bindingStore) {
+				out = false;
+				return;
+			}
+
+			auto it = bindingStore->find(slot);
+			if (it != bindingStore->end()) {
+				out = it->second.writable;
+			}
+			else {
+				out = false;
+			}
+		};
+
+		if (currentRenderPipeline) {
+			bool vsWritable = false, fsWritable = false;
+			
+			findWritten(currentRenderPipeline->vsBufferBindings, vsWritable);
+			findWritten(currentRenderPipeline->fsBufferBindings, fsWritable);
+
+			return vsWritable || fsWritable;
+		}
+		else if (currentComputePipeline) {
+			bool isWritable = false;
+			findWritten(currentComputePipeline->bufferBindings, isWritable);
+			return isWritable;
+		}
+		else {
+			Assert(false, "Invalid state!");
+		}
+
 	}
 }
 
