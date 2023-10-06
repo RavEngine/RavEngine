@@ -53,6 +53,7 @@ namespace RGL {
 
         if (config.options.debugName) {
             owningDevice->SetDebugNameForResource(buffer, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, config.options.debugName);
+            debugName = config.options.debugName;
         }
 
         mappedMemory.size = config.nElements * config.stride;

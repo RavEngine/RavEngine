@@ -125,6 +125,7 @@ namespace RGL {
 	void CommandBufferVk::EndCompute()
 	{
 		EncodeCommand(CmdEndCompute{});
+		EndContext();
 		currentComputePipeline = nullptr;
 	}
 	void CommandBufferVk::DispatchCompute(uint32_t threadsX, uint32_t threadsY, uint32_t threadsZ,  uint32_t threadsPerThreadgroupX, uint32_t threadsPerThreadgroupY, uint32_t threadsPerThreadgroupZ)
@@ -315,14 +316,6 @@ namespace RGL {
 		}
 		
 		// a previous usage might have changed the data, so we need to sync
-		VkMemoryBarrier2 memBarrier{
-		.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
-		.pNext = nullptr,
-		.srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,		// wait for all work submitted before
-		.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,			// make writes available
-		.dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,		// all work submitted after needs to wait for the results of this barrier
-		.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT,			// make reads available
-		};
 		auto owningDeviceFamily = buffer->owningDevice->indices.graphicsFamily.value();
 		VkBufferMemoryBarrier2 bufferBarrier{
 			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
@@ -337,22 +330,9 @@ namespace RGL {
 				.offset = 0,
 				.size = buffer->getBufferSize()
 		};
+		barriersToAdd.push_back(bufferBarrier);
 
-		VkDependencyInfo depInfo{
-			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-			.pNext = nullptr,
-			.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
-			.memoryBarrierCount = 1,
-			.pMemoryBarriers = &memBarrier,
-			.bufferMemoryBarrierCount = 1,
-			.pBufferMemoryBarriers = &bufferBarrier,
-			.imageMemoryBarrierCount = 0,
-			.pImageMemoryBarriers = nullptr
-		};
-		vkCmdPipelineBarrier2(
-			commandBuffer,
-			&depInfo
-		);
+		
 		recUsage();
 	}
 
@@ -420,6 +400,8 @@ namespace RGL {
 	{
 		auto visitor = Overload{
 			[this](const CmdBeginRendering& arg) mutable {
+				ApplyBarriers();
+
 				auto renderPass = std::static_pointer_cast<RenderPassVk>(arg.pass);
 
 				currentRenderPass = renderPass;
@@ -683,6 +665,7 @@ namespace RGL {
 				owningQueue->owningDevice->rgl_vkCmdEndDebugUtilsLabelEXT(commandBuffer);
 			},
 			[this](const CmdBeginCompute& arg) {
+				ApplyBarriers();
 				currentComputePipeline = std::static_pointer_cast<ComputePipelineVk>(arg.inPipeline);
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, currentComputePipeline->computePipeline);
 			},
@@ -791,6 +774,29 @@ namespace RGL {
 			Assert(false, "Invalid state!");
 		}
 
+	}
+	void CommandBufferVk::ApplyBarriers()
+	{
+		if (barriersToAdd.size() == 0) {
+			return;
+		}
+
+		VkDependencyInfo depInfo{
+			.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+			.pNext = nullptr,
+			.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+			.memoryBarrierCount = 0,
+			.pMemoryBarriers = nullptr,
+			.bufferMemoryBarrierCount = uint32_t(barriersToAdd.size()),
+			.pBufferMemoryBarriers = barriersToAdd.data(),
+			.imageMemoryBarrierCount = 0,
+			.pImageMemoryBarriers = nullptr
+		};
+		vkCmdPipelineBarrier2(
+			commandBuffer,
+			&depInfo
+		);
+		barriersToAdd.clear();
 	}
 }
 

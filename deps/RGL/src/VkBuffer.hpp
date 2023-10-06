@@ -5,6 +5,9 @@
 #include <span>
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
+#ifndef NDEBUG
+#include <string>
+#endif
 
 namespace RGL {
 	struct DeviceVk;
@@ -30,5 +33,9 @@ namespace RGL {
         void SignalRangeChanged(const Range&) final;
         
 		void* GetMappedDataPtr() final;
+
+#ifndef NDEBUG
+		std::string debugName;
+#endif
 	};
 }

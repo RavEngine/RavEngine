@@ -221,5 +221,7 @@ namespace RGL {
 		void RecordTextureBinding(const TextureVk* texture, TextureLastUse usage);
 		void EndContext();
 		bool IsBufferSlotWritable(uint32_t slot);
+		std::vector<VkBufferMemoryBarrier2> barriersToAdd;
+		void ApplyBarriers();
 	};
 }
