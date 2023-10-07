@@ -233,6 +233,8 @@ namespace RGL {
 	}
 	void CommandBufferVk::CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size)
 	{
+		RecordBufferBinding(std::static_pointer_cast<BufferVk>(from.buffer).get(), {.written = false});
+		RecordBufferBinding(std::static_pointer_cast<BufferVk>(to.buffer).get(), {.written = true});
 		EncodeCommand(CmdCopyBufferToBuffer{ from,to,size });
 	}
 	void CommandBufferVk::SetViewport(const Viewport& viewport)
