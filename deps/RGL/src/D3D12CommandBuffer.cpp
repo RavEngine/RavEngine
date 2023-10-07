@@ -306,6 +306,8 @@ namespace RGL {
 		auto fromBuffer = std::static_pointer_cast<BufferD3D12>(from.buffer);
 		auto toBuffer = std::static_pointer_cast<BufferD3D12>(to.buffer);
 
+		SyncIfNeeded(fromBuffer.get(), fromBuffer->nativeState, true);
+
 		auto oldState = GetCurrentResourceState(toBuffer.get());
 
 		auto preBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
@@ -399,7 +401,7 @@ namespace RGL {
 		if (it == activeResources.end()) {
 			activeResources[buffer] = {
 				.state = buffer->nativeState,
-				.written = false
+				.written = written
 			};
 			it = activeResources.find(buffer);
 		}
