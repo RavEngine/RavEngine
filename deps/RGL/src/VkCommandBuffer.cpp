@@ -56,6 +56,11 @@ namespace RGL {
 	}
 	void CommandBufferVk::End()
 	{		
+		// ensure that all commands have been encoded
+		if (renderCommands.size() > 0) {
+			EndContext();
+		}
+
 		for (const auto swapRsc : swapchainImages) {
 			RecordTextureBinding(swapRsc, { VK_IMAGE_LAYOUT_PRESENT_SRC_KHR , true});
 		}

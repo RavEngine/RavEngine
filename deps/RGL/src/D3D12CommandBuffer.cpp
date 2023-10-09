@@ -306,7 +306,8 @@ namespace RGL {
 		auto fromBuffer = std::static_pointer_cast<BufferD3D12>(from.buffer);
 		auto toBuffer = std::static_pointer_cast<BufferD3D12>(to.buffer);
 
-		SyncIfNeeded(fromBuffer.get(), fromBuffer->nativeState, true);
+		auto fromBufferCurrentState = GetCurrentResourceState(fromBuffer.get());
+		SyncIfNeeded(fromBuffer.get(), D3D12_RESOURCE_STATE_COPY_SOURCE, true);
 
 		auto oldState = GetCurrentResourceState(toBuffer.get());
 
@@ -324,6 +325,7 @@ namespace RGL {
 			oldState
 		);
 		commandList->ResourceBarrier(1, &postBarrier);
+		SyncIfNeeded(fromBuffer.get(), fromBufferCurrentState, true);
 	}
 
 	void CommandBufferD3D12::Commit(const CommitConfig& config)

@@ -29,6 +29,9 @@ namespace RGL {
     constexpr static const char* const deviceExtensions[] = {
            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
            VK_KHR_IMAGELESS_FRAMEBUFFER_EXTENSION_NAME,
+           VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,
+           VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
+           VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
            VK_KHR_MAINTENANCE1_EXTENSION_NAME,
            VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
            VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
@@ -202,6 +205,7 @@ namespace RGL {
         }
 
         std::vector<const char*> runtimeExtensions{std::begin(deviceExtensions),std::end(deviceExtensions)};
+
 #ifndef NDEBUG
         runtimeExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
 #endif
