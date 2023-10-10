@@ -31,7 +31,7 @@ RGLSurfacePtr RGL::CreateVKSurfaceFromPlatformData(const CreateSurfaceConfig& co
            .sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
            .pNext = nullptr,
            .flags = 0,
-           .dpy = static_cast<Display*>(config.pointer),
+           .dpy = const_cast<Display*>(static_cast<const Display*>(config.pointer)),
            .window = static_cast<Window>(config.pointer2),
     };
     VK_CHECK(vkCreateXlibSurfaceKHR(instance, &createInfo, nullptr, &surface));

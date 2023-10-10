@@ -71,6 +71,8 @@
 #pragma clang diagnostic ignored "-Wunknown-pragmas"
 #pragma clang diagnostic ignored "-Wunused-const-variable"
 #pragma clang diagnostic ignored "-Wunused-member-function"
+#pragma clang diagnostic ignored "-Wunknown-warning-option"
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
 #endif
 
 #ifndef WIN32_LEAN_AND_MEAN
@@ -104,8 +106,8 @@
 #ifdef _GAMING_XBOX
 #include <gxdk.h>
 
-#if _GXDK_VER < 0x4A610D2B /* GXDK Edition 200600 */
-#error DirectX Tool Kit requires the June 2020 GDK or later
+#if _GXDK_VER < 0x55F00C58 /* GXDK Edition 220300 */
+#error DirectX Tool Kit requires the March 2022 GDK or later
 #endif
 
 #ifdef _GAMING_XBOX_SCARLETT
@@ -135,8 +137,8 @@
 #ifdef _GAMING_DESKTOP
 #include <grdk.h>
 
-#if _GRDK_VER < 0x47BB2070 /* GDK Edition 191102 */
-#error DirectX Tool Kit requires the November 2020 GDK QFE2 or later
+#if _GRDK_VER < 0x4A611B35 /* GDK Edition 210600 */
+#error DirectX Tool Kit requires June 2021 GDK or later
 #endif
 #endif
 

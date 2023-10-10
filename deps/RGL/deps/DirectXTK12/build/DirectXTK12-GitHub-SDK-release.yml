@@ -44,12 +44,14 @@ jobs:
     fetchTags: false
   - task: NuGetToolInstaller@1
     displayName: 'Use NuGet'
+    inputs:
+      versionSpec: '6.5.x'
   - task: NuGetCommand@2
     # We have to use a nuget.config to provide the feed for the 'nuget install' option.
     displayName: 'NuGet set package source to ADO feed'
     inputs:
       command: custom
-      arguments: sources add -Name xboxgdk -Source $(URL_FEED) -ConfigFile NuGet.config
+      arguments: sources add -Name xboxgdk -Source $(URL_FEED) -ConfigFile $(Build.SourcesDirectory)\NuGet.config
   - task: PowerShell@2
     displayName: 'Set nuget.config to single source'
     inputs:
@@ -135,11 +137,13 @@ jobs:
     fetchTags: false
   - task: NuGetToolInstaller@1
     displayName: 'Use NuGet'
+    inputs:
+      versionSpec: '6.5.x'
   - task: NuGetCommand@2
     displayName: 'NuGet set package source to ADO feed'
     inputs:
       command: custom
-      arguments: sources add -Name xboxgdk -Source $(URL_FEED) -ConfigFile NuGet.config
+      arguments: sources add -Name xboxgdk -Source $(URL_FEED) -ConfigFile $(Build.SourcesDirectory)\NuGet.config
   - task: PowerShell@2
     displayName: 'Set nuget.config to single source'
     inputs:
@@ -204,11 +208,13 @@ jobs:
     fetchTags: false
   - task: NuGetToolInstaller@1
     displayName: 'Use NuGet'
+    inputs:
+      versionSpec: '6.5.x'
   - task: NuGetCommand@2
     displayName: 'NuGet set package source to ADO feed'
     inputs:
       command: custom
-      arguments: sources add -Name xboxgdk -Source $(URL_FEED) -ConfigFile NuGet.config
+      arguments: sources add -Name xboxgdk -Source $(URL_FEED) -ConfigFile $(Build.SourcesDirectory)\NuGet.config
   - task: PowerShell@2
     displayName: 'Set nuget.config to single source'
     inputs:
@@ -221,11 +227,6 @@ jobs:
         $doc.OuterXml | Set-Content $file
 
   - task: NuGetCommand@2
-    displayName: NuGet Install WSDK arm
-    inputs:
-      command: custom
-      arguments: install Microsoft.Windows.SDK.CPP.arm -ExcludeVersion -OutputDirectory $(EXTRACTED_FOLDER)\SDK
-  - task: NuGetCommand@2
     displayName: NuGet Install WSDK arm64
     inputs:
       command: custom
@@ -236,20 +237,6 @@ jobs:
       SourceFolder: build
       Contents: 'Directory.Build.props'
       TargetFolder: $(Build.SourcesDirectory)
-  - task: VSBuild@1
-    displayName: Build solution DirectXTK_Windows10_2019.sln armdbg
-    inputs:
-      solution: DirectXTK_Windows10_2019.sln
-      msbuildArgs: /p:PreferredToolArchitecture=x64
-      platform: ARM
-      configuration: Debug
-  - task: VSBuild@1
-    displayName: Build solution DirectXTK_Windows10_2019.sln armrel
-    inputs:
-      solution: DirectXTK_Windows10_2019.sln
-      msbuildArgs: /p:PreferredToolArchitecture=x64
-      platform: ARM
-      configuration: Release
   - task: VSBuild@1
     displayName: Build solution DirectXTK_Windows10_2019.sln arm64dbg
     inputs:

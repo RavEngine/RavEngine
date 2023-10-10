@@ -9,6 +9,7 @@ RavEngine Graphics Library - a thin RHI for Vulkan, DirectX12, and Metal
   - most calls map directly to their platform-specific counterparts
   - If only one backend is enabled (default for Apple platforms), all virtual function calls dissapear
 - Runtime shader compilation via compiler library
+- Automatically-managed resource barriers (when using Vulkan or DX12)
 
 ### What it is not
 - A game engine. See [RavEngine](https://github.com/RavEngine/RavEngine) if that is what you are looking for.
@@ -21,8 +22,8 @@ RavEngine Graphics Library - a thin RHI for Vulkan, DirectX12, and Metal
 - iOS (device + simulator)
 - tvOS (device + simulator)
 - Windows 10+ (arm + x86_64)
-- Linux (planned)
-- UWP (WIP)
+- Linux
+- UWP
 
 ### Getting Started
 See [RavEngine/RGL-Samples](https://github.com/RavEngine/RGL-Samples) for code samples. To compile the library, use CMake:

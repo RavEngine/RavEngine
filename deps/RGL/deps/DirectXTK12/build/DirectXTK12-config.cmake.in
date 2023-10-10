@@ -3,9 +3,12 @@
 include(${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@-targets.cmake)
 include(CMakeFindDependencyMacro)
 
-if(MINGW OR VCPKG_TOOLCHAIN)
-    find_dependency(directx-headers CONFIG)
-    find_dependency(directxmath CONFIG)
+if(MINGW)
+    find_dependency(directx-headers)
+    find_dependency(directxmath)
+else()
+    find_package(directx-headers CONFIG QUIET)
+    find_package(directxmath CONFIG QUIET)
 endif()
 
 check_required_components("@PROJECT_NAME@")

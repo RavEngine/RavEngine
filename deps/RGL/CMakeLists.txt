@@ -18,7 +18,14 @@ option(RGL_ENABLE_RGLC "Enable the separate compiler executable" ON)
 option(RGL_DISABLE_VK "Force-disable the Vulkan backend" OFF)
 option(RGL_USE_MINIVKSDK "Use MiniVulkanSDK instead of the installed Vulkan SDK" OFF)
 option(RGL_DISABLE_DX "Force-disable the D3D12 backend" OFF)
+option(RGL_DISABLE_WEBGPU "Force-disable the WebGPU backend" OFF)
 option(RGL_RUNTIME_COMPILATION "Enable runtime shader compilation" OFF)
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND NOT RGL_DISABLE_WEBGPU )
+	set(RGL_WEBGPU_ENABLED ON)
+else()
+	set(RGL_WEBGPU_ENABLED OFF)
+endif()
 
 if (RGL_RUNTIME_COMPILATION)
 set(RGL_RUNTIME_COMPILER_LIB "librglc")
@@ -45,6 +52,11 @@ endif()
 
 # setup compiler
 set(ST_BUNDLED_DXC OFF CACHE INTERNAL "")
+if (NOT RGL_WEBGPU_ENABLED)
+	set(ST_ENABLE_WGSL OFF CACHE INTERNAL "")
+else()
+	set(ST_ENABLE_WGSL ON CACHE INTERNAL "")
+endif()
 add_subdirectory(deps/ShaderTranspiler EXCLUDE_FROM_ALL)
 file(GLOB_RECURSE LIBRGLC_SOURCES "tools/librglc/*.cpp" "tools/librglc/*.hpp")
 add_library(librglc ${LIBRGLC_SOURCES}) 
@@ -134,11 +146,9 @@ else()
 	set(RGL_MTL_AVAILABLE OFF CACHE INTERNAL "RGL Metal")
 endif()
 
-if (CMAKE_SYSTEM_NAME MATCHES "Emscripten")
-	set(RGL_WEBGPU_AVAILABLE ON CACHE INTERNAL "RGL WebGPU")
+if (RGL_WEBGPU_AVAILABLE)
 	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_WEBGPU_AVAILABLE=1)
 else()
-	set(RGL_WEBGPU_AVAILABLE OFF CACHE INTERNAL "RGL WebGPU")
 	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_WEBGPU_AVAILABLE=0)
 endif()
 
@@ -188,9 +198,11 @@ set_target_properties("RGL" ${rglc_exe} "librglc" PROPERTIES
 	XCODE_GENERATE_SCHEME ON
 )
 
+if (RGL_WEBGPU_ENABLED)
 set_target_properties("SPIRV-Reflect" "ShaderTranspiler" "libtint" "tint_diagnostic_utils" PROPERTIES 
 	FOLDER "RGL/Libraries"
 )
+endif()
 
 set_target_properties("GenericCodeGen" "glslang" "MachineIndependent" "OGLCompiler" "OSDependent" "SPIRV" PROPERTIES 
 	FOLDER "RGL/Libraries/glslang"

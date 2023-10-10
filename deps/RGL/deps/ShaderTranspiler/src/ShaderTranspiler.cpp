@@ -9,7 +9,9 @@
 #include <spirv_reflect.h>
 #include <iostream>
 #include <sstream>
+#if ST_ENABLE_WGSL
 #include <tint/tint.h>
+#endif
 #include <atomic>
 
 #if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)
@@ -670,6 +672,7 @@ IMResult SPIRVtoMSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMod
 }
 
 IMResult SPIRVToWGSL(const spirvbytes& bin, const Options& opt, spv::ExecutionModel model) {
+#if ST_ENABLE_WGSL
 	tintInitMtx.lock();
 	if (!tintInit) {
 		tint::Initialize();
@@ -690,6 +693,9 @@ IMResult SPIRVToWGSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMo
 	}
 
 	return { result.wgsl, "", {} };
+#else
+	throw std::runtime_error("RGLC was not compiled with WGSL output support");
+#endif
 }
 
 #if __APPLE__

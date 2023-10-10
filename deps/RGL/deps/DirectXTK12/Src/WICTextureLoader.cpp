@@ -758,7 +758,7 @@ HRESULT DirectX::CreateWICTextureFromMemoryEx(
     if (FAILED(hr))
         return hr;
 
-    if (loadFlags & WIC_LOADER_MIP_AUTOGEN)
+    if ((loadFlags & (WIC_LOADER_MIP_AUTOGEN | WIC_LOADER_FORCE_RGBA32)) == WIC_LOADER_MIP_AUTOGEN)
     {
         const DXGI_FORMAT fmt = GetPixelFormat(frame.Get());
         if (!resourceUpload.IsSupportedForGenerateMips(fmt))
@@ -932,7 +932,7 @@ HRESULT DirectX::CreateWICTextureFromFileEx(
     if (FAILED(hr))
         return hr;
 
-    if (loadFlags & WIC_LOADER_MIP_AUTOGEN)
+    if ((loadFlags & (WIC_LOADER_MIP_AUTOGEN | WIC_LOADER_FORCE_RGBA32)) == WIC_LOADER_MIP_AUTOGEN)
     {
         const DXGI_FORMAT fmt = GetPixelFormat(frame.Get());
         if (!resourceUpload.IsSupportedForGenerateMips(fmt))
@@ -972,3 +972,69 @@ HRESULT DirectX::CreateWICTextureFromFileEx(
 
     return hr;
 }
+
+
+//--------------------------------------------------------------------------------------
+// Adapters for /Zc:wchar_t- clients
+
+#if defined(_MSC_VER) && !defined(_NATIVE_WCHAR_T_DEFINED)
+
+namespace DirectX
+{
+    HRESULT __cdecl LoadWICTextureFromFile(
+        _In_ ID3D12Device* d3dDevice,
+        _In_z_ const __wchar_t* szFileName,
+        _Outptr_ ID3D12Resource** texture,
+        std::unique_ptr<uint8_t[]>& decodedData,
+        D3D12_SUBRESOURCE_DATA& subresource,
+        size_t maxsize) noexcept
+    {
+        return LoadWICTextureFromFile(d3dDevice,
+            reinterpret_cast<const unsigned short*>(szFileName),
+            texture, decodedData, subresource, maxsize);
+    }
+
+    HRESULT __cdecl CreateWICTextureFromFile(
+        _In_ ID3D12Device* d3dDevice,
+        ResourceUploadBatch& resourceUpload,
+        _In_z_ const __wchar_t* szFileName,
+        _Outptr_ ID3D12Resource** texture,
+        bool generateMips,
+        size_t maxsize)
+    {
+        return CreateWICTextureFromFile(d3dDevice, resourceUpload,
+            reinterpret_cast<const unsigned short*>(szFileName),
+            texture, generateMips, maxsize);
+    }
+
+    HRESULT __cdecl LoadWICTextureFromFileEx(
+        _In_ ID3D12Device* d3dDevice,
+        _In_z_ const __wchar_t* szFileName,
+        size_t maxsize,
+        D3D12_RESOURCE_FLAGS resFlags,
+        WIC_LOADER_FLAGS loadFlags,
+        _Outptr_ ID3D12Resource** texture,
+        std::unique_ptr<uint8_t[]>& decodedData,
+        D3D12_SUBRESOURCE_DATA& subresource) noexcept
+    {
+        return LoadWICTextureFromFileEx(d3dDevice,
+            reinterpret_cast<const unsigned short*>(szFileName),
+            maxsize, resFlags, loadFlags, texture, decodedData, subresource);
+    }
+
+    HRESULT __cdecl CreateWICTextureFromFileEx(
+        _In_ ID3D12Device* d3dDevice,
+        ResourceUploadBatch& resourceUpload,
+        _In_z_ const __wchar_t* szFileName,
+        size_t maxsize,
+        D3D12_RESOURCE_FLAGS resFlags,
+        WIC_LOADER_FLAGS loadFlags,
+        _Outptr_ ID3D12Resource** texture)
+    {
+        return CreateWICTextureFromFileEx(d3dDevice, resourceUpload,
+            reinterpret_cast<const unsigned short*>(szFileName),
+            maxsize, resFlags, loadFlags, texture);
+    }
+}
+
+#endif // !_NATIVE_WCHAR_T_DEFINED
