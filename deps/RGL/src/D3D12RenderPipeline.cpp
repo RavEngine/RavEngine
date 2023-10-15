@@ -283,9 +283,11 @@ namespace RGL {
             switch (func.type) {
             case RGL::ShaderStageDesc::Type::Vertex:
                 vertFunc = std::static_pointer_cast<decltype(vertFunc)::element_type>(func.shaderModule);
+                vsBufferBindings = vertFunc->bufferBindingStore;
                 break;
             case RGL::ShaderStageDesc::Type::Fragment:
                 fragFunc = std::static_pointer_cast<decltype(vertFunc)::element_type>(func.shaderModule);
+                fsBufferBindings = fragFunc->bufferBindingStore;
                 break;
             default:
                 FatalError("Function type is not supported");

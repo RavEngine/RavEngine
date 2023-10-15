@@ -173,13 +173,13 @@ namespace RavEngine {
 
 	void RavEngine::RenderEngine::ReallocateVertexAllocationToSize(uint32_t newSize)
 	{
-		ReallocateGeneric(sharedVertexBuffer, currentVertexSize, newSize, vertexAllocatedList, vertexFreeList, sizeof(VertexNormalUV), { .StorageBuffer = true, .VertexBuffer = true });
+		ReallocateGeneric(sharedVertexBuffer, currentVertexSize, newSize, vertexAllocatedList, vertexFreeList, sizeof(VertexNormalUV), { .StorageBuffer = true, .VertexBuffer = true }, "Shared Vertex Buffer");
 	}
 	void RenderEngine::ReallocateIndexAllocationToSize(uint32_t newSize)
 	{
-		ReallocateGeneric(sharedIndexBuffer, currentIndexSize, newSize, indexAllocatedList, indexFreeList, sizeof(uint32_t), {.IndexBuffer = true});
+		ReallocateGeneric(sharedIndexBuffer, currentIndexSize, newSize, indexAllocatedList, indexFreeList, sizeof(uint32_t), {.IndexBuffer = true}, "Shared Index Buffer");
 	}
-	void RenderEngine::ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& targetBufferCurrentSize, uint32_t newSize, allocation_allocatedlist_t& allocatedList, allocation_freelist_t& freelist, uint32_t stride, RGL::BufferConfig::Type bufferType)
+	void RenderEngine::ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& targetBufferCurrentSize, uint32_t newSize, allocation_allocatedlist_t& allocatedList, allocation_freelist_t& freelist, uint32_t stride, RGL::BufferConfig::Type bufferType, const char* debugName)
 	{
 		auto oldBuffer = reallocBuffer;
 		// trash old buffer
@@ -188,7 +188,7 @@ namespace RavEngine {
 			bufferType,
 			stride,
 			RGL::BufferAccess::Private,
-			{.TransferDestination = true, .Transfersource = true}
+			{.TransferDestination = true, .Transfersource = true, .debugName = debugName}
 			});
 
 		auto extendLastRange = [&freelist,newSize,targetBufferCurrentSize]() {

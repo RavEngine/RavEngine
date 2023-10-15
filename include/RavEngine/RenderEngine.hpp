@@ -248,7 +248,7 @@ namespace RavEngine {
 		
 		void ReallocateVertexAllocationToSize(uint32_t newSize);
 		void ReallocateIndexAllocationToSize(uint32_t newSize);
-		void ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& reallocBufferSize, uint32_t newSize, allocation_allocatedlist_t& allocatedList, allocation_freelist_t& freelist, uint32_t stride, RGL::BufferConfig::Type bufferType);
+		void ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& reallocBufferSize, uint32_t newSize, allocation_allocatedlist_t& allocatedList, allocation_freelist_t& freelist, uint32_t stride, RGL::BufferConfig::Type bufferType, const char* debugName = nullptr);
 
 		SpinLock allocationLock;
 

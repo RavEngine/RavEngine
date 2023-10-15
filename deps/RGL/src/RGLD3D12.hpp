@@ -11,6 +11,8 @@
 #include <format>
 #include <d3d12.h>
 
+//#define REFL_ENABLED
+
 inline void DX_CHECK(HRESULT dx_check_hr) {
 	RGL::Assert(!FAILED(dx_check_hr), _com_error(dx_check_hr,nullptr).ErrorMessage());
 }

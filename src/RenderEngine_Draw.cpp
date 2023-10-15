@@ -94,9 +94,9 @@ namespace RavEngine {
 					}
 				}
 
-				resizeSkeletonBuffer(drawcommand.indirectBuffer, sizeof(RGL::IndirectIndexedCommand), totalEntitiesForThisCommand + 5, { .StorageBuffer = true, .IndirectBuffer = true }, RGL::BufferAccess::Private, { .debugName = "Skeleton per-material IndirectBuffer" });
+				resizeSkeletonBuffer(drawcommand.indirectBuffer, sizeof(RGL::IndirectIndexedCommand), totalEntitiesForThisCommand + 5, { .StorageBuffer = true, .IndirectBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Skeleton per-material IndirectBuffer" });
 				//TODO: skinned meshes do not support LOD groups
-				resizeSkeletonBuffer(drawcommand.cullingBuffer, sizeof(entity_t), totalEntitiesForThisCommand + 5, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .debugName = "Skeleton per-material culingBuffer" });
+				resizeSkeletonBuffer(drawcommand.cullingBuffer, sizeof(entity_t), totalEntitiesForThisCommand + 5, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Skeleton per-material culingBuffer" });
 			}
 
 			resizeSkeletonBuffer(sharedSkeletonMatrixBuffer, sizeof(matrix4), totalJointsToSkin, { .StorageBuffer = true }, RGL::BufferAccess::Shared, { .debugName = "sharedSkeletonMatrixBuffer" });

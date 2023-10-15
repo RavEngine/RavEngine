@@ -7,6 +7,7 @@
 #include <directx/d3dx12.h>
 #include <vector>
 #include <unordered_map>
+#include "D3D12PipelineShared.hpp"
 
 namespace RGL {
 	struct DeviceD3D12;
@@ -48,6 +49,8 @@ namespace RGL {
 		Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState;
 		const std::shared_ptr<PipelineLayoutD3D12> pipelineLayout;
 		const D3D12_PRIMITIVE_TOPOLOGY overrideMode;
+
+		BufferBindingStore vsBufferBindings, fsBufferBindings;
 
 		RenderPipelineD3D12(decltype(owningDevice), const RenderPipelineDescriptor&);
 	};

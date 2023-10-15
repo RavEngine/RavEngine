@@ -17,6 +17,8 @@ namespace RGL {
 			.CachedPSO = nullptr,
 		};
 
+		bufferBindings = castedShader->bufferBindingStore;
+
 		DX_CHECK(device->CreateComputePipelineState(&pipelineStateDesc, IID_PPV_ARGS(&pipelineState)));
 	}
 	ComputePipelineD3D12::~ComputePipelineD3D12()

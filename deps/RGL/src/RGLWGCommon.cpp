@@ -1,5 +1,6 @@
 #if RGL_WEBGPU_AVAILABLE
 #include "RGLWG.hpp"
+#include "WGRenderPass.hpp"
 
 namespace RGL{
     WGPUInstance instance; 
@@ -20,6 +21,9 @@ namespace RGL{
         wgpuInstanceRelease(instance);
     }
 
+    RGLRenderPassPtr CreateRenderPassWG(const RenderPassConfig& config){
+        return std::make_shared<RenderPassWG>(config);
+    }
 }
 
 #endif

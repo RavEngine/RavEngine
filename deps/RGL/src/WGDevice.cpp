@@ -7,6 +7,7 @@
 #include "WGSwapchain.hpp"
 #include "WGShaderLibrary.hpp"
 #include "WGBuffer.hpp"
+#include "WGPipeline.hpp"
 #include <cassert>
 #include <format>
 #include <iostream>
@@ -160,12 +161,15 @@ RGLSwapchainPtr DeviceWG::CreateSwapchain(RGLSurfacePtr isurface, RGLCommandQueu
 }
 
 RGLPipelineLayoutPtr DeviceWG::CreatePipelineLayout(const PipelineLayoutDescriptor& desc) {
+    return std::make_shared<PipelineLayoutWG>(desc);
 }
 
 RGLRenderPipelinePtr DeviceWG::CreateRenderPipeline(const RenderPipelineDescriptor& desc) {
+    return std::make_shared<RenderPipelineWG>(shared_from_this(),desc);
 }
 
 RGLComputePipelinePtr DeviceWG::CreateComputePipeline(const RGL::ComputePipelineDescriptor& desc) {
+    FatalError("CreateComputePipeline not implemented");
 }
 
 RGLShaderLibraryPtr DeviceWG::CreateDefaultShaderLibrary() {

@@ -1,5 +1,6 @@
 #pragma once
 #include "RGLCommon.hpp"
+#include <RGL/Types.hpp>
 #include <emscripten/html5_webgpu.h>
 
 namespace RGL{
@@ -7,4 +8,5 @@ namespace RGL{
 
     void InitWebGPU(const RGL::InitOptions&);
 	void DeinitWebGPU();
+    RGLRenderPassPtr CreateRenderPassWG(const RenderPassConfig&);
 }

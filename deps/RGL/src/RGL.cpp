@@ -239,6 +239,11 @@ namespace RGL {
                 return CreateRenderPassMTL(config);
             break;
 #endif
+#if RGL_WEBGPU_AVAILABLE
+        case API::WebGPU:
+            return CreateRenderPassWG(config);
+        break;
+#endif
         default:
             FatalError("not implemented for this API");
         }
