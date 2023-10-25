@@ -111,7 +111,7 @@ auto genIcosphere(uint16_t subdivs){
         // add vertex to mesh, fix position to be on unit sphere, return index
         int addVertex(vec_t p)
         {
-            double length = std::sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+            float length = std::sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
             geometry.Positions.emplace_back(p.x/length, p.y/length, p.z/length);
             return index++;
         }
@@ -151,7 +151,7 @@ auto genIcosphere(uint16_t subdivs){
         {
 
             // create 12 vertices of a icosahedron
-            float t = (1.0 + std::sqrt(5.0)) / 2.0;
+            float t = (1.0f + std::sqrt(5.0f)) / 2.0f;
 
 			addVertex({ -1,  t,  0 });
 			addVertex({ 1,  t,  0 });
