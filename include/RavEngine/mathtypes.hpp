@@ -131,15 +131,16 @@ struct dim_t {
 
 namespace RMath {
     // use these instead of glm::perspective or glm::ortho
+    // these also implement reverse Z.
 
     template<typename T>
     auto orthoProjection(T left, T right, T bottom, T top, T zNear, T zFar) {
-        return glm::orthoRH_ZO(left, right, bottom, top, zNear, zFar);
+        return glm::orthoRH_ZO(left, right, bottom, top, zFar, zNear);
     }
 
     template<typename T>
     auto perspectiveProjection(T fovy, T aspect, T zNear, T zFar) {
-        return glm::perspectiveRH_ZO(fovy, aspect, zNear, zFar);
+        return glm::perspectiveRH_ZO(fovy, aspect, zFar, zNear);
     }
 }
 

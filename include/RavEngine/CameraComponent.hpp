@@ -42,8 +42,7 @@ namespace RavEngine {
 		constexpr inline matrix4 GenerateProjectionMatrix(uint32_t width, uint32_t height) const{
 			switch(projection){
 				case Mode::Perspective:
-                    // inverse Z - swap near and far clip
-					return matrix4(RMath::perspectiveProjection(deg_to_rad(FOV), (float)width / height, farClip, nearClip));
+					return matrix4(RMath::perspectiveProjection(deg_to_rad(FOV), (float)width / height, nearClip, farClip));
 					break;
 				case Mode::Orthographic:
 					return matrix4(RMath::orthoProjection(0.0f,static_cast<float>(width),static_cast<float>(height),0.0f,nearClip,farClip));
