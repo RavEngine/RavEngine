@@ -206,20 +206,10 @@ set(RA_SOURCES
         ${RA_SOURCE_DIR}/utils/wav.cc
         ${RA_SOURCE_DIR}/utils/wav.h
         ${RA_SOURCE_DIR}/utils/wav_reader.cc
-        ${RA_SOURCE_DIR}/utils/wav_reader.h
+        ${RA_SOURCE_DIR}/utils/wav_reader.h	
+	${PROJECT_SOURCE_DIR}/platforms/common/utils-common.cc
         )
 
-if(MSVC)
-	SET(RA_SOURCES
-		${PROJECT_SOURCE_DIR}/platforms/common/utils.cc 
-		${RA_SOURCES}
-	)
-else()
-	SET(RA_SOURCES  
-		${PROJECT_SOURCE_DIR}/platforms/common/utils-common.cc
-		${RA_SOURCES}
-	)
-endif()
 
 add_library(ResonanceAudioObj OBJECT ${RA_SOURCES})
 target_include_directories(ResonanceAudioObj PRIVATE ${PROJECT_SOURCE_DIR}/resonance_audio/)
