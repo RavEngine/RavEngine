@@ -19,7 +19,7 @@ namespace RavEngine {
 		RGL::RenderPipelineDescriptor::ColorBlendConfig colorBlendConfig;
 		bool depthTestEnabled = true;
 		bool depthWriteEnabled = true;
-		RGL::DepthCompareFunction depthCompareFunction = RGL::DepthCompareFunction::Less;
+		RGL::DepthCompareFunction depthCompareFunction = RGL::DepthCompareFunction::Greater;
 
 		std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> bindings;
 		uint32_t pushConstantSize = 0;

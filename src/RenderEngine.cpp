@@ -326,8 +326,8 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	shadowSampler = device->CreateSampler({
 		.addressModeU = RGL::SamplerAddressMode::Border,
 		.addressModeV = RGL::SamplerAddressMode::Border,
-		.borderColor = {1,1,1,1},
-		.compareFunction = RGL::DepthCompareFunction::Less
+		.borderColor = {0,0,0,0},
+		.compareFunction = RGL::DepthCompareFunction::Greater
 	});
 
 	shadowTexture = device->CreateTexture({
@@ -340,7 +340,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	});
 
 
-	// create "fixed-function" pipeline layouts
+	// create built-in pipeline layouts
 	auto ambientLightRenderPipelineLayout = device->CreatePipelineLayout({
 		.bindings = {
 			{
@@ -512,6 +512,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		}
 	});
 
+    std::array<float, 4> depthClearColor = {0,0,0,1};
 	// create render passes
 	deferredRenderPass = RGL::CreateRenderPass({
 		   .attachments = {
@@ -535,7 +536,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			   .format = RGL::TextureFormat::D32SFloat,
 			   .loadOp = RGL::LoadAccessOperation::Load,
 			   .storeOp = RGL::StoreAccessOperation::Store,
-			   .clearColor = {1,1,1,1}
+			   .clearColor = depthClearColor
 		   }
 		});
 
@@ -562,7 +563,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			   .format = RGL::TextureFormat::D32SFloat,
 			   .loadOp = RGL::LoadAccessOperation::Clear,
 			   .storeOp = RGL::StoreAccessOperation::Store,
-			   .clearColor = {1,1,1,1}
+			   .clearColor = depthClearColor
 		   }
 		}
 	);
@@ -649,7 +650,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.format = RGL::TextureFormat::D32SFloat,
 			.loadOp = RGL::LoadAccessOperation::Clear,
 			.storeOp = RGL::StoreAccessOperation::Store,
-			.clearColor = {1,1,1,1}
+			.clearColor = depthClearColor
 		}
 	});
 
