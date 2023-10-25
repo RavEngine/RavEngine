@@ -19,8 +19,8 @@ void main()
 
 	vec4 screenpos = vec4(rotScaleOnly * inPosition,1);
 	
-	// set both to 1 to make render behind everything
-	screenpos.z = 1;
+	// render behind everything
+	screenpos.z = 0;
 	screenpos.w = 1;
 	gl_Position = screenpos;
 }
