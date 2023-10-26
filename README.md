@@ -7,16 +7,17 @@ A C++20 cross-platform game framework, with emphasis on addressing pain points i
 3. 3D spatialized audio with accurate room reverbation modeling (Google Resonance Audio)
 4. Automatic memory management handled via reference counting 
 5. GPU-driven render engine that supports modern rendering APIs (Metal, DirectX, Vulkan)
-6. Author shaders in vanilla GLSL
-7. Flexible and fast declarative user interface system based on HTML and CSS (RmlUi)
-8. Support for SVGs in the UI and for textures
-9. High-performance easy-to-use multiplayer networking system (Valve GameNetworkingSockets)
-10.  FSM animation blending tree system
-11. Compute shader mesh skinning with automatic batching
-12. Programmable audio processing system
-13. AR/VR support via OpenXR integration
-14. CI/CD-friendly build process powered by CMake
-15. Quality-of-life features like automatic incremental shader compilation
+6. Physically-based lighting model
+7. Author shaders in vanilla GLSL
+8. Flexible and fast declarative user interface system based on HTML and CSS (RmlUi)
+9. Support for SVGs in the UI and for textures
+10. High-performance easy-to-use multiplayer networking system (Valve GameNetworkingSockets)
+11. FSM animation blending tree system
+12. Compute shader mesh skinning with automatic batching
+13. Programmable audio processing system
+14. AR/VR support via OpenXR integration
+15. CI/CD-friendly build process powered by CMake
+16. Quality-of-life features like automatic incremental shader compilation
 
 Note: RavEngine does not have a graphical editor.
 
@@ -78,19 +79,46 @@ Then build with CMake as normal. On Windows, you will need to run your initial c
 | Platform | Architecture | Compiler | CMake Generator | Rendering API |
 | --- | --- | --- | --- | --- |
 | macOS 12+ | Intel, Apple Silicon | Apple Clang | Xcode | Metal |
-| iOS 16+ | Device + Simulator | Apple Clang | Xcode | Metal |
-| tvOS 16+ | Device + Simulator | Apple Clang | Xcode | Metal |
+| iOS 16+ | Device + Simulator* | Apple Clang | Xcode | Metal |
+| tvOS 16+ | Device + Simulator* | Apple Clang | Xcode | Metal |
 | Windows 10+ (Win32) | x86_64, aarch64 | MSVC | Visual Studio | DX12, Vulkan |
 | Windows 10+ (GDK) | x86_64 | MSVC | Visual Studio | DX12, Vulkan |
 | Windows 10+ (UWP) | x86_64, aarch64 | MSVC | Visual Studio | DX12 |
 | Xbox Series (UWP) | x86_64 | MSVC | Visual Studio | DX12 |
 | Linux | x86_64, aarch64 | Clang, gcc | Ninja, Make | Vulkan |
-| Emscripten (Early WIP) | WebAssembly | emcc | Make | WebGPU |
+| Emscripten (Early WIP) | WebAssembly | emcc | Ninja, Make | WebGPU |
 
-Note for Linux users: You must have the following shared libaries installed on your system:
-- libatomic
-- x11-dev (for X11 support)
-- alsa-lib-devel (aka libasound2-devel) (or another SDL2-supported audio library)
+\* Simulator support is build-only. RavEngine uses GPU features that the simulator does not support.
+
+## System Requirements for Developers
+Hardware 
+| Part | Recommended | Minimum |
+| --- | --- | ---|
+| CPU | 16 threads | 4 cores |
+| RAM | 32 GB | 16 GB |
+| GPU | - | Any with DX12, VK 1.3, or Metal 3 |
+| Disk | - | SSD w/ 40GB free space |
+
+Note that for end users the minimum system requirements are much lower
+
+Software (required)
+- macOS, iOS, tvOS
+   - Xcode
+   - CMake
+- Windows, UWP, Xbox
+   - Visual Studio 2022 or later with Desktop Development in C++ module
+   - CMake (included with Visual Studio)
+   - LunarG Vulkan SDK (optional)
+- Linux
+   - ninja (recommended) or make
+   - clang 14 or later (recommended) or gcc 12 or later
+   - cmake
+   - libatomic
+   - x11-dev
+   - uuid-dev
+   - alsa-lib-devel or pulseaudio (or another SDL2-supported audio library)
+   - [LunarG Vulkan SDK](https://www.lunarg.com/vulkan-sdk/) (required)
+
 
 ## Example programs
 View a respository with code samples here: [https://github.com/RavEngine/Samples](https://github.com/RavEngine/Samples)
