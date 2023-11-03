@@ -281,6 +281,7 @@ namespace RGL {
                   .pImmutableSamplers = nullptr
                 }
             );
+            bindingDescriptorTypes[binding.binding] = type;
         }
       
         VkDescriptorSetLayoutCreateInfo layoutInfo{

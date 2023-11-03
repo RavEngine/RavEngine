@@ -28,7 +28,10 @@ namespace RGL {
 
 		void Present(const SwapchainPresentConfig&) final;
 
+		void SetVsyncMode(bool mode) final;
+
 	private:
+		bool vsync = true;
 		void DestroySwapchainIfNeeded();
 	};
 }

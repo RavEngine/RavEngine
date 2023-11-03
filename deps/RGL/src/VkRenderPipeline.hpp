@@ -14,6 +14,7 @@ namespace RGL {
 		VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 
 		std::unordered_map<uint32_t, VkShaderStageFlags> pushConstantBindingStageFlags;
+		std::unordered_map<uint32_t, VkDescriptorType> bindingDescriptorTypes;
 
 		PipelineLayoutVk(decltype(owningDevice), const PipelineLayoutDescriptor&);
 		virtual ~PipelineLayoutVk();

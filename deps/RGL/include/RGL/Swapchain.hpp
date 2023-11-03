@@ -14,5 +14,7 @@ namespace RGL{
 		virtual void GetNextImage(uint32_t* index) = 0;
 		virtual ITexture* ImageAtIndex(uint32_t index) = 0;
 		virtual void Present(const SwapchainPresentConfig&) = 0;
+
+		virtual void SetVsyncMode(bool mode) = 0;
 	};
 }

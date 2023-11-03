@@ -20,6 +20,13 @@ Dimension TextureWG::GetSize() const{
     return size;
 }
 
+TextureView TextureWG::GetDefaultView() const{
+    return TextureView{texture};
+}
+TextureView TextureWG::GetViewForMip(uint32_t mip) const{
+    return TextureView{mipViews.at(mip)};
+}
+
 }
 
 #endif

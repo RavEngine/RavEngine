@@ -66,7 +66,7 @@ namespace RGL {
 		};
 
 		struct CmdSetTexture {
-			const ITexture* texture;
+			TextureView texture;
 			uint32_t index;
 		};
 
@@ -118,7 +118,7 @@ namespace RGL {
 		};
 
 		struct CmdCopyTextureToBuffer {
-			struct TextureVk* sourceTexture;
+			TextureView sourceTexture;
 			const Rect sourceRect;
 			size_t offset;
 			RGLBufferPtr destBuffer;
@@ -192,13 +192,14 @@ namespace RGL {
 		void SetVertexSampler(RGLSamplerPtr sampler, uint32_t index) final;
 		void SetFragmentSampler(RGLSamplerPtr sampler, uint32_t index) final;
 
-		void SetVertexTexture(const ITexture* texture, uint32_t index) final;
-		void SetFragmentTexture(const ITexture* texture, uint32_t index) final;
+		void SetVertexTexture(const TextureView& texture, uint32_t index) final;
+		void SetFragmentTexture(const TextureView& texture, uint32_t index) final;
+		void SetComputeTexture(const TextureView& texture, uint32_t index) final;
 
 		void Draw(uint32_t nVertices, const DrawInstancedConfig & = {}) final;
 		void DrawIndexed(uint32_t nIndices, const DrawIndexedInstancedConfig & = {}) final;
 
-		void CopyTextureToBuffer(RGL::ITexture* sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr destBuffer) final;
+		void CopyTextureToBuffer(TextureView& sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr destBuffer) final;
 		void CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size) final;
 
 		void SetViewport(const Viewport&) final;

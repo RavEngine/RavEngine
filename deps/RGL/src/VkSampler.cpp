@@ -15,6 +15,27 @@ namespace RGL {
 		}
 	}
 
+	VkSamplerMipmapMode rgl2vkmipmode(MipFilterMode mode) {
+		switch (mode) {
+		case decltype(mode)::NotMipped: 
+		case decltype(mode)::Nearest:
+			return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+		case decltype(mode)::Linear:
+			return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		default:
+			FatalError("Unsupported mip sampler");
+		}
+	}
+
+	VkFilter rgl2vkfilter(MinMagFilterMode mode) {
+		switch (mode) {
+		case decltype(mode)::Nearest:
+			return VK_FILTER_NEAREST;
+		case decltype(mode)::Linear:
+			return VK_FILTER_LINEAR;
+		}
+	}
+
 	SamplerVk::SamplerVk(decltype(owningDevice) owningDevice, const SamplerConfig& config) : owningDevice(owningDevice)
 	{
 		//TODO: obey config
@@ -29,9 +50,9 @@ namespace RGL {
 		VkSamplerCreateInfo samplerInfo{
 			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
 			.pNext = &borderColor,
-			.magFilter = VK_FILTER_LINEAR,
-			.minFilter = VK_FILTER_LINEAR,
-			.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+			.magFilter = rgl2vkfilter(config.magFilter),
+			.minFilter = rgl2vkfilter(config.minFilter),
+			.mipmapMode = rgl2vkmipmode(config.mipFilter),
 			.addressModeU = rgl2vksampleraddressmode(config.addressModeU),
 			.addressModeV = rgl2vksampleraddressmode(config.addressModeV),
 			.addressModeW = rgl2vksampleraddressmode(config.addressModeW),
@@ -41,7 +62,7 @@ namespace RGL {
 			.compareEnable = VK_TRUE,
 			.compareOp = static_cast<VkCompareOp>(config.compareFunction),
 			.minLod = 0.0f,
-			.maxLod = 0.0f,
+			.maxLod = VK_LOD_CLAMP_NONE,
 			.borderColor = VK_BORDER_COLOR_FLOAT_CUSTOM_EXT,
 			.unnormalizedCoordinates = VK_FALSE,
 		};

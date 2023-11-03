@@ -19,11 +19,12 @@ RavEngine Graphics Library - a thin RHI for Vulkan, DirectX12, and Metal
 
 ### Supported Platforms
 - macOS (intel + Apple silicon)
-- iOS (device + simulator)
-- tvOS (device + simulator)
-- Windows 10+ (arm + x86_64)
+- iOS (device only)
+- tvOS (device only)
+- Windows 10+ (Arm64 + x86_64)
+- Windows 10+ UWP (Arm64 + x86_64)
 - Linux
-- UWP
+- WebAssembly (WIP)
 
 ### Getting Started
 See [RavEngine/RGL-Samples](https://github.com/RavEngine/RGL-Samples) for code samples. To compile the library, use CMake:

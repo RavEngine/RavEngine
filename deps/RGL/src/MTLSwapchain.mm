@@ -28,6 +28,13 @@ void SwapchainMTL::Present(const SwapchainPresentConfig& config) {
     [activeTextures[config.imageIndex].drawable present];
 }
 
+void SwapchainMTL::SetVsyncMode(bool mode){
+#if TARGET_OS_IPHONE
+#else
+    [surface->layer setDisplaySyncEnabled:mode];
+#endif
+}
+
 }
 
 #endif

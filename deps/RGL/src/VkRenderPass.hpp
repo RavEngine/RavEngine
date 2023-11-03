@@ -2,6 +2,7 @@
 #include <RGL/Types.hpp>
 #include <RGL/RenderPass.hpp>
 #include "VkDevice.hpp"
+#include <RGL/Texture.hpp>
 
 namespace RGL {
 	struct TextureVk;
@@ -12,14 +13,14 @@ namespace RGL {
 		RenderPassVk(const RenderPassConfig&);
 		virtual ~RenderPassVk();
 
-		std::vector<TextureVk*> textures;
+		std::vector<TextureView> textures;
 
-		TextureVk* depthTexture = nullptr;
-		TextureVk* stencilTexture = nullptr;
+		std::optional<TextureView> depthTexture;
+		std::optional<TextureView> stencilTexture;
 
-		void SetAttachmentTexture(uint32_t index, ITexture* texture) final;
-		void SetDepthAttachmentTexture(ITexture* texture) final;
-		void SetStencilAttachmentTexture(ITexture* texture) final;
+		void SetAttachmentTexture(uint32_t index, const TextureView& texture) final;
+		void SetDepthAttachmentTexture(const TextureView& texture) final;
+		void SetStencilAttachmentTexture(const TextureView& texture) final;
 	};
 
 }

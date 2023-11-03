@@ -29,11 +29,13 @@ namespace RGL{
         wgpuShaderModuleRelease(shaderModule);
     }
     void ShaderLibraryWG::InitFromShaderSource(decltype(owningDevice) owningDevice, const std::string_view shadercode){
+
+        std::string shader_cpy(shadercode);
         WGPUShaderModuleWGSLDescriptor shaderCodeDesc;
         // Set the chained struct's header
         shaderCodeDesc.chain.next = nullptr;
         shaderCodeDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
-        shaderCodeDesc.code = shadercode.data();
+        shaderCodeDesc.code = shader_cpy.data();
         WGPUShaderModuleDescriptor moduleDesc;
         moduleDesc.nextInChain = &shaderCodeDesc.chain;
         shaderModule = wgpuDeviceCreateShaderModule(owningDevice->device, &moduleDesc);

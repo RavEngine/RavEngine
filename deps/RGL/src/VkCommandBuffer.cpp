@@ -89,7 +89,7 @@ namespace RGL {
 		auto renderPass = std::static_pointer_cast<RenderPassVk>(renderPassPtr);
 		uint32_t i = 0;
 		for (const auto& attachment : renderPass->config.attachments) {
-			RecordTextureBinding(renderPass->textures[i], {
+			RecordTextureBinding(static_cast<const TextureVk*>(renderPass->textures[i].parent), {
 					.lastLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 					.written = true
 				}
@@ -98,7 +98,7 @@ namespace RGL {
 		}
 
 		if (renderPass->config.depthAttachment.has_value()) {
-			RecordTextureBinding(renderPass->depthTexture,
+			RecordTextureBinding(static_cast<const TextureVk*>(renderPass->depthTexture->parent),
 				{
 					.lastLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
 					.written = true
@@ -107,7 +107,7 @@ namespace RGL {
 		}
 
 		if (renderPass->config.stencilAttachment.has_value()) {
-			RecordTextureBinding(renderPass->stencilTexture,
+			RecordTextureBinding(static_cast<const TextureVk*>(renderPass->stencilTexture->parent),
 				{
 					.lastLayout = VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL,
 					.written = true
@@ -197,21 +197,32 @@ namespace RGL {
 	{
 		EncodeCommand(CmdSetSampler{ sampler, index });
 	}
-	void CommandBufferVk::SetVertexTexture(const ITexture* texture, uint32_t index)
+	void CommandBufferVk::SetVertexTexture(const TextureView& texture, uint32_t index)
 	{
 		SetFragmentTexture(texture, index);
 	}
-	void CommandBufferVk::SetFragmentTexture(const ITexture* texture, uint32_t index)
+	void CommandBufferVk::SetFragmentTexture(const TextureView& texture, uint32_t index)
 	{
 		EncodeCommand(CmdSetTexture{ texture, index });
 		
-		auto vktexture = static_cast<const TextureVk*>(texture);
+		auto vktexture = static_cast<const TextureVk*>(texture.parent);
+
 
 		auto nextLayout = vktexture->createdConfig.usage.DepthStencilAttachment ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+		auto activeLayout = currentRenderPipeline ? currentRenderPipeline->pipelineLayout : currentComputePipeline->pipelineLayout;
+		if (activeLayout->bindingDescriptorTypes.at(index) == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+			nextLayout = VK_IMAGE_LAYOUT_GENERAL;
+		}
+
 		RecordTextureBinding(vktexture, {
 			.lastLayout = nextLayout,
 			.written = true
 		});
+	}
+	void CommandBufferVk::SetComputeTexture(const TextureView& texture, uint32_t index)
+	{
+		SetFragmentTexture(texture, index);
 	}
 	void CommandBufferVk::Draw(uint32_t nVertices, const DrawInstancedConfig& config)
 	{
@@ -222,19 +233,18 @@ namespace RGL {
 		EncodeCommand(CmdDrawIndexed{nIndices, config});
 	}
 
-	void CommandBufferVk::CopyTextureToBuffer(RGL::ITexture* sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr destBuffer)
+	void CommandBufferVk::CopyTextureToBuffer(TextureView& sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr destBuffer)
 	{
-		auto casted = static_cast<TextureVk*>(sourceTexture);
 		auto castedDest = std::static_pointer_cast<BufferVk>(destBuffer);
 
 		EncodeCommand(CmdCopyTextureToBuffer{
-			casted,
+			sourceTexture,
 			sourceRect,
 			offset,
 			destBuffer
 		});
 
-		RecordTextureBinding(casted, { VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, true });
+		RecordTextureBinding(static_cast<const TextureVk*>(sourceTexture.parent), { VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, true });
 	}
 	void CommandBufferVk::CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size)
 	{
@@ -371,9 +381,9 @@ namespace RGL {
 					.subresourceRange = {
 					  .aspectMask = texture->createdAspectVk,
 					  .baseMipLevel = 0,
-					  .levelCount = 1,
+					  .levelCount = VK_REMAINING_MIP_LEVELS,
 					  .baseArrayLayer = 0,
-					  .layerCount = 1,
+					  .layerCount = VK_REMAINING_ARRAY_LAYERS,
 					} 
 		};
 
@@ -432,10 +442,10 @@ namespace RGL {
 				uint32_t i = 0;
 				for (const auto& attachment : renderPass->config.attachments) {
 
-					attachmentInfos[i] = makeAttachmentInfo(attachment, renderPass->textures[i]->vkImageView);
+					attachmentInfos[i] = makeAttachmentInfo(attachment, renderPass->textures[i].texture.vk);
 
 					// the swapchain image may be in the wrong state (present state vs write state) so it needs to be transitioned
-					auto castedImage = static_cast<TextureVk*>(renderPass->textures[i]);
+					auto castedImage = static_cast<const TextureVk*>(renderPass->textures[i].parent);
 
 					if (castedImage->owningSwapchain) {
 						swapchainsToSignal.insert(castedImage->owningSwapchain);
@@ -448,10 +458,10 @@ namespace RGL {
 				// repeat for depth stencil attachment
 				RGL::Dimension texSize{};
 				if (renderPass->textures.size() > 0) {
-					texSize = renderPass->textures[0]->GetSize();
+					texSize = renderPass->textures[0].viewSize;
 				}
 				else if (renderPass->depthTexture) {
-					texSize = renderPass->depthTexture->GetSize();
+					texSize = renderPass->depthTexture->viewSize;
 				}
 				else {
 					FatalError("No rendertargets are bound, cannot get texture size for beginRendering");
@@ -462,7 +472,7 @@ namespace RGL {
 
 				if (renderPass->config.depthAttachment.has_value()) {
 					auto& da = renderPass->config.depthAttachment.value();
-					depthAttachmentInfoData = makeAttachmentInfo(da, renderPass->depthTexture->vkImageView);
+					depthAttachmentInfoData = makeAttachmentInfo(da, renderPass->depthTexture->texture.vk);
 					depthAttachmentinfo = &depthAttachmentInfoData;
 				}
 
@@ -471,7 +481,7 @@ namespace RGL {
 
 				if (renderPass->config.stencilAttachment.has_value()) {
 					auto& sa = renderPass->config.stencilAttachment.value();
-					stencilAttachmentInfoData = makeAttachmentInfo(sa, renderPass->depthTexture->vkImageView);
+					stencilAttachmentInfoData = makeAttachmentInfo(sa, renderPass->depthTexture->texture.vk);
 					stencilAttachmentInfo = &stencilAttachmentInfoData;
 				}
 
@@ -534,17 +544,19 @@ namespace RGL {
 			[this](const CmdSetTexture& arg) {
 				auto texture = arg.texture;
 				auto index = arg.index;
-				auto castedImage = static_cast<const TextureVk*>(texture);
+				auto castedImage = static_cast<const TextureVk*>(texture.parent);
 
 				auto it = activeTextures.find(castedImage);
 				auto layout = castedImage->nativeFormat;
 				if (it != activeTextures.end()) {
 					layout = it->second.lastLayout;
 				}
+				bool isCompute = currentRenderPipeline ? false : true;
+				auto activeLayout = isCompute ? currentComputePipeline->pipelineLayout : currentRenderPipeline->pipelineLayout;
 
 				VkDescriptorImageInfo imginfo{
 							.sampler = VK_NULL_HANDLE,
-							.imageView = castedImage->vkImageView,
+							.imageView = texture.texture.vk,
 							.imageLayout = layout,
 				};
 				VkWriteDescriptorSet writeinfo{
@@ -553,15 +565,17 @@ namespace RGL {
 						.dstBinding = index,
 						.dstArrayElement = 0,
 						.descriptorCount = 1,
-						.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+						.descriptorType = activeLayout->bindingDescriptorTypes.at(index),
 						.pImageInfo = &imginfo,
 						.pBufferInfo = nullptr,
 						.pTexelBufferView = nullptr
 				};
+				
+
 				owningQueue->owningDevice->vkCmdPushDescriptorSetKHR(
 					commandBuffer,
-					VK_PIPELINE_BIND_POINT_GRAPHICS,
-					currentRenderPipeline->pipelineLayout->layout,
+					isCompute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
+					activeLayout->layout,
 					0,
 					1,
 					&writeinfo
@@ -684,6 +698,7 @@ namespace RGL {
 			},
 			[this](const CmdCopyTextureToBuffer& arg) {
 				auto castedDest = std::static_pointer_cast<BufferVk>(arg.destBuffer);
+				auto castedImage = static_cast<const TextureVk*>(arg.sourceTexture.parent);
 
 				VkBufferImageCopy region{
 					.bufferOffset = 0,
@@ -707,7 +722,7 @@ namespace RGL {
 					}
 				};
 
-				vkCmdCopyImageToBuffer(commandBuffer, arg.sourceTexture->vkImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, castedDest->buffer, 1, &region);
+				vkCmdCopyImageToBuffer(commandBuffer, castedImage->vkImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, castedDest->buffer, 1, &region);
 			},
 			[this](const CmdSetViewport& arg) {
 				auto& viewport = arg.viewport;

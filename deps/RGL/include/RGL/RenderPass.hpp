@@ -6,8 +6,7 @@
 #include <optional>
 
 namespace RGL{
-struct ITexture;
-
+struct TextureView;
 
 struct RenderPassConfig {
     struct AttachmentDesc {
@@ -29,9 +28,9 @@ struct RenderPassConfig {
 
 struct IRenderPass {
     
-    virtual void SetAttachmentTexture(uint32_t index, ITexture* texture) = 0;
-    virtual void SetDepthAttachmentTexture(ITexture* texture) = 0;
-    virtual void SetStencilAttachmentTexture(ITexture* texture) = 0;
+    virtual void SetAttachmentTexture(uint32_t index, const TextureView& texture) = 0;
+    virtual void SetDepthAttachmentTexture(const TextureView& texture) = 0;
+    virtual void SetStencilAttachmentTexture(const TextureView& texture) = 0;
 };
 
 RGLRenderPassPtr CreateRenderPass(const RenderPassConfig& config);

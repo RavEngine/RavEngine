@@ -193,6 +193,10 @@ namespace RGL {
         UINT presentFlags = (tearingSupported && !vsync) ? DXGI_PRESENT_ALLOW_TEARING : 0;
         swapchain->Present(syncInterval, presentFlags);
 	}
+    void SwapchainD3D12::SetVsyncMode(bool mode)
+    {
+        vsync = mode;
+    }
     SwapchainD3D12::~SwapchainD3D12()
     {
     }

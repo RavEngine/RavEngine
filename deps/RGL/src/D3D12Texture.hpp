@@ -23,8 +23,9 @@ namespace RGL {
 
 		constexpr static UINT unallocated = std::numeric_limits<UINT>::max();
 
-		UINT dsvIDX = unallocated, rtvIDX = unallocated, srvIDX = unallocated;
+		UINT dsvIDX = unallocated, rtvIDX = unallocated, srvIDX = unallocated, uavIDX = unallocated;
 
+		// also add a UAVallocated
 		bool dsvAllocated() const{
 			return dsvIDX != unallocated;
 		}
@@ -34,6 +35,11 @@ namespace RGL {
 		bool srvAllocated() const{
 			return srvIDX != unallocated;
 		}
+		bool uavAllocated() const {
+			return uavIDX != unallocated;
+		}
+
+		std::vector<UINT> mipHeapIndicesSRV, mipHeapIndicesUAV;
 
 		TextureD3D12(decltype(texture) image, const Dimension& size, decltype(rtvIDX), decltype(owningDevice));
 		TextureD3D12(decltype(texture) image, const TextureConfig& config, std::shared_ptr<IDevice> device, D3D12_RESOURCE_STATES nativeStateOverride = D3D12_RESOURCE_STATE_COMMON);	// for externally-managed rendertargets
@@ -41,6 +47,9 @@ namespace RGL {
 		TextureD3D12(decltype(owningDevice), const TextureConfig&);
 
 		void PlaceInHeaps(const std::shared_ptr<RGL::DeviceD3D12>& owningDevice, DXGI_FORMAT format, const RGL::TextureConfig& config);
+
+		TextureView GetDefaultView() const final;
+		TextureView GetViewForMip(uint32_t mip) const final;
 
 
 		Dimension GetSize() const final;

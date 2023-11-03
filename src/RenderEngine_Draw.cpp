@@ -387,7 +387,7 @@ namespace RavEngine {
 							}
 							if (texture) {
 								mainCommandBuffer->SetFragmentSampler(textureSampler, 0); // TODO: don't hardcode this
-								mainCommandBuffer->SetFragmentTexture(texture->GetRHITexturePointer().get(), i);
+								mainCommandBuffer->SetFragmentTexture(texture->GetRHITexturePointer()->GetDefaultView(), i);
 							}
 						}
 
@@ -455,7 +455,7 @@ namespace RavEngine {
 					mainCommandBuffer->SetViewport(fullSizeViewport);
 					mainCommandBuffer->SetScissor(fullSizeScissor);
 					mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-					mainCommandBuffer->SetFragmentTexture(target.diffuseTexture.get(), 1);
+					mainCommandBuffer->SetFragmentTexture(target.diffuseTexture->GetDefaultView(), 1);
 
 					mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 					mainCommandBuffer->SetVertexBytes(ambientUBO, 0);
@@ -484,7 +484,7 @@ namespace RavEngine {
 							.viewRegion = {renderArea.offset[0],renderArea.offset[1],renderArea.extent[0],renderArea.extent[1]}
 						};
 
-						shadowRenderPass->SetDepthAttachmentTexture(shadowTexture.get());
+						shadowRenderPass->SetDepthAttachmentTexture(shadowTexture->GetDefaultView());
 						lightUBO.isRenderingShadows = true;
 						for (uint32_t i = 0; i < lightStore.uploadData.DenseSize(); i++) {
 							const auto& light = lightStore.uploadData.GetDense()[i];
@@ -525,11 +525,11 @@ namespace RavEngine {
 							mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
 							mainCommandBuffer->SetFragmentSampler(shadowSampler, 1);
 
-							mainCommandBuffer->SetFragmentTexture(target.diffuseTexture.get(), 2);
-							mainCommandBuffer->SetFragmentTexture(target.normalTexture.get(), 3);
-							mainCommandBuffer->SetFragmentTexture(target.depthStencil.get(), 4);
-							mainCommandBuffer->SetFragmentTexture(shadowTexture.get(), 5);
-							mainCommandBuffer->SetFragmentTexture(target.roughnessSpecularMetallicAOTexture.get(), 6);
+							mainCommandBuffer->SetFragmentTexture(target.diffuseTexture->GetDefaultView(), 2);
+							mainCommandBuffer->SetFragmentTexture(target.normalTexture->GetDefaultView(), 3);
+							mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 4);
+							mainCommandBuffer->SetFragmentTexture(shadowTexture->GetDefaultView(), 5);
+							mainCommandBuffer->SetFragmentTexture(target.roughnessSpecularMetallicAOTexture->GetDefaultView(), 6);
 
 							mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
 
@@ -551,11 +551,11 @@ namespace RavEngine {
 						mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
 						mainCommandBuffer->SetFragmentSampler(shadowSampler, 1);
 
-						mainCommandBuffer->SetFragmentTexture(target.diffuseTexture.get(), 2);
-						mainCommandBuffer->SetFragmentTexture(target.normalTexture.get(), 3);
-						mainCommandBuffer->SetFragmentTexture(target.depthStencil.get(), 4);
-						mainCommandBuffer->SetFragmentTexture(target.roughnessSpecularMetallicAOTexture.get(), 6);
-						mainCommandBuffer->SetFragmentTexture(shadowTexture.get(), 5);
+						mainCommandBuffer->SetFragmentTexture(target.diffuseTexture->GetDefaultView(), 2);
+						mainCommandBuffer->SetFragmentTexture(target.normalTexture->GetDefaultView(), 3);
+						mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 4);
+						mainCommandBuffer->SetFragmentTexture(target.roughnessSpecularMetallicAOTexture->GetDefaultView(), 6);
+						mainCommandBuffer->SetFragmentTexture(shadowTexture->GetDefaultView(), 5);
 
 						mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
 
@@ -685,7 +685,7 @@ namespace RavEngine {
 				mainCommandBuffer->SetVertexBytes(fbubo, 0);
 				mainCommandBuffer->SetFragmentBytes(fbubo, 0);
 				mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-				mainCommandBuffer->SetFragmentTexture(target.lightingTexture.get(), 1);
+				mainCommandBuffer->SetFragmentTexture(target.lightingTexture->GetDefaultView(), 1);
 				mainCommandBuffer->Draw(3);
 
 				// then do the skybox, if one is defined.
@@ -770,15 +770,15 @@ namespace RavEngine {
 			};
 
 			// deferred pass
-			deferredRenderPass->SetAttachmentTexture(0, target.diffuseTexture.get());
-			deferredRenderPass->SetAttachmentTexture(1, target.normalTexture.get());
-			deferredRenderPass->SetAttachmentTexture(2, target.roughnessSpecularMetallicAOTexture.get());;
-			deferredRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
+			deferredRenderPass->SetAttachmentTexture(0, target.diffuseTexture->GetDefaultView());
+			deferredRenderPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
+			deferredRenderPass->SetAttachmentTexture(2, target.roughnessSpecularMetallicAOTexture->GetDefaultView());;
+			deferredRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
-			deferredClearRenderPass->SetAttachmentTexture(0, target.diffuseTexture.get());
-			deferredClearRenderPass->SetAttachmentTexture(1, target.normalTexture.get());
-			deferredClearRenderPass->SetAttachmentTexture(2, target.roughnessSpecularMetallicAOTexture.get());
-			deferredClearRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
+			deferredClearRenderPass->SetAttachmentTexture(0, target.diffuseTexture->GetDefaultView());
+			deferredClearRenderPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
+			deferredClearRenderPass->SetAttachmentTexture(2, target.roughnessSpecularMetallicAOTexture->GetDefaultView());
+			deferredClearRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
 			mainCommandBuffer->BeginRenderDebugMarker("Deferred Pass");
 
@@ -791,13 +791,13 @@ namespace RavEngine {
 
 			// lighting pass
 			mainCommandBuffer->BeginRenderDebugMarker("Lighting Pass");
-			lightingRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
-			lightingRenderPass->SetAttachmentTexture(0, target.lightingTexture.get());
-			ambientLightRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
-			ambientLightRenderPass->SetAttachmentTexture(0, target.lightingTexture.get());
+			lightingRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+			lightingRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
+			ambientLightRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+			ambientLightRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
 
-			lightingClearRenderPass->SetAttachmentTexture(0, target.lightingTexture.get());
-			lightingClearRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
+			lightingClearRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
+			lightingClearRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 			mainCommandBuffer->BeginRendering(lightingClearRenderPass);	// clears the framebuffer
 			mainCommandBuffer->EndRendering();
 			for (const auto& camdata : view.camDatas) {
@@ -806,11 +806,11 @@ namespace RavEngine {
 			mainCommandBuffer->EndRenderDebugMarker();
 
 			// final render pass
-			finalRenderPass->SetAttachmentTexture(0, target.finalFramebuffer);
-			finalRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
+			finalRenderPass->SetAttachmentTexture(0, target.finalFramebuffer->GetDefaultView());
+			finalRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
-			finalClearRenderPass->SetAttachmentTexture(0, target.finalFramebuffer);
-			finalClearRenderPass->SetDepthAttachmentTexture(target.depthStencil.get());
+			finalClearRenderPass->SetAttachmentTexture(0, target.finalFramebuffer->GetDefaultView());
+			finalClearRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
 			mainCommandBuffer->BeginRenderDebugMarker("Forward Pass");
 

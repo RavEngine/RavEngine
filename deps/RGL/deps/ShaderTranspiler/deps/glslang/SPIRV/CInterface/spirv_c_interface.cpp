@@ -59,17 +59,17 @@ static EShLanguage c_shader_stage(glslang_stage_t stage)
         return EShLangFragment;
     case GLSLANG_STAGE_COMPUTE:
         return EShLangCompute;
-    case GLSLANG_STAGE_RAYGEN_NV:
+    case GLSLANG_STAGE_RAYGEN:
         return EShLangRayGen;
-    case GLSLANG_STAGE_INTERSECT_NV:
+    case GLSLANG_STAGE_INTERSECT:
         return EShLangIntersect;
-    case GLSLANG_STAGE_ANYHIT_NV:
+    case GLSLANG_STAGE_ANYHIT:
         return EShLangAnyHit;
-    case GLSLANG_STAGE_CLOSESTHIT_NV:
+    case GLSLANG_STAGE_CLOSESTHIT:
         return EShLangClosestHit;
-    case GLSLANG_STAGE_MISS_NV:
+    case GLSLANG_STAGE_MISS:
         return EShLangMiss;
-    case GLSLANG_STAGE_CALLABLE_NV:
+    case GLSLANG_STAGE_CALLABLE:
         return EShLangCallable;
     case GLSLANG_STAGE_TASK:
         return EShLangTask;
@@ -86,6 +86,8 @@ GLSLANG_EXPORT void glslang_program_SPIRV_generate(glslang_program_t* program, g
     glslang_spv_options_t spv_options;
     spv_options.generate_debug_info = false;
     spv_options.strip_debug_info = false;
+    spv_options.emit_nonsemantic_shader_debug_info = false;
+    spv_options.emit_nonsemantic_shader_debug_source = false;
     spv_options.disable_optimizer = true;
     spv_options.optimize_size = false;
     spv_options.disassemble = false;

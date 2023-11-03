@@ -30,6 +30,13 @@ TextureMTL::TextureMTL(const std::shared_ptr<DeviceMTL> owningDevice, const Text
     MTLStorageModeManaged;
 #endif
     texture = [owningDevice->device newTextureWithDescriptor:desc];
+    
+    //TODO: allocate all the mips
+    mipTextures.reserve(config.mipLevels - 1);
+    for(int i = 1; i < config.mipLevels; i++){
+        auto tex = [texture newTextureViewWithPixelFormat:format textureType:MTLTextureType2D levels:NSMakeRange(i, 1) slices:NSMakeRange(0, 1)];
+        mipTextures.push_back(tex);
+    }
 }
 
 Dimension TextureMTL::GetSize() const{
@@ -50,6 +57,17 @@ TextureMTL::TextureMTL(const std::shared_ptr<DeviceMTL> owningDevice, const Text
                 mipmapLevel:0
                   withBytes:data.data()
                 bytesPerRow:bytesPerRow];
+}
+
+TextureView TextureMTL::GetDefaultView() const{
+    return texture;
+}
+TextureView TextureMTL::GetViewForMip(uint32_t mip) const{
+    if (mip == 0){
+        return GetDefaultView();
+    }
+    
+    return mipTextures.at(mip-1);
 }
 
 }

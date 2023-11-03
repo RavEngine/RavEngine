@@ -47,8 +47,9 @@ struct BufferMTL;
         void SetVertexSampler(RGLSamplerPtr sampler, uint32_t index) final;
         void SetFragmentSampler(RGLSamplerPtr sampler, uint32_t index) final;
         
-        void SetVertexTexture(const ITexture* texture, uint32_t index) final;
-        void SetFragmentTexture(const ITexture* texture, uint32_t index) final;
+        void SetVertexTexture(const TextureView& texture, uint32_t index) final;
+        void SetFragmentTexture(const TextureView& texture, uint32_t index) final;
+        void SetComputeTexture(const TextureView& texture, uint32_t index) final;
 
         void Draw(uint32_t nVertices, const DrawInstancedConfig& = {}) final;
         void DrawIndexed(uint32_t nIndices, const DrawIndexedInstancedConfig& = {}) final;
@@ -56,7 +57,7 @@ struct BufferMTL;
         void SetViewport(const Viewport&) final;
         void SetScissor(const Rect&) final;
         
-        void CopyTextureToBuffer(RGL::ITexture* sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr desetBuffer) final;
+        void CopyTextureToBuffer(RGL::TextureView& sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr desetBuffer) final;
         void CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size) final;
 
         void Commit(const CommitConfig&) final;

@@ -2,23 +2,24 @@
 #include "WGSwapchain.hpp"
 #include "WGDevice.hpp"
 #include <emscripten/html5_webgpu.h>
+#include <emscripten/html5.h>
 #include "RGLCommon.hpp"
 
 namespace RGL{
-    WGPUSwapChain makeSwapchain(std::shared_ptr<SurfaceWG> surface, uint32_t width, uint32_t height, const std::shared_ptr<DeviceWG> owningDevice){
+    WGPUSwapChain SwapchainWG::makeSwapchain(uint32_t width, uint32_t height){
         WGPUSwapChainDescriptor swapChainDesc{
             .nextInChain = nullptr,
             .width = width,
             .height = height,
             .format = wgpuSurfaceGetPreferredFormat(surface->surface,owningDevice->adapter),
             .usage = WGPUTextureUsage_RenderAttachment,
-            .presentMode = WGPUPresentMode_Fifo,
+            .presentMode = vsync ? WGPUPresentMode_Fifo : WGPUPresentMode_Immediate,
         };
         return wgpuDeviceCreateSwapChain(owningDevice->device, surface->surface, &swapChainDesc);
     }
 
     SwapchainWG::SwapchainWG(decltype(surface) surface, uint32_t width, uint32_t height, const std::shared_ptr<DeviceWG> owningDevice) : surface(surface), owningDevice(owningDevice){
-        swapchain = makeSwapchain(surface, width, height, owningDevice);
+        swapchain = makeSwapchain(width, height);
         currentSize = {width, height};
     }
 
@@ -28,7 +29,7 @@ namespace RGL{
 
     void SwapchainWG::Resize(uint32_t width, uint32_t height){
         wgpuSwapChainRelease(swapchain);
-        swapchain = makeSwapchain(surface, width, height, owningDevice);
+        swapchain = makeSwapchain(width, height);
         currentSize = {width, height};
     }
 
@@ -46,7 +47,18 @@ namespace RGL{
     }
 
     void SwapchainWG::Present(const SwapchainPresentConfig&){
-        wgpuSwapChainPresent(swapchain);
+        #if __EMSCRIPTEN__
+            emscripten_request_animation_frame([](double time, void* userData){
+                return 0;
+            },nullptr);
+        #else
+            wgpuSwapChainPresent(swapchain);
+        #endif
+    }
+
+    void SwapchainWG::SetVsyncMode(bool mode){
+        vsync = mode;
+        Resize(currentSize.width, currentSize.height);
     }
 }
 

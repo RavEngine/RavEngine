@@ -6,6 +6,24 @@
 
 namespace RGL{
 
+    WGPUVertexFormat rgl2wgvx(VertexAttributeFormat format){
+        switch(format){
+            case decltype(format)::Undefined:
+                FatalError("'Undefined' verted format passed");
+                break;
+            case decltype(format)::R32_Uint:
+                return WGPUVertexFormat_Uint32;
+            case decltype(format)::R32G32_SignedFloat:
+                return WGPUVertexFormat_Float32x2;
+            case decltype(format)::R32G32B32_SignedFloat:
+                return WGPUVertexFormat_Float32x3;
+            case decltype(format)::R32G32B32A32_SignedFloat:
+                return WGPUVertexFormat_Float32x4;
+            default:
+                FatalError("Format is not implemented");
+        }
+    }
+
 RenderPipelineWG::RenderPipelineWG(decltype(owningDevice) owningDevice, const RenderPipelineDescriptor& desc) : owningDevice(owningDevice){
     WGPURenderPipelineDescriptor pipelineDesc{};
     pipelineDesc.nextInChain = nullptr;
@@ -25,7 +43,39 @@ RenderPipelineWG::RenderPipelineWG(decltype(owningDevice) owningDevice, const Re
         }
     }
 
-    //TODO: vertex bindings
+    // binding to stepmode
+    struct VertexBufferLayoutData{
+        WGPUVertexBufferLayout layout;
+        std::vector<WGPUVertexAttribute> attributes;
+    };
+    std::unordered_map<uint32_t, VertexBufferLayoutData> vertexLayouts;
+    {
+        for(const auto& binding : desc.vertexConfig.vertexBindings){
+            auto& entry = vertexLayouts[binding.binding];
+            entry.layout.stepMode = binding.inputRate == RGL::InputRate::Instance ? WGPUVertexStepMode_Instance : WGPUVertexStepMode_Vertex;
+            entry.layout.arrayStride = binding.stride;
+        }
+    }
+
+    for(const auto& attribute : desc.vertexConfig.attributeDescs){
+        auto& entry = vertexLayouts.at(attribute.binding);
+        WGPUVertexAttribute attr;
+        attr.offset = attribute.offset;
+        attr.shaderLocation = attribute.location;
+        attr.format = rgl2wgvx(attribute.format);
+
+        entry.attributes.push_back(attr);
+
+    }
+    // finalize attribute structure
+    std::vector<WGPUVertexBufferLayout> vertexLayoutsLinear;
+    for(auto& [binding, entry]: vertexLayouts){
+        entry.layout.attributeCount = entry.attributes.size();
+        entry.layout.attributes = entry.attributes.data();
+        vertexLayoutsLinear.push_back(entry.layout);        // copy into linear for webgpu
+    }
+    
+
 
     std::array<WGPUColorTargetState,16> colorTargetState;
 
@@ -58,9 +108,14 @@ RenderPipelineWG::RenderPipelineWG(decltype(owningDevice) owningDevice, const Re
     pipelineDesc.fragment = &fragmentState;
     pipelineDesc.vertex = {
         .module = vertFunc, 
-        .entryPoint = "main"
+        .entryPoint = "main",
+        .bufferCount = vertexLayoutsLinear.size(),
+        .buffers = vertexLayoutsLinear.data()
     };
 
+    pipelineDesc.multisample = {
+        .count = 1              // TODO: support multisample
+    };
 
     renderPipeline = wgpuDeviceCreateRenderPipeline(owningDevice->device, &pipelineDesc);
 }

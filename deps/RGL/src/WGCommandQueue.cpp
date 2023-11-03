@@ -1,5 +1,6 @@
 #if RGL_WEBGPU_AVAILABLE
 #include "WGCommandQueue.hpp"
+#include "WGCommandBuffer.hpp"
 #include "WGDevice.hpp"
 #include <iostream>
 
@@ -9,7 +10,7 @@ namespace RGL{
     }
 
     RGLCommandBufferPtr CommandQueueWG::CreateCommandBuffer(){
-        return nullptr;
+        return std::make_shared<CommandBufferWG>(shared_from_this());
     }
 
     QueueData CommandQueueWG::GetQueueData(){

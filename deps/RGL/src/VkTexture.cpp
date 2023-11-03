@@ -100,9 +100,9 @@ namespace RGL {
 		barrier.image = image;
 		barrier.subresourceRange.aspectMask = createdAspect;
 		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = 1;
+		barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
 		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = 1;
+		barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
 		barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -195,32 +195,51 @@ namespace RGL {
 		VmaAllocationInfo allocInfo;
 		VK_CHECK(vmaCreateImage(owningDevice->vkallocator, &imageInfo, &allocCreateInfo, &vkImage, &alloc, &allocInfo));	// also binds memory
 
-		VkImageViewCreateInfo createInfo{
-		.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-		.image = vkImage,
-		.viewType = VK_IMAGE_VIEW_TYPE_2D,
-		.format = format,
-		.components{
-			.r = VK_COMPONENT_SWIZZLE_IDENTITY, // we don't want any swizzling
-			.g = VK_COMPONENT_SWIZZLE_IDENTITY,
-			.b = VK_COMPONENT_SWIZZLE_IDENTITY,
-			.a = VK_COMPONENT_SWIZZLE_IDENTITY
-	},
-		.subresourceRange{
-			.aspectMask = rgl2vkAspectFlags(config.aspect),    // mipmap and layer info (we don't want any here)
-			.baseMipLevel = 0,
-			.levelCount = 1,
-			.baseArrayLayer = 0,
-			.layerCount = 1
-		}
+		auto makeImageViewCreateInfo = [this,&config](uint32_t miplevel, uint32_t levelCount = 1){
+
+			return VkImageViewCreateInfo{
+			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+			.image = vkImage,
+			.viewType = VK_IMAGE_VIEW_TYPE_2D,
+			.format = format,
+			.components{
+				.r = VK_COMPONENT_SWIZZLE_IDENTITY, // we don't want any swizzling
+				.g = VK_COMPONENT_SWIZZLE_IDENTITY,
+				.b = VK_COMPONENT_SWIZZLE_IDENTITY,
+				.a = VK_COMPONENT_SWIZZLE_IDENTITY
+			},
+			.subresourceRange{
+				.aspectMask = rgl2vkAspectFlags(config.aspect),    // mipmap and layer info (we don't want any here)
+				.baseMipLevel = miplevel,
+				.levelCount = levelCount,
+				.baseArrayLayer = 0,
+				.layerCount = 1
+			}
+			};
 			
 		};
+		auto createInfo = makeImageViewCreateInfo(0, VK_REMAINING_MIP_LEVELS);
 		VK_CHECK(vkCreateImageView(owningDevice->device, &createInfo, nullptr, &vkImageView));
+
+		mipViews.reserve(config.mipLevels);
+		Dimension dim = this->size;
+		for (int i = 0; i < config.mipLevels; i++) {
+			auto view = makeImageViewCreateInfo(i);
+			VkImageView mipView;
+			dim.width /= 2;
+			dim.height /= 2;
+			VK_CHECK(vkCreateImageView(owningDevice->device, &view, nullptr, &mipView));
+			mipViews.push_back(TextureView{this, mipView, dim});
+		}
+
 		createdAspectVk = rgl2vkAspectFlags(config.aspect);
 
 		if (config.debugName) {
 			owningDevice->SetDebugNameForResource(vkImage, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, config.debugName);
 			owningDevice->SetDebugNameForResource(vkImageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, config.debugName);
+			for (int i = 0; i < mipViews.size(); i++) {
+				owningDevice->SetDebugNameForResource(mipViews[i].texture.vk, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, config.debugName);
+			}
 		}
 
 		if (createdConfig.usage.ColorAttachment) {
@@ -245,9 +264,25 @@ namespace RGL {
 		if (owning) {
 			vkDestroyImage(owningDevice->device, vkImage, nullptr);
 			vkDestroyImageView(owningDevice->device, vkImageView, nullptr);
+
+			for (const auto view : mipViews) {
+				vkDestroyImageView(owningDevice->device, view.texture.vk, nullptr);
+			}
+			mipViews.clear();
 			vmaFreeMemory(owningDevice->vkallocator, alloc);
 			alloc = VK_NULL_HANDLE;
 		}
+	}
+	TextureView TextureVk::GetDefaultView() const
+	{
+		TextureView view{this, vkImageView, size};
+		view.parent = this;
+		view.texture.vk = vkImageView;
+		return view;
+	}
+	TextureView TextureVk::GetViewForMip(uint32_t mip) const
+	{
+		return mipViews.at(mip);
 	}
 }
 

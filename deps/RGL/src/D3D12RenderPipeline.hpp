@@ -21,9 +21,13 @@ namespace RGL {
 			bool isUAV;
 		};
 
-		std::unordered_map<uint32_t, bufferBindInfo>	bufferBindingToRootSlot;
-		std::unordered_map<uint32_t, uint32_t> samplerBindingtoRootSlot,
-			textureBindingToRootSlot;
+		struct textureBindInfo {
+			uint32_t slot;
+			bool isUAV;
+		};
+		std::unordered_map<uint32_t, bufferBindInfo> bufferBindingToRootSlot;
+		std::unordered_map<uint32_t, textureBindInfo> textureBindingToRootSlot;
+		std::unordered_map < uint32_t, uint32_t> samplerBindingtoRootSlot;
 
 		auto slotForBufferIdx(uint32_t bindingPos) {
 			return bufferBindingToRootSlot.at(bindingPos).slot;

@@ -19,12 +19,21 @@ option(RGL_DISABLE_VK "Force-disable the Vulkan backend" OFF)
 option(RGL_USE_MINIVKSDK "Use MiniVulkanSDK instead of the installed Vulkan SDK" OFF)
 option(RGL_DISABLE_DX "Force-disable the D3D12 backend" OFF)
 option(RGL_DISABLE_WEBGPU "Force-disable the WebGPU backend" OFF)
+option(RGL_ENABLE_WEBGPU "Force-enable the WebGPU backend" OFF)
 option(RGL_RUNTIME_COMPILATION "Enable runtime shader compilation" OFF)
+option(RGL_IDE_ROOT "IDE parent folder for targets" "RGL")
+if (NOT RGL_IDE_ROOT)
+	set(RGL_IDE_ROOT "RGL") # CMake sets this to "OFF" for some insane reason
+endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND NOT RGL_DISABLE_WEBGPU )
-	set(RGL_WEBGPU_ENABLED ON)
+	set(RGL_WEBGPU_AVAILABLE ON CACHE INTERNAL "RGL WebGPU")
 else()
-	set(RGL_WEBGPU_ENABLED OFF)
+	set(RGL_WEBGPU_AVAILABLE OFF CACHE INTERNAL "RGL WebGPU")
+endif()
+
+if (RGL_ENABLE_WEBGPU)
+	set(RGL_WEBGPU_AVAILABLE ON CACHE INTERNAL "RGL WebGPU")
 endif()
 
 if (RGL_RUNTIME_COMPILATION)
@@ -51,11 +60,10 @@ if (APPLE)
 endif()
 
 # setup compiler
-set(ST_BUNDLED_DXC OFF CACHE INTERNAL "")
-if (NOT RGL_WEBGPU_ENABLED)
-	set(ST_ENABLE_WGSL OFF CACHE INTERNAL "")
-else()
+if (RGL_WEBGPU_AVAILABLE)
 	set(ST_ENABLE_WGSL ON CACHE INTERNAL "")
+else()
+	set(ST_ENABLE_WGSL OFF CACHE INTERNAL "")
 endif()
 add_subdirectory(deps/ShaderTranspiler EXCLUDE_FROM_ALL)
 file(GLOB_RECURSE LIBRGLC_SOURCES "tools/librglc/*.cpp" "tools/librglc/*.hpp")
@@ -126,7 +134,7 @@ if(MSVC AND NOT RGL_DISABLE_DX)
 	add_subdirectory("deps/DirectXTK12" EXCLUDE_FROM_ALL)
 
 	set_target_properties("DirectX-Guids"  "DirectXTK12"  PROPERTIES 
-		FOLDER "RGL/Libraries"
+		FOLDER "${RGL_IDE_ROOT}/Libraries"
 	)
 	target_include_directories(${PROJECT_NAME} PUBLIC "deps/DirectXTK12/Inc")
 else()
@@ -194,54 +202,64 @@ target_include_directories(${PROJECT_NAME}
 )
 
 set_target_properties("RGL" ${rglc_exe} "librglc" PROPERTIES 
-	FOLDER "RGL"
+	FOLDER "${RGL_IDE_ROOT}"
 	XCODE_GENERATE_SCHEME ON
 )
-
-if (RGL_WEBGPU_ENABLED)
-set_target_properties("SPIRV-Reflect" "ShaderTranspiler" "libtint" "tint_diagnostic_utils" PROPERTIES 
-	FOLDER "RGL/Libraries"
+set_target_properties("SPIRV-Reflect" "ShaderTranspiler" PROPERTIES 
+	FOLDER "${RGL_IDE_ROOT}/Libraries"
+)
+if (RGL_WEBGPU_AVAILABLE)
+set_target_properties("libtint" "tint_diagnostic_utils" PROPERTIES 
+	FOLDER "${RGL_IDE_ROOT}/Libraries"
 )
 endif()
 
 set_target_properties("GenericCodeGen" "glslang" "MachineIndependent" "OGLCompiler" "OSDependent" "SPIRV" PROPERTIES 
-	FOLDER "RGL/Libraries/glslang"
+	FOLDER "${RGL_IDE_ROOT}/Libraries/glslang"
 )
 
 
 set_target_properties(
 	"SPIRV-Tools-opt" "SPIRV-Tools-reduce" "SPIRV-Tools-static"
 	PROPERTIES 
-	FOLDER "RGL/Libraries/SPIRV-Tools Libraries"
+	FOLDER "${RGL_IDE_ROOT}/Libraries/SPIRV-Tools Libraries"
 )
 
 set_target_properties(
 	"spirv-cross-core"
 	"spirv-cross-glsl" "spirv-cross-hlsl" "spirv-cross-msl" "spirv-cross-reflect"
 	PROPERTIES 
-	FOLDER "RGL/Libraries/SPIRV-Cross"
+	FOLDER "${RGL_IDE_ROOT}/Libraries/SPIRV-Cross"
 )
+
 if(ST_BUNDLED_DXC)
-set_target_properties(
-	"DxcDisassembler" "DxcOptimizer" "DxilConstants" "DxilDocs" "DxilInstructions" "DxilIntrinsicTables"
-	"DxilMetadata" "DxilOperations" "DxilPIXPasses" "DxilShaderModel" "DxilShaderModelInc" "DxilSigPoint"
-	"DxilValidation" "DxilValidationInc" "HCTGen" "HLSLIntrinsicOp" "HLSLOptions" "RDAT_LibraryTypes"
-	PROPERTIES 
-	FOLDER "RGL/Libraries/DirectXShaderCompiler"
-)
+	function(dxc_set_for_dir DIR)
+		get_property(TGTS DIRECTORY "${DIR}" PROPERTY BUILDSYSTEM_TARGETS)
+		set_target_properties(
+			${TGTS}
+			PROPERTIES 
+			FOLDER "${RGL_IDE_ROOT}/Libraries/DirectXShaderCompiler"
+		)
+
+		get_property(SUBDIRS DIRECTORY "${DIR}" PROPERTY SUBDIRECTORIES)
+		foreach(SUBDIR IN LISTS SUBDIRS)
+			dxc_set_for_dir("${SUBDIR}")
+		endforeach()
+	endfunction()
+	dxc_set_for_dir("${CMAKE_CURRENT_LIST_DIR}/deps/ShaderTranspiler/deps/DirectXShaderCompiler")
 endif()
 
 if (RGL_VK_AVAILABLE)
-	set_target_properties(VulkanMemoryAllocator PROPERTIES FOLDER "RGL/Libraries")
+	set_target_properties(VulkanMemoryAllocator PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
 	if (TARGET loader-opt)
-		set_target_properties(loader-opt loader-unknown-chain PROPERTIES FOLDER "RGL/Libraries")
+		set_target_properties(loader-opt loader-unknown-chain PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
 	endif()
 	if(RGL_USE_MINIVKSDK)
-		set_target_properties(vulkan vvl VkLayer_utils loader_asm_gen_files PROPERTIES FOLDER "RGL/Libraries")
+		set_target_properties(vulkan vvl VkLayer_utils loader_asm_gen_files PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
 	endif()
 endif()
 if (RGL_DX12_AVAILABLE)
-	set_target_properties(D3D12MemoryAllocator PROPERTIES FOLDER "RGL/Libraries")
+	set_target_properties(D3D12MemoryAllocator PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
 endif()
 
 

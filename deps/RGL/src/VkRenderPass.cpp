@@ -6,7 +6,7 @@
 namespace RGL{
 
 
-    RenderPassVk::RenderPassVk(const RenderPassConfig& config) : config(config), textures{config.attachments.size(), nullptr} {
+    RenderPassVk::RenderPassVk(const RenderPassConfig& config) : config(config), textures{config.attachments.size()} {
        
     }
 
@@ -15,19 +15,19 @@ namespace RGL{
       
 	}
 
-    void RenderPassVk::SetAttachmentTexture(uint32_t index, ITexture* texture)
+    void RenderPassVk::SetAttachmentTexture(uint32_t index, const TextureView& texture)
     {
-        textures.at(index) = static_cast<TextureVk*>(texture);
+        textures.at(index) = texture;
     }
 
-    void RenderPassVk::SetDepthAttachmentTexture(ITexture* texture)
+    void RenderPassVk::SetDepthAttachmentTexture(const TextureView& texture)
     {
-        depthTexture = static_cast<TextureVk*>(texture);
+        depthTexture = texture;
     }
 
-    void RenderPassVk::SetStencilAttachmentTexture(ITexture* texture)
+    void RenderPassVk::SetStencilAttachmentTexture(const TextureView& texture)
     {
-        stencilTexture = static_cast<TextureVk*>(texture);
+        stencilTexture = texture;
     }
 
 }

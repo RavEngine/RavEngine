@@ -102,7 +102,7 @@ namespace RGL {
 		resourceDesc.SampleDesc.Count = 1;
 		resourceDesc.SampleDesc.Quality = 0;
 		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-		resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		resourceDesc.Flags = config.usage.Storage ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
 
 
 		D3D12_CLEAR_VALUE optimizedClearValue = {
@@ -151,6 +151,8 @@ namespace RGL {
 	void TextureD3D12::PlaceInHeaps(const std::shared_ptr<RGL::DeviceD3D12>& owningDevice, DXGI_FORMAT format, const RGL::TextureConfig& config)
 	{
 		const bool isDS = (config.aspect.HasDepth || config.aspect.HasStencil);
+		mipHeapIndicesSRV.reserve(config.mipLevels - 1);
+		mipHeapIndicesUAV.reserve(config.mipLevels - 1);
 
 		if (isDS) {
 			dsvIDX = owningDevice->DSVHeap->AllocateSingle();
@@ -175,16 +177,71 @@ namespace RGL {
 				// we need to change the format again because depth formats are not allowed for use in SRVs
 				format = typelessForSRV(format);
 			}
-			srvIDX = owningDevice->CBV_SRV_UAVHeap->AllocateSingle();
-			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srvDesc.Format = format;
-			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-			srvDesc.Texture2D.MipLevels = config.mipLevels;
+			auto createSRV = [owningDevice,&format,this](UINT& outSRV, UINT mip) {
+				outSRV = owningDevice->CBV_SRV_UAVHeap->AllocateSingle();
+				D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+				srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+				srvDesc.Format = format;
+				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+				srvDesc.Texture2D.MipLevels = -1;	// all levels
+				srvDesc.Texture2D.MostDetailedMip = 0;
 
-			auto handle = owningDevice->CBV_SRV_UAVHeap->GetCpuHandle(srvIDX);
-			owningDevice->device->CreateShaderResourceView(texture.Get(), &srvDesc, handle);
+				auto handle = owningDevice->CBV_SRV_UAVHeap->GetCpuHandle(outSRV);
+				owningDevice->device->CreateShaderResourceView(texture.Get(), &srvDesc, handle);
+			};
+			createSRV(srvIDX, 0);
+			for (UINT i = 1; i < config.mipLevels; i++) {
+				auto& handle = mipHeapIndicesSRV.emplace_back();
+				createSRV(handle, i);
+			}
 		}
+		if (config.usage.Storage) {
+			auto createUAV = [&format,owningDevice, this](UINT& outHandle, UINT mip) {
+				outHandle = owningDevice->CBV_SRV_UAVHeap->AllocateSingle();
+				D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {
+					.Format = format,
+					.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D,
+					.Texture2D = {
+						.MipSlice = mip,
+						.PlaneSlice = 0
+					}
+				};
+				auto handle = owningDevice->CBV_SRV_UAVHeap->GetCpuHandle(outHandle);
+				owningDevice->device->CreateUnorderedAccessView(texture.Get(), nullptr, &uavDesc, handle);
+			};
+			createUAV(uavIDX, 0);
+			for (UINT i = 1; i < config.mipLevels; i++) {
+				auto& handle = mipHeapIndicesUAV.emplace_back();
+				createUAV(handle, i);
+			}
+		}
+	}
+	TextureView TextureD3D12::GetDefaultView() const
+	{
+		return TextureView{ {
+			.dsvIDX = dsvIDX,
+			.rtvIDX = rtvIDX,
+			.srvIDX = srvIDX,
+			.uavIDX = uavIDX,
+			.parentResource = this
+		}};
+	}
+	TextureView TextureD3D12::GetViewForMip(uint32_t mip) const
+	{
+		if (mip == 0) {
+			return GetDefaultView();
+		}
+
+		bool hasSRV = mip <= mipHeapIndicesSRV.size();
+		bool hasUAV = mip <= mipHeapIndicesUAV.size();
+
+		return TextureView{ {
+			.dsvIDX = dsvIDX,
+			.rtvIDX = rtvIDX,
+			.srvIDX = hasSRV ? mipHeapIndicesSRV.at(mip-1) : unallocated,
+			.uavIDX = hasUAV ? mipHeapIndicesUAV.at(mip-1) : unallocated,
+			.parentResource = this
+		} };
 	}
 	Dimension TextureD3D12::GetSize() const
 	{
@@ -208,6 +265,15 @@ namespace RGL {
 		if (dsvAllocated()) {
 			owningDevice->DSVHeap->DeallocateSingle(dsvIDX);
 			dsvIDX = unallocated;
+		}
+		if (uavAllocated()) {
+			owningDevice->CBV_SRV_UAVHeap->DeallocateSingle(uavIDX);
+		}
+		for (const auto handle : mipHeapIndicesSRV) {
+			owningDevice->CBV_SRV_UAVHeap->DeallocateSingle(handle);
+		}
+		for (const auto handle : mipHeapIndicesUAV) {
+			owningDevice->CBV_SRV_UAVHeap->DeallocateSingle(handle);
 		}
 	}
 }

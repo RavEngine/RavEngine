@@ -40,14 +40,22 @@ void RGL::SwapchainVK::Resize(uint32_t width, uint32_t height)
         //otherwise hope the first one is good enough
         return availableFormats[0];
     };
-    constexpr auto chooseSwapPresentMode = [](const std::vector<VkPresentModeKHR>& availablePresentModes) -> VkPresentModeKHR {
-        for (const auto& availablePresentMode : availablePresentModes) {
-            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-                return availablePresentMode;    // use Mailbox on high-perf devices
+    auto chooseSwapPresentMode = [this](const std::vector<VkPresentModeKHR>& availablePresentModes) -> VkPresentModeKHR {
+        if (vsync) {
+            // disabling this because apparently VK_PRESENT_MODE_MAILBOX_KHR is uncapped on some OS/driver combos
+#if 0
+            for (const auto& availablePresentMode : availablePresentModes) {
+                if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+                    return availablePresentMode;    // use Mailbox on high-perf devices
+                }
             }
-        }
+#endif
 
-        return VK_PRESENT_MODE_FIFO_KHR;        // otherwise use FIFO when on low-power devices, like a mobile phone
+            return VK_PRESENT_MODE_FIFO_KHR;        // otherwise use FIFO when on low-power devices, like a mobile phone
+        }
+        else {
+            return VK_PRESENT_MODE_IMMEDIATE_KHR;
+        }
     };
     auto chooseSwapExtent = [width,height](const VkSurfaceCapabilitiesKHR& capabilities) ->VkExtent2D {
         if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
@@ -179,6 +187,14 @@ void RGL::SwapchainVK::Present(const SwapchainPresentConfig& config)
     else if (result != VK_SUCCESS) {
         FatalError("Failed to present swapchain image");
     }
+}
+
+void RGL::SwapchainVK::SetVsyncMode(bool mode)
+{
+    vsync = mode;
+    auto size = RGLTextureResources[0].GetSize();
+    // re-create with the new queue present mode
+    Resize(size.width, size.height);
 }
 
 

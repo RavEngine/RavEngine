@@ -305,7 +305,7 @@ typedef struct {
 
 //
 // ShHandle held by but opaque to the driver.  It is allocated,
-// managed, and de-allocated by the compiler/linker. It's contents
+// managed, and de-allocated by the compiler/linker. Its contents
 // are defined by and used by the compiler and linker.  For example,
 // symbol table information and object code passed from the compiler
 // to the linker can be stored where ShHandle points.
@@ -476,6 +476,7 @@ public:
     GLSLANG_EXPORT void addProcesses(const std::vector<std::string>&);
     GLSLANG_EXPORT void setUniqueId(unsigned long long id);
     GLSLANG_EXPORT void setOverrideVersion(int version);
+    GLSLANG_EXPORT void setDebugInfo(bool debugInfo);
 
     // IO resolver binding data: see comments in ShaderLang.cpp
     GLSLANG_EXPORT void setShiftBinding(TResourceType res, unsigned int base);
@@ -529,7 +530,7 @@ public:
     //                 See the definitions of TEnvironment, EShSource, EShLanguage,
     //                 and EShClient for choices and more detail.
     //
-    // setEnvClient:   The client that will be hosting the execution, and it's version.
+    // setEnvClient:   The client that will be hosting the execution, and its version.
     //                 Note 'version' is not the version of the languages involved, but
     //                 the version of the client environment.
     //                 Use EShClientNone and version of 0 if there is no client, e.g.
@@ -571,6 +572,9 @@ public:
 
     void setEnvInputVulkanRulesRelaxed() { environment.input.vulkanRulesRelaxed = true; }
     bool getEnvInputVulkanRulesRelaxed() const { return environment.input.vulkanRulesRelaxed; }
+
+    void setCompileOnly() { compileOnly = true; }
+    bool getCompileOnly() const { return compileOnly; }
 
     // Interface to #include handlers.
     //
@@ -721,13 +725,14 @@ protected:
 
     TEnvironment environment;
 
+    // Indicates this shader is meant to be used without linking
+    bool compileOnly = false;
+
     friend class TProgram;
 
 private:
     TShader& operator=(TShader&);
 };
-
-#if !defined(GLSLANG_WEB) && !defined(GLSLANG_ANGLE)
 
 //
 // A reflection database and its interface, consistent with the OpenGL API reflection queries.
@@ -845,8 +850,6 @@ public:
     virtual void addStage(EShLanguage stage, TIntermediate& stageIntermediate) = 0;
 };
 
-#endif // !GLSLANG_WEB && !GLSLANG_ANGLE
-
 // Make one TProgram per set of shaders that will get linked together.  Add all
 // the shaders that are to be linked together.  After calling shader.parse()
 // for all shaders, call link().
@@ -865,8 +868,6 @@ public:
     GLSLANG_EXPORT const char* getInfoDebugLog();
 
     TIntermediate* getIntermediate(EShLanguage stage) const { return intermediate[stage]; }
-
-#if !defined(GLSLANG_WEB) && !defined(GLSLANG_ANGLE)
 
     // Reflection Interface
 
@@ -960,7 +961,6 @@ public:
     // If resolver is not provided it uses the previous approach
     // and respects auto assignment and offsets.
     GLSLANG_EXPORT bool mapIO(TIoMapResolver* pResolver = nullptr, TIoMapper* pIoMapper = nullptr);
-#endif // !GLSLANG_WEB && !GLSLANG_ANGLE
 
 protected:
     GLSLANG_EXPORT bool linkStage(EShLanguage, EShMessages);
@@ -971,9 +971,7 @@ protected:
     TIntermediate* intermediate[EShLangCount];
     bool newedIntermediate[EShLangCount];      // track which intermediate were "new" versus reusing a singleton unit in a stage
     TInfoSink* infoSink;
-#if !defined(GLSLANG_WEB) && !defined(GLSLANG_ANGLE)
     TReflection* reflection;
-#endif
     bool linked;
 
 private:

@@ -46,6 +46,9 @@ APPLE_API_TYPE(MTLTextureUsage) rgl2mtlTextureUsage(RGL::TextureUsage usage){
     if (usage.ColorAttachment || usage.DepthStencilAttachment){
         ret |= MTLTextureUsageRenderTarget;
     }
+    if (usage.Storage){
+        ret |= MTLTextureUsageShaderWrite;
+    }
     return ret;
 }
 

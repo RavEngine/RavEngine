@@ -134,7 +134,7 @@ void RenderEngine::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* 
 	mainCommandBuffer->SetIndexBuffer(ibuf);
 	mainCommandBuffer->SetVertexBytes(drawmat, 0);
 	mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-	mainCommandBuffer->SetFragmentTexture(tx.get(), 1);
+	mainCommandBuffer->SetFragmentTexture(tx->GetDefaultView(), 1);
 	mainCommandBuffer->DrawIndexed(num_indices);
 
 	// trash buffers
@@ -189,7 +189,7 @@ void RenderEngine::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, 
 	mainCommandBuffer->SetIndexBuffer(cgs->ib);
 	mainCommandBuffer->SetVertexBytes(drawmat, 0);
 	mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-	mainCommandBuffer->SetFragmentTexture(tx.get(), 1);
+	mainCommandBuffer->SetFragmentTexture(tx->GetDefaultView(), 1);
 	mainCommandBuffer->DrawIndexed(cgs->nindices);
 
 	//don't delete here, RML will tell us when to delete cgs

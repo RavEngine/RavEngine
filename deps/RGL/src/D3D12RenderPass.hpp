@@ -2,6 +2,7 @@
 #define NOMINMAX
 #include <RGL/RenderPass.hpp>
 #include <vector>
+#include <RGL/Texture.hpp>
 
 namespace RGL {
 	struct TextureD3D12;
@@ -12,13 +13,13 @@ namespace RGL {
 		RenderPassD3D12(const RenderPassConfig& config);
 
 
-		std::vector<TextureD3D12*> textures;
+		std::vector<TextureView> textures;
 
-		TextureD3D12* depthTexture = nullptr;
-		TextureD3D12* stencilTexture = nullptr;
+		std::optional<TextureView> depthTexture;
+		std::optional <TextureView> stencilTexture;
 
-		void SetAttachmentTexture(uint32_t index, ITexture* texture) final;
-		void SetDepthAttachmentTexture(ITexture* texture) final;
-		void SetStencilAttachmentTexture(ITexture* texture) final;
+		void SetAttachmentTexture(uint32_t index, const TextureView& texture) final;
+		void SetDepthAttachmentTexture(const TextureView& texture) final;
+		void SetStencilAttachmentTexture(const TextureView& texture) final;
 	};
 }

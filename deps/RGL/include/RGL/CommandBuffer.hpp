@@ -84,6 +84,8 @@ namespace RGL {
 		bool Compute : 1 = false;
 	};
 
+struct TextureView;
+
 	struct ICommandBuffer {
 		// clear the command buffer, to encode new commands
 		virtual void Reset() = 0;
@@ -113,8 +115,9 @@ namespace RGL {
         virtual void SetVertexSampler(RGLSamplerPtr sampler, uint32_t index) = 0;
         virtual void SetFragmentSampler(RGLSamplerPtr sampler, uint32_t index) = 0;
         
-        virtual void SetVertexTexture(const ITexture* texture, uint32_t index) = 0;
-        virtual void SetFragmentTexture(const ITexture* texture, uint32_t index) = 0;
+        virtual void SetVertexTexture(const TextureView& texture, uint32_t index) = 0;
+        virtual void SetFragmentTexture(const TextureView& texture, uint32_t index) = 0;
+        virtual void SetComputeTexture(const TextureView& texture, uint32_t index) = 0;
         
         virtual void Draw(uint32_t nVertices, const DrawInstancedConfig& = {}) = 0;
         virtual void DrawIndexed(uint32_t nIndices, const DrawIndexedInstancedConfig& = {}) = 0;
@@ -122,7 +125,7 @@ namespace RGL {
 		virtual void SetViewport(const Viewport&) = 0;
 		virtual void SetScissor(const Rect&) = 0;
 
-		virtual void CopyTextureToBuffer(RGL::ITexture* sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr desetBuffer) = 0;
+		virtual void CopyTextureToBuffer(TextureView& sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr desetBuffer) = 0;
 
 		struct BufferCopyConfig {
 			RGLBufferPtr buffer;

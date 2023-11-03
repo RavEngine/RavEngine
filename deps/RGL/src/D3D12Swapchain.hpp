@@ -23,7 +23,6 @@ namespace RGL {
 		D3D12DynamicDescriptorHeap::index_t rtvIndices[g_NumFrames];
 
 		bool tearingSupported = false;
-		bool vsync = true;
 		bool initialized = false;
 
 		SwapchainD3D12(decltype(owningDevice), std::shared_ptr<SurfaceD3D12>, int width, int height, std::shared_ptr<CommandQueueD3D12> presentQueue);
@@ -37,6 +36,9 @@ namespace RGL {
 		void GetNextImage(uint32_t* index) final;
 		ITexture* ImageAtIndex(uint32_t index) final;
 		void Present(const SwapchainPresentConfig&) final;
+		void SetVsyncMode(bool mode) final;
 		virtual ~SwapchainD3D12();
+	private:
+		bool vsync = true;
 	};
 }

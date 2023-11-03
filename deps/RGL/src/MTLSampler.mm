@@ -28,10 +28,30 @@ MTLSamplerBorderColor rgl2mtlsamplerbordercolor(const float color[4]){
     return MTLSamplerBorderColorOpaqueWhite;
 }
 
+MTLSamplerMinMagFilter rgl2mtlminmag(MinMagFilterMode mode){
+    switch(mode){
+        case decltype(mode)::Nearest: return MTLSamplerMinMagFilterNearest;
+        case decltype(mode)::Linear: return MTLSamplerMinMagFilterLinear;
+        default:
+            FatalError("Unsupported minmagfilter mode");
+    }
+}
+
+MTLSamplerMipFilter rgl2mtlmip(MipFilterMode mode){
+    switch(mode){
+        case decltype(mode)::NotMipped: return MTLSamplerMipFilterNotMipmapped;
+        case decltype(mode)::Nearest: return MTLSamplerMipFilterNearest;
+        case decltype(mode)::Linear: return MTLSamplerMipFilterLinear;
+        default:
+            FatalError("Unsupported minmagfilter mode");
+    }
+}
+
 SamplerMTL::SamplerMTL(decltype(owningDevice) owningDevice, const SamplerConfig& config) : owningDevice(owningDevice){
     MTLSamplerDescriptor *samplerDescriptor = [MTLSamplerDescriptor new];
-    samplerDescriptor.minFilter = MTLSamplerMinMagFilterNearest;
-    samplerDescriptor.magFilter = MTLSamplerMinMagFilterLinear;
+    samplerDescriptor.minFilter = rgl2mtlminmag(config.minFilter);
+    samplerDescriptor.magFilter = rgl2mtlminmag(config.magFilter);
+    samplerDescriptor.mipFilter = rgl2mtlmip(config.mipFilter);
     samplerDescriptor.sAddressMode = rgl2mtladdressmode(config.addressModeU);
     samplerDescriptor.tAddressMode = rgl2mtladdressmode(config.addressModeV);
     samplerDescriptor.rAddressMode = rgl2mtladdressmode(config.addressModeW);

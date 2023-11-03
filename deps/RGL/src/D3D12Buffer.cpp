@@ -47,12 +47,8 @@ namespace RGL {
         auto resourceDescriptor = CD3DX12_RESOURCE_DESC::Buffer(size_bytes, isWritable ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE);
 
         // decide the heap type
-        if (config.options.ReadbackTarget) {
-            // readback requires D3D12_RESOURCE_STATE_COPY_DEST and cannot be transitioned away from this state
-            heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
-            nativeState = D3D12_RESOURCE_STATE_COPY_DEST;
-        }
-        else if (config.access == RGL::BufferAccess::Shared) {
+        
+        if (config.access == RGL::BufferAccess::Shared) {
             heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
             canBeTransitioned = false;
             nativeState = D3D12_RESOURCE_STATE_GENERIC_READ;   // UPLOAD requires this state, and resources cannot leave this state
@@ -77,6 +73,12 @@ namespace RGL {
 
         if (config.options.PixelShaderResource && canBeTransitioned) {
             nativeState |= (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        }
+
+        if (config.options.ReadbackTarget) {
+            // readback requires D3D12_RESOURCE_STATE_COPY_DEST and cannot be transitioned away from this state
+            heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
+            nativeState = D3D12_RESOURCE_STATE_COPY_DEST;
         }
 
         DX_CHECK(device->device->CreateCommittedResource(
