@@ -112,7 +112,7 @@ namespace RGL {
 		nativeState = D3D12_RESOURCE_STATE_COMMON;
 		if (isDS) {
 			resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-			optimizedClearValue.DepthStencil = { 1,0 };
+			optimizedClearValue.DepthStencil = { 0,0 };
 			if (!config.usage.Sampled) {
 				nativeState |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
 			}
