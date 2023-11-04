@@ -330,6 +330,15 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.compareFunction = RGL::DepthCompareFunction::Greater
 	});
 
+    //TODO: VK_SAMPLER_REDUCTION_MODE_MIN
+    depthPyramidSampler = device->CreateSampler({
+        .addressModeU = RGL::SamplerAddressMode::Border,
+        .addressModeV = RGL::SamplerAddressMode::Border,
+        .minFilter = RGL::MinMagFilterMode::Linear,
+        .magFilter = RGL::MinMagFilterMode::Linear,
+        .mipFilter = RGL::MipFilterMode::Nearest,
+    });
+    
 	shadowTexture = device->CreateTexture({
 		.usage = {.Sampled = true, .DepthStencilAttachment = true },
 		.aspect = {.HasDepth = true },
@@ -1301,6 +1310,35 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		},
 		.pipelineLayout = skinningDrawCallPrepareLayout
 	});
+    
+    auto depthPyramidLayout = device->CreatePipelineLayout({
+        .bindings = {
+            {
+                .binding = 0,
+                .type = RGL::BindingType::StorageImage,
+                .stageFlags = RGL::BindingVisibility::Compute,
+                .writable = true
+            },
+            {
+                .binding = 1,
+                .type = RGL::BindingType::Sampler,
+                .stageFlags = RGL::BindingVisibility::Compute,
+            },
+            {
+                .binding = 2,
+                .type = RGL::BindingType::SampledImage,
+                .stageFlags = RGL::BindingVisibility::Compute,
+            }
+        }
+    });
+    auto depthPyramidCSH = LoadShaderByFilename("depthpyramid.csh",device);
+    depthPyramidPipeline = device->CreateComputePipeline({
+        .stage = {
+            .type = RGL::ShaderStageDesc::Type::Compute,
+            .shaderModule = depthPyramidCSH
+        },
+        .pipelineLayout = depthPyramidLayout
+    });
 }
 
 RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim size, bool createDepth)
@@ -1316,6 +1354,7 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 			.aspect = {.HasDepth = true },
 			.width = width,
 			.height = height,
+            .mipLevels = depthPyramidLevels,
 			.format = RGL::TextureFormat::D32SFloat,
 			.debugName = "Depth Texture"
 			}

@@ -114,6 +114,7 @@ struct TextureView;
         
         virtual void SetVertexSampler(RGLSamplerPtr sampler, uint32_t index) = 0;
         virtual void SetFragmentSampler(RGLSamplerPtr sampler, uint32_t index) = 0;
+        virtual void SetComputeSampler(RGLSamplerPtr sampler, uint32_t index) = 0;
         
         virtual void SetVertexTexture(const TextureView& texture, uint32_t index) = 0;
         virtual void SetFragmentTexture(const TextureView& texture, uint32_t index) = 0;

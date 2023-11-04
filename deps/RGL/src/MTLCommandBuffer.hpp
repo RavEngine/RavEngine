@@ -46,6 +46,7 @@ struct BufferMTL;
         
         void SetVertexSampler(RGLSamplerPtr sampler, uint32_t index) final;
         void SetFragmentSampler(RGLSamplerPtr sampler, uint32_t index) final;
+        void SetComputeSampler(RGLSamplerPtr sampler, uint32_t index) final;
         
         void SetVertexTexture(const TextureView& texture, uint32_t index) final;
         void SetFragmentTexture(const TextureView& texture, uint32_t index) final;

@@ -768,6 +768,26 @@ namespace RavEngine {
 
 				function(viewproj, camPos, fullSizeViewport, fullSizeScissor, renderArea);
 			};
+            
+            // build the depth pyramid using the depth data from the previous frame
+            mainCommandBuffer->BeginCompute(depthPyramidPipeline);
+            {
+                float width = nextImgSize.width;
+                float height = nextImgSize.height;
+                for(int i = 0; i < depthPyramidLevels - 1; i++){
+                    auto fromTex = target.depthStencil->GetViewForMip(i);
+                    auto toTex = target.depthStencil->GetViewForMip(i+1);
+                    mainCommandBuffer->SetComputeTexture(toTex, 0);
+                    mainCommandBuffer->SetComputeTexture(fromTex, 1);
+                    mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 2);
+                    
+                    width /= 2.0;
+                    height /= 2.0;
+                    
+                    mainCommandBuffer->DispatchCompute(std::ceil(width/32.f), std::ceil(height/32.f), 1, 32,32,1);
+                }
+            }
+            mainCommandBuffer->EndCompute();
 
 			// deferred pass
 			deferredRenderPass->SetAttachmentTexture(0, target.diffuseTexture->GetDefaultView());

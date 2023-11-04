@@ -50,12 +50,12 @@ namespace RavEngine {
 		RGLCommandBufferPtr mainCommandBuffer;
 
 		RGLTexturePtr shadowTexture;
-		RGLSamplerPtr textureSampler, shadowSampler;
+		RGLSamplerPtr textureSampler, shadowSampler, depthPyramidSampler;
 		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, ambientLightRenderPass, finalRenderPass, shadowRenderPass, lightingClearRenderPass, deferredClearRenderPass, finalClearRenderPass;
 
 		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, spotLightRenderPipeline, lightToFBRenderPipeline,
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, guiRenderPipeline;
-		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline;
+		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline;
 		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer, spotLightVertexBuffer, spotLightIndexBuffer,
 			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer;
 		uint32_t nPointLightIndices = 0, nSpotLightIndices = 0;
@@ -63,6 +63,7 @@ namespace RavEngine {
 		constexpr static uint32_t initialVerts = 1024, initialIndices = 1536;
 
 		static constexpr uint16_t shadowMapSize = 4096;
+        static constexpr uint16_t depthPyramidLevels = 4;
 
 		friend class Material;
     public:

@@ -262,6 +262,10 @@ void CommandBufferMTL::SetFragmentSampler(RGLSamplerPtr sampler, uint32_t index)
     [currentCommandEncoder setFragmentSamplerState:std::static_pointer_cast<SamplerMTL>(sampler)->sampler atIndex:index];
 }
 
+void CommandBufferMTL::SetComputeSampler(RGLSamplerPtr sampler, uint32_t index) {
+    [currentComputeCommandEncoder setSamplerState:std::static_pointer_cast<SamplerMTL>(sampler)->sampler atIndex:index];
+}
+
 void CommandBufferMTL::SetVertexTexture(const TextureView& texture, uint32_t index){
     [currentCommandEncoder setVertexTexture:texture.texture.mtl atIndex:index];
 }
