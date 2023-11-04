@@ -1320,12 +1320,12 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
                 .writable = true
             },
             {
-                .binding = 1,
+                .binding = 2,
                 .type = RGL::BindingType::Sampler,
                 .stageFlags = RGL::BindingVisibility::Compute,
             },
             {
-                .binding = 2,
+                .binding = 1,
                 .type = RGL::BindingType::SampledImage,
                 .stageFlags = RGL::BindingVisibility::Compute,
             }

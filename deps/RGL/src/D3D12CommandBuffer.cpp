@@ -213,7 +213,7 @@ namespace RGL {
 	void CommandBufferD3D12::SetComputeSampler(RGLSamplerPtr sampler, uint32_t index)
 	{
 		auto thisSampler = std::static_pointer_cast<SamplerD3D12>(sampler);
-		const auto pipelineLayout = currentRenderPipeline->pipelineLayout;
+		const auto pipelineLayout = currentComputePipeline->pipelineLayout;
 		const auto samplerSlot = pipelineLayout->slotForSamplerIdx(index);
 		auto& samplerHeap = thisSampler->owningDevice->SamplerHeap;
 		ID3D12DescriptorHeap* heapForThis[] = { samplerHeap->Heap() };
