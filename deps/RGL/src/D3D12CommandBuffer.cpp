@@ -210,6 +210,16 @@ namespace RGL {
 		commandList->SetDescriptorHeaps(std::size(heapForThis), heapForThis);
 		commandList->SetGraphicsRootDescriptorTable(samplerSlot, samplerHeap->GetGpuHandle(thisSampler->descriptorIndex));
 	}
+	void CommandBufferD3D12::SetComputeSampler(RGLSamplerPtr sampler, uint32_t index)
+	{
+		auto thisSampler = std::static_pointer_cast<SamplerD3D12>(sampler);
+		const auto pipelineLayout = currentRenderPipeline->pipelineLayout;
+		const auto samplerSlot = pipelineLayout->slotForSamplerIdx(index);
+		auto& samplerHeap = thisSampler->owningDevice->SamplerHeap;
+		ID3D12DescriptorHeap* heapForThis[] = { samplerHeap->Heap() };
+		commandList->SetDescriptorHeaps(std::size(heapForThis), heapForThis);
+		commandList->SetComputeRootDescriptorTable(samplerSlot, samplerHeap->GetGpuHandle(thisSampler->descriptorIndex));
+	}
 	void CommandBufferD3D12::SetVertexTexture(const TextureView& texture, uint32_t index)
 	{
 		SetFragmentTexture(texture, index);
@@ -346,6 +356,11 @@ namespace RGL {
 		);
 		commandList->ResourceBarrier(1, &postBarrier);
 		SyncIfNeeded(fromBuffer.get(), fromBufferCurrentState, true);
+	}
+
+	void CommandBufferD3D12::CopyTextureToTexture(const TextureCopyConfig& from, const TextureCopyConfig& to)
+	{
+		//commandList->CopyTextureRegion();
 	}
 
 	void CommandBufferD3D12::Commit(const CommitConfig& config)

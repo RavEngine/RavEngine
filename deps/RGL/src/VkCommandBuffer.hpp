@@ -63,6 +63,7 @@ namespace RGL {
 		struct CmdSetSampler {
 			RGLSamplerPtr sampler;
 			uint32_t index;
+			bool isCompute = false;
 		};
 
 		struct CmdSetTexture {
@@ -191,6 +192,7 @@ namespace RGL {
 
 		void SetVertexSampler(RGLSamplerPtr sampler, uint32_t index) final;
 		void SetFragmentSampler(RGLSamplerPtr sampler, uint32_t index) final;
+		void SetComputeSampler(RGLSamplerPtr sampler, uint32_t index) final;
 
 		void SetVertexTexture(const TextureView& texture, uint32_t index) final;
 		void SetFragmentTexture(const TextureView& texture, uint32_t index) final;
@@ -201,6 +203,7 @@ namespace RGL {
 
 		void CopyTextureToBuffer(TextureView& sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr destBuffer) final;
 		void CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size) final;
+		void CopyTextureToTexture(const TextureCopyConfig& from, const TextureCopyConfig& to) final;
 
 		void SetViewport(const Viewport&) final;
 		void SetScissor(const Rect&) final;

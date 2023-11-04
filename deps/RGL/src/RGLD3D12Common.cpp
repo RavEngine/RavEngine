@@ -325,6 +325,7 @@ namespace RGL {
         case decltype(format)::RGBA32_Sfloat:  return DXGI_FORMAT_R32G32B32A32_FLOAT;
 
         case decltype(format)::R32_Uint:  return DXGI_FORMAT_R32_UINT;
+        case decltype(format)::R32_Float: return DXGI_FORMAT_R32_FLOAT;
 
         case decltype(format)::D32SFloat:  return DXGI_FORMAT_D32_FLOAT;
         case decltype(format)::D24UnormS8Uint:  return DXGI_FORMAT_D24_UNORM_S8_UINT;

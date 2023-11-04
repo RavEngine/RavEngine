@@ -197,6 +197,10 @@ namespace RGL {
 	{
 		EncodeCommand(CmdSetSampler{ sampler, index });
 	}
+	void CommandBufferVk::SetComputeSampler(RGLSamplerPtr sampler, uint32_t index)
+	{
+		EncodeCommand(CmdSetSampler{ sampler, index, true });
+	}
 	void CommandBufferVk::SetVertexTexture(const TextureView& texture, uint32_t index)
 	{
 		SetFragmentTexture(texture, index);
@@ -251,6 +255,9 @@ namespace RGL {
 		RecordBufferBinding(std::static_pointer_cast<BufferVk>(from.buffer).get(), {.written = false});
 		RecordBufferBinding(std::static_pointer_cast<BufferVk>(to.buffer).get(), {.written = true});
 		EncodeCommand(CmdCopyBufferToBuffer{ from,to,size });
+	}
+	void CommandBufferVk::CopyTextureToTexture(const TextureCopyConfig& from, const TextureCopyConfig& to)
+	{
 	}
 	void CommandBufferVk::SetViewport(const Viewport& viewport)
 	{
@@ -534,8 +541,8 @@ namespace RGL {
 				};
 				owningQueue->owningDevice->vkCmdPushDescriptorSetKHR(
 					commandBuffer,
-					VK_PIPELINE_BIND_POINT_GRAPHICS,
-					currentRenderPipeline->pipelineLayout->layout,
+					arg.isCompute ? VK_PIPELINE_BIND_POINT_COMPUTE :  VK_PIPELINE_BIND_POINT_GRAPHICS,
+					arg.isCompute ? currentComputePipeline->pipelineLayout->layout : currentRenderPipeline->pipelineLayout->layout,
 					0,
 					1,
 					&writeinfo

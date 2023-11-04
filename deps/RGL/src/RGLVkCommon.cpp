@@ -286,7 +286,8 @@ namespace RGL {
         case decltype(format)::RGBA16_Sfloat:       return VK_FORMAT_R16G16B16A16_SFLOAT;
         case decltype(format)::RGBA32_Sfloat:       return VK_FORMAT_R16G16B16A16_SFLOAT;
 
-        case decltype(format)::R32_Uint:       return VK_FORMAT_R32_UINT;
+        case decltype(format)::R32_Uint:            return VK_FORMAT_R32_UINT;
+        case decltype(format)::R32_Float:           return VK_FORMAT_R32_SFLOAT;
 
         case decltype(format)::D24UnormS8Uint:      return VK_FORMAT_D24_UNORM_S8_UINT;
         case decltype(format)::D32SFloat:           return VK_FORMAT_D32_SFLOAT;
