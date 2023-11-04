@@ -770,13 +770,15 @@ namespace RavEngine {
 			};
             
             // build the depth pyramid using the depth data from the previous frame
+            mainCommandBuffer->CopyTextureToTexture({target.depthStencil->GetDefaultView()}, {target.depthPyramidTexture->GetViewForMip(0)});
+            
             mainCommandBuffer->BeginCompute(depthPyramidPipeline);
             {
                 float width = nextImgSize.width;
                 float height = nextImgSize.height;
                 for(int i = 0; i < depthPyramidLevels - 1; i++){
-                    auto fromTex = target.depthStencil->GetViewForMip(i);
-                    auto toTex = target.depthStencil->GetViewForMip(i+1);
+                    auto fromTex = target.depthPyramidTexture->GetViewForMip(i);
+                    auto toTex = target.depthPyramidTexture->GetViewForMip(i+1);
                     mainCommandBuffer->SetComputeTexture(toTex, 0);
                     mainCommandBuffer->SetComputeTexture(fromTex, 1);
                     mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 2);

@@ -21,7 +21,8 @@ TextureMTL::TextureMTL(const std::shared_ptr<DeviceMTL> owningDevice, const Text
     MTLPixelFormat format = rgl2mtlformat(config.format);
     
     auto desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format width:config.width height:config.height mipmapped:config.mipLevels > 1];
-    auto usage = rgl2mtlTextureUsage(config.usage);;
+    desc.mipmapLevelCount = config.mipLevels;
+    auto usage = rgl2mtlTextureUsage(config.usage);
     desc.usage = usage;
     desc.storageMode = (config.aspect.HasDepth || config.aspect.HasStencil) ? MTLStorageModePrivate :
 #if TARGET_OS_IPHONE
@@ -31,7 +32,6 @@ TextureMTL::TextureMTL(const std::shared_ptr<DeviceMTL> owningDevice, const Text
 #endif
     texture = [owningDevice->device newTextureWithDescriptor:desc];
     
-    //TODO: allocate all the mips
     mipTextures.reserve(config.mipLevels - 1);
     for(int i = 1; i < config.mipLevels; i++){
         auto tex = [texture newTextureViewWithPixelFormat:format textureType:MTLTextureType2D levels:NSMakeRange(i, 1) slices:NSMakeRange(0, 1)];

@@ -306,6 +306,12 @@ void CommandBufferMTL::CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfi
     [blitEncoder endEncoding];
 }
 
+void CommandBufferMTL::CopyTextureToTexture(const TextureCopyConfig& from, const TextureCopyConfig& to){
+    auto blitEncoder = [currentCommandBuffer blitCommandEncoder];
+    [blitEncoder copyFromTexture:from.texture.texture.mtl toTexture:to.texture.texture.mtl];
+    [blitEncoder endEncoding];
+}
+
 void CommandBufferMTL::BeginRenderDebugMarker(const std::string &label){
     [currentCommandEncoder pushDebugGroup:[NSString stringWithUTF8String:label.c_str()]];
 }

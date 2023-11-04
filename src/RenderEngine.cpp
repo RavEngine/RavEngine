@@ -1354,11 +1354,19 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 			.aspect = {.HasDepth = true },
 			.width = width,
 			.height = height,
-            .mipLevels = depthPyramidLevels,
 			.format = RGL::TextureFormat::D32SFloat,
 			.debugName = "Depth Texture"
 			}
 		);
+        collection.depthPyramidTexture = device->CreateTexture({
+            .usage = {.Sampled = true, .Storage = true},
+            .aspect = {.HasColor = true },
+            .width = width,
+            .height = height,
+            .mipLevels = depthPyramidLevels,
+            .format = RGL::TextureFormat::R32_Float,
+            .debugName = "Depth Pyramid Texture"
+        });
 	}
 	collection.diffuseTexture = device->CreateTexture({
 		.usage = {.Sampled = true, .ColorAttachment = true },
@@ -1411,6 +1419,7 @@ void RavEngine::RenderEngine::ResizeRenderTargetCollection(RenderTargetCollectio
 	gcTextures.enqueue(collection.diffuseTexture);
 	gcTextures.enqueue(collection.normalTexture);
 	gcTextures.enqueue(collection.lightingTexture);
+    gcTextures.enqueue(collection.depthPyramidTexture);
 
 	auto newcol = CreateRenderTargetCollection(size);
 	collection = newcol;
