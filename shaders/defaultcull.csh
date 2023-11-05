@@ -1,4 +1,4 @@
-
+#extension GL_EXT_samplerless_texture_functions : enable
 layout(push_constant, std430) uniform UniformBufferObject{
 	mat4 viewProj;
     vec3 camPos;
@@ -153,6 +153,10 @@ void main() {
 
         // adapted from: https://vkguide.dev/docs/gpudriven/compute_culling/
         float width = abs(bbmax.x - bbmin.x), height = abs(bbmax.y - bbmin.y);
+
+        ivec2 pyramidSize = textureSize(depthPyramid,0);
+        width *= pyramidSize.x;
+        height *= pyramidSize.y;
 
         //find the mipmap level that will match the screen size of the sphere
 	    float level = floor(log2(max(width, height)));
