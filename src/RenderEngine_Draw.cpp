@@ -138,45 +138,7 @@ namespace RavEngine {
 			mainCommandBuffer->EndCompute();
 			mainCommandBuffer->EndComputeDebugMarker();
 		};
-		auto cullSkeletalMeshes = [this,&worldTransformBuffer,&worldOwning](matrix4 viewproj) {
-			// the culling shader will decide for each draw if the draw should exist (and set its instance count to 1 from 0).
-
-			mainCommandBuffer->BeginComputeDebugMarker("Cull Skinned Meshes");
-			mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
-			mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
-			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
-				CullingUBO cubo{
-					.viewProj = viewproj,
-					.indirectBufferOffset = 0,
-				};
-				for (auto& command : drawcommand.commands) {
-					mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
-					mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 3);
-
-					if (auto mesh = command.mesh.lock()) {
-						uint32_t lodsForThisMesh = 1;	// TODO: skinned meshes do not support LOD groups 
-
-						cubo.numObjects = command.entities.DenseSize();
-						mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
-                        cubo.radius = mesh->radius;
-#if __APPLE__
-                        constexpr size_t byte_size = closest_multiple_of<ssize_t>(sizeof(cubo), 16);
-                        std::byte bytes[byte_size]{};
-                        std::memcpy(bytes, &cubo, sizeof(cubo));
-                        mainCommandBuffer->SetComputeBytes({bytes, sizeof(bytes)}, 0);
-#else
-                        mainCommandBuffer->SetComputeBytes(cubo, 0);
-#endif
-						mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
-						cubo.indirectBufferOffset += lodsForThisMesh;
-						cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
-					}
-				}
-
-			}
-			mainCommandBuffer->EndComputeDebugMarker();
-			mainCommandBuffer->EndCompute();
-		};
+		
 
 		auto poseSkeletalMeshes = [this,&worldOwning]() {
 			mainCommandBuffer->BeginComputeDebugMarker("Pose Skinned Meshes");
@@ -230,10 +192,52 @@ namespace RavEngine {
 			auto nextImgSize = view.pixelDimensions;
 			auto& target = view.collection;
 
+			auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning, &target](matrix4 viewproj) {
+				// the culling shader will decide for each draw if the draw should exist (and set its instance count to 1 from 0).
 
-			auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor) {
+				mainCommandBuffer->BeginComputeDebugMarker("Cull Skinned Meshes");
+				mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
+				mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
+				for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+					CullingUBO cubo{
+						.viewProj = viewproj,
+						.indirectBufferOffset = 0,
+					};
+					for (auto& command : drawcommand.commands) {
+						mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
+						mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 3);
 
-				auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos](auto&& renderData) {
+						if (auto mesh = command.mesh.lock()) {
+							uint32_t lodsForThisMesh = 1;	// TODO: skinned meshes do not support LOD groups 
+
+							cubo.numObjects = command.entities.DenseSize();
+							mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
+							cubo.radius = mesh->radius;
+#if __APPLE__
+							constexpr size_t byte_size = closest_multiple_of<ssize_t>(sizeof(cubo), 16);
+							std::byte bytes[byte_size]{};
+							std::memcpy(bytes, &cubo, sizeof(cubo));
+							mainCommandBuffer->SetComputeBytes({ bytes, sizeof(bytes) }, 0);
+#else
+							mainCommandBuffer->SetComputeBytes(cubo, 0);
+#endif
+							mainCommandBuffer->SetComputeTexture(target.depthPyramidTexture->GetDefaultView(), 4);
+							mainCommandBuffer->SetComputeSampler(textureSampler, 5);
+							mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
+							cubo.indirectBufferOffset += lodsForThisMesh;
+							cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
+						}
+					}
+
+				}
+				mainCommandBuffer->EndComputeDebugMarker();
+				mainCommandBuffer->EndCompute();
+			};
+
+
+			auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes, &target](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor) {
+
+				auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos,&target](auto&& renderData) {
 					for (auto& [materialInstance, drawcommand] : renderData) {
 						//prepass: get number of LODs and entities
 						uint32_t numLODs = 0, numEntities = 0;
@@ -329,6 +333,8 @@ namespace RavEngine {
 #else
                                 mainCommandBuffer->SetComputeBytes(cubo, 0);
 #endif
+								mainCommandBuffer->SetComputeTexture(target.depthPyramidTexture->GetDefaultView(), 4);
+								mainCommandBuffer->SetComputeSampler(textureSampler, 5);
 								mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 								cubo.indirectBufferOffset += lodsForThisMesh;
 								cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
