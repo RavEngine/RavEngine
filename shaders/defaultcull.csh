@@ -37,6 +37,9 @@ layout(std430, binding = 3) buffer drawcallBuffer
 	IndirectCommand indirectBuffer[];
 };
 
+layout(binding = 4) uniform texture2D depthPyramid;
+layout(binding = 5) uniform sampler depthPyramidSampler;
+
 // adapted from: https://gist.github.com/XProger/6d1fd465c823bba7138b638691831288
 // Computes signed distance between a point and a plane
 // vPlane: Contains plane coefficients (a,b,c,d) where: ax + by + cz = d
@@ -68,6 +71,44 @@ void MakeFrustumPlanes(mat4 viewProj, inout vec4 planes[6]){
     for (uint i = 0; i < planes.length(); i++) {
       planes[i] /= length(planes[i].xyz);
     }
+}
+
+// adapted from: https://gamedev.stackexchange.com/questions/49222/aabb-of-a-spheres-screen-space-projection
+/// <summary>
+/// returns the screen-space (normalized device coordinates) bounds of a projected sphere
+/// </summary>
+/// <param name="center">view-space center of the sphere</param>
+/// <param name="radius">world or view space radius of the sphere</param>
+/// <param name="boxMin">minimum (bottom left) projected bounds</param>
+/// <param name="boxMax">maximum (top right) projected bounds</param>
+void GetProjectedBounds(vec3 center, float radius, mat4 Projection, inout vec3 boxMin, inout vec3 boxMax)
+{
+
+    float d2 = dot(center,center);
+
+    float a = sqrt(d2 - radius * radius);
+
+    /// view-aligned "right" vector (right angle to the view plane from the center of the sphere. Since  "up" is always (0,n,0), replaced cross product with vec3(-c.z, 0, c.x)
+    vec3 right = (radius / a) * vec3(-center.z, 0, center.x);
+    vec3 up = vec3(0,radius,0);
+
+    vec4 projectedRight  = Projection * vec4(right,0);
+    vec4 projectedUp     = Projection * vec4(up,0);
+
+    vec4 projectedCenter = Projection * vec4(center,1);
+
+    vec4 north  = projectedCenter + projectedUp;
+    vec4 east   = projectedCenter + projectedRight;
+    vec4 south  = projectedCenter - projectedUp;
+    vec4 west   = projectedCenter - projectedRight;
+
+    north /= north.w ;
+    east  /= east.w  ;
+    west  /= west.w  ;
+    south /= south.w ;
+
+    boxMin = min(min(min(east,west),north),south).xyz;
+    boxMax = max(max(max(east,west),north),south).xyz;
 }
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
@@ -104,6 +145,26 @@ void main() {
     // is considered on camera if the bounding sphere intersects the camera frustum
     bool isOnCamera = CullSphere(planes, center, radius) > 0;
 
+    // check occlusion
+    if (isOnCamera){
+
+		vec3 bbmin, bbmax;
+        GetProjectedBounds(center, radius, ubo.viewProj, bbmin, bbmax);
+
+        // adapted from: https://vkguide.dev/docs/gpudriven/compute_culling/
+        float width = abs(bbmax.x - bbmin.x), height = abs(bbmax.y - bbmin.y);
+
+        //find the mipmap level that will match the screen size of the sphere
+	    float level = floor(log2(max(width, height)));
+
+		//sample the depth pyramid at that specific level
+		float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), vec2((bbmin.xy+bbmax.xy)/2) * 0.5, level).x;
+        
+        vec4 transformed = ubo.viewProj * vec4(center,1);
+        float depthSphereFront = transformed.z / transformed.w; //TODO: this is currently the center being transformed
+
+        isOnCamera = isOnCamera && depthSphereFront >= depth;
+    }
 
 	// check 2: what LOD am I in
 	uint lodID = 0;	//TODO: when multi-LOD support is added

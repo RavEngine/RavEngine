@@ -334,8 +334,8 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
     depthPyramidSampler = device->CreateSampler({
         .addressModeU = RGL::SamplerAddressMode::Border,
         .addressModeV = RGL::SamplerAddressMode::Border,
-        .minFilter = RGL::MinMagFilterMode::Linear,
-        .magFilter = RGL::MinMagFilterMode::Linear,
+        .minFilter = RGL::MinMagFilterMode::Nearest,
+        .magFilter = RGL::MinMagFilterMode::Nearest,
         .mipFilter = RGL::MipFilterMode::Nearest,
     });
     
@@ -1277,6 +1277,16 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 					.type = RGL::BindingType::StorageBuffer,
 					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = true
+				},
+				{
+					.binding = 4,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Compute,
+				},
+				{
+					.binding = 5,
+					.type = RGL::BindingType::Sampler,
+					.stageFlags = RGL::BindingVisibility::Compute,
 				},
 			},
 			.constants = {{ sizeof(CullingUBO), 0, RGL::StageVisibility::Compute}}

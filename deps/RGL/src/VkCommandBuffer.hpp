@@ -131,6 +131,10 @@ namespace RGL {
 			uint32_t size;
 		};
 
+		struct CmdCopyTextureToTexture {
+			TextureCopyConfig from, to;
+		};
+
 		std::vector<std::variant<
 			CmdSetVertexBuffer, 
 			CmdBeginRendering,
@@ -150,6 +154,7 @@ namespace RGL {
 			CmdEndCompute,
 			CmdDispatch,
 			CmdCopyTextureToBuffer,
+			CmdCopyTextureToTexture,
 			CmdSetViewport,
 			CmdSetScissor,
 			CmdCopyBufferToBuffer
@@ -222,7 +227,7 @@ namespace RGL {
 	private:
 		void GenericBindBuffer(RGLBufferPtr& buffer, const uint32_t& offsetIntoBuffer, const uint32_t& bindingOffset, VkPipelineBindPoint bindPoint);
 		void RecordBufferBinding(const BufferVk* buffer, BufferLastUse usage);
-		void RecordTextureBinding(const TextureVk* texture, TextureLastUse usage);
+		void RecordTextureBinding(const TextureVk* texture, TextureLastUse usage, bool recordOnly = false);
 		void EndContext();
 		bool IsBufferSlotWritable(uint32_t slot);
 		std::vector<VkBufferMemoryBarrier2> barriersToAdd;
