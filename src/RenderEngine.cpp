@@ -1349,6 +1349,82 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
         },
         .pipelineLayout = depthPyramidLayout
     });
+
+	auto depthPyramidCopyVSH = LoadShaderByFilename("depthpyramidcopy.vsh", device);
+	auto depthPyramidCopyFSH = LoadShaderByFilename("depthpyramidcopy.fsh", device);
+
+	auto depthPyramidCopyLayout = device->CreatePipelineLayout({
+		.bindings = {
+			{
+				.binding = 0,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 1,
+				.type = RGL::BindingType::Sampler,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			}
+		},
+		.constants = {{sizeof(PyramidCopyUBO), 0,RGL::StageVisibility::Fragment}}
+	});
+
+	depthPyramidCopyPipeline = device->CreateRenderPipeline({
+		.stages = {
+				{
+					.type = RGL::ShaderStageDesc::Type::Vertex,
+					.shaderModule = depthPyramidCopyVSH,
+				},
+				{
+					.type = RGL::ShaderStageDesc::Type::Fragment,
+					.shaderModule = depthPyramidCopyFSH,
+				}
+		},
+		.vertexConfig = {
+			.vertexBindings = {
+				{
+					.binding = 0,
+					.stride = sizeof(Vertex2D),
+				},
+			},
+			.attributeDescs = {
+				{
+					.location = 0,
+					.binding = 0,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+				},
+			}
+		},
+		.inputAssembly = {
+			.topology = RGL::PrimitiveTopology::TriangleList,
+		},
+		.rasterizerConfig = {
+			.windingOrder = RGL::WindingOrder::Counterclockwise,
+		},
+		.colorBlendConfig = {
+			.attachments = {
+				{
+					.format = depthPyramidFormat
+				},
+			}
+		},
+		.depthStencilConfig = {
+			.depthTestEnabled = false,
+			.depthWriteEnabled = false,
+		},
+		.pipelineLayout = depthPyramidCopyLayout,
+	});
+
+	depthPyramidCopyPass = RGL::CreateRenderPass({
+		   .attachments = {
+			   {
+				   .format = depthPyramidFormat,
+				   .loadOp = RGL::LoadAccessOperation::Clear,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+		   },
+		});
 }
 
 RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim size, bool createDepth)
@@ -1368,15 +1444,21 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 			.debugName = "Depth Texture"
 			}
 		);
+
+		// the depth pyramid is the next POT smaller
+		auto dim = std::min(width, height);
+		dim = pow(2,std::floor(std::log2f(dim)));
+
         collection.depthPyramidTexture = device->CreateTexture({
-            .usage = {.Sampled = true, .Storage = true},
+            .usage = {.Sampled = true, .Storage = true, .ColorAttachment = true},
             .aspect = {.HasColor = true },
-            .width = width,
-            .height = height,
+            .width = dim,
+            .height = dim,
             .mipLevels = depthPyramidLevels,
-            .format = RGL::TextureFormat::R32_Float,
+            .format = depthPyramidFormat,
             .debugName = "Depth Pyramid Texture"
         });
+		collection.pyramidSize = dim;
 	}
 	collection.diffuseTexture = device->CreateTexture({
 		.usage = {.Sampled = true, .ColorAttachment = true },

@@ -51,9 +51,9 @@ namespace RavEngine {
 
 		RGLTexturePtr shadowTexture;
 		RGLSamplerPtr textureSampler, shadowSampler, depthPyramidSampler;
-		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, ambientLightRenderPass, finalRenderPass, shadowRenderPass, lightingClearRenderPass, deferredClearRenderPass, finalClearRenderPass;
+		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, ambientLightRenderPass, finalRenderPass, shadowRenderPass, lightingClearRenderPass, deferredClearRenderPass, finalClearRenderPass, depthPyramidCopyPass;
 
-		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, spotLightRenderPipeline, lightToFBRenderPipeline,
+		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, spotLightRenderPipeline, lightToFBRenderPipeline, depthPyramidCopyPipeline,
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, guiRenderPipeline;
 		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline;
 		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer, spotLightVertexBuffer, spotLightIndexBuffer,
@@ -64,6 +64,12 @@ namespace RavEngine {
 
 		static constexpr uint16_t shadowMapSize = 4096;
         static constexpr uint16_t depthPyramidLevels = 4;
+
+		static constexpr RGL::TextureFormat depthPyramidFormat = RGL::TextureFormat::R32_Float;
+
+		struct PyramidCopyUBO {
+			uint32_t size;
+		};
 
 		friend class Material;
     public:

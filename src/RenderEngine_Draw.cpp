@@ -776,7 +776,18 @@ namespace RavEngine {
 			};
             
             // build the depth pyramid using the depth data from the previous frame
-            mainCommandBuffer->CopyTextureToTexture({target.depthStencil->GetDefaultView()}, {target.depthPyramidTexture->GetViewForMip(0)});
+			depthPyramidCopyPass->SetAttachmentTexture(0, target.depthPyramidTexture->GetViewForMip(0));
+				mainCommandBuffer->BeginRendering(depthPyramidCopyPass);
+				mainCommandBuffer->BindRenderPipeline(depthPyramidCopyPipeline);
+				mainCommandBuffer->SetViewport({0,0,float(target.pyramidSize) ,float(target.pyramidSize) });
+				mainCommandBuffer->SetScissor({ 0,0,target.pyramidSize,target.pyramidSize});
+				PyramidCopyUBO pubo{ .size = target.pyramidSize };
+				mainCommandBuffer->SetFragmentBytes(pubo,0);
+				mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 0);
+				mainCommandBuffer->SetFragmentSampler(textureSampler, 1);
+				mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+				mainCommandBuffer->Draw(3);
+			mainCommandBuffer->EndRendering();
             
             mainCommandBuffer->BeginCompute(depthPyramidPipeline);
             {
