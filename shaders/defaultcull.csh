@@ -79,7 +79,7 @@ void MakeFrustumPlanes(mat4 viewProj, inout vec4 planes[6]){
 @param viewProj - the viewProjection matrix of the camera
 @return the max radius in NDC
 */
-float projectSphere(float radius, mat4 viewProj){
+float findMaxRadiusInNDC(float radius, mat4 viewProj){
 
     // project 6 radius vectors and find the longest one in NDC
     vec3 radii[] = {
@@ -132,7 +132,7 @@ void main() {
 
     // check occlusion
     if (isOnCamera){
-		float maxRadiusNDC = projectSphere(radius,ubo.viewProj);
+		float maxRadiusNDC = findMaxRadiusInNDC(radius,ubo.viewProj);
         vec4 projectedCenterNDC = (ubo.viewProj * vec4(center,1));
 
         float maxRadiusPixels = maxRadiusNDC * textureSize(depthPyramid,0).x;      // square texture
@@ -140,12 +140,24 @@ void main() {
         //find the mipmap level that will match the screen size of the sphere
 	    float level = floor(log2(maxRadiusPixels));
 
-		//sample the depth pyramid at that specific level
-		float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), projectedCenterNDC.xy, level).x;
-        
-        float depthSphereFront = (projectedCenterNDC.z + maxRadiusNDC) / projectedCenterNDC.w;
+        // create the corners of the AABB
+        vec2 ndcCorners[] = {
+             projectedCenterNDC.xy + vec2(-maxRadiusNDC,maxRadiusNDC),      // top left
+             projectedCenterNDC.xy + vec2(maxRadiusNDC,maxRadiusNDC),      // top right
+             projectedCenterNDC.xy + vec2(maxRadiusNDC,-maxRadiusNDC),      // bottom right
+             projectedCenterNDC.xy + vec2(-maxRadiusNDC,-maxRadiusNDC),      // bottom left
+        };
 
-        isOnCamera = isOnCamera && depthSphereFront >= depth;
+        float minDepth = 1;
+        for(uint i = 0; i < ndcCorners.length(); i++){
+        	//sample the depth pyramid at that specific level
+        	float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i], level).x;
+            minDepth = min(minDepth, depth);
+        }
+        
+        float depthSphereFront = (projectedCenterNDC.z + maxRadiusNDC) / projectedCenterNDC.w; // the front face of the AABB in NDC
+
+        isOnCamera = isOnCamera && depthSphereFront >= minDepth;
     }
 
 	// check 2: what LOD am I in
