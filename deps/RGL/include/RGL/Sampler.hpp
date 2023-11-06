@@ -23,6 +23,13 @@ namespace RGL{
         Linear
     };
 
+    enum class SamplerReductionMode : uint8_t {
+        Standard,
+        Comparison,
+        Minimum,
+        Maximum
+    };
+
     struct SamplerConfig{
         SamplerAddressMode 
             addressModeU = SamplerAddressMode::Wrap, 
@@ -34,6 +41,7 @@ namespace RGL{
             minFilter = MinMagFilterMode::Nearest,
             magFilter = MinMagFilterMode::Nearest;
         MipFilterMode mipFilter = MipFilterMode::NotMipped;
+        SamplerReductionMode reductionMode = SamplerReductionMode::Standard;
     };
 
     struct ISampler{

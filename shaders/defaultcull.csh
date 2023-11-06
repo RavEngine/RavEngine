@@ -162,7 +162,7 @@ void main() {
 	    float level = floor(log2(max(width, height)));
 
 		//sample the depth pyramid at that specific level
-		float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), vec2((bbmin.xy+bbmax.xy)/2) * 0.5, level).x;
+		float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), vec2((bbmin.xy+bbmax.xy)/2), level).x;
         
         vec4 transformed = ubo.viewProj * vec4(center,1);
         float depthSphereFront = transformed.z / transformed.w; //TODO: this is currently the center being transformed

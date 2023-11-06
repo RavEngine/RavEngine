@@ -222,7 +222,7 @@ namespace RavEngine {
 							mainCommandBuffer->SetComputeBytes(cubo, 0);
 #endif
 							mainCommandBuffer->SetComputeTexture(target.depthPyramidTexture->GetDefaultView(), 4);
-							mainCommandBuffer->SetComputeSampler(textureSampler, 5);
+							mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 5);
 							mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 							cubo.indirectBufferOffset += lodsForThisMesh;
 							cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
@@ -334,7 +334,7 @@ namespace RavEngine {
                                 mainCommandBuffer->SetComputeBytes(cubo, 0);
 #endif
 								mainCommandBuffer->SetComputeTexture(target.depthPyramidTexture->GetDefaultView(), 4);
-								mainCommandBuffer->SetComputeSampler(textureSampler, 5);
+								mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 5);
 								mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 								cubo.indirectBufferOffset += lodsForThisMesh;
 								cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
@@ -784,7 +784,7 @@ namespace RavEngine {
 				PyramidCopyUBO pubo{ .size = target.pyramidSize };
 				mainCommandBuffer->SetFragmentBytes(pubo,0);
 				mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 0);
-				mainCommandBuffer->SetFragmentSampler(textureSampler, 1);
+				mainCommandBuffer->SetFragmentSampler(depthPyramidSampler, 1);
 				mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 				mainCommandBuffer->Draw(3);
 			mainCommandBuffer->EndRendering();

@@ -38,6 +38,7 @@ namespace RGL {
            VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
            VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
            VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
+           VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
            VK_EXT_MEMORY_BUDGET_EXTENSION_NAME
     };
 
@@ -163,45 +164,41 @@ namespace RGL {
             .samplerAnisotropy = VK_TRUE,   // need to explicity request it
         };
 
-        VkPhysicalDeviceCustomBorderColorFeaturesEXT customBorderColor{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT,
+        VkPhysicalDeviceVulkan13Features vulkan1_3Features{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
             .pNext = nullptr
         };
-        VkPhysicalDeviceScalarBlockLayoutFeatures scalarBlockLayout{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES,
-            .pNext = &customBorderColor
+        
+        VkPhysicalDeviceVulkan12Features vulkan1_2Features{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+            .pNext = &vulkan1_3Features
         };
-        VkPhysicalDeviceSynchronization2FeaturesKHR synchronization2Feature{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES,
-            .pNext = &scalarBlockLayout
-        };
-        VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingfeature{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES,
-            .pNext = &synchronization2Feature
-        };
-        VkPhysicalDeviceImagelessFramebufferFeatures imagelessFramebuffer{
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES,
-            .pNext = &dynamicRenderingfeature
+        VkPhysicalDeviceCustomBorderColorFeaturesEXT customBorderColor{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT,
+            .pNext = &vulkan1_2Features,
         };
         VkPhysicalDeviceFeatures2 deviceFeatures2{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-            .pNext = &imagelessFramebuffer
+            .pNext = &customBorderColor
         };
         vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
-        if (imagelessFramebuffer.imagelessFramebuffer == VK_FALSE) {
+        if (vulkan1_2Features.imagelessFramebuffer == VK_FALSE) {
             FatalError("Cannot init - imageless framebuffer is not supported");
         }
-        if (dynamicRenderingfeature.dynamicRendering == VK_FALSE) {
+        if (vulkan1_3Features.dynamicRendering == VK_FALSE) {
             FatalError("Cannot init - dynamic rendering is not supported");
         }
-        if (synchronization2Feature.synchronization2 == VK_FALSE) {
+        if (vulkan1_3Features.synchronization2 == VK_FALSE) {
             FatalError("Cannot init - synchronization2 is not supported");
         }
-        if (scalarBlockLayout.scalarBlockLayout == VK_FALSE) {
+        if (vulkan1_2Features.scalarBlockLayout == VK_FALSE) {
             FatalError("Cannot init - ScalarBlockLayout is not supported");
         }
         if (customBorderColor.customBorderColors == VK_FALSE) {
             FatalError("Cannot init - CustomBorderColor is not supported");
+        }
+        if (vulkan1_2Features.samplerFilterMinmax == VK_FALSE) {
+            FatalError("Cannot init - Minmax Sampler is not supported");
         }
 
         std::vector<const char*> runtimeExtensions{std::begin(deviceExtensions),std::end(deviceExtensions)};

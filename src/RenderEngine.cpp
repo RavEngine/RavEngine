@@ -330,13 +330,13 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.compareFunction = RGL::DepthCompareFunction::Greater
 	});
 
-    //TODO: VK_SAMPLER_REDUCTION_MODE_MIN
     depthPyramidSampler = device->CreateSampler({
         .addressModeU = RGL::SamplerAddressMode::Border,
         .addressModeV = RGL::SamplerAddressMode::Border,
         .minFilter = RGL::MinMagFilterMode::Nearest,
         .magFilter = RGL::MinMagFilterMode::Nearest,
         .mipFilter = RGL::MipFilterMode::Nearest,
+		.reductionMode = RGL::SamplerReductionMode::Minimum,
     });
     
 	shadowTexture = device->CreateTexture({

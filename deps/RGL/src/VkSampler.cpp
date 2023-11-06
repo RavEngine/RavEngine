@@ -36,12 +36,29 @@ namespace RGL {
 		}
 	}
 
+	VkSamplerReductionMode rgl2vkreduction(SamplerReductionMode mode) {
+		switch (mode) {
+		case decltype(mode)::Standard: 
+		case decltype(mode)::Comparison:
+			return VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
+		case decltype(mode)::Minimum:
+			return VK_SAMPLER_REDUCTION_MODE_MIN;
+		case decltype(mode)::Maximum:
+			return VK_SAMPLER_REDUCTION_MODE_MAX;
+		}
+	}
+
 	SamplerVk::SamplerVk(decltype(owningDevice) owningDevice, const SamplerConfig& config) : owningDevice(owningDevice)
 	{
-		//TODO: obey config
+		VkSamplerReductionModeCreateInfoEXT createInfoReduction = {
+			.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT,
+			.pNext = nullptr,
+			.reductionMode = rgl2vkreduction(config.reductionMode)
+		};
+
 		VkSamplerCustomBorderColorCreateInfoEXT borderColor{
 			.sType = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT,
-			.pNext = nullptr,
+			.pNext = &createInfoReduction,
 			.customBorderColor{
 				.float32 = {config.borderColor[0],config.borderColor[1],config.borderColor[2],config.borderColor[3]}
 			}
@@ -59,7 +76,7 @@ namespace RGL {
 			.mipLodBias = 0.0f,
 			.anisotropyEnable = VK_TRUE,
 			.maxAnisotropy = 1,		// can use vkGetPhysicalDeviceProperties --> VkPhysicalDeviceProperties::limits.maxSamplerAnisotropy to determine max value
-			.compareEnable = VK_TRUE,
+			.compareEnable = config.compareFunction != DepthCompareFunction::Always,
 			.compareOp = static_cast<VkCompareOp>(config.compareFunction),
 			.minLod = 0.0f,
 			.maxLod = VK_LOD_CLAMP_NONE,
