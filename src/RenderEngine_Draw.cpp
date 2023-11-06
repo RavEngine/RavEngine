@@ -797,7 +797,7 @@ namespace RavEngine {
             {
                 float width = nextImgSize.width;
                 float height = nextImgSize.height;
-                for(int i = 0; i < depthPyramidLevels - 1; i++){
+                for(int i = 0; i < target.numPyramidLevels - 1; i++){
                     auto fromTex = target.depthPyramidTexture->GetViewForMip(i);
                     auto toTex = target.depthPyramidTexture->GetViewForMip(i+1);
                     mainCommandBuffer->SetComputeTexture(toTex, 0);

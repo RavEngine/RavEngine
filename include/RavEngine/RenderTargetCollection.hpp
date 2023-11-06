@@ -13,6 +13,7 @@ namespace RavEngine{
 		RGLTexturePtr diffuseTexture, normalTexture, roughnessSpecularMetallicAOTexture, depthStencil, depthPyramidTexture, lightingTexture;
 		RGL::ITexture* finalFramebuffer;
 		uint32_t pyramidSize = 0;			// square texture
+		uint32_t numPyramidLevels = 0;
 	};
 
 	struct RenderViewCollection {

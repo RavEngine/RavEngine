@@ -1449,12 +1449,14 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 		auto dim = std::min(width, height);
 		dim = pow(2,std::floor(std::log2f(dim)));
 
+		collection.numPyramidLevels = 1 + std::floor(std::log2(dim));
+
         collection.depthPyramidTexture = device->CreateTexture({
             .usage = {.Sampled = true, .Storage = true, .ColorAttachment = true},
             .aspect = {.HasColor = true },
             .width = dim,
             .height = dim,
-            .mipLevels = depthPyramidLevels,
+            .mipLevels = collection.numPyramidLevels,
             .format = depthPyramidFormat,
             .debugName = "Depth Pyramid Texture"
         });

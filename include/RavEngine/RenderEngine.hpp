@@ -63,7 +63,6 @@ namespace RavEngine {
 		constexpr static uint32_t initialVerts = 1024, initialIndices = 1536;
 
 		static constexpr uint16_t shadowMapSize = 4096;
-        static constexpr uint16_t depthPyramidLevels = 4;
 
 		static constexpr RGL::TextureFormat depthPyramidFormat = RGL::TextureFormat::R32_Float;
 
