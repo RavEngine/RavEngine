@@ -8,7 +8,7 @@
 
 namespace RGL {
 	struct D3D12DynamicDescriptorHeap : public DirectX::DescriptorHeap  {
-		constexpr static auto totalCount = 128u;
+		constexpr static auto totalCount = 2048u;
 		using index_t = std::remove_const_t<std::make_unsigned_t<decltype(totalCount)>>;
 	private:
 		ID3D12Device* owningDevice;

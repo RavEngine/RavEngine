@@ -89,7 +89,8 @@ float findMaxRadiusInNDC(float radius, mat4 viewProj){
     };
     float maxRadiusNDC = 0;
     for(uint i = 0; i < radii.length(); i++){
-        radii[i] = (viewProj * vec4(radii[i],0)).xyz;
+        vec4 projected = (viewProj * vec4(radii[i],0));
+        radii[i] = projected.xyz / projected.w;
         maxRadiusNDC = max(maxRadiusNDC, length(radii[i])); 
     }
 
@@ -133,7 +134,7 @@ void main() {
     // check occlusion
     if (isOnCamera){
 		float maxRadiusNDC = findMaxRadiusInNDC(radius,ubo.viewProj);
-        vec4 projectedCenterNDC = (ubo.viewProj * vec4(center,1));
+        vec4 projectedCenter = (ubo.viewProj * vec4(center,1));
 
         float maxRadiusPixels = maxRadiusNDC * textureSize(depthPyramid,0).x;      // square texture
 
@@ -141,6 +142,7 @@ void main() {
 	    float level = floor(log2(maxRadiusPixels));
 
         // create the corners of the AABB
+        vec3 projectedCenterNDC = projectedCenter.xyz / projectedCenter.w;
         vec2 ndcCorners[] = {
              projectedCenterNDC.xy + vec2(-maxRadiusNDC,maxRadiusNDC),      // top left
              projectedCenterNDC.xy + vec2(maxRadiusNDC,maxRadiusNDC),      // top right
@@ -155,7 +157,7 @@ void main() {
             minDepth = min(minDepth, depth);
         }
         
-        float depthSphereFront = (projectedCenterNDC.z + maxRadiusNDC) / projectedCenterNDC.w; // the front face of the AABB in NDC
+        float depthSphereFront = (projectedCenterNDC.z + maxRadiusNDC); // the front face of the AABB in NDC
 
         isOnCamera = isOnCamera && depthSphereFront >= minDepth;
     }
