@@ -135,10 +135,10 @@ void main() {
 		float maxRadiusNDC = projectSphere(radius,ubo.viewProj);
         vec4 projectedCenterNDC = (ubo.viewProj * vec4(center,1));
 
-        maxRadiusNDC *= textureSize(depthPyramid,0).x;      // square texture
+        float maxRadiusPixels = maxRadiusNDC * textureSize(depthPyramid,0).x;      // square texture
 
         //find the mipmap level that will match the screen size of the sphere
-	    float level = floor(log2(maxRadiusNDC));
+	    float level = floor(log2(maxRadiusPixels));
 
 		//sample the depth pyramid at that specific level
 		float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), projectedCenterNDC.xy, level).x;
