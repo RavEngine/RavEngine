@@ -778,6 +778,7 @@ namespace RavEngine {
             // build the depth pyramid using the depth data from the previous frame
 			depthPyramidCopyPass->SetAttachmentTexture(0, target.depthPyramidTexture->GetViewForMip(0));
 				mainCommandBuffer->BeginRendering(depthPyramidCopyPass);
+				mainCommandBuffer->BeginRenderDebugMarker("First copy of depth pyramid");
 				mainCommandBuffer->BindRenderPipeline(depthPyramidCopyPipeline);
 				mainCommandBuffer->SetViewport({0,0,float(target.pyramidSize) ,float(target.pyramidSize) });
 				mainCommandBuffer->SetScissor({ 0,0,target.pyramidSize,target.pyramidSize});
@@ -787,9 +788,12 @@ namespace RavEngine {
 				mainCommandBuffer->SetFragmentSampler(depthPyramidSampler, 1);
 				mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 				mainCommandBuffer->Draw(3);
+				mainCommandBuffer->EndRenderDebugMarker();
 			mainCommandBuffer->EndRendering();
             
             mainCommandBuffer->BeginCompute(depthPyramidPipeline);
+			mainCommandBuffer->BeginComputeDebugMarker("Build depth pyramid");
+
             {
                 float width = nextImgSize.width;
                 float height = nextImgSize.height;
@@ -806,6 +810,7 @@ namespace RavEngine {
                     mainCommandBuffer->DispatchCompute(std::ceil(width/32.f), std::ceil(height/32.f), 1, 32,32,1);
                 }
             }
+			mainCommandBuffer->EndComputeDebugMarker();
             mainCommandBuffer->EndCompute();
 
 			// deferred pass
