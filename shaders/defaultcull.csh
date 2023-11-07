@@ -154,13 +154,14 @@ void main() {
         for(uint i = 0; i < ndcCorners.length(); i++){
             // transform from [-1,1] to [0,1]
             ndcCorners[i] = (ndcCorners[i] + 1) * 0.5;
+            ndcCorners[i] = 1 - ndcCorners[i];          // flip Y because we access textures that way
 
         	//sample the depth pyramid at that specific level
         	float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i], level).x;
             minDepth = min(minDepth, depth);
         }
         
-        float depthSphereFront = (projectedCenterNDC.z + maxRadiusNDC); // the front face of the AABB in NDC
+        float depthSphereFront = (projectedCenterNDC.z); // the front face of the AABB in NDC
 
         isOnCamera = isOnCamera && depthSphereFront >= minDepth;
     }
