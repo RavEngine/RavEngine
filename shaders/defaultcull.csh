@@ -89,7 +89,7 @@ float findMaxRadiusInNDC(float radius, mat4 viewProj){
     };
     float maxRadiusNDC = 0;
     for(uint i = 0; i < radii.length(); i++){
-        vec4 projected = (viewProj * vec4(radii[i],0));
+        vec4 projected = (viewProj * vec4(radii[i],1));
         radii[i] = projected.xyz / projected.w;
         maxRadiusNDC = max(maxRadiusNDC, length(radii[i])); 
     }
@@ -152,6 +152,9 @@ void main() {
 
         float minDepth = 1;
         for(uint i = 0; i < ndcCorners.length(); i++){
+            // transform from [-1,1] to [0,1]
+            ndcCorners[i] = (ndcCorners[i] + 1) * 0.5;
+
         	//sample the depth pyramid at that specific level
         	float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i], level).x;
             minDepth = min(minDepth, depth);
