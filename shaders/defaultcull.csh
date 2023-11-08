@@ -139,7 +139,7 @@ void main() {
         float maxRadiusPixels = maxRadiusNDC * textureSize(depthPyramid,0).x;      // square texture
 
         //find the mipmap level that will match the screen size of the sphere
-	    float level = floor(log2(maxRadiusPixels));
+	    float miplevel = floor(log2(maxRadiusPixels));
 
         // create the corners of the AABB
         vec3 projectedCenterNDC = projectedCenter.xyz / projectedCenter.w;
@@ -157,7 +157,7 @@ void main() {
             ndcCorners[i] = 1 - ndcCorners[i];          // flip Y because we access textures that way
 
         	//sample the depth pyramid at that specific level
-        	float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i], level).x;
+        	float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i], miplevel).x;
             minDepth = min(minDepth, depth);
         }
         

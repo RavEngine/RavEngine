@@ -65,6 +65,7 @@ if (RGL_WEBGPU_AVAILABLE)
 else()
 	set(ST_ENABLE_WGSL OFF CACHE INTERNAL "")
 endif()
+set(ST_ENABLE_TEST OFF CACHE INTERNAL "")
 add_subdirectory(deps/ShaderTranspiler EXCLUDE_FROM_ALL)
 file(GLOB_RECURSE LIBRGLC_SOURCES "tools/librglc/*.cpp" "tools/librglc/*.hpp")
 add_library(librglc ${LIBRGLC_SOURCES}) 
@@ -214,20 +215,21 @@ set_target_properties("libtint" "tint_diagnostic_utils" PROPERTIES
 )
 endif()
 
-set_target_properties("GenericCodeGen" "glslang" "MachineIndependent" "OGLCompiler" "OSDependent" "SPIRV" PROPERTIES 
+set_target_properties("GenericCodeGen" "glslang" "MachineIndependent" "OGLCompiler" "OSDependent" "SPIRV" "SPVRemapper" "glslang-default-resource-limits" PROPERTIES 
 	FOLDER "${RGL_IDE_ROOT}/Libraries/glslang"
 )
 
 
 set_target_properties(
-	"SPIRV-Tools-opt" "SPIRV-Tools-reduce" "SPIRV-Tools-static"
+	"SPIRV-Tools-opt" "SPIRV-Tools-reduce" "SPIRV-Tools-static" "SPIRV-Tools-shared" "SPIRV-Tools-lint" "SPIRV-Tools-diff" "SPIRV-Tools-link"
+	"spirv-tools-shared-pkg-config" "spirv-tools-pkg-config"
 	PROPERTIES 
 	FOLDER "${RGL_IDE_ROOT}/Libraries/SPIRV-Tools Libraries"
 )
 
 set_target_properties(
 	"spirv-cross-core"
-	"spirv-cross-glsl" "spirv-cross-hlsl" "spirv-cross-msl" "spirv-cross-reflect"
+	"spirv-cross-glsl" "spirv-cross-hlsl" "spirv-cross-msl" "spirv-cross-reflect" "spirv-cross-cpp" "spirv-cross-util" "HLSL"
 	PROPERTIES 
 	FOLDER "${RGL_IDE_ROOT}/Libraries/SPIRV-Cross"
 )
