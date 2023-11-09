@@ -91,7 +91,7 @@ float findMaxRadiusInNDC(float radius, mat4 viewProj){
     for(uint i = 0; i < radii.length(); i++){
         vec4 projected = (viewProj * vec4(radii[i],1));
         radii[i] = projected.xyz / projected.w;
-        maxRadiusNDC = max(maxRadiusNDC, length(radii[i])); 
+        maxRadiusNDC = max(maxRadiusNDC, length(radii[i].xy));  // we don't want the Z yet 
     }
 
     return maxRadiusNDC;
@@ -136,7 +136,7 @@ void main() {
 		float maxRadiusNDC = findMaxRadiusInNDC(radius,ubo.viewProj);
         vec4 projectedCenter = (ubo.viewProj * vec4(center,1));
 
-        float maxRadiusPixels = maxRadiusNDC * textureSize(depthPyramid,0).x;      // square texture
+        float maxRadiusPixels = (maxRadiusNDC * 2) * textureSize(depthPyramid,0).x;      // square texture
 
         //find the mipmap level that will match the screen size of the sphere
 	    float miplevel = floor(log2(maxRadiusPixels));
@@ -154,8 +154,9 @@ void main() {
         for(uint i = 0; i < ndcCorners.length(); i++){
             // transform from [-1,1] to [0,1]
             ndcCorners[i] = (ndcCorners[i] + 1) * 0.5;
-            ndcCorners[i] = 1 - ndcCorners[i];          // flip Y because we access textures that way
-
+            
+            //ndcCorners[i].y = 1 - ndcCorners[i].y;          // flip Y because we access textures that way
+            
         	//sample the depth pyramid at that specific level
         	float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i], miplevel).x;
             minDepth = min(minDepth, depth);
