@@ -73,28 +73,50 @@ void MakeFrustumPlanes(mat4 viewProj, inout vec4 planes[6]){
     }
 }
 
-/**
-@param centerWorldSpace - the center of the sphere in world space
-@param radius - the sphere radius in world space
-@param viewProj - the viewProjection matrix of the camera
-@return the max radius in NDC
-*/
-float findMaxRadiusInNDC(float radius, mat4 viewProj){
 
-    // project 6 radius vectors and find the longest one in NDC
-    vec3 radii[] = {
-        vec3(radius,0,0),
-        vec3(0,radius,0),
-        vec3(0,0,radius)
+struct ClipBoundingBoxResult{
+    float minX, maxX, minY, maxY;
+    float referenceZ;
+};
+
+
+ClipBoundingBoxResult projectWorldSpaceSphere(vec3 center, float r, mat4 viewProj){
+    vec3 boxCorners[] = {
+        // front
+        center + vec3(r, -r, -r),
+        center + vec3(-r, -r, -r),
+        center + vec3(-r, r, -r),
+        center + vec3(r, r, -r),
+
+        // back
+        center + vec3(r, -r, r),
+        center + vec3(-r, -r, r),
+        center + vec3(-r, r, r),
+        center + vec3(r, r, r),
     };
-    float maxRadiusNDC = 0;
-    for(uint i = 0; i < radii.length(); i++){
-        vec4 projected = (viewProj * vec4(radii[i],1));
-        radii[i] = projected.xyz / projected.w;
-        maxRadiusNDC = max(maxRadiusNDC, length(radii[i])); 
+
+    ClipBoundingBoxResult result;
+    result.minX = 0;
+    result.maxX = 1;
+    result.minY = 0;
+    result.maxY = 1;
+    result.referenceZ = 0;
+
+    for(uint i = 0; i < boxCorners.length(); i++){
+        vec4 projected = viewProj * vec4(boxCorners[i],1);
+        projected /= projected.w;
+
+        result.minX = min(projected.x, result.minX);
+        result.maxX = max(projected.x, result.maxX);
+
+        result.minY = min(projected.y, result.minY);
+        result.maxY = max(projected.y, result.maxY);
+
+        result.referenceZ = max(projected.z, result.referenceZ);
     }
 
-    return maxRadiusNDC;
+
+    return result;
 }
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
@@ -133,37 +155,38 @@ void main() {
 
     // check occlusion
     if (isOnCamera){
-		float maxRadiusNDC = findMaxRadiusInNDC(radius,ubo.viewProj);
-        vec4 projectedCenter = (ubo.viewProj * vec4(center,1));
+		ClipBoundingBoxResult projected = projectWorldSpaceSphere(center, radius, ubo.viewProj);
 
-        float maxRadiusPixels = maxRadiusNDC * textureSize(depthPyramid,0).x;      // square texture
+        float mipDim = textureSize(depthPyramid,0).x;
 
-        //find the mipmap level that will match the screen size of the sphere
-	    float level = floor(log2(maxRadiusPixels));
+        float bbwidth = (projected.maxX - projected.minX) * mipDim;
+        float bbheight = (projected.maxY - projected.minY) * mipDim;
 
-        // create the corners of the AABB
-        vec3 projectedCenterNDC = projectedCenter.xyz / projectedCenter.w;
-        vec2 ndcCorners[] = {
-             projectedCenterNDC.xy + vec2(-maxRadiusNDC,maxRadiusNDC),      // top left
-             projectedCenterNDC.xy + vec2(maxRadiusNDC,maxRadiusNDC),      // top right
-             projectedCenterNDC.xy + vec2(maxRadiusNDC,-maxRadiusNDC),      // bottom right
-             projectedCenterNDC.xy + vec2(-maxRadiusNDC,-maxRadiusNDC),      // bottom left
-        };
+        if(projected.referenceZ > 0){        // if < 0 then it intersects the near plane so we consider it to be visible
+            //find the mipmap level that will match the screen size of the sphere
+            float level = floor(log2(max(bbwidth, bbheight)));
 
-        float minDepth = 1;
-        for(uint i = 0; i < ndcCorners.length(); i++){
-            // transform from [-1,1] to [0,1]
-            ndcCorners[i] = (ndcCorners[i] + 1) * 0.5;
-            ndcCorners[i] = 1 - ndcCorners[i];          // flip Y because we access textures that way
+            // create the corners of the bounding box for sampling
+            vec2 ndcCorners[] = {
+                vec2(projected.minX, projected.maxY),      // top left
+                vec2(projected.maxX, projected.maxY),      // top right
+                vec2(projected.maxX, projected.minY),      // bottom right,
+                vec2(projected.minX, projected.minY),      // bottom left
+            };
 
-        	//sample the depth pyramid at that specific level
-        	float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i], level).x;
-            minDepth = min(minDepth, depth);
+            float minDepth = 1;
+            for(uint i = 0; i < ndcCorners.length(); i++){
+                // transform from [-1,1] to [0,1]
+                ndcCorners[i] = (ndcCorners[i] + 1) * 0.5;
+                //ndcCorners[i] = 1 - ndcCorners[i];          // flip Y because we access textures that way
+
+                //sample the depth pyramid at that specific level
+                float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i], level).x;
+                minDepth = min(minDepth, depth);
+            }
+            
+            isOnCamera = isOnCamera && projected.referenceZ >= minDepth;
         }
-        
-        float depthSphereFront = (projectedCenterNDC.z); // the front face of the AABB in NDC
-
-        isOnCamera = isOnCamera && depthSphereFront >= minDepth;
     }
 
 	// check 2: what LOD am I in
