@@ -56,26 +56,13 @@ jobs:
         run: mkdir -p build && cd build; cmake -DCMAKE_TOOLCHAIN_FILE=../emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake .. 
       - name: Build
         run: cd build; cmake --build . --config Release --target RavEngine
-
-  build-mac:
-    name: macOS Compile Check
-    runs-on: macos-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          submodules: true
-      - name: Configure
-        run: mkdir -p build && cd build; cmake -G "Xcode" ..
-      - name: Build
-        run: cd build; cmake --build . --config Release --target RavEngine -- -quiet
  
-  build-apple-mobile:
-    name: Apple Mobile Compile Check
+  build-apple:
+    name: Apple Compile Check
     strategy:
       fail-fast: false
       matrix: 
-        platform: [OS64COMBINED, TVOSCOMBINED]
+        platform: [iOS, tvOS, Darwin]
     runs-on: macos-latest
     steps:
       - name: Checkout code
@@ -83,9 +70,9 @@ jobs:
         with:
           submodules: true
       - name: Configure
-        run: mkdir -p build && cd build; cmake -G "Xcode" -DCMAKE_TOOLCHAIN_FILE=../deps/ios/ios.toolchain.cmake -DPLATFORM=${{ matrix.platform }} -DENABLE_ARC=OFF -DDEPLOYMENT_TARGET=14.0 .. 
+        run: mkdir -p build && cd build; cmake -G "Xcode" -DCMAKE_SYSTEM_NAME=${{ matrix.platform }} .. 
       - name: Build
-        run: cd build; cmake --build . --config Release --target RavEngine -- -quiet
+        run: cd build; cmake --build . --config release --target RavEngine -- -quiet
                 
   build-windows:
     name: Windows Compile Check

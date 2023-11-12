@@ -1,23 +1,23 @@
 # RavEngine
 A C++20 cross-platform game framework, with emphasis on addressing pain points in existing game engines. Notable features:
-1. Fast Parallel ECS
-   - Unique feature: Supports querying by base classes without virtual!
-   - Also supports Monobehavior-style scripting with full automatic parallelization
-2. Multithreaded physics simulation (Nvidia PhysX 5.1)
-3. 3D spatialized audio with accurate room reverbation modeling (Google Resonance Audio)
-4. Automatic memory management handled via reference counting 
-5. GPU-driven render engine that supports modern rendering APIs (Metal, DirectX, Vulkan)
+1. Fast Parallel ECS, with support for querying by base class
+2. Multithreaded physics simulation
+3. 3D spatial audio, including room reverbation modeling
+4. Automatic memory management handled via reference counting, no garbage collector
+5. GPU-driven render engine that supports modern rendering APIs (Metal, DirectX 12, Vulkan)
 6. Physically-based lighting model
 7. Author shaders in vanilla GLSL
-8. Flexible and fast declarative user interface system based on HTML and CSS (RmlUi)
+8. Declarative user interface system based on HTML and CSS
 9. Support for SVGs in the UI and for textures
-10. High-performance easy-to-use multiplayer networking system (Valve GameNetworkingSockets)
+10. Built-in multiplayer networking system 
 11. FSM animation blending tree system
 12. Compute shader mesh skinning with automatic batching
-13. Programmable audio processing system
+13. Programmable audio effect processing system
 14. AR/VR support via OpenXR integration
 15. CI/CD-friendly build process powered by CMake
 16. Quality-of-life features like automatic incremental shader compilation
+
+A complete list of third party technologies can be found in the [`deps`](https://github.com/RavEngine/RavEngine/tree/master/deps) folder.
 
 Note: RavEngine does not have a graphical editor.
 
