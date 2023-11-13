@@ -1369,7 +1369,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.constants = {{sizeof(PyramidCopyUBO), 0,RGL::StageVisibility::Fragment}}
 	});
 
-	depthPyramidCopyPipeline = device->CreateRenderPipeline({
+	depthPyramidCopyPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
 		.stages = {
 				{
 					.type = RGL::ShaderStageDesc::Type::Vertex,
