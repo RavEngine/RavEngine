@@ -96,10 +96,10 @@ ClipBoundingBoxResult projectWorldSpaceSphere(vec3 center, float r, mat4 viewPro
     };
 
     ClipBoundingBoxResult result;
-    result.minX = 0;
-    result.maxX = 1;
-    result.minY = 0;
-    result.maxY = 1;
+    result.minX = 1;
+    result.maxX = 0;
+    result.minY = 1;
+    result.maxY = 0;
     result.referenceZ = 0;
 
     for(uint i = 0; i < boxCorners.length(); i++){
@@ -164,7 +164,7 @@ void main() {
 
         if(projected.referenceZ > 0){        // if < 0 then it intersects the near plane so we consider it to be visible
             //find the mipmap level that will match the screen size of the sphere
-            float level = floor(log2(max(bbwidth, bbheight)));
+            float miplevel = floor(log2(max(bbwidth, bbheight)));
 
             // create the corners of the bounding box for sampling
             vec2 ndcCorners[] = {
@@ -181,7 +181,7 @@ void main() {
                 //ndcCorners[i] = 1 - ndcCorners[i];          // flip Y because we access textures that way
 
                 //sample the depth pyramid at that specific level
-                float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i], level).x;
+                float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i], miplevel).x;
                 minDepth = min(minDepth, depth);
             }
             
