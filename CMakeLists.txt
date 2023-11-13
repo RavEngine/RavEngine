@@ -805,8 +805,13 @@ function(pack_resources)
 	endif()
 
 	if(TARGET_APPLE)
-	set_property(TARGET ${ARGS_TARGET} APPEND_STRING PROPERTY COMPILE_FLAGS "-fobjc-arc")
-	endif()
+		set_property(TARGET ${ARGS_TARGET} APPEND_STRING PROPERTY COMPILE_FLAGS "-fobjc-arc")
+		set_target_properties(${ARGS_TARGET} PROPERTIES 
+			XCODE_ATTRIBUTE_MTL_ENABLE_DEBUG_INFO "$<$<NOT:$<CONFIG:RELEASE>>:INCLUDE_SOURCE>"	# enable shader debugging in all but release mode
+			XCODE_ATTRIBUTE_MTL_OPTIMIZATION_LEVEL "$<$<CONFIG:RELEASE>:default>"				# optimize shaders in release builds
+			XCODE_ATTRIBUTE_MTL_LANGUAGE_REVISION "Metal30"										# use Metal 3
+			)
+	endif()	
 
 	get_property(eng_dir GLOBAL PROPERTY ENG_DIR)
 
