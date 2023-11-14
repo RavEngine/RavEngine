@@ -91,8 +91,13 @@ struct TextureView{
 		NativeHandles(const decltype(dx)& dx) : dx(dx) {}
 #endif
 #if RGL_VK_AVAILABLE
-		VkImageView vk;
-		NativeHandles(decltype(vk) vk) : vk(vk) {}
+		struct vk {
+			VkImageView view;
+			uint32_t mip = 0;
+			constexpr static decltype(mip) ALL_MIPS = std::numeric_limits<decltype(mip)>::max();
+		}
+		 vk;
+		 NativeHandles(decltype(vk.view) view, decltype(vk.mip) mip) : vk{ view, mip } {}
 #endif
 		NativeHandles() {}
 
@@ -100,7 +105,7 @@ struct TextureView{
     
 #if RGL_VK_AVAILABLE
 	const RGL::ITexture* parent = nullptr;
-	TextureView(decltype(parent) parent, VkImageView in_img, Dimension dim) : parent(parent), viewSize(dim), texture(in_img) {}
+	TextureView(decltype(parent) parent, VkImageView in_img, uint32_t mip, Dimension dim) : parent(parent), viewSize(dim), texture(in_img, mip) {}
 #endif
 
 #if RGL_DX12_AVAILABLE

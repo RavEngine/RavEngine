@@ -229,7 +229,7 @@ namespace RGL {
 			dim.width /= 2;
 			dim.height /= 2;
 			VK_CHECK(vkCreateImageView(owningDevice->device, &view, nullptr, &mipView));
-			mipViews.push_back(TextureView{this, mipView, dim});
+			mipViews.push_back(TextureView{this, mipView, uint32_t(i), dim});
 		}
 
 		createdAspectVk = rgl2vkAspectFlags(config.aspect);
@@ -238,8 +238,9 @@ namespace RGL {
 			owningDevice->SetDebugNameForResource(vkImage, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, config.debugName);
 			owningDevice->SetDebugNameForResource(vkImageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, config.debugName);
 			for (int i = 0; i < mipViews.size(); i++) {
-				owningDevice->SetDebugNameForResource(mipViews[i].texture.vk, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, config.debugName);
+				owningDevice->SetDebugNameForResource(mipViews[i].texture.vk.view, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, config.debugName);
 			}
+			debugName = config.debugName;
 		}
 
 		if (createdConfig.usage.ColorAttachment) {
@@ -266,7 +267,7 @@ namespace RGL {
 			vkDestroyImageView(owningDevice->device, vkImageView, nullptr);
 
 			for (const auto view : mipViews) {
-				vkDestroyImageView(owningDevice->device, view.texture.vk, nullptr);
+				vkDestroyImageView(owningDevice->device, view.texture.vk.view, nullptr);
 			}
 			mipViews.clear();
 			vmaFreeMemory(owningDevice->vkallocator, alloc);
@@ -275,9 +276,8 @@ namespace RGL {
 	}
 	TextureView TextureVk::GetDefaultView() const
 	{
-		TextureView view{this, vkImageView, size};
+		TextureView view{this, vkImageView, TextureView::NativeHandles::vk::ALL_MIPS, size};
 		view.parent = this;
-		view.texture.vk = vkImageView;
 		return view;
 	}
 	TextureView TextureVk::GetViewForMip(uint32_t mip) const
