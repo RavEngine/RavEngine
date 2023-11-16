@@ -58,7 +58,7 @@ namespace RavEngine {
 		*/
 		inline matrix4 GenerateViewMatrix() const{
 			
-            return glm::inverse(GetOwner().GetTransform().CalculateWorldMatrix());
+            return glm::inverse(GetOwner().GetTransform().GetWorldMatrix());
 		}
         
         /**

@@ -171,7 +171,7 @@ Transformation PhysicsCollider::GetRelativeTransform() const{
 }
 
 matrix4 PhysicsCollider::CalculateWorldMatrix(const RavEngine::Transform& tr) const{
-	return tr.CalculateWorldMatrix() * (matrix4)GetRelativeTransform();
+	return tr.GetWorldMatrix() * (matrix4)GetRelativeTransform();
 }
 
 void BoxCollider::DebugDraw(RavEngine::DebugDrawer& dbg,color_t debug_color, const RavEngine::Transform& tr) const{

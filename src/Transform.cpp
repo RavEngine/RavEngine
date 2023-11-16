@@ -32,3 +32,18 @@ Transform& Transform::RemoveChild(ComponentHandle<Transform> child)
 	cptr->SetWorldRotation(worldRot);
     return *this;
 }
+
+inline void RavEngine::Transform::UpdateChildren()
+{
+	auto update = [](Transform* transform, auto&& updatefn) -> void {
+		transform->MarkAsDirty();
+		auto newParentMatrix = transform->GetWorldMatrix();
+		for (auto& child : transform->children) {
+			auto component = child.get();
+			component->matrix = newParentMatrix;
+
+			updatefn(component,updatefn);
+		}
+	};
+	update(this, update);	
+}

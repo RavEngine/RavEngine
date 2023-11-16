@@ -9,21 +9,21 @@ using namespace RavEngine;
 using namespace std;
 
 void DirectionalLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
-	dbg.DrawCapsule(tr.CalculateWorldMatrix(), debug_color, 1, 2);
+	dbg.DrawCapsule(tr.GetWorldMatrix(), debug_color, 1, 2);
 }
 
 void AmbientLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
-	dbg.DrawSphere(tr.CalculateWorldMatrix(), debug_color, 1);
+	dbg.DrawSphere(tr.GetWorldMatrix(), debug_color, 1);
 }
 
 
 void PointLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
-	dbg.DrawSphere(tr.CalculateWorldMatrix(), debug_color, CalculateRadius() * 2);
+	dbg.DrawSphere(tr.GetWorldMatrix(), debug_color, CalculateRadius() * 2);
 }
 
 void SpotLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
 #ifndef NDEBUG
-	//dbg.DrawWireframeMesh(tr.CalculateWorldMatrix(), LightManager::spotLightMesh);
+	//dbg.DrawWireframeMesh(tr.GetWorldMatrix(), LightManager::spotLightMesh);
 #endif
 }
 

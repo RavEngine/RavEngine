@@ -295,7 +295,7 @@ void World::setupRenderTasks(){
                     // write new matrix
                     auto owner = trns.GetOwner();
                     auto ownerIDInWorld = owner.GetIdInWorld();
-                    renderData->worldTransforms[ownerIDInWorld] = trns.CalculateWorldMatrix();
+                    renderData->worldTransforms[ownerIDInWorld] = trns.GetWorldMatrix();
                 });
 
                 trns.ClearTickDirty();
@@ -366,7 +366,7 @@ void World::setupRenderTasks(){
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
-                    renderData->spotLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.CalculateWorldMatrix();
+                    renderData->spotLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.GetWorldMatrix();
                 }
                 if (ptr->Get(i).isInvalidated()){
                     // update color data if it has changed
@@ -390,7 +390,7 @@ void World::setupRenderTasks(){
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
-                    renderData->pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.CalculateWorldMatrix();
+                    renderData->pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.GetWorldMatrix();
                 }
                 if (ptr->Get(i).isInvalidated()){
                     // update color data if it has changed

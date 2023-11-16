@@ -14,7 +14,7 @@ using namespace std;
 void AudioRoomSyncSystem::operator()(AudioRoom& room, Transform& tr) const{
     auto pos = tr.GetWorldPosition();
     auto rot = tr.GetWorldRotation();
-    auto mtx = tr.CalculateWorldMatrix();
+    auto mtx = tr.GetWorldMatrix();
     
     quaternion r;
     vector3 t;

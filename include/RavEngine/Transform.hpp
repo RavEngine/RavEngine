@@ -18,7 +18,7 @@
 namespace RavEngine {
 	struct Transform : public ComponentWithOwner, public Queryable<Transform> {
     protected:
-        mutable matrix4 matrix;
+        mutable matrix4 matrix;				// defined as the world space transform of the PARENT
         quaternion rotation;
         vector3 position, scale;
         UnorderedVector<ComponentHandle<Transform>>  children;        //non-owning
@@ -28,18 +28,16 @@ namespace RavEngine {
 		friend class World;
 		mutable bool isTickDirty = false;	// used for when this transform has been updated in the current tick and needs updating in the world's render data
         
-        inline void MarkAsDirty(Transform* root) const{
-            root->isDirty = true;
-			root->isTickDirty = true;
-            
-            for(auto& t : root->children){
-                MarkAsDirty(t.get());
-            }
+        inline void MarkAsDirty() const{
+            isDirty = true;
+			isTickDirty = true;
         }
 
 		inline void ClearTickDirty() {
 			isTickDirty = false;
 		}
+
+		void UpdateChildren();
         
 	public:
         inline bool getTickDirty() const{
@@ -96,7 +94,13 @@ namespace RavEngine {
 		Get the matrix list of all the parents. 
 		@param list the list to add the matrices to
 		*/
-		matrix4 CalculateWorldMatrix() const;
+		matrix4 GetWorldMatrix() const {
+			return matrix * GenerateLocalMatrix();
+		}
+
+		matrix4 GetParentSpaceMatrix() const {
+			return matrix;
+		}
 
 		/**
 		Add a transform as a child object of this transform
@@ -169,8 +173,8 @@ namespace RavEngine {
 	*/
 	inline Transform& Transform::LocalTranslateDelta(const vector3& delta) {
 		//set position value
-		MarkAsDirty(this);
 		position += delta;
+		UpdateChildren();
         return *this;
 	}
 
@@ -185,8 +189,8 @@ namespace RavEngine {
 	*/
 	inline Transform& Transform::SetLocalPosition(const vector3& newPos) {
 		//set position value
-		MarkAsDirty(this);
 		position = newPos;
+		UpdateChildren();
         return *this;
 	}
 
@@ -214,8 +218,8 @@ namespace RavEngine {
 	@param newRot the new rotation to set
 	*/
 	inline Transform& Transform::SetLocalRotation(const quaternion& newRot) {
-		MarkAsDirty(this);
 		rotation = newRot;
+		UpdateChildren();
         return *this;
 	}
 
@@ -224,9 +228,9 @@ namespace RavEngine {
 	@param delta the change in rotation to apply
 	*/
 	inline Transform& Transform::LocalRotateDelta(const quaternion& delta) {
-		MarkAsDirty(this);
         // sum two quaternions by multiplying them
         rotation *= delta;
+		UpdateChildren();
         return *this;
 	}
 
@@ -254,14 +258,14 @@ namespace RavEngine {
 	@param newScale the new size of this object in local (parent) space
 	*/
 	inline Transform& Transform::SetLocalScale(const vector3& newScale) {
-		MarkAsDirty(this);
 		scale = newScale;
+		UpdateChildren();
         return *this;
 	}
 
 	inline Transform& Transform::LocalScaleDelta(const vector3& delta) {
-		MarkAsDirty(this);
 		scale += delta;
+		UpdateChildren();
         return *this;
 	}
 
@@ -280,20 +284,6 @@ namespace RavEngine {
 		return scale;
 	}
 
-	inline matrix4 Transform::CalculateWorldMatrix() const{
-		if (isDirty){
-            auto result = GenerateLocalMatrix();
-            for(auto p = parent; p.IsValid(); p = p->parent){
-                result = p->GenerateLocalMatrix() * result;
-            }
-            matrix = result;
-            isDirty = false;
-            return result;
-		}
-		else{
-			return matrix;
-		}
-	}
 
 	/**
 	 @return the current cached matrix, representing the world-space transformation. This may be out-of-date.
@@ -308,10 +298,8 @@ namespace RavEngine {
 		if (!HasParent()) {
 			return GetLocalPosition();
 		}
-		auto finalMatrix = CalculateWorldMatrix();
 		
-		//finally apply the local matrix
-		return finalMatrix * vector4(0,0,0, 1);
+		return GetParentSpaceMatrix() * vector4(GetLocalPosition(),1);
 	}
 
 	inline quaternion Transform::GetWorldRotation() const
@@ -320,8 +308,7 @@ namespace RavEngine {
 			return GetLocalRotation();
 		}
         
-		//apply local rotation
-		auto finalMatrix = CalculateWorldMatrix();
+		auto finalMatrix = GetParentSpaceMatrix() * glm::toMat4(GetLocalRotation());
         
         return glm::quat_cast(finalMatrix);
 	}
