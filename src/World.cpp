@@ -124,7 +124,8 @@ void RavEngine::World::TickECS(float fpsScale) {
 	time_now = e_clock_t::now();
 	
 	//execute and wait
-    GetApp()->executor.run(masterTasks).wait();
+    GetApp()->executor.run(masterTasks);
+    GetApp()->executor.wait_for_all();
 	if (isRendering){
 		newFrame = true;
 	}
