@@ -15,6 +15,7 @@ Transform& Transform::AddChild(ComponentHandle<Transform> child)
 	
 	cptr->parent = ComponentHandle<Transform>(GetOwner());
 	children.insert(child);
+	child->matrix = GetWorldMatrix();
 	
     cptr->SetWorldPosition(worldPos);
     cptr->SetWorldRotation(worldRot);
@@ -28,6 +29,7 @@ Transform& Transform::RemoveChild(ComponentHandle<Transform> child)
 	auto worldRot = cptr->GetWorldRotation();
 	cptr->parent.reset();
 	children.erase(child);
+	child->matrix = matrix4(1);
 	cptr->SetWorldPosition(worldPos);
 	cptr->SetWorldRotation(worldRot);
     return *this;
