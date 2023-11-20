@@ -13,6 +13,7 @@
 #include <tint/tint.h>
 #endif
 #include <atomic>
+#include <mutex>
 
 #if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)
 #define _UWP 1   

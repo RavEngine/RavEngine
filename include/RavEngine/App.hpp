@@ -18,6 +18,8 @@
 #include <optional>
 #include "GetApp.hpp"
 
+#define SINGLE_THREADED 0
+
 namespace RavEngine {
 
 struct RenderEngine;
@@ -102,10 +104,10 @@ struct AudioPlayer;
 		
 		//global thread pool, threads = logical processors on CPU
         tf::Executor executor{
-#ifdef __EMSCRIPTEN__
+#if SINGLE_THREADED
         1 // use main thread only on emscripten
 #else
-            std::max<size_t>(std::thread::hardware_concurrency() - 2, 1)    // for audio - TODO: make configurable
+            std::max<size_t>(std::thread::hardware_concurrency() - 2, 2)    // for audio - TODO: make configurable
 #endif
         };
 		

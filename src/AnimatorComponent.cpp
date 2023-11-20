@@ -220,7 +220,7 @@ Get the current pose of the animation in world space
 */
 
 const decltype(RavEngine::AnimatorComponent::glm_pose)& RavEngine::AnimatorComponent::GetPose() const {
-	decimalType matrix[16];
+	decimalType matrix[16]{ 0 };
 	auto worldMat = GetOwner().GetTransform().GetWorldMatrix();
 	for (int i = 0; i < models.size(); i++) {
 		auto& t = models[i];

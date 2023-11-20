@@ -8,11 +8,17 @@ using namespace RavEngine;
 void PhysicsTaskDispatcher::submitTask(physx::PxBaseTask &task){
     // immediately place it on the task queue as background async
     physx::PxBaseTask* taskptr = &task;
-    auto& executor = GetApp()->executor;
-    executor.silent_async([taskptr]{
+    if constexpr (SINGLE_THREADED) {
         taskptr->run();
         taskptr->release();
-    });
+    }
+    else {
+        auto& executor = GetApp()->executor;
+        executor.silent_async([taskptr] {
+            taskptr->run();
+            taskptr->release();
+        });
+    }
 }
 
 uint32_t PhysicsTaskDispatcher::getWorkerCount() const {
