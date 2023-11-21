@@ -44,6 +44,18 @@ MTLCullMode rgl2mtlcullmode(RGL::CullMode mode){
     }
 }
 
+MTLPrimitiveType rgl2mtlprimitiveType(RGL::PrimitiveTopology top){
+    switch(top){
+        case decltype(top)::PointList: return MTLPrimitiveTypePoint;
+        case decltype(top)::LineList: return MTLPrimitiveTypeLine;
+        case decltype(top)::LineStrip: return MTLPrimitiveTypeLineStrip;
+        case decltype(top)::TriangleList: return MTLPrimitiveTypeTriangle;
+        case decltype(top)::TriangleStrip: return MTLPrimitiveTypeTriangleStrip;
+        default:
+            FatalError("Unsupported primitive type");
+    }
+}
+
 uint32_t bytesPerPixel(MTLPixelFormat format){
     switch (format){
         case MTLPixelFormatInvalid:
@@ -148,6 +160,7 @@ void CommandBufferMTL::BindRenderPipeline(RGLRenderPipelinePtr pipelineIn){
     [currentCommandEncoder setFrontFacingWinding:rgl2mtlwinding(pipeline->settings.rasterizerConfig.windingOrder)];
     [currentCommandEncoder setCullMode:rgl2mtlcullmode(pipeline->settings.rasterizerConfig.cullMode)];
     [currentCommandEncoder setTriangleFillMode:pipeline->currentFillMode];
+    currentPrimitiveType = rgl2mtlprimitiveType(pipeline->settings.inputAssembly.topology);
 }
 
 void CommandBufferMTL::BeginCompute(RGLComputePipelinePtr pipelineIn){
@@ -213,7 +226,7 @@ void CommandBufferMTL::SetFragmentBytes(const untyped_span data, uint32_t offset
 }
 
 void CommandBufferMTL::Draw(uint32_t nVertices, const DrawInstancedConfig& config){
-    [currentCommandEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:config.startVertex * vertexBuffer->stride vertexCount:nVertices instanceCount:config.nInstances baseInstance:config.firstInstance];
+    [currentCommandEncoder drawPrimitives:MTLPrimitiveType(currentPrimitiveType) vertexStart:config.startVertex * vertexBuffer->stride vertexCount:nVertices instanceCount:config.nInstances baseInstance:config.firstInstance];
 }
 
 void CommandBufferMTL::DrawIndexed(uint32_t nIndices, const DrawIndexedInstancedConfig& config){
@@ -223,7 +236,7 @@ void CommandBufferMTL::DrawIndexed(uint32_t nIndices, const DrawIndexedInstanced
         indexType = MTLIndexTypeUInt16;
     }
     
-    [currentCommandEncoder drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexCount:nIndices indexType:indexType indexBuffer:indexBuffer->buffer indexBufferOffset:config.firstIndex * indexBuffer->stride instanceCount:config.nInstances baseVertex:config.startVertex * vertexBuffer->stride baseInstance:config.firstInstance];
+    [currentCommandEncoder drawIndexedPrimitives:MTLPrimitiveType(currentPrimitiveType) indexCount:nIndices indexType:indexType indexBuffer:indexBuffer->buffer indexBufferOffset:config.firstIndex * indexBuffer->stride instanceCount:config.nInstances baseVertex:config.startVertex * vertexBuffer->stride baseInstance:config.firstInstance];
 }
 
 void CommandBufferMTL::SetViewport(const Viewport & viewport){
@@ -338,7 +351,7 @@ void CommandBufferMTL::ExecuteIndirectIndexed(const RGL::IndirectConfig & config
     
     // because Metal doesn't have multidraw...
     for(uint32_t i = 0; i < config.nDraws; i++){
-        [currentCommandEncoder drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexType:indexType indexBuffer:indexBuffer->buffer indexBufferOffset:0 indirectBuffer:buffer->buffer indirectBufferOffset:config.offsetIntoBuffer + i * sizeof(IndirectIndexedCommand)];
+        [currentCommandEncoder drawIndexedPrimitives:MTLPrimitiveType(currentPrimitiveType) indexType:indexType indexBuffer:indexBuffer->buffer indexBufferOffset:0 indirectBuffer:buffer->buffer indirectBufferOffset:config.offsetIntoBuffer + i * sizeof(IndirectIndexedCommand)];
     }
     
 }
@@ -348,7 +361,7 @@ void CommandBufferMTL::ExecuteIndirect(const RGL::IndirectConfig & config) {
     
     // because Metal doesn't have multidraw...
     for(uint32_t i = 0; i < config.nDraws; i++){
-        [currentCommandEncoder drawPrimitives:MTLPrimitiveTypeTriangle indirectBuffer:buffer->buffer indirectBufferOffset:config.offsetIntoBuffer + i * sizeof(IndirectCommand)];
+        [currentCommandEncoder drawPrimitives:MTLPrimitiveType(currentPrimitiveType) indirectBuffer:buffer->buffer indirectBufferOffset:config.offsetIntoBuffer + i * sizeof(IndirectCommand)];
     }
 }
 

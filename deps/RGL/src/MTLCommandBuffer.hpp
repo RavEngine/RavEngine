@@ -15,6 +15,7 @@ struct BufferMTL;
         OBJC_ID(MTLRenderCommandEncoder) currentCommandEncoder = nullptr;
         OBJC_ID(MTLComputeCommandEncoder) currentComputeCommandEncoder = nullptr;
         OBJC_ID(MTLDepthStencilState) noDepthStencil = nullptr;
+        int currentPrimitiveType = 0;
         
         std::shared_ptr<BufferMTL> indexBuffer;
         std::shared_ptr<BufferMTL> vertexBuffer;
