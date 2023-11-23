@@ -121,7 +121,7 @@ namespace RGL {
 			1, &barrier
 		);
 
-		endSingleTimeCommands(commandBuffer,graphicsQueue,device,commandPool);
+		endSingleTimeCommands(commandBuffer, graphicsQueue, device, commandPool);
 	}
 
 	TextureVk::TextureVk(decltype(owningDevice) owningDevice, decltype(vkImageView) imageView, decltype(vkImage) image, const Dimension& size) : owningDevice(owningDevice), vkImageView(imageView), vkImage(image), createdConfig({}), ITexture(size)
@@ -155,7 +155,7 @@ namespace RGL {
 
 		copyBufferToImage(stagingBuffer, vkImage, static_cast<uint32_t>(config.width), static_cast<uint32_t>(config.height), device, owningDevice->commandPool, owningDevice->presentQueue);
 
-		transitionImageLayout(vkImage, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,device, owningDevice->commandPool, owningDevice->presentQueue, createdAspectVk);
+		transitionImageLayout(vkImage, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, device, owningDevice->commandPool, owningDevice->presentQueue, createdAspectVk);
 
 		// we can predict that a data texture will be used primarily for reading
 		nativeFormat = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -195,7 +195,7 @@ namespace RGL {
 		VmaAllocationInfo allocInfo;
 		VK_CHECK(vmaCreateImage(owningDevice->vkallocator, &imageInfo, &allocCreateInfo, &vkImage, &alloc, &allocInfo));	// also binds memory
 
-		auto makeImageViewCreateInfo = [this,&config](uint32_t miplevel, uint32_t levelCount = 1){
+		auto makeImageViewCreateInfo = [this, &config](uint32_t miplevel, uint32_t levelCount = 1) {
 
 			return VkImageViewCreateInfo{
 			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -216,8 +216,8 @@ namespace RGL {
 				.layerCount = 1
 			}
 			};
-			
-		};
+
+			};
 		auto createInfo = makeImageViewCreateInfo(0, VK_REMAINING_MIP_LEVELS);
 		VK_CHECK(vkCreateImageView(owningDevice->device, &createInfo, nullptr, &vkImageView));
 
@@ -229,7 +229,7 @@ namespace RGL {
 			dim.width /= 2;
 			dim.height /= 2;
 			VK_CHECK(vkCreateImageView(owningDevice->device, &view, nullptr, &mipView));
-			mipViews.push_back(TextureView{this, mipView, dim});
+			mipViews.push_back(TextureView{ this, mipView, uint32_t(i), dim });
 		}
 
 		createdAspectVk = rgl2vkAspectFlags(config.aspect);
@@ -238,8 +238,9 @@ namespace RGL {
 			owningDevice->SetDebugNameForResource(vkImage, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, config.debugName);
 			owningDevice->SetDebugNameForResource(vkImageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, config.debugName);
 			for (int i = 0; i < mipViews.size(); i++) {
-				owningDevice->SetDebugNameForResource(mipViews[i].texture.vk, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, config.debugName);
+				owningDevice->SetDebugNameForResource(mipViews[i].texture.vk.view, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, config.debugName);
 			}
+			debugName = config.debugName;
 		}
 
 		if (createdConfig.usage.ColorAttachment) {
@@ -266,7 +267,7 @@ namespace RGL {
 			vkDestroyImageView(owningDevice->device, vkImageView, nullptr);
 
 			for (const auto view : mipViews) {
-				vkDestroyImageView(owningDevice->device, view.texture.vk, nullptr);
+				vkDestroyImageView(owningDevice->device, view.texture.vk.view, nullptr);
 			}
 			mipViews.clear();
 			vmaFreeMemory(owningDevice->vkallocator, alloc);
@@ -275,9 +276,8 @@ namespace RGL {
 	}
 	TextureView TextureVk::GetDefaultView() const
 	{
-		TextureView view{this, vkImageView, size};
+		TextureView view{ this, vkImageView, TextureView::NativeHandles::vk::ALL_MIPS, size };
 		view.parent = this;
-		view.texture.vk = vkImageView;
 		return view;
 	}
 	TextureView TextureVk::GetViewForMip(uint32_t mip) const
