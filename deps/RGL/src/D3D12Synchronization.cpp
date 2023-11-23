@@ -30,6 +30,10 @@ namespace RGL {
 	{
 		owningDevice->internalQueue->GetD3D12CommandQueue()->Signal(fence.Get(), 1);
 	}
+	FenceD3D12::~FenceD3D12()
+	{
+		CloseHandle(fenceEvent);
+	}
 }
 
 #endif

@@ -7,33 +7,12 @@
 #include <unordered_map>
 
 namespace RGL {
-	struct TextureLastUseKey {
-		const struct TextureVk* texture = nullptr;
-		uint32_t mip = 0;
-		TextureLastUseKey(decltype(texture) texture, decltype(mip) mip) : texture(texture), mip(mip) {}
-		bool operator==(const TextureLastUseKey& other) const{
-			return texture == other.texture && mip == other.mip;
-		}
-	};
-}
-
-namespace std {
-	template<>
-	struct hash<RGL::TextureLastUseKey> {
-		size_t operator()(const RGL::TextureLastUseKey& other) const {
-			return uintptr_t(other.texture) ^ other.mip;
-		}
-	};
-}
-
-namespace RGL {
 	struct DeviceVk;
 	struct CommandQueueVk;
 	struct RenderPipelineVk;
 	struct RenderPassVk;
 
 	struct CommandBufferVk : public ICommandBuffer {
-		bool isInsideRenderingBlock = false;
 		VkCommandBuffer commandBuffer = VK_NULL_HANDLE;	// does not need to be destroyed
 		std::shared_ptr<RenderPassVk> currentRenderPass = nullptr;
 		
@@ -53,12 +32,7 @@ namespace RGL {
 			bool written = false;
 		};
 
-		
-		bool keyIsAllMips(const TextureLastUseKey& key) {
-			return key.mip == TextureView::NativeHandles::vk::ALL_MIPS;
-		}
-
-		std::unordered_map<TextureLastUseKey, TextureLastUse> activeTextures;
+		std::unordered_map<const struct TextureVk*, TextureLastUse> activeTextures;
 		std::unordered_map<const struct BufferVk*, BufferLastUse> activeBuffers;
 
 		struct CmdSetVertexBuffer {
@@ -189,9 +163,6 @@ namespace RGL {
 
 		void EncodeCommand(auto&& commandValue) {
 			renderCommands.push_back(commandValue);
-			if (!isInsideRenderingBlock) {
-				EncodeQueuedCommands();				// run it immediately if not inside a beginrendering
-			}
 		}
 
 		CommandBufferVk(decltype(owningQueue) owningQueue);
@@ -253,14 +224,16 @@ namespace RGL {
 		void EndRenderDebugMarker() final;
 		void EndComputeDebugMarker() final;
 
+		void BlockUntilCompleted() final;
+
 	private:
 		void GenericBindBuffer(RGLBufferPtr& buffer, const uint32_t& offsetIntoBuffer, const uint32_t& bindingOffset, VkPipelineBindPoint bindPoint);
 		void RecordBufferBinding(const BufferVk* buffer, BufferLastUse usage);
-		void RecordTextureBinding(const TextureView texture, TextureLastUse usage, bool recordOnly = false);
-		void EncodeQueuedCommands();
+		void RecordTextureBinding(const TextureVk* texture, TextureLastUse usage, bool recordOnly = false);
+		void EndContext();
 		bool IsBufferSlotWritable(uint32_t slot);
 		std::vector<VkBufferMemoryBarrier2> barriersToAdd;
 		void ApplyBarriers();
+		VkFence internalFence;
 	};
 }
-

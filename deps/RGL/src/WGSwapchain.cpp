@@ -36,7 +36,7 @@ namespace RGL{
     void SwapchainWG::GetNextImage(uint32_t* index){
         auto next = wgpuSwapChainGetCurrentTextureView(swapchain);
 
-        activeTextures[idx] = TextureWG(next, {static_cast<uint32_t>(currentSize.width), static_cast<uint32_t>(currentSize.height)});
+        activeTextures[idx] = TextureWG(next, {static_cast<uint32_t>(currentSize.width), static_cast<uint32_t>(currentSize.height)}, false);
 
         *index = this->idx;
         idx = (idx + 1) % activeTextures.size();

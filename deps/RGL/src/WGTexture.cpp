@@ -1,12 +1,15 @@
 #if RGL_WEBGPU_AVAILABLE
 #include "WGTexture.hpp"
+#include <iostream>
 
 namespace RGL{
 TextureWG::~TextureWG(){
-    wgpuTextureViewRelease(texture);
+    if (owning){
+        wgpuTextureViewRelease(texture);
+    }
 }
 
-TextureWG::TextureWG(decltype(texture) texture, const Dimension& dim) : texture(texture), ITexture(dim){
+TextureWG::TextureWG(decltype(texture) texture, const Dimension& dim, bool) : texture(texture), ITexture(dim), owning(owning){
 
 }
 TextureWG::TextureWG(const std::shared_ptr<DeviceWG> owningDevice, const TextureConfig& config, const untyped_span data) : TextureWG(owningDevice, config){

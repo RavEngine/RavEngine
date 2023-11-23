@@ -10,7 +10,6 @@
 #include "VkSwapchain.hpp"
 #include "VkComputePipeline.hpp"
 #include <cstring>
-#include <iostream>
 
 namespace RGL {
 	VkAttachmentLoadOp RGL2LoadOp(LoadAccessOperation op) {
@@ -45,6 +44,7 @@ namespace RGL {
 	void RGL::CommandBufferVk::Reset()
 	{
 		VK_CHECK(vkResetCommandBuffer(commandBuffer, 0));
+		vkResetFences(owningQueue->owningDevice->device, 1, &internalFence);
 	}
 	void CommandBufferVk::Begin()
 	{
@@ -59,18 +59,17 @@ namespace RGL {
 	{		
 		// ensure that all commands have been encoded
 		if (renderCommands.size() > 0) {
-			EncodeQueuedCommands();
+			EndContext();
 		}
 
 		for (const auto swapRsc : swapchainImages) {
-			RecordTextureBinding(TextureView{ swapRsc,swapRsc->GetDefaultView().texture.vk.view,TextureView::NativeHandles::vk::ALL_MIPS,swapRsc->GetSize() }, { VK_IMAGE_LAYOUT_PRESENT_SRC_KHR , true });
+			RecordTextureBinding(swapRsc, { VK_IMAGE_LAYOUT_PRESENT_SRC_KHR , true});
 		}
 
 		// place resources back in their native state
 		for (const auto [texture, written] : activeTextures) {
-			if (!swapchainImages.contains(texture.texture)) {
-				TextureView view{ texture.texture,texture.texture->GetDefaultView().texture.vk.view,TextureView::NativeHandles::vk::ALL_MIPS,texture.texture->GetSize() };
-				RecordTextureBinding(view, {texture.texture->nativeFormat , true});
+			if (!swapchainImages.contains(texture)) {
+				RecordTextureBinding(texture, {texture->nativeFormat , true});
 			}
 		}
 		swapchainImages.clear();
@@ -86,13 +85,12 @@ namespace RGL {
 	}
 	void CommandBufferVk::BeginRendering(RGLRenderPassPtr renderPassPtr)
 	{
-		isInsideRenderingBlock = true;
 		EncodeCommand(CmdBeginRendering{ renderPassPtr });
 
 		auto renderPass = std::static_pointer_cast<RenderPassVk>(renderPassPtr);
 		uint32_t i = 0;
 		for (const auto& attachment : renderPass->config.attachments) {
-			RecordTextureBinding(renderPass->textures[i], {
+			RecordTextureBinding(static_cast<const TextureVk*>(renderPass->textures[i].parent), {
 					.lastLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 					.written = true
 				}
@@ -101,7 +99,7 @@ namespace RGL {
 		}
 
 		if (renderPass->config.depthAttachment.has_value()) {
-			RecordTextureBinding(renderPass->depthTexture.value(),
+			RecordTextureBinding(static_cast<const TextureVk*>(renderPass->depthTexture->parent),
 				{
 					.lastLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
 					.written = true
@@ -110,7 +108,7 @@ namespace RGL {
 		}
 
 		if (renderPass->config.stencilAttachment.has_value()) {
-			RecordTextureBinding(renderPass->stencilTexture.value(),
+			RecordTextureBinding(static_cast<const TextureVk*>(renderPass->stencilTexture->parent),
 				{
 					.lastLayout = VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL,
 					.written = true
@@ -121,10 +119,9 @@ namespace RGL {
 
 	void CommandBufferVk::EndRendering()
 	{
-		EncodeQueuedCommands();
+		EndContext();
 		vkCmdEndRendering(commandBuffer);
 		currentRenderPipeline = nullptr;	// reset this to avoid having stale state
-		isInsideRenderingBlock = false;
 	}
 	void CommandBufferVk::BeginCompute(RGLComputePipelinePtr inPipeline)
 	{
@@ -134,7 +131,7 @@ namespace RGL {
 	void CommandBufferVk::EndCompute()
 	{
 		EncodeCommand(CmdEndCompute{});
-		EncodeQueuedCommands();
+		EndContext();
 		currentComputePipeline = nullptr;
 	}
 	void CommandBufferVk::DispatchCompute(uint32_t threadsX, uint32_t threadsY, uint32_t threadsZ,  uint32_t threadsPerThreadgroupX, uint32_t threadsPerThreadgroupY, uint32_t threadsPerThreadgroupZ)
@@ -211,8 +208,10 @@ namespace RGL {
 	}
 	void CommandBufferVk::SetFragmentTexture(const TextureView& texture, uint32_t index)
 	{
+		EncodeCommand(CmdSetTexture{ texture, index });
 		
 		auto vktexture = static_cast<const TextureVk*>(texture.parent);
+
 
 		auto nextLayout = vktexture->createdConfig.usage.DepthStencilAttachment ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -221,12 +220,10 @@ namespace RGL {
 			nextLayout = VK_IMAGE_LAYOUT_GENERAL;
 		}
 
-		RecordTextureBinding(texture, {
+		RecordTextureBinding(vktexture, {
 			.lastLayout = nextLayout,
 			.written = true
 		});
-
-		EncodeCommand(CmdSetTexture{ texture, index });
 	}
 	void CommandBufferVk::SetComputeTexture(const TextureView& texture, uint32_t index)
 	{
@@ -252,7 +249,7 @@ namespace RGL {
 			destBuffer
 		});
 
-		RecordTextureBinding(sourceTexture, { VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, true });
+		RecordTextureBinding(static_cast<const TextureVk*>(sourceTexture.parent), { VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, true });
 	}
 	void CommandBufferVk::CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size)
 	{
@@ -262,8 +259,8 @@ namespace RGL {
 	}
 	void CommandBufferVk::CopyTextureToTexture(const TextureCopyConfig& from, const TextureCopyConfig& to)
 	{
-		RecordTextureBinding(from.texture, {}, true);
-		RecordTextureBinding(to.texture, {}, true);
+		RecordTextureBinding(static_cast<const TextureVk*>(from.texture.parent), {}, true);
+		RecordTextureBinding(static_cast<const TextureVk*>(to.texture.parent), {}, true);
 		EncodeCommand(CmdCopyTextureToTexture{from,to});
 	}
 	void CommandBufferVk::SetViewport(const Viewport& viewport)
@@ -276,7 +273,7 @@ namespace RGL {
 	}
 	void CommandBufferVk::Commit(const CommitConfig& config)
 	{
-		owningQueue->Submit(this, config);
+		owningQueue->Submit(this, config, internalFence);
 		vmaSetCurrentFrameIndex(owningQueue->owningDevice->vkallocator, owningQueue->owningDevice->frameIndex++);
 		swapchainsToSignal.clear();
 	}
@@ -306,6 +303,10 @@ namespace RGL {
 	{
 		EndRenderDebugMarker();
 	}
+	void CommandBufferVk::BlockUntilCompleted()
+	{
+		vkWaitForFences(owningQueue->owningDevice->device, 1, &internalFence, VK_TRUE, UINT64_MAX);
+	}
 	void CommandBufferVk::ExecuteIndirectIndexed(const IndirectConfig& config)
 	{
 		RecordBufferBinding(std::static_pointer_cast<BufferVk>(config.indirectBuffer).get(), { .written = false });
@@ -321,10 +322,16 @@ namespace RGL {
 		.commandBufferCount = 1,
 		};
 		VK_CHECK(vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer));
+
+		VkFenceCreateInfo fenceInfo{
+		  .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+		  .flags = VkFenceCreateFlags(0)
+		};
+		VK_CHECK(vkCreateFence(owningQueue->owningDevice->device, &fenceInfo, nullptr, &internalFence));
 	}
 	CommandBufferVk::~CommandBufferVk()
 	{
-		
+		vkDestroyFence(owningQueue->owningDevice->device, internalFence, nullptr);
 	}
 
 	void CommandBufferVk::RecordBufferBinding(const BufferVk* buffer, BufferLastUse usage)
@@ -367,77 +374,63 @@ namespace RGL {
 		recUsage();
 	}
 
-	void CommandBufferVk::RecordTextureBinding(const TextureView texture, TextureLastUse usage, bool recordOnly)
+	void CommandBufferVk::RecordTextureBinding(const TextureVk* texture, TextureLastUse usage, bool recordOnly)
 	{
-		TextureLastUseKey key{ static_cast<const TextureVk*>(texture.parent),texture.texture.vk.mip};
+		auto it = activeTextures.find(texture);
+		auto needed = usage.lastLayout;
 
-		if (keyIsAllMips(key)) {
-			// transition all the mips
-			// must be done individually because they could all be in different states
-			auto numMips = key.texture->mipViews.size();
-			for (uint32_t i = 0; i < numMips; i++) {
-				TextureView copy = texture;
-				copy.texture.vk.mip = i;
-				RecordTextureBinding(copy, usage, recordOnly);
-			}
+		if (it == activeTextures.end()) {
+			activeTextures[texture] = {
+				.lastLayout = texture->nativeFormat,
+				.written = false
+			};
+			it = activeTextures.find(texture);
 		}
-		else {
 
-			auto it = activeTextures.find(key);
-			auto needed = usage.lastLayout;
-			if (it == activeTextures.end()) {
-				activeTextures[key] = {
-					.lastLayout = key.texture->nativeFormat,
-					.written = false
-				};
-				it = activeTextures.find(key);
-			}
+		auto current = (*it).second.lastLayout;
+		if (current == needed) {
+			return;
+		}
 
-			auto current = (*it).second.lastLayout;
-			if (current == needed) {
-				return;
-			}
+		if (recordOnly) {
+			return;
+		}
 
-			if (recordOnly) {
-				return;
-			}
-
-			VkImageMemoryBarrier transitionbarrier{
+		VkImageMemoryBarrier transitionbarrier{
 					.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 					.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT,
 					.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT,
 					.oldLayout = current,
 					.newLayout = needed,
-					.image = key.texture->vkImage,
+					.image = texture->vkImage,
 					.subresourceRange = {
-					  .aspectMask = key.texture->createdAspectVk,
-					  .baseMipLevel = texture.texture.vk.mip,
-					  .levelCount = 1,
+					  .aspectMask = texture->createdAspectVk,
+					  .baseMipLevel = 0,
+					  .levelCount = VK_REMAINING_MIP_LEVELS,
 					  .baseArrayLayer = 0,
 					  .layerCount = VK_REMAINING_ARRAY_LAYERS,
-					}
-			};
+					} 
+		};
 
-			// insert the transition barrier
-			vkCmdPipelineBarrier(
-				commandBuffer,
-				VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,  // srcStageMask	
-				VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, // dstStageMask
-				0,
-				0,
-				nullptr,
-				0,
-				nullptr,
-				1, // imageMemoryBarrierCount
-				&transitionbarrier // pImageMemoryBarriers
-			);
+		// insert the transition barrier
+		vkCmdPipelineBarrier(
+			commandBuffer,
+			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,  // srcStageMask	
+			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, // dstStageMask
+			0,
+			0,
+			nullptr,
+			0,
+			nullptr,
+			1, // imageMemoryBarrierCount
+			&transitionbarrier // pImageMemoryBarriers
+		);
 
-			// update tracker
-			(*it).second = {
-				.lastLayout = needed,
-				.written = usage.written
-			};
-		}
+		// update tracker
+		(*it).second = {
+			.lastLayout = needed,
+			.written = usage.written
+		};
 	}
 
 	template<typename ... Ts>
@@ -445,7 +438,7 @@ namespace RGL {
 		using Ts::operator() ...;
 	};
 	template<class... Ts> Overload(Ts...) -> Overload<Ts...>;
-	void CommandBufferVk::EncodeQueuedCommands()
+	void CommandBufferVk::EndContext()
 	{
 		auto visitor = Overload{
 			[this](const CmdBeginRendering& arg) mutable {
@@ -474,7 +467,7 @@ namespace RGL {
 				uint32_t i = 0;
 				for (const auto& attachment : renderPass->config.attachments) {
 
-					attachmentInfos[i] = makeAttachmentInfo(attachment, renderPass->textures[i].texture.vk.view);
+					attachmentInfos[i] = makeAttachmentInfo(attachment, renderPass->textures[i].texture.vk);
 
 					// the swapchain image may be in the wrong state (present state vs write state) so it needs to be transitioned
 					auto castedImage = static_cast<const TextureVk*>(renderPass->textures[i].parent);
@@ -504,7 +497,7 @@ namespace RGL {
 
 				if (renderPass->config.depthAttachment.has_value()) {
 					auto& da = renderPass->config.depthAttachment.value();
-					depthAttachmentInfoData = makeAttachmentInfo(da, renderPass->depthTexture->texture.vk.view);
+					depthAttachmentInfoData = makeAttachmentInfo(da, renderPass->depthTexture->texture.vk);
 					depthAttachmentinfo = &depthAttachmentInfoData;
 				}
 
@@ -513,7 +506,7 @@ namespace RGL {
 
 				if (renderPass->config.stencilAttachment.has_value()) {
 					auto& sa = renderPass->config.stencilAttachment.value();
-					stencilAttachmentInfoData = makeAttachmentInfo(sa, renderPass->depthTexture->texture.vk.view);
+					stencilAttachmentInfoData = makeAttachmentInfo(sa, renderPass->depthTexture->texture.vk);
 					stencilAttachmentInfo = &stencilAttachmentInfoData;
 				}
 
@@ -576,13 +569,10 @@ namespace RGL {
 			[this](const CmdSetTexture& arg) {
 				auto texture = arg.texture;
 				auto index = arg.index;
-				auto key = TextureLastUseKey{ static_cast<const TextureVk*>(texture.parent), texture.texture.vk.mip };
-				if (key.mip == TextureView::NativeHandles::vk::ALL_MIPS) {
-					key.mip = 0;
-				}
+				auto castedImage = static_cast<const TextureVk*>(texture.parent);
 
-				auto it = activeTextures.find(key);
-				auto layout = key.texture->nativeFormat;
+				auto it = activeTextures.find(castedImage);
+				auto layout = castedImage->nativeFormat;
 				if (it != activeTextures.end()) {
 					layout = it->second.lastLayout;
 				}
@@ -591,7 +581,7 @@ namespace RGL {
 
 				VkDescriptorImageInfo imginfo{
 							.sampler = VK_NULL_HANDLE,
-							.imageView = texture.texture.vk.view,
+							.imageView = texture.texture.vk,
 							.imageLayout = layout,
 				};
 				VkWriteDescriptorSet writeinfo{
@@ -616,9 +606,9 @@ namespace RGL {
 					&writeinfo
 				);
 
-				if (key.texture->owningSwapchain) {
-					swapchainsToSignal.insert(key.texture->owningSwapchain);
-					swapchainImages.insert(key.texture);
+				if (castedImage->owningSwapchain) {
+					swapchainsToSignal.insert(castedImage->owningSwapchain);
+					swapchainImages.insert(castedImage);
 				}
 			},
 			[this](const CmdDraw& arg) {
@@ -763,8 +753,8 @@ namespace RGL {
 				auto src = static_cast<const TextureVk*>(arg.from.texture.parent);
 				auto dst = static_cast<const TextureVk*>(arg.to.texture.parent);
 
-				auto& srcLayout = activeTextures.at(TextureLastUseKey{src,arg.from.texture.texture.vk.mip});
-				auto& dstLayout = activeTextures.at(TextureLastUseKey{ src,arg.to.texture.texture.vk.mip });
+				auto& srcLayout = activeTextures.at(src);
+				auto& dstLayout = activeTextures.at(dst);
 
 				auto dim = src->GetSize();
 				VkImageCopy2 region{

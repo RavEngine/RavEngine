@@ -34,10 +34,13 @@ namespace RGL{
         
         void SetVertexSampler(RGLSamplerPtr sampler, uint32_t index) final;
         void SetFragmentSampler(RGLSamplerPtr sampler, uint32_t index) final;
+        void SetComputeSampler(RGLSamplerPtr sampler, uint32_t index) final;
         
         void SetVertexTexture(const TextureView& texture, uint32_t index) final;
         void SetFragmentTexture(const TextureView& texture, uint32_t index) final;
         void SetComputeTexture(const TextureView& texture, uint32_t index) final;
+
+        void CopyTextureToTexture(const TextureCopyConfig& from, const TextureCopyConfig& to) final;
 
         void Draw(uint32_t nVertices, const DrawInstancedConfig& = {}) final;
         void DrawIndexed(uint32_t nIndices, const DrawIndexedInstancedConfig& = {}) final;
@@ -60,6 +63,9 @@ namespace RGL{
 
         void EndRenderDebugMarker() final;
         void EndComputeDebugMarker() final;
+
+
+        void BlockUntilCompleted() final;
 
     private:
         WGPUCommandEncoder currentCommandEncoder;

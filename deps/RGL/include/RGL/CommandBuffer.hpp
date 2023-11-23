@@ -154,5 +154,7 @@ struct TextureView;
 
 		virtual void EndRenderDebugMarker() = 0;
 		virtual void EndComputeDebugMarker() = 0;
+
+		virtual void BlockUntilCompleted() = 0;
 	};
 }

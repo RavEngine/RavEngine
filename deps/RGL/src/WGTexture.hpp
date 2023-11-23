@@ -11,11 +11,12 @@ struct DeviceWG;
 
 struct TextureWG : public ITexture{
     WGPUTextureView texture;
+    bool owning = true;
     // default constructor, don't explicity use
     TextureWG() : ITexture({0,0}){}
     virtual ~TextureWG();
     
-    TextureWG(decltype(texture), const Dimension&);
+    TextureWG(decltype(texture), const Dimension&, bool owning = false);
     TextureWG(const std::shared_ptr<DeviceWG>, const TextureConfig& config, const untyped_span);
     TextureWG(const std::shared_ptr<DeviceWG>, const TextureConfig& config);
     

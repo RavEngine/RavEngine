@@ -11,7 +11,7 @@ namespace RGL {
         vkGetDeviceQueue(device->device, device->indices.graphicsFamily.value(), 0, &queue);    // 0 because we only have 1 queue
         VK_VALID(queue);
     }
-    void CommandQueueVk::Submit(CommandBufferVk* cb, const CommitConfig& config)
+    void CommandQueueVk::Submit(CommandBufferVk* cb, const CommitConfig& config, VkFence internalFence)
 	{
         const uint32_t nSwapchains = cb->swapchainsToSignal.size();
         stackarray(waitSemaphores, VkSemaphore, nSwapchains);
@@ -43,6 +43,7 @@ namespace RGL {
             fence = std::static_pointer_cast<FenceVk>(config.signalFence);
         }
         VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, fence ? fence->fence : nullptr));
+        VK_CHECK(vkQueueSubmit(queue,0, nullptr, internalFence));
 	}
     RGLCommandBufferPtr CommandQueueVk::CreateCommandBuffer()
 	{

@@ -21,6 +21,8 @@ namespace RGL {
 	CommandBufferD3D12::CommandBufferD3D12(decltype(owningQueue) owningQueue) : owningQueue(owningQueue)
 	{
 		commandList = owningQueue->CreateCommandList();
+		DX_CHECK(owningQueue->m_d3d12Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&internalFence)));
+		internalFenceEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
 	}
 	void CommandBufferD3D12::Reset()
 	{
@@ -33,9 +35,11 @@ namespace RGL {
 		DX_CHECK(commandAllocator->Reset());	// gotta reset this too, otherwise we leak
 		DX_CHECK(commandList->Reset(commandAllocator, nullptr));
 		ended = false;
+		owningQueue->m_d3d12CommandQueue->Signal(internalFence.Get(), 0);
 	}
 	void CommandBufferD3D12::Begin()
 	{
+
 	}
 	void CommandBufferD3D12::End()
 	{
@@ -396,6 +400,7 @@ namespace RGL {
 			auto d3d12fence = std::static_pointer_cast<FenceD3D12>(config.signalFence);
 			owningQueue->m_d3d12CommandQueue->Signal(d3d12fence->fence.Get(), 1);	// 1 because we emulate binary vulkan fences
 		}
+		owningQueue->m_d3d12CommandQueue->Signal(internalFence.Get(), 1);	// for blockuntilcompleted
 	}
 	void CommandBufferD3D12::ExecuteIndirectIndexed(const IndirectConfig& config)
 	{
@@ -448,6 +453,18 @@ namespace RGL {
 	void CommandBufferD3D12::EndComputeDebugMarker()
 	{
 		EndRenderDebugMarker();
+	}
+	void CommandBufferD3D12::BlockUntilCompleted()
+	{
+		if (internalFence->GetCompletedValue() != 1) {
+			internalFence->SetEventOnCompletion(1, internalFenceEvent);
+
+			::WaitForSingleObject(internalFenceEvent, DWORD_MAX);
+		}
+	}
+	CommandBufferD3D12::~CommandBufferD3D12()
+	{
+		CloseHandle(internalFenceEvent);
 	}
 	void CommandBufferD3D12::SyncIfNeeded(const BufferD3D12* buffer, D3D12_RESOURCE_STATES needed, bool written)
 	{

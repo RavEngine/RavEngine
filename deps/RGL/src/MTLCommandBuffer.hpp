@@ -75,6 +75,8 @@ struct BufferMTL;
 
         void EndRenderDebugMarker() final;
         void EndComputeDebugMarker() final;
+
+        void BlockUntilCompleted() final;
     };
 
 }

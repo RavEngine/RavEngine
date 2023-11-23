@@ -17,7 +17,7 @@ namespace RGL {
 		CommandQueueVk(decltype(owningDevice) device);
 
 		// call by commandbuffer::commit
-		void Submit(CommandBufferVk*, const CommitConfig&);
+		void Submit(CommandBufferVk*, const CommitConfig&, VkFence internalFence);
 		
 		// ICommandQueue
         RGLCommandBufferPtr CreateCommandBuffer() final;

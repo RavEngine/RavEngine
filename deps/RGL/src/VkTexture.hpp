@@ -6,7 +6,6 @@
 #include <vk_mem_alloc.h>
 #include <memory>
 #include <vector>
-#include <string>
 
 namespace RGL {
 	struct DeviceVk;
@@ -34,8 +33,6 @@ namespace RGL {
 		TextureView GetViewForMip(uint32_t mip) const final;
 
 		std::vector<TextureView> mipViews;
-
-		std::string debugName;
 	};
 
 }

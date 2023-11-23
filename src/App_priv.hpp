@@ -337,6 +337,7 @@ int App::run(int argc, char** argv) {
 			.signalFence = window->swapchainFence,
 		};
 		mainCommandBuffer->Commit(commitconfig);
+		mainCommandBuffer->BlockUntilCompleted();
 
 		window->swapchain->Present(nextTexture.presentConfig);
 

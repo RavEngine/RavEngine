@@ -21,6 +21,6 @@ namespace RGL {
 		void Wait() final;
 		void Reset() final;
 		void Signal() final;
-		virtual ~FenceD3D12() {}
+		virtual ~FenceD3D12();
 	};
 }
