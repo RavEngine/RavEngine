@@ -28,7 +28,9 @@ InstantaneousAudioSource::InstantaneousAudioSource(Ref<AudioAsset> a, const vect
     player->Play();
 }
 
-InstantaneousAmbientAudioSource::InstantaneousAmbientAudioSource(Ref<AudioAsset> a, float vol) : AudioSourceBase(New<SampledAudioDataProvider>(a)) {
+InstantaneousAmbientAudioSource::InstantaneousAmbientAudioSource(Ref<AudioAsset> a, float vol) : AudioSourceBase(New<SampledAudioDataProvider>(a,a->GetNChanels())) {
+    auto target = GetApp()->GetAudioPlayer()->GetNChannels();
+    Debug::Assert(a->GetNChanels() == target, "Audio asset has {} channels, but must have {} to match output configuration", a->GetNChanels(), target);  // must match
     player->SetVolume(vol);
     player->Play();
 }
@@ -118,11 +120,11 @@ AudioAsset::~AudioAsset(){
 using namespace RavEngine;
 
 RavEngine::PlanarSampleBufferInlineView AudioRenderBuffer::SingleRenderBuffer::GetDataBufferView() const { 
-    return PlanarSampleBufferInlineView{data_impl, AudioPlayer::GetBufferSize(), static_cast<size_t>(AudioPlayer::GetBufferSize() / nchannels)};
+    return PlanarSampleBufferInlineView{data_impl, static_cast<size_t>(AudioPlayer::GetBufferSize() * nchannels), static_cast<size_t>(AudioPlayer::GetBufferSize())};
 }
 
 RavEngine::PlanarSampleBufferInlineView AudioRenderBuffer::SingleRenderBuffer::GetScratchBufferView() const { 
-    return PlanarSampleBufferInlineView{scratch_impl, AudioPlayer::GetBufferSize(), static_cast<size_t>(AudioPlayer::GetBufferSize() / nchannels)};
+    return PlanarSampleBufferInlineView{scratch_impl, static_cast<size_t>(AudioPlayer::GetBufferSize() * nchannels), static_cast<size_t>(AudioPlayer::GetBufferSize())};
 }
 
 

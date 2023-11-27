@@ -71,8 +71,8 @@ namespace RavEngine{
             sizeOfOneChannelInFrames = interleaved.size() / nchannels;
 #pragma omp simd
             for (size_t i = 0; i < interleaved.size(); i++) {
-				auto view = (*this)[i % nchannels];
-                view[i % sizeOfOneChannelInFrames] = interleaved[i];
+				auto view = channel_at(i % nchannels);
+                view[i / nchannels] = interleaved[i];
             }
         }
     };
