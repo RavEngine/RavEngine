@@ -18,11 +18,6 @@ STATIC(RavEngine::defaultVertexConfig) {
                     .binding = 0,
                     .stride = sizeof(VertexNormalUV),
                 },
-                {
-                    .binding = 1,
-                    .stride = sizeof(uint32_t),
-                    .inputRate = RGL::InputRate::Instance,
-                }
     },
         .attributeDescs = {
             {
@@ -55,12 +50,6 @@ STATIC(RavEngine::defaultVertexConfig) {
                 .offset = offsetof(VertexNormalUV,uv),
                 .format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
             },
-            {
-                .location = ENTITY_INPUT_LOCATION,
-                .binding = 1,
-                .offset = 0,
-                .format = RGL::VertexAttributeFormat::R32_Uint,
-            },
     }
 };
 
@@ -75,6 +64,14 @@ STATIC(RavEngine::defaultColorBlendConfig) {
                 {
                     .format = RenderEngine::normalTexFormat
                 },
+    }
+};
+
+STATIC(RavEngine::defaultUnlitColorBlendConfig) {
+    .attachments = {
+        {
+            .format = RGL::TextureFormat::BGRA8_Unorm  //TODO: pull this from the renderer
+        },
     }
 };
 
@@ -118,11 +115,6 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string_view vsh_name, const std::
                 .type = RGL::BindingType::SampledImage,
                 .stageFlags = RGL::BindingVisibility::Fragment,
             },
-            {
-                .binding = MODEL_MATRIX_BINDING,
-                .type = RGL::BindingType::StorageBuffer,
-                .stageFlags = RGL::BindingVisibility::Vertex
-            }
         },
         .pushConstantSize = sizeof(PBRPushConstantData),
         .cullMode = options.cullMode
@@ -139,4 +131,13 @@ RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : Materi
     textureBindings[5] = Texture::Manager::defaultTexture;
     textureBindings[6] = Texture::Manager::defaultTexture;
 }
+
+UnlitMaterial::UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, UnlitMaterialOptions options)
+: Material(vsh_name, fsh_name, MaterialConfig{
+    .vertConfig = defaultVertexConfig,
+    .colorBlendConfig = defaultUnlitColorBlendConfig,
+    .pushConstantSize = 0,
+    .cullMode = options.cullMode
+}){}
+
 #endif

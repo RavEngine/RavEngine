@@ -2,6 +2,7 @@
 #if !RVE_SERVER
 #include "Material.hpp"
 #include "Common3D.hpp"
+#include <variant>
 
 namespace RavEngine {
     /**
@@ -19,17 +20,27 @@ namespace RavEngine {
 		float roughnessTint = 0.4;
 		float specularTint = 0.5;
 	};
-	class PBRMaterial : public Material {
-	public:
+	struct PBRMaterial : public Material {
 		PBRMaterial(const std::string_view vsh_name, const std::string_view fsh_name, PBRMaterialOptions options = {});
 		PBRMaterial(const std::string_view name, PBRMaterialOptions options = {}) : PBRMaterial(name, name, options) {}
 		PBRMaterial(PBRMaterialOptions options = {}) : PBRMaterial("pbr", options) {}
 	};
 
+    struct UnlitMaterialOptions {
+        RGL::CullMode cullMode = RGL::CullMode::Back;
+    };
+
+    // a material that reads no data
+    struct UnlitMaterial : public Material{
+        UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, UnlitMaterialOptions options = {});
+        UnlitMaterial(const std::string_view name, UnlitMaterialOptions options = {}) : UnlitMaterial(name, name, options) {}
+    };
+
 	// the default layout and blend information.
 	// you probably want these when defining custom materials.
 	extern const decltype(MaterialConfig::vertConfig) defaultVertexConfig;
 	extern const decltype(MaterialConfig::colorBlendConfig) defaultColorBlendConfig;
+    extern const decltype(MaterialConfig::colorBlendConfig) defaultUnlitColorBlendConfig;
 
     /**
      Allows attaching a PBR material to an object.
@@ -79,5 +90,17 @@ namespace RavEngine {
 	private:
 		PBRPushConstantData pushConstantData;
 	};
+
+    struct UnlitMaterialInstance : public MaterialInstance {
+        UnlitMaterialInstance(Ref<UnlitMaterial> mat) : MaterialInstance(mat){}
+    };
+
+    struct LitMeshMaterialInstance{
+        Ref<MaterialInstance> material;
+    };
+    struct UnlitMeshMaterialInstance{
+        Ref<MaterialInstance> material;
+    };
+    using MeshMaterial = std::variant<LitMeshMaterialInstance, UnlitMeshMaterialInstance>;
 }
 #endif

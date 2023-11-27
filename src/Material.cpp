@@ -14,6 +14,7 @@
 #include <RGL/RGL.hpp>
 #include <RGL/Device.hpp>
 #include <RGL/Pipeline.hpp>
+#include <ravengine_shader_defs.h>
 
 using namespace std;
 using namespace RavEngine;
@@ -36,15 +37,44 @@ RavEngine::Material::Material(const std::string_view vsh_name, const std::string
     auto fragShader = LoadShaderByFilename(fragShaderName, device);
 
     auto samplerPtr = GetApp()->GetRenderEngine().textureSampler;
+    
+    auto configBindingsCopy = config.bindings;
+    
+    if (!config.verbatimConfig){
+        // must have the model matrix binding
+        configBindingsCopy.push_back(
+                                     {
+                                         .binding = MODEL_MATRIX_BINDING,
+                                         .type = RGL::BindingType::StorageBuffer,
+                                         .stageFlags = RGL::BindingVisibility::Vertex
+                                     }
+                                     );
+    }
 
     pipelineLayout = device->CreatePipelineLayout({
-        .bindings = config.bindings,
+        .bindings = configBindingsCopy,
         .constants = {
             {
                sizeof(RenderEngine::DeferredUBO) + config.pushConstantSize, 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
             }
         },
         });
+    
+    auto vertexConfigCopy = config.vertConfig;
+    if (!config.verbatimConfig){
+        // must have the entity ID buffer
+        vertexConfigCopy.attributeDescs.push_back( {
+            .location = ENTITY_INPUT_LOCATION,
+            .binding = 1,
+            .offset = 0,
+            .format = RGL::VertexAttributeFormat::R32_Uint,
+        });
+        vertexConfigCopy.vertexBindings.push_back({
+            .binding = 1,
+            .stride = sizeof(uint32_t),
+            .inputRate = RGL::InputRate::Instance,
+        });
+    }
 
     RGL::RenderPipelineDescriptor rpd{
         .stages = {
@@ -57,7 +87,7 @@ RavEngine::Material::Material(const std::string_view vsh_name, const std::string
                 .shaderModule = fragShader,
             }
         },
-        .vertexConfig = config.vertConfig,
+        .vertexConfig = vertexConfigCopy,
         .inputAssembly = {
             .topology = RGL::PrimitiveTopology::TriangleList,
         },

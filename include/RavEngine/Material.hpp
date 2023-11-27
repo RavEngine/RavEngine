@@ -24,6 +24,7 @@ namespace RavEngine {
 		std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> bindings;
 		uint32_t pushConstantSize = 0;
 		RGL::CullMode cullMode = RGL::CullMode::Back;
+        bool verbatimConfig = false;    // used for Skybox
 	};
 
 	/**
