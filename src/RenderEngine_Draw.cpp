@@ -24,8 +24,9 @@
 
 namespace RavEngine {
 
-enum class LightingType : uint8_t{
-    Lit, Unlit
+struct LightingType{
+    bool Lit: 1 = false;
+    bool Unlit: 1 = false;
 };
 
 #ifndef NDEBUG
@@ -239,7 +240,7 @@ enum class LightingType : uint8_t{
 			};
 
 
-			auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes, &target](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor) {
+			auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes, &target](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter) {
 
 				auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos,&target](auto&& renderData) {
 					for (auto& [materialInstance, drawcommand] : renderData) {
@@ -364,12 +365,12 @@ enum class LightingType : uint8_t{
                         Ref<MaterialInstance> materialInstance;
                         std::visit([&materialInstance, currentLightingType] (const auto& var) {
                             if constexpr (std::is_same_v<std::decay_t<decltype(var)>,LitMeshMaterialInstance>){
-                                if (currentLightingType == LightingType::Lit){
+                                if (currentLightingType.Lit){
                                     materialInstance = var.material;
                                 }
                             }
-                            else if constexpr(std::is_same_v<std::decay_t<decltype(var)>,LitMeshMaterialInstance>){
-                                if (currentLightingType == LightingType::Unlit){
+                            else if constexpr(std::is_same_v<std::decay_t<decltype(var)>,UnlitMeshMaterialInstance>){
+                                if (currentLightingType.Unlit){
                                     materialInstance = var.material;
                                 }
                             }
@@ -450,11 +451,11 @@ enum class LightingType : uint8_t{
 				// do rendering operations
 				mainCommandBuffer->BeginRendering(renderPass);
 				mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
-				renderTheRenderData(worldOwning->renderData->staticMeshRenderData, sharedVertexBuffer, LightingType::Lit);
+                renderTheRenderData(worldOwning->renderData->staticMeshRenderData, sharedVertexBuffer, lightingFilter);
 				mainCommandBuffer->EndRenderDebugMarker();
 				if (skeletalPrepareResult.skeletalMeshesExist) {
 					mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
-					renderTheRenderData(worldOwning->renderData->skinnedMeshRenderData, sharedSkinnedMeshVertexBuffer, LightingType::Lit);
+                    renderTheRenderData(worldOwning->renderData->skinnedMeshRenderData, sharedSkinnedMeshVertexBuffer, lightingFilter);
 					mainCommandBuffer->EndRenderDebugMarker();
 				}
 				mainCommandBuffer->EndRendering();
@@ -465,7 +466,7 @@ enum class LightingType : uint8_t{
 
 				renderFromPerspective(viewproj, camPos, deferredRenderPass, [](Ref<Material>&& mat) {
 					return mat->GetMainRenderPipeline();
-					}, renderArea);
+                }, renderArea, {.Lit = true});
 
 				
 			};
@@ -546,7 +547,7 @@ enum class LightingType : uint8_t{
 
 							renderFromPerspective(lightSpaceMatrix, lightMats.camPos, shadowRenderPass, [](Ref<Material>&& mat) {
 								return mat->GetShadowRenderPipeline();
-								}, { 0, 0, shadowMapSize,shadowMapSize });
+                            }, { 0, 0, shadowMapSize,shadowMapSize }, {.Lit = true, .Unlit = true});
 
 							lightExtras.lightViewProj = lightSpaceMatrix;
 
@@ -700,7 +701,7 @@ enum class LightingType : uint8_t{
 
 			};
 
-			auto renderFinalPass = [this, &target, &worldOwning, &view, &guiScaleFactor, &nextImgSize](auto&& viewproj, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+            auto renderFinalPass = [this, &target, &worldOwning, &view, &guiScaleFactor, &nextImgSize, &renderFromPerspective](auto&& viewproj, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// the on-screen render pass
 // contains the results of the previous stages, as well as the UI, skybox and any debugging primitives
 				
@@ -722,7 +723,14 @@ enum class LightingType : uint8_t{
 				mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
 				mainCommandBuffer->SetFragmentTexture(target.lightingTexture->GetDefaultView(), 1);
 				mainCommandBuffer->Draw(3);
+                mainCommandBuffer->EndRendering();
+                
+                //render unlits
+                renderFromPerspective(viewproj, camPos, finalRenderPass, [](Ref<Material>&& mat) {
+                    return mat->GetMainRenderPipeline();
+                }, renderArea, {.Unlit = true});
 
+                mainCommandBuffer->BeginRendering(finalRenderPass);
 				// then do the skybox, if one is defined.
 				if (worldOwning->skybox && worldOwning->skybox->skyMat && worldOwning->skybox->skyMat->GetMat()->renderPipeline) {
 					mainCommandBuffer->BindRenderPipeline(worldOwning->skybox->skyMat->GetMat()->renderPipeline);
