@@ -12,17 +12,18 @@ class SkinnedMeshComponent : public ComponentWithOwner, public Queryable<Skinned
 private:
     Ref<MeshAssetSkinned> mesh;
 #if !RVE_SERVER
-    Ref<MaterialInstance> mat;
+    MeshMaterial mat;
 #endif
     Ref<SkeletonAsset> skeleton;
 #if !RVE_SERVER
-	void updateMaterialInWorldRenderData(Ref<MaterialInstance> newMat);
+	void updateMaterialInWorldRenderData(MeshMaterial newMat);
 #endif
 public:
 	
 	SkinnedMeshComponent(entity_t owner, Ref<SkeletonAsset> sk, Ref<MeshAssetSkinned> mesh) : ComponentWithOwner(owner), skeleton(sk), mesh(mesh){}
 #if !RVE_SERVER
-	inline void SetMaterial(Ref<MaterialInstance> newMat){
+    template<typename T> requires std::is_same_v<T, LitMeshMaterialInstance> || std::is_same_v<T, UnlitMeshMaterialInstance>
+	inline void SetMaterial(MeshMaterial newMat){
 		updateMaterialInWorldRenderData(newMat);
 		mat = newMat;
 	}

@@ -483,7 +483,7 @@ void updateMeshMaterialGeneric(auto&& renderData, entity_t localID, auto oldMat,
     
 }
 
-void RavEngine::World::updateStaticMeshMaterial(entity_t localId, decltype(RenderData::staticMeshRenderData)::key_type oldMat, decltype(RenderData::staticMeshRenderData)::key_type newMat, Ref<MeshAsset> mesh)
+void RavEngine::World::updateStaticMeshMaterial(entity_t localId, MeshMaterial oldMat, MeshMaterial newMat, Ref<MeshAsset> mesh)
 {
     // do nothing if renderer is not online
     if (!renderData) {
@@ -505,7 +505,7 @@ void RavEngine::World::updateStaticMeshMaterial(entity_t localId, decltype(Rende
     );
 }
 
-void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, decltype(RenderData::skinnedMeshRenderData)::key_type oldMat, decltype(RenderData::skinnedMeshRenderData)::key_type newMat, Ref<MeshAssetSkinned> mesh, Ref<SkeletonAsset> skeleton)
+void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, MeshMaterial oldMat, MeshMaterial newMat, Ref<MeshAssetSkinned> mesh, Ref<SkeletonAsset> skeleton)
 {
     // if render engine is not online, do nothing
     if (!renderData) {
@@ -554,7 +554,7 @@ void World::DestroySkinnedMeshRenderData(const SkinnedMeshComponent& mesh, entit
 void World::StaticMeshChangedVisibility(const StaticMesh* mesh){
 	auto owner = mesh->GetOwner();
 	if (mesh->GetEnabled()){
-		updateStaticMeshMaterial(owner.GetIdInWorld(),nullptr,mesh->GetMaterial(),mesh->GetMesh());
+        updateStaticMeshMaterial(owner.GetIdInWorld(),{},mesh->GetMaterial(),mesh->GetMesh());
 	}
 	else{
 		DestroyStaticMeshRenderData(*mesh, owner.GetIdInWorld());
@@ -564,7 +564,7 @@ void World::StaticMeshChangedVisibility(const StaticMesh* mesh){
 void World::SkinnedMeshChangedVisibility(const SkinnedMeshComponent* mesh){
 	auto owner = mesh->GetOwner();
 	if (mesh->GetEnabled()){
-		updateSkinnedMeshMaterial(owner.GetIdInWorld(),nullptr,mesh->GetMaterial(),mesh->GetMesh(),mesh->GetSkeleton());
+        updateSkinnedMeshMaterial(owner.GetIdInWorld(),{},mesh->GetMaterial(),mesh->GetMesh(),mesh->GetSkeleton());
 	}
 	else{
 		DestroySkinnedMeshRenderData(*mesh, owner.GetIdInWorld());

@@ -97,10 +97,36 @@ namespace RavEngine {
 
     struct LitMeshMaterialInstance{
         Ref<MaterialInstance> material;
+        LitMeshMaterialInstance() {}
+        LitMeshMaterialInstance(const decltype(material)& material) : material(material){}
+        inline bool operator==(const LitMeshMaterialInstance& other) const{
+            return material == other.material;
+        }
     };
     struct UnlitMeshMaterialInstance{
         Ref<MaterialInstance> material;
+        UnlitMeshMaterialInstance() {}
+        UnlitMeshMaterialInstance(const decltype(material)& material) : material(material){}
+        inline bool operator==(const UnlitMeshMaterialInstance& other) const{
+            return material == other.material;
+        }
     };
     using MeshMaterial = std::variant<LitMeshMaterialInstance, UnlitMeshMaterialInstance>;
+}
+
+namespace std {
+    template<>
+    struct hash<RavEngine::LitMeshMaterialInstance> {
+        size_t operator()(const RavEngine::LitMeshMaterialInstance& other) const {
+            return std::hash<Ref<RavEngine::MaterialInstance>>()(other.material);
+        }
+    };
+
+    template<>
+    struct hash<RavEngine::UnlitMeshMaterialInstance> {
+        size_t operator()(const RavEngine::UnlitMeshMaterialInstance& other) const {
+            return std::hash<Ref<RavEngine::MaterialInstance>>()(other.material);
+        }
+    };
 }
 #endif

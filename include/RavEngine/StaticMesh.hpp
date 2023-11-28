@@ -12,16 +12,18 @@ namespace RavEngine {
     class StaticMesh : public ComponentWithOwner, public Disableable{
     private:
         Ref<MeshAsset> mesh;
-        Ref<MaterialInstance> material;
+        MeshMaterial material;
         StaticMesh(entity_t owner, Ref<MeshAsset> m) : ComponentWithOwner(owner){
             SetMesh(m);
         }
-        void updateMaterialInWorldRenderData(Ref<MaterialInstance> to);
+        void updateMaterialInWorldRenderData(MeshMaterial mat);
     public:
 
-        StaticMesh(entity_t owner, Ref<MeshAsset> m, Ref<MaterialInstance> mat) : StaticMesh(owner, m) {
+        template<typename T> requires std::is_same_v<T, LitMeshMaterialInstance> || std::is_same_v<T, UnlitMeshMaterialInstance>
+        StaticMesh(entity_t owner, Ref<MeshAsset> m, T mat) : StaticMesh(owner, m) {
             SetMaterial(mat);
 		}
+        
 		virtual ~StaticMesh(){}
 		
 		inline Ref<MeshAsset> GetMesh() const{
@@ -37,7 +39,9 @@ namespace RavEngine {
         Assign a material to this staticmesh
         @param mat the material instance to assign
         */
-		inline void SetMaterial(Ref<MaterialInstance> mat){
+        template<typename T> requires std::is_same_v<T, LitMeshMaterialInstance> || std::is_same_v<T, UnlitMeshMaterialInstance>
+		inline void SetMaterial(T mat){
+            bool isLit = std::is_same_v<T, LitMeshMaterialInstance>;
             updateMaterialInWorldRenderData(mat);
 			material = mat;
 		}

@@ -24,6 +24,10 @@
 
 namespace RavEngine {
 
+enum class LightingType : uint8_t{
+    Lit, Unlit
+};
+
 #ifndef NDEBUG
 	static DebugDrawer dbgdraw;	//for rendering debug primitives
 #endif
@@ -343,7 +347,7 @@ namespace RavEngine {
 						mainCommandBuffer->EndCompute();
 					}
 				};
-				auto renderTheRenderData = [this, &viewproj, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor](auto&& renderData, RGLBufferPtr vertexBuffer) {
+				auto renderTheRenderData = [this, &viewproj, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
 					// do static meshes
 					mainCommandBuffer->SetViewport({
 						.x = float(viewportScissor.offset[0]),
@@ -354,10 +358,35 @@ namespace RavEngine {
 					mainCommandBuffer->SetScissor(viewportScissor);
 					mainCommandBuffer->SetVertexBuffer(vertexBuffer);
 					mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
-					for (auto& [materialInstance, drawcommand] : renderData) {
+					for (auto& [materialInstanceVariant, drawcommand] : renderData) {
+                        
+                        // get the material instance out
+                        Ref<MaterialInstance> materialInstance;
+                        std::visit([&materialInstance, currentLightingType] (const auto& var) {
+                            if constexpr (std::is_same_v<std::decay_t<decltype(var)>,LitMeshMaterialInstance>){
+                                if (currentLightingType == LightingType::Lit){
+                                    materialInstance = var.material;
+                                }
+                            }
+                            else if constexpr(std::is_same_v<std::decay_t<decltype(var)>,LitMeshMaterialInstance>){
+                                if (currentLightingType == LightingType::Unlit){
+                                    materialInstance = var.material;
+                                }
+                            }
+                            // materialInstance will be unset (== nullptr) if the match is invalid
+                        },materialInstanceVariant);
+                        
+                        // is this the correct material type? if not, skip
+                        if (materialInstance == nullptr){
+                            continue;
+                        }
+                        
 						// bind the pipeline
 						auto pipeline = pipelineSelectorFunction(materialInstance->GetMat());
 						mainCommandBuffer->BindRenderPipeline(pipeline);
+                        
+                        
+                        
 
 						// set push constant data
 						auto pushConstantData = materialInstance->GetPushConstantData();
@@ -421,11 +450,11 @@ namespace RavEngine {
 				// do rendering operations
 				mainCommandBuffer->BeginRendering(renderPass);
 				mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
-				renderTheRenderData(worldOwning->renderData->staticMeshRenderData, sharedVertexBuffer);
+				renderTheRenderData(worldOwning->renderData->staticMeshRenderData, sharedVertexBuffer, LightingType::Lit);
 				mainCommandBuffer->EndRenderDebugMarker();
 				if (skeletalPrepareResult.skeletalMeshesExist) {
 					mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
-					renderTheRenderData(worldOwning->renderData->skinnedMeshRenderData, sharedSkinnedMeshVertexBuffer);
+					renderTheRenderData(worldOwning->renderData->skinnedMeshRenderData, sharedSkinnedMeshVertexBuffer, LightingType::Lit);
 					mainCommandBuffer->EndRenderDebugMarker();
 				}
 				mainCommandBuffer->EndRendering();
