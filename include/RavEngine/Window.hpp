@@ -17,6 +17,8 @@ namespace RavEngine {
 		Window(int width, int height, const std::string_view title, RGLDevicePtr device, RGLCommandQueuePtr mainCommandQueue);
 
 		void NotifySizeChanged(int width, int height);
+
+		void SetSize(int width, int height);
         
 		struct SwapchainResult {
 			RGL::ITexture* texture;

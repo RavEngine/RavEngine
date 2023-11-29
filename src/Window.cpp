@@ -75,6 +75,12 @@ namespace RavEngine {
         swapchain->Resize(pixelSize.width, pixelSize.height);
     }
 
+	void Window::SetSize(int width, int height)
+	{
+		SDL_SetWindowSize(window, width, height);
+		NotifySizeChanged(width, height);
+	}
+
     dim_t<int> Window::GetSizeInPixels() const{
 #if __APPLE__
         float scale = GetDPIScale();
