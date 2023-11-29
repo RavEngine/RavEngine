@@ -22,7 +22,6 @@ public:
 	
 	SkinnedMeshComponent(entity_t owner, Ref<SkeletonAsset> sk, Ref<MeshAssetSkinned> mesh) : ComponentWithOwner(owner), skeleton(sk), mesh(mesh){}
 #if !RVE_SERVER
-    template<typename T> requires std::is_same_v<T, LitMeshMaterialInstance> || std::is_same_v<T, UnlitMeshMaterialInstance>
 	inline void SetMaterial(MeshMaterial newMat){
 		updateMaterialInWorldRenderData(newMat);
 		mat = newMat;
