@@ -62,7 +62,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: 
-        platform: [iOS, tvOS, Darwin]
+        platform: [iOS, tvOS, '']
     runs-on: macos-latest
     steps:
       - name: Checkout code
