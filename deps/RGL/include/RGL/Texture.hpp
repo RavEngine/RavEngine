@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <limits>
 #include "TextureFormat.hpp"
 
 #if RGL_VK_AVAILABLE
