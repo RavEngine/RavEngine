@@ -27,10 +27,11 @@
  */
 
 #include "../../../Include/RmlUi/Core/Elements/ElementFormControlTextArea.h"
-#include "../../../Include/RmlUi/Core/Math.h"
-#include "../../../Include/RmlUi/Core/ElementUtilities.h"
 #include "../../../Include/RmlUi/Core/ElementText.h"
+#include "../../../Include/RmlUi/Core/ElementUtilities.h"
+#include "../../../Include/RmlUi/Core/Math.h"
 #include "../../../Include/RmlUi/Core/PropertyIdSet.h"
+#include "../../../Include/RmlUi/Core/StyleSheetSpecification.h"
 #include "WidgetTextInputMultiLine.h"
 
 namespace Rml {
@@ -38,17 +39,14 @@ namespace Rml {
 // Constructs a new ElementFormControlTextArea.
 ElementFormControlTextArea::ElementFormControlTextArea(const String& tag) : ElementFormControl(tag)
 {
-	widget = new WidgetTextInputMultiLine(this);
+	widget = MakeUnique<WidgetTextInputMultiLine>(this);
 
 	SetProperty(PropertyId::OverflowX, Property(Style::Overflow::Auto));
 	SetProperty(PropertyId::OverflowY, Property(Style::Overflow::Auto));
 	SetProperty(PropertyId::WhiteSpace, Property(Style::WhiteSpace::Prewrap));
 }
 
-ElementFormControlTextArea::~ElementFormControlTextArea()
-{
-	delete widget;
-}
+ElementFormControlTextArea::~ElementFormControlTextArea() {}
 
 // Returns a string representation of the current value of the form control.
 String ElementFormControlTextArea::GetValue() const
@@ -118,6 +116,21 @@ bool ElementFormControlTextArea::GetWordWrap()
 	return attribute != "nowrap";
 }
 
+void ElementFormControlTextArea::Select()
+{
+	widget->Select();
+}
+
+void ElementFormControlTextArea::SetSelectionRange(int selection_start, int selection_end)
+{
+	widget->SetSelectionRange(selection_start, selection_end);
+}
+
+void ElementFormControlTextArea::GetSelection(int* selection_start, int* selection_end, String* selected_text) const
+{
+	widget->GetSelection(selection_start, selection_end, selected_text);
+}
+
 // Returns the control's inherent size, based on the length of the input field and the current font size.
 bool ElementFormControlTextArea::GetIntrinsicDimensions(Vector2f& dimensions, float& /*ratio*/)
 {
@@ -164,15 +177,16 @@ void ElementFormControlTextArea::OnAttributeChange(const ElementAttributes& chan
 			SetProperty(PropertyId::WhiteSpace, Property(Style::WhiteSpace::Pre));
 	}
 
-	if (changed_attributes.find("rows") != changed_attributes.end() ||
-			 changed_attributes.find("cols") != changed_attributes.end())
+	if (changed_attributes.find("rows") != changed_attributes.end() || changed_attributes.find("cols") != changed_attributes.end())
 		DirtyLayout();
 
-	if (changed_attributes.find("maxlength") != changed_attributes.end())
-		widget->SetMaxLength(GetMaxLength());
+	auto it = changed_attributes.find("maxlength");
+	if (it != changed_attributes.end())
+		widget->SetMaxLength(it->second.Get(-1));
 
-	if (changed_attributes.find("value") != changed_attributes.end())
-		widget->SetValue(GetValue());
+	it = changed_attributes.find("value");
+	if (it != changed_attributes.end())
+		widget->SetValue(it->second.Get<String>());
 }
 
 // Called when properties on the control are changed.
@@ -180,8 +194,14 @@ void ElementFormControlTextArea::OnPropertyChange(const PropertyIdSet& changed_p
 {
 	ElementFormControl::OnPropertyChange(changed_properties);
 
-	if (changed_properties.Contains(PropertyId::Color) ||
-		changed_properties.Contains(PropertyId::BackgroundColor))
+	// Some inherited properties require text formatting update, mainly font and line-height properties.
+	const PropertyIdSet changed_inherited_layout_properties = changed_properties &
+		(StyleSheetSpecification::GetRegisteredInheritedProperties() & StyleSheetSpecification::GetRegisteredPropertiesForcingLayout());
+
+	if (!changed_inherited_layout_properties.Empty())
+		widget->ForceFormattingOnNextLayout();
+
+	if (changed_properties.Contains(PropertyId::Color) || changed_properties.Contains(PropertyId::BackgroundColor))
 		widget->UpdateSelectionColours();
 
 	if (changed_properties.Contains(PropertyId::CaretColor))

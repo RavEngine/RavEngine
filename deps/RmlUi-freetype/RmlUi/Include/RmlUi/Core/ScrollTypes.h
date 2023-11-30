@@ -15,7 +15,7 @@
  *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -26,47 +26,38 @@
  *
  */
 
-#include "StyleSheetNodeSelectorLastOfType.h"
-#include "../../Include/RmlUi/Core/Element.h"
+#ifndef RMLUI_CORE_SCROLLTYPES_H
+#define RMLUI_CORE_SCROLLTYPES_H
 
 namespace Rml {
 
-StyleSheetNodeSelectorLastOfType::StyleSheetNodeSelectorLastOfType()
-{
-}
+enum class ScrollBehavior {
+	Auto,    // Scroll using the context's configured setting.
+	Smooth,  // Scroll using a smooth animation.
+	Instant, // Scroll instantly.
+};
 
-StyleSheetNodeSelectorLastOfType::~StyleSheetNodeSelectorLastOfType()
-{
-}
+enum class ScrollAlignment {
+	Start,   // Align to the top or left edge of the parent element.
+	Center,  // Align to the center of the parent element.
+	End,     // Align to the bottom or right edge of the parent element.
+	Nearest, // Align with minimal scroll change.
+};
 
-// Returns true if the element is the last DOM child in its parent.
-bool StyleSheetNodeSelectorLastOfType::IsApplicable(const Element* element, int RMLUI_UNUSED_PARAMETER(a), int RMLUI_UNUSED_PARAMETER(b))
-{
-	RMLUI_UNUSED(a);
-	RMLUI_UNUSED(b);
-
-	Element* parent = element->GetParentNode();
-	if (parent == nullptr)
-		return false;
-
-	int child_index = parent->GetNumChildren() - 1;
-	while (child_index >= 0)
-	{
-		// If this child is our element, then it's the first one we've found with our tag; the selector succeeds.
-		Element* child = parent->GetChild(child_index);
-		if (child == element)
-			return true;
-
-		// Otherwise, if this child shares our element's tag, then our element is not the first tagged child; the
-		// selector fails.
-		if (child->GetTagName() == element->GetTagName() &&
-			child->GetDisplay() != Style::Display::None)
-			return false;
-
-		child_index--;
-	}
-
-	return false;
-}
+/**
+    Defines behavior of Element::ScrollIntoView.
+ */
+struct ScrollIntoViewOptions {
+	ScrollIntoViewOptions(ScrollAlignment vertical = ScrollAlignment::Start, ScrollAlignment horizontal = ScrollAlignment::Nearest,
+		ScrollBehavior behavior = ScrollBehavior::Instant) :
+		vertical(vertical),
+		horizontal(horizontal), behavior(behavior)
+	{}
+	ScrollAlignment vertical;
+	ScrollAlignment horizontal;
+	ScrollBehavior behavior;
+};
 
 } // namespace Rml
+
+#endif

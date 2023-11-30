@@ -52,19 +52,18 @@ bool PropertyParserDecorator::ParseValue(Property& property, const String& decor
 
 	if (decorator_string_value.empty() || decorator_string_value == "none")
 	{
-		property.value = Variant();
-		property.unit = Property::UNKNOWN;
+		property.value = Variant(DecoratorsPtr());
+		property.unit = Property::DECORATOR;
 		return true;
 	}
 
 	RMLUI_ZoneScoped;
 
-	DecoratorDeclarationList decorators;
-
 	// Make sure we don't split inside the parenthesis since they may appear in decorator shorthands.
 	StringList decorator_string_list;
 	StringUtilities::ExpandString(decorator_string_list, decorator_string_value, ',', '(', ')');
 
+	DecoratorDeclarationList decorators;
 	decorators.value = decorator_string_value;
 	decorators.list.reserve(decorator_string_list.size());
 
@@ -100,7 +99,9 @@ bool PropertyParserDecorator::ParseValue(Property& property, const String& decor
 			PropertyDictionary properties;
 			if (!specification.ParsePropertyDeclaration(properties, "decorator", shorthand))
 			{
-				return false;
+				// Empty values are allowed in decorators, if the value is not empty we must have encountered a parser error.
+				if (!StringUtilities::StripWhitespace(shorthand).empty())
+					return false;
 			}
 
 			// Set unspecified values to their defaults

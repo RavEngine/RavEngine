@@ -47,6 +47,7 @@ public:
 
 	bool IsVariableDirty(const String& variable_name);
 	void DirtyVariable(const String& variable_name);
+	void DirtyAllVariables();
 
 	explicit operator bool() { return model; }
 
@@ -61,7 +62,7 @@ public:
 	using DataEventMemberFunc = void(T::*)(DataModelHandle, Event&, const VariantList&);
 
 	DataModelConstructor();
-	DataModelConstructor(DataModel* model, DataTypeRegister* type_register);
+	explicit DataModelConstructor(DataModel* model);
 
 	// Return a handle to the data model being constructed, which can later be used to synchronize variables and update the model.
 	DataModelHandle GetModelHandle() const;
@@ -106,6 +107,10 @@ public:
 	template<typename T>
 	StructHandle<T> RegisterStruct();
 
+	// Register a user-declared VariableDefinition to describe a custom type behaviour.
+	template<typename T>
+	bool RegisterCustomDataVariableDefinition(UniquePtr<VariableDefinition> definition);
+
 	// Register an array type.
 	// @note The type applies to every data model associated with the current Context.
 	// @note If 'Container::value_type' represents a non-scalar type, that type must already have been registered with the appropriate 'Register...()' functions.
@@ -119,6 +124,10 @@ public:
 	void RegisterTransformFunc(const String& name, DataTransformFunc transform_func) {
 		type_register->GetTransformFuncRegister()->Register(name, std::move(transform_func));
 	}
+
+	// Returns the type register.
+	// The type register contains VariableDefinitions of all the data types registered to this data model's owning context.
+	DataTypeRegister* GetDataTypeRegister() const { return type_register; }
 
 	explicit operator bool() { return model && type_register; }
 
@@ -136,7 +145,7 @@ inline bool DataModelConstructor::RegisterScalar(DataTypeGetFunc<T> get_func, Da
 	static_assert(!is_builtin_data_scalar<T>::value, "Cannot register scalar data type function. Arithmetic types and String are handled internally and does not need to be registered.");
 	const FamilyId id = Family<T>::Id();
 
-	auto scalar_func_definition = MakeUnique<ScalarFuncDefinition<T>>(get_func, set_func);
+	auto scalar_func_definition = Rml::MakeUnique<ScalarFuncDefinition<T>>(get_func, set_func);
 
 	const bool inserted = type_register->RegisterDefinition(id, std::move(scalar_func_definition));
 	if (!inserted)
@@ -149,12 +158,27 @@ inline bool DataModelConstructor::RegisterScalar(DataTypeGetFunc<T> get_func, Da
 }
 
 template<typename T>
+inline bool DataModelConstructor::RegisterCustomDataVariableDefinition(UniquePtr<VariableDefinition> definition)
+{
+	const FamilyId id = Family<T>::Id();
+
+	const bool inserted = type_register->RegisterDefinition(id, std::move(definition));
+	if (!inserted)
+	{
+		RMLUI_LOG_TYPE_ERROR(T, "Custom data type already registered.");
+		return false;
+	}
+
+	return true;
+}
+
+template<typename T>
 inline StructHandle<T> DataModelConstructor::RegisterStruct()
 {
 	static_assert(std::is_class<T>::value, "Type must be a struct or class type.");
 	const FamilyId id = Family<T>::Id();
 
-	auto struct_definition = MakeUnique<StructDefinition>();
+	auto struct_definition = Rml::MakeUnique<StructDefinition>();
 	StructDefinition* struct_variable_raw = struct_definition.get();
 
 	const bool inserted = type_register->RegisterDefinition(id, std::move(struct_definition));
@@ -177,7 +201,7 @@ inline bool DataModelConstructor::RegisterArray()
 		return false;
 
 	const FamilyId container_id = Family<Container>::Id();
-	auto array_definition = MakeUnique<ArrayDefinition<Container>>(value_variable);
+	auto array_definition = Rml::MakeUnique<ArrayDefinition<Container>>(value_variable);
 
 	const bool inserted = type_register->RegisterDefinition(container_id, std::move(array_definition));
 	if (!inserted)

@@ -64,6 +64,7 @@ set(Core_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutBlockBoxSpace.h
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutDetails.h
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutEngine.h
+    ${PROJECT_SOURCE_DIR}/Source/Core/LayoutFlex.h
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutInlineBox.h
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutInlineBoxText.h
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutLineBox.h
@@ -84,22 +85,12 @@ set(Core_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserString.h
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserTransform.h
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyShorthandDefinition.h
+    ${PROJECT_SOURCE_DIR}/Source/Core/ScrollController.h
     ${PROJECT_SOURCE_DIR}/Source/Core/StreamFile.h
     ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetFactory.h
     ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNode.h
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelector.h
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorEmpty.h
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorFirstChild.h
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorFirstOfType.h
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorLastChild.h
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorLastOfType.h
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorNthChild.h
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorNthLastChild.h
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorNthLastOfType.h
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorNthOfType.h
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorOnlyChild.h
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorOnlyOfType.h
     ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetParser.h
+    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetSelector.h
     ${PROJECT_SOURCE_DIR}/Source/Core/Template.h
     ${PROJECT_SOURCE_DIR}/Source/Core/TemplateCache.h
     ${PROJECT_SOURCE_DIR}/Source/Core/TextureDatabase.h
@@ -110,7 +101,6 @@ set(Core_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/TextureResource.h
     ${PROJECT_SOURCE_DIR}/Source/Core/TransformState.h
     ${PROJECT_SOURCE_DIR}/Source/Core/TransformUtilities.h
-    ${PROJECT_SOURCE_DIR}/Source/Core/Utilities.h
     ${PROJECT_SOURCE_DIR}/Source/Core/WidgetScroll.h
     ${PROJECT_SOURCE_DIR}/Source/Core/XMLNodeHandlerBody.h
     ${PROJECT_SOURCE_DIR}/Source/Core/XMLNodeHandlerDefault.h
@@ -131,8 +121,8 @@ set(Core_PUB_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Colour.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Colour.inl
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/ComputedValues.h
-    ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Containers/chobo/flat_map.hpp
-    ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Containers/chobo/flat_set.hpp
+    ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Containers/itlib/flat_map.hpp
+    ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Containers/itlib/flat_set.hpp
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Containers/robin_hood.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Context.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/ContextInstancer.h
@@ -202,6 +192,7 @@ set(Core_PUB_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/PropertySpecification.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/RenderInterface.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/ScriptInterface.h
+    ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/ScrollTypes.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Spritesheet.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Stream.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/StreamMemory.h
@@ -210,6 +201,7 @@ set(Core_PUB_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/StyleSheetContainer.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/StyleSheetSpecification.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/StyleSheetTypes.h
+    ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/StyleTypes.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/SystemInterface.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Texture.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Traits.h
@@ -220,6 +212,7 @@ set(Core_PUB_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/TypeConverter.inl
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Types.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/URL.h
+    ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Utilities.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Variant.h
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Variant.inl
     ${PROJECT_SOURCE_DIR}/Include/RmlUi/Core/Vector2.h
@@ -237,6 +230,7 @@ set(Core_SRC_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/BaseXMLParser.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Box.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Clock.cpp
+    ${PROJECT_SOURCE_DIR}/Source/Core/ComputedValues.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/ComputeProperty.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Context.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/ContextInstancer.cpp
@@ -339,6 +333,7 @@ set(Core_SRC_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutBlockBoxSpace.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutDetails.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutEngine.cpp
+    ${PROJECT_SOURCE_DIR}/Source/Core/LayoutFlex.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutInlineBox.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutInlineBoxText.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/LayoutLineBox.cpp
@@ -366,6 +361,7 @@ set(Core_SRC_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertyParserTransform.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/PropertySpecification.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/RenderInterface.cpp
+    ${PROJECT_SOURCE_DIR}/Source/Core/ScrollController.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Spritesheet.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Stream.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/StreamFile.cpp
@@ -375,19 +371,8 @@ set(Core_SRC_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetContainer.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetFactory.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNode.cpp
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelector.cpp
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorEmpty.cpp
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorFirstChild.cpp
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorFirstOfType.cpp
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorLastChild.cpp
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorLastOfType.cpp
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorNthChild.cpp
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorNthLastChild.cpp
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorNthLastOfType.cpp
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorNthOfType.cpp
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorOnlyChild.cpp
-    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetNodeSelectorOnlyOfType.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetParser.cpp
+    ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetSelector.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/StyleSheetSpecification.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/SystemInterface.cpp
     ${PROJECT_SOURCE_DIR}/Source/Core/Template.cpp

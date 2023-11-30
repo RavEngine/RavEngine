@@ -27,12 +27,14 @@
  */
 
 #include "../../Include/RmlUi/Lottie/ElementLottie.h"
+#include "../../Include/RmlUi/Core/ComputedValues.h"
 #include "../../Include/RmlUi/Core/Core.h"
-#include "../../Include/RmlUi/Core/PropertyIdSet.h"
-#include "../../Include/RmlUi/Core/GeometryUtilities.h"
+#include "../../Include/RmlUi/Core/Context.h"
 #include "../../Include/RmlUi/Core/ElementDocument.h"
-#include "../../Include/RmlUi/Core/SystemInterface.h"
 #include "../../Include/RmlUi/Core/FileInterface.h"
+#include "../../Include/RmlUi/Core/GeometryUtilities.h"
+#include "../../Include/RmlUi/Core/PropertyIdSet.h"
+#include "../../Include/RmlUi/Core/SystemInterface.h"
 #include <cmath>
 #include <rlottie.h>
 
@@ -57,6 +59,28 @@ bool ElementLottie::GetIntrinsicDimensions(Vector2f& dimensions, float& ratio)
 		ratio = dimensions.x / dimensions.y;
 
 	return true;
+}
+
+void ElementLottie::OnUpdate()
+{
+	if (animation_dirty)
+		LoadAnimation();
+
+	if (!animation)
+		return;
+
+	const auto t = GetSystemInterface()->GetElapsedTime();
+
+	if (time_animation_start < 0.0)
+		time_animation_start = t;
+
+	double _unused;
+	const double frame_duration = 1.0 / animation->frameRate();
+	const double delay = std::modf((t - time_animation_start) / frame_duration, &_unused) * frame_duration;
+	if(IsVisible(true)) {
+		if (Context* ctx = GetContext())
+			ctx->RequestNextUpdate(delay);
+	}
 }
 
 void ElementLottie::OnRender()
@@ -115,8 +139,8 @@ void ElementLottie::GenerateGeometry()
 
 	const ComputedValues& computed = GetComputedValues();
 
-	const float opacity = computed.opacity;
-	Colourb quad_colour = computed.image_color;
+	const float opacity = computed.opacity();
+	Colourb quad_colour = computed.image_color();
 	quad_colour.alpha = (byte)(opacity * (float)quad_colour.alpha);
 
 	const Vector2f render_dimensions_f = GetBox().GetSize(Box::CONTENT).Round();
@@ -181,9 +205,6 @@ void ElementLottie::UpdateTexture()
 		return;
 
 	const double t = GetSystemInterface()->GetElapsedTime();
-
-	if (time_animation_start < 0.0)
-		time_animation_start = t;
 
 	// Find the next animation frame to display.
 	// Here it is possible to add more logic to control playback speed, pause/resume, and more.

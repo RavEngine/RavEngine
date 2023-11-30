@@ -59,6 +59,16 @@ RMLUICORE_API float AbsoluteValue(float value)
 	return fabsf(value);
 }
 
+RMLUICORE_API int AbsoluteValue(int value)
+{
+	return abs(value);
+}
+
+RMLUICORE_API Vector2f AbsoluteValue(Vector2f value)
+{
+	return {fabsf(value.x), fabsf(value.y)};
+}
+
 // Calculates the cosine of an angle.
 RMLUICORE_API float Cos(float angle)
 {
@@ -168,6 +178,11 @@ RMLUICORE_API int RoundDownToInteger(float value)
 	return RealToInteger(floorf(value));
 }
 
+RMLUICORE_API float DecomposeFractionalIntegral(float value, float* integral)
+{
+	return modff(value, integral);
+}
+
 // Efficiently truncates a floating-point value into an integer.
 RMLUICORE_API int RealToInteger(float value)
 {
@@ -246,6 +261,24 @@ RMLUICORE_API int RandomInteger(int max_value)
 RMLUICORE_API bool RandomBool()
 {
 	return RandomInteger(2) == 1;
+}
+
+template <>
+Vector2f Max<Vector2f>(Vector2f a, Vector2f b)
+{
+	return Vector2f(Max(a.x, b.x), Max(a.y, b.y));
+}
+
+template <>
+Vector2f Min<Vector2f>(Vector2f a, Vector2f b)
+{
+	return Vector2f(Min(a.x, b.x), Min(a.y, b.y));
+}
+
+template <>
+Vector2f Clamp(Vector2f value, Vector2f min, Vector2f max)
+{
+	return Vector2f(Clamp(value.x, min.x, max.x), Clamp(value.y, min.y, max.y));
 }
 
 Colourb RoundedLerp(float t, Colourb v0, Colourb v1)

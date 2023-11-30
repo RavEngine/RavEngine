@@ -78,7 +78,7 @@ static DataAddress ParseAddress(const String& address_str)
 // Returns an error string on error, or nullptr on success.
 static const char* LegalVariableName(const String& name)
 {
-	static SmallUnorderedSet<String> reserved_names{ "it", "ev", "true", "false", "size", "literal" };
+	static SmallUnorderedSet<String> reserved_names{"it", "it_index", "ev", "true", "false", "size", "literal"};
 	
 	if (name.empty())
 		return "Name cannot be empty.";
@@ -120,7 +120,8 @@ static String DataAddressToString(const DataAddress& address)
 	return result;
 }
 
-DataModel::DataModel(const TransformFuncRegister* transform_register) : transform_register(transform_register)
+DataModel::DataModel(DataTypeRegister* data_type_register) :
+	data_type_register(data_type_register)
 {
 	views = MakeUnique<DataViews>();
 	controllers = MakeUnique<DataControllers>();
@@ -341,10 +342,17 @@ bool DataModel::IsVariableDirty(const String& variable_name) const
 	return dirty_variables.count(variable_name) == 1;
 }
 
-bool DataModel::CallTransform(const String& name, Variant& inout_result, const VariantList& arguments) const
+void DataModel::DirtyAllVariables() {
+	dirty_variables.reserve(variables.size());
+	for (const auto& variable : variables) {
+		dirty_variables.emplace(variable.first);
+	}
+}
+
+bool DataModel::CallTransform(const String& name, const VariantList& arguments, Variant& out_result) const
 {
-	if (transform_register)
-		return transform_register->Call(name, inout_result, arguments);
+	if (const auto transform_register = data_type_register->GetTransformFuncRegister())
+		return transform_register->Call(name, arguments, out_result);
 	return false;
 }
 

@@ -48,7 +48,7 @@ struct is_builtin_data_scalar {
 class RMLUICORE_API TransformFuncRegister {
 public:
 	void Register(const String& name, DataTransformFunc transform_func);
-	bool Call(const String& name, Variant& inout_result, const VariantList& arguments) const;
+	bool Call(const String& name, const VariantList& arguments, Variant& out_result) const;
 
 private:
 	UnorderedMap<String, DataTransformFunc> transform_functions;
@@ -90,7 +90,7 @@ private:
 		UniquePtr<VariableDefinition>& definition = result.first->second;
 
 		if (inserted)
-			definition = MakeUnique<ScalarDefinition<T>>();
+			definition = Rml::MakeUnique<ScalarDefinition<T>>();
 
 		return definition.get();
 	}
@@ -138,7 +138,7 @@ private:
 		UniquePtr<VariableDefinition>& definition = result.first->second;
 
 		if (inserted)
-			definition = MakeUnique<PointerDefinition<T>>(underlying_definition);
+			definition = Rml::MakeUnique<PointerDefinition<T>>(underlying_definition);
 
 		return definition.get();
 	}

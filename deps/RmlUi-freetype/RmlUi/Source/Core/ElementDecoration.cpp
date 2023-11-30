@@ -27,6 +27,7 @@
  */
 
 #include "ElementDecoration.h"
+#include "../../Include/RmlUi/Core/ComputedValues.h"
 #include "../../Include/RmlUi/Core/Decorator.h"
 #include "../../Include/RmlUi/Core/Element.h"
 #include "../../Include/RmlUi/Core/ElementDocument.h"
@@ -60,7 +61,7 @@ bool ElementDecoration::ReloadDecorators()
 	RMLUI_ZoneScopedC(0xB22222);
 	ReleaseDecorators();
 
-	if (!element->GetComputedValues().has_decorator)
+	if (!element->GetComputedValues().has_decorator())
 		return true;
 
 	const Property* property = element->GetLocalProperty(PropertyId::Decorator);
@@ -87,7 +88,7 @@ bool ElementDecoration::ReloadDecorators()
 		}
 	}
 
-	const auto& decorator_list = style_sheet->InstanceDecorators(*decorators_ptr, source);
+	const DecoratorPtrList& decorator_list = style_sheet->InstanceDecorators(*decorators_ptr, source);
 
 	for (const SharedPtr<const Decorator>& decorator : decorator_list)
 	{

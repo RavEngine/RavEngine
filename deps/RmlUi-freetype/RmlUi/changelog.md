@@ -1,3 +1,7 @@
+* [RmlUi 5.1](#rmlui-51)
+* [RmlUi 5.0](#rmlui-50)
+* [RmlUi 4.4](#rmlui-44)
+* [RmlUi 4.3](#rmlui-43)
 * [RmlUi 4.2](#rmlui-42)
 * [RmlUi 4.1](#rmlui-41)
 * [RmlUi 4.0](#rmlui-40)
@@ -7,7 +11,312 @@
 * [RmlUi 3.0](#rmlui-30)
 * [RmlUi 2.0](#rmlui-20)
 
-## RmlUi 4.3 (WIP)
+## RmlUi 5.1
+
+### New scrolling features
+
+#### Autoscroll mode
+Autoscroll mode, or scrolling with the middle mouse button, is now featured in RmlUi. #422 #423 (thanks @igorsegallafa)
+
+This mode is automatically enabled by the context whenever a middle mouse button press is detected, and there is an element to scroll under the mouse. There is also support for holding the middle mouse button to scroll. 
+
+When autoscroll mode is active, a cursor name is submitted to clients which indicates the state of the autoscroll, so that clients can display an appropriate cursor to the user. These cursor names all start with `rmlui-scroll-`, and take priority over any active `cursor` property. If desired, autoscroll mode can be disabled entirely by simply not submitting middle mouse button presses, or by using another button index when submitting the button to the context. 
+
+See the new [documentation section on scrolling](https://mikke89.github.io/RmlUiDoc/pages/cpp_manual/contexts.html#scrolling) for details.
+
+#### Smooth scrolling
+Smooth scrolling is now supported in RmlUi, and enabled by default. This makes certain scroll actions animate smoothly towards its destination. Smooth scrolling may become active in the following situations:
+
+- During a call to `Context::ProcessMouseWheel()`.
+- When clicking a scrollbar's arrow keys or track.
+- When calling any of the `Element::Scroll...()` methods with the `ScrollBehavior::Smooth` enum value.
+
+Smooth scrolling can be disabled or tweaked on the context, as described below.
+
+#### Context interface
+Smooth scrolling can be disabled, or tweaked, by calling the following method on a given context:
+```cpp
+void Context::SetDefaultScrollBehavior(ScrollBehavior scroll_behavior, float speed_factor);
+```
+Here, smooth scrolling can be disabled by submitting the `ScrollBehavior::Instant` enum value. The scrolling speed can also be tweaked by adjusting the speed factor.
+
+The function signature of `Context::ProcessMouseWheel` has been replaced with the following, to enable scrolling in both dimensions:
+```cpp
+bool Context::ProcessMouseWheel(Vector2f wheel_delta, int key_modifier_state);
+```
+The old single axis version is still available for backward compatibility, but considered deprecated and may be removed in the future.
+
+#### Element interface
+Added
+```cpp
+void Element::ScrollTo(Vector2f offset, ScrollBehavior behavior = ScrollBehavior::Instant);
+```
+which scrolls the element to the given coordinates, with the ability to use smooth scrolling. Similarly, `Element::ScrollIntoView` has been updated with the ability to perform smooth scrolling (instant by default).
+
+#### Scroll events
+The `mousescroll` event no longer performs scrolling on an element, and no longer requires a default action. Instead, the responsibility for mouse scrolling has been moved to the context and its scroll controller. However, the `mousescroll` event is still submitted during a mouse wheel action, with the option to cancel the scroll by stopping its propagation. The event is now also submitted before initiating autoscroll mode, with the possibility to cancel it.
+
+### New RCSS features
+
+- New [`overscroll-behavior` property](https://mikke89.github.io/RmlUiDoc/pages/rcss/user_interface.html#overscroll-behavior). An element's closest scrollable ancestor is decided by scroll chaining, which can be controlled using this property. The `contain` value can be used to ensure that mouse wheel scrolling is not propagated outside a given element, regardless of whether its scrollbars are visible.
+- Added animation support for decorators. #421 (thanks @0suddenly0)
+- Sibling selectors will now also match hidden elements.
+
+### On-demand rendering (power saving mode)
+
+In games, the update and render loop normally run as fast as possible. However, in some applications it is desirable to reduce CPU usage and power consumption when the application is idle. RmlUi now provides the necessary utilities to achieve this. Implemented in #436 (thanks @Thalhammer), see also #331 #417 #430.
+
+Users of RmlUi control their own update loop, however, this feature requires some support from the library side, because the application needs to know e.g. when animations are happening or when a text cursor should blink. In short, to implement this, users can now query the context for `Context::GetNextUpdateDelay()`, which returns the time until the next update loop should be run again.
+
+See the [on-demand rendering documentation](https://mikke89.github.io/RmlUiDoc/pages/cpp_manual/contexts.html#on-demand-rendering) for details and examples.
+
+### Text selection interface
+
+Added the ability to set or retrieve the text selection on text fields. #419
+
+In particular, the following methods are now available on `ElementFormControlInput` (`<input>` elements) and `ElementFormControlTextArea` (`<textarea>` elements):
+
+```cpp
+// Selects all text.
+void Select();
+// Selects the text in the given character range.
+void SetSelectionRange(int selection_start, int selection_end);
+// Retrieves the selection range and text.
+void GetSelection(int* selection_start, int* selection_end, String* selected_text) const;
+```
+
+See the [form controls documentation](https://mikke89.github.io/RmlUiDoc/pages/cpp_manual/element_packages/form.html#text-selection) for details.
+
+### RML and form element improvements
+
+- Add RML support for numeric character reference (Unicode escape sequences). #401 (thanks @dakror)
+- Make the `:checked` pseudo class active on the `<select>` element whenever its options list is open, for better styling capabilities.
+- Fix max length in text input fields not always clamping the value, such as when pasting text.
+- The slider input now only responds to the primary mouse button.
+- The slider input is now only draggable from the track or bar, instead of the whole element.
+- Fixed input elements not always being correctly setup when changing types.
+
+### Data bindings
+
+- Add new [data-alias attribute](https://mikke89.github.io/RmlUiDoc/pages/data_bindings/views_and_controllers.html#data-alias) to make templates work with outside variables. #432 (thanks @dakror)
+- Add method to retrieve the `DataTypeRegister` during model construction. #412 #413 (thanks @LoneBoco)
+- Add ability to provide a separate data type register to use when constructing a new data model. Can be useful to provide a distinct type register for each shared library accessing the same context. Alternatively, allows different contexts to share a single type register. #409 (thanks @eugeneko)
+
+### Lua plugin
+
+- Make the Lua plugin compatible with Lua 5.1+ and LuaJIT. #387 (thanks @mrianura)
+- Updated to include the new text selection API. #434 #435 (thanks @ShawnCZek)
+
+### Backends
+
+- Vulkan renderer: Fix various Vulkan issues on Linux. #430 (thanks @Thalhammer)
+- GL3 renderer: Unbind the vertex array after use to avoid possible crash. #411
+
+### Stability improvements
+
+- Fix a potential crash during plugin shutdown. #415 (thanks @LoneBoco)
+
+### Build improvements
+
+- Improve CMake to better support RmlUi included as a subdirectory of a parent project. #394 #395 #397 (thanks @cathaysia)
+- Fix possible name clashes causing build failures during argument-dependent lookup (ADL). #418 #420 (thanks @mwl4)
+
+### Built-in containers
+
+- Replaced custom containers based on chobo-shl with equivalent ones from [itlib](https://github.com/iboB/itlib). #402 (thanks @iboB)
+
+### Breaking changes
+
+- Scrolling behavior changed, increased default mouse wheel scroll length, and enabled smooth scrolling by default. See notes above.
+- The `mousescroll` event no longer scrolls an element. Its `wheel_delta` parameter has been renamed to `wheel_delta_y`.
+- The signature of `Context::ProcessMouseWheel` has been changed, the old signature is still available but deprecated.
+
+
+## RmlUi 5.0
+
+### Backends
+
+RmlUi 5.0 introduces the backends concept. This is a complete refactoring of the old sample shell, replacing most of it with a multitude of backends. A backend is a combination of a renderer and a platform, and a light interface tying them together. The shell is now only used for common functions specific to the included samples.
+
+This change is beneficial in several aspects:
+
+- Makes it easier to integrate RmlUi, as users can directly use the renderer and platform suited for their setup.
+- Makes it a lot easier to add new backends and maintain existing ones.
+- Allows all the samples to run on any backend by choosing the desired backend during CMake configuration.
+
+All samples and tests have been updated to work with the [backends interface](Backends/RmlUi_Backend.h), which is a very light abstraction over all the different backends.
+
+The following renderers and platforms are included:
+
+- A new OpenGL 3 renderer. #261
+  - Including Emscripten support so RmlUi even runs in web browsers now.
+- A new Vulkan renderer. #236 #328 #360 #385 (thanks @wh1t3lord)
+- A new GLFW platform.
+- The OpenGL 2 and SDL native renderers ported from the old samples.
+- The Win32, X11, SFML, and SDL platforms ported from the old samples.
+
+The old macOS shell has been removed as it used a legacy API that is no longer working on modern Apple devices. Now the samples build again on macOS using one of the windowing libraries such as GLFW or SDL.
+
+See the [Backends section in the readme](readme.md#rmlui-backends) for all the combinations of renderers and platforms, and more details. The backend used for running the samples can be selected by setting the CMake option `SAMPLES_BACKEND` to any of the [supported backends](readme.md#rmlui-backends).
+
+### RCSS selectors
+
+- Implemented the next-sibling `+` and subsequent-sibling `~` [combinators](https://mikke89.github.io/RmlUiDoc/pages/rcss/selectors.html).
+- Implemented attribute selectors `[foo]`, `[foo=bar]`, `[foo~=bar]`, `[foo|=bar]`, `[foo^=bar]`, `[foo$=bar]`, `[foo*=bar]`. #240 (thanks @aquawicket)
+- Implemented the negation pseudo class `:not()`, including support for selector lists `E:not(s1, s2, ...)`.
+- Refactored structural pseudo classes for improved performance.
+- Selectors will no longer match any text elements, like in CSS.
+- Selectors now correctly consider all paths toward the root, not just the first greedy path.
+- Structural selectors are no longer affected by the element's display property, like in CSS.
+
+### RCSS properties
+
+- `max-width` and `max-height` properties now support the `none` keyword.
+
+### Text editing
+
+The `<textarea>` and `<input type="text">` elements have been improved in several aspects.
+
+- Improved cursor navigation between words (Ctrl + Left/Right).
+- Selection is now expanded to highlight selected newlines.
+- When word-wrap is enabled, words can now be broken to avoid overflow.
+- Fixed several issues where the text cursor would be offset from the text editing operations. In particular after word wrapping, or when suppressed characters were present in the text field's value. #313
+- Fixed an issue where Windows newline endings (\r\n) would produce an excessive space character.
+- Fixed operation of page up/down numpad keys being swapped.
+- The input method editor (IME) is now positioned at the caret during text editing on the Windows backend. #303 #305 (thanks @xland)
+- Fix slow input handling especially with CJK input on the Win32 backend. #311
+- Improve performance on document load and during text editing.
+
+### Elements
+
+- Extend the functionality of `Element::ScrollIntoView`. #353 (thanks @eugeneko)
+- `<img>` element: Fix wrong dp-scaling being applied when an image is cloned through a parent element. #310
+- `<handle>` element: Fix move targets changing size when placed using the `top`/`right`/`bottom`/`left` properties.
+
+### Data binding
+
+- Transform functions can now be called using C-like calling conventions, in addition to the previous pipe-syntax. Thus, the data expression `3.625 | format(2)` can now be identically expressed as `format(3.625, 2)`.
+- Handle null pointers when trying to access data variables. #377 (thanks @Dakror)
+- Enable registering a custom data variable definition. #367 (thanks @Dakror)
+
+### Context input
+
+- The hover state of any elements under the mouse will now automatically be updated during `Context::Update()`. #220
+- Added `Context::ProcessMouseLeave()` which ensures that the hovered state is removed from all elements and stops the context update from automatically hovering elements.
+- When `Context::ProcessMouseMove()` is called next the context update will start updating hover states again.
+- Added support for mouse leave events on all backends.
+
+### Layout improvements
+
+- Scroll and slider elements now use containing block's height instead of width to calculate height-relative values. #314 #321 (thanks @nimble0)
+- Generate warnings when directly nesting flexboxes and other unsupported elements in a top-level formatting context. #320
+- In some situations, changing the `top`/`right`/`bottom`/`left` properties may affect the element's size. These situations are now correctly handled so that the layout is updated when needed.
+
+### Lua plugin
+
+- Add `QuerySelector` and `QuerySelectorAll` to the Lua Element API. #329 (thanks @Dakror)
+- Add input-related methods and `dp_ratio` to the Lua Context API. #381 #386 (thanks @shubin)
+- Lua objects representing C++ pointers now compare equal if they point to the same object. #330 (thanks @Dakror)
+- Add length to proxy for element children. #315 (thanks @nimble0)
+- Fix a crash in the Lua plugin during garbage collection. #340 (thanks @slipher)
+
+### Debugger plugin
+
+- Show a more descriptive name for children in the element info window.
+- Fixed a crash when the debugger plugin was shutdown manually. #322 #323 (thanks @LoneBoco)
+
+### SVG plugin
+
+- Update texture when the `src` attribute changes. #361
+
+### General improvements
+
+- Small performance improvement when generating font effects.
+- Allow empty values in decorators and font-effects.
+- RCSS located within document `<style>` tags can now take comments containing xml tags. #341
+- Improve in-source function documentation. #334 (thanks @hobyst)
+- Invader sample: Rename event listener and instancer for clarity.
+
+### General fixes
+
+- Font textures are no longer being regenerated when encountering new ascii characters, fixes a recent regression.
+- Logging a message without an installed system interface will now be written to cout instead of crashing the application.
+- Fix several static analyzer warnings and one possible case of undefined behavior.
+- SDL renderer: Fix images with no alpha channel not rendering. #239
+
+### Build fixes
+
+- Fix compilation on Emscripten CI. #335 (thanks @hobyst)
+- Fix compilation with EASTL. #350 (thanks @eugeneko)
+
+### Breaking changes
+
+- Changed the signature of the keyboard activation in the system interface, it now passes the caret position and line height: `SystemInterface::ActivateKeyboard(Rml::Vector2f caret_position, float line_height)`.
+- Mouse and hover behavior may change in some situations as a result of the hover state automatically being updated on `Context::Update()`, even if the mouse is not moved. See above changes to context input.
+- Removed the boolean result returned from `Rml::Debugger::Shutdown()`.
+- RCSS selectors will no longer match text elements.
+- RCSS structural pseudo selectors are no longer affected by the element's display property.
+- Data binding: The signature of transform functions has been changed from `Variant& first_argument_and_result, const VariantList& other_arguments -> bool success` to `const VariantList& arguments -> Variant result`.
+
+
+## RmlUi 4.4
+
+### Fonts
+
+- Support for color emojis 🎉. [#267](https://github.com/mikke89/RmlUi/issues/267)
+- Support for loading fonts with multiple included font weights. [#296](https://github.com/mikke89/RmlUi/pull/296) (thanks @MexUK)
+- The `font-weight` property now supports numeric values. [#296](https://github.com/mikke89/RmlUi/pull/296) (thanks @MexUK)
+- The `opacity` property is now also applied to font effects. [#270](https://github.com/mikke89/RmlUi/issues/270)
+
+### Performance and resource management
+
+- Substantial performance improvement when looking up style rules with class names. Fixes some cases of low performance, see [#293](https://github.com/mikke89/RmlUi/issues/293).
+- Reduced memory usage, more than halved the size of `ComputedValues`.
+- Added `Rml::ReleaseFontResources` to release unused font textures, cached glyph data, and related resources.
+- Release memory pools on `Rml::Shutdown`, or manually through the core API. [#263](https://github.com/mikke89/RmlUi/issues/263) [#265](https://github.com/mikke89/RmlUi/pull/265) (thanks @jack9267)
+
+### Layout
+
+- Fix offsets of relatively positioned elements with percentage positioning. [#262](https://github.com/mikke89/RmlUi/issues/262)
+- `select` element: Fix clipping on select box.
+
+### Data binding
+
+- Add `DataModelHandle::DirtyAllVariables()` to mark all variables in the data model as dirty. [#289](https://github.com/mikke89/RmlUi/pull/289) (thanks @EhWhoAmI)
+
+### Cloning
+
+- Fix classes not always copied over to a cloned element. [#264](https://github.com/mikke89/RmlUi/issues/264)
+- Drag clones are now positioned correctly when their ancestors use transforms. [#269](https://github.com/mikke89/RmlUi/issues/269)
+- Drag clones no longer inherit backgrounds and decoration from the cloned element's document body.
+
+### Samples and plugins
+
+- New sample for integration with SDL2's native renderer. [#252](https://github.com/mikke89/RmlUi/pull/252) (thanks @1bsyl)
+- Add `width` and `height` attributes to the `<svg>` element. [#283](https://github.com/mikke89/RmlUi/pull/283) (thanks @EhWhoAmI)
+
+### Build improvements
+
+- CMake: Mark RmlCore dependencies as private. [#274](https://github.com/mikke89/RmlUi/pull/274) (thanks @jonesmz)
+- CMake: Allow `lunasvg` library be found when located in builtin tree. [#282](https://github.com/mikke89/RmlUi/pull/282) (thanks @EhWhoAmI)
+
+### Breaking changes
+
+- `FontEngineInterface::GenerateString` now takes an additional argument, `opacity`.
+- Computed values are now retrieved by function calls instead of member objects.
+
+
+## RmlUi 4.3
+
+### Flexbox layout
+
+Support for flexible box layout. [#182](https://github.com/mikke89/RmlUi/issues/182) [#257](https://github.com/mikke89/RmlUi/pull/257)
+
+```css
+display: flex;
+```
+
+See usage examples, differences from CSS, performance tips, and all the details [in the flexbox documentation](https://mikke89.github.io/RmlUiDoc/pages/rcss/flexboxes.html).
 
 ### Elements
 
@@ -15,38 +324,52 @@
   - Emit `change` event even when the value of the newly selected option is the same.
   - Do not wrap around when using up/down keys on options.
   - Fix unintentional clipping of the scrollbar.
+- `tabset` element: Fix index parameter having no effect in ElementTabSet::SetPanel and ElementTabSet::SetTab. [#237](https://github.com/mikke89/RmlUi/issues/237) [#246](https://github.com/mikke89/RmlUi/pull/246) (thanks @nimble0)
 
-### RCSS Properties
+### RCSS
 
-- Add (non-standard) property value `clip: always` to force clipping to the element, [see `clip` documentation](https://mikke89.github.io/RmlUiDoc/pages/rcss/visual_effects.html#clip). [#235](https://github.com/mikke89/RmlUi/issues/235)
+- Add (non-standard) property value `clip: always` to force clipping to the element, [see `clip` documentation](https://mikke89.github.io/RmlUiDoc/pages/rcss/visual_effects.html#clip). [#235](https://github.com/mikke89/RmlUi/issues/235) [#251](https://github.com/mikke89/RmlUi/pull/251) (thanks @MatthiasJFM)
+- Escape character changed from forward slash to backslash `\` to align with CSS.
 
 ### Layout improvements
 
+- See flexbox layout support above.
 - Fix an issue where some elements could end up rendered at the wrong offset after scrolling. [#230](https://github.com/mikke89/RmlUi/issues/230)
 - Improve behavior for collapsing negative vertical margins.
+- Pixel rounding improvements to the clip region.
+- Performance improvement: Avoid unnecesssary extra layouting step in some situations when scrollbars are added.
 
 ### Samples
 
-- Add clipboard support for X11 samples. [#231](https://github.com/mikke89/RmlUi/pull/231) (thanks @barotto)
+- Add clipboard support to X11 samples. [#231](https://github.com/mikke89/RmlUi/pull/231) (thanks @barotto)
+- Windows shell: Fix OpenGL error on startup.
 
 ### Tests
 
 - Visual tests suite: Add ability to overlay the previous reference capture of the test using the shortcut Ctrl+Q.
+- Add support for CSS flexbox tests to the CSS tests converter.
+
+### Lua plugin
+
+- Make Lua plugin API consistently one-indexed instead of zero-indexed. [#237](https://github.com/mikke89/RmlUi/issues/237) [#247](https://github.com/mikke89/RmlUi/pull/247) (thanks @nimble0)
+- Fix crash due to double delete in the Lua plugin. [#216](https://github.com/mikke89/RmlUi/issues/216)
 
 ### Dependencies
 
 - Update LunaSVG plugin for compatibility with v2.3.0. [#232](https://github.com/mikke89/RmlUi/issues/232)
-- Fix crash due to double delete in the Lua plugin. [#216](https://github.com/mikke89/RmlUi/issues/216)
 - Warn when using FreeType 2.11.0 with the MSVC compiler, as this version introduced [an issue](https://gitlab.freedesktop.org/freetype/freetype/-/issues/1092) leading to crashes.
 
 ### Build improvements
 
 - Fix log message format string when compiling in debug mode. [#234](https://github.com/mikke89/RmlUi/pull/234) (thanks @barotto)
+- Avoid enum name collisions with Windows header macros. [#258](https://github.com/mikke89/RmlUi/issues/258)
 
 ### Breaking changes
 
 - The `clip` property is now non-inherited. Users may need to update their RCSS selectors to achieve the same clipping behavior as previously when using this property.
 - Minor changes to the clipping behavior when explicitly using the `clip` property, may lead to different results in some circumstances.
+- RCSS escape character is now `\` instead of `/`.
+- Lua plugin: Some scripts may need to be changed from using zero-based indexing to one-indexing.
 
 
 ## RmlUi 4.2

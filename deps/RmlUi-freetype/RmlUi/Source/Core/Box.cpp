@@ -31,21 +31,10 @@
 
 namespace Rml {
 
-// Initialises a zero-sized box.
-Box::Box() : content(0, 0)
-{
-	memset(area_edges, 0, sizeof(area_edges));
-}
+Box::Box() {}
+Box::Box(Vector2f content) : content(content) {}
 
-// Initialises a box with a default content area and no padding, borders and margins.
-Box::Box(Vector2f content) : content(content)
-{
-	memset(area_edges, 0, sizeof(area_edges));
-}
-
-Box::~Box()
-{
-}
+Box::~Box() {}
 
 // Returns the top-left position of one of the areas.
 Vector2f Box::GetPosition(Area area) const
@@ -60,11 +49,15 @@ Vector2f Box::GetPosition(Area area) const
 	return area_position;
 }
 
-// Returns the size of one of the box's areas. This will include all inner areas.
+Vector2f Box::GetSize() const
+{
+	return content;
+}
+
 Vector2f Box::GetSize(Area area) const
 {
 	Vector2f area_size(content);
-	for (int i = PADDING; i >= area; i--)
+	for (int i = area; i <= PADDING; i++)
 	{
 		area_size.x += (area_edges[i][LEFT] + area_edges[i][RIGHT]);
 		area_size.y += (area_edges[i][TOP] + area_edges[i][BOTTOM]);

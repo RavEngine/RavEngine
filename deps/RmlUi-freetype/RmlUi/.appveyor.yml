@@ -36,7 +36,7 @@ install:
     cmake --build . --target rlottie --config Release -- "/clp:ErrorsOnly"
     cd ../../
     
-    git clone --depth 1 --branch v2.3.0 https://github.com/sammycage/lunasvg.git
+    git clone --depth 1 --branch v2.3.1 https://github.com/sammycage/lunasvg.git
     cd lunasvg
     mkdir build
     cd build
@@ -105,7 +105,7 @@ after_build:
     cp Include/RmlUi/Core/Containers/LICENSE.txt LICENSE.Core.ThirdParty.txt
     cp Source/Debugger/LICENSE.txt LICENSE.Debugger.ThirdParty.txt
     
-    7z a RmlUi-%VS_SHORTNAME%-%PLATFORM_NAME%.zip Bin/ Include/ Samples/ Build.txt readme.md changelog.md LICENSE* Dependencies/freetype-%FREETYPE_VER%/ Dependencies/rlottie/COPYING Dependencies/rlottie/MPL_SOURCE.txt Dependencies/rlottie/licenses/ Dependencies/lunasvg/LICENSE
+    7z a RmlUi-%VS_SHORTNAME%-%PLATFORM_NAME%.zip Backends/ Bin/ Include/ Samples/ Build.txt readme.md changelog.md LICENSE* Dependencies/freetype-%FREETYPE_VER%/ Dependencies/rlottie/COPYING Dependencies/rlottie/MPL_SOURCE.txt Dependencies/rlottie/licenses/ Dependencies/lunasvg/LICENSE
     
     mkdir Samples\Dependencies\freetype-%FREETYPE_VER%, Samples\Dependencies\rlottie, Samples\Dependencies\rlottie\licenses, Samples\Dependencies\lunasvg
     cp LICENSE* Samples
@@ -135,7 +135,7 @@ for:
       set GLEW_INCLUDE_DIR=C:/msys64/mingw64/include/GL
       set GLEW_LIBRARIES=C:/msys64/mingw64/lib/libglew32.dll.a
       
-      cmake -G "MinGW Makefiles" -DBUILD_SHARED_LIBS=ON -DENABLE_PRECOMPILED_HEADERS=OFF -DBUILD_SAMPLES=ON -DBUILD_LUA_BINDINGS=ON -DWARNINGS_AS_ERRORS=ON -DCMAKE_C_COMPILER=gcc.exe -DCMAKE_CXX_COMPILER=g++.exe -DCMAKE_MAKE_PROGRAM=mingw32-make.exe -DGLEW_INCLUDE_DIR=%GLEW_INCLUDE_DIR% -DGLEW_LIBRARIES=%GLEW_LIBRARIES% ..
+      cmake -G "MinGW Makefiles" -DBUILD_SHARED_LIBS=ON -DENABLE_PRECOMPILED_HEADERS=OFF -DBUILD_SAMPLES=ON -DBUILD_LUA_BINDINGS=ON -DWARNINGS_AS_ERRORS=OFF -DCMAKE_C_COMPILER=gcc.exe -DCMAKE_CXX_COMPILER=g++.exe -DCMAKE_MAKE_PROGRAM=mingw32-make.exe -DGLEW_INCLUDE_DIR=%GLEW_INCLUDE_DIR% -DGLEW_LIBRARIES=%GLEW_LIBRARIES% ..
 
       set CHERE_INVOKING=yes
       set MSYSTEM=MINGW64
@@ -155,7 +155,7 @@ deploy:
   description: 'Release description'
   provider: GitHub
   auth_token:
-    secure: g/WlXrOszpqKYC++IvUvNOPhuEeHbMm+2/TWzcgQko+nIGKmjvfAWUxouNhgsUy9
+    secure: YN5NBflQ6G3yLsNYRPTjgz5vXqaZeIstxzRx4XqC8VVOUKL/TY2JOdxNQKTZOwLM
   artifact: /.*\.zip/
   draft: true
   prerelease: false

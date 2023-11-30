@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(RmlUi VERSION 4.2) 
+project(RmlUi VERSION 5.1) 
 
 set(RMLUI_VERSION_RELEASE TRUE)
 set(ENABLE_LOTTIE_PLUGIN ON CACHE INTERNAL "") # rlottie plugin

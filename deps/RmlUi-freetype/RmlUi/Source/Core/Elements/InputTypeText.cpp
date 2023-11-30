@@ -28,30 +28,23 @@
 
 #include "InputTypeText.h"
 #include "../../../Include/RmlUi/Core/ElementUtilities.h"
-#include "WidgetTextInputSingleLine.h"
-#include "WidgetTextInputSingleLinePassword.h"
 #include "../../../Include/RmlUi/Core/Elements/ElementFormControlInput.h"
 #include "../../../Include/RmlUi/Core/PropertyIdSet.h"
+#include "../../../Include/RmlUi/Core/StyleSheetSpecification.h"
+#include "WidgetTextInputSingleLine.h"
+#include "WidgetTextInputSingleLinePassword.h"
 
 namespace Rml {
 
 InputTypeText::InputTypeText(ElementFormControlInput* element, Visibility visibility) : InputType(element)
 {
 	if (visibility == VISIBLE)
-		widget = new WidgetTextInputSingleLine(element);
+		widget = MakeUnique<WidgetTextInputSingleLine>(element);
 	else
-		widget = new WidgetTextInputSingleLinePassword(element);
-
-	widget->SetMaxLength(element->GetAttribute< int >("maxlength", -1));
-	widget->SetValue(element->GetAttribute< String >("value", ""));
-
-	size = element->GetAttribute< int >("size", 20);
+		widget = MakeUnique<WidgetTextInputSingleLinePassword>(element);
 }
 
-InputTypeText::~InputTypeText()
-{
-	delete widget;
-}
+InputTypeText::~InputTypeText() {}
 
 // Called every update from the host element.
 void InputTypeText::OnUpdate()
@@ -104,8 +97,14 @@ bool InputTypeText::OnAttributeChange(const ElementAttributes& changed_attribute
 // Called when properties on the control are changed.
 void InputTypeText::OnPropertyChange(const PropertyIdSet& changed_properties)
 {
-	if (changed_properties.Contains(PropertyId::Color) ||
-		changed_properties.Contains(PropertyId::BackgroundColor))
+	// Some inherited properties require text formatting update, mainly font and line-height properties.
+	const PropertyIdSet changed_inherited_layout_properties = changed_properties &
+		(StyleSheetSpecification::GetRegisteredInheritedProperties() & StyleSheetSpecification::GetRegisteredPropertiesForcingLayout());
+
+	if (!changed_inherited_layout_properties.Empty())
+		widget->ForceFormattingOnNextLayout();
+
+	if (changed_properties.Contains(PropertyId::Color) || changed_properties.Contains(PropertyId::BackgroundColor))
 		widget->UpdateSelectionColours();
 
 	if (changed_properties.Contains(PropertyId::CaretColor))
@@ -125,6 +124,21 @@ bool InputTypeText::GetIntrinsicDimensions(Vector2f& dimensions, float& /*ratio*
 	dimensions.y = element->GetLineHeight() + 2.0f;
 
 	return true;
+}
+
+void InputTypeText::Select()
+{
+	widget->Select();
+}
+
+void InputTypeText::SetSelectionRange(int selection_start, int selection_end)
+{
+	widget->SetSelectionRange(selection_start, selection_end);
+}
+
+void InputTypeText::GetSelection(int* selection_start, int* selection_end, String* selected_text) const
+{
+	widget->GetSelection(selection_start, selection_end, selected_text);
 }
 
 } // namespace Rml

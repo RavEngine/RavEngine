@@ -27,15 +27,17 @@
  */
 
 #include "../../Include/RmlUi/SVG/ElementSVG.h"
+#include "../../Include/RmlUi/Core/ComputedValues.h"
 #include "../../Include/RmlUi/Core/Core.h"
-#include "../../Include/RmlUi/Core/PropertyIdSet.h"
-#include "../../Include/RmlUi/Core/GeometryUtilities.h"
 #include "../../Include/RmlUi/Core/ElementDocument.h"
-#include "../../Include/RmlUi/Core/SystemInterface.h"
 #include "../../Include/RmlUi/Core/FileInterface.h"
+#include "../../Include/RmlUi/Core/GeometryUtilities.h"
 #include "../../Include/RmlUi/Core/Math.h"
+#include "../../Include/RmlUi/Core/PropertyIdSet.h"
+#include "../../Include/RmlUi/Core/SystemInterface.h"
 #include <cmath>
 #include <lunasvg.h>
+#include <string.h>
 
 namespace Rml {
 
@@ -54,6 +56,14 @@ bool ElementSVG::GetIntrinsicDimensions(Vector2f& dimensions, float& ratio)
 		LoadSource();
 
 	dimensions = intrinsic_dimensions;
+
+	if (HasAttribute("width")) {
+		dimensions.x = GetAttribute< float >("width", -1);
+	}
+	if (HasAttribute("height")) {
+		dimensions.y = GetAttribute< float >("height", -1);
+	}
+
 	if (dimensions.y > 0)
 		ratio = dimensions.x / dimensions.y;
 
@@ -75,7 +85,7 @@ void ElementSVG::OnRender()
 void ElementSVG::OnResize()
 {
 	geometry_dirty = true;
-	texture_size_dirty = true;
+	texture_dirty = true;
 }
 
 void ElementSVG::OnAttributeChange(const ElementAttributes& changed_attributes)
@@ -85,6 +95,12 @@ void ElementSVG::OnAttributeChange(const ElementAttributes& changed_attributes)
 	if (changed_attributes.count("src"))
 	{
 		source_dirty = true;
+		DirtyLayout();
+	}
+
+	if (changed_attributes.find("width") != changed_attributes.end() ||
+		changed_attributes.find("height") != changed_attributes.end())
+	{
 		DirtyLayout();
 	}
 }
@@ -116,8 +132,8 @@ void ElementSVG::GenerateGeometry()
 
 	const ComputedValues& computed = GetComputedValues();
 
-	const float opacity = computed.opacity;
-	Colourb quad_colour = computed.image_color;
+	const float opacity = computed.opacity();
+	Colourb quad_colour = computed.image_color();
 	quad_colour.alpha = (byte)(opacity * (float)quad_colour.alpha);
 
 	const Vector2f render_dimensions_f = GetBox().GetSize(Box::CONTENT).Round();
@@ -132,6 +148,7 @@ void ElementSVG::GenerateGeometry()
 bool ElementSVG::LoadSource()
 {
 	source_dirty = false;
+	texture_dirty = true;
 	intrinsic_dimensions = Vector2f{};
 	geometry.SetTexture(nullptr);
 	svg_document.reset();
@@ -176,7 +193,7 @@ bool ElementSVG::LoadSource()
 
 void ElementSVG::UpdateTexture()
 {
-	if (!svg_document || !texture_size_dirty)
+	if (!svg_document || !texture_dirty)
 		return;
 
 	// Callback for generating texture.
@@ -196,7 +213,7 @@ void ElementSVG::UpdateTexture()
 
 	texture.Set("svg", p_callback);
 	geometry.SetTexture(&texture);
-	texture_size_dirty = false;
+	texture_dirty = false;
 }
 
 } // namespace Rml

@@ -182,6 +182,7 @@ struct DefaultInstancers {
 	DataViewInstancerDefault<DataViewText> data_view_text;
 	DataViewInstancerDefault<DataViewValue> data_view_value;
 	DataViewInstancerDefault<DataViewChecked> data_view_checked;
+	DataViewInstancerDefault<DataViewAlias> data_view_alias;
 
 	DataViewInstancerDefault<DataViewFor> structural_data_view_for;
 
@@ -275,6 +276,7 @@ bool Factory::Initialise()
 	RegisterDataViewInstancer(&default_instancers->data_view_text,           "text",    false);
 	RegisterDataViewInstancer(&default_instancers->data_view_value,          "value",   false);
 	RegisterDataViewInstancer(&default_instancers->data_view_checked,        "checked", false);
+	RegisterDataViewInstancer(&default_instancers->data_view_alias,          "alias",   false);
 	RegisterDataViewInstancer(&default_instancers->structural_data_view_for, "for",     true );
 
 	// Data binding controllers
@@ -386,7 +388,7 @@ bool Factory::InstanceElementText(Element* parent, const String& in_text)
 	const bool only_white_space = std::all_of(text.begin(), text.end(), &StringUtilities::IsWhitespace);
 	if (only_white_space)
 		return true;
-
+	
 	// See if we need to parse it as RML, and whether the text contains data expressions (curly brackets).
 	bool parse_as_rml = false;
 	bool has_data_expression = false;
@@ -453,6 +455,9 @@ bool Factory::InstanceElementText(Element* parent, const String& in_text)
 			return false;
 		}
 
+		// Unescape any escaped entities or unicode symbols
+		text = StringUtilities::DecodeRml(text);
+	
 		text_element->SetText(text);
 
 		// Add to active node.

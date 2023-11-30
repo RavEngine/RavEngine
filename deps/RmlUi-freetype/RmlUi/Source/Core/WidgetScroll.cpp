@@ -27,17 +27,23 @@
  */
 
 #include "WidgetScroll.h"
-#include "Clock.h"
-#include "LayoutDetails.h"
+#include "../../Include/RmlUi/Core/ComputedValues.h"
 #include "../../Include/RmlUi/Core/Element.h"
+#include "../../Include/RmlUi/Core/ElementUtilities.h"
 #include "../../Include/RmlUi/Core/Event.h"
 #include "../../Include/RmlUi/Core/Factory.h"
 #include "../../Include/RmlUi/Core/Property.h"
+#include "../../Include/RmlUi/Core/Context.h"
+#include "Clock.h"
+#include "LayoutDetails.h"
 
 namespace Rml {
 
-static const float DEFAULT_REPEAT_DELAY = 0.5f;
-static const float DEFAULT_REPEAT_PERIOD = 0.1f;
+static constexpr float DEFAULT_REPEAT_DELAY = 0.5f;
+static constexpr float DEFAULT_REPEAT_PERIOD = 0.1f;
+
+static constexpr float SCROLL_LINE_LENGTH = 30.f; // [dp]
+static constexpr float SCROLL_PAGE_FACTOR = 0.8f;
 
 WidgetScroll::WidgetScroll(Element* _parent)
 {
@@ -59,7 +65,6 @@ WidgetScroll::WidgetScroll(Element* _parent)
 
 	track_length = 0;
 	bar_length = 0;
-	line_height = 12;
 }
 
 WidgetScroll::~WidgetScroll()
@@ -160,8 +165,14 @@ void WidgetScroll::Update()
 			while (arrow_timers[i] <= 0)
 			{
 				arrow_timers[i] += DEFAULT_REPEAT_PERIOD;
-				SetBarPosition(i == 0 ? OnLineDecrement() : OnLineIncrement());
+				if (i == 0)
+					ScrollLineUp();
+				else
+					ScrollLineDown();
 			}
+
+			if(Context* ctx = parent->GetContext())
+				ctx->RequestNextUpdate(arrow_timers[i]);
 		}
 	}
 }
@@ -171,19 +182,6 @@ void WidgetScroll::SetBarPosition(float _bar_position)
 {
 	bar_position = Math::Clamp(_bar_position, 0.0f, 1.0f);
 	PositionBar();
-	
-	// 'parent' is the scrollbar element, its parent again is the actual element we want to scroll
-	Element* element_scroll = parent->GetParentNode();
-	if (!element_scroll)
-	{
-		RMLUI_ERROR;
-		return;
-	}
-	
-	if (orientation == VERTICAL)
-		element_scroll->SetScrollTop(bar_position * (element_scroll->GetScrollHeight() - element_scroll->GetClientHeight()));
-	else if (orientation == HORIZONTAL)
-		element_scroll->SetScrollLeft(bar_position * (element_scroll->GetScrollWidth() - element_scroll->GetClientWidth()));
 }
 
 // Returns the current position of the bar.
@@ -214,10 +212,9 @@ void WidgetScroll::FormatElements(const Vector2f containing_block, bool resize_e
 {
 	int length_axis = orientation == VERTICAL ? 1 : 0;
 
-	// Build the box for the containing slider element. As the containing block is not guaranteed to have a defined
-	// height, we must use the width for both axes.
+	// Build the box for the containing slider element.
 	Box parent_box;
-	LayoutDetails::BuildBox(parent_box, Vector2f(containing_block.x, containing_block.x), parent);
+	LayoutDetails::BuildBox(parent_box, containing_block, parent);
 	slider_length -= orientation == VERTICAL ? (parent_box.GetCumulativeEdge(Box::CONTENT, Box::TOP) + parent_box.GetCumulativeEdge(Box::CONTENT, Box::BOTTOM)) :
 											   (parent_box.GetCumulativeEdge(Box::CONTENT, Box::LEFT) + parent_box.GetCumulativeEdge(Box::CONTENT, Box::RIGHT));
 
@@ -301,8 +298,8 @@ void WidgetScroll::FormatBar(float bar_length)
 
 	const auto& computed = bar->GetComputedValues();
 
-	const Style::Width width = computed.width;
-	const Style::Height height = computed.height;
+	const Style::Width width = computed.width();
+	const Style::Height height = computed.height();
 
 	Vector2f bar_box_content = bar_box.GetSize();
 	if (orientation == HORIZONTAL)
@@ -324,13 +321,12 @@ void WidgetScroll::FormatBar(float bar_length)
 				bar_box_content.y = track_length * bar_length;
 
 				// Check for 'min-height' restrictions.
-				float min_track_length = ResolveValue(computed.min_height, track_length);
+				float min_track_length = ResolveValue(computed.min_height(), track_length);
 				bar_box_content.y = Math::Max(min_track_length, bar_box_content.y);
 
 				// Check for 'max-height' restrictions.
-				float max_track_length = ResolveValue(computed.max_height, track_length);
-				if (max_track_length > 0)
-					bar_box_content.y = Math::Min(max_track_length, bar_box_content.y);
+				float max_track_length = ResolveValue(computed.max_height(), track_length);
+				bar_box_content.y = Math::Min(max_track_length, bar_box_content.y);
 			}
 
 			// Make sure we haven't gone further than we're allowed to (min-height may have made us too big).
@@ -345,13 +341,12 @@ void WidgetScroll::FormatBar(float bar_length)
 				bar_box_content.x = track_length * bar_length;
 
 				// Check for 'min-width' restrictions.
-				float min_track_length = ResolveValue(computed.min_width, track_length);
+				float min_track_length = ResolveValue(computed.min_width(), track_length);
 				bar_box_content.x = Math::Max(min_track_length, bar_box_content.x);
 
 				// Check for 'max-width' restrictions.
-				float max_track_length = ResolveValue(computed.max_width, track_length);
-				if (max_track_length > 0)
-					bar_box_content.x = Math::Min(max_track_length, bar_box_content.x);
+				float max_track_length = ResolveValue(computed.max_width(), track_length);
+				bar_box_content.x = Math::Min(max_track_length, bar_box_content.x);
 			}
 
 			// Make sure we haven't gone further than we're allowed to (min-width may have made us too big).
@@ -374,57 +369,57 @@ void WidgetScroll::ProcessEvent(Event& event)
 	{
 		if (event == EventId::Drag)
 		{
+			float new_bar_position = 0.f;
 			if (orientation == HORIZONTAL)
 			{
-				float traversable_track_length = track->GetBox().GetSize(Box::CONTENT).x - bar->GetBox().GetSize(Box::CONTENT).x;
+				float traversable_track_length = track->GetBox().GetSize().x - bar->GetBox().GetSize().x;
 				if (traversable_track_length > 0)
 				{
 					float traversable_track_origin = track->GetAbsoluteOffset().x + bar_drag_anchor;
-					float new_bar_position = (event.GetParameter< float >("mouse_x", 0) - traversable_track_origin) / traversable_track_length;
-					new_bar_position = Math::Clamp(new_bar_position, 0.0f, 1.0f);
-
-					SetBarPosition(new_bar_position);
+					new_bar_position = (event.GetParameter("mouse_x", 0.f) - traversable_track_origin) / traversable_track_length;
 				}
 			}
 			else
 			{
-				float traversable_track_length = track->GetBox().GetSize(Box::CONTENT).y - bar->GetBox().GetSize(Box::CONTENT).y;
+				float traversable_track_length = track->GetBox().GetSize().y - bar->GetBox().GetSize().y;
 				if (traversable_track_length > 0)
 				{
 					float traversable_track_origin = track->GetAbsoluteOffset().y + bar_drag_anchor;
-					float new_bar_position = (event.GetParameter< float >("mouse_y", 0) - traversable_track_origin) / traversable_track_length;
-					new_bar_position = Math::Clamp(new_bar_position, 0.0f, 1.0f);
-
-					SetBarPosition(new_bar_position);
+					new_bar_position = (event.GetParameter("mouse_y", 0.f) - traversable_track_origin) / traversable_track_length;
 				}
 			}
+
+			SetBarPosition(new_bar_position);
+			Scroll(0.f, ScrollBehavior::Instant);
 		}
 		else if (event == EventId::Dragstart)
 		{
 			if (orientation == HORIZONTAL)
-				bar_drag_anchor = event.GetParameter< int >("mouse_x", 0) - Math::RealToInteger(bar->GetAbsoluteOffset().x);
+				bar_drag_anchor = event.GetParameter("mouse_x", 0.f) - bar->GetAbsoluteOffset().x;
 			else
-				bar_drag_anchor = event.GetParameter< int >("mouse_y", 0) - Math::RealToInteger(bar->GetAbsoluteOffset().y);
+				bar_drag_anchor = event.GetParameter("mouse_y", 0.f) - bar->GetAbsoluteOffset().y;
 		}
 	}
 	else if (event.GetTargetElement() == track)
 	{
 		if (event == EventId::Click)
 		{
+			float click_position = 0.f;
 			if (orientation == HORIZONTAL)
 			{
-				float mouse_position = event.GetParameter< float >("mouse_x", 0);
-				float click_position = (mouse_position - track->GetAbsoluteOffset().x) / track->GetBox().GetSize().x;
-
-				SetBarPosition(click_position <= bar_position ? OnPageDecrement() : OnPageIncrement());
+				float mouse_position = event.GetParameter("mouse_x", 0.f);
+				click_position = (mouse_position - track->GetAbsoluteOffset().x) / track->GetBox().GetSize().x;
 			}
 			else
 			{
-				float mouse_position = event.GetParameter< float >("mouse_y", 0);
-				float click_position = (mouse_position - track->GetAbsoluteOffset().y) / track->GetBox().GetSize().y;
-
-				SetBarPosition(click_position <= bar_position ? OnPageDecrement() : OnPageIncrement());
+				float mouse_position = event.GetParameter<float>("mouse_y", 0);
+				click_position = (mouse_position - track->GetAbsoluteOffset().y) / track->GetBox().GetSize().y;
 			}
+
+			if (click_position <= bar_position)
+				ScrollPageUp();
+			else
+				ScrollPageDown();
 		}
 	}
 
@@ -434,13 +429,13 @@ void WidgetScroll::ProcessEvent(Event& event)
 		{
 			arrow_timers[0] = DEFAULT_REPEAT_DELAY;
 			last_update_time = Clock::GetElapsedTime();
-			SetBarPosition(OnLineDecrement());
+			ScrollLineUp();
 		}
 		else if (event.GetTargetElement() == arrows[1])
 		{
 			arrow_timers[1] = DEFAULT_REPEAT_DELAY;
 			last_update_time = Clock::GetElapsedTime();
-			SetBarPosition(OnLineIncrement());
+			ScrollLineDown();
 		}
 	}
 	else if (event == EventId::Mouseup ||
@@ -470,36 +465,16 @@ void WidgetScroll::PositionBar()
 	}
 }
 
-
-
 // Sets the length of the entire track in some arbitrary unit.
-void WidgetScroll::SetTrackLength(float _track_length, bool RMLUI_UNUSED_PARAMETER(force_resize))
+void WidgetScroll::SetTrackLength(float _track_length)
 {
-	RMLUI_UNUSED(force_resize);
-
-	if (track_length != _track_length)
-	{
-		track_length = _track_length;
-		//		GenerateBar();
-	}
+	track_length = _track_length;
 }
 
 // Sets the length the bar represents in some arbitrary unit, relative to the track length.
-void WidgetScroll::SetBarLength(float _bar_length, bool RMLUI_UNUSED_PARAMETER(force_resize))
+void WidgetScroll::SetBarLength(float _bar_length)
 {
-	RMLUI_UNUSED(force_resize);
-
-	if (bar_length != _bar_length)
-	{
-		bar_length = _bar_length;
-		//		GenerateBar();
-	}
-}
-
-// Sets the line height of the parent element; this is used for scrolling speeds.
-void WidgetScroll::SetLineHeight(float _line_height)
-{
-	line_height = _line_height;
+	bar_length = _bar_length;
 }
 
 // Lays out and resizes the internal elements.
@@ -517,42 +492,49 @@ void WidgetScroll::FormatElements(const Vector2f containing_block, float slider_
 	WidgetScroll::FormatElements(containing_block, true, slider_length, relative_bar_length);
 }
 
-// Called when the slider is incremented by one 'line', either by the down / right key or a mouse-click on the
-// increment arrow.
-float WidgetScroll::OnLineIncrement()
+void WidgetScroll::ScrollLineDown()
 {
-	return Scroll(line_height);
+	Scroll(SCROLL_LINE_LENGTH * ElementUtilities::GetDensityIndependentPixelRatio(parent), ScrollBehavior::Auto);
 }
 
-// Called when the slider is decremented by one 'line', either by the up / left key or a mouse-click on the decrement
-// arrow.
-float WidgetScroll::OnLineDecrement()
+void WidgetScroll::ScrollLineUp()
 {
-	return Scroll(-line_height);
+	Scroll(-SCROLL_LINE_LENGTH * ElementUtilities::GetDensityIndependentPixelRatio(parent), ScrollBehavior::Auto);
 }
 
-// Called when the slider is incremented by one 'page', either by the page-up key or a mouse-click on the track
-// below / right of the bar.
-float WidgetScroll::OnPageIncrement()
+void WidgetScroll::ScrollPageDown()
 {
-	return Scroll(bar_length);
+	Scroll(SCROLL_PAGE_FACTOR * bar_length, ScrollBehavior::Auto);
 }
 
-// Called when the slider is incremented by one 'page', either by the page-down key or a mouse-click on the track
-// above / left of the bar.
-float WidgetScroll::OnPageDecrement()
+void WidgetScroll::ScrollPageUp()
 {
-	return Scroll(-bar_length);
+	Scroll(-SCROLL_PAGE_FACTOR * bar_length, ScrollBehavior::Auto);
 }
 
-// Returns the bar position after scrolling for a number of pixels.
-float WidgetScroll::Scroll(float distance)
+void WidgetScroll::Scroll(float distance, ScrollBehavior behavior)
 {
 	float traversable_track_length = (track_length - bar_length);
-	if (traversable_track_length <= 0)
-		return bar_position;
 
-	return (bar_position * traversable_track_length + distance) / traversable_track_length;
+	float new_bar_position = bar_position;
+	if (traversable_track_length > 0.f)
+		new_bar_position = Math::Clamp((bar_position * traversable_track_length + distance) / traversable_track_length, 0.f, 1.f);
+
+	// 'parent' is the scrollbar element, its parent again is the actual element we want to scroll
+	Element* element_scroll = parent->GetParentNode();
+	if (!element_scroll)
+	{
+		RMLUI_ERROR;
+		return;
+	}
+
+	Vector2f scroll_offset = {element_scroll->GetScrollLeft(), element_scroll->GetScrollTop()};
+	if (orientation == HORIZONTAL)
+		scroll_offset.x = new_bar_position * (element_scroll->GetScrollWidth() - element_scroll->GetClientWidth());
+	else
+		scroll_offset.y = new_bar_position * (element_scroll->GetScrollHeight() - element_scroll->GetClientHeight());
+
+	element_scroll->ScrollTo(scroll_offset, behavior);
 }
 
 } // namespace Rml

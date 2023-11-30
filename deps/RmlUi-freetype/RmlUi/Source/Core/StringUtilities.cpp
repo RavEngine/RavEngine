@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <sstream>
 
 namespace Rml {
 
@@ -86,22 +87,20 @@ static inline char CharToLower(char c) {
 	return c;
 }
 
-String StringUtilities::ToLower(const String& string) {
-	String str_lower = string;
-	std::transform(str_lower.begin(), str_lower.end(), str_lower.begin(), &CharToLower);
-	return str_lower;
+String StringUtilities::ToLower(String string) {
+	std::transform(string.begin(), string.end(), string.begin(), &CharToLower);
+	return string;
 }
 
-String StringUtilities::ToUpper(const String& string)
+String StringUtilities::ToUpper(String string)
 {
-	String str_upper = string;
-	std::transform(str_upper.begin(), str_upper.end(), str_upper.begin(), [](char c) {
+	std::transform(string.begin(), string.end(), string.begin(), [](char c) {
 		if (c >= 'a' && c <= 'z')
 			c -= char('a' - 'A');
 		return c;
 		}
 	);
-	return str_upper;
+	return string;
 }
 
 RMLUICORE_API String StringUtilities::EncodeRml(const String& string)
@@ -153,6 +152,58 @@ String StringUtilities::DecodeRml(const String& s)
 				result += "\"";
 				i += 6;
 				continue;
+			}
+			else if (s[i+1] == '#')
+			{
+				size_t start = i + 2;
+				if (s[i+2] == 'x')
+				{
+					start++;
+					size_t j = 0;
+					for(; j < 8; j++)
+					{
+						auto const& c = s[start + j];
+						if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+							break;
+					}
+					
+					if (j > 0 && s[start + j] == ';')
+					{
+						String tmp = s.substr(start, j);
+						std::istringstream iss(tmp);
+						uint32_t code_point;
+						if (iss >> std::hex >> code_point)
+						{
+							result += ToUTF8(static_cast<Character>(code_point));
+							i = start + j + 1;
+							continue;
+						}
+					}
+				}
+				else
+				{
+					size_t j = 0;
+					for(; j < 8; j++)
+					{
+						auto const& c = s[start + j];
+						if (!(c >= '0' && c <= '9'))
+							break;
+					}
+					
+					if (j > 0 && s[start + j] == ';')
+					{
+						String tmp = s.substr(start, j);
+						std::istringstream iss(tmp);
+						uint32_t code_point;
+						if (iss >> code_point)
+						{
+							result += ToUTF8(static_cast<Character>(code_point));
+							i = start + j + 1;
+							continue;
+						}
+					}
+				}
+				
 			}
 		}
 		result += s[i];
@@ -339,6 +390,15 @@ void StringUtilities::TrimTrailingDotZeros(String& string)
 		string.resize(new_size);
 }
 
+bool StringUtilities::StartsWith(StringView string, StringView start)
+{
+	if (string.size() < start.size())
+		return false;
+
+	StringView substring(string.begin(), string.begin() + start.size());
+	return substring == start;
+}
+
 bool StringUtilities::StringCompareCaseInsensitive(const StringView lhs, const StringView rhs)
 {
 	if (lhs.size() != rhs.size())
@@ -392,7 +452,6 @@ Character StringUtilities::ToCharacter(const char* p)
 		if ((byte & 0b1100'0000) != 0b1000'0000)
 		{
 			// Invalid continuation byte
-			++p;
 			return Character::Null;
 		}
 

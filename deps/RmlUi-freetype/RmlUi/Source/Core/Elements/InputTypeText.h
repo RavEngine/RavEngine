@@ -81,10 +81,17 @@ public:
 	/// @return True.
 	bool GetIntrinsicDimensions(Vector2f& dimensions, float& ratio) override;
 
-private:
-	int size;
+	/// Selects all text.
+	void Select() override;
+	/// Selects the text in the given character range.
+	void SetSelectionRange(int selection_start, int selection_end) override;
+	/// Retrieves the selection range and text.
+	void GetSelection(int* selection_start, int* selection_end, String* selected_text) const override;
 
-	WidgetTextInput* widget;
+private:
+	int size = 20;
+
+	UniquePtr<WidgetTextInput> widget;
 };
 
 } // namespace Rml

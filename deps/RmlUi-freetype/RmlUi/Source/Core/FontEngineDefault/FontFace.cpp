@@ -33,24 +33,17 @@
 
 namespace Rml {
 
-FontFace::FontFace(FontFaceHandleFreetype _face, Style::FontStyle _style, Style::FontWeight _weight, UniquePtr<byte[]> _face_memory)
+FontFace::FontFace(FontFaceHandleFreetype _face, Style::FontStyle _style, Style::FontWeight _weight)
 {
 	style = _style;
 	weight = _weight;
 	face = _face;
-
-	face_memory = std::move(_face_memory);
 }
 
 FontFace::~FontFace()
 {
 	if (face) 
-	{
 		FreeType::ReleaseFace(face);
-		face_memory.reset();
-		face = 0;
-	}
-	handles.clear();
 }
 
 // Returns the style of the font face.
@@ -65,7 +58,8 @@ Style::FontWeight FontFace::GetWeight() const
 	return weight;
 }
 
-FontFaceHandleDefault* FontFace::GetHandle(int size) {
+FontFaceHandleDefault* FontFace::GetHandle(int size, bool load_default_glyphs)
+{
 	auto it = handles.find(size);
 	if (it != handles.end())
 		return it->second.get();
@@ -79,7 +73,7 @@ FontFaceHandleDefault* FontFace::GetHandle(int size) {
 
 	// Construct and initialise the new handle.
 	auto handle = MakeUnique<FontFaceHandleDefault>();
-	if (!handle->Initialize(face, size))
+	if (!handle->Initialize(face, size, load_default_glyphs))
 	{
 		handles[size] = nullptr;
 		return nullptr;
@@ -93,5 +87,9 @@ FontFaceHandleDefault* FontFace::GetHandle(int size) {
 	return result;
 }
 
+void FontFace::ReleaseFontResources()
+{
+	HandleMap().swap(handles);
+}
 
 } // namespace Rml

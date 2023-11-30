@@ -27,6 +27,7 @@
  */
 
 #include "WidgetDropDown.h"
+#include "../../../Include/RmlUi/Core/ComputedValues.h"
 #include "../../../Include/RmlUi/Core/Context.h"
 #include "../../../Include/RmlUi/Core/ElementDocument.h"
 #include "../../../Include/RmlUi/Core/Math.h"
@@ -64,12 +65,13 @@ WidgetDropDown::WidgetDropDown(ElementFormControl* element)
 	selection_element->SetProperty(PropertyId::Clip, Property(Style::Clip::Type::None));
 	selection_element->SetProperty(PropertyId::OverflowY, Property(Style::Overflow::Auto));
 
+	// Prevent scrolling in the parent document when the mouse is inside the selection box.
+	selection_element->SetProperty(PropertyId::OverscrollBehavior, Property(Style::OverscrollBehavior::Contain));
+
 	parent_element->AddEventListener(EventId::Click, this, true);
 	parent_element->AddEventListener(EventId::Blur, this);
 	parent_element->AddEventListener(EventId::Focus, this);
 	parent_element->AddEventListener(EventId::Keydown, this, true);
-
-	selection_element->AddEventListener(EventId::Mousescroll, this);
 }
 
 WidgetDropDown::~WidgetDropDown()
@@ -84,8 +86,6 @@ WidgetDropDown::~WidgetDropDown()
 	parent_element->RemoveEventListener(EventId::Blur, this);
 	parent_element->RemoveEventListener(EventId::Focus, this);
 	parent_element->RemoveEventListener(EventId::Keydown, this, true);
-	
-	selection_element->RemoveEventListener(EventId::Mousescroll, this);
 
 	DetachScrollEvent();
 }
@@ -520,7 +520,7 @@ void WidgetDropDown::ProcessEvent(Event& event)
 				element = element->GetParentNode();
 			}
 
-			if (selection_element->GetComputedValues().visibility == Style::Visibility::Hidden)
+			if (selection_element->GetComputedValues().visibility() == Style::Visibility::Hidden)
 				ShowSelectBox(true);
 			else
 				ShowSelectBox(false);
@@ -570,18 +570,6 @@ void WidgetDropDown::ProcessEvent(Event& event)
 		}
 	}
 	break;
-	case EventId::Mousescroll:
-	{
-		if (event.GetCurrentElement() == selection_element)
-		{
-			// Prevent scrolling in the parent window when mouse is inside the selection box.
-			event.StopPropagation();
-			// Stopping propagation also stops all default scrolling actions. However, we still want to be able
-			// to scroll in the selection box, so call the default action manually.
-			selection_element->ProcessDefaultAction(event);
-		}
-	}
-	break;
 	case EventId::Scroll:
 	{
 		if (box_visible)
@@ -614,6 +602,7 @@ void WidgetDropDown::ShowSelectBox(bool show)
 	if (show)
 	{
 		selection_element->SetProperty(PropertyId::Visibility, Property(Style::Visibility::Visible));
+		selection_element->SetPseudoClass("checked", true);
 		value_element->SetPseudoClass("checked", true);
 		button_element->SetPseudoClass("checked", true);
 		box_layout_dirty = true;
@@ -623,6 +612,7 @@ void WidgetDropDown::ShowSelectBox(bool show)
 	{
 		selection_element->SetProperty(PropertyId::Visibility, Property(Style::Visibility::Hidden));
 		selection_element->RemoveProperty(PropertyId::Height);
+		selection_element->SetPseudoClass("checked", false);
 		value_element->SetPseudoClass("checked", false);
 		button_element->SetPseudoClass("checked", false);
 		DetachScrollEvent();
