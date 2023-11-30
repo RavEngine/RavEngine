@@ -439,6 +439,9 @@ endif()
 # else()
 # 	target_compile_options(${PROJECT_NAME} PUBLIC "/GR-")
 # endif()
+
+# disable the dllimport stuff in RMLUI
+target_compile_definitions(${PROJECT_NAME} PUBLIC -DRMLUI_STATIC_LIB=1)
 	
 set_target_properties(${PROJECT_NAME} PROPERTIES
 	XCODE_GENERATE_SCHEME ON
