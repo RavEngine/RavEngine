@@ -35,7 +35,7 @@ Transform& Transform::RemoveChild(ComponentHandle<Transform> child)
     return *this;
 }
 
-inline void RavEngine::Transform::UpdateChildren()
+void RavEngine::Transform::UpdateChildren()
 {
 	auto update = [](Transform* transform, auto&& updatefn) -> void {
 		transform->MarkAsDirty();
