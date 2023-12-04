@@ -33,7 +33,7 @@ RavEngine::ISkyMaterial::ISkyMaterial(const std::string& shaderpath) : Material(
         .colorBlendConfig = {
             .attachments = {
                 {
-                    .format = RGL::TextureFormat::BGRA8_Unorm
+                    .format = RenderEngine::colorTexFormat
                 },
             }
         },

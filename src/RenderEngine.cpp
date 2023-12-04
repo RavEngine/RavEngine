@@ -564,7 +564,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			   },
 			   {
 				   .format = normalTexFormat,
-				   .loadOp = RGL::LoadAccessOperation::Load,
+				   .loadOp = RGL::LoadAccessOperation::Clear,
 				   .storeOp = RGL::StoreAccessOperation::Store,
 			   },
 		   },
@@ -622,6 +622,37 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.storeOp = RGL::StoreAccessOperation::Store,
 		}
 	});
+    
+    unlitRenderPass = RGL::CreateRenderPass({
+        .attachments = {
+            {
+                .format = colorTexFormat,
+                .loadOp = RGL::LoadAccessOperation::Load,
+                .storeOp = RGL::StoreAccessOperation::Store,
+            },
+        },
+         .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+            .format = RGL::TextureFormat::D32SFloat,
+            .loadOp = RGL::LoadAccessOperation::Load,
+            .storeOp = RGL::StoreAccessOperation::Store,
+        }
+    });
+    
+    postProcessRenderPass = RGL::CreateRenderPass({
+        .attachments = {
+            {
+                .format = colorTexFormat,
+                .loadOp = RGL::LoadAccessOperation::Load,
+                .storeOp = RGL::StoreAccessOperation::Store,
+            },
+        },
+         .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+            .format = RGL::TextureFormat::D32SFloat,
+            .loadOp = RGL::LoadAccessOperation::Load,
+            .storeOp = RGL::StoreAccessOperation::Store,
+        }
+    });
+
 
 	finalRenderPass = RGL::CreateRenderPass({
 		.attachments = {
@@ -1425,6 +1456,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			   },
 		   },
 		});
+    defaultPostEffectVSH = LoadShaderByFilename("defaultpostprocess.vsh", device);
 }
 
 RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim size, bool createDepth)
@@ -1493,16 +1525,18 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 		}
 	);
 
-	collection.lightingTexture = device->CreateTexture({
-		.usage = {.Sampled = true, .ColorAttachment = true },
-		.aspect = {.HasColor = true },
-		.width = width,
-		.height = height,
-		.format = colorTexFormat,
-		.initialLayout = RGL::ResourceLayout::Undefined,
-		.debugName = "Lighting texture"
-		}
-	);
+    const RGL::TextureConfig lightingConfig{
+        .usage = {.Sampled = true, .ColorAttachment = true },
+        .aspect = {.HasColor = true },
+        .width = width,
+        .height = height,
+        .format = colorTexFormat,
+        .initialLayout = RGL::ResourceLayout::Undefined,
+        .debugName = "Lighting texture"
+    };
+    
+	collection.lightingTexture = device->CreateTexture(lightingConfig);
+    collection.lightingScratchTexture = device->CreateTexture(lightingConfig);
 
 	return collection;
 }
@@ -1514,6 +1548,7 @@ void RavEngine::RenderEngine::ResizeRenderTargetCollection(RenderTargetCollectio
 	gcTextures.enqueue(collection.normalTexture);
 	gcTextures.enqueue(collection.lightingTexture);
     gcTextures.enqueue(collection.depthPyramidTexture);
+    gcTextures.enqueue(collection.lightingScratchTexture);
 
 	auto newcol = CreateRenderTargetCollection(size);
 	collection = newcol;

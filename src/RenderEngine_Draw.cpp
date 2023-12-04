@@ -702,7 +702,46 @@ struct LightingType{
 			};
 
             auto renderFinalPass = [this, &target, &worldOwning, &view, &guiScaleFactor, &nextImgSize, &renderFromPerspective](auto&& viewproj, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
-				// the on-screen render pass
+                
+                //render unlits
+                unlitRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
+                unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+                renderFromPerspective(viewproj, camPos, unlitRenderPass, [](Ref<Material>&& mat) {
+                    return mat->GetMainRenderPipeline();
+                }, renderArea, {.Unlit = true});
+                
+                // then do the skybox, if one is defined.
+                mainCommandBuffer->BeginRendering(unlitRenderPass);
+                if (worldOwning->skybox && worldOwning->skybox->skyMat && worldOwning->skybox->skyMat->GetMat()->renderPipeline) {
+                    mainCommandBuffer->BeginRenderDebugMarker("Skybox");
+                    mainCommandBuffer->BindRenderPipeline(worldOwning->skybox->skyMat->GetMat()->renderPipeline);
+                    uint32_t totalIndices = 0;
+                    // if a custom mesh is supplied, render that. Otherwise, render the builtin icosphere.
+                    if (worldOwning->skybox->skyMesh) {
+                        mainCommandBuffer->SetVertexBuffer(worldOwning->skybox->skyMesh->vertexBuffer);
+                        mainCommandBuffer->SetIndexBuffer(worldOwning->skybox->skyMesh->indexBuffer);
+                        totalIndices = worldOwning->skybox->skyMesh->totalIndices;
+                    }
+                    else {
+                        mainCommandBuffer->SetVertexBuffer(pointLightVertexBuffer);
+                        mainCommandBuffer->SetIndexBuffer(pointLightIndexBuffer);
+                        totalIndices = nPointLightIndices;
+                    }
+                    mainCommandBuffer->SetVertexBytes(viewproj, 0);
+                    mainCommandBuffer->DrawIndexed(totalIndices);
+                    mainCommandBuffer->EndRenderDebugMarker();
+                }
+                mainCommandBuffer->EndRendering();
+                // afterwards render the post processing effects
+                uint32_t totalPostFXRendered = 0;
+                postProcessRenderPass->SetAttachmentTexture(0, target.lightingScratchTexture->GetDefaultView());
+                mainCommandBuffer->BeginRendering(postProcessRenderPass);
+                //TODO: post processing effects
+                mainCommandBuffer->EndRendering();
+                
+                auto blitSource = totalPostFXRendered % 2 == 0 ? target.lightingTexture->GetDefaultView() : target.lightingScratchTexture->GetDefaultView();
+                
+				// the final on-screen render pass
 // contains the results of the previous stages, as well as the UI, skybox and any debugging primitives
 				
 				glm::ivec4 viewRect {0, 0, nextImgSize.width, nextImgSize.height};
@@ -712,7 +751,7 @@ struct LightingType{
 				};
 
 				mainCommandBuffer->BeginRendering(finalRenderPass);
-				mainCommandBuffer->BeginRenderDebugMarker("Blit and Skybox");
+				mainCommandBuffer->BeginRenderDebugMarker("Blit");
 				// start with the results of lighting
 				mainCommandBuffer->BindRenderPipeline(lightToFBRenderPipeline);
 				mainCommandBuffer->SetViewport(fullSizeViewport);
@@ -721,35 +760,12 @@ struct LightingType{
 				mainCommandBuffer->SetVertexBytes(fbubo, 0);
 				mainCommandBuffer->SetFragmentBytes(fbubo, 0);
 				mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-				mainCommandBuffer->SetFragmentTexture(target.lightingTexture->GetDefaultView(), 1);
+				mainCommandBuffer->SetFragmentTexture(blitSource, 1);
 				mainCommandBuffer->Draw(3);
                 mainCommandBuffer->EndRendering();
-                
-                //render unlits
-                renderFromPerspective(viewproj, camPos, finalRenderPass, [](Ref<Material>&& mat) {
-                    return mat->GetMainRenderPipeline();
-                }, renderArea, {.Unlit = true});
 
                 mainCommandBuffer->BeginRendering(finalRenderPass);
-				// then do the skybox, if one is defined.
-				if (worldOwning->skybox && worldOwning->skybox->skyMat && worldOwning->skybox->skyMat->GetMat()->renderPipeline) {
-					mainCommandBuffer->BindRenderPipeline(worldOwning->skybox->skyMat->GetMat()->renderPipeline);
-					uint32_t totalIndices = 0;
-					// if a custom mesh is supplied, render that. Otherwise, render the builtin icosphere.
-					if (worldOwning->skybox->skyMesh) {
-						mainCommandBuffer->SetVertexBuffer(worldOwning->skybox->skyMesh->vertexBuffer);
-						mainCommandBuffer->SetIndexBuffer(worldOwning->skybox->skyMesh->indexBuffer);
-						totalIndices = worldOwning->skybox->skyMesh->totalIndices;
-					}
-					else {
-						mainCommandBuffer->SetVertexBuffer(pointLightVertexBuffer);
-						mainCommandBuffer->SetIndexBuffer(pointLightIndexBuffer);
-						totalIndices = nPointLightIndices;
-					}
-					mainCommandBuffer->SetVertexBytes(viewproj, 0);
-					mainCommandBuffer->DrawIndexed(totalIndices);
-					mainCommandBuffer->EndRenderDebugMarker();
-				}
+				
 
 				mainCommandBuffer->BeginRenderDebugMarker("GUI");
 				worldOwning->Filter([](GUIComponent& gui) {

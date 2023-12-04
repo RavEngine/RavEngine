@@ -4,6 +4,10 @@
 namespace RavEngine{
 typedef uint32_t color_t;
 
+struct Vertex2D{
+    float position[2];
+};
+
 struct Vertex
 {
 	float position[3];

@@ -70,7 +70,7 @@ STATIC(RavEngine::defaultColorBlendConfig) {
 STATIC(RavEngine::defaultUnlitColorBlendConfig) {
     .attachments = {
         {
-            .format = RGL::TextureFormat::BGRA8_Unorm  //TODO: pull this from the renderer
+            .format = RenderEngine::colorTexFormat
         },
     }
 };

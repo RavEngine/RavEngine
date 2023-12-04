@@ -20,6 +20,7 @@
 #include "SpinLock.hpp"
 #include "MeshAllocation.hpp"
 #include "RenderTargetCollection.hpp"
+#include "PostProcess.hpp"
 #include <unordered_set>
 
 struct SDL_Window;
@@ -51,7 +52,7 @@ namespace RavEngine {
 
 		RGLTexturePtr shadowTexture;
 		RGLSamplerPtr textureSampler, shadowSampler, depthPyramidSampler;
-		RGLRenderPassPtr deferredRenderPass, lightingRenderPass, ambientLightRenderPass, finalRenderPass, shadowRenderPass, lightingClearRenderPass, deferredClearRenderPass, finalClearRenderPass, depthPyramidCopyPass;
+		RGLRenderPassPtr deferredRenderPass, unlitRenderPass, lightingRenderPass, ambientLightRenderPass, postProcessRenderPass, finalRenderPass, shadowRenderPass, lightingClearRenderPass, deferredClearRenderPass, finalClearRenderPass, depthPyramidCopyPass;
 
 		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, spotLightRenderPipeline, lightToFBRenderPipeline, depthPyramidCopyPipeline,
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, guiRenderPipeline;
@@ -69,9 +70,17 @@ namespace RavEngine {
 		struct PyramidCopyUBO {
 			uint32_t size;
 		};
+        
+        RGLShaderLibraryPtr defaultPostEffectVSH;
 
 		friend class Material;
     public:
+        auto GetDefaultPostEffectVSH() const{
+            return defaultPostEffectVSH;
+        }
+        
+        PostProcessEffectStack globalEffects;
+        
 		constexpr static RGL::TextureFormat
 			normalTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
 			colorTexFormat = RGL::TextureFormat::RGBA16_Snorm;
