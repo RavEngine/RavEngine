@@ -83,7 +83,7 @@ namespace RavEngine {
         
 		constexpr static RGL::TextureFormat
 			normalTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
-			colorTexFormat = RGL::TextureFormat::RGBA16_Snorm;
+			colorTexFormat = RGL::TextureFormat::RGBA16_Sfloat;
 
 		// the items made available to 
 		// user-defined materials
