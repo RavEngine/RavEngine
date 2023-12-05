@@ -762,7 +762,7 @@ struct LightingType{
                     memcpy(pushConstants.data(), &baseUbo, sizeof(baseUbo));
                     auto userPC = effect->GetPushConstantData();
                     memcpy(pushConstants.data() + sizeof(baseUbo), userPC.data(), userPC.size());
-                    mainCommandBuffer->SetFragmentBytes(pushConstants, 0);
+					mainCommandBuffer->SetFragmentBytes({pushConstants.data(), userPC.size() + sizeof(baseUbo)}, 0);
                     mainCommandBuffer->Draw(3);
                    
                     mainCommandBuffer->EndRendering();

@@ -60,8 +60,7 @@ PostProcessEffect::PostProcessEffect(const std::string_view name, const PostProc
                     .format = RenderEngine::colorTexFormat
                 },
             }
-        },
-        .depthStencilConfig = {},       // no depth test
+        },  // no depth
         .pipelineLayout = layout,
     };
 
