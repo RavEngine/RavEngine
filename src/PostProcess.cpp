@@ -9,6 +9,8 @@ PostProcessEffect::PostProcessEffect(const std::string_view name, const PostProc
     auto device = GetApp()->GetDevice();
     auto defaultVSH = GetApp()->GetRenderEngine().GetDefaultPostEffectVSH();
     
+    inputConfiguration = config.inputs;
+    
     auto layout = device->CreatePipelineLayout({
         .bindings = config.bindings,
         .constants = {
@@ -59,12 +61,7 @@ PostProcessEffect::PostProcessEffect(const std::string_view name, const PostProc
                 },
             }
         },
-        .depthStencilConfig = {
-            .depthFormat = RGL::TextureFormat::D32SFloat,
-            .depthTestEnabled = false,
-            .depthWriteEnabled = false,
-            .depthFunction = RGL::DepthCompareFunction::Always,
-        },
+        .depthStencilConfig = {},       // no depth test
         .pipelineLayout = layout,
     };
 

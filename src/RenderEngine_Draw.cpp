@@ -734,10 +734,41 @@ struct LightingType{
                 mainCommandBuffer->EndRendering();
                 // afterwards render the post processing effects
                 uint32_t totalPostFXRendered = 0;
-                postProcessRenderPass->SetAttachmentTexture(0, target.lightingScratchTexture->GetDefaultView());
-                mainCommandBuffer->BeginRendering(postProcessRenderPass);
-                //TODO: post processing effects
-                mainCommandBuffer->EndRendering();
+                RGL::TextureView currentInput = target.lightingTexture->GetDefaultView();
+                RGL::TextureView altInput = target.lightingScratchTexture->GetDefaultView();
+                
+                BasePushConstantUBO baseUbo{
+                    .dim = {fullSizeViewport.width, fullSizeViewport.height}
+                };
+                
+                for(const auto effect : globalEffects.effects){
+                    if (!effect->enabled){
+                        continue;
+                    }
+                    postProcessRenderPass->SetAttachmentTexture(0, altInput);
+                    mainCommandBuffer->BeginRendering(postProcessRenderPass);
+                    mainCommandBuffer->BindRenderPipeline(effect->GetEffect()->GetPipeline());
+                    uint32_t index = 0;
+                    for(const auto& input : effect->GetEffect()->GetinputConfiguration()){
+                        if (input == PostProcessTextureInput::EngineColor){
+                            mainCommandBuffer->SetFragmentTexture(currentInput, index);
+                        }
+                    }
+                    mainCommandBuffer->SetFragmentSampler(textureSampler, 1);   // TODO: don't hardcode this
+                    mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+                    
+                    // push constants
+                    std::array<std::byte, 128> pushConstants{};
+                    memcpy(pushConstants.data(), &baseUbo, sizeof(baseUbo));
+                    auto userPC = effect->GetPushConstantData();
+                    memcpy(pushConstants.data() + sizeof(baseUbo), userPC.data(), userPC.size());
+                    mainCommandBuffer->SetFragmentBytes(pushConstants, 0);
+                    mainCommandBuffer->Draw(3);
+                   
+                    mainCommandBuffer->EndRendering();
+                    std::swap(currentInput, altInput);
+                    totalPostFXRendered ++;
+                }
                 
                 auto blitSource = totalPostFXRendered % 2 == 0 ? target.lightingTexture->GetDefaultView() : target.lightingScratchTexture->GetDefaultView();
                 
