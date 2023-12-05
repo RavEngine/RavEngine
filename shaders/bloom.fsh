@@ -24,7 +24,7 @@ void main(){
             vec2 samplePos = vec2(x,y) * radiusNorm + uv;
             if (samplePos.x >= 0 && samplePos.y >= 0){
                 vec3 color = texture(sampler2D(colorFramebuffer, g_sampler), samplePos).xyz;
-                vec3 colorToAdd = min(vec3(0), color - 1);
+                vec3 colorToAdd = max(vec3(0), color - 1);
                 colorSum += colorToAdd;
                 totalSampled ++;
             }
