@@ -745,29 +745,32 @@ struct LightingType{
                     if (!effect->enabled){
                         continue;
                     }
-                    postProcessRenderPass->SetAttachmentTexture(0, altInput);
-                    mainCommandBuffer->BeginRendering(postProcessRenderPass);
-                    mainCommandBuffer->BindRenderPipeline(effect->GetEffect()->GetPipeline());
-                    uint32_t index = 0;
-                    for(const auto& input : effect->GetEffect()->GetinputConfiguration()){
-                        if (input == PostProcessTextureInput::EngineColor){
-                            mainCommandBuffer->SetFragmentTexture(currentInput, index);
+                    effect->Preamble({baseUbo.dim.x, baseUbo.dim.y});
+                    for(const auto pass : effect->passes){
+                        postProcessRenderPass->SetAttachmentTexture(0, altInput);
+                        mainCommandBuffer->BeginRendering(postProcessRenderPass);
+                        mainCommandBuffer->BindRenderPipeline(pass->GetEffect()->GetPipeline());
+                        uint32_t index = 0;
+                        for(const auto& input : pass->GetEffect()->GetinputConfiguration()){
+                            if (input == PostProcessTextureInput::EngineColor){
+                                mainCommandBuffer->SetFragmentTexture(currentInput, index);
+                            }
                         }
+                        mainCommandBuffer->SetFragmentSampler(textureSampler, 1);   // TODO: don't hardcode this
+                        mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+                        
+                        // push constants
+                        std::array<std::byte, 128> pushConstants{};
+                        memcpy(pushConstants.data(), &baseUbo, sizeof(baseUbo));
+                        auto userPC = pass->GetPushConstantData();
+                        memcpy(pushConstants.data() + sizeof(baseUbo), userPC.data(), userPC.size());
+                        mainCommandBuffer->SetFragmentBytes({pushConstants.data(), userPC.size() + sizeof(baseUbo)}, 0);
+                        mainCommandBuffer->Draw(3);
+                        
+                        mainCommandBuffer->EndRendering();
+                        std::swap(currentInput, altInput);
+                        totalPostFXRendered ++;
                     }
-                    mainCommandBuffer->SetFragmentSampler(textureSampler, 1);   // TODO: don't hardcode this
-                    mainCommandBuffer->SetVertexBuffer(screenTriVerts);
-                    
-                    // push constants
-                    std::array<std::byte, 128> pushConstants{};
-                    memcpy(pushConstants.data(), &baseUbo, sizeof(baseUbo));
-                    auto userPC = effect->GetPushConstantData();
-                    memcpy(pushConstants.data() + sizeof(baseUbo), userPC.data(), userPC.size());
-					mainCommandBuffer->SetFragmentBytes({pushConstants.data(), userPC.size() + sizeof(baseUbo)}, 0);
-                    mainCommandBuffer->Draw(3);
-                   
-                    mainCommandBuffer->EndRendering();
-                    std::swap(currentInput, altInput);
-                    totalPostFXRendered ++;
                 }
                 
                 auto blitSource = totalPostFXRendered % 2 == 0 ? target.lightingTexture->GetDefaultView() : target.lightingScratchTexture->GetDefaultView();

@@ -38,8 +38,8 @@ Texture::Texture(const std::string& name, uint16_t width, uint16_t height){
     auto document = lunasvg::Document::loadFromData(reinterpret_cast<char*>(data.data()), data.size());
     auto bitmap = document->renderToBitmap(width,height);
     
-    // give to BGFX
-    CreateTexture(width, height, false, 1, bitmap.data());
+    // give to backend
+    CreateTexture(width, height, 1, 1, bitmap.data());
 }
 
 RavEngine::Texture::Texture(const Filesystem::Path& pathOnDisk)
@@ -50,7 +50,7 @@ RavEngine::Texture::Texture(const Filesystem::Path& pathOnDisk)
 		Debug::Fatal("Cannot load texture from disk {}: {}", pathOnDisk.string().c_str(), stbi_failure_reason());
 	}
 
-	CreateTexture(width,height,false,1,bytes);
+	CreateTexture(width,height,1,1,bytes);
 	stbi_image_free(bytes);
 }
 
@@ -70,16 +70,15 @@ Texture::Texture(const std::string& name){
 		Debug::Fatal("Cannot load texture: {}",stbi_failure_reason());
 	}
 	
-	bool hasMipMaps = false;
 	uint16_t numlayers = 1;
 	
-	CreateTexture(width, height, hasMipMaps, numlayers, bytes);
+	CreateTexture(width, height, 1, numlayers, bytes);
 	stbi_image_free(bytes);
 	
 }
 
 
-void Texture::CreateTexture(int width, int height, bool hasMipMaps, int numlayers, const uint8_t *data, int flags){
+void Texture::CreateTexture(int width, int height, uint8_t mipLevels, int numlayers, const uint8_t *data, int flags){
 
 	uint16_t numChannels = 4;	//TODO: allow n-channel textures
 	RGL::TextureFormat format = RGL::TextureFormat::RGBA8_Unorm;
@@ -87,13 +86,26 @@ void Texture::CreateTexture(int width, int height, bool hasMipMaps, int numlayer
 	uint32_t uncompressed_size = width * height * numChannels * numlayers;
 
 	auto device = GetApp()->GetDevice();
-	texture = device->CreateTextureWithData({
-		.usage = {.TransferDestination = true, .Sampled = true},
-		.aspect = {.HasColor = true},
-		.width = uint32_t(width),
-		.height = uint32_t(height),
-		.format = format
-		}, { data,uncompressed_size });
+    if (data != nullptr){
+        texture = device->CreateTextureWithData({
+            .usage = {.TransferDestination = true, .Sampled = true},
+            .aspect = {.HasColor = true},
+            .width = uint32_t(width),
+            .height = uint32_t(height),
+            .format = format,
+            .mipLevels = mipLevels
+        }, { data,uncompressed_size });
+    }
+    else{
+        texture = device->CreateTexture({
+            .usage = {.TransferDestination = true, .Sampled = true},
+            .aspect = {.HasColor = true},
+            .width = uint32_t(width),
+            .height = uint32_t(height),
+            .format = format,
+            .mipLevels = mipLevels
+        });
+    }
 }
 
 Texture::~Texture() {

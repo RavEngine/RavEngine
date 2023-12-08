@@ -40,7 +40,7 @@ protected:
 
 	Texture(){}
 	
-	void CreateTexture(int width, int height, bool hasMipMaps, int numlayers, const uint8_t *data, int flags = 0);
+	void CreateTexture(int width, int height, uint8_t mipLevels, int numlayers, const uint8_t *data, int flags = 0);
 };
 
 class RuntimeTexture : public Texture{
@@ -56,8 +56,8 @@ public:
 	 @param data pointer to the image data. Must be a 4-channel image.
 	 @param flags optional creation flags
 	 */
-	RuntimeTexture(int width, int height, bool hasMipMaps, int numlayers, const uint8_t *data, int flags = 0) : Texture(){
-		CreateTexture(width, height, hasMipMaps, numlayers, data,flags);
+	RuntimeTexture(int width, int height, uint8_t mipLevels, int numlayers, const uint8_t *data, int flags = 0) : Texture(){
+		CreateTexture(width, height, mipLevels, numlayers, data,flags);
 	}
 };
 

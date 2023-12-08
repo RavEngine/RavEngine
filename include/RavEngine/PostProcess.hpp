@@ -34,8 +34,8 @@ struct BasePushConstantUBO{
     glm::ivec2 dim;
 };
 
-struct PostProcessEffect{
-    PostProcessEffect(const std::string_view name, const PostProcessConfig& config = {});
+struct PostProcessPass{
+    PostProcessPass(const std::string_view name, const PostProcessConfig& config = {});
     
     const auto& GetinputConfiguration() const{
         return inputConfiguration;
@@ -48,25 +48,31 @@ private:
     RGLRenderPipelinePtr pipeline;
 };
 
-struct PostProcessEffectInstance{
-    PostProcessEffectInstance(Ref<PostProcessEffect> effect) : effect(effect){}
+struct PostProcessPassInstance{
+    PostProcessPassInstance(Ref<PostProcessPass> effect) : effect(effect){}
     
     virtual const RGL::untyped_span GetPushConstantData() const{
         return {nullptr,0};     // return nullptr if you do not have additional push constants
     }
     Array<Ref<Texture>,nPostProcessTextureInputs> inputBindings;
     Ref<Texture> outputBinding;
-    bool enabled = true;
     const auto GetEffect() const{
         return effect;
     }
 private:
-    Ref<PostProcessEffect> effect;
+    Ref<PostProcessPass> effect;
     
 };
 
+struct PostProcessEffect{
+    Vector<Ref<PostProcessPassInstance>> passes;
+    bool enabled = true;
+    virtual void Preamble(dim_t<int> targetSize){}
+};
+
 struct PostProcessEffectStack{
-    Vector<Ref<PostProcessEffectInstance>> effects;
+    Vector<Ref<PostProcessEffect>> effects;
+    
 };
 
 }

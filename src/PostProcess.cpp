@@ -5,7 +5,7 @@
 
 namespace RavEngine{
 
-PostProcessEffect::PostProcessEffect(const std::string_view name, const PostProcessConfig& config){
+PostProcessPass::PostProcessPass(const std::string_view name, const PostProcessConfig& config){
     auto device = GetApp()->GetDevice();
     auto defaultVSH = GetApp()->GetRenderEngine().GetDefaultPostEffectVSH();
     
