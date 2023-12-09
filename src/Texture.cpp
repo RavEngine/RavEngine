@@ -92,8 +92,8 @@ void Texture::CreateTexture(int width, int height, uint8_t mipLevels, int numlay
             .aspect = {.HasColor = true},
             .width = uint32_t(width),
             .height = uint32_t(height),
+            .mipLevels = mipLevels,
             .format = format,
-            .mipLevels = mipLevels
         }, { data,uncompressed_size });
     }
     else{
@@ -102,8 +102,8 @@ void Texture::CreateTexture(int width, int height, uint8_t mipLevels, int numlay
             .aspect = {.HasColor = true},
             .width = uint32_t(width),
             .height = uint32_t(height),
+            .mipLevels = mipLevels,
             .format = format,
-            .mipLevels = mipLevels
         });
     }
 }

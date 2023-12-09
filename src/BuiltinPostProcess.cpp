@@ -34,7 +34,8 @@ BloomEffect::BloomUpsamplePass::BloomUpsamplePass() : PostProcessPass("bloom_ups
             .stageFlags = RGL::BindingVisibility::Fragment,
         },
     },
-    .output = PostProcessOutput::UserDefined
+    .output = PostProcessOutput::UserDefined,
+    .pushConstantSize = sizeof(UpsampleConstants),
 }){}
 
 BloomEffect::BloomDownsamplePassInstance::BloomDownsamplePassInstance(Ref<BloomDownsamplePass> effect, bool isFirst) :  PostProcessPassInstance(effect){

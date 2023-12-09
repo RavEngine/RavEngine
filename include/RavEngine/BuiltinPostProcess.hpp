@@ -7,11 +7,15 @@ struct BloomEffect : public PostProcessEffect{
     BloomEffect();
     void Preamble(dim_t<int> targetSize) final;
 private:
+    struct UpsampleConstants {
+        float radius = 0;
+    };
     struct BloomDownsamplePass : public PostProcessPass{
         BloomDownsamplePass();
     };
 
     struct BloomUpsamplePass : public PostProcessPass{
+        
         BloomUpsamplePass();
     };
 
@@ -22,6 +26,10 @@ private:
 
     struct BloomUpsamplePassInstance : public PostProcessPassInstance{
         BloomUpsamplePassInstance(Ref<BloomUpsamplePass> effect);
+        UpsampleConstants pushConstants;
+        const RGL::untyped_span GetPushConstantData() const final{
+            return pushConstants;    
+        }
     };
     
     Ref<Texture> tempTexture;
