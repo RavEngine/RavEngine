@@ -10,16 +10,7 @@
 namespace RavEngine{
 
 PostProcessPassInstance::~PostProcessPassInstance() = default;
-PostProcessPassInstance::PostProcessPassInstance(Ref<PostProcessPass> effect, const Array<PostProcessTextureInput,nPostProcessTextureInputs>& inputConfiguration) : effect(effect), inputConfiguration(inputConfiguration), inputBindings{
-    OutputBindingPtrType{nullptr, [](RGL::TextureView*){}},
-    {nullptr, [](RGL::TextureView*){}},
-    {nullptr, [](RGL::TextureView*){}},
-    {nullptr, [](RGL::TextureView*){}},
-    {nullptr, [](RGL::TextureView*){}},
-    {nullptr, [](RGL::TextureView*){}},
-    {nullptr, [](RGL::TextureView*){}},
-    {nullptr, [](RGL::TextureView*){}}
-}{}
+PostProcessPassInstance::PostProcessPassInstance(Ref<PostProcessPass> effect, const Array<PostProcessTextureInput,nPostProcessTextureInputs>& inputConfiguration) : effect(effect), inputConfiguration(inputConfiguration){}
 
 PostProcessPass::PostProcessPass(const std::string_view name, const PostProcessConfig& config){
     auto device = GetApp()->GetDevice();

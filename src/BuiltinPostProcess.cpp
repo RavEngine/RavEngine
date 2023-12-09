@@ -63,12 +63,12 @@ void BloomEffect::Preamble(dim_t<int> targetSize){
         // update texture handles
         auto underlying = tempTexture->GetRHITexturePointer();
         for(int i = 0; i < samplePassCount; i++){
-            //passes[i]->outputBinding = std::move(std::make_unique<RGL::TextureView,BloomDownsamplePassInstance::TextureBindingPtrDeleterType>(underlying->GetViewForMip(i+1), [](auto*){}));
+            passes[i]->outputBinding = underlying->GetViewForMip(i+1);
         }
         for(int i = samplePassCount; i < passes.size() - 1; i++){
-            //passes[i]->outputBinding = std::move(std::make_unique<RGL::TextureView,BloomDownsamplePassInstance::TextureBindingPtrDeleterType>(underlying->GetViewForMip(samplePassCount - i), [](auto*){}));
+            passes[i]->outputBinding = underlying->GetViewForMip(samplePassCount - i);
         }
-        passes.back()->outputBinding = nullptr;
+        passes.back()->outputBinding = {};
     }
 }
 

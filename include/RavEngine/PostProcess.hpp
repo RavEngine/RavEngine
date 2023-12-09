@@ -6,10 +6,9 @@
 #include "mathtypes.hpp"
 #include "Texture.hpp"
 #include <RGL/Span.hpp>
-
-namespace RGL{
-    struct TextureView;
-}
+#include <RGL/RGL.hpp>
+#include <RGL/Types.hpp>
+#include <RGL/Texture.hpp>
 
 namespace RavEngine{
 
@@ -55,12 +54,10 @@ struct PostProcessPassInstance{
     virtual const RGL::untyped_span GetPushConstantData() const{
         return {nullptr,0};     // return nullptr if you do not have additional push constants
     }
-    using TextureBindingPtrDeleterType =  void(*)(RGL::TextureView*);
-    using OutputBindingPtrType = std::unique_ptr<RGL::TextureView,TextureBindingPtrDeleterType> ;
     
-    Array<OutputBindingPtrType,nPostProcessTextureInputs> inputBindings;
+    Array<RGL::TextureView,nPostProcessTextureInputs> inputBindings;
     Array<RGLSamplerPtr, nPostProcessSamplerInputs> inputSamplerBindings;
-    OutputBindingPtrType outputBinding{nullptr, [](RGL::TextureView*){}};  // we use custom deleters to work around a problem with incomplete types and unique_ptr
+    RGL::TextureView outputBinding;
     const auto GetEffect() const{
         return effect;
     }
