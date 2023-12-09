@@ -751,7 +751,7 @@ struct LightingType{
                         mainCommandBuffer->BeginRendering(postProcessRenderPass);
                         mainCommandBuffer->BindRenderPipeline(pass->GetEffect()->GetPipeline());
                         uint32_t index = 0;
-                        for(const auto& input : pass->GetEffect()->GetinputConfiguration()){
+                        for(const auto& input : pass->GetinputConfiguration()){
                             if (input == PostProcessTextureInput::EngineColor){
                                 mainCommandBuffer->SetFragmentTexture(currentInput, index);
                             }

@@ -1,3 +1,7 @@
+#include <RGL/RGL.hpp>
+#include <RGL/Types.hpp>
+#include <RGL/Texture.hpp>
+
 #include "PostProcess.hpp"
 #include "App.hpp"
 #include "RenderEngine.hpp"
@@ -5,12 +9,22 @@
 
 namespace RavEngine{
 
+PostProcessPassInstance::~PostProcessPassInstance() = default;
+PostProcessPassInstance::PostProcessPassInstance(Ref<PostProcessPass> effect, const Array<PostProcessTextureInput,nPostProcessTextureInputs>& inputConfiguration) : effect(effect), inputConfiguration(inputConfiguration), inputBindings{
+    OutputBindingPtrType{nullptr, [](RGL::TextureView*){}},
+    {nullptr, [](RGL::TextureView*){}},
+    {nullptr, [](RGL::TextureView*){}},
+    {nullptr, [](RGL::TextureView*){}},
+    {nullptr, [](RGL::TextureView*){}},
+    {nullptr, [](RGL::TextureView*){}},
+    {nullptr, [](RGL::TextureView*){}},
+    {nullptr, [](RGL::TextureView*){}}
+}{}
+
 PostProcessPass::PostProcessPass(const std::string_view name, const PostProcessConfig& config){
     auto device = GetApp()->GetDevice();
     auto defaultVSH = GetApp()->GetRenderEngine().GetDefaultPostEffectVSH();
-    
-    inputConfiguration = config.inputs;
-    
+        
     auto layout = device->CreatePipelineLayout({
         .bindings = config.bindings,
         .constants = {
