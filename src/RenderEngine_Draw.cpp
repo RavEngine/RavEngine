@@ -754,9 +754,26 @@ struct LightingType{
 						}
 						else {
 							postProcessRenderPass->SetAttachmentTexture(0, pass->outputBinding);
+							auto size = pass->GetUserDefinedOutputSize();
+							baseUbo.dim = { size.width, size.height };
 						}
                         mainCommandBuffer->BeginRendering(postProcessRenderPass);
                         mainCommandBuffer->BindRenderPipeline(pass->GetEffect()->GetPipeline());
+						mainCommandBuffer->SetViewport({
+							.x = 0,
+							.y = 0,
+							.width = float(baseUbo.dim.x),
+							.height = float(baseUbo.dim.y),
+						});
+						mainCommandBuffer->SetScissor({
+							.offset = {
+								0,0
+							},
+							.extent = {
+								uint32_t(baseUbo.dim.x), 
+								uint32_t(baseUbo.dim.y)
+							}
+						});
                         uint32_t index = 0;
                         for(const auto& input : pass->GetinputConfiguration()){
                             if (input == PostProcessTextureInput::EngineColor){

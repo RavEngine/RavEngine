@@ -21,14 +21,22 @@ private:
 
 
     struct BloomDownsamplePassInstance : public PostProcessPassInstance{
+        dim_t<int> outputSize;
         BloomDownsamplePassInstance(Ref<BloomDownsamplePass> effect, bool isFirst);
+        dim_t<int> GetUserDefinedOutputSize() const final {
+            return outputSize;
+        }
     };
 
     struct BloomUpsamplePassInstance : public PostProcessPassInstance{
+        dim_t<int> outputSize;
         BloomUpsamplePassInstance(Ref<BloomUpsamplePass> effect, bool isLast);
         UpsampleConstants pushConstants;
         const RGL::untyped_span GetPushConstantData() const final{
             return pushConstants;    
+        }
+        dim_t<int> GetUserDefinedOutputSize() const final {
+            return outputSize;
         }
     };
     

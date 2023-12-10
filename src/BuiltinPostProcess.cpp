@@ -63,7 +63,8 @@ BloomEffect::BloomEffect(){
 
 void BloomEffect::Preamble(dim_t<int> targetSize){
     if (tempTexture == nullptr || tempTexture->GetRHITexturePointer()->GetSize().width != targetSize.width ||  tempTexture->GetRHITexturePointer()->GetSize().height != targetSize.height){
-        tempTexture = New<RuntimeTexture>(targetSize.width / 2, targetSize.height / 2, Texture::Config{
+        dim_t<int> size{ targetSize.width / 2, targetSize.height / 2 };
+        tempTexture = New<RuntimeTexture>(size.width, size.height, Texture::Config{
             .mipLevels = samplePassCount, 
             .enableRenderTarget = true,
             .format = RGL::TextureFormat::RGBA16_Sfloat,
@@ -73,17 +74,22 @@ void BloomEffect::Preamble(dim_t<int> targetSize){
         
         // update texture handles
         auto underlying = tempTexture->GetRHITexturePointer();
-        for(int i = 0; i < samplePassCount; i++){
+        for (int i = 0; i < samplePassCount; i++) {
             passes[i]->outputBinding = underlying->GetViewForMip(i);
+            std::static_pointer_cast<BloomDownsamplePassInstance>(passes[i])->outputSize = size;
             if (i != 0) {
                 passes[i]->inputBindings[0] = underlying->GetViewForMip(i - 1);
             }
+            size.width /= 2; size.height /= 2;
         }
         for(int i = samplePassCount; i < passes.size() - 1; i++){
             auto inMip = (samplePassCount - (i - samplePassCount)) - 1;
             auto outMip = inMip - 1;
             passes[i]->outputBinding = underlying->GetViewForMip(inMip);
             passes[i]->inputBindings[0] = underlying->GetViewForMip(outMip);
+
+            std::static_pointer_cast<BloomDownsamplePassInstance>(passes[i])->outputSize = size;
+            size.width *= 2; size.height *= 2;
         }
         passes.back()->inputBindings[0] = underlying->GetViewForMip(0);
         passes.back()->outputBinding = {};

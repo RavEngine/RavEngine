@@ -71,6 +71,9 @@ struct PostProcessPassInstance{
     const auto& GetinputConfiguration() const{
         return inputConfiguration;
     }
+    virtual dim_t<int> GetUserDefinedOutputSize() const {    // called if using a custom output texture
+        return { 0,0 };
+    }
 private:
     Ref<PostProcessPass> effect;
 };
