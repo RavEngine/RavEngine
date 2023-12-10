@@ -647,7 +647,15 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
             },
         }
     });
-
+	postProcessRenderPassClear = RGL::CreateRenderPass({
+		.attachments = {
+			{
+				.format = colorTexFormat,
+				.loadOp = RGL::LoadAccessOperation::Clear,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			},
+		}
+	});
 
 	finalRenderPass = RGL::CreateRenderPass({
 		.attachments = {

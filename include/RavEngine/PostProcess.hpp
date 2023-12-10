@@ -30,11 +30,15 @@ constexpr static uint8_t nPostProcessSamplerInputs = nPostProcessTextureInputs +
 struct PostProcessConfig{
     std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> bindings;
     uint8_t pushConstantSize = 0;       // only 128 bytes of total push constant space are allowed
+    RGL::BlendFactor
+        sourceColorBlendFactor = RGL::BlendFactor::One,
+        destinationColorBlendFactor = RGL::BlendFactor::Zero;
 };
 
 struct PostProcessInstanceConfig {
     Array<PostProcessTextureInput, nPostProcessTextureInputs> inputconfiguration = { PostProcessTextureInput::EngineColor };
     PostProcessOutput outputConfiguration = PostProcessOutput::EngineColor;
+    bool clearOutputBeforeRendering = false;
 };
 
 struct BasePushConstantUBO{
@@ -74,6 +78,7 @@ struct PostProcessPassInstance{
     virtual dim_t<int> GetUserDefinedOutputSize() const {    // called if using a custom output texture
         return { 0,0 };
     }
+    bool clearOutputBeforeRendering = false;
 private:
     Ref<PostProcessPass> effect;
 };

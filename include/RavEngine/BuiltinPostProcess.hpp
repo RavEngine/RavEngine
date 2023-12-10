@@ -10,6 +10,9 @@ private:
     struct UpsampleConstants {
         float radius = 0.005f;
     };
+    struct ApplyConstants {
+        float bloomPower = 0.04;
+    };
     struct BloomDownsamplePass : public PostProcessPass{
         BloomDownsamplePass();
     };
@@ -19,6 +22,9 @@ private:
         BloomUpsamplePass();
     };
 
+    struct BloomApplyPass : public PostProcessPass {
+        BloomApplyPass();
+    };
 
     struct BloomDownsamplePassInstance : public PostProcessPassInstance{
         dim_t<int> outputSize;
@@ -38,6 +44,14 @@ private:
         dim_t<int> GetUserDefinedOutputSize() const final {
             return outputSize;
         }
+    };
+
+    struct BloomApplyPassInstance : public PostProcessPassInstance {
+        ApplyConstants pushConstants;
+        const RGL::untyped_span GetPushConstantData() const final {
+            return pushConstants;
+        }
+        BloomApplyPassInstance(Ref<BloomApplyPass> effect);
     };
     
     Ref<Texture> tempTexture;

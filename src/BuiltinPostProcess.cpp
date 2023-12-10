@@ -37,7 +37,30 @@ BloomEffect::BloomUpsamplePass::BloomUpsamplePass() : PostProcessPass("bloom_ups
         },
     },
     .pushConstantSize = sizeof(UpsampleConstants),
+    .sourceColorBlendFactor = RGL::BlendFactor::One,
+    .destinationColorBlendFactor = RGL::BlendFactor::One,
 }){}
+
+BloomEffect::BloomApplyPass::BloomApplyPass() : PostProcessPass("bloom_merge.fsh", {
+    .bindings = {
+        {
+            .binding = 0,
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+        {
+            .binding = 1,
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+        {
+            .binding = 2,
+            .type = RGL::BindingType::Sampler,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+    },
+    .pushConstantSize = sizeof(ApplyConstants),
+    }){}
 
 BloomEffect::BloomDownsamplePassInstance::BloomDownsamplePassInstance(Ref<BloomDownsamplePass> effect, bool isFirst) : PostProcessPassInstance(effect, {
     .inputconfiguration = isFirst ? InputConfigurationType{PostProcessTextureInput::EngineColor} : InputConfigurationType{PostProcessTextureInput::UserDefined},
@@ -50,15 +73,26 @@ BloomEffect::BloomUpsamplePassInstance::BloomUpsamplePassInstance::BloomUpsample
     }) {
 }
 
+RavEngine::BloomEffect::BloomApplyPassInstance::BloomApplyPassInstance(Ref<BloomApplyPass> effect) : PostProcessPassInstance(effect,
+    {
+        .inputconfiguration = {PostProcessTextureInput::EngineColor, PostProcessTextureInput::UserDefined}
+    }){}
+
 BloomEffect::BloomEffect(){
     auto downsamplePass = New<BloomDownsamplePass>();
     auto upsamplePass = New<BloomUpsamplePass>();
     for(int i = 0; i < samplePassCount; i++){
         passes.push_back(New<BloomDownsamplePassInstance>(downsamplePass, i == 0));
     }
-    for(int i = 0; i < samplePassCount; i++){
+    for(int i = 0; i < samplePassCount - 1; i++){
         passes.push_back(New<BloomUpsamplePassInstance>(upsamplePass, i == samplePassCount - 1));
     }
+
+    auto applyPass = New<BloomApplyPass>();
+    passes.push_back(New<BloomApplyPassInstance>(applyPass));
+
+    // make sure the intermediate texture is reset
+    passes.front()->clearOutputBeforeRendering = true;
 }
 
 void BloomEffect::Preamble(dim_t<int> targetSize){
@@ -103,7 +137,7 @@ void BloomEffect::Preamble(dim_t<int> targetSize){
 
             std::static_pointer_cast<BloomDownsamplePassInstance>(passes[i])->outputSize = size;
         }
-        passes.back()->inputBindings[0] = underlying->GetViewForMip(0);
+        passes.back()->inputBindings[1] = underlying->GetViewForMip(0); // EngineColor is input[0] 
         passes.back()->outputBinding = {};
     }
 }

@@ -749,15 +749,17 @@ struct LightingType{
 						};
 						bool isUsingFinalOutput = pass->outputConfiguration == PostProcessOutput::EngineColor;
 
+						auto activePass = pass->clearOutputBeforeRendering ? postProcessRenderPassClear : postProcessRenderPass;
+
 						if (isUsingFinalOutput) {
-							postProcessRenderPass->SetAttachmentTexture(0, altInput);
+							activePass->SetAttachmentTexture(0, altInput);
 						}
 						else {
-							postProcessRenderPass->SetAttachmentTexture(0, pass->outputBinding);
+							activePass->SetAttachmentTexture(0, pass->outputBinding);
 							auto size = pass->GetUserDefinedOutputSize();
 							baseUbo.dim = { size.width, size.height };
 						}
-                        mainCommandBuffer->BeginRendering(postProcessRenderPass);
+                        mainCommandBuffer->BeginRendering(activePass);
                         mainCommandBuffer->BindRenderPipeline(pass->GetEffect()->GetPipeline());
 						mainCommandBuffer->SetViewport({
 							.x = 0,
