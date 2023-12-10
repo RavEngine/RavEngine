@@ -10,7 +10,7 @@
 namespace RavEngine{
 
 PostProcessPassInstance::~PostProcessPassInstance() = default;
-PostProcessPassInstance::PostProcessPassInstance(Ref<PostProcessPass> effect, const Array<PostProcessTextureInput,nPostProcessTextureInputs>& inputConfiguration) : effect(effect), inputConfiguration(inputConfiguration){}
+PostProcessPassInstance::PostProcessPassInstance(Ref<PostProcessPass> effect, const PostProcessInstanceConfig& config) : effect(effect), inputConfiguration(config.inputconfiguration), outputConfiguration(config.outputConfiguration){}
 
 PostProcessPass::PostProcessPass(const std::string_view name, const PostProcessConfig& config){
     auto device = GetApp()->GetDevice();

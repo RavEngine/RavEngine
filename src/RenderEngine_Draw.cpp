@@ -747,7 +747,14 @@ struct LightingType{
                     }
                     effect->Preamble({baseUbo.dim.x, baseUbo.dim.y});
                     for(const auto pass : effect->passes){
-                        postProcessRenderPass->SetAttachmentTexture(0, altInput);
+						bool isUsingFinalOutput = pass->outputConfiguration == PostProcessOutput::EngineColor;
+
+						if (isUsingFinalOutput) {
+							postProcessRenderPass->SetAttachmentTexture(0, altInput);
+						}
+						else {
+							postProcessRenderPass->SetAttachmentTexture(0, pass->outputBinding);
+						}
                         mainCommandBuffer->BeginRendering(postProcessRenderPass);
                         mainCommandBuffer->BindRenderPipeline(pass->GetEffect()->GetPipeline());
                         uint32_t index = 0;
@@ -768,8 +775,10 @@ struct LightingType{
                         mainCommandBuffer->Draw(3);
                         
                         mainCommandBuffer->EndRendering();
-                        std::swap(currentInput, altInput);
-                        totalPostFXRendered ++;
+						if (isUsingFinalOutput) {
+							std::swap(currentInput, altInput);
+							totalPostFXRendered++;
+						}
                     }
                 }
                 

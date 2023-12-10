@@ -29,8 +29,12 @@ constexpr static uint8_t nPostProcessSamplerInputs = nPostProcessTextureInputs +
 
 struct PostProcessConfig{
     std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> bindings;
-    PostProcessOutput output = PostProcessOutput::EngineColor;
     uint8_t pushConstantSize = 0;       // only 128 bytes of total push constant space are allowed
+};
+
+struct PostProcessInstanceConfig {
+    Array<PostProcessTextureInput, nPostProcessTextureInputs> inputconfiguration = { PostProcessTextureInput::EngineColor };
+    PostProcessOutput outputConfiguration = PostProcessOutput::EngineColor;
 };
 
 struct BasePushConstantUBO{
@@ -48,7 +52,7 @@ private:
 };
 
 struct PostProcessPassInstance{
-    PostProcessPassInstance(Ref<PostProcessPass> effect, const Array<PostProcessTextureInput,nPostProcessTextureInputs>& inputConfiguration = {PostProcessTextureInput::EngineColor});
+    PostProcessPassInstance(Ref<PostProcessPass> effect, const PostProcessInstanceConfig& config );
     ~PostProcessPassInstance();
 
     virtual const RGL::untyped_span GetPushConstantData() const{
@@ -63,6 +67,7 @@ struct PostProcessPassInstance{
     }
     using InputConfigurationType = Array<PostProcessTextureInput,nPostProcessTextureInputs>;
     InputConfigurationType inputConfiguration;
+    PostProcessOutput outputConfiguration;
     const auto& GetinputConfiguration() const{
         return inputConfiguration;
     }

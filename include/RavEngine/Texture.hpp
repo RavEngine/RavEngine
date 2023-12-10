@@ -4,6 +4,7 @@
 #include "Manager.hpp"
 #include "Filesystem.hpp"
 #include <RGL/Types.hpp>
+#include <RGL/TextureFormat.hpp>
 
 namespace RavEngine{
 
@@ -33,6 +34,14 @@ public:
 	auto GetRHITexturePointer() const {
 		return texture;
 	}
+
+	struct Config {
+		uint8_t mipLevels = 1;
+		int numLayers = 1;
+		bool enableRenderTarget = false;
+		const uint8_t* initialData = nullptr;
+		RGL::TextureFormat format = RGL::TextureFormat::RGBA8_Unorm;
+	};
 	
 protected:
 
@@ -40,7 +49,7 @@ protected:
 
 	Texture(){}
 	
-	void CreateTexture(int width, int height, uint8_t mipLevels, int numlayers, const uint8_t *data, int flags = 0);
+	void CreateTexture(int width, int height, const Config& config);
 };
 
 class RuntimeTexture : public Texture{
@@ -56,8 +65,8 @@ public:
 	 @param data pointer to the image data. Must be a 4-channel image.
 	 @param flags optional creation flags
 	 */
-	RuntimeTexture(int width, int height, uint8_t mipLevels, int numlayers, const uint8_t *data, int flags = 0) : Texture(){
-		CreateTexture(width, height, mipLevels, numlayers, data,flags);
+	RuntimeTexture(int width, int height, const Config& config) : Texture(){
+		CreateTexture(width, height, config);
 	}
 };
 

@@ -39,7 +39,11 @@ Texture::Texture(const std::string& name, uint16_t width, uint16_t height){
     auto bitmap = document->renderToBitmap(width,height);
     
     // give to backend
-    CreateTexture(width, height, 1, 1, bitmap.data());
+    CreateTexture(width, height, { 
+        .mipLevels = 1, 
+        .numLayers = 1, 
+        .initialData = bitmap.data() 
+    });
 }
 
 RavEngine::Texture::Texture(const Filesystem::Path& pathOnDisk)
@@ -50,7 +54,11 @@ RavEngine::Texture::Texture(const Filesystem::Path& pathOnDisk)
 		Debug::Fatal("Cannot load texture from disk {}: {}", pathOnDisk.string().c_str(), stbi_failure_reason());
 	}
 
-	CreateTexture(width,height,1,1,bytes);
+    CreateTexture(width, height, {
+        .mipLevels = 1,
+        .numLayers = 1,
+        .initialData = bytes
+     });
 	stbi_image_free(bytes);
 }
 
@@ -72,37 +80,41 @@ Texture::Texture(const std::string& name){
 	
 	uint16_t numlayers = 1;
 	
-	CreateTexture(width, height, 1, numlayers, bytes);
+    CreateTexture(width, height, {
+        .mipLevels = 1, 
+        .numLayers = 1,
+        .initialData = bytes
+    });
 	stbi_image_free(bytes);
 	
 }
 
 
-void Texture::CreateTexture(int width, int height, uint8_t mipLevels, int numlayers, const uint8_t *data, int flags){
+void Texture::CreateTexture(int width, int height, const Config& config){
 
 	uint16_t numChannels = 4;	//TODO: allow n-channel textures
-	RGL::TextureFormat format = RGL::TextureFormat::RGBA8_Unorm;
+	RGL::TextureFormat format = config.format;
 	
-	uint32_t uncompressed_size = width * height * numChannels * numlayers;
+	uint32_t uncompressed_size = width * height * numChannels * config.numLayers;
 
 	auto device = GetApp()->GetDevice();
-    if (data != nullptr){
+    if (config.initialData != nullptr){
         texture = device->CreateTextureWithData({
-            .usage = {.TransferDestination = true, .Sampled = true},
+            .usage = {.TransferDestination = true, .Sampled = true, .ColorAttachment = config.enableRenderTarget},
             .aspect = {.HasColor = true},
             .width = uint32_t(width),
             .height = uint32_t(height),
-            .mipLevels = mipLevels,
+            .mipLevels = config.mipLevels,
             .format = format,
-        }, { data,uncompressed_size });
+        }, { config.initialData,uncompressed_size });
     }
     else{
         texture = device->CreateTexture({
-            .usage = {.TransferDestination = true, .Sampled = true},
+            .usage = {.TransferDestination = true, .Sampled = true, .ColorAttachment = config.enableRenderTarget},
             .aspect = {.HasColor = true},
             .width = uint32_t(width),
             .height = uint32_t(height),
-            .mipLevels = mipLevels,
+            .mipLevels = config.mipLevels,
             .format = format,
         });
     }

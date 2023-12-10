@@ -25,7 +25,7 @@ private:
     };
 
     struct BloomUpsamplePassInstance : public PostProcessPassInstance{
-        BloomUpsamplePassInstance(Ref<BloomUpsamplePass> effect);
+        BloomUpsamplePassInstance(Ref<BloomUpsamplePass> effect, bool isLast);
         UpsampleConstants pushConstants;
         const RGL::untyped_span GetPushConstantData() const final{
             return pushConstants;    
