@@ -106,6 +106,7 @@ void Texture::CreateTexture(int width, int height, const Config& config){
             .height = uint32_t(height),
             .mipLevels = config.mipLevels,
             .format = format,
+            .debugName = config.debugName
         }, { config.initialData,uncompressed_size });
     }
     else{
@@ -116,6 +117,7 @@ void Texture::CreateTexture(int width, int height, const Config& config){
             .height = uint32_t(height),
             .mipLevels = config.mipLevels,
             .format = format,
+            .debugName = config.debugName,
         });
     }
 }

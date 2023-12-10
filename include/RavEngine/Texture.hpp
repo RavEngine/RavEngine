@@ -41,6 +41,7 @@ public:
 		bool enableRenderTarget = false;
 		const uint8_t* initialData = nullptr;
 		RGL::TextureFormat format = RGL::TextureFormat::RGBA8_Unorm;
+		const char* const debugName = nullptr;
 	};
 	
 protected:

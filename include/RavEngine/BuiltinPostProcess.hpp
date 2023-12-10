@@ -8,7 +8,7 @@ struct BloomEffect : public PostProcessEffect{
     void Preamble(dim_t<int> targetSize) final;
 private:
     struct UpsampleConstants {
-        float radius = 0;
+        float radius = 3;
     };
     struct BloomDownsamplePass : public PostProcessPass{
         BloomDownsamplePass();

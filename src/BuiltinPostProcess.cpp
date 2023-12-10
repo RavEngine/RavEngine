@@ -66,7 +66,8 @@ void BloomEffect::Preamble(dim_t<int> targetSize){
         tempTexture = New<RuntimeTexture>(targetSize.width / 2, targetSize.height / 2, Texture::Config{
             .mipLevels = samplePassCount, 
             .enableRenderTarget = true,
-            .format = RGL::TextureFormat::RGBA16_Sfloat
+            .format = RGL::TextureFormat::RGBA16_Sfloat,
+            .debugName = "Bloom intermediate texture"
             }
         );
         

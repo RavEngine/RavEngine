@@ -737,14 +737,14 @@ struct LightingType{
                 RGL::TextureView currentInput = target.lightingTexture->GetDefaultView();
                 RGL::TextureView altInput = target.lightingScratchTexture->GetDefaultView();
                 
-                BasePushConstantUBO baseUbo{
-                    .dim = {fullSizeViewport.width, fullSizeViewport.height}
-                };
-                
                 for(const auto effect : globalEffects.effects){
                     if (!effect->enabled){
                         continue;
                     }
+					BasePushConstantUBO baseUbo{
+						.dim = {fullSizeViewport.width, fullSizeViewport.height}
+					};
+
                     effect->Preamble({baseUbo.dim.x, baseUbo.dim.y});
                     for(const auto pass : effect->passes){
 						bool isUsingFinalOutput = pass->outputConfiguration == PostProcessOutput::EngineColor;
@@ -762,6 +762,11 @@ struct LightingType{
                             if (input == PostProcessTextureInput::EngineColor){
                                 mainCommandBuffer->SetFragmentTexture(currentInput, index);
                             }
+							else if (input == PostProcessTextureInput::UserDefined) {
+								auto img = pass->inputBindings.at(index);
+								mainCommandBuffer->SetFragmentTexture(img, index);
+							}
+							index++;
                         }
                         mainCommandBuffer->SetFragmentSampler(textureSampler, 1);   // TODO: don't hardcode this
                         mainCommandBuffer->SetVertexBuffer(screenTriVerts);
