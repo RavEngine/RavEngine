@@ -92,14 +92,16 @@ void BloomEffect::Preamble(dim_t<int> targetSize){
             }
             size.width /= 2; size.height /= 2;
         }
+        size.width *= 2; size.height *= 2;
         for(int i = samplePassCount; i < passes.size() - 1; i++){
             auto inMip = (samplePassCount - (i - samplePassCount)) - 1;
             auto outMip = inMip - 1;
-            passes[i]->outputBinding = underlying->GetViewForMip(inMip);
-            passes[i]->inputBindings[0] = underlying->GetViewForMip(outMip);
+            passes[i]->inputBindings[0] = underlying->GetViewForMip(inMip);
+            passes[i]->outputBinding = underlying->GetViewForMip(outMip);
+
+            size.width *= 2; size.height *= 2;
 
             std::static_pointer_cast<BloomDownsamplePassInstance>(passes[i])->outputSize = size;
-            size.width *= 2; size.height *= 2;
         }
         passes.back()->inputBindings[0] = underlying->GetViewForMip(0);
         passes.back()->outputBinding = {};

@@ -741,12 +741,12 @@ struct LightingType{
                     if (!effect->enabled){
                         continue;
                     }
-					BasePushConstantUBO baseUbo{
-						.dim = {fullSizeViewport.width, fullSizeViewport.height}
-					};
-
-                    effect->Preamble({baseUbo.dim.x, baseUbo.dim.y});
+					
+                    effect->Preamble({ int(fullSizeViewport.width), int(fullSizeViewport.height) });
                     for(const auto pass : effect->passes){
+						BasePushConstantUBO baseUbo{
+							.dim = {fullSizeViewport.width, fullSizeViewport.height}
+						};
 						bool isUsingFinalOutput = pass->outputConfiguration == PostProcessOutput::EngineColor;
 
 						if (isUsingFinalOutput) {
