@@ -62,7 +62,17 @@ BloomEffect::BloomEffect(){
 }
 
 void BloomEffect::Preamble(dim_t<int> targetSize){
-    if (tempTexture == nullptr || tempTexture->GetRHITexturePointer()->GetSize().width != targetSize.width ||  tempTexture->GetRHITexturePointer()->GetSize().height != targetSize.height){
+    bool needsNewTexture = tempTexture == nullptr;
+    
+    if (tempTexture != nullptr) {
+        auto oldSize = tempTexture->GetRHITexturePointer()->GetSize();
+        if (oldSize.width != targetSize.width / 2 || oldSize.height != targetSize.height / 2) {
+            needsNewTexture = true;
+        }
+    }
+
+    if (needsNewTexture){
+
         dim_t<int> size{ targetSize.width / 2, targetSize.height / 2 };
         tempTexture = New<RuntimeTexture>(size.width, size.height, Texture::Config{
             .mipLevels = samplePassCount, 

@@ -226,10 +226,10 @@ namespace RGL {
 		for (int i = 0; i < config.mipLevels; i++) {
 			auto view = makeImageViewCreateInfo(i);
 			VkImageView mipView;
-			dim.width /= 2;
-			dim.height /= 2;
 			VK_CHECK(vkCreateImageView(owningDevice->device, &view, nullptr, &mipView));
 			mipViews.push_back(TextureView{ this, mipView, uint32_t(i), dim });
+			dim.width /= 2;
+			dim.height /= 2;
 		}
 
 		createdAspectVk = rgl2vkAspectFlags(config.aspect);
