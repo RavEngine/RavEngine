@@ -776,18 +776,29 @@ struct LightingType{
 								uint32_t(baseUbo.dim.y)
 							}
 						});
-                        uint32_t index = 0;
-                        for(const auto& input : pass->GetinputConfiguration()){
-                            if (input == PostProcessTextureInput::EngineColor){
-                                mainCommandBuffer->SetFragmentTexture(currentInput, index);
-                            }
-							else if (input == PostProcessTextureInput::UserDefined) {
-								auto img = pass->inputBindings.at(index);
-								mainCommandBuffer->SetFragmentTexture(img, index);
+						{
+							uint32_t index = 0;
+							for (const auto& input : pass->GetinputConfiguration()) {
+								if (input == PostProcessTextureInput::EngineColor) {
+									mainCommandBuffer->SetFragmentTexture(currentInput, index);
+								}
+								else if (input == PostProcessTextureInput::UserDefined) {
+									auto img = pass->inputBindings.at(index);
+									mainCommandBuffer->SetFragmentTexture(img, index);
+								}
+								index++;
 							}
-							index++;
-                        }
-                        mainCommandBuffer->SetFragmentSampler(textureSampler, 1);   // TODO: don't hardcode this
+						}
+						{
+							uint32_t index = 0;
+							for (const auto sampler : pass->inputSamplerBindings) {
+								if (sampler != nullptr) {
+									mainCommandBuffer->SetFragmentSampler(sampler, index);
+								}
+								index++;
+							}
+						}
+						
                         mainCommandBuffer->SetVertexBuffer(screenTriVerts);
                         
                         // push constants

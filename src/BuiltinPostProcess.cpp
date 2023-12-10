@@ -1,6 +1,7 @@
 #include "BuiltinPostProcess.hpp"
 #include <RGL/RGL.hpp>
 #include <RGL/Texture.hpp>
+#include <RGL/Sampler.hpp>
 #include "App.hpp"
 #include "RenderEngine.hpp"
 
@@ -41,7 +42,7 @@ BloomEffect::BloomUpsamplePass::BloomUpsamplePass() : PostProcessPass("bloom_ups
     .destinationColorBlendFactor = RGL::BlendFactor::One,
 }){}
 
-BloomEffect::BloomApplyPass::BloomApplyPass() : PostProcessPass("bloom_merge.fsh", {
+BloomEffect::BloomApplyPass::BloomApplyPass() : PostProcessPass("bloom_merge", {
     .bindings = {
         {
             .binding = 0,
@@ -79,17 +80,29 @@ RavEngine::BloomEffect::BloomApplyPassInstance::BloomApplyPassInstance(Ref<Bloom
     }){}
 
 BloomEffect::BloomEffect(){
+    sampler = GetApp()->GetDevice()->CreateSampler({
+        .addressModeU = RGL::SamplerAddressMode::Clamp,
+        .addressModeV = RGL::SamplerAddressMode::Clamp,
+        .addressModeW = RGL::SamplerAddressMode::Clamp,
+    });
+
     auto downsamplePass = New<BloomDownsamplePass>();
     auto upsamplePass = New<BloomUpsamplePass>();
     for(int i = 0; i < samplePassCount; i++){
-        passes.push_back(New<BloomDownsamplePassInstance>(downsamplePass, i == 0));
+        auto instance = New<BloomDownsamplePassInstance>(downsamplePass, i == 0);
+        instance->inputSamplerBindings[1] = sampler;
+        passes.push_back(instance);
     }
     for(int i = 0; i < samplePassCount - 1; i++){
-        passes.push_back(New<BloomUpsamplePassInstance>(upsamplePass, i == samplePassCount - 1));
+        auto instance = New<BloomUpsamplePassInstance>(upsamplePass, i == samplePassCount - 1);
+        passes.push_back(instance);
+        instance->inputSamplerBindings[1] = sampler;
     }
 
     auto applyPass = New<BloomApplyPass>();
-    passes.push_back(New<BloomApplyPassInstance>(applyPass));
+    auto applyPassInstance = New<BloomApplyPassInstance>(applyPass);
+    applyPassInstance->inputSamplerBindings[2] = sampler;
+    passes.push_back(applyPassInstance);
 
     // make sure the intermediate texture is reset
     passes.front()->clearOutputBeforeRendering = true;

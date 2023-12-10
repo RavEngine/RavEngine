@@ -54,6 +54,7 @@ private:
         BloomApplyPassInstance(Ref<BloomApplyPass> effect);
     };
     
+    RGLSamplerPtr sampler;
     Ref<Texture> tempTexture;
 };
 
