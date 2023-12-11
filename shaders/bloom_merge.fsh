@@ -19,5 +19,5 @@ void main(){
     vec3 color = texture(sampler2D(srcTexture, srcSampler), uv).rgb;
     vec3 bloom = texture(sampler2D(bloomTexture, srcSampler), uv).rgb;
     vec3 result = mix(color, bloom, ubo.bloomStrength);
-    outcolor = vec4(color, 1);
+    outcolor = vec4(result, 1);
 }

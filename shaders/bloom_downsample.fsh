@@ -60,5 +60,7 @@ void main()
     downsample += (a+c+g+i)*0.03125;
     downsample += (b+d+f+h)*0.0625;
     downsample += (j+k+l+m)*0.125;
+
+    downsample = max(downsample, 0.0001f);  // fix the black squares problem
     out_downsample = vec4(downsample,0);
 }
