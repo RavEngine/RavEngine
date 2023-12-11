@@ -39,7 +39,7 @@ namespace RGL {
 			return uavIDX != unallocated;
 		}
 
-		std::vector<UINT> mipHeapIndicesSRV, mipHeapIndicesUAV;
+		std::vector<UINT> mipHeapIndicesSRV, mipHeapIndicesUAV, mipHeapIndicesRTV;
 		uint32_t numMips = 1;
 
 		TextureD3D12(decltype(texture) image, const Dimension& size, decltype(rtvIDX), decltype(owningDevice));
