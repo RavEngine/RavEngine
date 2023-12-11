@@ -9,6 +9,26 @@
 #include <unordered_map>
 
 namespace RGL {
+	struct D3D12TextureLastUseKey {
+		const struct D3D12TrackedResource* texture = nullptr;
+		uint32_t mip = 0;
+		D3D12TextureLastUseKey(decltype(texture) texture, decltype(mip) mip) : texture(texture), mip(mip) {}
+		bool operator==(const D3D12TextureLastUseKey& other) const {
+			return texture == other.texture && mip == other.mip;
+		}
+	};
+}
+
+namespace std {
+	template<>
+	struct hash<RGL::D3D12TextureLastUseKey> {
+		size_t operator()(const RGL::D3D12TextureLastUseKey& other) const {
+			return uintptr_t(other.texture) ^ other.mip;
+		}
+	};
+}
+
+namespace RGL {
 	struct CommandQueueD3D12;
 	struct TextureD3D12;
 	struct BufferD3D12;
@@ -27,7 +47,14 @@ namespace RGL {
 			D3D12_RESOURCE_STATES state;
 			bool written = false;
 		};
-		std::unordered_map<const struct D3D12TrackedResource*, ResourceLastUse> activeResources;
+		std::unordered_map<const struct D3D12TrackedResource*, ResourceLastUse> activeBuffers;
+
+		std::unordered_map<D3D12TextureLastUseKey, ResourceLastUse> activeTextures;
+
+
+		bool keyIsAllMips(const D3D12TextureLastUseKey& key) {
+			return key.mip == TextureView::NativeHandles::dx::ALL_MIPS;
+		}
 
 		bool ended = false;
 
@@ -97,8 +124,8 @@ namespace RGL {
 		virtual ~CommandBufferD3D12();
 	private:
 		void SyncIfNeeded(const BufferD3D12* buffer, D3D12_RESOURCE_STATES needed, bool written = false);
-		void SyncIfNeeded(const TextureD3D12* texture, D3D12_RESOURCE_STATES needed, bool written = false);
-		D3D12_RESOURCE_STATES GetCurrentResourceState(const struct D3D12TrackedResource*);
+		void SyncIfNeeded(TextureView texture, D3D12_RESOURCE_STATES needed, bool written = false);
+		D3D12_RESOURCE_STATES GetBufferCurrentResourceState(const struct D3D12TrackedResource*);
 		HANDLE internalFenceEvent;
 		Microsoft::WRL::ComPtr<ID3D12Fence> internalFence;
 	};

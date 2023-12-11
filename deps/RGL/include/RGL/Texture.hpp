@@ -67,7 +67,7 @@ namespace RGL {
 			NativeHandles(decltype(wg) wg) : wg(wg) {}
 #endif
 #if RGL_DX12_AVAILABLE
-			struct {
+			struct dx {
 				constexpr static uint32_t unallocated = std::numeric_limits<uint32_t>::max();
 				uint32_t
 					dsvIDX = unallocated,
@@ -88,6 +88,8 @@ namespace RGL {
 					return uavIDX != unallocated;
 				}
 				const TextureD3D12* parentResource;
+				uint32_t mip = 0;
+				constexpr static decltype(mip) ALL_MIPS = std::numeric_limits<decltype(mip)>::max();
 			} dx;
 			NativeHandles(const decltype(dx)& dx) : dx(dx) {}
 #endif

@@ -104,6 +104,8 @@ namespace RGL {
 		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 		resourceDesc.Flags = config.usage.Storage ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
 
+		numMips = config.mipLevels;
+
 
 		D3D12_CLEAR_VALUE optimizedClearValue = {
 			.Format = format,
@@ -144,6 +146,10 @@ namespace RGL {
 		MultiByteToWideChar(CP_UTF8, 0, config.debugName, -1, wide.data(), wide.size());
 		texture->SetName(wide.data());
 
+		if (config.debugName != nullptr) {
+			debugName = config.debugName;
+		}
+
 		// add the resource to the appropriate heaps
 		PlaceInHeaps(owningDevice, format, config);
 		
@@ -151,8 +157,8 @@ namespace RGL {
 	void TextureD3D12::PlaceInHeaps(const std::shared_ptr<RGL::DeviceD3D12>& owningDevice, DXGI_FORMAT format, const RGL::TextureConfig& config)
 	{
 		const bool isDS = (config.aspect.HasDepth || config.aspect.HasStencil);
-		mipHeapIndicesSRV.reserve(config.mipLevels - 1);
-		mipHeapIndicesUAV.reserve(config.mipLevels - 1);
+		mipHeapIndicesSRV.reserve(config.mipLevels);
+		mipHeapIndicesUAV.reserve(config.mipLevels);
 
 		if (isDS) {
 			dsvIDX = owningDevice->DSVHeap->AllocateSingle();
@@ -190,7 +196,7 @@ namespace RGL {
 				owningDevice->device->CreateShaderResourceView(texture.Get(), &srvDesc, handle);
 			};
 			createSRV(srvIDX, 0);
-			for (UINT i = 1; i < config.mipLevels; i++) {
+			for (UINT i = 0; i < config.mipLevels; i++) {
 				auto& handle = mipHeapIndicesSRV.emplace_back();
 				createSRV(handle, i);
 			}
@@ -210,7 +216,7 @@ namespace RGL {
 				owningDevice->device->CreateUnorderedAccessView(texture.Get(), nullptr, &uavDesc, handle);
 			};
 			createUAV(uavIDX, 0);
-			for (UINT i = 1; i < config.mipLevels; i++) {
+			for (UINT i = 0; i < config.mipLevels; i++) {
 				auto& handle = mipHeapIndicesUAV.emplace_back();
 				createUAV(handle, i);
 			}
@@ -223,14 +229,12 @@ namespace RGL {
 			.rtvIDX = rtvIDX,
 			.srvIDX = srvIDX,
 			.uavIDX = uavIDX,
-			.parentResource = this
+			.parentResource = this,
+			.mip = TextureView::NativeHandles::dx::ALL_MIPS
 		}};
 	}
 	TextureView TextureD3D12::GetViewForMip(uint32_t mip) const
 	{
-		if (mip == 0) {
-			return GetDefaultView();
-		}
 
 		bool hasSRV = mip <= mipHeapIndicesSRV.size();
 		bool hasUAV = mip <= mipHeapIndicesUAV.size();
@@ -238,9 +242,10 @@ namespace RGL {
 		return TextureView{ {
 			.dsvIDX = dsvIDX,
 			.rtvIDX = rtvIDX,
-			.srvIDX = hasSRV ? mipHeapIndicesSRV.at(mip-1) : unallocated,
-			.uavIDX = hasUAV ? mipHeapIndicesUAV.at(mip-1) : unallocated,
-			.parentResource = this
+			.srvIDX = hasSRV ? mipHeapIndicesSRV.at(mip) : unallocated,
+			.uavIDX = hasUAV ? mipHeapIndicesUAV.at(mip) : unallocated,
+			.parentResource = this,
+			.mip = mip
 		} };
 	}
 	Dimension TextureD3D12::GetSize() const

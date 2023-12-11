@@ -44,27 +44,45 @@ namespace RGL {
 	void CommandBufferD3D12::End()
 	{
 		// put all the resources back in their native states
-		stackarray(barriers, CD3DX12_RESOURCE_BARRIER, activeResources.size());
-		int i = 0;
-		for (const auto& [resource, record] : activeResources) {
-			if (record.state == resource->nativeState) {
-				continue;	// states must be different.
+		auto nItems = activeBuffers.size() + activeTextures.size();
+		if (nItems > 0) {
+			stackarray(barriers, CD3DX12_RESOURCE_BARRIER, nItems);
+			int i = 0;
+			for (const auto& [resource, record] : activeBuffers) {
+				if (record.state == resource->nativeState) {
+					continue;	// states must be different.
+				}
+				barriers[i] = CD3DX12_RESOURCE_BARRIER::Transition(
+					resource->GetResource(),
+					record.state,
+					resource->nativeState
+				);
+				i++;
 			}
-			barriers[i] = CD3DX12_RESOURCE_BARRIER::Transition(
-				resource->GetResource(),
-				record.state,
-				resource->nativeState
-			);
-			i++;
-		}
-		if (i > 0) {
-			commandList->ResourceBarrier(i, barriers);
+			// all the textures
+			for (const auto& [resource, record] : activeTextures) {
+				if (record.state == resource.texture->nativeState) {
+					continue;	// states must be different.
+				}
+				barriers[i] = CD3DX12_RESOURCE_BARRIER::Transition(
+					resource.texture->GetResource(),
+					record.state,
+					resource.texture->nativeState,
+					resource.mip
+				);
+				i++;
+			}
+
+			if (i > 0) {
+				commandList->ResourceBarrier(i, barriers);
+			}
 		}
 
 
 		DX_CHECK(commandList->Close());
 		ended = true;
-		activeResources.clear();
+		activeBuffers.clear();
+		activeTextures.clear();
 	}
 	void CommandBufferD3D12::BeginRendering(RGLRenderPassPtr renderPass)
 	{
@@ -77,7 +95,7 @@ namespace RGL {
 		for (const auto& attachment : currentRenderPass->config.attachments) {
 			auto& tx = currentRenderPass->textures[i].texture.dx;
 
-			SyncIfNeeded(tx.parentResource, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			SyncIfNeeded(tx, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 			Assert(tx.rtvAllocated(),"This texture was not allocated as a render target!");
 			
@@ -99,7 +117,7 @@ namespace RGL {
 		{
 			if (currentRenderPass->depthTexture) {
 				auto& tx = currentRenderPass->depthTexture.value().texture.dx;
-				SyncIfNeeded(tx.parentResource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+				SyncIfNeeded(tx, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 				Assert(tx.dsvAllocated(), "Texture was not allocated as a depth stencil!");
 				dsv = tx.parentResource->owningDevice->DSVHeap->GetCpuHandle(tx.dsvIDX);
 				dsvptr = &dsv;
@@ -238,7 +256,7 @@ namespace RGL {
 
 		auto neededState = thisTexture.dsvAllocated() ? depthReadState : colorReadState;
 
-		SyncIfNeeded(thisTexture.parentResource, neededState);
+		SyncIfNeeded(thisTexture, neededState);
 
 		bool isGraphics = (bool)currentRenderPipeline;
 
@@ -340,10 +358,10 @@ namespace RGL {
 		auto fromBuffer = std::static_pointer_cast<BufferD3D12>(from.buffer);
 		auto toBuffer = std::static_pointer_cast<BufferD3D12>(to.buffer);
 
-		auto fromBufferCurrentState = GetCurrentResourceState(fromBuffer.get());
+		auto fromBufferCurrentState = GetBufferCurrentResourceState(fromBuffer.get());
 		SyncIfNeeded(fromBuffer.get(), D3D12_RESOURCE_STATE_COPY_SOURCE, true);
 
-		auto oldState = GetCurrentResourceState(toBuffer.get());
+		auto oldState = GetBufferCurrentResourceState(toBuffer.get());
 
 		auto preBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
 			toBuffer->buffer.Get(),
@@ -387,8 +405,8 @@ namespace RGL {
 		box.back = 1;
 
 		// Copy the region from the source texture to the destination texture
-		SyncIfNeeded(from.texture.texture.dx.parentResource, D3D12_RESOURCE_STATE_COPY_SOURCE, true);
-		SyncIfNeeded(to.texture.texture.dx.parentResource, D3D12_RESOURCE_STATE_COPY_DEST, true);
+		SyncIfNeeded(from.texture.texture.dx, D3D12_RESOURCE_STATE_COPY_SOURCE, true);
+		SyncIfNeeded(to.texture.texture.dx, D3D12_RESOURCE_STATE_COPY_DEST, true);
 		commandList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, &box);
 
 	}
@@ -474,14 +492,14 @@ namespace RGL {
 		}
 
 		// track the resource if it's not already in there
-		auto it = activeResources.find(buffer);
+		auto it = activeBuffers.find(buffer);
 
-		if (it == activeResources.end()) {
-			activeResources[buffer] = {
+		if (it == activeBuffers.end()) {
+			activeBuffers[buffer] = {
 				.state = buffer->nativeState,
 				.written = written
 			};
-			it = activeResources.find(buffer);
+			it = activeBuffers.find(buffer);
 		}
 
 		auto current = (*it).second.state;
@@ -526,41 +544,56 @@ namespace RGL {
 		it->second.written = written;
 		
 	}
-	void CommandBufferD3D12::SyncIfNeeded(const TextureD3D12* texture, D3D12_RESOURCE_STATES needed, bool written)
+	void CommandBufferD3D12::SyncIfNeeded(TextureView texture, D3D12_RESOURCE_STATES needed, bool written)
 	{
-		auto it = activeResources.find(texture);
+		D3D12TextureLastUseKey key{texture.texture.dx.parentResource, texture.texture.dx.mip};
 
-		if (it == activeResources.end()) {
-			activeResources[texture] = {
-				.state = texture->nativeState,
-				.written = false
+		if (keyIsAllMips(key)) {
+			// transition all the mips
+			// must be done individually because they could all be in different states
+			auto numMips = texture.texture.dx.parentResource->numMips;
+			for (uint32_t i = 0; i < numMips; i++) {
+				TextureView copy = texture;
+				copy.texture.dx.mip = i;
+				SyncIfNeeded(copy, needed);
+			}
+		}
+		else {
+			auto it = activeTextures.find(key);
+
+			if (it == activeTextures.end()) {
+				activeTextures[key] = {
+					.state = texture.texture.dx.parentResource->nativeState,
+					.written = false
+				};
+				it = activeTextures.find(key);
+			}
+
+			auto current = (*it).second.state;
+			if (current == needed) {
+				return;
+			}
+
+			auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+				texture.texture.dx.parentResource->GetResource(),
+				current,
+				needed,
+				texture.texture.dx.mip
+			);
+			// update tracker
+			(*it).second = {
+				.state = needed,
+				.written = written
 			};
-			it = activeResources.find(texture);
+
+			//TODO: barriers of size 1 are inefficient. We should batch these somehow.
+			commandList->ResourceBarrier(1, &barrier);
 		}
-
-		auto current = (*it).second.state;
-		if (current == needed) {
-			return;
-		}
-
-		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-			texture->texture.Get(),
-			current,
-			needed
-		);
-		// update tracker
-		(*it).second = {
-			.state = needed,
-			.written = written
-		};
-
-		//TODO: barriers of size 1 are inefficient. We should batch these somehow.
-		commandList->ResourceBarrier(1, &barrier);
 	}
-	D3D12_RESOURCE_STATES CommandBufferD3D12::GetCurrentResourceState(const D3D12TrackedResource* resource)
+	D3D12_RESOURCE_STATES CommandBufferD3D12::GetBufferCurrentResourceState(const D3D12TrackedResource* resource)
 	{
-		auto it = activeResources.find(resource);
-		if (it != activeResources.end()) {
+		auto it = activeBuffers.find(resource);
+		if (it != activeBuffers.end()) {
 			return it->second.state;
 		}
 		else {
