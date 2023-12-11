@@ -236,8 +236,8 @@ namespace RGL {
 	TextureView TextureD3D12::GetViewForMip(uint32_t mip) const
 	{
 
-		bool hasSRV = mip <= mipHeapIndicesSRV.size();
-		bool hasUAV = mip <= mipHeapIndicesUAV.size();
+		bool hasSRV = mip < mipHeapIndicesSRV.size();
+		bool hasUAV = mip < mipHeapIndicesUAV.size();
 
 		return TextureView{ {
 			.dsvIDX = dsvIDX,
