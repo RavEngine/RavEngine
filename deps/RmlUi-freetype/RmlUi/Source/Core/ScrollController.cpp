@@ -4,7 +4,7 @@
  * For the latest information, see http://github.com/mikke89/RmlUi
  *
  * Copyright (c) 2008-2010 CodePoint Ltd, Shift Technology Ltd
- * Copyright (c) 2019 The RmlUi Team, and contributors
+ * Copyright (c) 2019-2023 The RmlUi Team, and contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,7 @@
 namespace Rml {
 
 static constexpr float AUTOSCROLL_SPEED_FACTOR = 0.09f;
-static constexpr float AUTOSCROLL_DEADZONE = 10.0f; // [dp]
+static constexpr float AUTOSCROLL_DEADZONE = 10.0f;            // [dp]
 
 static constexpr float SMOOTHSCROLL_WINDOW_SIZE = 50.f;        // The window where smoothing is applied, as a distance from scroll start and end. [dp]
 static constexpr float SMOOTHSCROLL_MAX_VELOCITY = 10'000.f;   // [dp/s]
@@ -50,21 +50,21 @@ static Vector2f CalculateAutoscrollVelocity(Vector2f target_delta, float dp_rati
 {
 	target_delta = target_delta / dp_ratio;
 	target_delta = {
-		Math::AbsoluteValue(target_delta.x) < AUTOSCROLL_DEADZONE ? 0.f : target_delta.x,
-		Math::AbsoluteValue(target_delta.y) < AUTOSCROLL_DEADZONE ? 0.f : target_delta.y,
+		Math::Absolute(target_delta.x) < AUTOSCROLL_DEADZONE ? 0.f : target_delta.x,
+		Math::Absolute(target_delta.y) < AUTOSCROLL_DEADZONE ? 0.f : target_delta.y,
 	};
 
 	// We use a signed square model for the velocity, which seems to work quite well. This is mostly about feeling and tuning.
-	return AUTOSCROLL_SPEED_FACTOR * target_delta * Math::AbsoluteValue(target_delta);
+	return AUTOSCROLL_SPEED_FACTOR * target_delta * Math::Absolute(target_delta);
 }
 
 // Determines the smoothscroll velocity based on the distance to the target, and the distance scrolled so far. [px/s]
 static Vector2f CalculateSmoothscrollVelocity(Vector2f target_delta, Vector2f scrolled_distance, float dp_ratio)
 {
-	scrolled_distance = Math::AbsoluteValue(scrolled_distance) / dp_ratio;
+	scrolled_distance = Math::Absolute(scrolled_distance) / dp_ratio;
 	target_delta = target_delta / dp_ratio;
 
-	const Vector2f target_delta_abs = Math::AbsoluteValue(target_delta);
+	const Vector2f target_delta_abs = Math::Absolute(target_delta);
 	Vector2f target_delta_signum = {
 		target_delta.x > 0.f ? 1.f : (target_delta.x < 0.f ? -1.f : 0.f),
 		target_delta.y > 0.f ? 1.f : (target_delta.y < 0.f ? -1.f : 0.f),
@@ -128,7 +128,7 @@ bool ScrollController::Update(Vector2i mouse_position, float dp_ratio)
 		UpdateAutoscroll(mouse_position, dp_ratio);
 	else if (mode == Mode::Smoothscroll)
 		UpdateSmoothscroll(dp_ratio);
-	
+
 	return mode != Mode::None;
 }
 

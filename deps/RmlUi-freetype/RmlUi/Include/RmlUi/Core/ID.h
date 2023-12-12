@@ -4,7 +4,7 @@
  * For the latest information, see http://github.com/mikke89/RmlUi
  *
  * Copyright (c) 2008-2010 CodePoint Ltd, Shift Technology Ltd
- * Copyright (c) 2019 The RmlUi Team, and contributors
+ * Copyright (c) 2019-2023 The RmlUi Team, and contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -15,7 +15,7 @@
  *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -26,7 +26,6 @@
  *
  */
 
- 
 #ifndef RMLUI_CORE_ID_H
 #define RMLUI_CORE_ID_H
 
@@ -34,8 +33,7 @@
 
 namespace Rml {
 
-enum class ShorthandId : uint8_t
-{
+enum class ShorthandId : uint8_t {
 	Invalid,
 
 	/*
@@ -61,6 +59,7 @@ enum class ShorthandId : uint8_t
 	TransformOrigin,
 	Flex,
 	FlexFlow,
+	Nav,
 
 	NumDefinedIds,
 	FirstCustomId = NumDefinedIds,
@@ -69,9 +68,7 @@ enum class ShorthandId : uint8_t
 	MaxNumIds = 0xff
 };
 
-
-enum class PropertyId : uint8_t
-{
+enum class PropertyId : uint8_t {
 	Invalid,
 
 	/*
@@ -129,6 +126,7 @@ enum class PropertyId : uint8_t
 	FontStyle,
 	FontWeight,
 	FontSize,
+	LetterSpacing,
 	TextAlign,
 	TextDecoration,
 	TextTransform,
@@ -172,6 +170,11 @@ enum class PropertyId : uint8_t
 	FlexWrap,
 	JustifyContent,
 
+	NavUp,
+	NavRight,
+	NavDown,
+	NavLeft,
+
 	NumDefinedIds,
 	FirstCustomId = NumDefinedIds,
 
@@ -179,9 +182,8 @@ enum class PropertyId : uint8_t
 	MaxNumIds = 128
 };
 
-enum class MediaQueryId : uint8_t
-{
-	Invalid, 
+enum class MediaQueryId : uint8_t {
+	Invalid,
 
 	Width,
 	MinWidth,
@@ -201,8 +203,7 @@ enum class MediaQueryId : uint8_t
 	NumDefinedIds
 };
 
-enum class EventId : uint16_t 
-{
+enum class EventId : uint16_t {
 	Invalid,
 
 	// Core events

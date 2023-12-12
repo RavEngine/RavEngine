@@ -4,7 +4,7 @@
  * For the latest information, see http://github.com/mikke89/RmlUi
  *
  * Copyright (c) 2008-2010 CodePoint Ltd, Shift Technology Ltd
- * Copyright (c) 2019 The RmlUi Team, and contributors
+ * Copyright (c) 2019-2023 The RmlUi Team, and contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -15,7 +15,7 @@
  *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -40,13 +40,12 @@ class ElementText;
 class ElementFormControl;
 
 /**
-	An abstract widget for editing and navigating around a text field.
+    An abstract widget for editing and navigating around a text field.
 
-	@author Peter Curry
+    @author Peter Curry
  */
 
-class WidgetTextInput : public EventListener
-{
+class WidgetTextInput : public EventListener {
 public:
 	WidgetTextInput(ElementFormControl* parent);
 	virtual ~WidgetTextInput();
@@ -96,6 +95,8 @@ public:
 protected:
 	enum class CursorMovement { Begin = -4, BeginLine = -3, PreviousWord = -2, Left = -1, Right = 1, NextWord = 2, EndLine = 3, End = 4 };
 
+	float GetAlignmentSpecificTextOffset(const char* p_begin, int line_index) const;
+
 	/// Processes the "keydown" and "textinput" event to write to the input field, and the "focus" and
 	/// "blur" to set the state of the cursor.
 	void ProcessEvent(Event& event) override;
@@ -120,6 +121,9 @@ protected:
 	/// Gets the parent element containing the widget.
 	Element* GetElement() const;
 
+	/// Returns true if the text input element is currently focused.
+	bool IsFocused() const;
+
 	/// Dispatches a change event to the widget's element.
 	void DispatchChangeEvent(bool linebreak = false);
 
@@ -133,13 +137,15 @@ private:
 	/// Moves the cursor along the current line.
 	/// @param[in] movement Cursor movement operation.
 	/// @param[in] select True if the movement will also move the selection cursor, false if not.
+	/// @param[out] out_of_bounds Set to true if the resulting line position is out of bounds, false if not.
 	/// @return True if selection was changed.
-	bool MoveCursorHorizontal(CursorMovement movement, bool select);
+	bool MoveCursorHorizontal(CursorMovement movement, bool select, bool& out_of_bounds);
 	/// Moves the cursor up and down the text field.
 	/// @param[in] x How far to move the cursor.
 	/// @param[in] select True if the movement will also move the selection cursor, false if not.
+	/// @param[out] out_of_bounds Set to true if the resulting line position is out of bounds, false if not.
 	/// @return True if selection was changed.
-	bool MoveCursorVertical(int distance, bool select);
+	bool MoveCursorVertical(int distance, bool select, bool& out_of_bounds);
 	// Move the cursor to utf-8 boundaries, in case it was moved into the middle of a multibyte character.
 	/// @param[in] forward True to seek forward, else back.
 	void MoveCursorToCharacterBoundaries(bool forward);
@@ -179,7 +185,8 @@ private:
 	void UpdateCursorPosition(bool update_ideal_cursor_position);
 
 	/// Expand or shrink the text selection to the position of the cursor.
-	/// @param[in] selecting True if the new position of the cursor should expand / contract the selection area, false if it should only set the anchor for future selections.
+	/// @param[in] selecting True if the new position of the cursor should expand / contract the selection area, false if it should only set the
+	/// anchor for future selections.
 	/// @return True if selection was changed.
 	bool UpdateSelection(bool selecting);
 	/// Removes the selection of text.
@@ -193,13 +200,13 @@ private:
 	/// Split one line of text into three parts, based on the current selection.
 	/// @param[out] pre_selection The section of unselected text before any selected text on the line.
 	/// @param[out] selection The section of selected text on the line.
-	/// @param[out] post_selection The section of unselected text after any selected text on the line. If there is no selection on the line, then this will be empty.
+	/// @param[out] post_selection The section of unselected text after any selected text on the line. If there is no selection on the line, then this
+	/// will be empty.
 	/// @param[in] line The text making up the line.
 	/// @param[in] line_begin The absolute index at the beginning of the line.
 	void GetLineSelection(String& pre_selection, String& selection, String& post_selection, const String& line, int line_begin) const;
 
-	struct Line
-	{
+	struct Line {
 		// Offset into the text field's value.
 		int value_offset;
 		// The size of the contents of the line (including the trailing endline, if that terminated the line).

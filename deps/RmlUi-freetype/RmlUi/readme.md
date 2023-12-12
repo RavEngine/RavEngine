@@ -105,7 +105,7 @@ Make sure to replace the path to vcpkg. When this completes, feel free to test t
 
 #### Conan
 
-RmlUi is readily available from [ConanCenter](https://conan.io/center/rmlui).
+RmlUi is readily available from [ConanCenter](https://conan.io/center/recipes/rmlui).
 
 
 ## Integrating RmlUi
@@ -125,7 +125,7 @@ Several [samples](Samples/) demonstrate everything from basic integration to mor
 
 To ease the integration of RmlUi, the library includes [many backends](Backends/) adding support for common renderers and platforms. The following terms are used here:
 
-- ***Renderer***: Implements the [render interface](https://mikke89.github.io/RmlUiDoc/pages/cpp_manual/interfaces/render) for a given rendering API, and provides initialization code when necessary.
+- ***Renderer***: Implements the [render interface](https://mikke89.github.io/RmlUiDoc/pages/cpp_manual/interfaces/render.html) for a given rendering API, and provides initialization code when necessary.
 - ***Platform***: Implements the [system interface](https://mikke89.github.io/RmlUiDoc/pages/cpp_manual/interfaces/system.html) for a given platform (operating system or window library), and adds procedures for providing input to RmlUi contexts.
 - ***Backend***: Combines a renderer and a platform for a complete windowing framework sample, implementing the basic [Backend interface](Backends/RmlUi_Backend.h).
 
@@ -360,11 +360,14 @@ Users can now edit the text field to change the animal. The data bindings ensure
 **[alt:V](https://altv.mp/) installer - a multiplayer client for GTA:V**\
 ![alt:V installer collage](https://user-images.githubusercontent.com/5490330/230487770-275fe98f-753f-4b35-b2e1-1e20a798f5e8.png)
 
-**[Unvanquished](https://unvanquished.net/) - a first-person shooter game with real-time strategy elements**\
+**[Unvanquished](https://unvanquished.net/) - a first-person shooter game with real-time strategy elements - menus and HUD in RmlUi**\
 ![Unvanquished 0.54 collage](https://user-images.githubusercontent.com/5490330/230487771-5108a273-8b76-4216-8324-d9e5af102622.jpg)
 
 **Installer software by [@xland](https://github.com/xland)**\
 ![xland installer collage](https://user-images.githubusercontent.com/5490330/230487763-ec4d28e7-7ec6-44af-89f2-d2cbad8f44c1.png)
+
+**[TruckersMP](https://truckersmp.com/) - a multiplayer mod for truck simulators - chat box in RmlUi**\
+![TruckersMP](https://raw.githubusercontent.com/mikke89/RmlUiDoc/8ce505124daec1a9fdff0327be495fc2e43a37cf/assets/gallery/truckers_mp.webp)
 
 **Form controls from the 'demo' sample**\
 ![Form controls](https://github.com/mikke89/RmlUiDoc/blob/3f319d8464e73b821179ff8d20537013af5b9810/assets/gallery/forms.png)
@@ -419,7 +422,7 @@ RmlUi is published under the [MIT license](LICENSE.txt). The library includes th
 MIT License
 
 Copyright (c) 2008-2014 CodePoint Ltd, Shift Technology Ltd, and contributors\
-Copyright (c) 2019-2021 The RmlUi Team, and contributors
+Copyright (c) 2019-2023 The RmlUi Team, and contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -11,6 +11,47 @@
 * [RmlUi 3.0](#rmlui-30)
 * [RmlUi 2.0](#rmlui-20)
 
+
+## RmlUi 6.0 (WIP)
+
+### Major layout engine improvements
+
+- Make layout more conformant to CSS specification.
+  - Rewritten inline layouting.
+  - Fixed more than a hundred CSS tests, including ACID1.
+- Improve readability and maintainability:
+  - Better separation of classes, reduce available state.
+  - Make classes better conform to CSS terminology.
+  - Improve call-graph, flow from parent to child, avoid mutable calls into ancestors.
+- Fix long-standing issues.
+  - Allow tables and flexboxes to be absolutely positioned or floated.
+  - Allow nested flexboxes: Flex items can now be flex containers themselves. #320
+  - Better handling of block-level boxes in inline formatting contexts. #392
+
+More details to be posted later. Expect some possible layout shifts in existing documents, usually due to better CSS conformance. Some new issues are expected during development, please report bugs, and layout changes that are not in compliance with CSS.
+
+### RCSS Properties
+
+- New `display` property values: `flow-root`, `inline-flex`, `inline-table`.
+- New `vertical-align` property value: `center`.
+- Added support for `letter-spacing` property. #429 (thanks @igorsegallafa)
+
+### Breaking changes
+
+- Possible layout changes, usually due to better CSS conformance.
+- Reworked font engine interface, in particular in terms of font metrics and letter-spacing.
+
+Changed `Box` enums and `Property` units as follows:
+- `Box::Area` -> `BoxArea` (e.g. `Box::BORDER` -> `BoxArea::Border`, values now in titlecase).
+- `Box::Edge` -> `BoxEdge` (e.g. `Box::TOP` -> `BoxEdge::Top`, values now in titlecase).
+- `Box::Direction` -> `BoxDirection` (e.g. `Box::VERTICAL` -> `BoxDirection::Vertical`, values now in titlecase).
+- `Property::Unit` -> `Unit` (e.g. `Property::PX` -> `Unit::PX`).
+- Replaced `Element::ResolveNumericProperty` with `Element::ResolveLength` and `Element::ResolveNumericValue`. Can be used together with `Property::GetNumericValue`.
+
+Removed deprecated functionality:
+- Removed the `<datagrid>` and `<dataselect>` elements, related utilities, and associated tutorials. Users are encouraged to replace this functionality by [tables](https://mikke89.github.io/RmlUiDoc/pages/rcss/tables.html), [select boxes](https://mikke89.github.io/RmlUiDoc/pages/rml/forms.html#select), and [data bindings](https://mikke89.github.io/RmlUiDoc/pages/data_bindings.html).
+
+
 ## RmlUi 5.1
 
 ### New scrolling features
