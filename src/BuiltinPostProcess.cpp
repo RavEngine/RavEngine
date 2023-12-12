@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #include "BuiltinPostProcess.hpp"
 #include <RGL/RGL.hpp>
 #include <RGL/Texture.hpp>
@@ -158,3 +159,4 @@ void BloomEffect::Preamble(dim_t<int> targetSize){
 }
 
 }
+#endif

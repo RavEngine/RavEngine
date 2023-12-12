@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #include <RGL/RGL.hpp>
 #include <RGL/Types.hpp>
 #include <RGL/Texture.hpp>
@@ -76,3 +77,4 @@ PostProcessPass::PostProcessPass(const std::string_view name, const PostProcessC
 }
 
 }
+#endif

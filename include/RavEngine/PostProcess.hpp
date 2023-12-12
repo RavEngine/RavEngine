@@ -1,4 +1,5 @@
 #pragma once
+#if !RVE_SERVER
 #include <string_view>
 #include <RGL/Pipeline.hpp>
 #include "Ref.hpp"
@@ -95,3 +96,4 @@ struct PostProcessEffectStack{
 };
 
 }
+#endif

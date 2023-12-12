@@ -1,4 +1,5 @@
 #pragma once
+#if !RVE_SERVER
 #include "PostProcess.hpp"
 
 namespace RavEngine{
@@ -62,3 +63,4 @@ private:
 };
 
 }
+#endif
