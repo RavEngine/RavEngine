@@ -56,6 +56,9 @@ private:
     
     RGLSamplerPtr sampler;
     Ref<Texture> tempTexture;
+    Ref<BloomDownsamplePass> downsamplePass;
+    Ref<BloomUpsamplePass> upsamplePass;
+    Ref<BloomApplyPass> applyPass;
 };
 
 }

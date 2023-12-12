@@ -7,8 +7,6 @@
 
 namespace RavEngine{
 
-constexpr static auto samplePassCount = 4;
-
 BloomEffect::BloomDownsamplePass::BloomDownsamplePass() : PostProcessPass("bloom_downsample", {
     .bindings = {
         {
@@ -86,26 +84,9 @@ BloomEffect::BloomEffect(){
         .addressModeW = RGL::SamplerAddressMode::Clamp,
     });
 
-    auto downsamplePass = New<BloomDownsamplePass>();
-    auto upsamplePass = New<BloomUpsamplePass>();
-    for(int i = 0; i < samplePassCount; i++){
-        auto instance = New<BloomDownsamplePassInstance>(downsamplePass, i == 0);
-        instance->inputSamplerBindings[1] = sampler;
-        passes.push_back(instance);
-    }
-    for(int i = 0; i < samplePassCount - 1; i++){
-        auto instance = New<BloomUpsamplePassInstance>(upsamplePass, i == samplePassCount - 1);
-        passes.push_back(instance);
-        instance->inputSamplerBindings[1] = sampler;
-    }
-
-    auto applyPass = New<BloomApplyPass>();
-    auto applyPassInstance = New<BloomApplyPassInstance>(applyPass);
-    applyPassInstance->inputSamplerBindings[2] = sampler;
-    passes.push_back(applyPassInstance);
-
-    // make sure the intermediate texture is reset
-    passes.front()->clearOutputBeforeRendering = true;
+    downsamplePass = New<BloomDownsamplePass>();
+    upsamplePass = New<BloomUpsamplePass>();
+    applyPass = New<BloomApplyPass>();
 }
 
 void BloomEffect::Preamble(dim_t<int> targetSize){
@@ -119,10 +100,31 @@ void BloomEffect::Preamble(dim_t<int> targetSize){
     }
 
     if (needsNewTexture){
+        passes.clear();
 
-        dim_t<int> size{ targetSize.width / 2, targetSize.height / 2 };
+        uint32_t samplePassCount = std::log2(std::min(targetSize.width / 2, targetSize.height / 2));
+
+        for (int i = 0; i < samplePassCount; i++) {
+            auto instance = New<BloomDownsamplePassInstance>(downsamplePass, i == 0);
+            instance->inputSamplerBindings[1] = sampler;
+            passes.push_back(instance);
+        }
+        for (int i = 0; i < samplePassCount - 1; i++) {
+            auto instance = New<BloomUpsamplePassInstance>(upsamplePass, i == samplePassCount - 1);
+            passes.push_back(instance);
+            instance->inputSamplerBindings[1] = sampler;
+        }
+
+        auto applyPassInstance = New<BloomApplyPassInstance>(applyPass);
+        applyPassInstance->inputSamplerBindings[2] = sampler;
+        passes.push_back(applyPassInstance);
+
+        // make sure the intermediate texture is reset
+        passes.front()->clearOutputBeforeRendering = true;
+
+        dim_t<float> size{ targetSize.width / 2, targetSize.height / 2 };
         tempTexture = New<RuntimeTexture>(size.width, size.height, Texture::Config{
-            .mipLevels = samplePassCount, 
+            .mipLevels = uint8_t(samplePassCount), 
             .enableRenderTarget = true,
             .format = RGL::TextureFormat::RGBA16_Sfloat,
             .debugName = "Bloom intermediate texture"
@@ -133,7 +135,7 @@ void BloomEffect::Preamble(dim_t<int> targetSize){
         auto underlying = tempTexture->GetRHITexturePointer();
         for (int i = 0; i < samplePassCount; i++) {
             passes[i]->outputBinding = underlying->GetViewForMip(i);
-            std::static_pointer_cast<BloomDownsamplePassInstance>(passes[i])->outputSize = size;
+            std::static_pointer_cast<BloomDownsamplePassInstance>(passes[i])->outputSize = { int(size.width), int(size.height) };
             if (i != 0) {
                 passes[i]->inputBindings[0] = underlying->GetViewForMip(i - 1);
             }
@@ -148,7 +150,7 @@ void BloomEffect::Preamble(dim_t<int> targetSize){
 
             size.width *= 2; size.height *= 2;
 
-            std::static_pointer_cast<BloomDownsamplePassInstance>(passes[i])->outputSize = size;
+            std::static_pointer_cast<BloomDownsamplePassInstance>(passes[i])->outputSize = { int(size.width), int(size.height) };
         }
         passes.back()->inputBindings[1] = underlying->GetViewForMip(0); // EngineColor is input[0] 
         passes.back()->outputBinding = {};
