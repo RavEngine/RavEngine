@@ -1,6 +1,8 @@
-[![Releases](https://img.shields.io/badge/Version-2.3.0-orange.svg)](https://github.com/sammycage/lunasvg/releases)
+[![Releases](https://img.shields.io/badge/Version-2.3.8-orange.svg)](https://github.com/sammycage/lunasvg/releases)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/sammycage/lunasvg/blob/master/LICENSE)
 [![Build Status](https://github.com/sammycage/lunasvg/actions/workflows/ci.yml/badge.svg)](https://github.com/sammycage/lunasvg/actions)
+
+> If you like the work lunasvg is doing please consider a small donation : [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/sammycage)
 
 # LunaSVG - SVG rendering library in C++
 
@@ -63,7 +65,7 @@ make install
 
 ## Demo
 
-While building lunasvg example it generates a simple SVG to PNG converter which can be used to convert SVG file to PNG file.
+By enabling the `LUNASVG_BUILD_EXAMPLES` option during the CMake configuration, the lunasvg build includes a simple SVG to PNG converter for easy conversion of SVG files to PNG format.
 
 Run Demo.
 ```
@@ -76,12 +78,7 @@ svg2png [filename] [resolution] [bgColor]
 - [PICsimLab](https://github.com/lcgamboa/picsimlab)
 - [MoneyManagerEx](https://github.com/moneymanagerex/moneymanagerex)
 - [RmlUi](https://github.com/mikke89/RmlUi)
-- [EKA2L1](https://github.com/EKA2L1/EKA2L1)
-
-## Support Me
-
-If you like the work lunasvg is doing please consider a small donation :
-
-[![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/sammycage)
-[![Donate](https://img.shields.io/badge/Donate-BuyMeACoffee-yellow.svg)](https://www.buymeacoffee.com/sammycage)
-[![Sponsor](https://img.shields.io/badge/Sponsor-Patreon-orange.svg)](https://patreon.com/sammycage)
+- [EKA2L1](https://github.com/EKA2L/EKA2L1)
+- [ObEngine](https://github.com/ObEngine/ObEngine)
+- [OTTO](https://github.com/bitfieldaudio/OTTO)
+- [EmulationStation-DE](https://gitlab.com/es-de/emulationstation-de)
