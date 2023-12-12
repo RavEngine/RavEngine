@@ -98,7 +98,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        compiler: [ {cc: "/usr/bin/gcc-12", cxx: "/usr/bin/g++-12", packages: "g++-12 gcc-12"}, {cc: "/usr/bin/clang-16", cxx: "/usr/bin/clang++-16", packages: "clang-16 llvm-16 llvm-16-dev" } ]
+        compiler: [ {cc: "/usr/bin/gcc-12", cxx: "/usr/bin/g++-12"}, {cc: "/usr/bin/clang-16", cxx: "/usr/bin/clang++-16"} ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -112,7 +112,7 @@ jobs:
               sudo add-apt-repository -y "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main"
               sudo apt-get update -y
               sudo apt remove build-essential -y
-              sudo apt-get install cmake ${{ matrix.packages }} ninja-build libgl1-mesa-dev libwayland-dev libxkbcommon-dev libasound2-dev libegl-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends
+              sudo apt-get install cmake g++-12 gcc-12 clang-16 llvm-16 llvm-16-dev ninja-build libgl1-mesa-dev libwayland-dev libxkbcommon-dev libasound2-dev libegl-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends
       - name: Build and Test
         run: |
             cd test 
