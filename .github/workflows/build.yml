@@ -98,7 +98,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        compiler: [ {cc: "/usr/bin/gcc-12", cxx: "/usr/bin/g++-12"}, {cc: "/usr/bin/clang-16", cxx: "/usr/bin/clang++-16"} ]
+        compiler: [ {cc: "/usr/bin/gcc-12", cxx: "/usr/bin/g++-12", link: "DEFAULT"}, {cc: "/usr/bin/clang-16", cxx: "/usr/bin/clang++-16", link: "LLD"} ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -113,10 +113,18 @@ jobs:
               sudo apt-get update -y
               sudo apt remove build-essential -y
               sudo apt-get install cmake g++-12 gcc-12 clang-16 llvm-16 llvm-16-dev ninja-build libgl1-mesa-dev libwayland-dev libxkbcommon-dev libasound2-dev libegl-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends
-      - name: Build and Test
+      - name: Configure
         run: |
-            cd test 
-            CC=${{ matrix.compiler.cc }} CXX=${{ matrix.compiler.cxx }} ./test-linux.sh
+            mkdir -p build && cd build
+            CC=${{ matrix.compiler.cc }} CXX=${{ matrix.compiler.cxx }} cmake -G "Ninja" -DRAVENGINE_BUILD_TESTS=ON -DCMAKE_LINKER_TYPE=${{ matrix.compiler.link }} ..
+      - name: Build
+        run: |
+            cd build
+            cmake --build . --config debug --target RavEngine_TestBasics
+      - name: Test
+        run: | 
+          cd build
+          ctest -C debug
       - name: Output test logs
         if: ${{ failure() }}
         run: cat build/Testing/Temporary/LastTest.log
