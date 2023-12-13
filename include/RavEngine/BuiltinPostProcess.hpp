@@ -62,5 +62,16 @@ private:
     Ref<BloomApplyPass> applyPass;
 };
 
+struct FXAAEffect : public PostProcessEffect {
+    FXAAEffect();
+private:
+    struct FXAAPass : public PostProcessPass {
+        FXAAPass();
+    };
+    struct FXAAPassInstance : public PostProcessPassInstance {
+        FXAAPassInstance(Ref<FXAAPass> pass) : PostProcessPassInstance(pass, {}) {}
+    };
+};
+
 }
 #endif

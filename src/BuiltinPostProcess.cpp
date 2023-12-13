@@ -158,5 +158,35 @@ void BloomEffect::Preamble(dim_t<int> targetSize){
     }
 }
 
+FXAAEffect::FXAAEffect()
+{
+    auto pass = New<FXAAPass>();
+    auto instance = New<FXAAPassInstance>(pass);
+    passes.push_back(instance);
+
+    auto sampler = GetApp()->GetDevice()->CreateSampler({
+        .addressModeU = RGL::SamplerAddressMode::Clamp,
+        .addressModeV = RGL::SamplerAddressMode::Clamp,
+        .addressModeW = RGL::SamplerAddressMode::Clamp,
+    });
+
+    instance->inputSamplerBindings[1] = sampler;
+}
+
+FXAAEffect::FXAAPass::FXAAPass() : PostProcessPass("fxaa", {
+    .bindings = {
+        {
+            .binding = 0,
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+        {
+            .binding = 1,
+            .type = RGL::BindingType::Sampler,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+    },
+}){}
+
 }
 #endif
