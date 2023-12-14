@@ -94,7 +94,9 @@ endif()
 # Remove 'lib' prefix for shared libraries on Windows
 if(MSVC)
 	set(CMAKE_SHARED_LIBRARY_PREFIX "")
-	add_definitions(/MP)			# parallelize each target
+	if(NOT CMAKE_GENERATOR STREQUAL "Ninja")
+    	add_definitions(/MP)				# parallelize each target, unless Ninja is the generator
+	endif()
 	if (UWP)
 		add_definitions(/sdl-)
 	endif()
