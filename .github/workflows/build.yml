@@ -86,14 +86,13 @@ jobs:
         matrix:
             arch: [x64, ARM64]
             target: [Windows, WindowsStore]
-            generator: ["Visual Studio", "Ninja"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           submodules: true
       - name: Configure
-        run: mkdir build && cd build; cmake -G "${{ matrix.generator }}" -DCMAKE_SYSTEM_NAME=${{ matrix.target }} -DCMAKE_SYSTEM_VERSION="10.0" -Wno-dev -A${{ matrix.arch }} .. ; cmake ..
+        run: mkdir build && cd build; cmake -DCMAKE_SYSTEM_NAME=${{ matrix.target }} -DCMAKE_SYSTEM_VERSION="10.0" -Wno-dev -A${{ matrix.arch }} .. ; cmake ..
       - name: Build
         run: cd build; cmake --build . --config release --target RavEngine
   
