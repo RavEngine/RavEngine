@@ -83,6 +83,8 @@ BloomEffect::BloomEffect(){
         .addressModeU = RGL::SamplerAddressMode::Clamp,
         .addressModeV = RGL::SamplerAddressMode::Clamp,
         .addressModeW = RGL::SamplerAddressMode::Clamp,
+        .minFilter = RGL::MinMagFilterMode::Linear,
+        .magFilter = RGL::MinMagFilterMode::Linear
     });
 
     downsamplePass = New<BloomDownsamplePass>();
