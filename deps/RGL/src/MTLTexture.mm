@@ -60,14 +60,23 @@ TextureMTL::TextureMTL(const std::shared_ptr<DeviceMTL> owningDevice, const Text
 }
 
 TextureView TextureMTL::GetDefaultView() const{
-    return texture;
+    return TextureView::NativeHandles::mtl_t{this, TextureView::NativeHandles::mtl_t::ALL_MIPS};
 }
 TextureView TextureMTL::GetViewForMip(uint32_t mip) const{
     if (mip == 0){
         return GetDefaultView();
     }
     
-    return mipTextures.at(mip-1);
+    return TextureView::NativeHandles::mtl_t{this, mip};
+}
+
+id<MTLTexture> TextureMTL::ViewToTexture(const TextureView& view){
+    if (view.texture.mtl.mip == TextureView::NativeHandles::mtl_t::ALL_MIPS){
+        return view.texture.mtl.texture->texture;
+    }
+    else{
+        return view.texture.mtl.texture->mipTextures.at(view.texture.mtl.mip - 1);
+    }
 }
 
 }

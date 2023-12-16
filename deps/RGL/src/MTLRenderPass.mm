@@ -64,12 +64,14 @@ RenderPassMTL::RenderPassMTL(const RenderPassConfig& config){
 #endif
 }
 
-void RenderPassMTL::SetAttachmentTexture(uint32_t index, const TextureView& texture){
-    [renderPassDescriptor.colorAttachments[index] setTexture:texture.texture.mtl];
+void RenderPassMTL::SetAttachmentTexture(uint32_t index, const TextureView& view){
+    auto texture = TextureMTL::ViewToTexture(view);
+    [renderPassDescriptor.colorAttachments[index] setTexture:texture];
 }
 
-void RenderPassMTL::SetDepthAttachmentTexture(const TextureView& texture){
-    [renderPassDescriptor.depthAttachment setTexture:texture.texture.mtl];
+void RenderPassMTL::SetDepthAttachmentTexture(const TextureView& view){
+    auto texture = TextureMTL::ViewToTexture(view);
+    [renderPassDescriptor.depthAttachment setTexture:texture];
 }
 void RenderPassMTL::SetStencilAttachmentTexture(const TextureView& texture){
     FatalError("SetStencilAttachmentTexture not implemented");

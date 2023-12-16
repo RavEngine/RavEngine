@@ -278,21 +278,25 @@ void CommandBufferMTL::SetComputeSampler(RGLSamplerPtr sampler, uint32_t index) 
     [currentComputeCommandEncoder setSamplerState:std::static_pointer_cast<SamplerMTL>(sampler)->sampler atIndex:index];
 }
 
-void CommandBufferMTL::SetVertexTexture(const TextureView& texture, uint32_t index){
-    [currentCommandEncoder setVertexTexture:texture.texture.mtl atIndex:index];
+void CommandBufferMTL::SetVertexTexture(const TextureView& view, uint32_t index){
+    auto texture = TextureMTL::ViewToTexture(view);
+    [currentCommandEncoder setVertexTexture:texture atIndex:index];
 }
-void CommandBufferMTL::SetFragmentTexture(const TextureView& texture, uint32_t index){
-    [currentCommandEncoder setFragmentTexture:texture.texture.mtl atIndex:index];
+void CommandBufferMTL::SetFragmentTexture(const TextureView& view, uint32_t index){
+    auto texture = TextureMTL::ViewToTexture(view);
+    [currentCommandEncoder setFragmentTexture:texture atIndex:index];
 }
-void CommandBufferMTL::SetComputeTexture(const TextureView& texture, uint32_t index){
-    [currentComputeCommandEncoder setTexture:texture.texture.mtl atIndex:index];
+void CommandBufferMTL::SetComputeTexture(const TextureView& view, uint32_t index){
+    auto texture = TextureMTL::ViewToTexture(view);
+    [currentComputeCommandEncoder setTexture:texture atIndex:index];
 }
 
-void CommandBufferMTL::CopyTextureToBuffer(TextureView& sourceTexture, const RGL::Rect &sourceRect, size_t offset, RGLBufferPtr destBuffer) {
+void CommandBufferMTL::CopyTextureToBuffer(TextureView& sourceView, const RGL::Rect &sourceRect, size_t offset, RGLBufferPtr destBuffer) {
+    auto sourceTexture = TextureMTL::ViewToTexture(sourceView);
     auto blitencoder = [currentCommandBuffer blitCommandEncoder];
     auto castedBuffer = std::static_pointer_cast<BufferMTL>(destBuffer);
     
-    id<MTLTexture> castedtexture = id<MTLTexture>(sourceTexture.texture.mtl);
+    id<MTLTexture> castedtexture = id<MTLTexture>(sourceTexture);
     
     auto bytesPerRow = bytesPerPixel([castedtexture pixelFormat]);
     bytesPerRow *= [castedtexture width];
@@ -320,7 +324,9 @@ void CommandBufferMTL::CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfi
 
 void CommandBufferMTL::CopyTextureToTexture(const TextureCopyConfig& from, const TextureCopyConfig& to){
     auto blitEncoder = [currentCommandBuffer blitCommandEncoder];
-    [blitEncoder copyFromTexture:from.texture.texture.mtl toTexture:to.texture.texture.mtl];
+    auto fromTexture = TextureMTL::ViewToTexture(from.texture);
+    auto toTexture = TextureMTL::ViewToTexture(to.texture);
+    [blitEncoder copyFromTexture:fromTexture toTexture:toTexture];
     [blitEncoder endEncoding];
 }
 

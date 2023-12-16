@@ -13,6 +13,8 @@ struct TextureMTL : public ITexture{
     OBJC_ID(CAMetalDrawable) drawable = nullptr;
     OBJC_ID(MTLTexture) texture = nullptr;
     
+    static OBJC_ID(MTLTexture) ViewToTexture(const TextureView& view);
+    
     // default constructor, don't explicity use
     TextureMTL() : ITexture({0,0}){}
     virtual ~TextureMTL();
