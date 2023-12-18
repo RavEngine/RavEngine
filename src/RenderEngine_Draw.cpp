@@ -963,6 +963,13 @@ struct LightingType{
 				doPassWithCamData(camdata, renderDeferredPass);
 			}
 			mainCommandBuffer->EndRenderDebugMarker();
+            
+            if (VideoSettings.ssao){
+                for (const auto& camdata : view.camDatas) {
+                    //TODO: implement SSAO
+                    //doPassWithCamData(camdata, renderLightingPass);
+                }
+            }
 
 			// lighting pass
 			mainCommandBuffer->BeginRenderDebugMarker("Lighting Pass");

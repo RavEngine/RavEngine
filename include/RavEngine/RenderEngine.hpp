@@ -52,10 +52,10 @@ namespace RavEngine {
 
 		RGLTexturePtr shadowTexture;
 		RGLSamplerPtr textureSampler, shadowSampler, depthPyramidSampler;
-		RGLRenderPassPtr deferredRenderPass, unlitRenderPass, lightingRenderPass, ambientLightRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, shadowRenderPass, lightingClearRenderPass, deferredClearRenderPass, finalClearRenderPass, depthPyramidCopyPass;
+		RGLRenderPassPtr deferredRenderPass, unlitRenderPass, lightingRenderPass, ambientLightRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, shadowRenderPass, lightingClearRenderPass, deferredClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, ssaoPass;
 
 		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, spotLightRenderPipeline, lightToFBRenderPipeline, depthPyramidCopyPipeline,
-			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, guiRenderPipeline;
+			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, guiRenderPipeline, ssaoPipeline;
 		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline;
 		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer, spotLightVertexBuffer, spotLightIndexBuffer,
 			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer;
@@ -83,7 +83,8 @@ namespace RavEngine {
         
 		constexpr static RGL::TextureFormat
 			normalTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
-			colorTexFormat = RGL::TextureFormat::RGBA16_Sfloat;
+			colorTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
+            ssaoFormat = RGL::TextureFormat::R32_Float;
 
 		// the items made available to 
 		// user-defined materials
@@ -91,6 +92,10 @@ namespace RavEngine {
 			glm::mat4 viewProj;
 		};
 
+        struct ssaoUBO{
+            glm::mat4 invViewProj;
+        };
+        
 		struct AmbientLightUBO {
 			glm::ivec4 viewRect;
 		};
@@ -174,6 +179,7 @@ namespace RavEngine {
 		
 		static struct vs {
 			bool vsync = true;
+            bool ssao = true;
 		} VideoSettings;
 
 		void SyncVideoSettings();

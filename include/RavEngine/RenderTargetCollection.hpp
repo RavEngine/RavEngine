@@ -10,7 +10,7 @@ namespace RavEngine{
 	};
 
 	struct RenderTargetCollection {
-		RGLTexturePtr diffuseTexture, normalTexture, roughnessSpecularMetallicAOTexture, depthStencil, depthPyramidTexture, lightingTexture, lightingScratchTexture;
+		RGLTexturePtr diffuseTexture, normalTexture, roughnessSpecularMetallicAOTexture, depthStencil, depthPyramidTexture, lightingTexture, lightingScratchTexture, ssaoTexture;
 		RGL::ITexture* finalFramebuffer;
 		uint32_t pyramidSize = 0;			// square texture
 		uint32_t numPyramidLevels = 0;

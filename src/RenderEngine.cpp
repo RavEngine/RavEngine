@@ -1460,6 +1460,85 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		   },
 		});
     defaultPostEffectVSH = LoadShaderByFilename("defaultpostprocess.vsh", device);
+    
+    
+    auto ssaoLayout = device->CreatePipelineLayout({
+        .bindings = {
+            {
+                .binding = 0,
+                .type = RGL::BindingType::Sampler,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+            {
+                .binding = 1,
+                .type = RGL::BindingType::SampledImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+            {
+                .binding = 2,
+                .type = RGL::BindingType::SampledImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+        },
+        .constants = {{sizeof(ssaoUBO), 0,RGL::StageVisibility::Fragment}}
+    });
+    
+    ssaoPass = RGL::CreateRenderPass({
+        .attachments = {
+            {
+                .format = ssaoFormat,
+                .loadOp = RGL::LoadAccessOperation::Clear,
+                .storeOp = RGL::StoreAccessOperation::Store,
+            },
+        },
+    });
+    
+    ssaoPipeline = device->CreateRenderPipeline({
+        .stages = {
+                {
+                    .type = RGL::ShaderStageDesc::Type::Vertex,
+                    .shaderModule = defaultPostEffectVSH,
+                },
+                {
+                    .type = RGL::ShaderStageDesc::Type::Fragment,
+                    .shaderModule = LoadShaderByFilename("ssao.fsh", device),
+                }
+        },
+        .vertexConfig = {
+            .vertexBindings = {
+                {
+                    .binding = 0,
+                    .stride = sizeof(Vertex2D),
+                },
+            },
+            .attributeDescs = {
+                {
+                    .location = 0,
+                    .binding = 0,
+                    .offset = 0,
+                    .format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+                },
+            }
+        },
+        .inputAssembly = {
+            .topology = RGL::PrimitiveTopology::TriangleList,
+        },
+        .rasterizerConfig = {
+            .windingOrder = RGL::WindingOrder::Counterclockwise,
+        },
+        .colorBlendConfig = {
+            .attachments = {
+                {
+                    .format = ssaoFormat
+                },
+            }
+        },
+        .depthStencilConfig = {
+            .depthTestEnabled = false,
+            .depthWriteEnabled = false,
+        },
+        .pipelineLayout = ssaoLayout,
+    });
 }
 
 RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim size, bool createDepth)
@@ -1527,6 +1606,17 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 		.debugName = "Roughness, Specular, Metallic, AO gbuffer"
 		}
 	);
+    
+    collection.ssaoTexture = device->CreateTexture({
+        .usage = {.Sampled = true, .ColorAttachment = true },
+        .aspect = {.HasColor = true },
+        .width = width,
+        .height = height,
+        .format = ssaoFormat,
+        .initialLayout = RGL::ResourceLayout::Undefined,
+        .debugName = "SSAO gbuffer"
+        }
+    );
 
     const RGL::TextureConfig lightingConfig{
         .usage = {.Sampled = true, .ColorAttachment = true },
