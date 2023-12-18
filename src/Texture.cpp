@@ -124,7 +124,9 @@ void Texture::CreateTexture(int width, int height, const Config& config){
 
 Texture::~Texture() {
 	if (auto app = GetApp()) {
-		app->GetRenderEngine().gcTextures.enqueue(texture);
+        if (app->HasRenderEngine()){
+            app->GetRenderEngine().gcTextures.enqueue(texture);
+        }
 	}
 }
 #endif
