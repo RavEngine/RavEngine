@@ -924,7 +924,7 @@ namespace RavEngine {
             return newID;
         }
         
-        ~World();
+        virtual ~World();
         
 		constexpr static uint8_t id_size = 8;
 		Ref<Skybox> skybox;
