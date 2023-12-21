@@ -362,6 +362,11 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				.type = RGL::BindingType::SampledImage,
 				.stageFlags = RGL::BindingVisibility::Fragment,
 			},
+			{
+				.binding = 2,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
 		},
 		.constants = {
 			{

@@ -100,6 +100,7 @@ namespace RavEngine {
         
 		struct AmbientLightUBO {
 			glm::ivec4 viewRect;
+			uint32_t ssaoEnabled;
 		};
 
 		struct LightToFBUBO {
@@ -181,7 +182,7 @@ namespace RavEngine {
 		
 		static struct vs {
 			bool vsync = true;
-            bool ssao = true;
+            bool ssao = false;
 		} VideoSettings;
 
 		void SyncVideoSettings();

@@ -478,7 +478,8 @@ struct LightingType{
 				glm::ivec4 viewRect {0, 0, nextImgSize.width, nextImgSize.height};
 
 				AmbientLightUBO ambientUBO{
-					.viewRect = viewRect
+					.viewRect = viewRect,
+					.ssaoEnabled = VideoSettings.ssao
 				};
 
 				auto invviewproj = glm::inverse(viewproj);
@@ -492,6 +493,7 @@ struct LightingType{
 					mainCommandBuffer->SetScissor(fullSizeScissor);
 					mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
 					mainCommandBuffer->SetFragmentTexture(target.diffuseTexture->GetDefaultView(), 1);
+					mainCommandBuffer->SetFragmentTexture(target.ssaoTexture->GetDefaultView(), 2);
 
 					mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 					mainCommandBuffer->SetVertexBytes(ambientUBO, 0);

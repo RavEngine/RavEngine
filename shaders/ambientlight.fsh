@@ -4,10 +4,12 @@ layout(location = 0) out vec4 outcolor;
 
 layout(push_constant) uniform UniformBufferObject{
 	ivec4 viewRect;
+	uint ssao_enabled;
 } ubo;
 
 layout(binding = 0) uniform sampler g_sampler;
 layout(binding = 1) uniform texture2D t_albedo;
+layout(binding = 2) uniform texture2D t_ssao;
 
 layout(early_fragment_tests) in;
 void main()
@@ -20,6 +22,11 @@ void main()
 	float intensity = lightColor[3];
 	
 	vec3 albedo = texture(sampler2D(t_albedo,g_sampler), texcoord).xyz;
+
+	float ao = 1;
+	if (ubo.ssao_enabled > 0){
+		ao = texture(sampler2D(t_ssao, g_sampler), texcoord).r;
+	}
 	
-	outcolor = vec4(albedo * intensity * lightColor.xyz, 1);
+	outcolor = vec4(albedo * intensity * lightColor.xyz * ao, 1);
 }

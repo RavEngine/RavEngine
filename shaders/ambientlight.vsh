@@ -6,6 +6,7 @@ layout(location = 0) out vec4 outColorIntensity;
 
 layout(push_constant) uniform UniformBufferObject{
     ivec4 viewRect;
+    uint ssao_enabled;
 } ubo;
 
 void main()
