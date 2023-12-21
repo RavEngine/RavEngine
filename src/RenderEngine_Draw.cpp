@@ -965,10 +965,38 @@ struct LightingType{
 			mainCommandBuffer->EndRenderDebugMarker();
             
             if (VideoSettings.ssao){
+
+				auto renderSSAOPass = [this, &target, &nextImgSize, &worldOwning](auto&& viewproj, auto&& camPos, auto&& fullsizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+
+					ssaoUBO pushConstants{
+						.viewProj = viewproj,
+						.viewRect = {fullsizeViewport.x, fullsizeViewport.y, fullsizeViewport.width, fullsizeViewport.height},
+						.viewRegion = {renderArea.offset[0], renderArea.offset[1], renderArea.extent[0], renderArea.extent[1]}
+					};
+
+					mainCommandBuffer->SetViewport(fullsizeViewport);
+					mainCommandBuffer->SetScissor(renderArea);
+
+					mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+					mainCommandBuffer->SetFragmentBytes(pushConstants,0);
+					mainCommandBuffer->Draw(3);
+				};
+
+				ssaoPass->SetAttachmentTexture(0, view.collection.ssaoTexture->GetDefaultView());
+
+				mainCommandBuffer->BeginRendering(ssaoPass);
+				mainCommandBuffer->BindRenderPipeline(ssaoPipeline);
+				mainCommandBuffer->BeginRenderDebugMarker("SSAO");
+				mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+				mainCommandBuffer->SetFragmentTexture(view.collection.normalTexture->GetDefaultView(), 1);
+				mainCommandBuffer->SetFragmentTexture(view.collection.depthStencil->GetDefaultView(), 2);
+				mainCommandBuffer->BindBuffer(ssaoSamplesBuffer, 8);
+
                 for (const auto& camdata : view.camDatas) {
-                    //TODO: implement SSAO
-                    //doPassWithCamData(camdata, renderLightingPass);
+					doPassWithCamData(camdata, renderSSAOPass);
                 }
+				mainCommandBuffer->EndRendering();
+				mainCommandBuffer->EndRenderDebugMarker();
             }
 
 			// lighting pass

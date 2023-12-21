@@ -1479,8 +1479,13 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
                 .type = RGL::BindingType::SampledImage,
                 .stageFlags = RGL::BindingVisibility::Fragment,
             },
+			 {
+				.binding = 8,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
         },
-        .constants = {{sizeof(ssaoUBO), 0,RGL::StageVisibility::Fragment}}
+		.constants = {{sizeof(ssaoUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)}}
     });
     
     ssaoPass = RGL::CreateRenderPass({
@@ -1497,7 +1502,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
         .stages = {
                 {
                     .type = RGL::ShaderStageDesc::Type::Vertex,
-                    .shaderModule = defaultPostEffectVSH,
+                    .shaderModule = LoadShaderByFilename("ssao.vsh", device),
                 },
                 {
                     .type = RGL::ShaderStageDesc::Type::Fragment,
@@ -1539,6 +1544,32 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
         },
         .pipelineLayout = ssaoLayout,
     });
+
+	ssaoSamplesBuffer = device->CreateBuffer({
+		64,
+		{.StorageBuffer = true },
+		sizeof(glm::vec3),
+		RGL::BufferAccess::Private,
+		{.TransferDestination = true, .PixelShaderResource = true, .debugName = "Transient Buffer" }
+		}
+	);
+	
+	std::vector<glm::vec3> samples;
+	constexpr static auto nsamples = 64;
+	samples.reserve(nsamples);
+	for (uint32_t i = 0; i < nsamples; i++) {
+		glm::vec3 sample{
+			Random::get<float>(-1,1),
+			Random::get<float>(-1,1),
+			Random::get<float>(-1,1)
+		};
+
+		float scale = (float)i / 64.0;
+		scale = lerp(0.1f, 1.0f, scale * scale);
+		sample *= scale;
+		samples.push_back(sample);
+	}
+	ssaoSamplesBuffer->SetBufferData({ samples.data(), nsamples * sizeof(samples[0]) });
 }
 
 RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim size, bool createDepth)

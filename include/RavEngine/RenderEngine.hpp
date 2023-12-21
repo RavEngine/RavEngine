@@ -58,7 +58,7 @@ namespace RavEngine {
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, guiRenderPipeline, ssaoPipeline;
 		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline;
 		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer, spotLightVertexBuffer, spotLightIndexBuffer,
-			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer;
+			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, ssaoSamplesBuffer;
 		uint32_t nPointLightIndices = 0, nSpotLightIndices = 0;
 
 		constexpr static uint32_t initialVerts = 1024, initialIndices = 1536;
@@ -93,7 +93,9 @@ namespace RavEngine {
 		};
 
         struct ssaoUBO{
-            glm::mat4 invViewProj;
+            glm::mat4 viewProj;
+			glm::ivec4 viewRect;		// for the whole screen
+			glm::ivec4 viewRegion;   // for the virtual screen
         };
         
 		struct AmbientLightUBO {
