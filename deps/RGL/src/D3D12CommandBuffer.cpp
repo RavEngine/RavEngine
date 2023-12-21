@@ -260,13 +260,18 @@ namespace RGL {
 
 		auto neededState = thisTexture.dsvAllocated() ? depthReadState : colorReadState;
 
+
 		bool isGraphics = (bool)currentRenderPipeline;
 
 		const auto pipelineLayout = isGraphics ? currentRenderPipeline->pipelineLayout : currentComputePipeline->pipelineLayout;
 		const auto textureSlot = pipelineLayout->slotForTextureIdx(index);
 
-		SyncIfNeeded(thisTexture, neededState, textureSlot.isUAV);
+		// if this is a UAV, then we need the UAV state rather than pixel shader resource
+		if (textureSlot.isUAV) {
+			neededState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+		}
 
+		SyncIfNeeded(thisTexture, neededState, textureSlot.isUAV);
 
 		if (textureSlot.isUAV) {
 			assert(thisTexture.uavAllocated(), "Cannot bind this texture because it is not in a UAV heap!");
