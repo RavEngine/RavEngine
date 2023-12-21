@@ -15,7 +15,7 @@ namespace RGL {
 
         RGLCommandBufferPtr CreateCommandBuffer() final;
 
-        CommandQueueD3D12(Microsoft::WRL::ComPtr<ID3D12Device2> device, QueueType type);
+        CommandQueueD3D12(const DeviceD3D12* device, QueueType type);
         virtual ~CommandQueueD3D12() {}
 
         // Execute a command list.
@@ -37,6 +37,8 @@ namespace RGL {
         Microsoft::WRL::ComPtr<ID3D12Device2> m_d3d12Device;
         Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_d3d12CommandQueue;
         Microsoft::WRL::ComPtr<ID3D12Fence> m_d3d12Fence;
+
+        const DeviceD3D12* owningDevice = nullptr;
 
         HANDLE  m_FenceEvent;
         uint64_t m_FenceValue;

@@ -123,7 +123,7 @@ namespace RGL {
         return std::make_shared<DeviceD3D12>(dxgiAdapter4);
     }
 
-    DeviceD3D12::DeviceD3D12(decltype(adapter) adapter) : adapter(adapter), device(CreateDevice(adapter)), internalQueue(std::make_shared<CommandQueueD3D12>(device,QueueType::AllCommands)) {
+    DeviceD3D12::DeviceD3D12(decltype(adapter) adapter) : adapter(adapter), device(CreateDevice(adapter)), internalQueue(std::make_shared<CommandQueueD3D12>(this,QueueType::AllCommands)) {
 
         HANDLE deviceRemovedEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
         assert(deviceRemovedEvent != NULL);
@@ -281,7 +281,7 @@ namespace RGL {
 
     RGLCommandQueuePtr RGL::DeviceD3D12::CreateCommandQueue(QueueType type)
     {
-        return std::make_shared<CommandQueueD3D12>(device, type);
+        return std::make_shared<CommandQueueD3D12>(this, type);
     }
 
     RGLFencePtr RGL::DeviceD3D12::CreateFence(bool preSignaled)

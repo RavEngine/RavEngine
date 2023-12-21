@@ -39,7 +39,13 @@ namespace RGL {
 	}
 	void CommandBufferD3D12::Begin()
 	{
-
+		// recommended to set this once per frame
+		// we have global heaps for all resources of each type
+		ID3D12DescriptorHeap* heaps[] = {
+			owningQueue->owningDevice->CBV_SRV_UAVHeap->Heap(),
+			owningQueue->owningDevice->SamplerHeap->Heap(),
+		};
+		commandList->SetDescriptorHeaps(std::size(heaps), heaps);
 	}
 	void CommandBufferD3D12::End()
 	{
@@ -228,8 +234,7 @@ namespace RGL {
 		const auto pipelineLayout = currentRenderPipeline->pipelineLayout;
 		const auto samplerSlot = pipelineLayout->slotForSamplerIdx(index);
 		auto& samplerHeap = thisSampler->owningDevice->SamplerHeap;
-		ID3D12DescriptorHeap* heapForThis[] = { samplerHeap->Heap() };
-		commandList->SetDescriptorHeaps(std::size(heapForThis), heapForThis);
+
 		commandList->SetGraphicsRootDescriptorTable(samplerSlot, samplerHeap->GetGpuHandle(thisSampler->descriptorIndex));
 	}
 	void CommandBufferD3D12::SetComputeSampler(RGLSamplerPtr sampler, uint32_t index)
@@ -238,8 +243,7 @@ namespace RGL {
 		const auto pipelineLayout = currentComputePipeline->pipelineLayout;
 		const auto samplerSlot = pipelineLayout->slotForSamplerIdx(index);
 		auto& samplerHeap = thisSampler->owningDevice->SamplerHeap;
-		ID3D12DescriptorHeap* heapForThis[] = { samplerHeap->Heap() };
-		commandList->SetDescriptorHeaps(std::size(heapForThis), heapForThis);
+
 		commandList->SetComputeRootDescriptorTable(samplerSlot, samplerHeap->GetGpuHandle(thisSampler->descriptorIndex));
 	}
 	void CommandBufferD3D12::SetVertexTexture(const TextureView& texture, uint32_t index)
@@ -271,8 +275,7 @@ namespace RGL {
 			assert(thisTexture.srvAllocated(), "Cannot bind this texture because it is not in a SRV heap!");
 		}
 		auto& heap = thisTexture.parentResource->owningDevice->CBV_SRV_UAVHeap;
-		ID3D12DescriptorHeap* heapForThis[] = { heap->Heap() };
-		commandList->SetDescriptorHeaps(std::size(heapForThis), heapForThis);
+
 		if (isGraphics) {
 			commandList->SetGraphicsRootDescriptorTable(textureSlot.slot, heap->GetGpuHandle(textureSlot.isUAV ? thisTexture.uavIDX : thisTexture.srvIDX));
 		}

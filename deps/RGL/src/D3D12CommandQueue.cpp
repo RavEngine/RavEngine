@@ -24,10 +24,11 @@ namespace RGL {
 	{
 		return std::make_shared<CommandBufferD3D12>(shared_from_this());
 	}
-    CommandQueueD3D12::CommandQueueD3D12(ComPtr<ID3D12Device2> device, QueueType type)
+    CommandQueueD3D12::CommandQueueD3D12(const DeviceD3D12* device, QueueType type)
         : m_FenceValue(0),
         m_CommandListType(rgl2d3d12cmdlist(type)),
-        m_d3d12Device(device)
+        m_d3d12Device(device->device),
+        owningDevice(device)
     {
         D3D12_COMMAND_QUEUE_DESC desc = {};
         desc.Type = m_CommandListType;
