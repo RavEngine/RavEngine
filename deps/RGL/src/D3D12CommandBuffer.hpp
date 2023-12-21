@@ -124,7 +124,7 @@ namespace RGL {
 		virtual ~CommandBufferD3D12();
 	private:
 		void SyncIfNeeded(const BufferD3D12* buffer, D3D12_RESOURCE_STATES needed, bool written = false);
-		void SyncIfNeeded(TextureView texture, D3D12_RESOURCE_STATES needed, bool written = false);
+		void SyncIfNeeded(TextureView texture, D3D12_RESOURCE_STATES needed, bool written);
 		D3D12_RESOURCE_STATES GetBufferCurrentResourceState(const struct D3D12TrackedResource*);
 		HANDLE internalFenceEvent;
 		Microsoft::WRL::ComPtr<ID3D12Fence> internalFence;

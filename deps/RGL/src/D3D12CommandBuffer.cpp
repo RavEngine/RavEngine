@@ -95,7 +95,7 @@ namespace RGL {
 		for (const auto& attachment : currentRenderPass->config.attachments) {
 			auto& tx = currentRenderPass->textures[i].texture.dx;
 
-			SyncIfNeeded(tx, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			SyncIfNeeded(tx, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 
 			Assert(tx.rtvAllocated(),"This texture was not allocated as a render target!");
 			
@@ -117,7 +117,7 @@ namespace RGL {
 		{
 			if (currentRenderPass->depthTexture) {
 				auto& tx = currentRenderPass->depthTexture.value().texture.dx;
-				SyncIfNeeded(tx, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+				SyncIfNeeded(tx, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 				Assert(tx.dsvAllocated(), "Texture was not allocated as a depth stencil!");
 				dsv = tx.parentResource->owningDevice->DSVHeap->GetCpuHandle(tx.dsvIDX);
 				dsvptr = &dsv;
@@ -256,12 +256,13 @@ namespace RGL {
 
 		auto neededState = thisTexture.dsvAllocated() ? depthReadState : colorReadState;
 
-		SyncIfNeeded(thisTexture, neededState);
-
 		bool isGraphics = (bool)currentRenderPipeline;
 
 		const auto pipelineLayout = isGraphics ? currentRenderPipeline->pipelineLayout : currentComputePipeline->pipelineLayout;
 		const auto textureSlot = pipelineLayout->slotForTextureIdx(index);
+
+		SyncIfNeeded(thisTexture, neededState, textureSlot.isUAV);
+
 
 		if (textureSlot.isUAV) {
 			assert(thisTexture.uavAllocated(), "Cannot bind this texture because it is not in a UAV heap!");
@@ -555,7 +556,7 @@ namespace RGL {
 			for (uint32_t i = 0; i < numMips; i++) {
 				TextureView copy = texture;
 				copy.texture.dx.mip = i;
-				SyncIfNeeded(copy, needed);
+				SyncIfNeeded(copy, needed, written);
 			}
 		}
 		else {
@@ -564,13 +565,26 @@ namespace RGL {
 			if (it == activeTextures.end()) {
 				activeTextures[key] = {
 					.state = texture.texture.dx.parentResource->nativeState,
-					.written = false
+					.written = written
 				};
 				it = activeTextures.find(key);
 			}
 
 			auto current = (*it).second.state;
 			if (current == needed) {
+				if (it->second.written && texture.texture.dx.uavAllocated()) {	// if it was previously written to, then we need a UAV barrier
+					auto barrier = CD3DX12_RESOURCE_BARRIER::UAV(
+						texture.texture.dx.parentResource->GetResource()
+					);
+					commandList->ResourceBarrier(1, &barrier);
+
+					// update tracker
+					(*it).second = {
+						.state = needed,
+						.written = written
+					};
+				}
+
 				return;
 			}
 

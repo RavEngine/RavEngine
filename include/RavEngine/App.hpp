@@ -73,17 +73,6 @@ struct AudioPlayer;
 		 Signal to gracefully shut down the application
 		 */
 		void Quit();
-        
-        /**
-         Set the minimum tick time. If the work for the tick completes faster than this time interval,
-         the main thread will sleep for the remaining time. To unlock the tick rate (not advised), set
-         this to 0.
-         @param min_ms the minimum amount of time a tick should take.
-         */
-        template<typename T>
-        constexpr void SetMinTickTime(std::chrono::duration<double,T> min_ms){
-            min_tick_time = min_ms;
-        }
 
 		/**
 		Invoked automatically. Passes command line arguments.
@@ -233,9 +222,6 @@ struct AudioPlayer;
 		Ref<World> renderWorld;
 	
 		ConcurrentQueue<Function<void(void)>> main_tasks;
-
-        //change to adjust the ticking speed of the engine (default 90hz)
-		std::chrono::duration<double, std::micro> min_tick_time{ std::chrono::duration<double,std::milli>(1.0 / 90 * 1000)};
 		
 		locked_hashset<Ref<World>,SpinLock> loadedWorlds;
 #if !RVE_SERVER
