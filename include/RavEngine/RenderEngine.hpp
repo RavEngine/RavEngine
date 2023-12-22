@@ -96,6 +96,9 @@ namespace RavEngine {
             glm::mat4 viewProj;
 			glm::ivec4 viewRect;		// for the whole screen
 			glm::ivec4 viewRegion;   // for the virtual screen
+			float radius = 0.5;
+			float bias = 0.025;
+			float power = 1;
         };
         
 		struct AmbientLightUBO {

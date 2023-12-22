@@ -7,6 +7,9 @@ layout(push_constant, std430) uniform UniformBufferObject{
     mat4 viewProj;
     ivec4 viewRect;     // for the whole screen
     ivec4 viewRegion;   // for the virtual screen
+    float radius;
+    float bias;
+    float power;
 } ubo;
 
 layout(binding = 0) uniform sampler srcSampler;
@@ -29,8 +32,6 @@ layout(scalar, binding = 8) readonly buffer ssaoSampleBuffer{
 layout(location = 0) out vec4 outcolor;
 
 int kernelSize = 8;    // also the number of samples
-float radius = 0.5;
-float bias = 0.025;
 
 float rand(in vec2 ip) {
     const float seed = 12345678;
@@ -71,7 +72,7 @@ void main(){
     {
         // get sample position
         vec3 samplePos = TBN * samples[i]; // from tangent to view-space
-        samplePos = fragPos + samplePos * radius; 
+        samplePos = fragPos + samplePos * ubo.radius; 
 
         // project sample position (to sample texture) (to get position on screen/texture)
         vec4 offset = vec4(samplePos, 1.0);
@@ -83,10 +84,12 @@ void main(){
         float sampleDepth = texture(sampler2D(depthTex, srcSampler), offset.xy).r; // get depth value of kernel sample
         
         // range check & accumulate
-        float rangeCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z - sampleDepth));
-        occlusion += (sampleDepth >= samplePos.z + bias ? 1.0 : 0.0) * rangeCheck;     
+        float rangeCheck = smoothstep(0.0, 1.0, ubo.radius / abs(fragPos.z - sampleDepth));
+        occlusion += (sampleDepth >= samplePos.z + ubo.bias ? 1.0 : 0.0) * rangeCheck;     
     }
     occlusion = 1.0 - (occlusion / kernelSize);
+
+    occlusion = pow(occlusion, ubo.power);
 
     outcolor = vec4(occlusion,1,1,1);
 }
