@@ -101,8 +101,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        compiler: [ {cc: "/usr/bin/gcc-12", cxx: "/usr/bin/g++-12", link: "DEFAULT"}, {cc: "/usr/bin/clang-16", cxx: "/usr/bin/clang++-16", link: "LLD"} ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -112,15 +110,13 @@ jobs:
         run: |
               sudo apt-get update -y
               sudo apt-get install -y lsb-release wget software-properties-common apt-utils
-              wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
-              sudo add-apt-repository -y "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main"
               sudo apt-get update -y
               sudo apt remove build-essential -y
-              sudo apt-get install cmake g++-12 gcc-12 clang-16 llvm-16 llvm-16-dev lld ninja-build libwayland-dev libxkbcommon-dev libasound2-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends
+              CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 sudo apt-get install cmake g++-12 gcc-12 ninja-build libwayland-dev libxkbcommon-dev libasound2-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends
       - name: Configure
         run: |
             mkdir -p build && cd build
-            CC=${{ matrix.compiler.cc }} CXX=${{ matrix.compiler.cxx }} cmake -G "Ninja" -DRAVENGINE_BUILD_TESTS=ON -DCMAKE_LINKER_TYPE=${{ matrix.compiler.link }} ..
+            cmake -G "Ninja" -DRAVENGINE_BUILD_TESTS=ON ..
       - name: Build
         run: |
             cd build
