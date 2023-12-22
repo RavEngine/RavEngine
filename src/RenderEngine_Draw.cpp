@@ -968,7 +968,10 @@ struct LightingType{
             
             if (VideoSettings.ssao){
 
-				auto renderSSAOPass = [this, &target, &nextImgSize, &worldOwning](auto&& viewproj, auto&& camPos, auto&& fullsizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+				stackarray(offsets, uint32_t, view.camDatas.size());
+				uint32_t offset_index = 0;
+
+				auto renderSSAOPass = [this, &target, &nextImgSize, &worldOwning, &offsets, &offset_index](auto&& viewproj, auto&& camPos, auto&& fullsizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 
 					ssaoUBO pushConstants{
 						.viewProj = viewproj,
@@ -981,10 +984,29 @@ struct LightingType{
 
 					mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 					mainCommandBuffer->SetFragmentBytes(pushConstants,0);
+					mainCommandBuffer->BindBuffer(transientBuffer, 7, offsets[offset_index]);
 					mainCommandBuffer->Draw(3);
 				};
 
 				ssaoPass->SetAttachmentTexture(0, view.collection.ssaoTexture->GetDefaultView());
+
+				// because vulkan doesn't allow vkcmdcopybuffer inside of a render pass for some reason
+				{
+					uint32_t i = 0;
+					for (const auto& camdata : view.camDatas) {
+						struct ssaoSpill {
+							glm::mat4 invViewProj;
+							glm::mat4 projOnly;
+						} constants
+						{
+							.invViewProj = glm::inverse(camdata.viewProj),
+							.projOnly = camdata.projOnly
+						};
+						auto offset = WriteTransient(constants);
+						offsets[i] = offset;
+						i++;
+					}
+				}
 
 				mainCommandBuffer->BeginRendering(ssaoPass);
 				mainCommandBuffer->BindRenderPipeline(ssaoPipeline);
@@ -996,6 +1018,7 @@ struct LightingType{
 
                 for (const auto& camdata : view.camDatas) {
 					doPassWithCamData(camdata, renderSSAOPass);
+					offset_index++;
                 }
 				mainCommandBuffer->EndRendering();
 				mainCommandBuffer->EndRenderDebugMarker();

@@ -182,7 +182,7 @@ namespace RavEngine {
 		
 		static struct vs {
 			bool vsync = true;
-            bool ssao = false;
+            bool ssao = true;
 		} VideoSettings;
 
 		void SyncVideoSettings();

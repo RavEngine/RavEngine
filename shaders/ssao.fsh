@@ -13,11 +13,19 @@ layout(binding = 0) uniform sampler srcSampler;
 layout(binding = 1) uniform texture2D normalTex;
 layout(binding = 2) uniform texture2D depthTex;
 
+struct ssaoPushSpill {
+    mat4 projOnly;
+    mat4 invViewProj;
+};
+
+layout(scalar, binding = 7) readonly buffer ssaoConstantsSpill{
+    ssaoPushSpill constants[];
+};
+
 layout(scalar, binding = 8) readonly buffer ssaoSampleBuffer{
     vec3 samples[];
 };
 
-layout(location = 0) in flat vec4 invViewProj_mats[4];
 layout(location = 0) out vec4 outcolor;
 
 int kernelSize = 64;    // also the number of samples
@@ -46,7 +54,7 @@ void main(){
     float sampledDepthForPos = texture(sampler2D(depthTex, srcSampler), texcoord).r;
     vec2 viewTexcoord = (gl_FragCoord.xy - ubo.viewRegion.xy) / ubo.viewRegion.zw;
 
-    mat4 invViewProj = mat4(invViewProj_mats[0], invViewProj_mats[1], invViewProj_mats[2], invViewProj_mats[3]);
+    mat4 invViewProj = constants[0].invViewProj;
 
     vec3 fragPos = ComputeWorldSpacePos(viewTexcoord, sampledDepthForPos, invViewProj);
     vec3 normal = normalize(texture(sampler2D(normalTex, srcSampler), texcoord).rgb);
@@ -67,7 +75,7 @@ void main(){
 
         // project sample position (to sample texture) (to get position on screen/texture)
         vec4 offset = vec4(samplePos, 1.0);
-        offset = ubo.viewProj * offset; // from view to clip-space
+        offset = constants[0].projOnly * offset; // from view to clip-space
         offset.xyz /= offset.w; // perspective divide
         offset.xyz = offset.xyz * 0.5 + 0.5; // transform to range 0.0 - 1.0
         

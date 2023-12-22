@@ -1484,6 +1484,11 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
                 .type = RGL::BindingType::SampledImage,
                 .stageFlags = RGL::BindingVisibility::Fragment,
             },
+			{
+				.binding = 7,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
 			 {
 				.binding = 8,
 				.type = RGL::BindingType::StorageBuffer,
@@ -1503,7 +1508,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
         },
     });
     
-    ssaoPipeline = device->CreateRenderPipeline({
+    ssaoPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
         .stages = {
                 {
                     .type = RGL::ShaderStageDesc::Type::Vertex,
@@ -1566,7 +1571,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		glm::vec3 sample{
 			Random::get<float>(-1,1),
 			Random::get<float>(-1,1),
-			Random::get<float>(-1,1)
+			Random::get<float>(0,1)
 		};
 
 		float scale = (float)i / 64.0;

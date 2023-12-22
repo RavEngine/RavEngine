@@ -20,6 +20,7 @@ namespace RavEngine{
 		RenderTargetCollection collection;
 		struct camData {
 			glm::mat4 viewProj;
+			glm::mat4 projOnly;
 			glm::vec3 camPos;
 
 			ViewportOverride viewportOverride;
