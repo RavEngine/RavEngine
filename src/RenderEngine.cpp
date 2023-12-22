@@ -1565,7 +1565,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	);
 	
 	std::vector<glm::vec3> samples;
-	constexpr static auto nsamples = 64;
+	constexpr static auto nsamples = 8;
 	samples.reserve(nsamples);
 	for (uint32_t i = 0; i < nsamples; i++) {
 		glm::vec3 sample{
@@ -1574,7 +1574,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			Random::get<float>(0,1)
 		};
 
-		float scale = (float)i / 64.0;
+		float scale = (float)i / nsamples;
 		scale = lerp(0.1f, 1.0f, scale * scale);
 		sample *= scale;
 		samples.push_back(sample);

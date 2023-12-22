@@ -28,7 +28,7 @@ layout(scalar, binding = 8) readonly buffer ssaoSampleBuffer{
 
 layout(location = 0) out vec4 outcolor;
 
-int kernelSize = 64;    // also the number of samples
+int kernelSize = 8;    // also the number of samples
 float radius = 0.5;
 float bias = 0.025;
 
