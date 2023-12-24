@@ -19,6 +19,7 @@ layout(binding = 2) uniform texture2D depthTex;
 struct ssaoPushSpill {
     mat4 projOnly;
     mat4 invViewProj;
+    mat4 invProj;
 };
 
 layout(scalar, binding = 7) readonly buffer ssaoConstantsSpill{
@@ -46,6 +47,12 @@ float rand(in vec2 ip) {
     
     uint n = (p.x*s+p.y)+((p.x ^ p.y) << ~p.x ^ s) + ((p.x ^ p.y) << ~p.y ^ s);
     return float(n*50323U) / float(0xFFFFFFFFU);
+}
+
+vec3 NDCToView(mat4 invProj, vec2 coord, float depth){
+    vec4 viewPosH = invProj * vec4(coord, depth, 1.0 );
+    vec3 viewPos = viewPosH.xyz / viewPosH.w;
+    return viewPos;
 }
 
 void main(){
@@ -81,7 +88,10 @@ void main(){
         offset.xyz = offset.xyz * 0.5 + 0.5; // transform to range 0.0 - 1.0
         
         // get sample depth
-        float sampleDepth = texture(sampler2D(depthTex, srcSampler), offset.xy).r; // get depth value of kernel sample
+        float rawDepth = texture(sampler2D(depthTex, srcSampler), offset.xy).r; // get depth value of kernel sample
+
+        //compute view space position from a NDC position
+        float sampleDepth = NDCToView(constants[0].invProj, offset.xy * 2.0 - 1.0, rawDepth).z;
         
         // range check & accumulate
         float rangeCheck = smoothstep(0.0, 1.0, ubo.radius / abs(fragPos.z - sampleDepth));
