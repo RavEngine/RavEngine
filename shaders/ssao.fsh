@@ -18,8 +18,8 @@ layout(binding = 2) uniform texture2D depthTex;
 
 struct ssaoPushSpill {
     mat4 projOnly;
-    mat4 invViewProj;
     mat4 invProj;
+    mat4 viewOnly;
 };
 
 layout(scalar, binding = 7) readonly buffer ssaoConstantsSpill{
@@ -30,6 +30,7 @@ layout(scalar, binding = 8) readonly buffer ssaoSampleBuffer{
     vec3 samples[];
 };
 
+layout(location = 0) in flat vec4[4] invViewProj_elts; 
 layout(location = 0) out vec4 outcolor;
 
 int kernelSize = 8;    // also the number of samples
@@ -59,14 +60,18 @@ void main(){
 
     // get input for SSAO algorithm
     vec2 texcoord = vec2(gl_FragCoord.x / ubo.viewRect[2], gl_FragCoord.y / ubo.viewRect[3]);
-    float sampledDepthForPos = texture(sampler2D(depthTex, srcSampler), texcoord).r;
+    float sampledDepthForPos = texture(sampler2D(depthTex, srcSampler), texcoord).x;
     vec2 viewTexcoord = (gl_FragCoord.xy - ubo.viewRegion.xy) / ubo.viewRegion.zw;
 
-    mat4 invViewProj = constants[0].invViewProj;
+    mat4 invViewProj = mat4(invViewProj_elts[0],invViewProj_elts[1],invViewProj_elts[2],invViewProj_elts[3]);
 
     vec3 fragPos = ComputeWorldSpacePos(viewTexcoord, sampledDepthForPos, invViewProj);
-    vec3 normal = normalize(texture(sampler2D(normalTex, srcSampler), texcoord).rgb);
+    vec3 normal = texture(sampler2D(normalTex, srcSampler), texcoord).rgb;
     vec3 randomVec = normalize(vec3(rand(texcoord), rand(texcoord * 2), rand(texcoord * 0.5)));
+
+    // transform fragPos and normal to view space
+    fragPos = (constants[0].viewOnly * vec4(fragPos,1)).xyz;
+    normal = normalize((constants[0].viewOnly * vec4(normal,1)).xyz);
 
     // create TBN change-of-basis matrix: from tangent-space to view-space
     vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));

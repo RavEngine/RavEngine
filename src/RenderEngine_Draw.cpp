@@ -995,14 +995,14 @@ struct LightingType{
 					uint32_t i = 0;
 					for (const auto& camdata : view.camDatas) {
 						struct ssaoSpill {
-							glm::mat4 invViewProj;
 							glm::mat4 projOnly;
 							glm::mat4 invProj;
+							glm::mat4 viewOnly;
 						} constants
 						{
-							.invViewProj = glm::inverse(camdata.viewProj),
 							.projOnly = camdata.projOnly,
-							.invProj = glm::inverse(camdata.projOnly)
+							.invProj = glm::inverse(camdata.projOnly),
+							.viewOnly = camdata.viewOnly
 						};
 						auto offset = WriteTransient(constants);
 						offsets[i] = offset;

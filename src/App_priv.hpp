@@ -318,10 +318,11 @@ int App::run(int argc, char** argv) {
 				continue;
 			}
 			auto projOnly = camera.GenerateProjectionMatrix(windowSize.width, windowSize.height);
-			auto viewProj = projOnly * camera.GenerateViewMatrix();
+			auto viewOnly = camera.GenerateViewMatrix();
+			auto viewProj = projOnly * viewOnly;
 			auto camPos = camera.GetOwner().GetTransform().GetWorldPosition();
 			auto viewportOverride = camera.viewportOverride;
-            mainWindowView.camDatas.push_back(RenderViewCollection::camData{viewProj, projOnly, camPos, viewportOverride});
+            mainWindowView.camDatas.push_back(RenderViewCollection::camData{viewProj, projOnly, viewOnly, camPos, viewportOverride});
 		}
 
 		mainWindowView.pixelDimensions = window->GetSizeInPixels();

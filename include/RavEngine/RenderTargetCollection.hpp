@@ -21,6 +21,7 @@ namespace RavEngine{
 		struct camData {
 			glm::mat4 viewProj;
 			glm::mat4 projOnly;
+			glm::mat4 viewOnly;
 			glm::vec3 camPos;
 
 			ViewportOverride viewportOverride;
