@@ -327,7 +327,10 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.addressModeU = RGL::SamplerAddressMode::Border,
 		.addressModeV = RGL::SamplerAddressMode::Border,
 		.borderColor = {0,0,0,0},
-		.compareFunction = RGL::DepthCompareFunction::Greater
+		.compareFunction = RGL::DepthCompareFunction::Greater,
+		.minFilter = RGL::MinMagFilterMode::Linear,
+		.magFilter = RGL::MinMagFilterMode::Linear,
+		.mipFilter = RGL::MipFilterMode::Linear,
 	});
 
     depthPyramidSampler = device->CreateSampler({
