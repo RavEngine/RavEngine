@@ -20,6 +20,11 @@ using namespace Microsoft::WRL;
 
 CComPtr<IDxcUtils> dxcUtilsPtr;
 
+HMODULE mod_WinPixEventRuntime;
+
+PIXBeginEvent_t PIXBeginEvent_fn = nullptr;
+PIXEndEvent_t PIXEndEvent_fn = nullptr;
+
 constexpr std::string_view D3D12AutoBreadcrumbOpToString(D3D12_AUTO_BREADCRUMB_OP op)
 {
     switch (op)
@@ -253,6 +258,16 @@ namespace RGL {
         FatalError("Device removal triggered!");
     }
 
+    PIXBeginEvent_t GetBeginEvent()
+    {
+        return PIXBeginEvent_fn;
+    }
+
+    PIXEndEvent_t GetEndEvent()
+    {
+        return PIXEndEvent_fn;
+    }
+
     void EnableDebugLayer()
     {
 #if defined(_DEBUG)
@@ -263,6 +278,29 @@ namespace RGL {
         ComPtr<ID3D12Debug> debugInterface;
         DX_CHECK(D3D12GetDebugInterface(IID_PPV_ARGS(&debugInterface)));
         debugInterface->EnableDebugLayer();
+
+        constexpr static const char* const pixlibname = 
+#if _UWP
+            "WinPixEventRuntime_UAP.dll";
+#else
+            "WinPixEventRuntime.dll";
+#endif
+
+        // load WinPixEventRuntime manually so we don't have to use the NuGet (because it doesn't work with cmake projects)
+        mod_WinPixEventRuntime = LoadLibrary(pixlibname);
+        if (mod_WinPixEventRuntime != nullptr) {
+            std::cout << std::format("{} found. Capture annotations are enabled.", pixlibname) << std::endl;
+            PIXBeginEvent_fn = (decltype(PIXBeginEvent_fn))GetProcAddress(mod_WinPixEventRuntime, "PIXBeginEventOnCommandList\0");
+            if (!PIXBeginEvent_fn) {
+                auto err = GetLastError();
+                FatalError(std::format("Failed to load PIXBeginEventOnCommandList : {}", err));
+            }
+            PIXEndEvent_fn = (decltype(PIXEndEvent_fn))GetProcAddress(mod_WinPixEventRuntime, "PIXEndEventOnCommandList\0");
+            if (!PIXEndEvent_fn) {
+                auto err = GetLastError();
+                FatalError(std::format("Failed to load PIXEndEventOnCommandList : {}", err));
+            }
+        }
 
         // GPU-based validation
 #if 0
@@ -293,6 +331,10 @@ namespace RGL {
     void RGL::DeintD3D12()
     {
         DeinitAftermath();
+        if (mod_WinPixEventRuntime != nullptr) {
+            FreeLibrary(mod_WinPixEventRuntime);
+            mod_WinPixEventRuntime = nullptr;
+        }
     }
 
     ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(ComPtr<ID3D12Device2> device,

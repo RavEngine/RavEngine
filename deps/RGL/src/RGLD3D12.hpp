@@ -32,4 +32,10 @@ namespace RGL {
 	D3D12_COMPARISON_FUNC rgl2d3dcompfn(RGL::DepthCompareFunction depthFunction);
 
 	void RGLDeviceRemovedHandler(PVOID context, BOOLEAN);
+
+	typedef void(*PIXBeginEvent_t)(void*, UINT64, _In_ PCSTR, ...);
+	typedef void(*PIXEndEvent_t)(void*);
+
+	PIXBeginEvent_t GetBeginEvent();
+	PIXEndEvent_t GetEndEvent();
 }
