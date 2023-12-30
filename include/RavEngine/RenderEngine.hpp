@@ -55,7 +55,7 @@ namespace RavEngine {
 		RGLRenderPassPtr deferredRenderPass, unlitRenderPass, lightingRenderPass, ambientLightRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, shadowRenderPass, lightingClearRenderPass, deferredClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, ssaoPass;
 
 		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, spotLightRenderPipeline, lightToFBRenderPipeline, depthPyramidCopyPipeline,
-			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, guiRenderPipeline, ssaoPipeline;
+			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, ssaoPipeline;
 		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline;
 		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer, spotLightVertexBuffer, spotLightIndexBuffer,
 			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, ssaoSamplesBuffer;
@@ -84,7 +84,8 @@ namespace RavEngine {
 		constexpr static RGL::TextureFormat
 			normalTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
 			colorTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
-            ssaoFormat = RGL::TextureFormat::R32_Float;
+			ssaoFormat = RGL::TextureFormat::R32_Float,
+			depthFormat = RGL::TextureFormat::D32SFloat;
 
 		// the items made available to 
 		// user-defined materials
@@ -100,6 +101,11 @@ namespace RavEngine {
 			float bias = 0.025;
 			float power = 1;
         };
+
+		struct navDebugUBO {
+			glm::mat4 model;
+			glm::mat4 viewProj;
+		} currentNavState;
         
 		struct AmbientLightUBO {
 			glm::ivec4 viewRect;

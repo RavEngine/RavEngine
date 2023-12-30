@@ -850,13 +850,16 @@ struct LightingType{
 				mainCommandBuffer->BeginRenderDebugMarker("GUI");
 				worldOwning->Filter([](GUIComponent& gui) {
 					gui.Render();	// kicks off commands for rendering UI
-					});
+				});
+				mainCommandBuffer->EndRenderDebugMarker();
 #ifndef NDEBUG
 				// process debug shapes
-				worldOwning->FilterPolymorphic([](PolymorphicGetResult<IDebugRenderable, World::PolymorphicIndirection> dbg, const PolymorphicGetResult<Transform, World::PolymorphicIndirection> transform) {
+				currentNavState.viewProj = viewproj;
+				worldOwning->FilterPolymorphic([this](PolymorphicGetResult<IDebugRenderable, World::PolymorphicIndirection> dbg, const PolymorphicGetResult<Transform, World::PolymorphicIndirection> transform) {
 					for (int i = 0; i < dbg.size(); i++) {
 						auto& ptr = dbg[i];
 						if (ptr.debugEnabled) {
+							currentNavState.model = transform[0].GetWorldMatrix();
 							ptr.DebugDraw(dbgdraw, transform[0]);
 						}
 					}

@@ -1238,7 +1238,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				}
 			},
 			.depthStencilConfig = {
-				.depthFormat = RGL::TextureFormat::D32SFloat,
+				.depthFormat = depthFormat,
 				.depthTestEnabled = false,
 				.depthWriteEnabled = false,
 				.depthFunction = RGL::DepthCompareFunction::Greater,
@@ -1583,6 +1583,82 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		samples.push_back(sample);
 	}
 	ssaoSamplesBuffer->SetBufferData({ samples.data(), nsamples * sizeof(samples[0]) });
+
+	auto navDebugLayout = device->CreatePipelineLayout({
+		.constants = {{sizeof(navDebugUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex)}}
+	});
+
+	auto recastDebugVSH = LoadShaderByFilename("debugNav.vsh", device);
+	auto recastDebugFSH = LoadShaderByFilename("debugNav.fsh", device);
+	auto createDebugNavPipeline = [navDebugLayout, device, recastDebugFSH, recastDebugVSH](RGL::PolygonOverride drawMode, RGL::PrimitiveTopology topology) {
+		RGL::RenderPipelineDescriptor recastDebugDesc{
+		.stages = {
+				{
+					.type = RGL::ShaderStageDesc::Type::Vertex,
+					.shaderModule = recastDebugVSH,
+				},
+				{
+					.type = RGL::ShaderStageDesc::Type::Fragment,
+					.shaderModule = recastDebugFSH,
+				}
+		},
+		.vertexConfig = {
+			.vertexBindings = {
+				{
+					.binding = 0,
+					.stride = sizeof(VertexColorUV),
+				},
+			},
+			.attributeDescs = {
+				{
+					.location = 0,
+					.binding = 0,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
+				},
+				{
+					.location = 1,
+					.binding = 0,
+					.offset = offsetof(VertexColorUV,uv),
+					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+				},
+				{
+					.location = 2,
+					.binding = 0,
+					.offset = offsetof(VertexColorUV,color),
+					.format = RGL::VertexAttributeFormat::R32_Uint,
+				},
+			}
+		},
+		.inputAssembly = {
+			.topology = topology,
+		},
+		.rasterizerConfig = {
+			.polygonOverride = drawMode,
+			.windingOrder = RGL::WindingOrder::Counterclockwise,
+		},
+		.colorBlendConfig = {
+			.attachments = {
+				{
+					.format = RGL::TextureFormat::BGRA8_Unorm
+				},
+			}
+		},
+		.depthStencilConfig = {
+			.depthFormat = depthFormat,
+			.depthTestEnabled = true,
+			.depthWriteEnabled = false,
+			.depthFunction = RGL::DepthCompareFunction::Greater
+		},
+		.pipelineLayout = navDebugLayout,
+		};
+
+		return device->CreateRenderPipeline(recastDebugDesc);
+	};
+	
+	recastLinePipeline = createDebugNavPipeline(RGL::PolygonOverride::Line, RGL::PrimitiveTopology::LineList);
+	recastPointPipeline = createDebugNavPipeline(RGL::PolygonOverride::Line, RGL::PrimitiveTopology::PointList);
+	recastTrianglePipeline = createDebugNavPipeline(RGL::PolygonOverride::Fill, RGL::PrimitiveTopology::TriangleList);
 }
 
 RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim size, bool createDepth)

@@ -2,6 +2,8 @@
 #include "RenderEngine.hpp"
 #include "Utilities.hpp"
 #include "Debug.hpp"
+#include <RGL/CommandBuffer.hpp>
+#include <RGL/Device.hpp>
 
 using namespace RavEngine;
 using namespace std;
@@ -20,24 +22,22 @@ void RenderEngine::texture(bool state){
  */
 void RenderEngine::begin(duDebugDrawPrimitives prim, float size){
     navMeshPolygon.clear();
-#if 0
-    constexpr auto common = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW | BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_DST_ALPHA) ;
-    bgfx::discard();
+
+    //TODO: support navDebugDepthEnabled
     switch(prim){
         case duDebugDrawPrimitives::DU_DRAW_TRIS:
-            bgfx::setState(common | BGFX_STATE_MSAA | (navDebugDepthEnabled ? BGFX_STATE_WRITE_Z : BGFX_STATE_NONE));
+            mainCommandBuffer->BindRenderPipeline(recastTrianglePipeline);
             break;
         case duDebugDrawPrimitives::DU_DRAW_LINES:
-            bgfx::setState(common | BGFX_STATE_PT_LINES | BGFX_STATE_LINEAA | (navDebugDepthEnabled ? BGFX_STATE_WRITE_Z : BGFX_STATE_NONE));
+            mainCommandBuffer->BindRenderPipeline(recastLinePipeline);
             break;
         case duDebugDrawPrimitives::DU_DRAW_POINTS:
-            bgfx::setState(common | BGFX_STATE_PT_POINTS | (navDebugDepthEnabled ? BGFX_STATE_WRITE_Z : BGFX_STATE_NONE));
+            mainCommandBuffer->BindRenderPipeline(recastPointPipeline);
             break;
         case duDebugDrawPrimitives::DU_DRAW_QUADS:
             Debug::Fatal("Quad rendering mode is not supported");
             break;
     }
-#endif
 }
 
 void RenderEngine::vertex(const float *pos, unsigned int color){
@@ -75,12 +75,20 @@ void RenderEngine::end(){
     }
 	auto size = navMeshPolygon.size() * sizeof(decltype(navMeshPolygon)::value_type);
 	assert(size < std::numeric_limits<unsigned int>::max());
-#if 0
-    auto memory = bgfx::copy(navMeshPolygon.data(), static_cast<unsigned int>(size));
-    auto vb = bgfx::createVertexBuffer(memory, debugNavMeshLayout);
-    bgfx::setVertexBuffer(0, vb);
-    bgfx::submit(Views::FinalBlit, debugNavProgram);
-    bgfx::destroy(vb);
-#endif
+
+    auto vertBuffer = device->CreateBuffer({
+        uint32_t(navMeshPolygon.size()),
+        {.VertexBuffer = true},
+        sizeof(decltype(navMeshPolygon)::value_type),
+        RGL::BufferAccess::Private,
+        });
+    vertBuffer->SetBufferData({ navMeshPolygon.data(), navMeshPolygon.size() * sizeof(decltype(navMeshPolygon)::value_type)});
+
+    mainCommandBuffer->SetVertexBuffer(vertBuffer);
+    mainCommandBuffer->SetVertexBytes(currentNavState, 0);
+    mainCommandBuffer->Draw(navMeshPolygon.size());
+
+    // trash the buffer now that we're done with it
+    gcBuffers.enqueue(vertBuffer);
 }
 #endif
