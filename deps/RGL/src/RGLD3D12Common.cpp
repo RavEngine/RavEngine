@@ -287,7 +287,7 @@ namespace RGL {
 #endif
 
         // load WinPixEventRuntime manually so we don't have to use the NuGet (because it doesn't work with cmake projects)
-        mod_WinPixEventRuntime = LoadLibrary(pixlibname);
+        mod_WinPixEventRuntime = LoadLibraryA(pixlibname);
         if (mod_WinPixEventRuntime != nullptr) {
             std::cout << std::format("{} found. Capture annotations are enabled.", pixlibname) << std::endl;
             PIXBeginEvent_fn = (decltype(PIXBeginEvent_fn))GetProcAddress(mod_WinPixEventRuntime, "PIXBeginEventOnCommandList\0");
