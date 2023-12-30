@@ -48,7 +48,7 @@ bool AnimationAssetSegment::Sample(float globaltime, float last_global_starttime
 }
 
 AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skeleton){
-	auto path = StrFormat("objects/{}", name);
+	auto path = std::format("objects/{}", name);
 	if(GetApp()->GetResources().Exists(path.c_str())){
 		//is this in ozz format
 		auto extension = Filesystem::Path(name).extension();

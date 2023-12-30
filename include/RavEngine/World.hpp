@@ -962,11 +962,11 @@ namespace RavEngine {
                     // value update
                     auto range_update = ECSTasks.emplace([this,ptr,setptr](){
                         *ptr = static_cast<pos_t>(setptr->DenseSize());
-                    }).name(StrFormat("{} range update",type_name<T>()));
+                    }).name(std::format("{} range update",type_name<T>()));
                     
                     auto do_task = ECSTasks.for_each_index(pos_t(0),std::ref(*ptr),pos_t(1),[this,fom](auto i) mutable{
                         FilterOne<A...>(fom,i);
-                    }).name(StrFormat("{}",type_name<T>().data()));
+                    }).name(std::format("{}",type_name<T>().data()));
                     range_update.precede(do_task);
                     
                     auto pair = std::make_pair(range_update,do_task);

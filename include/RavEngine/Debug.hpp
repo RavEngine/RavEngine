@@ -11,9 +11,9 @@ private:
 	static SpinLock mtx;
 	constexpr static uint16_t bufsize = 512;
 
-	static void LogHelper(FILE* output, const char* message, const char* type);
+	static void LogHelper(FILE* output, const std::string_view, const char* type);
     
-    static void InvokeUserHandler(const char* msg);
+    static void InvokeUserHandler(const std::string_view msg);
 	
 public:
 	
@@ -21,7 +21,7 @@ public:
 	 Log a message to standard output. In release builds, this method is stubbed and logs are disabled.
 	 @param message The message to log
 	 */
-	static inline void LogTemp(const char* message){
+	static inline void LogTemp(const std::string_view message){
 #ifndef NDEBUG
 		LogHelper(stdout, message, "LOGTEMP");
 #endif
@@ -33,9 +33,9 @@ public:
 	 @param values the optional values to log
 	 */
 	template <typename ... T>
-	static inline void LogTemp(const char* formatstr, T&& ... values){
+	static inline void LogTemp(const std::string_view formatstr, T&& ... values){
 #ifndef NDEBUG
-		LogHelper(stdout, StrFormat(formatstr,values...).c_str(),"LOGTEMP");
+		LogHelper(stdout, std::format(formatstr,values...),"LOGTEMP");
 #endif
 	}
 	
@@ -43,7 +43,7 @@ public:
 	 Log a message to standard output.
 	 @param message The message to log
 	 */
-	static inline void Log(const char* message){
+	static inline void Log(const std::string_view message){
 		LogHelper(stdout, message, "LOG");
 	}
 	
@@ -53,8 +53,8 @@ public:
 	 @param values the optional values to log
 	 */
 	template <typename ... T>
-	static inline void Log(const char* formatstr, T&& ... values){
-		LogHelper(stdout, StrFormat(formatstr,values...).c_str(),"LOG");
+	static constexpr inline void Log(const std::string_view formatstr, T&& ... values){
+		LogHelper(stdout, std::vformat(formatstr, std::make_format_args(std::forward<T>(values)...)),"LOG");
 	}
 	
 	/**
@@ -71,8 +71,8 @@ public:
 	 @param values the optional values to log
 	 */
 	template <typename ... T>
-	static inline void Warning(const char* formatstr, T&& ... values){
-		LogHelper(stderr, StrFormat(formatstr,values...).c_str(), "WARN");
+	static inline void Warning(const std::string_view formatstr, T&& ... values){
+		LogHelper(stderr, std::vformat(formatstr, std::make_format_args(std::forward<T>(values)...)), "WARN");
 	}
 	
 	static inline void PrintStacktraceHere(){
@@ -83,7 +83,7 @@ public:
 	 Log a message to standard error, as an error.
 	 @param message The message to log.
 	 */
-	static inline void Error(const char* message){
+	static inline void Error(const std::string_view message){
 		LogHelper(stderr, message, "ERROR");
 		PrintStacktraceHere();
 	}
@@ -94,8 +94,8 @@ public:
 	@param values the optional values to log
 	*/
 	template <typename ... T>
-	static inline void Error(const char* formatstr, T&& ... values){
-		LogHelper(stderr, StrFormat(formatstr,values...).c_str(), "ERROR");
+	static inline void Error(const std::string_view formatstr, T&& ... values){
+		LogHelper(stderr, std::vformat(formatstr, std::make_format_args(std::forward<T>(values)...)), "ERROR");
 		PrintStacktraceHere();
 	}
 	
@@ -103,10 +103,10 @@ public:
 	 Log an error message and terminate.
 	 @param message The message to log.
 	 */
-	static inline void Fatal(const char* message){
+	static inline void Fatal(const std::string_view message){
 		Debug::Error(message);
         InvokeUserHandler(message);
-		throw std::runtime_error(message);
+		throw std::runtime_error(std::string(message));
 	}
 	
 	/**
@@ -115,10 +115,10 @@ public:
 	 @param values the optional values
 	 */
 	template <typename ... T>
-	static inline void Fatal(const char* formatstr, T&& ... values){
+	static inline void Fatal(const std::string_view formatstr, T&& ... values){
 		Debug::Error(formatstr,values...);
-        auto formattedMsg = StrFormat(formatstr,values...);
-        InvokeUserHandler(formattedMsg.c_str());
+        auto formattedMsg = std::vformat(formatstr, std::make_format_args(std::forward<T>(values)...));
+        InvokeUserHandler(formattedMsg);
 		throw std::runtime_error(formattedMsg);
 	}
     

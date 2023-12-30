@@ -62,7 +62,7 @@ struct AudioPlayer;
         /**
          Override this method to provide a custom fatal handler
          */
-        virtual void OnFatal(const char* msg){}
+        virtual void OnFatal(const std::string_view msg){}
         
         /**
          Override to be notified if too much audio work was submitted. The default implementation logs a warning.

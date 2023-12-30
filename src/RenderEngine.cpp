@@ -33,7 +33,6 @@
 #include "Common3D.hpp"
 #include "DebugDrawer.hpp"
 #include <glm/gtc/type_ptr.hpp>
-#include <fmt/core.h>
 #include <iostream>
 #include "Debug.hpp"
 #include <chrono>

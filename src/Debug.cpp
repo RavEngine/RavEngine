@@ -6,13 +6,13 @@
 using namespace RavEngine;
 SpinLock Debug::mtx;
 
-void RavEngine::Debug::LogHelper(FILE* output, const char* message, const char* type) {
+void RavEngine::Debug::LogHelper(FILE* output, const std::string_view message, const char* type) {
 	auto date = date::format("%F %T", std::chrono::system_clock::now());
 	mtx.lock();
 	fprintf(output, "[%s] %s - %s\n", date.c_str(), type, message);
 	mtx.unlock();
 }
 
-void Debug::InvokeUserHandler(const char *msg){
+void Debug::InvokeUserHandler(const std::string_view msg){
     GetApp()->OnFatal(msg);
 }

@@ -3,6 +3,7 @@
 #include "App.hpp"
 #include <SDL_messagebox.h>
 #include "Debug.hpp"
+#include <utility>
 
 using namespace std;
 using namespace RavEngine;
@@ -16,7 +17,7 @@ static inline auto MessageBoxToSDLFlag(Dialog::MessageBoxType type){
         case Dialog::MessageBoxType::Error:
             return SDL_MESSAGEBOX_ERROR;
         default:
-            Debug::Fatal("Invalid MessageBoxType {}", type);
+            Debug::Fatal("Invalid MessageBoxType {}", uint8_t(type));
     }
 }
 

@@ -38,7 +38,7 @@ aiProcess_OptimizeMeshes				|
 aiProcess_FindInvalidData     ;
 
 static const aiScene* LoadScene(const std::string& name){
-	string dir = StrFormat("objects/{}", name);
+	string dir = std::format("objects/{}", name);
 	
 	if (!GetApp()->GetResources().Exists(dir.c_str())) {
 		Debug::Fatal("Cannot open resource: {}", dir);
@@ -131,10 +131,6 @@ MeshAsset::MeshAsset(const string& name, const MeshAssetOptions& options){
 	auto scene = LoadScene(name);
 
 	InitAll(scene, options);
-#if 0
-	bgfx::setName(vertexBuffer, fmt::format("MeshAsset {} VB", name).c_str());
-	bgfx::setName(indexBuffer, fmt::format("MeshAsset {} IB", name).c_str());
-#endif
 }
 
 MeshAsset::MeshAsset(const Filesystem::Path& path, const MeshAssetOptions& opt){
@@ -147,10 +143,6 @@ MeshAsset::MeshAsset(const Filesystem::Path& path, const std::string& name, cons
 	auto scene = LoadSceneFilesystem(path);
 	
 	InitPart(scene, name, path.string(), opt);
-#if 0
-	bgfx::setName(vertexBuffer, fmt::format("MeshAsset-FS {} VB", name).c_str());
-	bgfx::setName(indexBuffer, fmt::format("MeshAsset-FS {} IB", name).c_str());
-#endif
 }
 
 RavEngine::MeshAsset::~MeshAsset()

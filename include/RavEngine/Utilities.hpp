@@ -1,6 +1,6 @@
 #pragma once
 #include <effolkronium/random.hpp>
-#include <fmt/format.h>
+#include <format>
 #include <sstream>
 #include <type_traits>
 #if !RVE_SERVER
@@ -35,11 +35,6 @@ public:
 	}
 };
 
-
-template<typename T, typename ... A>
-static inline std::string StrFormat(const T& formatstr, A&& ... args) {
-	return fmt::format(formatstr, args...);
-}
 /**
 * Format a number with system locale separator
 * @param value the number to format

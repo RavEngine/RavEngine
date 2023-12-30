@@ -4,7 +4,7 @@
 
 namespace RavEngine{
     namespace Dialog{
-        enum class MessageBoxType{
+        enum class MessageBoxType : uint8_t{
             Info,
             Warning,
             Error
