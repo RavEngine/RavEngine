@@ -1640,7 +1640,12 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.colorBlendConfig = {
 			.attachments = {
 				{
-					.format = RGL::TextureFormat::BGRA8_Unorm
+					.format = RGL::TextureFormat::BGRA8_Unorm,
+					.sourceColorBlendFactor = RGL::BlendFactor::SourceAlpha,
+					.destinationColorBlendFactor = RGL::BlendFactor::OneMinusSourceAlpha,
+					.alphaBlendOperation = RGL::BlendOperation::Add,
+					.colorWriteMask = RGL::ColorWriteMask::RGB,
+					.blendEnabled = true,
 				},
 			}
 		},

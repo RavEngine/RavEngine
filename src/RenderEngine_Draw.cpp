@@ -854,6 +854,7 @@ struct LightingType{
 				mainCommandBuffer->EndRenderDebugMarker();
 #ifndef NDEBUG
 				// process debug shapes
+				mainCommandBuffer->BeginRenderDebugMarker("Debug Navigation Mesh");
 				currentNavState.viewProj = viewproj;
 				worldOwning->FilterPolymorphic([this](PolymorphicGetResult<IDebugRenderable, World::PolymorphicIndirection> dbg, const PolymorphicGetResult<Transform, World::PolymorphicIndirection> transform) {
 					for (int i = 0; i < dbg.size(); i++) {
@@ -864,6 +865,7 @@ struct LightingType{
 						}
 					}
 					});
+				mainCommandBuffer->EndRenderDebugMarker();
 				mainCommandBuffer->BeginRenderDebugMarker("Debug Wireframes");
 				Im3d::AppData& data = Im3d::GetAppData();
 				data.m_appData = (void*)&viewproj;
