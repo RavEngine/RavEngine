@@ -225,7 +225,7 @@ namespace RGL {
         {
             auto node = DredAutoBreadcrumbsOutput.pHeadAutoBreadcrumbNode;
             while (node) {
-                debugLog(Format("DRED Breadcrumb Data:\n\tCommand List:\t{}\n\tCommand Queue:\t{}\n", node->pCommandListDebugNameA == nullptr ? "[Unnamed CommandList]" : node->pCommandListDebugNameA, node->pCommandQueueDebugNameA == nullptr? "[Unnamed CommandQueue]" : node->pCommandQueueDebugNameA));
+                debugLog(std::format("DRED Breadcrumb Data:\n\tCommand List:\t{}\n\tCommand Queue:\t{}\n", node->pCommandListDebugNameA == nullptr ? "[Unnamed CommandList]" : node->pCommandListDebugNameA, node->pCommandQueueDebugNameA == nullptr? "[Unnamed CommandQueue]" : node->pCommandQueueDebugNameA));
                 for (UINT32 i = 0; i < node->BreadcrumbCount; i++) {
                     auto& command = node->pCommandHistory[i];
                     auto str = D3D12AutoBreadcrumbOpToString(command);
@@ -233,24 +233,24 @@ namespace RGL {
                     if (i == *node->pLastBreadcrumbValue) {
                         failStr = "\t\t <- failed";
                     }
-                    debugLog(Format("\t\t{}{}\n", str, failStr));
+                    debugLog(std::format("\t\t{}{}\n", str, failStr));
                 }
                 node = node->pNext;
             }
         }
 
-        debugLog(Format("DRED Page Fault Output:\n\tVirtual Address: {:X}", DredPageFaultOutput.PageFaultVA));
+        debugLog(std::format("DRED Page Fault Output:\n\tVirtual Address: {:X}", DredPageFaultOutput.PageFaultVA));
         {
             auto node = DredPageFaultOutput.pHeadExistingAllocationNode;
             while (node) {
-                debugLog(Format("\tDRED Page Fault Existing Allocation Node:\n\t\tObject Name: {}\n\t\tAllocation Type: {}\n",node->ObjectNameA ? node->ObjectNameA : "[Unnamed Object]", D3D12_DRED_ALLOCATION_TYPE_to_string(node->AllocationType)));
+                debugLog(std::format("\tDRED Page Fault Existing Allocation Node:\n\t\tObject Name: {}\n\t\tAllocation Type: {}\n",node->ObjectNameA ? node->ObjectNameA : "[Unnamed Object]", D3D12_DRED_ALLOCATION_TYPE_to_string(node->AllocationType)));
                 node = node->pNext;
             }
         }
         {
             auto node = DredPageFaultOutput.pHeadRecentFreedAllocationNode;
             while (node) {
-                debugLog(Format("\tDRED Page Fault Recent Freed Allocation Node:\n\t\tObject Name: {}\n\t\tAllocation Type: {}\n", node->ObjectNameA ? node->ObjectNameA : "[Unnamed Object]", D3D12_DRED_ALLOCATION_TYPE_to_string(node->AllocationType)));
+                debugLog(std::format("\tDRED Page Fault Recent Freed Allocation Node:\n\t\tObject Name: {}\n\t\tAllocation Type: {}\n", node->ObjectNameA ? node->ObjectNameA : "[Unnamed Object]", D3D12_DRED_ALLOCATION_TYPE_to_string(node->AllocationType)));
                 node = node->pNext;
             }
         }
@@ -289,16 +289,16 @@ namespace RGL {
         // load WinPixEventRuntime manually so we don't have to use the NuGet (because it doesn't work with cmake projects)
         mod_WinPixEventRuntime = LoadLibraryA(pixlibname);
         if (mod_WinPixEventRuntime != nullptr) {
-            std::cout << Format("{} found. Capture annotations are enabled.", pixlibname) << std::endl;
+            std::cout << std::format("{} found. Capture annotations are enabled.", pixlibname) << std::endl;
             PIXBeginEvent_fn = (decltype(PIXBeginEvent_fn))GetProcAddress(mod_WinPixEventRuntime, "PIXBeginEventOnCommandList\0");
             if (!PIXBeginEvent_fn) {
                 auto err = GetLastError();
-                FatalError(Format("Failed to load PIXBeginEventOnCommandList : {}", err));
+                FatalError(std::format("Failed to load PIXBeginEventOnCommandList : {}", err));
             }
             PIXEndEvent_fn = (decltype(PIXEndEvent_fn))GetProcAddress(mod_WinPixEventRuntime, "PIXEndEventOnCommandList\0");
             if (!PIXEndEvent_fn) {
                 auto err = GetLastError();
-                FatalError(Format("Failed to load PIXEndEventOnCommandList : {}", err));
+                FatalError(std::format("Failed to load PIXEndEventOnCommandList : {}", err));
             }
         }
 

@@ -54,7 +54,7 @@ namespace RGL {
 
         std::cout << "RGL [" << severityToStr(severity) << "] - " << message << "\n";
 #if _WIN32
-        std::string str = Format("RGL [{}] - {}\n", severityToStr(severity), message);
+        std::string str = std::format("RGL [{}] - {}\n", severityToStr(severity), message);
         OutputDebugStringA(str.c_str());
 #endif
     };

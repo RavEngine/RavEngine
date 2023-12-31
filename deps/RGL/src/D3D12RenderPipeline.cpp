@@ -257,7 +257,7 @@ namespace RGL {
             DX_CHECK(D3DX12SerializeVersionedRootSignature(&rootSignatureDescription, featureData.HighestVersion, &rootSignatureBlob, &errorBlob));
         }
         catch (std::exception& e) {
-            FatalError(Format("{}", (char*)errorBlob->GetBufferPointer()));
+            FatalError(std::format("{}", (char*)errorBlob->GetBufferPointer()));
         }
         // Create the root signature.
             DX_CHECK(device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
