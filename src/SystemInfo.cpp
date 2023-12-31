@@ -107,7 +107,7 @@ std::string SystemInfo::OperatingSystemNameString(){
     return buf;
 #elif _UWP
     auto vi = winrt::Windows::System::Profile::AnalyticsInfo::VersionInfo();
-    return Format("UWP {}",to_string(vi.DeviceFamily()));
+    return VFormat("UWP {}",to_string(vi.DeviceFamily()));
 #elif _WIN32
     return "Windows WIN32";
 #elif __linux__

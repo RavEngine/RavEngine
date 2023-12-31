@@ -1,6 +1,6 @@
 #pragma once
 #include <string_view>
-#if 1
+#if __APPLE__
     #include <fmt/format.h>
     #define fmt_src fmt
 #else

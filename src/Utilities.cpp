@@ -59,7 +59,7 @@ RGLShaderLibraryPtr RavEngine::LoadShaderByFilename(const std::string& name, RGL
         ext = ".cso";
     }
 
-    auto path = Format("{}/{}{}", RGL::APIToString(RGL::CurrentAPI()), name, ext);
+    auto path = VFormat("{}/{}{}", RGL::APIToString(RGL::CurrentAPI()), name, ext);
     auto shaderBytes = resources.GetShaderData(path);
     //auto shaderBytes = resources.FileContentsAt<std::vector<uint8_t>>(path.c_str(),false);
     return device->CreateShaderLibraryFromBytes({ reinterpret_cast<const uint8_t*>(shaderBytes.data()), shaderBytes.size()});
