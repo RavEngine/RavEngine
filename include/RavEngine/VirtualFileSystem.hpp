@@ -47,7 +47,7 @@ public:
 	 */
     template<typename vec = RavEngine::Vector<uint8_t>>
     void FileContentsAt(const char* path, vec& datavec, bool nullTerminate = true){
-        auto fullpath = std::format("{}/{}",rootname,path);
+        auto fullpath = VFormat("{}/{}",rootname,path);
         
         if(!Exists(path)){
             Debug::Fatal("cannot open {}",fullpath);

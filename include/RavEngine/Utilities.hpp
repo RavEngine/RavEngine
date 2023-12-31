@@ -1,6 +1,5 @@
 #pragma once
 #include <effolkronium/random.hpp>
-#include <format>
 #include <sstream>
 #include <type_traits>
 #if !RVE_SERVER

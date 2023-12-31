@@ -23,7 +23,7 @@ using namespace RavEngine;
 using namespace std;
 
 SkeletonAsset::SkeletonAsset(const std::string& str){
-	auto path = std::format("objects/{}",str);
+	auto path = Format("objects/{}",str);
 	
 	if(GetApp()->GetResources().Exists(path.c_str())){
 		//is this in ozz format?

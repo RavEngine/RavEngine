@@ -33,7 +33,7 @@ SceneLoader::SceneLoader(const std::string& name) : SceneLoader(name.c_str()){}
 
 RavEngine::SceneLoader::SceneLoader(const char* name) : scene_path(name)
 {
-	auto dir = std::format("objects/{}",name);
+	auto dir = Format("objects/{}",name);
 
 	if (!GetApp()->GetResources().Exists(dir.c_str())) {
 		Debug::Fatal("Cannot open resource: {}", dir);
@@ -95,7 +95,7 @@ void RavEngine::SceneLoader::LoadMeshes(const Function<bool(const PreloadedAsset
 				// load textures
 				aiString texpath;
 				if (aimat->Get(AI_MATKEY_TEXTURE(aiTextureType_DIFFUSE, 0), texpath) == AI_SUCCESS) {
-					auto imgpath = Filesystem::Path(std::format("{}/{}", base_path.string(), texpath.C_Str()));
+					auto imgpath = Filesystem::Path(VFormat("{}/{}", base_path.string(), texpath.C_Str()));
 					auto tx = New<Texture>(imgpath);
 					matinst->SetAlbedoTexture(tx);
 				}

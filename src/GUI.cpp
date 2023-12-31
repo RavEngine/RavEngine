@@ -107,7 +107,7 @@ bool GUIComponent::IsDocumentLoaded(const std::string &name) const{
 }
 
 bool GUIComponent::LoadFont(const std::string& filename){
-	string dir = std::format("/fonts/{}",filename);
+	string dir = Format("/fonts/{}",filename);
 	
 	return Rml::LoadFontFace(dir);
 }

@@ -38,7 +38,7 @@ aiProcess_OptimizeMeshes				|
 aiProcess_FindInvalidData     ;
 
 static const aiScene* LoadScene(const std::string& name){
-	string dir = std::format("objects/{}", name);
+	string dir = Format("objects/{}", name);
 	
 	if (!GetApp()->GetResources().Exists(dir.c_str())) {
 		Debug::Fatal("Cannot open resource: {}", dir);

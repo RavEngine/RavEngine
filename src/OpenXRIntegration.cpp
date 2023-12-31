@@ -57,7 +57,7 @@ namespace RavEngine {
 				}
 			}
 			if (!backendSupported) {
-				Debug::Fatal(std::format("OpenXR Runtime does not support the selected API: {}", RGL::APIToString(currentAPI)).c_str());
+				Debug::Fatal(Format("OpenXR Runtime does not support the selected API: {}", RGL::APIToString(currentAPI)).c_str());
 			}
 
 			const char* apiStr = nullptr;
@@ -116,7 +116,7 @@ namespace RavEngine {
 				XR_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 			debug_info.userCallback = [](XrDebugUtilsMessageSeverityFlagsEXT severity, XrDebugUtilsMessageTypeFlagsEXT types, const XrDebugUtilsMessengerCallbackDataEXT* msg, void* user_data) {
 
-				OutputDebugStringA(std::format("[OpenXR] {}: {}", msg->functionName, msg->message).c_str());
+				OutputDebugStringA(Format("[OpenXR] {}: {}", msg->functionName, msg->message).c_str());
 
 				// Returning XR_TRUE here will force the calling function to fail
 				return (XrBool32)XR_FALSE;

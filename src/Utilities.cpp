@@ -25,7 +25,7 @@ auto GetShader(const std::string& name) {
         default:
             throw std::runtime_error("Shader loading not implemented");
         }
-        return std::format("shaders/{}/{}", backendPath, (name + extension));
+        return VFormat("shaders/{}/{}", backendPath, (name + extension));
 
     };
 #if __APPLE__
@@ -59,7 +59,7 @@ RGLShaderLibraryPtr RavEngine::LoadShaderByFilename(const std::string& name, RGL
         ext = ".cso";
     }
 
-    auto path = std::format("{}/{}{}", RGL::APIToString(RGL::CurrentAPI()), name, ext);
+    auto path = Format("{}/{}{}", RGL::APIToString(RGL::CurrentAPI()), name, ext);
     auto shaderBytes = resources.GetShaderData(path);
     //auto shaderBytes = resources.FileContentsAt<std::vector<uint8_t>>(path.c_str(),false);
     return device->CreateShaderLibraryFromBytes({ reinterpret_cast<const uint8_t*>(shaderBytes.data()), shaderBytes.size()});

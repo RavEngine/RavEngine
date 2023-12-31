@@ -7,6 +7,7 @@
 #include "App.hpp"
 #include "RenderEngine.hpp"
 #include "Common3D.hpp"
+#include "Format.hpp"
 
 namespace RavEngine{
 
@@ -34,7 +35,7 @@ PostProcessPass::PostProcessPass(const std::string_view name, const PostProcessC
             },
             {
                 .type = RGL::ShaderStageDesc::Type::Fragment,
-                .shaderModule = LoadShaderByFilename(std::format("{}.fsh",name), device),
+                .shaderModule = LoadShaderByFilename(Format("{}.fsh",name), device),
             }
         },
         .vertexConfig = {

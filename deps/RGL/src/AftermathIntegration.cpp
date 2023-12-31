@@ -77,7 +77,7 @@ namespace RGL {
 
     void AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_Result result) {
         if (result != GFSDK_Aftermath_Result::GFSDK_Aftermath_Result_Success) {
-            throw std::runtime_error(std::format("Aftermath failure: {}", (int)result));
+            throw std::runtime_error(Format("Aftermath failure: {}", (int)result));
         }
     }
 

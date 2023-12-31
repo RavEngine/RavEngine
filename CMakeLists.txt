@@ -178,6 +178,7 @@ add_subdirectory("${DEPS_DIR}/tweeny" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/concurrentqueue" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/glm" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/r8brain-cmake" EXCLUDE_FROM_ALL)
+add_subdirectory("${DEPS_DIR}/fmt" EXCLUDE_FROM_ALL)
 
 # randoms
 set(Random_BuildTests OFF CACHE INTERNAL "")
@@ -564,6 +565,7 @@ target_link_libraries("${PROJECT_NAME}"
 	PUBLIC
 	"effolkronium_random"
 	"glm"
+	"fmt"
 	"tweeny"
 	${SDL2STATIC_LIB}
 	${RGL_LIB}
@@ -669,7 +671,7 @@ enable_unity("${all_unity}"
 # project organization
 SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
 
-group_in("Libraries" "assimp;assimp_cmd;DebugUtils;Detour;DetourCrowd;DetourTileCache;freetype;GameNetworkingSockets_s;GNS_Deps;\
+group_in("Libraries" "assimp;assimp_cmd;fmt;DebugUtils;Detour;DetourCrowd;DetourTileCache;freetype;GameNetworkingSockets_s;GNS_Deps;\
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\

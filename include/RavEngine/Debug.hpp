@@ -1,7 +1,7 @@
 #pragma once
 #include "SpinLock.hpp"
 #include "PhysXDefines.h"
-#include "Utilities.hpp"
+#include "Format.hpp"
 
 namespace RavEngine {
 
@@ -35,7 +35,7 @@ public:
 	template <typename ... T>
 	static inline void LogTemp(const std::string_view formatstr, T&& ... values){
 #ifndef NDEBUG
-		LogHelper(stdout, std::format(formatstr,values...),"LOGTEMP");
+		LogHelper(stdout, Format(formatstr,values...),"LOGTEMP");
 #endif
 	}
 	
@@ -54,7 +54,7 @@ public:
 	 */
 	template <typename ... T>
 	static constexpr inline void Log(const std::string_view formatstr, T&& ... values){
-		LogHelper(stdout, std::vformat(formatstr, std::make_format_args(std::forward<T>(values)...)),"LOG");
+		LogHelper(stdout, VFormat(formatstr, values...),"LOG");
 	}
 	
 	/**
@@ -72,7 +72,7 @@ public:
 	 */
 	template <typename ... T>
 	static inline void Warning(const std::string_view formatstr, T&& ... values){
-		LogHelper(stderr, std::vformat(formatstr, std::make_format_args(std::forward<T>(values)...)), "WARN");
+		LogHelper(stderr, VFormat(formatstr, values...), "WARN");
 	}
 	
 	static inline void PrintStacktraceHere(){
@@ -95,7 +95,7 @@ public:
 	*/
 	template <typename ... T>
 	static inline void Error(const std::string_view formatstr, T&& ... values){
-		LogHelper(stderr, std::vformat(formatstr, std::make_format_args(std::forward<T>(values)...)), "ERROR");
+		LogHelper(stderr, VFormat(formatstr, values...), "ERROR");
 		PrintStacktraceHere();
 	}
 	
@@ -117,7 +117,7 @@ public:
 	template <typename ... T>
 	static inline void Fatal(const std::string_view formatstr, T&& ... values){
 		Debug::Error(formatstr,values...);
-        auto formattedMsg = std::vformat(formatstr, std::make_format_args(std::forward<T>(values)...));
+        auto formattedMsg = VFormat(formatstr, values...);
         InvokeUserHandler(formattedMsg);
 		throw std::runtime_error(formattedMsg);
 	}

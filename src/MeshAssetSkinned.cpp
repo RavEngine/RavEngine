@@ -29,7 +29,7 @@ RavEngine::MeshAssetSkinned::~MeshAssetSkinned()
 //TODO: avoid opening the file twice -- this is a double copy and repeats work, therefore slow
 MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> skeleton, float scale) : MeshAsset(path,MeshAssetOptions{false,true,scale}){
 	
-	auto fullpath = std::format("objects/{}",path);
+	auto fullpath = Format("objects/{}",path);
 	
 	if (!GetApp()->GetResources().Exists(fullpath.c_str())){
 		Debug::Fatal("No asset at {}",fullpath);
