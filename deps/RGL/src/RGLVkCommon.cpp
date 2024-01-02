@@ -114,7 +114,8 @@ namespace RGL {
     #if _WIN32
             "VK_KHR_win32_surface",
     #else
-            "VK_KHR_xlib_surface"
+            "VK_KHR_xlib_surface",
+            "VK_KHR_wayland_surface"
     #endif
         };
         instanceCreateInfo.enabledExtensionCount = std::size(minExtensions);

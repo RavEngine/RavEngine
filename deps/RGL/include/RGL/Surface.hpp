@@ -12,6 +12,9 @@ namespace RGL {
 	struct CreateSurfaceConfig {
 		const void* pointer = nullptr;
 		uintptr_t pointer2 = 0;
+#if __linux__
+		bool isWayland = false;
+#endif
 	};
 
 	/**

@@ -9,6 +9,9 @@
 #elif __linux__
 #include <X11/Xlib.h>
 #include <vulkan/vulkan_xlib.h>
+#include <wayland-client-core.h>
+#include <wayland-util.h>
+#include <vulkan/vulkan_wayland.h>
 #endif
 
 using namespace RGL;
@@ -25,16 +28,27 @@ RGLSurfacePtr RGL::CreateVKSurfaceFromPlatformData(const CreateSurfaceConfig& co
     };
     VK_CHECK(vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface));
 
-   
+
 #elif defined __linux__
-    VkXlibSurfaceCreateInfoKHR createInfo{
-           .sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
-           .pNext = nullptr,
-           .flags = 0,
-           .dpy = const_cast<Display*>(static_cast<const Display*>(config.pointer)),
-           .window = static_cast<Window>(config.pointer2),
-    };
-    VK_CHECK(vkCreateXlibSurfaceKHR(instance, &createInfo, nullptr, &surface));
+    if (config.isWayland) {
+        VkWaylandSurfaceCreateInfoKHR createInfo{
+            .sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
+            .pNext = nullptr,
+            .flags = 0,
+            .display = const_cast<wl_display*>(config.pointer),
+            .surface = reinterpret_cast<wl_surface*>(config.pointer2)
+        };
+        VK_CHECK(vkCreateWaylandSurfaceKHR(instance, &createInfo, nullptr, &surface));
+    else{
+        VkXlibSurfaceCreateInfoKHR createInfo{
+               .sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
+               .pNext = nullptr,
+               .flags = 0,
+               .dpy = const_cast<Display*>(static_cast<const Display*>(config.pointer)),
+               .window = static_cast<Window>(config.pointer2),
+        };
+        VK_CHECK(vkCreateXlibSurfaceKHR(instance, &createInfo, nullptr, &surface));
+    }
 #endif
 
     return std::make_shared<SurfaceVk>(surface);

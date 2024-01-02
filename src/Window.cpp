@@ -34,6 +34,8 @@ namespace RavEngine {
 		if (!SDL_GetWindowWMInfo(window, &wmi)) {
 			throw std::runtime_error("Cannot get native window information");
 		}
+
+		bool isWayland = wmi.subsystem == SDL_SYSWM_WAYLAND;
 		surface = RGL::CreateSurfaceFromPlatformHandle(
 #if _UWP
 			{ wmi.info.winrt.window },
@@ -44,7 +46,7 @@ namespace RavEngine {
 #elif __APPLE__
 			{ wmi.info.cocoa.window },
 #elif __linux__
-			{ wmi.info.x11.display, wmi.info.x11.window },
+			{ isWayland ? wmi.info.wl.display : wmi.info.x11.display, isWayland ? reinterpret_cast<uintptr_t>(wmi.info.wl.surface) : wmi.info.x11.window, isWayland },
 #elif __EMSCRIPTEN__
 			{ nullptr, nullptr },
 #else
