@@ -115,6 +115,7 @@ Software (required)
    - cmake
    - libatomic
    - x11-dev
+   - libwayland-dev
    - uuid-dev
    - alsa-lib-devel or pulseaudio (or another SDL2-supported audio library)
    - [LunarG Vulkan SDK](https://www.lunarg.com/vulkan-sdk/) (required)
