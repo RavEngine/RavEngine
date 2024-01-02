@@ -1,6 +1,6 @@
 #pragma once
 #include <string_view>
-#if __APPLE__
+#if __APPLE__ || !__has_include(<format>)
     #include <fmt/format.h>
     #define fmt_src fmt
 #else
