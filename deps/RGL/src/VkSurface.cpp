@@ -35,10 +35,11 @@ RGLSurfacePtr RGL::CreateVKSurfaceFromPlatformData(const CreateSurfaceConfig& co
             .sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
             .pNext = nullptr,
             .flags = 0,
-            .display = const_cast<wl_display*>(config.pointer),
+            .display = const_cast<wl_display*>(static_cast<const wl_display*>(config.pointer)),
             .surface = reinterpret_cast<wl_surface*>(config.pointer2)
         };
         VK_CHECK(vkCreateWaylandSurfaceKHR(instance, &createInfo, nullptr, &surface));
+    }
     else{
         VkXlibSurfaceCreateInfoKHR createInfo{
                .sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
