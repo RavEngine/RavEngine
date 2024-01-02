@@ -101,7 +101,7 @@ Hardware
 
 Note that for end users the minimum system requirements are much lower
 
-Software (required)
+Software
 - macOS, iOS, tvOS
    - Xcode
    - CMake
@@ -111,14 +111,14 @@ Software (required)
    - LunarG Vulkan SDK (optional)
 - Linux
    - ninja (recommended) or make
-   - clang 14 or later (recommended) or gcc 12 or later
+   - clang 16 or later (recommended) or gcc 13 or later
    - cmake
    - libatomic
-   - x11-dev
+   - libx11-dev
    - libwayland-dev
    - uuid-dev
    - alsa-lib-devel or pulseaudio (or another SDL2-supported audio library)
-   - [LunarG Vulkan SDK](https://www.lunarg.com/vulkan-sdk/) (required)
+   - [LunarG Vulkan SDK](https://www.lunarg.com/vulkan-sdk/)
 
 
 ## Example programs
