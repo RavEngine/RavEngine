@@ -9,7 +9,7 @@ SpinLock Debug::mtx;
 void RavEngine::Debug::LogHelper(FILE* output, const std::string_view message, const char* type) {
 	auto date = date::format("%F %T", std::chrono::system_clock::now());
 	mtx.lock();
-	fprintf(output, "[%s] %s - %s\n", date.c_str(), type, message);
+	fprintf(output, "[%s] %s - %s\n", date.c_str(), type, message.data());
 	mtx.unlock();
 }
 
