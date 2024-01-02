@@ -46,7 +46,7 @@ namespace RavEngine {
 #elif __APPLE__
 			{ wmi.info.cocoa.window },
 #elif __linux__
-			{ isWayland ? wmi.info.wl.display : wmi.info.x11.display, isWayland ? reinterpret_cast<uintptr_t>(wmi.info.wl.surface) : wmi.info.x11.window, isWayland },
+			{ isWayland ? static_cast<void*>(wmi.info.wl.display) : static_cast<void*>(wmi.info.x11.display), isWayland ? reinterpret_cast<uintptr_t>(wmi.info.wl.surface) : uintptr_t(wmi.info.x11.window), isWayland },
 #elif __EMSCRIPTEN__
 			{ nullptr, nullptr },
 #else
