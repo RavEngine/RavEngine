@@ -162,7 +162,7 @@ void main() {
         float bbwidth = (projected.maxX - projected.minX) * mipDim;
         float bbheight = (projected.maxY - projected.minY) * mipDim;
 
-        if(projected.referenceZ > 0){        // if < 0 then it intersects the near plane so we consider it to be visible
+        if(projected.referenceZ <= 1){        // otherwise it intersects the near plane so we consider it to be visible
             //find the mipmap level that will match the screen size of the sphere
             float miplevel = floor(log2(max(bbwidth, bbheight)));
 
