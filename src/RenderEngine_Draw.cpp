@@ -933,8 +933,8 @@ struct LightingType{
 			mainCommandBuffer->BeginComputeDebugMarker("Build depth pyramid");
 
             {
-                float width = nextImgSize.width;
-                float height = nextImgSize.height;
+                float width = target.pyramidSize;
+                float height = target.pyramidSize;
                 for(int i = 0; i < target.numPyramidLevels - 1; i++){
                     auto fromTex = target.depthPyramidTexture->GetViewForMip(i);
                     auto toTex = target.depthPyramidTexture->GetViewForMip(i+1);
