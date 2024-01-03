@@ -164,8 +164,7 @@ void main() {
 
         if(projected.referenceZ <= 1){        // otherwise it intersects the near plane so we consider it to be visible
             //find the mipmap level that will match the screen size of the sphere
-            float miplevel = floor(log2(max(bbwidth, bbheight))) - 1;
-            miplevel = max(miplevel, 0);
+            float miplevel = ceil(log2(max(bbwidth, bbheight)));
 
             // create the corners of the bounding box for sampling
             vec2 ndcCorners[] = {

@@ -227,7 +227,7 @@ struct LightingType{
 							mainCommandBuffer->SetComputeBytes(cubo, 0);
 #endif
 							mainCommandBuffer->SetComputeTexture(target.depthPyramidTexture->GetDefaultView(), 4);
-							mainCommandBuffer->SetComputeSampler(depthPyramidSamplerTest, 5);
+							mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 5);
 							mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 							cubo.indirectBufferOffset += lodsForThisMesh;
 							cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
@@ -339,7 +339,7 @@ struct LightingType{
                                 mainCommandBuffer->SetComputeBytes(cubo, 0);
 #endif
 								mainCommandBuffer->SetComputeTexture(target.depthPyramidTexture->GetDefaultView(), 4);
-								mainCommandBuffer->SetComputeSampler(depthPyramidSamplerTest, 5);
+								mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 5);
 								mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 								cubo.indirectBufferOffset += lodsForThisMesh;
 								cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
