@@ -341,6 +341,16 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
         .mipFilter = RGL::MipFilterMode::Nearest,
 		.reductionMode = RGL::SamplerReductionMode::Minimum,
     });
+
+	// when reading the depth pyramid during culling, we do not want reduction or filtering active. 
+	depthPyramidSamplerTest = device->CreateSampler({
+		.addressModeU = RGL::SamplerAddressMode::Clamp,
+		.addressModeV = RGL::SamplerAddressMode::Clamp,
+		.addressModeW = RGL::SamplerAddressMode::Clamp,
+		.minFilter = RGL::MinMagFilterMode::Nearest,
+		.magFilter = RGL::MinMagFilterMode::Nearest,
+		.mipFilter = RGL::MipFilterMode::Nearest,
+	});
     
 	shadowTexture = device->CreateTexture({
 		.usage = {.Sampled = true, .DepthStencilAttachment = true },
