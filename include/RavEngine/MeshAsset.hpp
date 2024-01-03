@@ -69,6 +69,8 @@ public:
 		return 1;	// TODO: lods are not yet supported
 	}
 
+	MeshAsset(const MeshAsset&) = delete;
+	MeshAsset(MeshAsset&&) = delete;
     
 protected:
 #if !RVE_SERVER
@@ -167,10 +169,14 @@ public:
 		totalVerts = other->totalVerts;
 		totalIndices = other->totalIndices;
 		meshAllocation = other->meshAllocation;
+
+		radius = other->radius;
+		bounds = other->bounds;
 		
 		other->meshAllocation = {};
         other->vertexBuffer.reset();
 		other->indexBuffer.reset();
+
 	}
 #endif
     
