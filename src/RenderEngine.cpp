@@ -333,10 +333,11 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	});
 
     depthPyramidSampler = device->CreateSampler({
-        .addressModeU = RGL::SamplerAddressMode::Border,
-        .addressModeV = RGL::SamplerAddressMode::Border,
-        .minFilter = RGL::MinMagFilterMode::Nearest,
-        .magFilter = RGL::MinMagFilterMode::Nearest,
+        .addressModeU = RGL::SamplerAddressMode::Clamp,
+        .addressModeV = RGL::SamplerAddressMode::Clamp,
+		.addressModeW = RGL::SamplerAddressMode::Clamp,
+        .minFilter = RGL::MinMagFilterMode::Linear,
+        .magFilter = RGL::MinMagFilterMode::Linear,
         .mipFilter = RGL::MipFilterMode::Nearest,
 		.reductionMode = RGL::SamplerReductionMode::Minimum,
     });
