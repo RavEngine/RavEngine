@@ -37,7 +37,23 @@ namespace RavEngine {
 			isTickDirty = false;
 		}
 
-		void UpdateChildren();
+		inline void UpdateChildren()
+		{
+			MarkAsDirty();
+			if (children.size() > 0) [[unlikely]]  {
+				constexpr auto update = [](Transform* transform, auto&& updatefn) -> void {
+					transform->MarkAsDirty();
+					auto newParentMatrix = transform->GetWorldMatrix();
+					for (auto& child : transform->children) {
+						auto component = child.get();
+						component->matrix = newParentMatrix;
+
+						updatefn(component, updatefn);
+					}
+					};
+				update(this, update);
+			}
+		}
         
 	public:
         inline bool getTickDirty() const{
