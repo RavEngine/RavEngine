@@ -1802,16 +1802,6 @@ const string_view RenderEngine::GetCurrentBackendName(){
 	return RGL::APIToString(RGL::CurrentAPI());
 }
 
-float RavEngine::RenderEngine::GetCurrentFPS()
-{
-	return 1.0f / ((GetLastFrameTime() / 1000.f)/1000);
-}
-
-float RavEngine::RenderEngine::GetLastFrameTime()
-{
-	return currentFrameTime;
-}
-
 #ifndef NDEBUG
 void RenderEngine::InitDebugger() const{
 	if (!debuggerContext){

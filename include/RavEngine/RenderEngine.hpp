@@ -178,16 +178,6 @@ namespace RavEngine {
          @return The name of the current rendering API in use
          */
         static const std::string_view GetCurrentBackendName();
-
-        /**
-         @return the current frame rate using the frame time
-         */
-		float GetCurrentFPS();
-        
-        /**
-         @return the time in microseconds to render the last frame (begin-to-present)
-         */
-		float GetLastFrameTime();
 		
 		static struct vs {
 			bool vsync = true;
@@ -288,8 +278,6 @@ namespace RavEngine {
 		void DestroyUnusedResources();
         static RavEngine::Vector<VertexColorUV> navMeshPolygon;
         bool navDebugDepthEnabled = false; 
-
-		uint32_t currentFrameTime;
 
         void Init(const AppConfig&);
     public:

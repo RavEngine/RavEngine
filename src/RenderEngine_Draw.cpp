@@ -37,7 +37,6 @@ struct LightingType{
  Render one frame using the current state of every object in the world
  */
 	RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const std::vector<RenderViewCollection>& targets, float guiScaleFactor) {
-		auto start = std::chrono::high_resolution_clock::now();
 		transientOffset = 0;
 
 		
@@ -1066,10 +1065,6 @@ struct LightingType{
 
 		}
 		mainCommandBuffer->End();
-
-		auto end = std::chrono::high_resolution_clock::now();
-		auto duration = duration_cast<std::chrono::microseconds>(end - start);
-		currentFrameTime = duration.count();
 
 		return mainCommandBuffer;
 	}
