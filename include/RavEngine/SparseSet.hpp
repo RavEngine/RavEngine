@@ -82,7 +82,7 @@ namespace RavEngine {
         }
 
         // given a dense index, return its sparse index
-        value_type& GetSparseIndexForDense(index_t idx) {
+        index_t& GetSparseIndexForDense(index_t idx) {
             return reverse_map[idx];
         }
 

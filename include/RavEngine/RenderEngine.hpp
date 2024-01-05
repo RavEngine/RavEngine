@@ -50,7 +50,7 @@ namespace RavEngine {
 		RGLCommandQueuePtr mainCommandQueue;
 		RGLCommandBufferPtr mainCommandBuffer;
 
-		RGLTexturePtr shadowTexture;
+		RGLTexturePtr dummyShadowmap;
 		RGLSamplerPtr textureSampler, shadowSampler, depthPyramidSampler;
 		RGLRenderPassPtr deferredRenderPass, unlitRenderPass, lightingRenderPass, ambientLightRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, shadowRenderPass, lightingClearRenderPass, deferredClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, ssaoPass;
 

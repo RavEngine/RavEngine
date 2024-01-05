@@ -511,9 +511,11 @@ struct LightingType{
 				struct lightViewProjResult {
 					glm::mat4 lightProj, lightView;
 					glm::vec3 camPos = glm::vec3{ 0,0,0 };
+					DepthPyramid depthPyramid;
+					RGLTexturePtr shadowmapTexture;
 				};
 
-				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target, &fullSizeScissor, &fullSizeViewport, &renderArea](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
+				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target, &fullSizeScissor, &fullSizeViewport, &renderArea, &worldOwning](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
 					if (lightStore.uploadData.DenseSize() > 0) {
 						LightingUBO lightUBO{
 							.viewProj = viewproj,
@@ -521,10 +523,11 @@ struct LightingType{
 							.viewRegion = {renderArea.offset[0],renderArea.offset[1],renderArea.extent[0],renderArea.extent[1]}
 						};
 
-						shadowRenderPass->SetDepthAttachmentTexture(shadowTexture->GetDefaultView());
 						lightUBO.isRenderingShadows = true;
 						for (uint32_t i = 0; i < lightStore.uploadData.DenseSize(); i++) {
 							const auto& light = lightStore.uploadData.GetDense()[i];
+							auto sparseIdx = lightStore.uploadData.GetSparseIndexForDense(i);
+							auto owner = worldOwning->GetLocalToGlobal()[sparseIdx];
                             
                             using lightadt_t = std::remove_reference_t<decltype(lightStore)>;
                             
@@ -541,11 +544,14 @@ struct LightingType{
 								glm::mat4 lightViewProj;
 							} lightExtras;
 
-							lightViewProjResult lightMats = genLightViewProj(light,aux_data);
+							lightViewProjResult lightMats = genLightViewProj(light,aux_data, owner);
 
 							auto lightSpaceMatrix = lightMats.lightProj * lightMats.lightView;
 							lightUBO.camPos = lightMats.camPos;
 
+							auto shadowTexture = lightMats.shadowmapTexture;
+
+							shadowRenderPass->SetDepthAttachmentTexture(shadowTexture->GetDefaultView());
 							renderFromPerspective(lightSpaceMatrix, lightMats.camPos, shadowRenderPass, [](Ref<Material>&& mat) {
 								return mat->GetShadowRenderPipeline();
                             }, { 0, 0, shadowMapSize,shadowMapSize }, {.Lit = true, .Unlit = true});
@@ -592,7 +598,7 @@ struct LightingType{
 						mainCommandBuffer->SetFragmentTexture(target.normalTexture->GetDefaultView(), 3);
 						mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 4);
 						mainCommandBuffer->SetFragmentTexture(target.roughnessSpecularMetallicAOTexture->GetDefaultView(), 6);
-						mainCommandBuffer->SetFragmentTexture(shadowTexture->GetDefaultView(), 5);
+						mainCommandBuffer->SetFragmentTexture(dummyShadowmap->GetDefaultView(), 5);
 
 						mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
 
@@ -618,7 +624,7 @@ struct LightingType{
 							.nInstances = nInstances
 							});
 					},
-					[&camPos](const RavEngine::World::DirLightUploadData& light, auto auxDataPtr) {
+					[&camPos](const RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
 						auto dirvec = light.direction;
                     
                         auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
@@ -630,10 +636,14 @@ struct LightingType{
 						const vector3 reposVec{ std::round(-camPos.x), std::round(camPos.y), std::round(-camPos.z) };
 						lightView = glm::translate(lightView, reposVec);
 
+						auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
+
 						return lightViewProjResult{
 							.lightProj = lightProj,
 							.lightView = lightView,
-							.camPos = camPos
+							.camPos = camPos,
+							.depthPyramid = origLight.shadowData.pyramid,
+							.shadowmapTexture = origLight.shadowData.shadowMap
 						};
 					}
 				);
@@ -651,7 +661,7 @@ struct LightingType{
 							.nInstances = nInstances
 						});
 					},
-					[](const RavEngine::World::SpotLightDataUpload& light, auto unusedAux) {
+					[](const RavEngine::World::SpotLightDataUpload& light, auto unusedAux, entity_t owner) {
 
 						auto lightProj = RMath::perspectiveProjection<float>(light.coneAndPenumbra.x * 2, 1, 0.1, 100);
 
@@ -663,10 +673,14 @@ struct LightingType{
 
 						auto camPos = light.worldTransform * glm::vec4(0, 0, 0, 1);
 
+						auto& origLight = Entity(owner).GetComponent<SpotLight>();
+
 						return lightViewProjResult{
 							.lightProj = lightProj,
 							.lightView = viewMat,
-							.camPos = camPos
+							.camPos = camPos,
+							.depthPyramid = origLight.shadowData.pyramid,
+							.shadowmapTexture = origLight.shadowData.shadowMap
 						};
 					}
 				);
@@ -683,7 +697,7 @@ struct LightingType{
 							.nInstances = nInstances
 						});
 					},
-					[](const RavEngine::World::PointLightUploadData& light, auto unusedAux) {
+					[](const RavEngine::World::PointLightUploadData& light, auto unusedAux, entity_t owner) {
 						// TODO: need to do this 6 times and make a cubemap
 						auto lightProj = RMath::perspectiveProjection<float>(90, 1, 0.1, 100);
 
@@ -912,41 +926,44 @@ struct LightingType{
 				function(viewproj, camPos, fullSizeViewport, fullSizeScissor, renderArea);
 			};
             
-            // build the depth pyramid using the depth data from the previous frame
-			depthPyramidCopyPass->SetAttachmentTexture(0, target.depthPyramid.pyramidTexture->GetViewForMip(0));
+			auto generatePyramid = [this](const DepthPyramid& depthPyramid, RGLTexturePtr depthStencil) {
+				// build the depth pyramid using the depth data from the previous frame
+				depthPyramidCopyPass->SetAttachmentTexture(0, depthPyramid.pyramidTexture->GetViewForMip(0));
 				mainCommandBuffer->BeginRendering(depthPyramidCopyPass);
 				mainCommandBuffer->BeginRenderDebugMarker("First copy of depth pyramid");
 				mainCommandBuffer->BindRenderPipeline(depthPyramidCopyPipeline);
-				mainCommandBuffer->SetViewport({0,0,float(target.depthPyramid.dim) ,float(target.depthPyramid.dim) });
-				mainCommandBuffer->SetScissor({ 0,0,target.depthPyramid.dim,target.depthPyramid.dim });
-				PyramidCopyUBO pubo{ .size = target.depthPyramid.dim };
-				mainCommandBuffer->SetFragmentBytes(pubo,0);
-				mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 0);
+				mainCommandBuffer->SetViewport({ 0,0,float(depthPyramid.dim) ,float(depthPyramid.dim) });
+				mainCommandBuffer->SetScissor({ 0,0,depthPyramid.dim,depthPyramid.dim });
+				PyramidCopyUBO pubo{ .size = depthPyramid.dim };
+				mainCommandBuffer->SetFragmentBytes(pubo, 0);
+				mainCommandBuffer->SetFragmentTexture(depthStencil->GetDefaultView(), 0);
 				mainCommandBuffer->SetFragmentSampler(depthPyramidSampler, 1);
 				mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 				mainCommandBuffer->Draw(3);
 				mainCommandBuffer->EndRenderDebugMarker();
-			mainCommandBuffer->EndRendering();
-            
-            mainCommandBuffer->BeginCompute(depthPyramidPipeline);
-			mainCommandBuffer->BeginComputeDebugMarker("Build depth pyramid");
+				mainCommandBuffer->EndRendering();
 
-            {
-                float dim = target.depthPyramid.dim;
-                for(int i = 0; i < target.depthPyramid.numLevels - 1; i++){
-                    auto fromTex = target.depthPyramid.pyramidTexture->GetViewForMip(i);
-                    auto toTex = target.depthPyramid.pyramidTexture->GetViewForMip(i+1);
-                    mainCommandBuffer->SetComputeTexture(toTex, 0);
-                    mainCommandBuffer->SetComputeTexture(fromTex, 1);
-                    mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 2);
-                    
-                    dim /= 2.0;
-                    
-                    mainCommandBuffer->DispatchCompute(std::ceil(dim/32.f), std::ceil(dim/32.f), 1, 32,32,1);
-                }
-            }
-			mainCommandBuffer->EndComputeDebugMarker();
-            mainCommandBuffer->EndCompute();
+				mainCommandBuffer->BeginCompute(depthPyramidPipeline);
+				mainCommandBuffer->BeginComputeDebugMarker("Build depth pyramid");
+
+				{
+					float dim = depthPyramid.dim;
+					for (int i = 0; i < depthPyramid.numLevels - 1; i++) {
+						auto fromTex = depthPyramid.pyramidTexture->GetViewForMip(i);
+						auto toTex = depthPyramid.pyramidTexture->GetViewForMip(i + 1);
+						mainCommandBuffer->SetComputeTexture(toTex, 0);
+						mainCommandBuffer->SetComputeTexture(fromTex, 1);
+						mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 2);
+
+						dim /= 2.0;
+
+						mainCommandBuffer->DispatchCompute(std::ceil(dim / 32.f), std::ceil(dim / 32.f), 1, 32, 32, 1);
+					}
+				}
+				mainCommandBuffer->EndComputeDebugMarker();
+				mainCommandBuffer->EndCompute();
+			};
+			generatePyramid(target.depthPyramid, target.depthStencil);
 
 			// deferred pass
 			deferredRenderPass->SetAttachmentTexture(0, target.diffuseTexture->GetDefaultView());

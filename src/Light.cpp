@@ -4,6 +4,8 @@
 #include "MeshAsset.hpp"
 #include "Entity.hpp"
 #include "Transform.hpp"
+#include "App.hpp"
+#include <RGL/Texture.hpp>
 
 using namespace RavEngine;
 using namespace std;
@@ -43,4 +45,21 @@ void SpotLight::AddInstanceData(float* offset) const{
 	offset[17] = penumbraAngle;
 	
 	//the radius and intensity are derived in the shader by extracting the scale information
+}
+
+RavEngine::ShadowLight::ShadowLight()
+{
+	constexpr static auto dim = 4096;
+	shadowData.pyramid = {dim};
+
+	auto device = GetApp()->GetDevice();
+
+	shadowData.shadowMap = device->CreateTexture({
+		.usage = {.Sampled = true, .DepthStencilAttachment = true },
+		.aspect = {.HasDepth = true },
+		.width = dim,
+		.height = dim,
+		.format = RGL::TextureFormat::D32SFloat,
+		.debugName = "Shadow Texture"
+	});
 }

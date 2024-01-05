@@ -342,16 +342,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.reductionMode = RGL::SamplerReductionMode::Minimum,
     });
     
-	shadowTexture = device->CreateTexture({
-		.usage = {.Sampled = true, .DepthStencilAttachment = true },
-		.aspect = {.HasDepth = true },
-		.width = shadowMapSize,
-		.height = shadowMapSize,
-		.format = RGL::TextureFormat::D32SFloat,
-		.debugName = "Shadow Texture"
-	});
-
-
 	// create built-in pipeline layouts
 	auto ambientLightRenderPipelineLayout = device->CreatePipelineLayout({
 		.bindings = {
@@ -704,6 +694,16 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.clearColor = depthClearColor
 		}
 	});
+
+	dummyShadowmap = device->CreateTexture({
+		.usage = {.TransferDestination = true,  .Sampled = true,},
+		.aspect = {.HasColor = true },
+		.width = 1,
+		.height = 1,
+		.format = RGL::TextureFormat::R32_Float,
+		.debugName = "Dummy Shadowmap"
+		}
+	);
 
 	// create lighting render pipelines
 	constexpr static uint32_t width = 640, height = 480;

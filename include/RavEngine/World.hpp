@@ -94,6 +94,10 @@ namespace RavEngine {
         friend class Entity;
         friend class Registry;
     public:
+        auto& GetLocalToGlobal() {
+            return localToGlobal;
+        }
+
         template<typename T>
         class EntitySparseSet{
             unordered_vector<T> dense_set;
