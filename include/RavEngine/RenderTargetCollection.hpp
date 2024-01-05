@@ -2,6 +2,7 @@
 #if !RVE_SERVER
 #include <RGL/Types.hpp>
 #include "mathtypes.hpp"
+#include "DepthPyramid.hpp"
 
 namespace RavEngine{
 	struct ViewportOverride {
@@ -10,10 +11,9 @@ namespace RavEngine{
 	};
 
 	struct RenderTargetCollection {
-		RGLTexturePtr diffuseTexture, normalTexture, roughnessSpecularMetallicAOTexture, depthStencil, depthPyramidTexture, lightingTexture, lightingScratchTexture, ssaoTexture;
+		RGLTexturePtr diffuseTexture, normalTexture, roughnessSpecularMetallicAOTexture, depthStencil, lightingTexture, lightingScratchTexture, ssaoTexture;
 		RGL::ITexture* finalFramebuffer;
-		uint32_t pyramidSize = 0;			// square texture
-		uint32_t numPyramidLevels = 0;
+		DepthPyramid depthPyramid;
 	};
 
 	struct RenderViewCollection {

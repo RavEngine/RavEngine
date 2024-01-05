@@ -1684,22 +1684,11 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 			}
 		);
 
-		// the depth pyramid is the next POT smaller
 		auto dim = std::min(width, height);
-		dim = pow(2,std::floor(std::log2f(dim)));
+		
 
-		collection.numPyramidLevels = 1 + std::floor(std::log2(dim));
+		collection.depthPyramid = {dim};
 
-        collection.depthPyramidTexture = device->CreateTexture({
-            .usage = {.Sampled = true, .Storage = true, .ColorAttachment = true},
-            .aspect = {.HasColor = true },
-            .width = dim,
-            .height = dim,
-            .mipLevels = collection.numPyramidLevels,
-            .format = depthPyramidFormat,
-            .debugName = "Depth Pyramid Texture"
-        });
-		collection.pyramidSize = dim;
 	}
 	collection.diffuseTexture = device->CreateTexture({
 		.usage = {.Sampled = true, .ColorAttachment = true },
@@ -1765,7 +1754,7 @@ void RavEngine::RenderEngine::ResizeRenderTargetCollection(RenderTargetCollectio
 	gcTextures.enqueue(collection.diffuseTexture);
 	gcTextures.enqueue(collection.normalTexture);
 	gcTextures.enqueue(collection.lightingTexture);
-    gcTextures.enqueue(collection.depthPyramidTexture);
+    gcTextures.enqueue(collection.depthPyramid.pyramidTexture);
     gcTextures.enqueue(collection.lightingScratchTexture);
 
 	auto newcol = CreateRenderTargetCollection(size);

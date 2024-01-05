@@ -65,8 +65,6 @@ namespace RavEngine {
 
 		static constexpr uint16_t shadowMapSize = 4096;
 
-		static constexpr RGL::TextureFormat depthPyramidFormat = RGL::TextureFormat::R32_Float;
-
 		struct PyramidCopyUBO {
 			uint32_t size;
 		};
@@ -75,6 +73,8 @@ namespace RavEngine {
 
 		friend class Material;
     public:
+		static constexpr RGL::TextureFormat depthPyramidFormat = RGL::TextureFormat::R32_Float;
+
         auto GetDefaultPostEffectVSH() const{
             return defaultPostEffectVSH;
         }

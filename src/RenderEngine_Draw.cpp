@@ -225,7 +225,7 @@ struct LightingType{
 #else
 							mainCommandBuffer->SetComputeBytes(cubo, 0);
 #endif
-							mainCommandBuffer->SetComputeTexture(target.depthPyramidTexture->GetDefaultView(), 4);
+							mainCommandBuffer->SetComputeTexture(target.depthPyramid.pyramidTexture->GetDefaultView(), 4);
 							mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 5);
 							mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 							cubo.indirectBufferOffset += lodsForThisMesh;
@@ -337,7 +337,7 @@ struct LightingType{
 #else
                                 mainCommandBuffer->SetComputeBytes(cubo, 0);
 #endif
-								mainCommandBuffer->SetComputeTexture(target.depthPyramidTexture->GetDefaultView(), 4);
+								mainCommandBuffer->SetComputeTexture(target.depthPyramid.pyramidTexture->GetDefaultView(), 4);
 								mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 5);
 								mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 								cubo.indirectBufferOffset += lodsForThisMesh;
@@ -913,13 +913,13 @@ struct LightingType{
 			};
             
             // build the depth pyramid using the depth data from the previous frame
-			depthPyramidCopyPass->SetAttachmentTexture(0, target.depthPyramidTexture->GetViewForMip(0));
+			depthPyramidCopyPass->SetAttachmentTexture(0, target.depthPyramid.pyramidTexture->GetViewForMip(0));
 				mainCommandBuffer->BeginRendering(depthPyramidCopyPass);
 				mainCommandBuffer->BeginRenderDebugMarker("First copy of depth pyramid");
 				mainCommandBuffer->BindRenderPipeline(depthPyramidCopyPipeline);
-				mainCommandBuffer->SetViewport({0,0,float(target.pyramidSize) ,float(target.pyramidSize) });
-				mainCommandBuffer->SetScissor({ 0,0,target.pyramidSize,target.pyramidSize});
-				PyramidCopyUBO pubo{ .size = target.pyramidSize };
+				mainCommandBuffer->SetViewport({0,0,float(target.depthPyramid.dim) ,float(target.depthPyramid.dim) });
+				mainCommandBuffer->SetScissor({ 0,0,target.depthPyramid.dim,target.depthPyramid.dim });
+				PyramidCopyUBO pubo{ .size = target.depthPyramid.dim };
 				mainCommandBuffer->SetFragmentBytes(pubo,0);
 				mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 0);
 				mainCommandBuffer->SetFragmentSampler(depthPyramidSampler, 1);
@@ -932,19 +932,17 @@ struct LightingType{
 			mainCommandBuffer->BeginComputeDebugMarker("Build depth pyramid");
 
             {
-                float width = target.pyramidSize;
-                float height = target.pyramidSize;
-                for(int i = 0; i < target.numPyramidLevels - 1; i++){
-                    auto fromTex = target.depthPyramidTexture->GetViewForMip(i);
-                    auto toTex = target.depthPyramidTexture->GetViewForMip(i+1);
+                float dim = target.depthPyramid.dim;
+                for(int i = 0; i < target.depthPyramid.numLevels - 1; i++){
+                    auto fromTex = target.depthPyramid.pyramidTexture->GetViewForMip(i);
+                    auto toTex = target.depthPyramid.pyramidTexture->GetViewForMip(i+1);
                     mainCommandBuffer->SetComputeTexture(toTex, 0);
                     mainCommandBuffer->SetComputeTexture(fromTex, 1);
                     mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 2);
                     
-                    width /= 2.0;
-                    height /= 2.0;
+                    dim /= 2.0;
                     
-                    mainCommandBuffer->DispatchCompute(std::ceil(width/32.f), std::ceil(height/32.f), 1, 32,32,1);
+                    mainCommandBuffer->DispatchCompute(std::ceil(dim/32.f), std::ceil(dim/32.f), 1, 32,32,1);
                 }
             }
 			mainCommandBuffer->EndComputeDebugMarker();
