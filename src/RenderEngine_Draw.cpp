@@ -239,9 +239,9 @@ struct LightingType{
 			};
 
 
-			auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes, &target](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter) {
+			auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes, &target](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, RGLTexturePtr depthStencil) {
 
-				auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos,&target](auto&& renderData) {
+				auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos,&target, &pyramid](auto&& renderData) {
 					for (auto& [materialInstance, drawcommand] : renderData) {
 						//prepass: get number of LODs and entities
 						uint32_t numLODs = 0, numEntities = 0;
@@ -337,7 +337,7 @@ struct LightingType{
 #else
                                 mainCommandBuffer->SetComputeBytes(cubo, 0);
 #endif
-								mainCommandBuffer->SetComputeTexture(target.depthPyramid.pyramidTexture->GetDefaultView(), 4);
+								mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 4);
 								mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 5);
 								mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 								cubo.indirectBufferOffset += lodsForThisMesh;
@@ -465,7 +465,7 @@ struct LightingType{
 
 				renderFromPerspective(viewproj, camPos, deferredRenderPass, [](Ref<Material>&& mat) {
 					return mat->GetMainRenderPipeline();
-                }, renderArea, {.Lit = true});
+                }, renderArea, {.Lit = true}, target.depthPyramid, target.depthStencil);
 
 				
 			};
@@ -554,7 +554,7 @@ struct LightingType{
 							shadowRenderPass->SetDepthAttachmentTexture(shadowTexture->GetDefaultView());
 							renderFromPerspective(lightSpaceMatrix, lightMats.camPos, shadowRenderPass, [](Ref<Material>&& mat) {
 								return mat->GetShadowRenderPipeline();
-                            }, { 0, 0, shadowMapSize,shadowMapSize }, {.Lit = true, .Unlit = true});
+                            }, { 0, 0, shadowMapSize,shadowMapSize }, {.Lit = true, .Unlit = true}, lightMats.depthPyramid, lightMats.shadowmapTexture);
 
 							lightExtras.lightViewProj = lightSpaceMatrix;
 
@@ -723,7 +723,7 @@ struct LightingType{
                 unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
                 renderFromPerspective(viewproj, camPos, unlitRenderPass, [](Ref<Material>&& mat) {
                     return mat->GetMainRenderPipeline();
-                }, renderArea, {.Unlit = true});
+                }, renderArea, {.Unlit = true}, target.depthPyramid, target.depthStencil);
                 
                 // then do the skybox, if one is defined.
                 mainCommandBuffer->BeginRendering(unlitRenderPass);
@@ -964,6 +964,34 @@ struct LightingType{
 				mainCommandBuffer->EndCompute();
 			};
 			generatePyramid(target.depthPyramid, target.depthStencil);
+
+			// also generate the pyramids for the shadow lights
+			auto genPyramidForLight = [&generatePyramid,&worldOwning](auto&& lightStore, auto* lightType) -> void {
+				for (uint32_t i = 0; i < lightStore.uploadData.DenseSize(); i++) {
+					const auto& light = lightStore.uploadData.GetDense()[i];
+					auto sparseIdx = lightStore.uploadData.GetSparseIndexForDense(i);
+					auto owner = worldOwning->GetLocalToGlobal()[sparseIdx];
+
+					using LightType = std::remove_pointer_t<decltype(lightType)>;
+
+					auto& origLight = Entity(owner).GetComponent<LightType>();
+					const auto& mapData = origLight.GetShadowMap();
+
+
+					generatePyramid(mapData.pyramid, mapData.shadowMap);
+				}
+			};
+			mainCommandBuffer->BeginRenderDebugMarker("Light depth pyramids");
+			{
+				DirectionalLight* ptr = nullptr;
+				genPyramidForLight(worldOwning->renderData->directionalLightData, ptr);
+			}
+			{
+				SpotLight* ptr = nullptr;
+				genPyramidForLight(worldOwning->renderData->spotLightData, ptr);
+			}
+			mainCommandBuffer->EndRenderDebugMarker();
+		
 
 			// deferred pass
 			deferredRenderPass->SetAttachmentTexture(0, target.diffuseTexture->GetDefaultView());
