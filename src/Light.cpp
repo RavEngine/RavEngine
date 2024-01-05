@@ -5,7 +5,9 @@
 #include "Entity.hpp"
 #include "Transform.hpp"
 #include "App.hpp"
+#if !RVE_SERVER
 #include <RGL/Texture.hpp>
+#endif
 
 using namespace RavEngine;
 using namespace std;
@@ -49,6 +51,7 @@ void SpotLight::AddInstanceData(float* offset) const{
 
 RavEngine::ShadowLight::ShadowLight()
 {
+#if !RVE_SERVER
 	constexpr static auto dim = 4096;
 	shadowData.pyramid = {dim};
 
@@ -62,4 +65,5 @@ RavEngine::ShadowLight::ShadowLight()
 		.format = RGL::TextureFormat::D32SFloat,
 		.debugName = "Shadow Texture"
 	});
+#endif
 }
