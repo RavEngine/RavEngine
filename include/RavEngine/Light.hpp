@@ -2,7 +2,9 @@
 #include "Queryable.hpp"
 #include "Common3D.hpp"
 #include "IDebugRenderable.hpp"
+#if !RVE_SERVER
 #include "DepthPyramid.hpp"
+#endif
 
 namespace RavEngine{
 class MeshAsset;
@@ -41,17 +43,21 @@ public:
  */
 struct ShadowLight : public Light, public QueryableDelta<Light,ShadowLight>{
 	using QueryableDelta<Light,ShadowLight>::GetQueryTypes;
+#if !RVE_SERVER
 	struct ShadowMap {
 		DepthPyramid pyramid;
 		RGLTexturePtr shadowMap;
 	} shadowData;
+#endif
 private:
 	bool doesCastShadow = false;
 public:
 	ShadowLight();
+#if !RVE_SERVER
 	const ShadowMap& GetShadowMap() const {
 		return shadowData;
 	}
+#endif
 	bool CastsShadows() const { return doesCastShadow; }
 	void SetCastsShadows(bool casts) {
         invalidate();
