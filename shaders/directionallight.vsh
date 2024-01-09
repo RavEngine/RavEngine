@@ -35,5 +35,5 @@ void main()
 
     outInvViewProj = vec4[4](invViewProj[0],invViewProj[1],invViewProj[2],invViewProj[3]);
 
-    gl_Position = (inCastsShadows == ubo.isRenderingShadows) ? vec4(a_position, 1, 1.0) : vec4(NaN,NaN,NaN,NaN);	//depth = 1
+    gl_Position = (inCastsShadows == ubo.isRenderingShadows) ? vec4(a_position, 0, 1.0) : vec4(NaN,NaN,NaN,NaN);	//depth = 1
 }

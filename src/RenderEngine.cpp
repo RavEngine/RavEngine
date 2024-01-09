@@ -763,7 +763,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				.depthFormat = RGL::TextureFormat::D32SFloat,
 				.depthTestEnabled = true,
 				.depthWriteEnabled = false,
-				.depthFunction = RGL::DepthCompareFunction::Greater,
+				.depthFunction = RGL::DepthCompareFunction::Less,
 			},
 			.pipelineLayout = layout,
 		};
