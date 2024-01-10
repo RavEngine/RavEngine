@@ -552,6 +552,7 @@ struct LightingType{
 							auto shadowTexture = lightMats.shadowmapTexture;
 
 							shadowRenderPass->SetDepthAttachmentTexture(shadowTexture->GetDefaultView());
+							auto shadowMapSize = shadowTexture->GetSize().width;
 							renderFromPerspective(lightSpaceMatrix, lightMats.camPos, shadowRenderPass, [](Ref<Material>&& mat) {
 								return mat->GetShadowRenderPipeline();
                             }, { 0, 0, shadowMapSize,shadowMapSize }, {.Lit = true, .Unlit = true}, lightMats.depthPyramid, lightMats.shadowmapTexture);
