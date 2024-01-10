@@ -1023,7 +1023,7 @@ struct LightingType{
 
 					ssaoUBO pushConstants{
 						.viewProj = viewproj,
-						.viewRect = {fullsizeViewport.x, fullsizeViewport.y, fullsizeViewport.width, fullsizeViewport.height},
+						.viewRect = {0,0, nextImgSize.width, nextImgSize.height},
 						.viewRegion = {renderArea.offset[0], renderArea.offset[1], renderArea.extent[0], renderArea.extent[1]}
 					};
 
