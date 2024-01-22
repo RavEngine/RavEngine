@@ -697,10 +697,10 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 
 	dummyShadowmap = device->CreateTexture({
 		.usage = {.TransferDestination = true,  .Sampled = true,},
-		.aspect = {.HasColor = true },
+		.aspect = {.HasDepth = true },
 		.width = 1,
 		.height = 1,
-		.format = RGL::TextureFormat::R32_Float,
+		.format = RGL::TextureFormat::D32SFloat,
 		.debugName = "Dummy Shadowmap"
 		}
 	);
