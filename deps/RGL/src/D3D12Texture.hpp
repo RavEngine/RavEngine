@@ -41,6 +41,7 @@ namespace RGL {
 
 		std::vector<UINT> mipHeapIndicesSRV, mipHeapIndicesUAV, mipHeapIndicesRTV;
 		uint32_t numMips = 1;
+		uint32_t numLayers = 1;
 
 		TextureD3D12(decltype(texture) image, const Dimension& size, decltype(rtvIDX), decltype(owningDevice));
 		TextureD3D12(decltype(texture) image, const TextureConfig& config, std::shared_ptr<IDevice> device, D3D12_RESOURCE_STATES nativeStateOverride = D3D12_RESOURCE_STATE_COMMON);	// for externally-managed rendertargets
@@ -48,6 +49,8 @@ namespace RGL {
 		TextureD3D12(decltype(owningDevice), const TextureConfig&);
 
 		void PlaceInHeaps(const std::shared_ptr<RGL::DeviceD3D12>& owningDevice, DXGI_FORMAT format, const RGL::TextureConfig& config);
+
+		uint32_t SubresourceIndexForMipLayer(uint32_t mip, uint32_t layer) const;
 
 		TextureView GetDefaultView() const final;
 		TextureView GetViewForMip(uint32_t mip) const final;

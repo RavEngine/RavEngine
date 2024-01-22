@@ -20,7 +20,14 @@ TextureMTL::TextureMTL(const std::shared_ptr<DeviceMTL> owningDevice, const Text
 {
     MTLPixelFormat format = rgl2mtlformat(config.format);
     
-    auto desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format width:config.width height:config.height mipmapped:config.mipLevels > 1];
+    MTLTextureDescriptor* desc;
+    if (config.isCubemap){
+        desc = [MTLTextureDescriptor textureCubeDescriptorWithPixelFormat:format size:config.width mipmapped:config.mipLevels > 1];
+    }
+    else{
+        desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format width:config.width height:config.height mipmapped:config.mipLevels > 1];
+    }
+    
     desc.mipmapLevelCount = config.mipLevels;
     auto usage = rgl2mtlTextureUsage(config.usage);
     desc.usage = usage;

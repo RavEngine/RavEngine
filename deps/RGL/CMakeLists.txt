@@ -16,7 +16,6 @@ project(RGL)
 
 option(RGL_ENABLE_RGLC "Enable the separate compiler executable" ON)
 option(RGL_DISABLE_VK "Force-disable the Vulkan backend" OFF)
-option(RGL_USE_MINIVKSDK "Use MiniVulkanSDK instead of the installed Vulkan SDK" OFF)
 option(RGL_DISABLE_DX "Force-disable the D3D12 backend" OFF)
 option(RGL_DISABLE_WEBGPU "Force-disable the WebGPU backend" OFF)
 option(RGL_ENABLE_WEBGPU "Force-enable the WebGPU backend" OFF)
@@ -92,9 +91,7 @@ if (RGL_ENABLE_RGLC)
 	set(rglc_exe "rglc")
 endif()
 
-if(NOT RGL_USE_MINIVKSDK)
-	find_package(Vulkan)
-endif()
+find_package(Vulkan)
 
 if(CMAKE_SYSTEM_NAME MATCHES "WindowsStore" OR RGL_DISABLE_VK OR APPLE OR CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 	set(VK_FORCE_DISABLED ON)
@@ -102,15 +99,13 @@ else()
 	set(VK_FORCE_DISABLED OFF)
 endif()
 
-if (NOT VK_FORCE_DISABLED AND (RGL_USE_MINIVKSDK OR Vulkan_FOUND))
-	if (RGL_USE_MINIVKSDK)
-		add_subdirectory(deps/MiniVulkanSDK EXCLUDE_FROM_ALL)
-		set(VK_LIBS MiniVulkanSDK VulkanMemoryAllocator)
-		set(VK_INCLUDE deps/VulkanMemoryAllocator/include)
-	else()
-		set(VK_LIBS ${Vulkan_LIBRARIES} VulkanMemoryAllocator)
-		set(VK_INCLUDE ${Vulkan_INCLUDE_DIRS} deps/VulkanMemoryAllocator/include)
-	endif()
+if (NOT VK_FORCE_DISABLED AND Vulkan_FOUND)
+
+	
+	set(VK_LIBS ${Vulkan_LIBRARIES} VulkanMemoryAllocator)
+		
+	# Get our vendored headers 
+	set(VK_INCLUDE deps/VulkanMemoryAllocator/include deps/Vulkan-Headers/include deps/Vulkan-Utility-Libraries/include)
 
 	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_VK_AVAILABLE=1)
 	set(RGL_VK_AVAILABLE ON CACHE INTERNAL "RGL Vulkan")

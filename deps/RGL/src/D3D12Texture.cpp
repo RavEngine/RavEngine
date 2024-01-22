@@ -105,6 +105,7 @@ namespace RGL {
 		resourceDesc.Flags = config.usage.Storage ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
 
 		numMips = config.mipLevels;
+		numLayers = config.arrayLayers;
 
 
 		D3D12_CLEAR_VALUE optimizedClearValue = {
@@ -196,19 +197,19 @@ namespace RGL {
 				// we need to change the format again because depth formats are not allowed for use in SRVs
 				format = typelessForSRV(format);
 			}
-			auto createSRV = [owningDevice,&format,this](UINT& outSRV, UINT mip, bool allMips) {
+			auto createSRV = [owningDevice,&format,this](UINT& outSRV, UINT mip, bool allMips, bool isCube = false) {
 				outSRV = owningDevice->CBV_SRV_UAVHeap->AllocateSingle();
 				D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 				srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 				srvDesc.Format = format;
-				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+				srvDesc.ViewDimension = isCube ? D3D12_SRV_DIMENSION_TEXTURECUBE : D3D12_SRV_DIMENSION_TEXTURE2D;
 				srvDesc.Texture2D.MipLevels = allMips ? -1 : 1;	// all levels or 1 level
 				srvDesc.Texture2D.MostDetailedMip = mip;
 
 				auto handle = owningDevice->CBV_SRV_UAVHeap->GetCpuHandle(outSRV);
 				owningDevice->device->CreateShaderResourceView(texture.Get(), &srvDesc, handle);
 			};
-			createSRV(srvIDX, 0, true);
+			createSRV(srvIDX, 0, true, config.isCubemap);
 			for (UINT i = 0; i < config.mipLevels; i++) {
 				auto& handle = mipHeapIndicesSRV.emplace_back();
 				createSRV(handle, i, false);
@@ -235,6 +236,10 @@ namespace RGL {
 			}
 		}
 	}
+	uint32_t TextureD3D12::SubresourceIndexForMipLayer(uint32_t mip, uint32_t layer) const
+	{
+		return layer * numMips + mip;
+	}
 	TextureView TextureD3D12::GetDefaultView() const
 	{
 		return TextureView{ {
@@ -243,7 +248,8 @@ namespace RGL {
 			.srvIDX = srvIDX,
 			.uavIDX = uavIDX,
 			.parentResource = this,
-			.mip = TextureView::NativeHandles::dx::ALL_MIPS
+			.coveredMips = ALL_MIPS,
+			.coveredLayers = ALL_LAYERS
 		}};
 	}
 	TextureView TextureD3D12::GetViewForMip(uint32_t mip) const
@@ -259,7 +265,8 @@ namespace RGL {
 			.srvIDX = hasSRV ? mipHeapIndicesSRV.at(mip) : unallocated,
 			.uavIDX = hasUAV ? mipHeapIndicesUAV.at(mip) : unallocated,
 			.parentResource = this,
-			.mip = mip
+			.coveredMips = MakeMipMaskForIndex(mip),
+			.coveredLayers = ALL_LAYERS,
 		} };
 	}
 	Dimension TextureD3D12::GetSize() const

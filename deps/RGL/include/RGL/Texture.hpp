@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <limits>
 #include "TextureFormat.hpp"
+#include "SubresourceRange.hpp"
 
 #if RGL_VK_AVAILABLE
 #include <vulkan/vulkan.h>
@@ -78,19 +79,19 @@ namespace RGL {
 					return uavIDX != unallocated;
 				}
 				const TextureD3D12* parentResource;
-				uint32_t mip = 0;
-				constexpr static decltype(mip) ALL_MIPS = std::numeric_limits<decltype(mip)>::max();
+				covered_mips_t coveredMips = 0;
+				covered_layers_t coveredLayers = 0;
 			} dx;
 			NativeHandles(const decltype(dx)& dx) : dx(dx) {}
 #endif
 #if RGL_VK_AVAILABLE
 			struct vk {
 				VkImageView view;
-				uint32_t mip = 0;
-				constexpr static decltype(mip) ALL_MIPS = std::numeric_limits<decltype(mip)>::max();
+				covered_mips_t coveredMips = 0;
+				covered_layers_t coveredLayers = 0;
 			}
 			vk;
-			NativeHandles(decltype(vk.view) view, decltype(vk.mip) mip) : vk{ view, mip } {}
+			NativeHandles(decltype(vk.view) view, decltype(vk.coveredMips) mips, decltype(vk.coveredLayers) layers) : vk{ view, mips, layers } {}
 #endif
 			NativeHandles() {}
 
@@ -98,7 +99,7 @@ namespace RGL {
 
 #if RGL_VK_AVAILABLE
 		const RGL::ITexture* parent = nullptr;
-		TextureView(decltype(parent) parent, VkImageView in_img, uint32_t mip, Dimension dim) : parent(parent), viewSize(dim), texture(in_img, mip) {}
+		TextureView(decltype(parent) parent, VkImageView in_img, covered_mips_t mips, covered_layers_t layers, Dimension dim) : parent(parent), viewSize(dim), texture(in_img, mips, layers) {}
 #endif
 
 #if RGL_DX12_AVAILABLE
@@ -125,8 +126,9 @@ namespace RGL {
 		TextureFormat format;
 		TilingMode mode = decltype(mode)::Optimal;
 		ResourceLayout initialLayout = ResourceLayout::Undefined;
-		const char* debugName = nullptr;
+		bool isCubemap = false;
 		bool readbackEnabled = false;
+		const char* debugName = nullptr;
 	};
 
 	class ITexture {

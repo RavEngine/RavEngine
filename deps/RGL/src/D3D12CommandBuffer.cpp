@@ -66,11 +66,16 @@ namespace RGL {
 				if (record.state == resource.texture->nativeState) {
 					continue;	// states must be different.
 				}
+
+				auto mip = MaskToMipLevel(resource.coveredMips);
+				auto layer = MaskToLayer(resource.coveredLayers);
+				auto subresource = static_cast<const TextureD3D12*>(resource.texture)->SubresourceIndexForMipLayer(mip, layer);
+
 				barriers[i] = CD3DX12_RESOURCE_BARRIER::Transition(
 					resource.texture->GetResource(),
 					record.state,
 					resource.texture->nativeState,
-					resource.mip
+					subresource
 				);
 				i++;
 			}
@@ -358,6 +363,42 @@ namespace RGL {
 
 		commandList->CopyTextureRegion(&destination, 0, 0, 0, &source, &srcBox);
 	}
+	void CommandBufferD3D12::CopyBufferToTexture(RGLBufferPtr source, uint32_t size, const TextureDestConfig& dest)
+	{
+
+		auto castedBuffer = std::static_pointer_cast<BufferD3D12>(source);
+		auto mip = 0;	// TODO: support mip levels other than 0
+		auto layer = dest.arrayLayer;
+
+		D3D12_TEXTURE_COPY_LOCATION destination{
+			.pResource = dest.view.texture.dx.parentResource->GetResource(),
+			.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+			.SubresourceIndex = dest.view.texture.dx.parentResource->SubresourceIndexForMipLayer(mip,layer)};
+
+		D3D12_TEXTURE_COPY_LOCATION srcLocation = {
+			.pResource = castedBuffer->buffer.Get(),
+			.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+		};
+		D3D12_RESOURCE_DESC srcDesc = destination.pResource->GetDesc();
+		castedBuffer->owningDevice->device->GetCopyableFootprints(
+			&srcDesc, 0, 1, 0,
+			&srcLocation.PlacedFootprint,
+			NULL, NULL, NULL
+		);
+
+		D3D12_BOX box = {};
+		box.left = 0;
+		box.top = 0;
+		box.front = 0;
+		box.right = dest.destLoc.extent[0];
+		box.bottom = dest.destLoc.extent[1];
+		box.back = 1;
+
+		SyncIfNeeded(castedBuffer.get(), D3D12_RESOURCE_STATE_COPY_SOURCE);
+		SyncIfNeeded(dest.view.texture.dx, D3D12_RESOURCE_STATE_COPY_DEST, true);
+
+		commandList->CopyTextureRegion(&destination, 0, 0, 0, &srcLocation, &box);
+	}
 	void CommandBufferD3D12::CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size)
 	{
 		auto fromBuffer = std::static_pointer_cast<BufferD3D12>(from.buffer);
@@ -554,19 +595,23 @@ namespace RGL {
 	}
 	void CommandBufferD3D12::SyncIfNeeded(TextureView texture, D3D12_RESOURCE_STATES needed, bool written)
 	{
-		D3D12TextureLastUseKey key{texture.texture.dx.parentResource, texture.texture.dx.mip};
+		D3D12TextureLastUseKey key{texture.texture.dx.parentResource, texture.texture.dx.coveredMips, texture.texture.dx.coveredLayers};
+		auto parent = texture.texture.dx.parentResource;
 
-		if (keyIsAllMips(key)) {
-			// transition all the mips
-			// must be done individually because they could all be in different states
-			auto numMips = texture.texture.dx.parentResource->numMips;
-			for (uint32_t i = 0; i < numMips; i++) {
-				TextureView copy = texture;
-				copy.texture.dx.mip = i;
-				SyncIfNeeded(copy, needed, written);
+		constexpr static auto iterateMask = [](auto mask, uint32_t max_index, auto&& func) {
+			uint32_t index = 0;
+			while (mask > 0 && index < max_index) {
+				// get the LSB
+				bool LSB = mask & 0b1;
+				if (LSB) {
+					func(index);
+				}
+				mask >>= 1;
+				index++;
 			}
-		}
-		else {
+			};
+
+		auto barrierForView = [this, needed, written, texture](D3D12TextureLastUseKey key) {
 			auto it = activeTextures.find(key);
 
 			if (it == activeTextures.end()) {
@@ -595,11 +640,15 @@ namespace RGL {
 				return;
 			}
 
+			auto mip = MaskToMipLevel(key.coveredMips);
+			auto layer = MaskToLayer(key.coveredLayers);
+			auto subresource = static_cast<const TextureD3D12*>(key.texture)->SubresourceIndexForMipLayer(mip, layer);
+
 			auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
 				texture.texture.dx.parentResource->GetResource(),
 				current,
 				needed,
-				texture.texture.dx.mip
+				subresource
 			);
 			// update tracker
 			(*it).second = {
@@ -609,8 +658,17 @@ namespace RGL {
 
 			//TODO: barriers of size 1 are inefficient. We should batch these somehow.
 			commandList->ResourceBarrier(1, &barrier);
-		}
-	}
+		};
+
+		iterateMask(key.coveredMips, parent->numMips, [&key = std::as_const(key), parent = std::as_const(parent), &barrierForView](auto mipLevel) {
+			iterateMask(key.coveredLayers, parent->numLayers, [&key = std::as_const(key), &mipLevel, &barrierForView](auto layerIndex) {
+				auto keyCopy = key;
+				keyCopy.coveredMips = MakeMipMaskForIndex(mipLevel);
+				keyCopy.coveredLayers = MakeLayerMaskForIndex(layerIndex);
+				barrierForView(keyCopy);
+				});
+			});
+	};
 	D3D12_RESOURCE_STATES CommandBufferD3D12::GetBufferCurrentResourceState(const D3D12TrackedResource* resource)
 	{
 		auto it = activeBuffers.find(resource);

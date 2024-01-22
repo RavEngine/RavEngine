@@ -80,6 +80,7 @@ namespace RGL {
             .engineVersion = VK_MAKE_API_VERSION(init.engineVersion.variant, init.engineVersion.major, init.engineVersion.minor, init.engineVersion.patch),
             .apiVersion = VK_API_VERSION_1_3
         };
+
         VkInstanceCreateInfo instanceCreateInfo{
             .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pApplicationInfo = &appInfo,

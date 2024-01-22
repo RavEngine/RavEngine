@@ -11,10 +11,11 @@
 namespace RGL {
 	struct D3D12TextureLastUseKey {
 		const struct D3D12TrackedResource* texture = nullptr;
-		uint32_t mip = 0;
-		D3D12TextureLastUseKey(decltype(texture) texture, decltype(mip) mip) : texture(texture), mip(mip) {}
+		covered_mips_t coveredMips;
+		covered_layers_t coveredLayers;
+		D3D12TextureLastUseKey(decltype(texture) texture, decltype(coveredMips) coveredMips, decltype(coveredLayers) coveredLayers) : texture(texture), coveredMips(coveredMips), coveredLayers(coveredLayers) {}
 		bool operator==(const D3D12TextureLastUseKey& other) const {
-			return texture == other.texture && mip == other.mip;
+			return texture == other.texture && coveredMips == other.coveredMips && coveredLayers == other.coveredLayers;
 		}
 	};
 }
@@ -23,7 +24,7 @@ namespace std {
 	template<>
 	struct hash<RGL::D3D12TextureLastUseKey> {
 		size_t operator()(const RGL::D3D12TextureLastUseKey& other) const {
-			return uintptr_t(other.texture) ^ other.mip;
+			return uintptr_t(other.texture) ^ other.coveredMips ^ other.coveredLayers;
 		}
 	};
 }
@@ -50,11 +51,6 @@ namespace RGL {
 		std::unordered_map<const struct D3D12TrackedResource*, ResourceLastUse> activeBuffers;
 
 		std::unordered_map<D3D12TextureLastUseKey, ResourceLastUse> activeTextures;
-
-
-		bool keyIsAllMips(const D3D12TextureLastUseKey& key) {
-			return key.mip == TextureView::NativeHandles::dx::ALL_MIPS;
-		}
 
 		bool ended = false;
 
@@ -102,6 +98,8 @@ namespace RGL {
 		void SetScissor(const Rect&) final;
 
 		void CopyTextureToBuffer(TextureView& sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr desetBuffer) final;
+
+		void CopyBufferToTexture(RGLBufferPtr source, uint32_t size, const TextureDestConfig& dest) final;
 
 		void CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size) final;
 

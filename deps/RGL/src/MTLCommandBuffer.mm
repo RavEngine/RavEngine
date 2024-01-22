@@ -291,6 +291,27 @@ void CommandBufferMTL::SetComputeTexture(const TextureView& view, uint32_t index
     [currentComputeCommandEncoder setTexture:texture atIndex:index];
 }
 
+void CommandBufferMTL::CopyBufferToTexture(RGLBufferPtr source, uint32_t size, const TextureDestConfig& dest){
+    auto blitencoder = [currentCommandBuffer blitCommandEncoder];
+    
+    auto castedBuffer = std::static_pointer_cast<BufferMTL>(source);
+    auto castedTexture = TextureMTL::ViewToTexture(dest.view);
+    
+    auto bytesPerRow = size / dest.destLoc.extent[0];
+    
+    [blitencoder copyFromBuffer:castedBuffer->buffer
+                   sourceOffset:0
+              sourceBytesPerRow:bytesPerRow
+            sourceBytesPerImage:size
+                     sourceSize:MTLSizeMake(dest.destLoc.extent[0], dest.destLoc.extent[0], 1)
+                      toTexture:castedTexture
+               destinationSlice:dest.arrayLayer
+               destinationLevel:0
+              destinationOrigin:MTLOriginMake(dest.destLoc.offset[0], dest.destLoc.offset[1], 0)];
+    
+    [blitencoder endEncoding];
+}
+
 void CommandBufferMTL::CopyTextureToBuffer(TextureView& sourceView, const RGL::Rect &sourceRect, size_t offset, RGLBufferPtr destBuffer) {
     auto sourceTexture = TextureMTL::ViewToTexture(sourceView);
     auto blitencoder = [currentCommandBuffer blitCommandEncoder];

@@ -5,14 +5,17 @@
 #include "RGLVk.hpp"
 #include <unordered_set>
 #include <unordered_map>
+#include "SubresourceRange.hpp"
 
 namespace RGL {
 	struct TextureLastUseKey {
 		const struct TextureVk* texture = nullptr;
-		uint32_t mip = 0;
-		TextureLastUseKey(decltype(texture) texture, decltype(mip) mip) : texture(texture), mip(mip) {}
+		covered_mips_t coveredMips;
+		covered_layers_t coveredLayers;
+		TextureLastUseKey(decltype(texture) texture, decltype(coveredMips) coveredMips, decltype(coveredLayers) coveredLayers) : texture(texture), coveredMips(coveredMips), coveredLayers(coveredLayers) {}
+
 		bool operator==(const TextureLastUseKey& other) const {
-			return texture == other.texture && mip == other.mip;
+			return texture == other.texture && coveredMips == other.coveredMips && coveredLayers == other.coveredLayers;
 		}
 	};
 }
@@ -21,7 +24,7 @@ namespace std {
 	template<>
 	struct hash<RGL::TextureLastUseKey> {
 		size_t operator()(const RGL::TextureLastUseKey& other) const {
-			return uintptr_t(other.texture) ^ other.mip;
+			return uintptr_t(other.texture) ^ other.coveredMips ^ other.coveredLayers;
 		}
 	};
 }
@@ -55,7 +58,7 @@ namespace RGL {
 
 
 		bool keyIsAllMips(const TextureLastUseKey& key) {
-			return key.mip == TextureView::NativeHandles::vk::ALL_MIPS;
+			return key.coveredMips == ALL_MIPS;
 		}
 
 		std::unordered_map<TextureLastUseKey, TextureLastUse> activeTextures;
@@ -151,6 +154,14 @@ namespace RGL {
 			RGLBufferPtr destBuffer;
 		};
 
+		struct CmdCopyBuffertoTexture {
+			RGLBufferPtr srcBuffer;
+			uint32_t nBytes;
+			TextureView destTexture;
+			Rect destLoc;
+			uint32_t arrayLayer;
+		};
+
 		struct CmdCopyBufferToBuffer {
 			BufferCopyConfig from;
 			BufferCopyConfig to;
@@ -183,7 +194,8 @@ namespace RGL {
 			CmdCopyTextureToTexture,
 			CmdSetViewport,
 			CmdSetScissor,
-			CmdCopyBufferToBuffer
+			CmdCopyBufferToBuffer,
+			CmdCopyBuffertoTexture
 		>
 		> renderCommands;
 
@@ -236,6 +248,7 @@ namespace RGL {
 		void DrawIndexed(uint32_t nIndices, const DrawIndexedInstancedConfig & = {}) final;
 
 		void CopyTextureToBuffer(TextureView& sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr destBuffer) final;
+		void CopyBufferToTexture(RGLBufferPtr source, uint32_t size, const TextureDestConfig& dest) final;
 		void CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size) final;
 		void CopyTextureToTexture(const TextureCopyConfig& from, const TextureCopyConfig& to) final;
 

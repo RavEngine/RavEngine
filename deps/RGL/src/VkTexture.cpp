@@ -104,8 +104,8 @@ namespace RGL {
 		barrier.subresourceRange.baseArrayLayer = 0;
 		barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-		barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
 
 		barrier.oldLayout = oldLayout;
 		barrier.newLayout = newLayout;
@@ -172,7 +172,7 @@ namespace RGL {
 		VkImageCreateInfo imageInfo{
 			.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 			.pNext = nullptr,
-			.flags = 0,
+			.flags = VkImageCreateFlags(config.isCubemap ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0),
 			.imageType = VK_IMAGE_TYPE_2D,
 			.format = format,
 			.extent = {
@@ -195,12 +195,12 @@ namespace RGL {
 		VmaAllocationInfo allocInfo;
 		VK_CHECK(vmaCreateImage(owningDevice->vkallocator, &imageInfo, &allocCreateInfo, &vkImage, &alloc, &allocInfo));	// also binds memory
 
-		auto makeImageViewCreateInfo = [this, &config](uint32_t miplevel, uint32_t levelCount = 1) {
+		auto makeImageViewCreateInfo = [this, &config](uint32_t miplevel, uint32_t levelCount = 1, bool isCube = false) {
 
 			return VkImageViewCreateInfo{
 			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 			.image = vkImage,
-			.viewType = VK_IMAGE_VIEW_TYPE_2D,
+			.viewType = isCube ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D,
 			.format = format,
 			.components{
 				.r = VK_COMPONENT_SWIZZLE_IDENTITY, // we don't want any swizzling
@@ -209,16 +209,16 @@ namespace RGL {
 				.a = VK_COMPONENT_SWIZZLE_IDENTITY
 			},
 			.subresourceRange{
-				.aspectMask = rgl2vkAspectFlags(config.aspect),    // mipmap and layer info (we don't want any here)
+				.aspectMask = rgl2vkAspectFlags(config.aspect),
 				.baseMipLevel = miplevel,
 				.levelCount = levelCount,
 				.baseArrayLayer = 0,
-				.layerCount = 1
+				.layerCount = isCube ? VK_REMAINING_ARRAY_LAYERS : 1
 			}
 			};
 
-			};
-		auto createInfo = makeImageViewCreateInfo(0, VK_REMAINING_MIP_LEVELS);
+		};
+		auto createInfo = makeImageViewCreateInfo(0, VK_REMAINING_MIP_LEVELS, config.isCubemap);
 		VK_CHECK(vkCreateImageView(owningDevice->device, &createInfo, nullptr, &vkImageView));
 
 		mipViews.reserve(config.mipLevels);
@@ -227,7 +227,7 @@ namespace RGL {
 			auto view = makeImageViewCreateInfo(i);
 			VkImageView mipView;
 			VK_CHECK(vkCreateImageView(owningDevice->device, &view, nullptr, &mipView));
-			mipViews.push_back(TextureView{ this, mipView, uint32_t(i), dim });
+			mipViews.push_back(TextureView{ this, mipView, MakeMipMaskForIndex(i), ALL_LAYERS, dim});
 			dim.width /= 2;
 			dim.height /= 2;
 		}
@@ -276,7 +276,7 @@ namespace RGL {
 	}
 	TextureView TextureVk::GetDefaultView() const
 	{
-		TextureView view{ this, vkImageView, TextureView::NativeHandles::vk::ALL_MIPS, size };
+		TextureView view{ this, vkImageView, ALL_MIPS, ALL_LAYERS, size };
 		view.parent = this;
 		return view;
 	}

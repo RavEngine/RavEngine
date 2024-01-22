@@ -128,6 +128,13 @@ struct TextureView;
 
 		virtual void CopyTextureToBuffer(TextureView& sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr desetBuffer) = 0;
 
+		struct TextureDestConfig {
+			TextureView view;
+			Rect destLoc;
+			uint32_t arrayLayer = 0;
+		};
+		virtual void CopyBufferToTexture(RGLBufferPtr source, uint32_t size, const TextureDestConfig& dest) = 0;
+
 		struct BufferCopyConfig {
 			RGLBufferPtr buffer;
 			uint32_t offset = 0;

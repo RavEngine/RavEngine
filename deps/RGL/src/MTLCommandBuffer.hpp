@@ -62,6 +62,7 @@ struct BufferMTL;
         void CopyTextureToBuffer(RGL::TextureView& sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr desetBuffer) final;
         void CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size) final;
         void CopyTextureToTexture(const TextureCopyConfig& from, const TextureCopyConfig& to) final;
+        void CopyBufferToTexture(RGLBufferPtr source, uint32_t size, const TextureDestConfig& dest) final;
 
         void Commit(const CommitConfig&) final;
                 

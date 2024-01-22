@@ -76,6 +76,11 @@ namespace RGL{
     void CommandBufferWG::CopyTextureToBuffer(TextureView& sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr desetBuffer) { }
     void CommandBufferWG::CopyBufferToBuffer(BufferCopyConfig from, BufferCopyConfig to, uint32_t size) { }
 
+    void CommandBufferWG::CopyBufferToTexture(RGLBufferPtr source, uint32_t size, const TextureDestConfig& dest)
+    {
+
+    }
+
     void CommandBufferWG::Commit(const CommitConfig& config) { 
         wgpuQueueSubmit(owningQueue->queue, commandBuffers.size(), commandBuffers.data());
     }
