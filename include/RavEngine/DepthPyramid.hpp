@@ -1,6 +1,7 @@
 #if !RVE_SERVER
 #pragma once
 #include <RGL/Types.hpp>
+#include <string_view>
 
 namespace RavEngine {
 
