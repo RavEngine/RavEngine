@@ -773,7 +773,7 @@ function(declare_shader infile shader_target)
 			PRE_BUILD 
 			OUTPUT "${dx_final_name}"
 			DEPENDS "${outname}"
-			COMMAND dxc.exe -Qembed_debug -Fo \"${dx_final_name}\" -Zi -Od -T ${dxc_profile}s_6_4 \"${outname}\"
+			COMMAND dxc.exe $<$<CONFIG:Debug>:-Qembed_debug> -Fo \"${dx_final_name}\" -Zi $<$<CONFIG:Debug>:-Od> -T ${dxc_profile}s_6_4 \"${outname}\"
 		)
 	endif()
 	if(RGL_MTL_AVAILABLE)
