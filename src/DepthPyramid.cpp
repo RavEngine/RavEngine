@@ -5,7 +5,7 @@
 #include "RenderEngine.hpp"
 
 namespace RavEngine {
-	DepthPyramid::DepthPyramid(uint32_t width)
+	DepthPyramid::DepthPyramid(uint32_t width, const std::string_view name)
 	{
         // the depth pyramid is the next POT smaller
         dim = pow(2, std::floor(std::log2f(width)));;
@@ -21,7 +21,7 @@ namespace RavEngine {
             .height = dim,
             .mipLevels = numLevels,
             .format = RenderEngine::depthPyramidFormat,
-            .debugName = "Depth Pyramid Texture"
+            .debugName = name.data()
         });
 	}
 }

@@ -80,15 +80,7 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 	constexpr bool CastsShadows() const { return false;  }
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
-	
-	/**
-	 Set BGFX state needed to draw this light
-	 */
-	static inline void SetState(){
-#if 0
-		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_BLEND_ADD | BGFX_STATE_DEPTH_TEST_GREATER);
-#endif
-	}
+
 };
 
 struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,DirectionalLight>{
@@ -115,16 +107,7 @@ public:
 	}
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
-	
-	
-	/**
-	 Set BGFX state needed to draw this light
-	 */
-	static inline void SetState(){
-#if 0
-		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_CULL_CW | BGFX_STATE_BLEND_ADD | BGFX_STATE_DEPTH_TEST_GREATER);
-#endif
-	}
+
 };
 
 struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>{
@@ -132,12 +115,6 @@ struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Lig
 	using QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>::GetQueryTypes;
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
-	
-	static inline void SetState(){
-#if 0
-		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_GEQUAL | BGFX_STATE_CULL_CCW | BGFX_STATE_BLEND_ADD);
-#endif
-	}
 
 	/**
 	 Calculate the shader's matrix
@@ -193,13 +170,6 @@ public:
 	@endcode
 	*/
 	void AddInstanceData(float* offset) const;
-
-
-	static inline void SetState(){
-#if 0
-		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_DEPTH_TEST_GEQUAL | BGFX_STATE_CULL_CCW | BGFX_STATE_BLEND_ADD);
-#endif
-	}
 	
 	/**
 	 Calculate the shader's matrix

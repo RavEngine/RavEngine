@@ -241,8 +241,28 @@ struct LightingType{
 
 			auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes, &target](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, RGLTexturePtr depthStencil) {
 
-				auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos,&target, &pyramid](auto&& renderData) {
+				auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos,&target, &pyramid, &lightingFilter](auto&& renderData) {
 					for (auto& [materialInstance, drawcommand] : renderData) {
+						bool shouldCull = false;
+						std::visit([&materialInstance, lightingFilter, &shouldCull](const auto& var) {
+							if constexpr (std::is_same_v<std::decay_t<decltype(var)>, LitMeshMaterialInstance>) {
+								if (lightingFilter.Lit) {
+									shouldCull = true;
+								}
+							}
+							else if constexpr (std::is_same_v<std::decay_t<decltype(var)>, UnlitMeshMaterialInstance>) {
+								if (lightingFilter.Unlit) {
+									shouldCull = true;
+								}
+							}
+							// materialInstance will be unset (== nullptr) if the match is invalid
+							}, materialInstance);
+
+						// is this the correct material type? if not, skip
+						if (!shouldCull) {
+							continue;
+						}
+
 						//prepass: get number of LODs and entities
 						uint32_t numLODs = 0, numEntities = 0;
 						for (const auto& command : drawcommand.commands) {
@@ -977,9 +997,9 @@ struct LightingType{
 
 					auto& origLight = Entity(owner).GetComponent<LightType>();
 					const auto& mapData = origLight.GetShadowMap();
-
-
-					generatePyramid(mapData.pyramid, mapData.shadowMap);
+					if (origLight.CastsShadows()) {
+						generatePyramid(mapData.pyramid, mapData.shadowMap);
+					}
 				}
 			};
 			mainCommandBuffer->BeginRenderDebugMarker("Light depth pyramids");

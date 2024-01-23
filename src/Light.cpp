@@ -53,7 +53,7 @@ RavEngine::ShadowLight::ShadowLight()
 {
 #if !RVE_SERVER
 	constexpr static auto dim = 4096;
-	shadowData.pyramid = {dim};
+	shadowData.pyramid = {dim,"Shadowmap Depth Pyramid"};
 
 	auto device = GetApp()->GetDevice();
 

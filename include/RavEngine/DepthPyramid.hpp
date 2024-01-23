@@ -5,7 +5,7 @@
 namespace RavEngine {
 
 	struct DepthPyramid {
-		DepthPyramid(uint32_t width);
+		DepthPyramid(uint32_t width, const std::string_view name = "Depth Pyramid");
 		DepthPyramid() {}
 		RGLTexturePtr pyramidTexture = nullptr;
 		uint32_t dim = 0;	// size of mip 0
