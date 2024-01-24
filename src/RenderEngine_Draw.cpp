@@ -244,7 +244,7 @@ struct LightingType{
 				auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos,&target, &pyramid, &lightingFilter](auto&& renderData) {
 					for (auto& [materialInstance, drawcommand] : renderData) {
 						bool shouldCull = false;
-						std::visit([&materialInstance, lightingFilter, &shouldCull](const auto& var) {
+						std::visit([lightingFilter, &shouldCull](const auto& var) {
 							if constexpr (std::is_same_v<std::decay_t<decltype(var)>, LitMeshMaterialInstance>) {
 								if (lightingFilter.Lit) {
 									shouldCull = true;
