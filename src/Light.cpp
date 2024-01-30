@@ -25,31 +25,15 @@ void PointLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) con
 	dbg.DrawSphere(tr.GetWorldMatrix(), debug_color, CalculateRadius() * 2);
 }
 
+
 void SpotLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
 #ifndef NDEBUG
 	//dbg.DrawWireframeMesh(tr.GetWorldMatrix(), LightManager::spotLightMesh);
 #endif
 }
 
-void SpotLight::AddInstanceData(float* offset) const{
-	auto intensity = GetIntensity();
-	intensity = intensity * intensity;
-	auto angle = std::clamp(coneAngle, 0.f, 90.f);
-    
-    auto& color = GetColorRGBA();
 
-	//[0:11] filled with affine transform
-	offset[12] = color.R;
-	offset[13] = color.G;
-	offset[14] = color.B;
-	offset[15] = angle;
-	offset[16] = intensity;
-	offset[17] = penumbraAngle;
-	
-	//the radius and intensity are derived in the shader by extracting the scale information
-}
-
-RavEngine::ShadowLight::ShadowLight()
+RavEngine::UnidirectionalShadowLight::UnidirectionalShadowLight()
 {
 #if !RVE_SERVER
 	constexpr static auto dim = 4096;
@@ -64,6 +48,30 @@ RavEngine::ShadowLight::ShadowLight()
 		.height = dim,
 		.format = RGL::TextureFormat::D32SFloat,
 		.debugName = "Shadow Texture"
+	});
+#endif
+}
+
+RavEngine::PointLight::PointLight()
+{
+#if !RVE_SERVER
+
+	constexpr static auto dim = 4096;
+	for (auto& facePyramid : shadowData.cubeFaces) {
+		facePyramid = { dim, "Shadowmap Depth Pyramid Face Point Light" };
+	}
+	auto device = GetApp()->GetDevice();
+
+
+	shadowData.mapCube = device->CreateTexture({
+		.usage = {.Sampled = true, .DepthStencilAttachment = true },
+		.aspect = {.HasDepth = true },
+		.width = dim,
+		.height = dim,
+		.arrayLayers = 6,
+		.format = RGL::TextureFormat::D32SFloat,
+		.isCubemap = true,
+		.debugName = "Shadow Texture Cubemap Point Light"
 	});
 #endif
 }

@@ -38,31 +38,37 @@ public:
     }
 };
 
+struct ShadowLightBase : public Light {
+private:
+	bool doesCastShadow = false;
+public:
+	bool CastsShadows() const { return doesCastShadow; }
+	void SetCastsShadows(bool casts) {
+		invalidate();
+		doesCastShadow = casts;
+	}
+};
+
 /**
  A light that casts shadows
  */
-struct ShadowLight : public Light, public QueryableDelta<Light,ShadowLight>{
-	using QueryableDelta<Light,ShadowLight>::GetQueryTypes;
+struct UnidirectionalShadowLight : public ShadowLightBase, public QueryableDelta<ShadowLightBase,UnidirectionalShadowLight>{
+	using QueryableDelta<ShadowLightBase,UnidirectionalShadowLight>::GetQueryTypes;
 #if !RVE_SERVER
 	struct ShadowMap {
 		DepthPyramid pyramid;
 		RGLTexturePtr shadowMap;
 	} shadowData;
 #endif
-private:
-	bool doesCastShadow = false;
+	
 public:
-	ShadowLight();
+	UnidirectionalShadowLight();
 #if !RVE_SERVER
 	const ShadowMap& GetShadowMap() const {
 		return shadowData;
 	}
 #endif
-	bool CastsShadows() const { return doesCastShadow; }
-	void SetCastsShadows(bool casts) {
-        invalidate();
-        doesCastShadow = casts;
-    }
+	
 };
 
 struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
@@ -83,9 +89,9 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 
 };
 
-struct DirectionalLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,DirectionalLight>{
+struct DirectionalLight : public UnidirectionalShadowLight, public QueryableDelta<QueryableDelta<Light,UnidirectionalShadowLight>,DirectionalLight>{
 	using light_t = DirectionalLight;
-	using QueryableDelta<QueryableDelta<Light,ShadowLight>,DirectionalLight>::GetQueryTypes;
+	using QueryableDelta<QueryableDelta<Light,UnidirectionalShadowLight>,DirectionalLight>::GetQueryTypes;
 private:
     float shadowDistance = 30;
 public:
@@ -110,22 +116,20 @@ public:
 
 };
 
-struct PointLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>{
+struct PointLight : public ShadowLightBase, public QueryableDelta<QueryableDelta<Light, ShadowLightBase>,PointLight>{
 	using light_t = PointLight;
-	using QueryableDelta<QueryableDelta<Light,ShadowLight>,PointLight>::GetQueryTypes;
+	using QueryableDelta<QueryableDelta<Light, ShadowLightBase>,PointLight>::GetQueryTypes;
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
 
-	/**
-	 Calculate the shader's matrix
-	 @param mat input transformation matrix
-	 @return matrix for shader
-	 */
-	inline matrix4 CalculateMatrix(const matrix4& mat) const{
-		auto radius = CalculateRadius();
-		//scale = radius
-		return glm::scale(mat, vector3(radius,radius,radius));
-	}
+	PointLight();
+
+#if !RVE_SERVER
+	struct ShadowData {
+		std::array<DepthPyramid, 6> cubeFaces;
+		RGLTexturePtr mapCube;
+	} shadowData;
+#endif
 	
 private:
 	/**
@@ -138,13 +142,13 @@ private:
 	}
 };
 
-class SpotLight : public ShadowLight, public QueryableDelta<QueryableDelta<Light,ShadowLight>,SpotLight>{
+class SpotLight : public UnidirectionalShadowLight, public QueryableDelta<QueryableDelta<Light,UnidirectionalShadowLight>,SpotLight>{
     //light properties
     float coneAngle = 45.0;    // in degrees
     float penumbraAngle = 10;
 public:
 	using light_t = SpotLight;
-	using QueryableDelta<QueryableDelta<Light,ShadowLight>,SpotLight>::GetQueryTypes;
+	using QueryableDelta<QueryableDelta<Light,UnidirectionalShadowLight>,SpotLight>::GetQueryTypes;
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
     
@@ -159,27 +163,6 @@ public:
     }
     constexpr decltype(penumbraAngle) GetPenumbraAngle() const {return penumbraAngle;}
     
-	/**
-	Structure
-	@code
-	[0:15] = transform matrix
-	[16] = color R
-	[17] = color G
-	[18] = color B
-	[19] = penumbra
-	@endcode
-	*/
-	void AddInstanceData(float* offset) const;
-	
-	/**
-	 Calculate the shader's matrix
-	 @param mat input transformation matrix
-	 @return matrix for shader
-	 */
-    inline const matrix4& CalculateMatrix(const matrix4& mat) const{
-		// no transformations occur, the cone is extended in the vertex shader
-		return mat;
-	}
 };
 
 }
