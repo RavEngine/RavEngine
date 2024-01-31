@@ -191,32 +191,159 @@ struct LightingType{
 			prepareSkeletalCullingBuffer();
 		}
 
-		for (const auto& view : targets) {
-			currentRenderSize = view.pixelDimensions;
-			auto nextImgSize = view.pixelDimensions;
-			auto& target = view.collection;
+		auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning](matrix4 viewproj, const DepthPyramid pyramid) {
+			// the culling shader will decide for each draw if the draw should exist (and set its instance count to 1 from 0).
 
-			auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning, &target](matrix4 viewproj) {
-				// the culling shader will decide for each draw if the draw should exist (and set its instance count to 1 from 0).
+			mainCommandBuffer->BeginComputeDebugMarker("Cull Skinned Meshes");
+			mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
+			mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
+			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+				CullingUBO cubo{
+					.viewProj = viewproj,
+					.indirectBufferOffset = 0,
+				};
+				for (auto& command : drawcommand.commands) {
+					mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
+					mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 3);
 
-				mainCommandBuffer->BeginComputeDebugMarker("Cull Skinned Meshes");
-				mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
-				mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
-				for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+					if (auto mesh = command.mesh.lock()) {
+						uint32_t lodsForThisMesh = 1;	// TODO: skinned meshes do not support LOD groups 
+
+						cubo.numObjects = command.entities.DenseSize();
+						mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
+						cubo.radius = mesh->radius;
+#if __APPLE__
+						constexpr size_t byte_size = closest_multiple_of<ssize_t>(sizeof(cubo), 16);
+						std::byte bytes[byte_size]{};
+						std::memcpy(bytes, &cubo, sizeof(cubo));
+						mainCommandBuffer->SetComputeBytes({ bytes, sizeof(bytes) }, 0);
+#else
+						mainCommandBuffer->SetComputeBytes(cubo, 0);
+#endif
+						mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 4);
+						mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 5);
+						mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
+						cubo.indirectBufferOffset += lodsForThisMesh;
+						cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
+					}
+				}
+
+			}
+			mainCommandBuffer->EndComputeDebugMarker();
+			mainCommandBuffer->EndCompute();
+			};
+
+
+		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid) {
+
+			auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos, &pyramid, &lightingFilter](auto&& renderData) {
+				for (auto& [materialInstance, drawcommand] : renderData) {
+					bool shouldCull = false;
+					std::visit([lightingFilter, &shouldCull](const auto& var) {
+						if constexpr (std::is_same_v<std::decay_t<decltype(var)>, LitMeshMaterialInstance>) {
+							if (lightingFilter.Lit) {
+								shouldCull = true;
+							}
+						}
+						else if constexpr (std::is_same_v<std::decay_t<decltype(var)>, UnlitMeshMaterialInstance>) {
+							if (lightingFilter.Unlit) {
+								shouldCull = true;
+							}
+						}
+						// materialInstance will be unset (== nullptr) if the match is invalid
+						}, materialInstance);
+
+					// is this the correct material type? if not, skip
+					if (!shouldCull) {
+						continue;
+					}
+
+					//prepass: get number of LODs and entities
+					uint32_t numLODs = 0, numEntities = 0;
+					for (const auto& command : drawcommand.commands) {
+						if (auto mesh = command.mesh.lock()) {
+							numLODs += mesh->GetNumLods();
+							numEntities += command.entities.DenseSize();
+						}
+					}
+
+					auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
+						if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
+							// trash old buffer if it exists
+							if (buffer) {
+								gcBuffers.enqueue(buffer);
+							}
+							buffer = device->CreateBuffer({
+								size_count,
+								type,
+								stride,
+								access,
+								flags
+								});
+							if (access == RGL::BufferAccess::Shared) {
+								buffer->MapMemory();
+							}
+						}
+						};
+					const auto cullingbufferTotalSlots = numEntities * numLODs;
+					reallocBuffer(drawcommand.cullingBuffer, cullingbufferTotalSlots, sizeof(entity_t), RGL::BufferAccess::Private, { .StorageBuffer = true, .VertexBuffer = true }, { .Writable = true, .debugName = "Culling Buffer" });
+					reallocBuffer(drawcommand.indirectBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, { .StorageBuffer = true, .IndirectBuffer = true }, { .Writable = true, .debugName = "Indirect Buffer" });
+					reallocBuffer(drawcommand.indirectStagingBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "Indirect Staging Buffer" });
+
+					// initial populate of drawcall buffer
+					// we need one command per mesh per LOD
+					{
+						uint32_t meshID = 0;
+						uint32_t baseInstance = 0;
+						for (const auto& command : drawcommand.commands) {			// for each mesh
+							const auto nEntitiesInThisCommand = command.entities.DenseSize();
+							RGL::IndirectIndexedCommand initData;
+							if (auto mesh = command.mesh.lock()) {
+								for (uint32_t lodID = 0; lodID < mesh->GetNumLods(); lodID++) {
+									initData = {
+										.indexCount = uint32_t(mesh->totalIndices),
+										.instanceCount = 0,
+										.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
+										.baseVertex = uint32_t(mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
+										.baseInstance = baseInstance,	// sets the offset into the material-global culling buffer (and other per-instance data buffers). we allocate based on worst-case here, so the offset is known.
+									};
+									baseInstance += nEntitiesInThisCommand;
+									drawcommand.indirectStagingBuffer->UpdateBufferData(initData, (meshID + lodID) * sizeof(RGL::IndirectIndexedCommand));
+								}
+
+							}
+							meshID++;
+						}
+					}
+					mainCommandBuffer->CopyBufferToBuffer(
+						{
+							.buffer = drawcommand.indirectStagingBuffer,
+							.offset = 0
+						},
+				{
+					.buffer = drawcommand.indirectBuffer,
+					.offset = 0
+				}, drawcommand.indirectStagingBuffer->getBufferSize());
+
+					mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
+					mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
 					CullingUBO cubo{
 						.viewProj = viewproj,
+						.camPos = camPos,
 						.indirectBufferOffset = 0,
 					};
+					static_assert(sizeof(cubo) <= 128, "CUBO is too big!");
 					for (auto& command : drawcommand.commands) {
 						mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
 						mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 3);
 
 						if (auto mesh = command.mesh.lock()) {
-							uint32_t lodsForThisMesh = 1;	// TODO: skinned meshes do not support LOD groups 
+							uint32_t lodsForThisMesh = mesh->GetNumLods();
 
 							cubo.numObjects = command.entities.DenseSize();
 							mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
 							cubo.radius = mesh->radius;
+
 #if __APPLE__
 							constexpr size_t byte_size = closest_multiple_of<ssize_t>(sizeof(cubo), 16);
 							std::byte bytes[byte_size]{};
@@ -225,260 +352,133 @@ struct LightingType{
 #else
 							mainCommandBuffer->SetComputeBytes(cubo, 0);
 #endif
-							mainCommandBuffer->SetComputeTexture(target.depthPyramid.pyramidTexture->GetDefaultView(), 4);
+							mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 4);
 							mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 5);
 							mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 							cubo.indirectBufferOffset += lodsForThisMesh;
 							cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
 						}
 					}
-
+					mainCommandBuffer->EndCompute();
 				}
-				mainCommandBuffer->EndComputeDebugMarker();
-				mainCommandBuffer->EndCompute();
-			};
-
-
-			auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes, &target](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid) {
-
-				auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos,&target, &pyramid, &lightingFilter](auto&& renderData) {
-					for (auto& [materialInstance, drawcommand] : renderData) {
-						bool shouldCull = false;
-						std::visit([lightingFilter, &shouldCull](const auto& var) {
-							if constexpr (std::is_same_v<std::decay_t<decltype(var)>, LitMeshMaterialInstance>) {
-								if (lightingFilter.Lit) {
-									shouldCull = true;
-								}
-							}
-							else if constexpr (std::is_same_v<std::decay_t<decltype(var)>, UnlitMeshMaterialInstance>) {
-								if (lightingFilter.Unlit) {
-									shouldCull = true;
-								}
-							}
-							// materialInstance will be unset (== nullptr) if the match is invalid
-							}, materialInstance);
-
-						// is this the correct material type? if not, skip
-						if (!shouldCull) {
-							continue;
-						}
-
-						//prepass: get number of LODs and entities
-						uint32_t numLODs = 0, numEntities = 0;
-						for (const auto& command : drawcommand.commands) {
-							if (auto mesh = command.mesh.lock()) {
-								numLODs += mesh->GetNumLods();
-								numEntities += command.entities.DenseSize();
-							}
-						}
-
-						auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
-							if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
-								// trash old buffer if it exists
-								if (buffer) {
-									gcBuffers.enqueue(buffer);
-								}
-								buffer = device->CreateBuffer({
-									size_count,
-									type,
-									stride,
-									access,
-									flags
-									});
-								if (access == RGL::BufferAccess::Shared) {
-									buffer->MapMemory();
-								}
-							}
-						};
-						const auto cullingbufferTotalSlots = numEntities * numLODs;
-						reallocBuffer(drawcommand.cullingBuffer, cullingbufferTotalSlots, sizeof(entity_t), RGL::BufferAccess::Private, { .StorageBuffer = true, .VertexBuffer = true }, { .Writable = true, .debugName = "Culling Buffer" });
-						reallocBuffer(drawcommand.indirectBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, { .StorageBuffer = true, .IndirectBuffer = true }, { .Writable = true, .debugName = "Indirect Buffer" });
-						reallocBuffer(drawcommand.indirectStagingBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "Indirect Staging Buffer" });
-
-						// initial populate of drawcall buffer
-						// we need one command per mesh per LOD
-						{
-							uint32_t meshID = 0;
-							uint32_t baseInstance = 0;
-							for (const auto& command : drawcommand.commands) {			// for each mesh
-								const auto nEntitiesInThisCommand = command.entities.DenseSize();
-								RGL::IndirectIndexedCommand initData;
-								if (auto mesh = command.mesh.lock()) {
-									for (uint32_t lodID = 0; lodID < mesh->GetNumLods(); lodID++) {
-										initData = {
-											.indexCount = uint32_t(mesh->totalIndices),
-											.instanceCount = 0,
-											.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
-											.baseVertex = uint32_t(mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
-											.baseInstance = baseInstance,	// sets the offset into the material-global culling buffer (and other per-instance data buffers). we allocate based on worst-case here, so the offset is known.
-										};
-										baseInstance += nEntitiesInThisCommand;
-										drawcommand.indirectStagingBuffer->UpdateBufferData(initData, (meshID + lodID) * sizeof(RGL::IndirectIndexedCommand));
-									}
-
-								}
-								meshID++;
-							}
-						}
-						mainCommandBuffer->CopyBufferToBuffer(
-							{
-								.buffer = drawcommand.indirectStagingBuffer,
-								.offset = 0
-							},
-				{
-					.buffer = drawcommand.indirectBuffer,
-					.offset = 0
-				}, drawcommand.indirectStagingBuffer->getBufferSize());
-
-						mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
-						mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
-						CullingUBO cubo{
-							.viewProj = viewproj,
-							.camPos = camPos,
-							.indirectBufferOffset = 0,
-						};
-						static_assert(sizeof(cubo) <= 128, "CUBO is too big!");
-						for (auto& command : drawcommand.commands) {
-							mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
-							mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 3);
-
-							if (auto mesh = command.mesh.lock()) {
-								uint32_t lodsForThisMesh = mesh->GetNumLods();
-
-								cubo.numObjects = command.entities.DenseSize();
-								mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
-                                cubo.radius = mesh->radius;
-                                
-#if __APPLE__
-                                constexpr size_t byte_size = closest_multiple_of<ssize_t>(sizeof(cubo), 16);
-                                std::byte bytes[byte_size]{};
-                                std::memcpy(bytes, &cubo, sizeof(cubo));
-                                mainCommandBuffer->SetComputeBytes({bytes, sizeof(bytes)}, 0);
-#else
-                                mainCommandBuffer->SetComputeBytes(cubo, 0);
-#endif
-								mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 4);
-								mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 5);
-								mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
-								cubo.indirectBufferOffset += lodsForThisMesh;
-								cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
-							}
-						}
-						mainCommandBuffer->EndCompute();
-					}
 				};
-				auto renderTheRenderData = [this, &viewproj, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
-					// do static meshes
-					mainCommandBuffer->SetViewport({
-						.x = float(viewportScissor.offset[0]),
-						.y = float(viewportScissor.offset[1]),
-						.width = static_cast<float>(viewportScissor.extent[0]),
-						.height = static_cast<float>(viewportScissor.extent[1]),
+			auto renderTheRenderData = [this, &viewproj, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
+				// do static meshes
+				mainCommandBuffer->SetViewport({
+					.x = float(viewportScissor.offset[0]),
+					.y = float(viewportScissor.offset[1]),
+					.width = static_cast<float>(viewportScissor.extent[0]),
+					.height = static_cast<float>(viewportScissor.extent[1]),
+					});
+				mainCommandBuffer->SetScissor(viewportScissor);
+				mainCommandBuffer->SetVertexBuffer(vertexBuffer);
+				mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
+				for (auto& [materialInstanceVariant, drawcommand] : renderData) {
+
+					// get the material instance out
+					Ref<MaterialInstance> materialInstance;
+					std::visit([&materialInstance, currentLightingType](const auto& var) {
+						if constexpr (std::is_same_v<std::decay_t<decltype(var)>, LitMeshMaterialInstance>) {
+							if (currentLightingType.Lit) {
+								materialInstance = var.material;
+							}
+						}
+						else if constexpr (std::is_same_v<std::decay_t<decltype(var)>, UnlitMeshMaterialInstance>) {
+							if (currentLightingType.Unlit) {
+								materialInstance = var.material;
+							}
+						}
+						// materialInstance will be unset (== nullptr) if the match is invalid
+						}, materialInstanceVariant);
+
+					// is this the correct material type? if not, skip
+					if (materialInstance == nullptr) {
+						continue;
+					}
+
+					// bind the pipeline
+					auto pipeline = pipelineSelectorFunction(materialInstance->GetMat());
+					mainCommandBuffer->BindRenderPipeline(pipeline);
+
+
+
+
+					// set push constant data
+					auto pushConstantData = materialInstance->GetPushConstantData();
+
+					// Metal requires 16-byte alignment, so we bake that into the required size
+					size_t pushConstantTotalSize =
+#if __APPLE__
+						closest_multiple_of<ssize_t>(sizeof(viewproj) + pushConstantData.size(), 16);
+#else
+						sizeof(viewproj) + pushConstantData.size();
+#endif
+
+					// AMD on vulkan cannot accept push constants > 128 bytes so we cap it there for all platforms
+					std::byte totalPushConstantBytes[128]{};
+					Debug::Assert(pushConstantTotalSize < std::size(totalPushConstantBytes), "Cannot write push constants, total size ({}) > {}", pushConstantTotalSize, std::size(totalPushConstantBytes));
+
+					std::memcpy(totalPushConstantBytes, &viewproj, sizeof(viewproj));
+					if (pushConstantData.size() > 0 && pushConstantData.data() != nullptr) {
+						std::memcpy(totalPushConstantBytes + sizeof(viewproj), pushConstantData.data(), pushConstantData.size());
+					}
+
+					mainCommandBuffer->SetVertexBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
+					mainCommandBuffer->SetFragmentBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
+
+					// bind textures and buffers
+					auto& bufferBindings = materialInstance->GetBufferBindings();
+					auto& textureBindings = materialInstance->GetTextureBindings();
+					for (int i = 0; i < materialInstance->maxBindingSlots; i++) {
+						auto& buffer = bufferBindings[i];
+						auto& texture = textureBindings[i];
+						if (buffer) {
+							mainCommandBuffer->BindBuffer(buffer, i);
+						}
+						if (texture) {
+							mainCommandBuffer->SetFragmentSampler(textureSampler, 0); // TODO: don't hardcode this
+							mainCommandBuffer->SetFragmentTexture(texture->GetRHITexturePointer()->GetDefaultView(), i);
+						}
+					}
+
+					// bind the culling buffer and the transform buffer
+					mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = 1 });
+					mainCommandBuffer->BindBuffer(worldTransformBuffer, 10);
+
+					// do the indirect command
+					mainCommandBuffer->ExecuteIndirectIndexed({
+						.indirectBuffer = drawcommand.indirectBuffer,
+						.nDraws = uint32_t(drawcommand.indirectBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand))	// the number of structs in the buffer
 						});
-					mainCommandBuffer->SetScissor(viewportScissor);
-					mainCommandBuffer->SetVertexBuffer(vertexBuffer);
-					mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
-					for (auto& [materialInstanceVariant, drawcommand] : renderData) {
-                        
-                        // get the material instance out
-                        Ref<MaterialInstance> materialInstance;
-                        std::visit([&materialInstance, currentLightingType] (const auto& var) {
-                            if constexpr (std::is_same_v<std::decay_t<decltype(var)>,LitMeshMaterialInstance>){
-                                if (currentLightingType.Lit){
-                                    materialInstance = var.material;
-                                }
-                            }
-                            else if constexpr(std::is_same_v<std::decay_t<decltype(var)>,UnlitMeshMaterialInstance>){
-                                if (currentLightingType.Unlit){
-                                    materialInstance = var.material;
-                                }
-                            }
-                            // materialInstance will be unset (== nullptr) if the match is invalid
-                        },materialInstanceVariant);
-                        
-                        // is this the correct material type? if not, skip
-                        if (materialInstance == nullptr){
-                            continue;
-                        }
-                        
-						// bind the pipeline
-						auto pipeline = pipelineSelectorFunction(materialInstance->GetMat());
-						mainCommandBuffer->BindRenderPipeline(pipeline);
-                        
-                        
-                        
-
-						// set push constant data
-						auto pushConstantData = materialInstance->GetPushConstantData();
-
-                        // Metal requires 16-byte alignment, so we bake that into the required size
-						size_t pushConstantTotalSize =
-#if __APPLE__
-							closest_multiple_of<ssize_t>(sizeof(viewproj) + pushConstantData.size(), 16);
-#else
-							sizeof(viewproj) + pushConstantData.size();
-#endif
-                        
-                        // AMD on vulkan cannot accept push constants > 128 bytes so we cap it there for all platforms
-                        std::byte totalPushConstantBytes[128]{};
-                        Debug::Assert(pushConstantTotalSize < std::size(totalPushConstantBytes), "Cannot write push constants, total size ({}) > {}", pushConstantTotalSize, std::size(totalPushConstantBytes));
-
-						std::memcpy(totalPushConstantBytes, &viewproj, sizeof(viewproj));
-						if (pushConstantData.size() > 0 && pushConstantData.data() != nullptr) {
-							std::memcpy(totalPushConstantBytes + sizeof(viewproj), pushConstantData.data(), pushConstantData.size());
-						}
-
-						mainCommandBuffer->SetVertexBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
-						mainCommandBuffer->SetFragmentBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
-
-						// bind textures and buffers
-						auto& bufferBindings = materialInstance->GetBufferBindings();
-						auto& textureBindings = materialInstance->GetTextureBindings();
-						for (int i = 0; i < materialInstance->maxBindingSlots; i++) {
-							auto& buffer = bufferBindings[i];
-							auto& texture = textureBindings[i];
-							if (buffer) {
-								mainCommandBuffer->BindBuffer(buffer, i);
-							}
-							if (texture) {
-								mainCommandBuffer->SetFragmentSampler(textureSampler, 0); // TODO: don't hardcode this
-								mainCommandBuffer->SetFragmentTexture(texture->GetRHITexturePointer()->GetDefaultView(), i);
-							}
-						}
-
-						// bind the culling buffer and the transform buffer
-						mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = 1 });
-						mainCommandBuffer->BindBuffer(worldTransformBuffer, 10);
-
-						// do the indirect command
-						mainCommandBuffer->ExecuteIndirectIndexed({
-							.indirectBuffer = drawcommand.indirectBuffer,
-							.nDraws = uint32_t(drawcommand.indirectBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand))	// the number of structs in the buffer
-							});
-					}
+				}
 				};
 
-				// do culling operations
-				mainCommandBuffer->BeginComputeDebugMarker("Cull Static Meshes");
-				cullTheRenderData(worldOwning->renderData->staticMeshRenderData);
-				mainCommandBuffer->EndComputeDebugMarker();
-				if (skeletalPrepareResult.skeletalMeshesExist) {
-					cullSkeletalMeshes(viewproj);
-				}
+			// do culling operations
+			mainCommandBuffer->BeginComputeDebugMarker("Cull Static Meshes");
+			cullTheRenderData(worldOwning->renderData->staticMeshRenderData);
+			mainCommandBuffer->EndComputeDebugMarker();
+			if (skeletalPrepareResult.skeletalMeshesExist) {
+				cullSkeletalMeshes(viewproj, pyramid);
+			}
 
 
-				// do rendering operations
-				mainCommandBuffer->BeginRendering(renderPass);
-				mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
-                renderTheRenderData(worldOwning->renderData->staticMeshRenderData, sharedVertexBuffer, lightingFilter);
+			// do rendering operations
+			mainCommandBuffer->BeginRendering(renderPass);
+			mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
+			renderTheRenderData(worldOwning->renderData->staticMeshRenderData, sharedVertexBuffer, lightingFilter);
+			mainCommandBuffer->EndRenderDebugMarker();
+			if (skeletalPrepareResult.skeletalMeshesExist) {
+				mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
+				renderTheRenderData(worldOwning->renderData->skinnedMeshRenderData, sharedSkinnedMeshVertexBuffer, lightingFilter);
 				mainCommandBuffer->EndRenderDebugMarker();
-				if (skeletalPrepareResult.skeletalMeshesExist) {
-					mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
-                    renderTheRenderData(worldOwning->renderData->skinnedMeshRenderData, sharedSkinnedMeshVertexBuffer, lightingFilter);
-					mainCommandBuffer->EndRenderDebugMarker();
-				}
-				mainCommandBuffer->EndRendering();
+			}
+			mainCommandBuffer->EndRendering();
 			};
+
+		for (const auto& view : targets) {
+			currentRenderSize = view.pixelDimensions;
+			auto nextImgSize = view.pixelDimensions;
+			auto& target = view.collection;
 
 			auto renderDeferredPass = [this,&target, &renderFromPerspective](auto&& viewproj, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// render all the static meshes
