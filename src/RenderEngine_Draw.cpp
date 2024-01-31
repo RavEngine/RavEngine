@@ -239,7 +239,7 @@ struct LightingType{
 			};
 
 
-			auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes, &target](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, RGLTexturePtr depthStencil) {
+			auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes, &target](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid) {
 
 				auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos,&target, &pyramid, &lightingFilter](auto&& renderData) {
 					for (auto& [materialInstance, drawcommand] : renderData) {
@@ -485,7 +485,7 @@ struct LightingType{
 
 				renderFromPerspective(viewproj, camPos, deferredRenderPass, [](Ref<Material>&& mat) {
 					return mat->GetMainRenderPipeline();
-                }, renderArea, {.Lit = true}, target.depthPyramid, target.depthStencil);
+                }, renderArea, {.Lit = true}, target.depthPyramid);
 
 				
 			};
@@ -575,7 +575,7 @@ struct LightingType{
 							auto shadowMapSize = shadowTexture->GetSize().width;
 							renderFromPerspective(lightSpaceMatrix, lightMats.camPos, shadowRenderPass, [](Ref<Material>&& mat) {
 								return mat->GetShadowRenderPipeline();
-                            }, { 0, 0, shadowMapSize,shadowMapSize }, {.Lit = true, .Unlit = true}, lightMats.depthPyramid, lightMats.shadowmapTexture);
+                            }, { 0, 0, shadowMapSize,shadowMapSize }, {.Lit = true, .Unlit = true}, lightMats.depthPyramid);
 
 							lightExtras.lightViewProj = lightSpaceMatrix;
 
@@ -744,7 +744,7 @@ struct LightingType{
                 unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
                 renderFromPerspective(viewproj, camPos, unlitRenderPass, [](Ref<Material>&& mat) {
                     return mat->GetMainRenderPipeline();
-                }, renderArea, {.Unlit = true}, target.depthPyramid, target.depthStencil);
+                }, renderArea, {.Unlit = true}, target.depthPyramid);
                 
                 // then do the skybox, if one is defined.
                 mainCommandBuffer->BeginRendering(unlitRenderPass);
