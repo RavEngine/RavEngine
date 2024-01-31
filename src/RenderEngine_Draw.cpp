@@ -535,7 +535,7 @@ struct LightingType{
 					RGLTexturePtr shadowmapTexture;
 				};
 
-				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target, &fullSizeScissor, &fullSizeViewport, &renderArea, &worldOwning](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, uint8_t numShadowmaps, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProjAtIndex, auto&& getLightShadowmapRootview) {
+				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target, &fullSizeScissor, &fullSizeViewport, &renderArea, &worldOwning](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, uint8_t numShadowmaps, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProjAtIndex, auto&& getLightShadowmapRootview, auto&& postshadowmapFunction) {
 					if (lightStore.uploadData.DenseSize() > 0) {
 						LightingUBO lightUBO{
 							.viewProj = viewproj,
@@ -580,6 +580,7 @@ struct LightingType{
 
 								lightExtras.lightViewProj = lightSpaceMatrix;
 							}
+							postshadowmapFunction(owner);
 							mainCommandBuffer->EndRenderDebugMarker();
 
 							auto transientOffset = WriteTransient(lightExtras);
@@ -675,7 +676,8 @@ struct LightingType{
 					[](entity_t owner) {
 						auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
 						return origLight.shadowData.shadowMap->GetDefaultView();
-					}
+					},
+					[](entity_t unused) {}
 				);
 				mainCommandBuffer->EndRenderDebugMarker();
 
@@ -716,7 +718,8 @@ struct LightingType{
 					[](entity_t owner) {
 						auto& origLight = Entity(owner).GetComponent<SpotLight>();
 						return origLight.shadowData.shadowMap->GetDefaultView();
-					}
+					},
+					[](entity_t unused) {}
 				);
 				mainCommandBuffer->EndRenderDebugMarker();
 
@@ -736,6 +739,28 @@ struct LightingType{
 
 						auto viewMat = glm::inverse(light.worldTransform);
 
+						// rotate view space to each cubemap direction based on the index
+						switch (index) {
+							case 0: {			// +x
+								viewMat = glm::rotate(viewMat, std::numbers::pi_v<float> / 2, glm::vec3(0,1,0));
+							} break;
+							case 1: {			// -x
+								viewMat = glm::rotate(viewMat, -std::numbers::pi_v<float> / 2, glm::vec3(0, 1, 0));
+							} break;
+							case 2: {			// +y
+								viewMat = glm::rotate(viewMat, std::numbers::pi_v<float> / 2, glm::vec3(1, 0, 0));
+							} break;
+							case 3: {			// -y
+								viewMat = glm::rotate(viewMat, -std::numbers::pi_v<float> / 2, glm::vec3(1, 0, 0));
+							} break;
+							case 4: {			// +z
+								viewMat = glm::rotate(viewMat, std::numbers::pi_v<float>, glm::vec3(0, 1, 0));
+							} break;
+							case 5: {			// -z (noop)
+
+							} break;
+						}
+
 						auto camPos = light.worldTransform * glm::vec4(0, 0, 0, 1);
 
 						auto& origLight = Entity(owner).GetComponent<PointLight>();
@@ -751,6 +776,9 @@ struct LightingType{
 					[](entity_t owner) {
 						auto& origLight = Entity(owner).GetComponent<PointLight>();
 						return origLight.shadowData.mapCube->GetDefaultView();
+					},
+					[](entity_t owner) {
+						// copy to cubemap
 					}
 					);
 				mainCommandBuffer->EndRenderDebugMarker();
