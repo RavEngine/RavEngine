@@ -191,7 +191,9 @@ struct LightingType{
 			prepareSkeletalCullingBuffer();
 		}
 
-		auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning](matrix4 viewproj, const DepthPyramid pyramid) {
+		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid){
+
+			auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning](matrix4 viewproj, const DepthPyramid pyramid) {
 			// the culling shader will decide for each draw if the draw should exist (and set its instance count to 1 from 0).
 
 			mainCommandBuffer->BeginComputeDebugMarker("Cull Skinned Meshes");
@@ -233,8 +235,6 @@ struct LightingType{
 			mainCommandBuffer->EndCompute();
 			};
 
-
-		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &cullSkeletalMeshes](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid) {
 
 			auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos, &pyramid, &lightingFilter](auto&& renderData) {
 				for (auto& [materialInstance, drawcommand] : renderData) {
