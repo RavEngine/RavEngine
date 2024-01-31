@@ -126,7 +126,8 @@ struct PointLight : public ShadowLightBase, public QueryableDelta<QueryableDelta
 
 #if !RVE_SERVER
 	struct ShadowData {
-		std::array<DepthPyramid, 6> cubeFaces;
+		std::array<DepthPyramid, 6> cubePyramids;
+		std::array<RGLTexturePtr, 6> cubeShadowmaps;
 		RGLTexturePtr mapCube;
 	} shadowData;
 #endif

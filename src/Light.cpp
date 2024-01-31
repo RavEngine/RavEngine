@@ -57,11 +57,21 @@ RavEngine::PointLight::PointLight()
 #if !RVE_SERVER
 
 	constexpr static auto dim = 4096;
-	for (auto& facePyramid : shadowData.cubeFaces) {
+	for (auto& facePyramid : shadowData.cubePyramids) {
 		facePyramid = { dim, "Shadowmap Depth Pyramid Face Point Light" };
 	}
 	auto device = GetApp()->GetDevice();
 
+	for (auto& shadowMap : shadowData.cubeShadowmaps) {
+		shadowMap = device->CreateTexture({
+			.usage = {.Sampled = true, .DepthStencilAttachment = true },
+			.aspect = {.HasDepth = true },
+			.width = dim,
+			.height = dim,
+			.format = RGL::TextureFormat::D32SFloat,
+			.debugName = "Shadow Texture"
+		});
+	}
 
 	shadowData.mapCube = device->CreateTexture({
 		.usage = {.Sampled = true, .DepthStencilAttachment = true },

@@ -535,7 +535,7 @@ struct LightingType{
 					RGLTexturePtr shadowmapTexture;
 				};
 
-				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target, &fullSizeScissor, &fullSizeViewport, &renderArea, &worldOwning](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProj) {
+				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target, &fullSizeScissor, &fullSizeViewport, &renderArea, &worldOwning](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, uint8_t numShadowmaps, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProjAtIndex, auto&& getLightShadowmapRootview) {
 					if (lightStore.uploadData.DenseSize() > 0) {
 						LightingUBO lightUBO{
 							.viewProj = viewproj,
@@ -564,22 +564,26 @@ struct LightingType{
 								glm::mat4 lightViewProj;
 							} lightExtras;
 
-							lightViewProjResult lightMats = genLightViewProj(light,aux_data, owner);
+							for (uint8_t i = 0; i < numShadowmaps; i++) {
+								lightViewProjResult lightMats = genLightViewProjAtIndex(i, light, aux_data, owner);
 
-							auto lightSpaceMatrix = lightMats.lightProj * lightMats.lightView;
-							lightUBO.camPos = lightMats.camPos;
+								auto lightSpaceMatrix = lightMats.lightProj * lightMats.lightView;
+								lightUBO.camPos = lightMats.camPos;
 
-							auto shadowTexture = lightMats.shadowmapTexture;
+								auto shadowTexture = lightMats.shadowmapTexture;
 
-							shadowRenderPass->SetDepthAttachmentTexture(shadowTexture->GetDefaultView());
-							auto shadowMapSize = shadowTexture->GetSize().width;
-							renderFromPerspective(lightSpaceMatrix, lightMats.camPos, shadowRenderPass, [](Ref<Material>&& mat) {
-								return mat->GetShadowRenderPipeline();
-                            }, { 0, 0, shadowMapSize,shadowMapSize }, {.Lit = true, .Unlit = true}, lightMats.depthPyramid);
+								shadowRenderPass->SetDepthAttachmentTexture(shadowTexture->GetDefaultView());
+								auto shadowMapSize = shadowTexture->GetSize().width;
+								renderFromPerspective(lightSpaceMatrix, lightMats.camPos, shadowRenderPass, [](Ref<Material>&& mat) {
+									return mat->GetShadowRenderPipeline();
+									}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true }, lightMats.depthPyramid);
 
-							lightExtras.lightViewProj = lightSpaceMatrix;
+								lightExtras.lightViewProj = lightSpaceMatrix;
+							}
 
 							auto transientOffset = WriteTransient(lightExtras);
+
+							auto shadowTextureView = getLightShadowmapRootview(owner);
 
 							mainCommandBuffer->BeginRendering(lightingRenderPass);
 							//reset viewport and scissor
@@ -592,7 +596,7 @@ struct LightingType{
 							mainCommandBuffer->SetFragmentTexture(target.diffuseTexture->GetDefaultView(), 2);
 							mainCommandBuffer->SetFragmentTexture(target.normalTexture->GetDefaultView(), 3);
 							mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 4);
-							mainCommandBuffer->SetFragmentTexture(shadowTexture->GetDefaultView(), 5);
+							mainCommandBuffer->SetFragmentTexture(shadowTextureView, 5);
 							mainCommandBuffer->SetFragmentTexture(target.roughnessSpecularMetallicAOTexture->GetDefaultView(), 6);
 
 							mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
@@ -636,7 +640,7 @@ struct LightingType{
 
 				// directional lights
 				mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
-				renderLight(worldOwning->renderData->directionalLightData, dirLightRenderPipeline, sizeof(World::DirLightUploadData),
+				renderLight(worldOwning->renderData->directionalLightData, dirLightRenderPipeline, sizeof(World::DirLightUploadData), 1,
 					[this](RGLCommandBufferPtr mainCommandBuffer) {
 						mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 					},
@@ -645,7 +649,7 @@ struct LightingType{
 							.nInstances = nInstances
 							});
 					},
-					[&camPos](const RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
+					[&camPos](uint8_t index, const RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
 						auto dirvec = light.direction;
                     
                         auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
@@ -666,13 +670,17 @@ struct LightingType{
 							.depthPyramid = origLight.shadowData.pyramid,
 							.shadowmapTexture = origLight.shadowData.shadowMap
 						};
+					},
+					[](entity_t owner) {
+						auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
+						return origLight.shadowData.shadowMap->GetDefaultView();
 					}
 				);
 				mainCommandBuffer->EndRenderDebugMarker();
 
 				// spot lights
 				mainCommandBuffer->BeginRenderDebugMarker("Render Spot Lights");
-				renderLight(worldOwning->renderData->spotLightData, spotLightRenderPipeline, sizeof(World::SpotLightDataUpload),
+				renderLight(worldOwning->renderData->spotLightData, spotLightRenderPipeline, sizeof(World::SpotLightDataUpload), 1,
 					[this](RGLCommandBufferPtr mainCommandBuffer) {
 						mainCommandBuffer->SetVertexBuffer(spotLightVertexBuffer);
 						mainCommandBuffer->SetIndexBuffer(spotLightIndexBuffer);
@@ -682,7 +690,7 @@ struct LightingType{
 							.nInstances = nInstances
 						});
 					},
-					[](const RavEngine::World::SpotLightDataUpload& light, auto unusedAux, entity_t owner) {
+					[](uint8_t index, const RavEngine::World::SpotLightDataUpload& light, auto unusedAux, entity_t owner) {
 
 						auto lightProj = RMath::perspectiveProjection<float>(light.coneAndPenumbra.x * 2, 1, 0.1, 100);
 
@@ -703,12 +711,16 @@ struct LightingType{
 							.depthPyramid = origLight.shadowData.pyramid,
 							.shadowmapTexture = origLight.shadowData.shadowMap
 						};
+					},
+					[](entity_t owner) {
+						auto& origLight = Entity(owner).GetComponent<SpotLight>();
+						return origLight.shadowData.shadowMap->GetDefaultView();
 					}
 				);
 				mainCommandBuffer->EndRenderDebugMarker();
 
 				mainCommandBuffer->BeginRenderDebugMarker("Render Point Lights");
-				renderLight(worldOwning->renderData->pointLightData, pointLightRenderPipeline, sizeof(World::PointLightUploadData),
+				renderLight(worldOwning->renderData->pointLightData, pointLightRenderPipeline, sizeof(World::PointLightUploadData),6,
 					[this](RGLCommandBufferPtr mainCommandBuffer){
 						mainCommandBuffer->SetVertexBuffer(pointLightVertexBuffer);
 						mainCommandBuffer->SetIndexBuffer(pointLightIndexBuffer);
@@ -718,7 +730,7 @@ struct LightingType{
 							.nInstances = nInstances
 						});
 					},
-					[](const RavEngine::World::PointLightUploadData& light, auto unusedAux, entity_t owner) {
+					[](uint8_t index, const RavEngine::World::PointLightUploadData& light, auto unusedAux, entity_t owner) {
 						// TODO: need to do this 6 times and make a cubemap
 						auto lightProj = RMath::perspectiveProjection<float>(90, 1, 0.1, 100);
 
@@ -731,6 +743,10 @@ struct LightingType{
 							.lightView = viewMat,
 							.camPos = camPos
 						};
+					},
+					[](entity_t owner) {
+						auto& origLight = Entity(owner).GetComponent<PointLight>();
+						return origLight.shadowData.mapCube->GetDefaultView();
 					}
 					);
 				mainCommandBuffer->EndRenderDebugMarker();
@@ -1011,6 +1027,10 @@ struct LightingType{
 				SpotLight* ptr = nullptr;
 				genPyramidForLight(worldOwning->renderData->spotLightData, ptr);
 			}
+			{
+				PointLight* ptr = nullptr;
+			}
+
 			mainCommandBuffer->EndRenderDebugMarker();
 		
 
