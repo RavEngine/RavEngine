@@ -397,7 +397,9 @@ void World::setupRenderTasks(){
                     // update color data if it has changed
                     auto& lightData = ptr->Get(i);
                     auto& colorData = lightData.GetColorRGBA();
-                    renderData->pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).colorIntensity = { colorData.R,colorData.G,colorData.B,lightData.GetIntensity()};
+                    auto& denseData = renderData->pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i));
+                    denseData.colorIntensity = { colorData.R,colorData.G,colorData.B,lightData.GetIntensity()};
+                    denseData.castsShadows = lightData.CastsShadows();
                     ptr->Get(i).clearInvalidate();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this

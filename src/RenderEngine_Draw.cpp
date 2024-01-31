@@ -563,7 +563,7 @@ struct LightingType{
 							struct {
 								glm::mat4 lightViewProj;
 							} lightExtras;
-
+							mainCommandBuffer->BeginRenderDebugMarker("Render shadowmap");
 							for (uint8_t i = 0; i < numShadowmaps; i++) {
 								lightViewProjResult lightMats = genLightViewProjAtIndex(i, light, aux_data, owner);
 
@@ -580,6 +580,7 @@ struct LightingType{
 
 								lightExtras.lightViewProj = lightSpaceMatrix;
 							}
+							mainCommandBuffer->EndRenderDebugMarker();
 
 							auto transientOffset = WriteTransient(lightExtras);
 
@@ -731,17 +732,20 @@ struct LightingType{
 						});
 					},
 					[](uint8_t index, const RavEngine::World::PointLightUploadData& light, auto unusedAux, entity_t owner) {
-						// TODO: need to do this 6 times and make a cubemap
 						auto lightProj = RMath::perspectiveProjection<float>(90, 1, 0.1, 100);
 
 						auto viewMat = glm::inverse(light.worldTransform);
 
 						auto camPos = light.worldTransform * glm::vec4(0, 0, 0, 1);
 
+						auto& origLight = Entity(owner).GetComponent<PointLight>();
+
 						return lightViewProjResult{
 							.lightProj = lightProj,
 							.lightView = viewMat,
-							.camPos = camPos
+							.camPos = camPos,
+							.depthPyramid = origLight.shadowData.cubePyramids[index],
+							.shadowmapTexture = origLight.shadowData.cubeShadowmaps[index]
 						};
 					},
 					[](entity_t owner) {
