@@ -286,7 +286,39 @@ namespace RGL {
 	}
 	RGLCustomTextureViewPtr TextureVk::MakeCustomTextureView(const CustomTextureViewConfig& config) const
 	{
-		return RGLCustomTextureViewPtr();
+		return std::make_shared<CustomTextureViewVk>(shared_from_this(), config);
+	}
+	CustomTextureViewVk::CustomTextureViewVk(decltype(owningTexture) owning, const CustomTextureViewConfig& config) : owningTexture(owning), config(config)
+	{
+		VkImageViewCreateInfo createInfo{
+			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+			.image = owningTexture->vkImage,
+			.viewType = VK_IMAGE_VIEW_TYPE_2D,
+			.format = owningTexture->format,
+			.components{
+				.r = VK_COMPONENT_SWIZZLE_IDENTITY, // we don't want any swizzling
+				.g = VK_COMPONENT_SWIZZLE_IDENTITY,
+				.b = VK_COMPONENT_SWIZZLE_IDENTITY,
+				.a = VK_COMPONENT_SWIZZLE_IDENTITY
+			},
+			.subresourceRange{
+				.aspectMask = rgl2vkAspectFlags(owningTexture->createdConfig.aspect),
+				.baseMipLevel = config.mip,
+				.levelCount = 1,
+				.baseArrayLayer = config.layer,
+				.layerCount = 1
+			}
+		};
+		
+		VK_CHECK(vkCreateImageView(owningTexture->owningDevice->device, &createInfo, nullptr, &imageView));
+	}
+	CustomTextureViewVk::~CustomTextureViewVk()
+	{
+		vkDestroyImageView(owningTexture->owningDevice->device, imageView, nullptr);
+	}
+	TextureView CustomTextureViewVk::GetView() const
+	{
+		return TextureView();
 	}
 }
 

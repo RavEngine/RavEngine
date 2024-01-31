@@ -10,7 +10,7 @@
 
 namespace RGL {
 	struct DeviceVk;
-	struct TextureVk : public ITexture {
+	struct TextureVk : public ITexture, public std::enable_shared_from_this<TextureVk> {
 		VkImageView vkImageView = VK_NULL_HANDLE;
 		VkImage vkImage = VK_NULL_HANDLE;
 		struct SwapchainVK* owningSwapchain = nullptr;	// will remain null if the texture is not created by a swapchain
@@ -40,4 +40,15 @@ namespace RGL {
 		std::string debugName;
 	};
 
+	struct CustomTextureViewVk : public ICustomTextureView {
+		const std::shared_ptr<const TextureVk> owningTexture = nullptr;
+		const CustomTextureViewConfig config;
+		CustomTextureViewVk(decltype(owningTexture) owning, const CustomTextureViewConfig& config);
+
+		VkImageView imageView = nullptr;
+
+		~CustomTextureViewVk();
+
+		TextureView GetView() const;
+	};
 }

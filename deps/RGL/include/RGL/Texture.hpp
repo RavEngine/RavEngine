@@ -139,8 +139,8 @@ namespace RGL {
 	};
 
 	struct CustomTextureViewConfig {
-		uint32_t mip;
-		uint32_t level;
+		uint32_t mip = 0;
+		uint32_t layer = 0;
 	};
 
 	class ITexture {
