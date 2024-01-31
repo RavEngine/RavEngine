@@ -269,6 +269,10 @@ namespace RGL {
 			.coveredLayers = ALL_LAYERS,
 		} };
 	}
+	RGLCustomTextureViewPtr TextureD3D12::MakeCustomTextureView(const CustomTextureViewConfig& config) const
+	{
+		return RGLCustomTextureViewPtr();
+	}
 	Dimension TextureD3D12::GetSize() const
 	{
 		return size;

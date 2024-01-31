@@ -29,6 +29,7 @@ namespace RGL {
 	struct ISwapchain;
     struct IRenderPass;
 	struct IComputePipeline;
+	struct ICustomTextureView;
 }
 
 #if RGL_SINGLE_BACKEND
@@ -153,6 +154,7 @@ using RGLComputePipelinePtr = std::shared_ptr<RGL::ComputePipelineD3D12>;
 	using RGLBufferPtr = std::shared_ptr<RGL::IBuffer>;
 	using RGLFencePtr = std::shared_ptr<RGL::IFence>;
 	using RGLTexturePtr = std::shared_ptr<RGL::ITexture>;
+	using RGLCustomTextureViewPtr = std::shared_ptr<RGL::ICustomTextureView>;
 	using RGLSamplerPtr = std::shared_ptr<RGL::ISampler>;
 	using RGLCommandQueuePtr = std::shared_ptr<RGL::ICommandQueue>;
 	using RGLCommandBufferPtr = std::shared_ptr<RGL::ICommandBuffer>;

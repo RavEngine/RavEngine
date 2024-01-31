@@ -77,6 +77,11 @@ TextureView TextureMTL::GetViewForMip(uint32_t mip) const{
     return TextureView::NativeHandles::mtl_t{this, mip};
 }
 
+RGLCustomTextureViewPtr TextureMTL::MakeCustomTextureView(const CustomTextureViewConfig& config) const
+{
+	return RGLCustomTextureViewPtr();
+}
+
 id<MTLTexture> TextureMTL::ViewToTexture(const TextureView& view){
     if (view.texture.mtl.mip == TextureView::NativeHandles::mtl_t::ALL_MIPS){
         return view.texture.mtl.texture->texture;

@@ -1,4 +1,5 @@
 #pragma once
+#include "Types.hpp"
 #include <cstdint>
 #include <limits>
 #include "TextureFormat.hpp"
@@ -118,6 +119,7 @@ namespace RGL {
 		TextureView() {}
 	};
 
+
 	struct TextureConfig {
 		TextureUsage usage;
 		TextureAspect aspect;
@@ -131,6 +133,16 @@ namespace RGL {
 		const char* debugName = nullptr;
 	};
 
+	class ICustomTextureView {
+
+		virtual TextureView GetView() const = 0;
+	};
+
+	struct CustomTextureViewConfig {
+		uint32_t mip;
+		uint32_t level;
+	};
+
 	class ITexture {
 	protected:
 		Dimension size;
@@ -139,6 +151,7 @@ namespace RGL {
 		virtual Dimension GetSize() const = 0;
 		virtual TextureView GetDefaultView() const = 0;
 		virtual TextureView GetViewForMip(uint32_t mip) const = 0;
+		virtual RGLCustomTextureViewPtr MakeCustomTextureView(const CustomTextureViewConfig& config) const = 0;
 	};
 
 }

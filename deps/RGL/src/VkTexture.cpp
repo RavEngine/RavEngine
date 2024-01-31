@@ -284,6 +284,10 @@ namespace RGL {
 	{
 		return mipViews.at(mip);
 	}
+	RGLCustomTextureViewPtr TextureVk::MakeCustomTextureView(const CustomTextureViewConfig& config) const
+	{
+		return RGLCustomTextureViewPtr();
+	}
 }
 
 #endif

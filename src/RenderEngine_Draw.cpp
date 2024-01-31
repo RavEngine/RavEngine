@@ -592,8 +592,10 @@ struct LightingType{
 
 		renderLightShadowmap(worldOwning->renderData->pointLightData, 1,
 			pointLightShadowmapFunction,
-			[](entity_t owner) {
+			[this](entity_t owner) {
 				// TODO: copy to cubemap
+				auto& origLight = Entity(owner).GetComponent<PointLight>();
+
 		});
 
 		for (const auto& view : targets) {
