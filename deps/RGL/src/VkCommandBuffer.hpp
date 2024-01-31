@@ -170,6 +170,7 @@ namespace RGL {
 
 		struct CmdCopyTextureToTexture {
 			TextureCopyConfig from, to;
+			uint32_t fromMip, fromLayer, toMip, toLayer;
 		};
 
 		std::vector < std::variant <

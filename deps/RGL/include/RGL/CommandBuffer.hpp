@@ -143,6 +143,8 @@ struct TextureView;
         
         struct TextureCopyConfig{
             TextureView texture;
+			uint32_t mip = 0;
+			uint32_t layer = 0;
         };
         virtual void CopyTextureToTexture(const TextureCopyConfig& from, const TextureCopyConfig& to) = 0;
 

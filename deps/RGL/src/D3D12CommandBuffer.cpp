@@ -433,13 +433,13 @@ namespace RGL {
 		D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
 		srcLocation.pResource = from.texture.texture.dx.parentResource->texture.Get();
 		srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-		srcLocation.SubresourceIndex = 0;
+		srcLocation.SubresourceIndex = from.texture.texture.dx.parentResource->SubresourceIndexForMipLayer(from.mip, from.layer);
 
 		// Create a destination texture location
 		D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
 		dstLocation.pResource = to.texture.texture.dx.parentResource->texture.Get();
 		dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-		dstLocation.SubresourceIndex = 0;
+		dstLocation.SubresourceIndex = to.texture.texture.dx.parentResource->SubresourceIndexForMipLayer(to.mip, to.layer);
 
 		// Create a box that specifies the region to copy
 		D3D12_BOX box = {};
