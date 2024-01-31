@@ -522,35 +522,6 @@ struct LightingType{
 				mainCommandBuffer->EndRenderDebugMarker();
 				};
 
-			glm::vec3 shared_camPos{ 0 };	// this is a bit evil;
-			const auto dirlightShadowmapDataFunction = [&shared_camPos](uint8_t index, const RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
-				auto dirvec = light.direction;
-
-				auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
-
-				auto lightArea = auxdata->shadowDistance;
-
-				auto lightProj = RMath::orthoProjection<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
-				auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
-				const vector3 reposVec{ std::round(-shared_camPos.x), std::round(shared_camPos.y), std::round(-shared_camPos.z) };
-				lightView = glm::translate(lightView, reposVec);
-
-				auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
-
-				return lightViewProjResult{
-					.lightProj = lightProj,
-					.lightView = lightView,
-					.camPos = shared_camPos,
-					.depthPyramid = origLight.shadowData.pyramid,
-					.shadowmapTexture = origLight.shadowData.shadowMap
-				};
-				};
-
-			renderLightShadowmap(worldOwning->renderData->directionalLightData, 1,
-				dirlightShadowmapDataFunction,
-				[](entity_t unused) {}
-			);
-
 			const auto spotlightShadowMapFunction = [](uint8_t index, const RavEngine::World::SpotLightDataUpload& light, auto unusedAux, entity_t owner) {
 
 				auto lightProj = RMath::perspectiveProjection<float>(light.coneAndPenumbra.x * 2, 1, 0.1, 100);
@@ -640,7 +611,7 @@ struct LightingType{
 				
 			};
 
-			auto renderLightingPass = [this, &target, &renderFromPerspective, &nextImgSize, &worldOwning, &dirlightShadowmapDataFunction, &spotlightShadowMapFunction, &pointLightShadowmapFunction](auto&& viewproj, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+			auto renderLightingPass = [this, &target, &renderFromPerspective, &nextImgSize, &worldOwning, &spotlightShadowMapFunction, &pointLightShadowmapFunction, &renderLightShadowmap](auto&& viewproj, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// do lighting pass
 				// these run in window coordinates, even if in split screen
 				// but are confined by the scissor rect
@@ -771,6 +742,34 @@ struct LightingType{
 
 				// directional lights
 				mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
+				const auto dirlightShadowmapDataFunction = [&camPos](uint8_t index, const RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
+					auto dirvec = light.direction;
+
+					auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
+
+					auto lightArea = auxdata->shadowDistance;
+
+					auto lightProj = RMath::orthoProjection<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
+					auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
+					const vector3 reposVec{ std::round(-camPos.x), std::round(camPos.y), std::round(-camPos.z) };
+					lightView = glm::translate(lightView, reposVec);
+
+					auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
+
+					return lightViewProjResult{
+						.lightProj = lightProj,
+						.lightView = lightView,
+						.camPos = camPos,
+						.depthPyramid = origLight.shadowData.pyramid,
+						.shadowmapTexture = origLight.shadowData.shadowMap
+					};
+					};
+
+				renderLightShadowmap(worldOwning->renderData->directionalLightData, 1,
+					dirlightShadowmapDataFunction,
+					[](entity_t unused) {}
+				);
+
 				renderLight(worldOwning->renderData->directionalLightData, dirLightRenderPipeline, sizeof(World::DirLightUploadData), 1,
 					[this](RGLCommandBufferPtr mainCommandBuffer) {
 						mainCommandBuffer->SetVertexBuffer(screenTriVerts);
@@ -1013,11 +1012,10 @@ struct LightingType{
 				mainCommandBuffer->EndRendering();
 			};
 
-			auto doPassWithCamData = [this,&target,&nextImgSize, &shared_camPos](auto&& camdata, auto&& function) {
+			auto doPassWithCamData = [this,&target,&nextImgSize](auto&& camdata, auto&& function) {
 				const auto viewproj = camdata.viewProj;
 				const auto invviewproj = glm::inverse(viewproj);
 				const auto camPos = camdata.camPos;
-				shared_camPos = camPos;
 				const auto viewportOverride = camdata.viewportOverride;
 
 				RGL::Rect renderArea{
