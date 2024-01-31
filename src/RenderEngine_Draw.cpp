@@ -535,7 +535,149 @@ struct LightingType{
 					RGLTexturePtr shadowmapTexture;
 				};
 
-				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target, &fullSizeScissor, &fullSizeViewport, &renderArea, &worldOwning](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, uint8_t numShadowmaps, auto&& bindpolygonBuffers, auto&& drawCall, auto&& genLightViewProjAtIndex, auto&& getLightShadowmapRootview, auto&& postshadowmapFunction) {
+				// render shadowmaps only once per light
+
+
+				// the generic shadowmap rendering function
+				auto renderLightShadowmap = [this, &renderFromPerspective, &worldOwning](auto&& lightStore, uint32_t numShadowmaps, auto&& genLightViewProjAtIndex, auto&& postshadowmapFunction) {
+					if (lightStore.uploadData.DenseSize() <= 0) {
+						return;
+					}
+					mainCommandBuffer->BeginRenderDebugMarker("Render shadowmap");
+					for (uint32_t i = 0; i < lightStore.uploadData.DenseSize(); i++) {
+						const auto& light = lightStore.uploadData.GetDense()[i];
+						auto sparseIdx = lightStore.uploadData.GetSparseIndexForDense(i);
+						auto owner = worldOwning->GetLocalToGlobal()[sparseIdx];
+
+						using lightadt_t = std::remove_reference_t<decltype(lightStore)>;
+
+						void* aux_data = nullptr;
+						if constexpr (lightadt_t::hasAuxData) {
+							aux_data = &lightStore.auxData.GetDense()[i];
+						}
+
+						for (uint8_t i = 0; i < numShadowmaps; i++) {
+							lightViewProjResult lightMats = genLightViewProjAtIndex(i, light, aux_data, owner);
+
+							auto lightSpaceMatrix = lightMats.lightProj * lightMats.lightView;
+
+							auto shadowTexture = lightMats.shadowmapTexture;
+
+							shadowRenderPass->SetDepthAttachmentTexture(shadowTexture->GetDefaultView());
+							auto shadowMapSize = shadowTexture->GetSize().width;
+							renderFromPerspective(lightSpaceMatrix, lightMats.camPos, shadowRenderPass, [](Ref<Material>&& mat) {
+								return mat->GetShadowRenderPipeline();
+								}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true }, lightMats.depthPyramid);
+
+						}
+						postshadowmapFunction(owner);
+					}
+					mainCommandBuffer->EndRenderDebugMarker();
+				};
+
+				const auto dirlightShadowmapDataFunction = [&camPos](uint8_t index, const RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
+					auto dirvec = light.direction;
+
+					auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
+
+					auto lightArea = auxdata->shadowDistance;
+
+					auto lightProj = RMath::orthoProjection<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
+					auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
+					const vector3 reposVec{ std::round(-camPos.x), std::round(camPos.y), std::round(-camPos.z) };
+					lightView = glm::translate(lightView, reposVec);
+
+					auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
+
+					return lightViewProjResult{
+						.lightProj = lightProj,
+						.lightView = lightView,
+						.camPos = camPos,
+						.depthPyramid = origLight.shadowData.pyramid,
+						.shadowmapTexture = origLight.shadowData.shadowMap
+					};
+				};
+
+				renderLightShadowmap(worldOwning->renderData->directionalLightData, 1,
+					dirlightShadowmapDataFunction,
+					[](entity_t unused) {}
+				);
+
+				const auto spotlightShadowMapFunction = [](uint8_t index, const RavEngine::World::SpotLightDataUpload& light, auto unusedAux, entity_t owner) {
+
+					auto lightProj = RMath::perspectiveProjection<float>(light.coneAndPenumbra.x * 2, 1, 0.1, 100);
+
+					// -y is forward for spot lights, so we need to rotate to compensate
+					auto rotmat = glm::toMat4(quaternion(vector3(-std::numbers::pi_v<float> / 2, 0, 0)));
+					auto combinedMat = light.worldTransform * rotmat;
+
+					auto viewMat = glm::inverse(combinedMat);
+
+					auto camPos = light.worldTransform * glm::vec4(0, 0, 0, 1);
+
+					auto& origLight = Entity(owner).GetComponent<SpotLight>();
+
+					return lightViewProjResult{
+						.lightProj = lightProj,
+						.lightView = viewMat,
+						.camPos = camPos,
+						.depthPyramid = origLight.shadowData.pyramid,
+						.shadowmapTexture = origLight.shadowData.shadowMap
+					};
+				};
+
+				renderLightShadowmap(worldOwning->renderData->spotLightData, 1, 
+					spotlightShadowMapFunction,
+					[](entity_t unused) {}
+				);
+
+				const auto pointLightShadowmapFunction = [](uint8_t index, const RavEngine::World::PointLightUploadData& light, auto unusedAux, entity_t owner) {
+					auto lightProj = RMath::perspectiveProjection<float>(90, 1, 0.1, 100);
+
+					auto viewMat = glm::inverse(light.worldTransform);
+
+					// rotate view space to each cubemap direction based on the index
+					switch (index) {
+					case 0: {			// +x
+						viewMat = glm::rotate(viewMat, std::numbers::pi_v<float> / 2, glm::vec3(0, 1, 0));
+					} break;
+					case 1: {			// -x
+						viewMat = glm::rotate(viewMat, -std::numbers::pi_v<float> / 2, glm::vec3(0, 1, 0));
+					} break;
+					case 2: {			// +y
+						viewMat = glm::rotate(viewMat, std::numbers::pi_v<float> / 2, glm::vec3(1, 0, 0));
+					} break;
+					case 3: {			// -y
+						viewMat = glm::rotate(viewMat, -std::numbers::pi_v<float> / 2, glm::vec3(1, 0, 0));
+					} break;
+					case 4: {			// +z
+						viewMat = glm::rotate(viewMat, std::numbers::pi_v<float>, glm::vec3(0, 1, 0));
+					} break;
+					case 5: {			// -z (noop)
+
+					} break;
+					}
+
+					auto camPos = light.worldTransform * glm::vec4(0, 0, 0, 1);
+
+					auto& origLight = Entity(owner).GetComponent<PointLight>();
+
+					return lightViewProjResult{
+						.lightProj = lightProj,
+						.lightView = viewMat,
+						.camPos = camPos,
+						.depthPyramid = origLight.shadowData.cubePyramids[index],
+						.shadowmapTexture = origLight.shadowData.cubeShadowmaps[index]
+					};
+					};
+
+				renderLightShadowmap(worldOwning->renderData->pointLightData, 1, 
+					pointLightShadowmapFunction,
+					[](entity_t owner) {
+						// TODO: copy to cubemap
+					});
+
+				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target, &fullSizeScissor, &fullSizeViewport, &renderArea, &worldOwning](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, uint8_t numShadowmaps, auto&& bindpolygonBuffers, auto&& drawCall, auto&& shadowmapDataFunction, auto&& getLightShadowmapRootview) {
 					if (lightStore.uploadData.DenseSize() > 0) {
 						LightingUBO lightUBO{
 							.viewProj = viewproj,
@@ -548,13 +690,7 @@ struct LightingType{
 							const auto& light = lightStore.uploadData.GetDense()[i];
 							auto sparseIdx = lightStore.uploadData.GetSparseIndexForDense(i);
 							auto owner = worldOwning->GetLocalToGlobal()[sparseIdx];
-                            
-                            using lightadt_t = std::remove_reference_t<decltype(lightStore)>;
-                            
-                            void* aux_data = nullptr;
-                            if constexpr (lightadt_t::hasAuxData){
-                                aux_data = &lightStore.auxData.GetDense()[i];
-                            }
+                           
                             
 							if (!light.castsShadows) {
 								continue;
@@ -563,25 +699,18 @@ struct LightingType{
 							struct {
 								glm::mat4 lightViewProj;
 							} lightExtras;
-							mainCommandBuffer->BeginRenderDebugMarker("Render shadowmap");
-							for (uint8_t i = 0; i < numShadowmaps; i++) {
-								lightViewProjResult lightMats = genLightViewProjAtIndex(i, light, aux_data, owner);
 
-								auto lightSpaceMatrix = lightMats.lightProj * lightMats.lightView;
-								lightUBO.camPos = lightMats.camPos;
-
-								auto shadowTexture = lightMats.shadowmapTexture;
-
-								shadowRenderPass->SetDepthAttachmentTexture(shadowTexture->GetDefaultView());
-								auto shadowMapSize = shadowTexture->GetSize().width;
-								renderFromPerspective(lightSpaceMatrix, lightMats.camPos, shadowRenderPass, [](Ref<Material>&& mat) {
-									return mat->GetShadowRenderPipeline();
-									}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true }, lightMats.depthPyramid);
-
-								lightExtras.lightViewProj = lightSpaceMatrix;
+							using lightadt_t = std::remove_reference_t<decltype(lightStore)>;
+							void* aux_data = nullptr;
+							if constexpr (lightadt_t::hasAuxData) {
+								aux_data = &lightStore.auxData.GetDense()[i];
 							}
-							postshadowmapFunction(owner);
-							mainCommandBuffer->EndRenderDebugMarker();
+
+							lightViewProjResult lightMats = shadowmapDataFunction(i, light, aux_data, owner);
+
+							auto lightSpaceMatrix = lightMats.lightProj * lightMats.lightView;
+							lightExtras.lightViewProj = lightSpaceMatrix;
+							lightUBO.camPos = lightMats.camPos;
 
 							auto transientOffset = WriteTransient(lightExtras);
 
@@ -651,33 +780,11 @@ struct LightingType{
 							.nInstances = nInstances
 							});
 					},
-					[&camPos](uint8_t index, const RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
-						auto dirvec = light.direction;
-                    
-                        auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
-
-                        auto lightArea = auxdata->shadowDistance;
-
-						auto lightProj = RMath::orthoProjection<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
-						auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
-						const vector3 reposVec{ std::round(-camPos.x), std::round(camPos.y), std::round(-camPos.z) };
-						lightView = glm::translate(lightView, reposVec);
-
-						auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
-
-						return lightViewProjResult{
-							.lightProj = lightProj,
-							.lightView = lightView,
-							.camPos = camPos,
-							.depthPyramid = origLight.shadowData.pyramid,
-							.shadowmapTexture = origLight.shadowData.shadowMap
-						};
-					},
+					dirlightShadowmapDataFunction,
 					[](entity_t owner) {
 						auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
 						return origLight.shadowData.shadowMap->GetDefaultView();
-					},
-					[](entity_t unused) {}
+					}
 				);
 				mainCommandBuffer->EndRenderDebugMarker();
 
@@ -693,33 +800,11 @@ struct LightingType{
 							.nInstances = nInstances
 						});
 					},
-					[](uint8_t index, const RavEngine::World::SpotLightDataUpload& light, auto unusedAux, entity_t owner) {
-
-						auto lightProj = RMath::perspectiveProjection<float>(light.coneAndPenumbra.x * 2, 1, 0.1, 100);
-
-						// -y is forward for spot lights, so we need to rotate to compensate
-						auto rotmat = glm::toMat4(quaternion(vector3(-std::numbers::pi_v<float> / 2,0,0)));
-						auto combinedMat = light.worldTransform * rotmat;
-
-						auto viewMat = glm::inverse(combinedMat);
-
-						auto camPos = light.worldTransform * glm::vec4(0, 0, 0, 1);
-
-						auto& origLight = Entity(owner).GetComponent<SpotLight>();
-
-						return lightViewProjResult{
-							.lightProj = lightProj,
-							.lightView = viewMat,
-							.camPos = camPos,
-							.depthPyramid = origLight.shadowData.pyramid,
-							.shadowmapTexture = origLight.shadowData.shadowMap
-						};
-					},
+					spotlightShadowMapFunction,
 					[](entity_t owner) {
 						auto& origLight = Entity(owner).GetComponent<SpotLight>();
 						return origLight.shadowData.shadowMap->GetDefaultView();
-					},
-					[](entity_t unused) {}
+					}
 				);
 				mainCommandBuffer->EndRenderDebugMarker();
 
@@ -734,51 +819,10 @@ struct LightingType{
 							.nInstances = nInstances
 						});
 					},
-					[](uint8_t index, const RavEngine::World::PointLightUploadData& light, auto unusedAux, entity_t owner) {
-						auto lightProj = RMath::perspectiveProjection<float>(90, 1, 0.1, 100);
-
-						auto viewMat = glm::inverse(light.worldTransform);
-
-						// rotate view space to each cubemap direction based on the index
-						switch (index) {
-							case 0: {			// +x
-								viewMat = glm::rotate(viewMat, std::numbers::pi_v<float> / 2, glm::vec3(0,1,0));
-							} break;
-							case 1: {			// -x
-								viewMat = glm::rotate(viewMat, -std::numbers::pi_v<float> / 2, glm::vec3(0, 1, 0));
-							} break;
-							case 2: {			// +y
-								viewMat = glm::rotate(viewMat, std::numbers::pi_v<float> / 2, glm::vec3(1, 0, 0));
-							} break;
-							case 3: {			// -y
-								viewMat = glm::rotate(viewMat, -std::numbers::pi_v<float> / 2, glm::vec3(1, 0, 0));
-							} break;
-							case 4: {			// +z
-								viewMat = glm::rotate(viewMat, std::numbers::pi_v<float>, glm::vec3(0, 1, 0));
-							} break;
-							case 5: {			// -z (noop)
-
-							} break;
-						}
-
-						auto camPos = light.worldTransform * glm::vec4(0, 0, 0, 1);
-
-						auto& origLight = Entity(owner).GetComponent<PointLight>();
-
-						return lightViewProjResult{
-							.lightProj = lightProj,
-							.lightView = viewMat,
-							.camPos = camPos,
-							.depthPyramid = origLight.shadowData.cubePyramids[index],
-							.shadowmapTexture = origLight.shadowData.cubeShadowmaps[index]
-						};
-					},
+					pointLightShadowmapFunction,
 					[](entity_t owner) {
 						auto& origLight = Entity(owner).GetComponent<PointLight>();
 						return origLight.shadowData.mapCube->GetDefaultView();
-					},
-					[](entity_t owner) {
-						// copy to cubemap
 					}
 					);
 				mainCommandBuffer->EndRenderDebugMarker();
