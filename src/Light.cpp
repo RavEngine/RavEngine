@@ -64,7 +64,7 @@ RavEngine::PointLight::PointLight()
 
 	for (auto& shadowMap : shadowData.cubeShadowmaps) {
 		shadowMap = device->CreateTexture({
-			.usage = {.Sampled = true, .DepthStencilAttachment = true },
+			.usage = {.TransferSource = true, .Sampled = true, .DepthStencilAttachment = true },
 			.aspect = {.HasDepth = true },
 			.width = dim,
 			.height = dim,
@@ -74,7 +74,7 @@ RavEngine::PointLight::PointLight()
 	}
 
 	shadowData.mapCube = device->CreateTexture({
-		.usage = {.Sampled = true, .DepthStencilAttachment = true },
+		.usage = {.TransferDestination = true, .Sampled = true, .DepthStencilAttachment = true },
 		.aspect = {.HasDepth = true },
 		.width = dim,
 		.height = dim,

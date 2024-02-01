@@ -285,9 +285,16 @@ namespace RGL {
 		toCpy.texture.vk.coveredLayers = MakeMipMaskForIndex(to.layer);
 		toCpy.texture.vk.coveredMips = MakeMipMaskForIndex(to.mip);
 
-		RecordTextureBinding(fromCpy, {VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL}, true);
-		RecordTextureBinding(toCpy, { VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL }, true);
-		EncodeCommand(CmdCopyTextureToTexture{ from,to, from.mip, from.layer, to.mip, to.layer });
+		RecordTextureBinding(fromCpy, {VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL}, false);
+		RecordTextureBinding(toCpy, { VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL }, false);
+
+		auto fromcnfcpy = from;
+		fromcnfcpy.texture = fromCpy;
+
+		auto tocnfcpy = to;
+		tocnfcpy.texture = toCpy;
+
+		EncodeCommand(CmdCopyTextureToTexture{ fromcnfcpy, tocnfcpy, from.mip, from.layer, to.mip, to.layer });
 	}
 	void CommandBufferVk::SetViewport(const Viewport& viewport)
 	{
@@ -812,7 +819,7 @@ namespace RGL {
 				auto dst = static_cast<const TextureVk*>(arg.to.texture.parent);
 
 				auto& srcLayout = activeTextures.at(TextureLastUseKey{src, arg.from.texture.texture.vk.coveredMips, arg.from.texture.texture.vk.coveredLayers });
-				auto& dstLayout = activeTextures.at(TextureLastUseKey{ src,arg.to.texture.texture.vk.coveredMips, arg.to.texture.texture.vk.coveredLayers });
+				auto& dstLayout = activeTextures.at(TextureLastUseKey{ dst, arg.to.texture.texture.vk.coveredMips, arg.to.texture.texture.vk.coveredLayers });
 
 				auto dim = src->GetSize();
 				VkImageCopy2 region{
@@ -827,8 +834,9 @@ namespace RGL {
 					.srcOffset = {0,0,0},
 					.dstSubresource = {
 						.aspectMask = dst->createdAspectVk,
-						.baseArrayLayer = arg.toMip,
-						.layerCount = arg.toLayer
+						.mipLevel = arg.toMip,
+						.baseArrayLayer = arg.toLayer,
+						.layerCount = 1
 					},
 					.dstOffset = {0,0,0},
 					.extent = {dim.width, dim.height ,1}

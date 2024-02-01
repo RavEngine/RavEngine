@@ -590,12 +590,24 @@ struct LightingType{
 			};
 		};
 
-		renderLightShadowmap(worldOwning->renderData->pointLightData, 1,
+		renderLightShadowmap(worldOwning->renderData->pointLightData, 6,
 			pointLightShadowmapFunction,
 			[this](entity_t owner) {
-				// TODO: copy to cubemap
 				auto& origLight = Entity(owner).GetComponent<PointLight>();
-
+				for (uint32_t i = 0; i < 6; i++) {
+					mainCommandBuffer->CopyTextureToTexture(
+						{
+							.texture = origLight.shadowData.cubeShadowmaps[i]->GetDefaultView(),
+							.mip = 0,
+							.layer = 0
+						},
+						{
+							.texture = origLight.shadowData.mapCube->GetDefaultView(),
+							.mip = 0,
+							.layer = i
+						}
+					);
+				}
 		});
 
 		for (const auto& view : targets) {
