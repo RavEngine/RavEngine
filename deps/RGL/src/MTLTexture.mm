@@ -39,6 +39,10 @@ TextureMTL::TextureMTL(const std::shared_ptr<DeviceMTL> owningDevice, const Text
 #endif
     texture = [owningDevice->device newTextureWithDescriptor:desc];
     
+    if (config.debugName){
+        [texture setLabel:[NSString stringWithUTF8String:config.debugName]];
+    }
+    
     mipTextures.reserve(config.mipLevels - 1);
     for(int i = 1; i < config.mipLevels; i++){
         auto tex = [texture newTextureViewWithPixelFormat:format textureType:MTLTextureType2D levels:NSMakeRange(i, 1) slices:NSMakeRange(0, 1)];

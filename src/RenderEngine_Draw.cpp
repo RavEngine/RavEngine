@@ -739,7 +739,7 @@ struct LightingType{
 						mainCommandBuffer->SetFragmentTexture(target.normalTexture->GetDefaultView(), 3);
 						mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 4);
 						mainCommandBuffer->SetFragmentTexture(target.roughnessSpecularMetallicAOTexture->GetDefaultView(), 6);
-						mainCommandBuffer->SetFragmentTexture(dummyShadowmap->GetDefaultView(), 5);
+						mainCommandBuffer->SetFragmentTexture(numShadowmaps == 6 ? dummyCubemap->GetDefaultView() : dummyShadowmap->GetDefaultView(), 5);
 
 						mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
 

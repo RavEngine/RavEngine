@@ -704,6 +704,18 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.debugName = "Dummy Shadowmap"
 		}
 	);
+    
+    dummyCubemap = device->CreateTexture({
+        .usage = {.TransferDestination = true,  .Sampled = true,},
+        .aspect = {.HasDepth = true },
+        .width = 1,
+        .height = 1,
+        .arrayLayers = 6,
+        .format = RGL::TextureFormat::D32SFloat,
+        .isCubemap = true,
+        .debugName = "Dummy Shadowmap"
+        }
+    );
 
 	// create lighting render pipelines
 	constexpr static uint32_t width = 640, height = 480;
