@@ -6,6 +6,7 @@ layout(location = 2) in vec4 inTransformR2;
 layout(location = 3) in vec4 inTransformR3;
 layout(location = 4) in vec4 inTransformR4;
 layout(location = 5) in vec4 inColorIntensity;
+layout(location = 6) in uint inCastsShadows;    
 
 
 layout(location = 0) out flat vec3 lightColor;
@@ -22,6 +23,11 @@ layout(push_constant) uniform UniformBufferObject{
 	vec3 camPos;
     int isRenderingShadows;
 } ubo;
+
+// https://stackoverflow.com/questions/37532640/making-a-nan-on-purpose-in-webgl
+float makeNaN(float nonneg) {
+    return sqrt(-nonneg-1.0);
+}
 
 void main()
 {
@@ -47,8 +53,10 @@ void main()
                         );
 		
 	vec4 worldpos = model * vec4(a_position, 1.0);
+
+	 float NaN = makeNaN(1.0);
 	
-	gl_Position = ubo.viewProj * worldpos;
+	gl_Position = (inCastsShadows == ubo.isRenderingShadows) ? ubo.viewProj * worldpos : vec4(NaN,NaN,NaN,NaN);
 
 	mat4 invViewProj = inverse(ubo.viewProj);
 

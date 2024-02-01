@@ -874,6 +874,12 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 					.offset = sizeof(glm::vec4) * 4,
 					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
 				},
+				{
+					.location = 6,
+					.binding = 1,
+					.offset = offsetof(World::PointLightUploadData, castsShadows),
+					.format = RGL::VertexAttributeFormat::R32_Uint,
+				}
 		}, pointLightRenderPipelineLayout, RGL::WindingOrder::Clockwise);
 
 	auto spotLightFSH = LoadShaderByFilename("spotlight.fsh", device);
