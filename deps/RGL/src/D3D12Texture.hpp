@@ -66,4 +66,9 @@ namespace RGL {
 
 		std::string debugName;
 	};
+
+	struct CustomTextureViewD3D12 : public ICustomTextureView {
+
+		TextureView GetView() const;
+	};
 }

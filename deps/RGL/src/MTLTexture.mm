@@ -91,5 +91,10 @@ id<MTLTexture> TextureMTL::ViewToTexture(const TextureView& view){
     }
 }
 
+TextureView RGL::CustomTextureViewMTL::GetView() const
+{
+    return TextureView();
+}
+
 }
 #endif

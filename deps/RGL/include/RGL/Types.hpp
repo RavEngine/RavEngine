@@ -53,6 +53,7 @@ namespace RGL {
     struct CommandBufferMTL;
     struct RenderPassMTL;
     struct ComputePipelineMTL;
+	struct CustomTextureViewMTL;
 }
 
 using RGLDevicePtr = std::shared_ptr<RGL::DeviceMTL>;
@@ -70,6 +71,8 @@ using RGLCommandQueuePtr = std::shared_ptr<RGL::CommandQueueMTL>;
 using RGLCommandBufferPtr = std::shared_ptr<RGL::CommandBufferMTL>;
 using RGLRenderPassPtr = std::shared_ptr<RGL::RenderPassMTL>;
 using RGLComputePipelinePtr = std::shared_ptr<RGL::ComputePipelineMTL>;
+using RGLCustomTextureViewPtr = std::shared_ptr<RGL::CustomTextureViewMTL>;
+
 
 #elif RGL_VK_AVAILABLE
 namespace RGL {
@@ -90,6 +93,7 @@ namespace RGL {
 	struct CommandQueueVk;
 	struct CommandBufferVk;
 	struct ComputePipelineVk;
+	struct CustomTextureViewVk;
 }
 
 using RGLDevicePtr = std::shared_ptr<RGL::DeviceVk>;
@@ -106,6 +110,8 @@ using RGLSamplerPtr = std::shared_ptr<RGL::SamplerVk>;
 using RGLCommandQueuePtr = std::shared_ptr<RGL::CommandQueueVk>;
 using RGLCommandBufferPtr = std::shared_ptr<RGL::CommandBufferVk>;
 using RGLComputePipelinePtr = std::shared_ptr<RGL::ComputePipelineVk>;
+using RGLCustomTextureViewPtr = std::shared_ptr<RGL::CustomTextureViewVk>;
+
 #elif RGL_DX12_AVAILABLE
 namespace RGL {
 	struct SwapchainD3D12;
@@ -125,6 +131,7 @@ namespace RGL {
 	struct CommandQueueD3D12;
 	struct CommandBufferD3D12;
 	struct ComputePipelineD3D12;
+	struct CustomTextureViewD3D12;
 }
 
 using RGLDevicePtr = std::shared_ptr<RGL::DeviceD3D12>;
@@ -142,6 +149,7 @@ using RGLCommandQueuePtr = std::shared_ptr<RGL::CommandQueueD3D12>;
 using RGLCommandBufferPtr = std::shared_ptr<RGL::CommandBufferD3D12>;
 using RGLRenderPassPtr = std::shared_ptr<RGL::RenderPassD3D12>;
 using RGLComputePipelinePtr = std::shared_ptr<RGL::ComputePipelineD3D12>;
+using RGLCustomTextureViewPtr = std::shared_ptr<RGL::CustomTextureViewD3D12>;
 #endif
 
 #else

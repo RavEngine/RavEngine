@@ -33,4 +33,9 @@ struct TextureMTL : public ITexture{
     std::vector<OBJC_ID(MTLTexture)> mipTextures;
 };
 
+struct CustomTextureViewMTL : public ICustomTextureView {
+
+    TextureView GetView() const;
+};
+
 }

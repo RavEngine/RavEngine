@@ -306,5 +306,9 @@ namespace RGL {
 			owningDevice->CBV_SRV_UAVHeap->DeallocateSingle(handle);
 		}
 	}
+	TextureView CustomTextureViewD3D12::GetView() const
+	{
+		return TextureView();
+	}
 }
 #endif
