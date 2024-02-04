@@ -1092,7 +1092,7 @@ struct LightingType{
 			generatePyramid(target.depthPyramid, target.depthStencil);
 
 			// also generate the pyramids for the shadow lights
-			auto genPyramidForLight = [&generatePyramid,&worldOwning](auto&& lightStore, auto* lightType) -> void {
+			auto genPyramidForLight = [&generatePyramid,&worldOwning](auto&& lightStore, auto* lightType, uint32_t nMaps, auto&& getMapDataForIndex) -> void {
 				for (uint32_t i = 0; i < lightStore.uploadData.DenseSize(); i++) {
 					const auto& light = lightStore.uploadData.GetDense()[i];
 					auto sparseIdx = lightStore.uploadData.GetSparseIndexForDense(i);
@@ -1101,23 +1101,36 @@ struct LightingType{
 					using LightType = std::remove_pointer_t<decltype(lightType)>;
 
 					auto& origLight = Entity(owner).GetComponent<LightType>();
-					const auto& mapData = origLight.GetShadowMap();
 					if (origLight.CastsShadows()) {
-						generatePyramid(mapData.pyramid, mapData.shadowMap);
+						for (uint32_t i = 0; i < nMaps; i++) {
+							const auto mapData = getMapDataForIndex(i, origLight);
+							generatePyramid(mapData.pyramid, mapData.shadowMap);
+						}
 					}
 				}
 			};
 			mainCommandBuffer->BeginRenderDebugMarker("Light depth pyramids");
 			{
 				DirectionalLight* ptr = nullptr;
-				genPyramidForLight(worldOwning->renderData->directionalLightData, ptr);
+				genPyramidForLight(worldOwning->renderData->directionalLightData, ptr, 1, [](uint32_t index, auto&& origLight) {
+					return origLight.GetShadowMap();
+				});
 			}
 			{
 				SpotLight* ptr = nullptr;
-				genPyramidForLight(worldOwning->renderData->spotLightData, ptr);
+				genPyramidForLight(worldOwning->renderData->spotLightData, ptr,1, [](uint32_t index, auto&& origLight) {
+					return origLight.GetShadowMap();
+				});
 			}
 			{
 				PointLight* ptr = nullptr;
+				genPyramidForLight(worldOwning->renderData->pointLightData, ptr, 6, [](uint32_t index, auto&& origLight) {
+					struct ReturnData {
+						DepthPyramid pyramid;
+						RGLTexturePtr shadowMap;
+					};
+					return ReturnData{origLight.shadowData.cubePyramids[index], origLight.shadowData.cubeShadowmaps[index]};
+				});
 			}
 
 			mainCommandBuffer->EndRenderDebugMarker();

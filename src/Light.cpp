@@ -36,7 +36,7 @@ void SpotLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) cons
 RavEngine::UnidirectionalShadowLight::UnidirectionalShadowLight()
 {
 #if !RVE_SERVER
-	constexpr static auto dim = 4096;
+	constexpr static auto dim = 1024;
 	shadowData.pyramid = {dim,"Shadowmap Depth Pyramid"};
 
 	auto device = GetApp()->GetDevice();
@@ -56,7 +56,7 @@ RavEngine::PointLight::PointLight()
 {
 #if !RVE_SERVER
 
-	constexpr static auto dim = 4096;
+	constexpr static auto dim = 1024;
 	for (auto& facePyramid : shadowData.cubePyramids) {
 		facePyramid = { dim, "Shadowmap Depth Pyramid Face Point Light" };
 	}
