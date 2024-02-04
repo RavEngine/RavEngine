@@ -347,7 +347,7 @@ void CommandBufferMTL::CopyTextureToTexture(const TextureCopyConfig& from, const
     auto blitEncoder = [currentCommandBuffer blitCommandEncoder];
     auto fromTexture = TextureMTL::ViewToTexture(from.texture);
     auto toTexture = TextureMTL::ViewToTexture(to.texture);
-    [blitEncoder copyFromTexture:fromTexture toTexture:toTexture];
+    [blitEncoder copyFromTexture:fromTexture sourceSlice:from.layer sourceLevel:from.mip toTexture:toTexture destinationSlice:to.layer destinationLevel:to.mip sliceCount:1 levelCount:1];
     [blitEncoder endEncoding];
 }
 
