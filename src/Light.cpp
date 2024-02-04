@@ -36,7 +36,7 @@ void SpotLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) cons
 RavEngine::UnidirectionalShadowLight::UnidirectionalShadowLight()
 {
 #if !RVE_SERVER
-	constexpr static auto dim = 1024;
+	constexpr static auto dim = 4096;
 	shadowData.pyramid = {dim,"Shadowmap Depth Pyramid"};
 
 	auto device = GetApp()->GetDevice();
