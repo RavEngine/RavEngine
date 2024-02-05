@@ -19,7 +19,7 @@ layout(push_constant) uniform UniformBufferObject{
 } ubo;
 
 struct PointLightExtraConstants{
-    mat4 lightViewProj;
+    mat4 lightProj;
 };
 
 layout(scalar, binding = 8) readonly buffer pushConstantSpill
@@ -55,7 +55,9 @@ void main()
 
 		// the face to sample is that with the largest magnitude
 		// that value is also the view-space Z
-		float viewZ = getViewSpaceZ(normalize(-toLight));
+		float viewZ = getViewSpaceZ(inPosition - sampledPos.xyz);
+		vec4 projected = constants[0].lightProj * vec4(viewZ, 0, 0, 1);
+		viewZ = projected.x / projected.w;
 
 		pcfFactor = texture(samplerCubeShadow(t_depthshadow, shadowSampler), vec4(toLight, viewZ)).r;
 	}

@@ -480,6 +480,7 @@ struct LightingType{
 			glm::vec3 camPos = glm::vec3{ 0,0,0 };
 			DepthPyramid depthPyramid;
 			RGLTexturePtr shadowmapTexture;
+			glm::mat4 spillData;
 		};
 
 		// render shadowmaps only once per light
@@ -541,7 +542,8 @@ struct LightingType{
 				.lightView = viewMat,
 				.camPos = camPos,
 				.depthPyramid = origLight.shadowData.pyramid,
-				.shadowmapTexture = origLight.shadowData.shadowMap
+				.shadowmapTexture = origLight.shadowData.shadowMap,
+				.spillData = lightProj * viewMat
 			};
 			};
 
@@ -586,7 +588,8 @@ struct LightingType{
 				.lightView = viewMat,
 				.camPos = camPos,
 				.depthPyramid = origLight.shadowData.cubePyramids[index],
-				.shadowmapTexture = origLight.shadowData.cubeShadowmaps[index]
+				.shadowmapTexture = origLight.shadowData.cubeShadowmaps[index],
+				.spillData = lightProj
 			};
 		};
 
@@ -681,23 +684,18 @@ struct LightingType{
 								continue;
 							}
 
-							struct {
-								glm::mat4 lightViewProj;
-							} lightExtras;
-
 							using lightadt_t = std::remove_reference_t<decltype(lightStore)>;
 							void* aux_data = nullptr;
 							if constexpr (lightadt_t::hasAuxData) {
 								aux_data = &lightStore.auxData.GetDense()[i];
 							}
 
-							lightViewProjResult lightMats = shadowmapDataFunction(i, light, aux_data, owner);
+							auto lightMats = shadowmapDataFunction(i, light, aux_data, owner);
 
 							auto lightSpaceMatrix = lightMats.lightProj * lightMats.lightView;
-							lightExtras.lightViewProj = lightSpaceMatrix;
 							lightUBO.camPos = lightMats.camPos;
 
-							auto transientOffset = WriteTransient(lightExtras);
+							auto transientOffset = WriteTransient(lightMats.spillData);
 
 							auto shadowTextureView = getLightShadowmapRootview(owner);
 
@@ -775,7 +773,8 @@ struct LightingType{
 						.lightView = lightView,
 						.camPos = camPos,
 						.depthPyramid = origLight.shadowData.pyramid,
-						.shadowmapTexture = origLight.shadowData.shadowMap
+						.shadowmapTexture = origLight.shadowData.shadowMap,
+						.spillData = lightProj * lightView
 					};
 					};
 
