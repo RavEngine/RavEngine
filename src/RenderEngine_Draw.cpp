@@ -556,26 +556,28 @@ struct LightingType{
 			auto lightProj = RMath::perspectiveProjection<float>(90, 1, 0.1, 100);
 
 			auto viewMat = glm::inverse(light.worldTransform);
+            
+            auto lightPos = glm::vec3(viewMat * glm::vec4(0,0,0,1));
 
 			// rotate view space to each cubemap direction based on the index
 			switch (index) {
 			case 0: {			// +x
-				viewMat = glm::rotate(viewMat, std::numbers::pi_v<float> / 2, glm::vec3(0, 1, 0));
+                viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 1.0, 0.0, 0.0), glm::vec3(0.0,-1.0, 0.0));
 			} break;
 			case 1: {			// -x
-				viewMat = glm::rotate(viewMat, -std::numbers::pi_v<float> / 2, glm::vec3(0, 1, 0));
+                viewMat = glm::lookAt(lightPos, lightPos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0,-1.0, 0.0));
 			} break;
 			case 2: {			// +y
-				viewMat = glm::rotate(viewMat, std::numbers::pi_v<float> / 2, glm::vec3(1, 0, 0));
+                viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0));
 			} break;
 			case 3: {			// -y
-				viewMat = glm::rotate(viewMat, -std::numbers::pi_v<float> / 2, glm::vec3(1, 0, 0));
+                viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,-1.0, 0.0), glm::vec3(0.0, 0.0,-1.0));
 			} break;
 			case 4: {			// +z
-				viewMat = glm::rotate(viewMat, std::numbers::pi_v<float>, glm::vec3(0, 1, 0));
+                viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 0.0, 1.0), glm::vec3(0.0,-1.0, 0.0));
 			} break;
-			case 5: {			// -z (noop)
-
+			case 5: {			// -z
+                viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 0.0,-1.0), glm::vec3(0.0,-1.0, 0.0));
 			} break;
 			}
 

@@ -31,7 +31,7 @@ TextureMTL::TextureMTL(const std::shared_ptr<DeviceMTL> owningDevice, const Text
     desc.mipmapLevelCount = config.mipLevels;
     auto usage = rgl2mtlTextureUsage(config.usage);
     desc.usage = usage;
-    desc.storageMode = (config.aspect.HasDepth || config.aspect.HasStencil) ? MTLStorageModePrivate :
+    desc.storageMode = (config.aspect.HasDepth || config.aspect.HasStencil || config.usage.ColorAttachment) ? MTLStorageModePrivate :
 #if TARGET_OS_IPHONE
     MTLStorageModeShared;
 #else
@@ -39,8 +39,8 @@ TextureMTL::TextureMTL(const std::shared_ptr<DeviceMTL> owningDevice, const Text
 #endif
     texture = [owningDevice->device newTextureWithDescriptor:desc];
     
-    if (config.debugName){
-        [texture setLabel:[NSString stringWithUTF8String:config.debugName]];
+    if (config.debugName.data() != nullptr){
+        [texture setLabel:[NSString stringWithUTF8String:config.debugName.data()]];
     }
     
     mipTextures.reserve(config.mipLevels - 1);

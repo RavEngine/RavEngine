@@ -1750,17 +1750,18 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
         }
     );
 
-    const RGL::TextureConfig lightingConfig{
+    RGL::TextureConfig lightingConfig{
         .usage = {.Sampled = true, .ColorAttachment = true },
         .aspect = {.HasColor = true },
         .width = width,
         .height = height,
         .format = colorTexFormat,
         .initialLayout = RGL::ResourceLayout::Undefined,
-        .debugName = "Lighting texture"
+        .debugName = "Lighting texture Swap 1"
     };
     
 	collection.lightingTexture = device->CreateTexture(lightingConfig);
+    lightingConfig.debugName = "Lighting texture Swap 2";
     collection.lightingScratchTexture = device->CreateTexture(lightingConfig);
 
 	return collection;

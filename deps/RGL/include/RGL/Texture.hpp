@@ -2,6 +2,7 @@
 #include "Types.hpp"
 #include <cstdint>
 #include <limits>
+#include <string_view>
 #include "TextureFormat.hpp"
 #include "SubresourceRange.hpp"
 
@@ -130,7 +131,7 @@ namespace RGL {
 		ResourceLayout initialLayout = ResourceLayout::Undefined;
 		bool isCubemap = false;
 		bool readbackEnabled = false;
-		const char* debugName = nullptr;
+        std::string_view debugName;
 	};
 
 	class ICustomTextureView {
