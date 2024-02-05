@@ -27,19 +27,6 @@ layout(scalar, binding = 8) readonly buffer pushConstantSpill
 	PointLightExtraConstants constants[];
 };
 
-float getViewSpaceZ(vec3 dirvec){
-	float maxMagnitude = 0;
-	uint maxIndex = 0;
-	for(uint i = 0; i < dirvec.length(); i++){
-		float currentMag = abs(dirvec[i]);
-		if (currentMag > maxMagnitude){
-			maxIndex = i;
-			maxMagnitude = currentMag;
-		}
-	}
-	return abs(maxMagnitude);
-} 
-
 void main()
 {
 	#include "lighting_preamble.glsl"
@@ -53,13 +40,20 @@ void main()
 	float pcfFactor = 1;
 	if (bool(ubo.isRenderingShadows)){
 
-		// the face to sample is that with the largest magnitude
-		// that value is also the view-space Z
-		float viewZ = getViewSpaceZ(inPosition - sampledPos.xyz);
-		vec4 projected = constants[0].lightProj * vec4(viewZ, 0, 0, 1);
-		viewZ = projected.x / projected.w;
+		// adapted from: https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/Mesh.hlsl#L233
+		vec3 shadowPos = sampledPos.xyz - inPosition;
+		float shadowDistance = length(shadowPos);
+		vec3 shadowDir = normalize(shadowPos);
 
-		pcfFactor = texture(samplerCubeShadow(t_depthshadow, shadowSampler), vec4(toLight, viewZ)).r;
+		float projectedDistance  = max(max(abs(shadowPos.x), abs(shadowPos.y)), abs(shadowPos.z));
+
+		float nearClip = 0.01;
+   		float a = 0.0;
+    	float b = nearClip;
+    	float z = projectedDistance * a + b;
+    	float dbDistance = z / projectedDistance;
+
+		pcfFactor = texture(samplerCubeShadow(t_depthshadow, shadowSampler), vec4(shadowDir, dbDistance)).r;
 	}
 
 	outcolor = vec4(result * pcfFactor * ao, 1);
