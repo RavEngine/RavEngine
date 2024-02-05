@@ -27,6 +27,19 @@ layout(scalar, binding = 8) readonly buffer pushConstantSpill
 	PointLightExtraConstants constants[];
 };
 
+float getViewSpaceZ(vec3 dirvec){
+	float maxMagnitude = 0;
+	uint maxIndex = 0;
+	for(uint i = 0; i < dirvec.length(); i++){
+		float currentMag = abs(dirvec[i]);
+		if (currentMag > maxMagnitude){
+			maxIndex = i;
+			maxMagnitude = currentMag;
+		}
+	}
+	return abs(maxMagnitude);
+} 
+
 void main()
 {
 	#include "lighting_preamble.glsl"
@@ -39,13 +52,12 @@ void main()
 
 	float pcfFactor = 1;
 	if (bool(ubo.isRenderingShadows)){
-		float origLength = length(inPosition - sampledPos.xyz);
-		float depth = texture(samplerCube(t_depthshadow,shadowSampler), toLight).r;
-		//TODO: convert depth to linear coordinates
-		depth *= 100;
-		if (origLength > depth){
-			pcfFactor = 0;
-		}
+
+		// the face to sample is that with the largest magnitude
+		// that value is also the view-space Z
+		float viewZ = getViewSpaceZ(normalize(-toLight));
+
+		pcfFactor = texture(samplerCubeShadow(t_depthshadow, shadowSampler), vec4(toLight, viewZ)).r;
 	}
 
 	outcolor = vec4(result * pcfFactor * ao, 1);
