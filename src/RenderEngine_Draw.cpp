@@ -555,30 +555,29 @@ struct LightingType{
 		const auto pointLightShadowmapFunction = [](uint8_t index, const RavEngine::World::PointLightUploadData& light, auto unusedAux, entity_t owner) {
 			auto lightProj = RMath::perspectiveProjection<float>(90, 1, 0.1, 100);
 
-			auto viewMat = glm::inverse(light.worldTransform);
-            
-            auto lightPos = glm::vec3(viewMat * glm::vec4(0,0,0,1));
+			glm::mat4 viewMat;
+            auto lightPos = glm::vec3(light.worldTransform * glm::vec4(0,0,0,1));
 
 			// rotate view space to each cubemap direction based on the index
 			switch (index) {
-			case 0: {			// +x
-                viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 1.0, 0.0, 0.0), glm::vec3(0.0,-1.0, 0.0));
-			} break;
-			case 1: {			// -x
-                viewMat = glm::lookAt(lightPos, lightPos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0,-1.0, 0.0));
-			} break;
-			case 2: {			// +y
-                viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0));
-			} break;
-			case 3: {			// -y
-                viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,-1.0, 0.0), glm::vec3(0.0, 0.0,-1.0));
-			} break;
-			case 4: {			// +z
-                viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 0.0, 1.0), glm::vec3(0.0,-1.0, 0.0));
-			} break;
-			case 5: {			// -z
-                viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 0.0,-1.0), glm::vec3(0.0,-1.0, 0.0));
-			} break;
+				case 0: {			// +x
+					viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 1.0, 0.0, 0.0), glm::vec3(0.0,-1.0, 0.0));
+				} break;
+				case 1: {			// -x
+					viewMat = glm::lookAt(lightPos, lightPos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0,-1.0, 0.0));
+				} break;
+				case 2: {			// +y
+					viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0));
+				} break;
+				case 3: {			// -y
+					viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,-1.0, 0.0), glm::vec3(0.0, 0.0,-1.0));
+				} break;
+				case 4: {			// +z
+					viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 0.0, 1.0), glm::vec3(0.0,-1.0, 0.0));
+				} break;
+				case 5: {			// -z
+					viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 0.0,-1.0), glm::vec3(0.0,-1.0, 0.0));
+				} break;
 			}
 
 			auto camPos = light.worldTransform * glm::vec4(0, 0, 0, 1);
