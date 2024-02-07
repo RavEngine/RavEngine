@@ -368,8 +368,8 @@ elseif(TARGET_LINUX)
 	set(PLATFORM "Linux")
 	#set(CMAKE_LIBRARY_ARCHITECTURE "aarch64-linux-gnu" CACHE INTERNAL "")
 elseif(TARGET_ANDROID)
-	set(TARGET_BUILD_PLATFORM "android" CACHE INTERNAL "")
-	set(PLATFORM "Android")
+	set(TARGET_BUILD_PLATFORM "linux" CACHE INTERNAL "")
+	set(PLATFORM "Linux")
 endif()
 
 # Call into PhysX's CMake scripts
