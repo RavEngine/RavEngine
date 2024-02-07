@@ -263,6 +263,7 @@ add_subdirectory("${DEPS_DIR}/physfs" EXCLUDE_FROM_ALL)
 set(ozz_build_samples OFF CACHE INTERNAL "")
 set(ozz_build_howtos OFF CACHE INTERNAL "")
 set(ozz_build_tests OFF CACHE INTERNAL "")
+set(ozz_build_tools OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/ozz-animation" EXCLUDE_FROM_ALL)
 
 # libnyquist
@@ -576,7 +577,6 @@ target_link_libraries("${PROJECT_NAME}"
 	"concurrentqueue"
 	"ozz_animation"
 	"ozz_animation_offline"
-	"ozz_animation_tools"
 	"ozz_base"
 	"ozz_geometry"
 	"ozz_options"
