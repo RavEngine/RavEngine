@@ -45,8 +45,10 @@ namespace RavEngine {
 			{ wmi.info.uikit.window },
 #elif __APPLE__
 			{ wmi.info.cocoa.window },
-#elif __linux__
+#elif __linux__ && !__ANDROID__
 			{ isWayland ? static_cast<void*>(wmi.info.wl.display) : static_cast<void*>(wmi.info.x11.display), isWayland ? reinterpret_cast<uintptr_t>(wmi.info.wl.surface) : uintptr_t(wmi.info.x11.window), isWayland },
+#elif __ANDROID__
+			{wmi.android.window, nullptr },
 #elif __EMSCRIPTEN__
 			{ nullptr, nullptr },
 #else

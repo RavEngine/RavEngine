@@ -6,12 +6,14 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <vulkan/vulkan_win32.h>
-#elif __linux__
+#elif __linux__ && !__ANDROID__
 #include <X11/Xlib.h>
 #include <vulkan/vulkan_xlib.h>
 #include <wayland-client-core.h>
 #include <wayland-util.h>
 #include <vulkan/vulkan_wayland.h>
+#elif __ANDROID__
+#include <vulkan/vulkan_android.h>
 #endif
 
 using namespace RGL;
@@ -29,7 +31,7 @@ RGLSurfacePtr RGL::CreateVKSurfaceFromPlatformData(const CreateSurfaceConfig& co
     VK_CHECK(vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface));
 
 
-#elif defined __linux__
+#elif defined __linux__ && !__ANDROID__
     if (config.isWayland) {
         VkWaylandSurfaceCreateInfoKHR createInfo{
             .sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
@@ -50,6 +52,14 @@ RGLSurfacePtr RGL::CreateVKSurfaceFromPlatformData(const CreateSurfaceConfig& co
         };
         VK_CHECK(vkCreateXlibSurfaceKHR(instance, &createInfo, nullptr, &surface));
     }
+#elif __ANDROID__
+    VkAndroidSurfaceCreateInfoKHR createInfo{
+        .sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR,
+        .pNext = nullptr,
+        .flags = 0,
+        .window = const_cast<ANativeWindow*>(static_cast<const ANativeWindow*>(config.pointer))
+    };
+    VK_CHECK(vkCreateAndroidSurfaceKHR(instance, &createInfo, nullptr, &surface));
 #endif
 
     return std::make_shared<SurfaceVk>(surface);

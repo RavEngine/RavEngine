@@ -29,9 +29,7 @@ shadert::TargetAPI rgl2shadert_binary(librglc::API api) {
 #if _WIN32
 	case decltype(api)::Direct3D12: return TargetAPI::DXIL;
 #endif
-#if _WIN32 || __linux__
 	case decltype(api)::Vulkan: return TargetAPI::Vulkan;
-#endif
 #ifdef __APPLE__
 	case decltype(api)::Metal: return TargetAPI::MetalBinary;
 #endif
