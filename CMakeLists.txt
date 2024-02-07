@@ -930,7 +930,7 @@ function(pack_resources)
 
 	if(NOT APPLE)
 		set(rve_cmrc_resource_name "${ARGS_TARGET}_ShaderResources")
-		cmrc_add_resource_library("${rve_cmrc_resource_name}" WHENCE "${CMAKE_BINARY_DIR}/${ARGS_TARGET}_ShaderIntermediate/" ${all_shaders_property} )
+		cmrc_add_resource_library("${rve_cmrc_resource_name}" WHENCE "${CMAKE_CURRENT_BINARY_DIR}/${ARGS_TARGET}_ShaderIntermediate/" ${all_shaders_property} )
 		set_target_properties("${rve_cmrc_resource_name}" PROPERTIES
 			LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cmrc/$<CONFIGURATION>/"
 			ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cmrc/$<CONFIGURATION>/"
