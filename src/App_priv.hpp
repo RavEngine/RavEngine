@@ -92,7 +92,7 @@ int App::run(int argc, char** argv) {
 #if !RVE_SERVER
 	// initialize SDL2
 	if (SDL_Init(SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_HAPTIC | SDL_INIT_VIDEO) != 0) {
-		Debug::Fatal("Unable to initialize SDL2: {}", SDL_GetError());
+		Debug::Fatal("Unable to initialize SDL: {}", SDL_GetError());
 	}
 	{
 		auto config = OnConfigure(argc, argv);

@@ -271,16 +271,4 @@ struct AudioPlayer;
 	};
 }
 
-#ifdef _WINRT
-// UWP startup requires extra effort
-#undef main
-#define START_APP(APP) \
-int DoProgram(int argc, char** argv){\
-auto a = std::make_unique<APP>(); return a->run(argc, argv);\
-}\
-int main(int argc, char** argv) { \
-	return SDL_WinRTRunApp(DoProgram, NULL);\
-}
-#else
-#define START_APP(APP) int main(int argc, char** argv){auto a = std::make_unique<APP>(); return a->run(argc, argv);}
-#endif
+
