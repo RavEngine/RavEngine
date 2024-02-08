@@ -2,7 +2,7 @@
 #if !RVE_SERVER
     #import <QuartzCore/CAMetalLayer.h>
     #import <Metal/Metal.h>
-    #include <SDL_syswm.h>
+    #include <SDL.h>
     #include <RGL/RGL.hpp>
     #include <RGL/Device.hpp>
 #else
@@ -47,13 +47,8 @@ void resizeMetalLayer(void* ptr, int width, int height){
 #endif
 }
 float GetWindowScaleFactor(void* window){
-	SDL_SysWMinfo wmi;
-	SDL_VERSION(&wmi.version);
-	if (!SDL_GetWindowWMInfo((SDL_Window*)window, &wmi)) {
-		RavEngine::Debug::Fatal("Cannot get native window information");
-	}
 #if TARGET_OS_OSX
-	NSWindow *nswin = (NSWindow*)wmi.info.cocoa.window;
+    NSWindow *nswin = (__bridge NSWindow *)SDL_GetProperty(SDL_GetWindowProperties((SDL_Window*)window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
 	return [nswin backingScaleFactor];
 #elif TARGET_OS_NONOSX
 	return wmi.info.uikit.window.screen.scale;

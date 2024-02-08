@@ -4,7 +4,7 @@
     #include <SDL_scancode.h>
     #include <SDL_mouse.h>
     #include <SDL_events.h>
-    #include <SDL_gamecontroller.h>
+    #include <SDL_gamepad.h>
 #include "Function.hpp"
 #include "IInputListener.hpp"
 #include "SpinLock.hpp"
@@ -279,7 +279,7 @@ namespace RavEngine {
 	public:
         InputManager();
 
-		static vector2i GetMousePosPixels(float dpiScaleFactor);
+		static vector2 GetMousePosPixels(float dpiScaleFactor);
 		
 		//process axis maps
 		void TickAxes();

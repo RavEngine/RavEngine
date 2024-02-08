@@ -13,12 +13,12 @@ using namespace RavEngine;
 
 InputManager::InputManager() {
 	//register all the controllers
-	SDL_GameControllerEventState(SDL_ENABLE);
+    SDL_SetGamepadEventsEnabled(true);
 }
 
-vector2i RavEngine::InputManager::GetMousePosPixels(float scaleFactor)
+vector2 RavEngine::InputManager::GetMousePosPixels(float scaleFactor)
 {
-	vector2i pos;
+	vector2 pos;
 	SDL_GetMouseState(&pos.x, &pos.y);
 #ifdef __APPLE__
 	pos *= scaleFactor;
@@ -117,13 +117,13 @@ void InputManager::CleanupBindings(){
 
 void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, float scale, int windowWidth, int windowHeight){
 	switch (event.type) {
-		case SDL_KEYDOWN:
-		case SDL_KEYUP:
+		case SDL_EVENT_KEY_DOWN:
+		case SDL_EVENT_KEY_UP:
 			ProcessActionID(event.key.keysym.scancode, static_cast<ActionState>(event.key.state), Make_CID(0));
 			ProcessAxisID(event.key.keysym.scancode, event.key.state, Make_CID(0));
 			break;
-		case SDL_MOUSEMOTION:
-			if (windowflags & SDL_WINDOW_INPUT_FOCUS) {
+        case SDL_EVENT_MOUSE_MOTION:
+            if (windowflags & SDL_EVENT_WINDOW_TAKE_FOCUS) {
 				int width = windowWidth, height = windowHeight;
 				
 				float velscale = 1 / scale;
@@ -136,33 +136,34 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
 				
 			}
 			break;
-		case SDL_MOUSEWHEEL:
+        case SDL_EVENT_MOUSE_WHEEL:
 			ProcessAxisID(Special::MOUSEWHEEL_X, event.wheel.x * -0.2, CID::C0);
 			ProcessAxisID(Special::MOUSEWHEEL_Y, event.wheel.y * -0.2, CID::C0);
 			break;
-		case SDL_MOUSEBUTTONDOWN:
-		case SDL_MOUSEBUTTONUP:
-			if (windowflags & SDL_WINDOW_INPUT_FOCUS) {
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+            if (windowflags & SDL_EVENT_WINDOW_TAKE_FOCUS) {
 				ProcessActionID(event.button.button, static_cast<ActionState>(event.button.state), CID::C0);
 			}
 			break;
-		case SDL_CONTROLLERAXISMOTION:
-		case SDL_CONTROLLER_AXIS_LEFTX:
-		case SDL_CONTROLLER_AXIS_LEFTY:
-			ProcessAxisID(event.caxis.axis + Special::CONTROLLER_AXIS_OFFSET, event.caxis.value, Make_CID(event.cdevice.which + 1));
+            
+		case SDL_EVENT_GAMEPAD_AXIS_MOTION:
+		case SDL_GAMEPAD_AXIS_LEFTX:
+		case SDL_GAMEPAD_AXIS_LEFTY:
+			ProcessAxisID(event.gaxis.axis + Special::CONTROLLER_AXIS_OFFSET, event.gaxis.value, Make_CID(event.gdevice.which + 1));
 			break;
-		case SDL_CONTROLLERBUTTONDOWN:
-		case SDL_CONTROLLERBUTTONUP:
+		case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+		case SDL_EVENT_GAMEPAD_BUTTON_UP:
 			// a controller button can be an axis or an action
-			ProcessActionID(event.cbutton.button + Special::CONTROLLER_BUTTON_OFFSET, static_cast<ActionState>(event.cbutton.state), Make_CID(event.cdevice.which + 1));
-			ProcessAxisID(event.cbutton.button + Special::CONTROLLER_BUTTON_OFFSET, static_cast<ActionState>(event.cbutton.state), Make_CID(event.cdevice.which + 1));
+			ProcessActionID(event.gbutton.button + Special::CONTROLLER_BUTTON_OFFSET, static_cast<ActionState>(event.gbutton.state), Make_CID(event.gdevice.which + 1));
+			ProcessAxisID(event.gbutton.button + Special::CONTROLLER_BUTTON_OFFSET, static_cast<ActionState>(event.gbutton.state), Make_CID(event.gdevice.which + 1));
 			break;
-		case SDL_CONTROLLERDEVICEADDED:
+		case SDL_EVENT_GAMEPAD_ADDED:
 			{
-				Debug::Log("Controller added : {}",SDL_GameControllerName(SDL_GameControllerOpen(event.cdevice.which)));
+				Debug::Log("Controller added : {}",SDL_GetGamepadName(SDL_OpenGamepad(event.gdevice.which)));
 			}
 			break;
-		case SDL_CONTROLLERDEVICEREMOVED:
+		case SDL_EVENT_GAMEPAD_REMOVED:
 			Debug::Log("Controller removed");
 			break;
 	}

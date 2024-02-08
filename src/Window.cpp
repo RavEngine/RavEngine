@@ -2,7 +2,6 @@
 #include "Window.hpp"
 #include <SDL.h>
 #include "Debug.hpp"
-#include <SDL_syswm.h>
 #include <RGL/RGL.hpp>
 #include <RGL/Surface.hpp>
 #include <RGL/Device.hpp>
@@ -23,39 +22,45 @@ using namespace winrt;
 namespace RavEngine {
 	Window::Window(int width, int height, const std::string_view title, RGLDevicePtr device, RGLCommandQueuePtr mainCommandQueue)
 	{
-		window = SDL_CreateWindow(title.data(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+		window = SDL_CreateWindow(title.data(), width, height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
 
 		if (window == NULL) {
 			Debug::Fatal("Unable to create window: {}", SDL_GetError());
 		}
 
-		SDL_SysWMinfo wmi;
-		SDL_VERSION(&wmi.version);
-		if (!SDL_GetWindowWMInfo(window, &wmi)) {
-			throw std::runtime_error("Cannot get native window information");
-		}
 
-		bool isWayland = wmi.subsystem == SDL_SYSWM_WAYLAND;
-		surface = RGL::CreateSurfaceFromPlatformHandle(
+        RGL::CreateSurfaceConfig surfaceConfig{nullptr, 0};
+        
 #if _UWP
-			{ wmi.info.winrt.window },
+        surfaceConfig.pointer = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WINRT_WINDOW_POINTER, NULL);
 #elif _WIN32
-			{ &wmi.info.win.window },
+        HWND hwnd = (HWND)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+        surfaceConfig.pointer = &hwnd;
 #elif TARGET_OS_IPHONE
-			{ wmi.info.uikit.window },
+        surfaceConfig.pointer = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER, NULL);
 #elif __APPLE__
-			{ wmi.info.cocoa.window },
+        surfaceConfig.pointer = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
 #elif __linux__ && !__ANDROID__
-			{ isWayland ? static_cast<void*>(wmi.info.wl.display) : static_cast<void*>(wmi.info.x11.display), isWayland ? reinterpret_cast<uintptr_t>(wmi.info.wl.surface) : uintptr_t(wmi.info.x11.window), isWayland },
+        if (SDL_strcmp(SDL_GetCurrentVideoDriver(), "x11") == 0) {
+            Display *xdisplay = (Display *)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
+            Window xwindow = (Window)SDL_GetNumberProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
+            surfaceConfig.pointer = xdisplay;
+            surfaceConfig.pointer2 = uintptr_t(xwindow);
+        } else if (SDL_strcmp(SDL_GetCurrentVideoDriver(), "wayland") == 0) {
+            struct wl_display *display = (struct wl_display *)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, NULL);
+            struct wl_surface *surface = (struct wl_surface *)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, NULL);
+            surfaceConfig.pointer = display;
+            surfaceConfig.pointer2 = reinterpret_cast<uintptr_t>(surface);
+        }
 #elif __ANDROID__
-			{wmi.android.window, nullptr },
+        surfaceConfig.pointer = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, NULL);
 #elif __EMSCRIPTEN__
-			{ nullptr, nullptr },
+			// noop
 #else
 #error Unknown platform
 #endif
-			true
-		);
+        surface = RGL::CreateSurfaceFromPlatformHandle(surfaceConfig, true);
+        
         // re-query the window size because some platforms (like iOS) ignore the passed window size
         SDL_GetWindowSize(window, &width, &height);
         
@@ -145,7 +150,7 @@ namespace RavEngine {
 			flag = 0;
 			break;
 		case WindowMode::BorderlessFullscreen:
-			flag = SDL_WINDOW_FULLSCREEN_DESKTOP;
+            // SDL_WINDOW_FULLSCREEN_DESKTOP has been removed
 			break;
 		case WindowMode::Fullscreen:
 			flag = SDL_WINDOW_FULLSCREEN;

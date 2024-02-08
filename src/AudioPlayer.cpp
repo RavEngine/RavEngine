@@ -218,9 +218,17 @@ void AudioPlayer::EnqueueAudioTasks(){
  @param stream buffer to write the data into
  @param len the length of the buffer
  */
-void AudioPlayer::TickStatic(void *udata, Uint8 *stream, int len){
-    AudioPlayer* player = static_cast<AudioPlayer*>(udata);
-    player->Tick(stream, len);
+void AudioPlayer::TickStatic(void *udata, SDL_AudioStream *stream, int additional_amount, int total_amount){
+    if (additional_amount > 0) {
+        Uint8 *data = SDL_stack_alloc(Uint8, additional_amount);
+        if (data) {
+            AudioPlayer* player = static_cast<AudioPlayer*>(udata);
+            player->buffer_size = additional_amount;
+            player->Tick(data, additional_amount);
+            SDL_PutAudioStreamData(stream, data, additional_amount);
+            SDL_stack_free(data);
+        }
+    }
 }
 
 void AudioPlayer::Init(){
@@ -228,30 +236,23 @@ void AudioPlayer::Init(){
 		Debug::Fatal("Could not init Audio subsystem: {}",SDL_GetError());
 	}
 	
-	SDL_AudioSpec want, have;
+	SDL_AudioSpec want;
 	
 	std::memset(&want, 0, sizeof(want));
 	want.freq = config_samplesPerSec;
-	want.format = AUDIO_F32;
+	want.format = SDL_AUDIO_F32;
 	want.channels = config_nchannels;
-	want.samples = config_buffersize;
-	want.callback = AudioPlayer::TickStatic;
-	want.userdata = this;
 	
-	device = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+    stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_OUTPUT, &want, AudioPlayer::TickStatic, this);
 	
-	if (device == 0){
+	if (stream == NULL){
 		Debug::Fatal("could not open audio device: {}",SDL_GetError());
 	}
-	else{
-		if (have.format != want.format){
-			Debug::Fatal("Could not get Float32 audio format");
-		}
-	}
+
     
-    SamplesPerSec = have.freq;
-    nchannels = have.channels;
-    buffer_size = have.samples;
+    SamplesPerSec = want.freq;
+    nchannels = want.channels;
+    buffer_size = config_buffersize;
 
 	
 	Debug::LogTemp("Audio Subsystem initialized");
@@ -260,10 +261,10 @@ void AudioPlayer::Init(){
         EnqueueAudioTasks();
     });
     
-	SDL_PauseAudioDevice(device,0);	//begin audio playback
+    SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(stream));
 }
 
 void AudioPlayer::Shutdown(){
-	SDL_CloseAudioDevice(device);
+	SDL_CloseAudioDevice(SDL_GetAudioStreamDevice(stream));
 }
 #endif

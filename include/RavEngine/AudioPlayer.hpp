@@ -19,7 +19,7 @@ struct AudioDataProvider;
  */
 class AudioPlayer{
 #if !RVE_SERVER
-	SDL_AudioDeviceID device;
+    SDL_AudioStream* stream;
 	WeakRef<World> worldToRender;
     uint64_t currentProcessingID = 0;
 #endif
@@ -91,7 +91,7 @@ public:
 	 Tick function, used internally
 	 */
 #if !RVE_SERVER
-	static void TickStatic(void *udata, Uint8 *stream, int len);
+	static void TickStatic(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount);
 #endif
 };
 

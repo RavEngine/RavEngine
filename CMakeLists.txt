@@ -184,11 +184,10 @@ add_subdirectory("${DEPS_DIR}/fmt" EXCLUDE_FROM_ALL)
 set(Random_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/random" EXCLUDE_FROM_ALL)
 
-#SDL2
+#SDL
 if(TARGET_EMSCRIPTEN)
 	add_definitions(-sUSE_SDL=2)
 	set(SDL2STATIC_LIB "")
-	set(SDL2MAIN_LIB "")
 else()
 set(SDL_VIDEO_OPENGL OFF CACHE INTERNAL "")
 set(SDL_VIDEO_OPENGLES OFF CACHE INTERNAL "")
@@ -235,14 +234,21 @@ if (UWP)
 endif()
 # ensure library is built correctly for static
 if (NOT RAVENGINE_SERVER)
-	set(SDL_STATIC ON CACHE INTERNAL "" FORCE)
-	set(SDL_SHARED OFF CACHE INTERNAL "" FORCE)
+	if (NOT ANDROID)
+		set(SDL_STATIC ON CACHE INTERNAL "" FORCE)
+		set(SDL_SHARED OFF CACHE INTERNAL "" FORCE)
+	else()
+		set(SDL_STATIC OFF CACHE INTERNAL "" FORCE)
+		set(SDL_SHARED ON CACHE INTERNAL "" FORCE)
+	endif()
 	set(SDL_LIBC ON CACHE BOOL "" FORCE)
-	set(SDL_TEST OFF CACHE INTERNAL "")
-	add_subdirectory("${DEPS_DIR}/SDL2" EXCLUDE_FROM_ALL)
-		set(SDL2STATIC_LIB 	"SDL2-static")
-		if (NOT UWP)
-			set(SDL2MAIN_LIB "SDL2main")
+	set(SDL_TESTS OFF CACHE INTERNAL "")
+    set(SDL_TEST_LIBRARY OFF CACHE INTERNAL "")
+	add_subdirectory("${DEPS_DIR}/SDL" EXCLUDE_FROM_ALL)
+		if(SDL_STATIC)
+			set(SDL2STATIC_LIB 	"SDL3-static")
+		else()
+			set(SDL2STATIC_LIB 	"SDL3-shared")
 		endif()
 	endif()
 endif()
@@ -424,7 +430,6 @@ file(GLOB SHADERS "shaders/*.glsl" "shaders/*.csh" "shaders/*.vsh" "shaders/*.fs
 set_source_files_properties(${SHADERS} PROPERTIES HEADER_FILE_ONLY TRUE)	# prevent VS from compiling these
 
 # register the library
-set(UWP_SDL2MAIN "${DEPS_DIR}/SDL2/src/main/winrt/SDL_winrt_main_NonXAML.cpp" CACHE INTERNAL "")
 add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} ${SHADERS} "deps/parallel-hashmap/phmap.natvis")
 rve_enable_IPO(${PROJECT_NAME})
 
@@ -561,7 +566,6 @@ target_link_libraries("${PROJECT_NAME}"
 	${RML_LIB}
 	"libnyquist"
 	"GameNetworkingSockets_s"
-	${SDL2MAIN_LIB}
 	"r8brain"
 	PUBLIC
 	"effolkronium_random"
@@ -674,7 +678,7 @@ SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
 group_in("Libraries" "assimp;assimp_cmd;fmt;DebugUtils;Detour;DetourCrowd;DetourTileCache;freetype;GameNetworkingSockets_s;GNS_Deps;\
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
-test_physfs;tweeny-dummy;zlib;zlibstatic;SDL2-static;json;physfs_uninstall;dist;SDL2main;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
+test_physfs;tweeny-dummy;zlib;zlibstatic;SDL3-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
 sdl_headers_copy;libprotoc;protoc;
 ")
 
@@ -987,12 +991,6 @@ function(pack_resources)
 	set_source_files_properties(${ARGS_OBJECTS} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "compiled")
 	set_source_files_properties(${ARGS_SOUNDS} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "audio.wav")
 	source_group("Shaders" FILES ${all_shader_sources})
-
-	# on UWP, need an additional file w/ compile options for SDLmain to work
-	if(UWP)
-		#target_sources(${ARGS_TARGET} PRIVATE ${UWP_SDL2MAIN})
-		#set_source_files_properties(${UWP_SDL2MAIN} PROPERTIES COMPILE_FLAGS "/ZW /EHsc")
-	endif()
 
 	set(outpack "${CMAKE_BINARY_DIR}/${ARGS_TARGET}.rvedata")
 

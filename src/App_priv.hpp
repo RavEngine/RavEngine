@@ -91,7 +91,7 @@ App::App()
 int App::run(int argc, char** argv) {
 #if !RVE_SERVER
 	// initialize SDL2
-	if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS | SDL_INIT_HAPTIC | SDL_INIT_VIDEO) != 0) {
+	if (SDL_Init(SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_HAPTIC | SDL_INIT_VIDEO) != 0) {
 		Debug::Fatal("Unable to initialize SDL2: {}", SDL_GetError());
 	}
 	{
@@ -237,30 +237,23 @@ int App::run(int argc, char** argv) {
 
 		auto windowflags = SDL_GetWindowFlags(window->window);
 		while (SDL_PollEvent(&event)) {
-			switch (event.type) {
-				case SDL_QUIT:
-					exit = true;
-					break;
-
-				case SDL_WINDOWEVENT: {
-					const SDL_WindowEvent& wev = event.window;
-					switch (wev.event) {
-						case SDL_WINDOWEVENT_RESIZED:
-						case SDL_WINDOWEVENT_SIZE_CHANGED:
-							Renderer->mainCommandQueue->WaitUntilCompleted();
-							window->NotifySizeChanged(wev.data1, wev.data2);
-                            {
-								auto size = window->GetSizeInPixels();
-                                Renderer->ResizeRenderTargetCollection(mainWindowView.collection, {uint32_t(size.width), uint32_t(size.height)});
-                            }
-							break;
-
-						case SDL_WINDOWEVENT_CLOSE:
-							exit = true;
-							break;
-					}
-				} break;
-			}
+            switch (event.type) {
+                case SDL_EVENT_QUIT:
+                    exit = true;
+                    break;
+                case SDL_EVENT_WINDOW_RESIZED:
+                case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+                    Renderer->mainCommandQueue->WaitUntilCompleted();
+                    window->NotifySizeChanged(event.window.data1, event.window.data2);
+                    {
+                        auto size = window->GetSizeInPixels();
+                        Renderer->ResizeRenderTargetCollection(mainWindowView.collection, {uint32_t(size.width), uint32_t(size.height)});
+                    }
+                    break;
+                case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+                    exit = true;
+                    break;
+            }
 			//process others
 			if (inputManager) {
 				inputManager->ProcessInput(event,windowflags,currentScale, window->windowdims.width, window->windowdims.height);
@@ -462,7 +455,7 @@ void RavEngine::App::AddReplaceWorld(Ref<World> oldWorld, Ref<World> newWorld) {
 void App::Quit(){
 #if !RVE_SERVER
 	SDL_Event event;
-	event.type = SDL_QUIT;
+	event.type = SDL_EVENT_QUIT;
 	SDL_PushEvent(&event);
 #else
     Debug::Fatal("Quit is not implemented on the server (TODO)");

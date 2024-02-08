@@ -8,7 +8,7 @@ rm -r physx/physx/documentation/ physx/physx/samples/ physx/externals/cg-linux/l
 rm -r bgfx.cmake/bgfx/examples bgfx.cmake/bgfx/bindings bgfx.cmake/bgfx/makefile bgfx.cmake/bx/tools
 
 # SDL
-rm -r SDL2/test SDL2/Xcode SDL2/Xcode-iOS
+rm -r SDL/test SDL/Xcode SDL/Xcode-iOS
 
 # assimp
 rm -r assimp/samples assimp/test assimp/doc assimp/tools assimp/scripts
