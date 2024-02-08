@@ -10,7 +10,6 @@
 	#define _WINRT 1
 #endif
 #if !RVE_SERVER
-#include <SDL_main.h>
 #include <RGL/Types.hpp>
 #include "RenderTargetCollection.hpp"
 #include "AudioSnapshot.hpp"
@@ -271,6 +270,7 @@ struct AudioPlayer;
 #endif
 	};
 }
+
 #ifdef _WINRT
 // UWP startup requires extra effort
 #undef main

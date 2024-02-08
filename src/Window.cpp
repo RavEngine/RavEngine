@@ -102,12 +102,8 @@ namespace RavEngine {
     float Window::QueryScaleFactor() const{
 # if _WIN32 && !_UWP
 
-        SDL_SysWMinfo wmi;
-        SDL_VERSION(&wmi.version);
-        if (!SDL_GetWindowWMInfo(window, &wmi)) {
-            Debug::Fatal("Cannot get native window information");
-        }
-        auto monitor = MonitorFromWindow(wmi.info.win.window, MONITOR_DEFAULTTONEAREST);
+        HWND hwnd = (HWND)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+        auto monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
         DEVICE_SCALE_FACTOR fac;
         if (GetScaleFactorForMonitor(monitor, &fac) == S_OK) {
             return (static_cast<int>(fac) / 100.0);
