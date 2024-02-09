@@ -251,6 +251,10 @@ if (NOT RAVENGINE_SERVER)
 			set(SDL2STATIC_LIB 	"SDL3-shared")
 		endif()
 	endif()
+	if (ANDROID)
+		# SDL android is hardcoded to load "SDL3.so" with no "d" postfix
+		set_target_properties(SDL3-shared PROPERTIES DEBUG_POSTFIX "")
+	endif()
 endif()
 
 # if on a platform other than windows or mac, ensure that an audio backend was found
