@@ -45,7 +45,7 @@ namespace RavEngine {
             auto xdisplay = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
             auto xwindow = SDL_GetNumberProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
             surfaceConfig.pointer = xdisplay;
-            surfaceConfig.pointer2 = reinterpret_cast<uintptr_t>(xwindow);
+            surfaceConfig.pointer2 = xwindow;
         } else if (SDL_strcmp(SDL_GetCurrentVideoDriver(), "wayland") == 0) {
            auto display = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, NULL);
             auto surface = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, NULL);
