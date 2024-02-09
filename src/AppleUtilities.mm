@@ -51,7 +51,8 @@ float GetWindowScaleFactor(void* window){
     NSWindow *nswin = (__bridge NSWindow *)SDL_GetProperty(SDL_GetWindowProperties((SDL_Window*)window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
 	return [nswin backingScaleFactor];
 #elif TARGET_OS_NONOSX
-	return wmi.info.uikit.window.screen.scale;
+    UIWindow* uiwin = (__bridge UIWindow*)SDL_GetProperty(SDL_GetWindowProperties((SDL_Window*)window), SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER, NULL);
+	return uiwin.screen.scale;
 #endif
 }
 
