@@ -979,6 +979,10 @@ function(pack_resources)
 	target_compile_features(${rve_externs_lib} PRIVATE cxx_std_20)
 	target_link_libraries("${ARGS_TARGET}" PRIVATE "${rve_externs_lib}")
 
+	if (ANDROID)
+		target_link_libraries(SDL3-shared PUBLIC camera2ndk mediandk)
+	endif()
+
 	set_target_properties(${rve_cmrc_resource_name} "${ARGS_TARGET}_CompileShaders" ${rve_externs_lib} PROPERTIES
 		FOLDER "RavEngine Auxillary"
 	)
