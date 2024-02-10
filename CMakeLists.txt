@@ -151,7 +151,11 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	execute_process(
 		COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM} ${LINUX_HOST_CC} ${LINUX_HOST_CXX} -DCMAKE_BUILD_TYPE=Release ${DEPS_DIR}/host-tools/
 		WORKING_DIRECTORY ${TOOLS_DIR}
+		RESULT_VARIABLE HOST_TOOLS_RESULT
 	)
+	if (NOT (HOST_TOOLS_RESULT EQUAL 0))
+		message(FATAL_ERROR "Failed to configure host tools. See above for output.")
+	endif()
 	add_custom_command(
 		PRE_BUILD
 		OUTPUT "${PROTOC_CMD}" "${rglc_path}"
