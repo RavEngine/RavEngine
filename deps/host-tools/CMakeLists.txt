@@ -9,6 +9,7 @@ if(MSVC)
 endif()
 
 set(RGL_ENABLE_RGLC ON)
+set(RGL_SKIP_BACKEND_CHECK ON)  # we're only interested in the compiler here, we don't need the SDKs
 add_subdirectory("../RGL" "${CMAKE_BINARY_DIR}/RGL")
 set_target_properties(rglc
     PROPERTIES

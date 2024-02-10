@@ -20,6 +20,7 @@ option(RGL_DISABLE_DX "Force-disable the D3D12 backend" OFF)
 option(RGL_DISABLE_WEBGPU "Force-disable the WebGPU backend" OFF)
 option(RGL_ENABLE_WEBGPU "Force-enable the WebGPU backend" OFF)
 option(RGL_RUNTIME_COMPILATION "Enable runtime shader compilation" OFF)
+option(RGL_SKIP_BACKEND_CHECK "Skip the SDK check" OFF)
 option(RGL_IDE_ROOT "IDE parent folder for targets" "RGL")
 if (NOT RGL_IDE_ROOT)
 	set(RGL_IDE_ROOT "RGL") # CMake sets this to "OFF" for some insane reason
@@ -260,8 +261,9 @@ if (RGL_DX12_AVAILABLE)
 endif()
 
 
-
-if (RGL_VK_AVAILABLE OR RGL_DX12_AVAILABLE OR RGL_MTL_AVAILABLE OR RGL_WEBGPU_AVAILABLE)
-else()
-message(FATAL_ERROR "No backends are enabled! Check that all required SDKs are installed.")
+if (NOT RGL_SKIP_BACKEND_CHECK)
+	if (RGL_VK_AVAILABLE OR RGL_DX12_AVAILABLE OR RGL_MTL_AVAILABLE OR RGL_WEBGPU_AVAILABLE)
+	else()
+		message(FATAL_ERROR "No backends are enabled! Check that all required SDKs are installed.")
+	endif()
 endif()
