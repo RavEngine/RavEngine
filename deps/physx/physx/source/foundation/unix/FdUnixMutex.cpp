@@ -93,7 +93,7 @@ PxMutexImpl::PxMutexImpl()
 	pthread_mutexattr_t attr;
 	pthread_mutexattr_init(&attr);
 	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-#if PX_LINUX
+#if PX_LINUX && !__ANDROID__
 	pthread_mutexattr_setprotocol(&attr, gMutexProtocol);
 	pthread_mutexattr_setprioceiling(&attr, 0);
 #endif

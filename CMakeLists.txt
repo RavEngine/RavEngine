@@ -416,6 +416,9 @@ endif()
 
 if(TARGET_LINUX)
 	set(LibUUID_LIBRARIES "uuid")
+elseif(ANDROID)
+	add_subdirectory(deps/android-uuid)
+	set(LibUUID_LIBRARIES "uuid-android")
 endif()
 
 # ========== Building engine ==============
@@ -845,7 +848,7 @@ function(pack_resources)
 		foreach(FILE ${FILE_LIST})
 			# copy objects pre-build if they are changed
 			get_filename_component(output_name "${FILE}" NAME)
-			set(outname "${CMAKE_BINARY_DIR}/${ARGS_TARGET}/${root_dir}/${output_name}")
+			set(outname "${CMAKE_CURRENT_BINARY_DIR}/${ARGS_TARGET}/${root_dir}/${output_name}")
 			add_custom_command(PRE_BUILD 
 				OUTPUT "${outname}" 
 				COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FILE} "${outname}"
@@ -1019,7 +1022,7 @@ function(pack_resources)
 		OUTPUT "${outpack}"
 		DEPENDS ${assets}
 		COMMENT "Packing resources for ${ARGS_TARGET}"
-		COMMAND ${CMAKE_COMMAND} -E tar "cfv" "${outpack}" --format=zip ${ARGS_TARGET} 
+		COMMAND ${CMAKE_COMMAND} -E tar "cfv" "${outpack}" --format=zip "${CMAKE_CURRENT_BINARY_DIR}/${ARGS_TARGET}"
 		VERBATIM
 	)
 

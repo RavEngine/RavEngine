@@ -46,7 +46,6 @@
 #include <RGL/RenderPass.hpp>
 #include <RGL/Sampler.hpp>
 #include "MeshAsset.hpp"
-#include <numbers>
 #include "Texture.hpp"
 
 #ifdef __APPLE__
@@ -250,7 +249,7 @@ auto generateCone(float radius, float height, int numberOfSides)
 		decltype(triangles) indices;
 	};
 
-	constexpr auto deg2rad = (std::numbers::pi * 2) / 360.f;
+	constexpr auto deg2rad = (3.14159265 * 2) / 360.f;
 
 	auto Rotate = [](Vector3 o, float r) {
 		float ca = std::cos(r);
