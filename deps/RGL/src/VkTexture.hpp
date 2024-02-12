@@ -45,7 +45,7 @@ namespace RGL {
 		const CustomTextureViewConfig config;
 		CustomTextureViewVk(decltype(owningTexture) owning, const CustomTextureViewConfig& config);
 
-		VkImageView imageView = nullptr;
+		VkImageView imageView = VK_NULL_HANDLE;
 
 		~CustomTextureViewVk();
 

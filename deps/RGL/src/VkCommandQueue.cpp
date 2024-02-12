@@ -42,7 +42,7 @@ namespace RGL {
         if (config.signalFence) {
             fence = std::static_pointer_cast<FenceVk>(config.signalFence);
         }
-        VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, fence ? fence->fence : nullptr));
+        VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, fence ? fence->fence : VK_NULL_HANDLE));
         VK_CHECK(vkQueueSubmit(queue,0, nullptr, internalFence));
 	}
     RGLCommandBufferPtr CommandQueueVk::CreateCommandBuffer()

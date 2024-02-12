@@ -35,7 +35,7 @@
 #include "cudamanager/PxCudaContextManager.h"
 #include "cudamanager/PxCudaContext.h"
 
-#if (PX_OSX==0 && !(PX_WIN64 && (PX_ARM || PX_A64))) && !PX_EMSCRIPTEN
+#if ((PX_OSX==0 && !__ANDROID__) && !(PX_WIN64 && (PX_ARM || PX_A64))) && !PX_EMSCRIPTEN
 #define cuda 1
 #else
 #define cuda 0
