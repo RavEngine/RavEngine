@@ -56,14 +56,6 @@ elseif(TARGET_EMSCRIPTEN)
 	set(EM_LINK "-fexceptions" "-s MAX_WEBGL_VERSION=2" "-s MIN_WEBGL_VERSION=2" "-s FULL_ES3=1" "-s USE_WEBGPU" "-s GL_ASSERTIONS=1" "-s OFFSCREEN_FRAMEBUFFER=1" "-s OFFSCREENCANVAS_SUPPORT=1" "-s GL_DEBUG=1" "-s LLD_REPORT_UNDEFINED" "-s NO_DISABLE_EXCEPTION_CATCHING" "-s NO_DISABLE_EXCEPTION_THROWING" "-s PTHREAD_POOL_SIZE=4" "-s ASSERTIONS=1" "-s ALLOW_MEMORY_GROWTH=1" "-s MAXIMUM_MEMORY=4GB")
 endif()
 
-if(TARGET_ANDROID)
-	set(APP_GLUE_DIR ${ANDROID_NDK}/sources/android/native_app_glue)
-	include_directories(${APP_GLUE_DIR})
-	set(ANDROID_GLUE_LIB "android-app-glue")
-	add_library(${ANDROID_GLUE_LIB} STATIC ${APP_GLUE_DIR}/android_native_app_glue.c)
-endif()
-
-
 # call this macro to add IPO to profile and release builds
 macro(rve_enable_IPO target)
 
@@ -174,6 +166,10 @@ if (NOT RAVENGINE_SERVER)
 	set(DISABLE_RTTI_AND_EXCEPTIONS OFF CACHE INTERNAL "")
 	add_subdirectory("${DEPS_DIR}/RmlUi-freetype" EXCLUDE_FROM_ALL)
 	set(RML_LIB "RmlCore")
+endif()
+
+if (ANDROID)
+	set(ANDROID_FUNCTION_LEVEL_LINKING OFF CACHE INTERNAL "")
 endif()
 
 # no extra flags required
@@ -607,7 +603,6 @@ target_link_libraries("${PROJECT_NAME}"
     ${ATOMIC_LIB}
 	${DXGI_LIB}
 	${EM_LINK}
-	${ANDROID_GLUE_LIB}
 	${OPENXR_LOADER}
 	${ACCEL_LIB}
 	${LibUUID_LIBRARIES}

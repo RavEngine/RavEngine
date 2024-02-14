@@ -19,5 +19,5 @@ int main(int argc, char** argv) { \
 	return SDL_RunApp(0, NULL, DoProgram, NULL);\
 }
 #else
-#define START_APP(APP) extern "C" __attribute__((visibility("default"))) int main(int argc, char** argv){auto a = std::make_unique<APP>(); return a->run(argc, argv);}
+#define START_APP(APP) extern "C" int main(int argc, char** argv){auto a = std::make_unique<APP>(); return a->run(argc, argv);}
 #endif
