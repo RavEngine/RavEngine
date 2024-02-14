@@ -403,6 +403,9 @@ if(TARGET_EMSCRIPTEN OR ( (TARGET_WINDOWS OR TARGET_UWP) AND CMAKE_C_COMPILER_AR
 	target_compile_definitions(libnyquist PUBLIC "ARCH_CPU_LITTLE_ENDIAN")
 	target_compile_definitions("physfs-static" PUBLIC "MY_CPU_LE")
 endif()
+if(ANDROID)
+	target_compile_options(PhysX PUBLIC "-malign-double")
+endif()
 
 # OpenXR - available on Windows only
 if(TARGET_WINDOWS AND NOT RAVENGINE_SERVER)
