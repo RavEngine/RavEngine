@@ -120,7 +120,7 @@ jobs:
       - name: Configure
         run: |
           mkdir build && cd build
-          cmake -G "Ninja" -DCMAKE_SYSTEM_NAME=Android -DANDROID_ABI="${{ matrix.arch }}" -DANDROID_ARM_NEON=ON -DANDROID_PLATFORM=33 ..
+          cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE="${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake" -DANDROID_ABI="${{ matrix.arch }}" -DANDROID_ARM_NEON=ON -DANDROID_PLATFORM=33 ..
       - name: Build
         run: |
           cd build
