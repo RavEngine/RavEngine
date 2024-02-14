@@ -109,9 +109,12 @@ jobs:
         with: 
           submodules: true
       - name: Setup NDK
+        id: setup-ndk
         uses: nttld/setup-ndk@v1
         with:
           ndk-version: r25c
+      - name: Report NDK
+        run: echo ${{ steps.setup-ndk.outputs.ndk-path }}
       - name: Install dependencies
         run: sudo apt update && sudo apt install ninja-build 
       - name: Configure
