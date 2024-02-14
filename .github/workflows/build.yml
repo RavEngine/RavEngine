@@ -108,10 +108,16 @@ jobs:
         uses: actions/checkout@v4
         with: 
           submodules: true
+      - name: Setup NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r25c
+      - name: Install dependencies
+        run: sudo apt update && sudo apt install ninja-build 
       - name: Configure
         run: |
           mkdir build && cd build
-          cmake -G "Ninja" -DCMAKE_SYSTEM_NAME=Android -DANDROID_ABI="${{ matrix.arch }}" ..
+          cmake -G "Ninja" -DCMAKE_SYSTEM_NAME=Android -DANDROID_ABI="${{ matrix.arch }}" -DANDROID_ARM_NEON=ON -DANDROID_PLATFORM=33 ..
       - name: Build
         run: |
           cd build
