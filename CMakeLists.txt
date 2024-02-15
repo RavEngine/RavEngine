@@ -406,7 +406,11 @@ if(TARGET_EMSCRIPTEN OR ( (TARGET_WINDOWS OR TARGET_UWP) AND CMAKE_C_COMPILER_AR
 	target_compile_definitions("physfs-static" PUBLIC "MY_CPU_LE")
 endif()
 if(ANDROID)
+	# without this x86 32-bit build fails
 	target_compile_options(LowLevel PUBLIC "-malign-double")
+	target_compile_options(LowLevelAABB PUBLIC "-malign-double")
+	target_compile_options(LowLevelDynamics PUBLIC "-malign-double")
+	target_compile_options(PhysX PUBLIC "-malign-double")
 endif()
 
 # OpenXR - available on Windows only
