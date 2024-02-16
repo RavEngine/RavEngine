@@ -81,6 +81,7 @@ Then build with CMake as normal. On Windows, you will need to run your initial c
 | macOS 12+ | Intel, Apple Silicon | Apple Clang | Xcode | Metal |
 | iOS 16+ | Device + Simulator* | Apple Clang | Xcode | Metal |
 | tvOS 16+ | Device + Simulator* | Apple Clang | Xcode | Metal |
+| visionOS 2D 1+ (WIP) | Device + Simulator* | Apple Clang | Xcode | Metal |
 | Windows 10+ (Win32) | x86_64, aarch64 | MSVC | Visual Studio, Ninja | DX12, Vulkan |
 | Windows 10+ (GDK) | x86_64 | MSVC | Visual Studio | DX12, Vulkan |
 | Windows 10+ (UWP) | x86_64, aarch64 | MSVC | Visual Studio | DX12 |

@@ -12,7 +12,7 @@
 #include <sys/utsname.h>
 
 
-#if TARGET_OS_IOS || TARGET_OS_TV
+#if TARGET_OS_IOS || TARGET_OS_TV || TARGET_OS_VISION
 #define TARGET_OS_NONOSX 1
 #else
 #define TARGET_OS_NONOSX 0
@@ -51,8 +51,12 @@ float GetWindowScaleFactor(void* window){
     NSWindow *nswin = (__bridge NSWindow *)SDL_GetProperty(SDL_GetWindowProperties((SDL_Window*)window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
 	return [nswin backingScaleFactor];
 #elif TARGET_OS_NONOSX
+#if TARGET_OS_VISION
+    return 1;   // visionOS does not have DPI scale
+#else
     UIWindow* uiwin = (__bridge UIWindow*)SDL_GetProperty(SDL_GetWindowProperties((SDL_Window*)window), SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER, NULL);
 	return uiwin.screen.scale;
+#endif
 #endif
 }
 
@@ -83,6 +87,8 @@ void AppleOSName(char* buffer, uint16_t size){
     "tvOS";
 #elif TARGET_OS_OSX
     "macOS";
+#elif TARGET_OS_VISION
+    "visionOS";
 #else
     #error This Apple platform is not supported
 #endif
