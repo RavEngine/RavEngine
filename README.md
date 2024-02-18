@@ -87,7 +87,7 @@ Then build with CMake as normal. On Windows, you will need to run your initial c
 | Windows 10+ (UWP) | x86_64, aarch64 | MSVC | Visual Studio | DX12 |
 | Xbox Series (UWP) | x86_64 | MSVC | Visual Studio | DX12 |
 | Linux | x86_64, aarch64 | Clang, gcc | Ninja, Make | Vulkan |
-| Android (WIP) | x86, x86_64, arm64-v8a, arm7a, aarch64 | NDK Clang | Ninja, Make, Android Studio | Vulkan |
+| Android (WIP) | x86, x86_64, arm64-v8a, arm7a | NDK Clang | Ninja, Make, Android Studio | Vulkan |
 | Emscripten (Early WIP) | WebAssembly | emcc | Ninja, Make | WebGPU |
 
 \* Simulator support is build-only. RavEngine uses GPU features that the simulator does not support.
