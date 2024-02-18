@@ -291,27 +291,6 @@ if(PHYSFS_BUILD_DOCS)
     endif()
 endif()
 
-if(UNIX)
-    set(PHYSFS_TARBALL "${CMAKE_CURRENT_SOURCE_DIR}/../physfs-${PHYSFS_VERSION}.tar.gz")
-
-    set(PHYSFS_TARGETNAME_DIST "dist" CACHE STRING "Name of 'dist' build target")
-    add_custom_target(
-        ${PHYSFS_TARGETNAME_DIST}
-        git archive --prefix="physfs-${PHYSFS_VERSION}/" --output="${PHYSFS_TARBALL}" HEAD
-        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-        COMMENT "Building source tarball '${PHYSFS_TARBALL}'..."
-    )
-
-    set(PHYSFS_TARGETNAME_UNINSTALL "uninstall" CACHE STRING "Name of 'uninstall' build target")
-    add_custom_target(
-        ${PHYSFS_TARGETNAME_UNINSTALL}
-        "${CMAKE_CURRENT_SOURCE_DIR}/extras/uninstall.sh"
-        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-        COMMENT "Uninstall the project..."
-    )
-endif()
-
-
 macro(message_bool_option _NAME _VALUE)
     if(${_VALUE})
         message(STATUS "  ${_NAME}: enabled")
