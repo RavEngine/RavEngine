@@ -1,5 +1,5 @@
 /*
- * Posix-esque support routines for PhysicsFS.
+ * Wii/GameCube support routines for PhysicsFS.
  *
  * Please see the file LICENSE.txt in the source's root directory.
  *
@@ -9,17 +9,24 @@
 #define __PHYSICSFS_INTERNAL__
 #include "physfs_platforms.h"
 
-#ifdef PHYSFS_PLATFORM_POSIX
+#ifdef PHYSFS_PLATFORM_OGC
 
 #include <unistd.h>
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <pwd.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <pthread.h>
+#include <stdlib.h>
+#include <sys/param.h>
+#include <time.h>
+#include <limits.h>
+
+
+#include <ogc/lwp.h>
+#include <ogc/mutex.h>
+#include <ogc/system.h>
 
 #include "physfs_internal.h"
 
@@ -56,63 +63,30 @@ static inline PHYSFS_ErrorCode errcodeFromErrno(void)
 } /* errcodeFromErrno */
 
 
-static char *getUserDirByUID(void)
+static inline char *buildSubdirPath(const char *subdir, size_t subdir_length)
 {
-    uid_t uid = getuid();
-    struct passwd *pw;
-    char *retval = NULL;
+    const char *baseDir;
+    char *retval;
+    size_t length;
 
-    pw = getpwuid(uid);
-    if ((pw != NULL) && (pw->pw_dir != NULL) && (*pw->pw_dir != '\0'))
-    {
-        const size_t dlen = strlen(pw->pw_dir);
-        const size_t add_dirsep = (pw->pw_dir[dlen-1] != '/') ? 1 : 0;
-        retval = (char *) allocator.Malloc(dlen + 1 + add_dirsep);
-        if (retval != NULL)
-        {
-            strcpy(retval, pw->pw_dir);
-            if (add_dirsep)
-            {
-                retval[dlen] = '/';
-                retval[dlen+1] = '\0';
-            } /* if */
-        } /* if */
-    } /* if */
-    
+    baseDir = PHYSFS_getBaseDir();
+    length = strlen(baseDir);
+
+    retval = allocator.Malloc(length + subdir_length);
+    BAIL_IF(!retval, PHYSFS_ERR_OUT_OF_MEMORY, NULL);
+    strcpy(retval, baseDir);
+    strcpy(retval + length, subdir);
+
     return retval;
-} /* getUserDirByUID */
-
+}
 
 char *__PHYSFS_platformCalcUserDir(void)
 {
-    char *retval = NULL;
-    char *envr = getenv("HOME");
+    static const char subdir[] = "userdata/";
 
-    /* if the environment variable was set, make sure it's really a dir. */
-    if (envr != NULL)
-    {
-        struct stat statbuf;
-        if ((stat(envr, &statbuf) != -1) && (S_ISDIR(statbuf.st_mode)))
-        {
-            const size_t envrlen = strlen(envr);
-            const size_t add_dirsep = (envr[envrlen-1] != '/') ? 1 : 0;
-            retval = allocator.Malloc(envrlen + 1 + add_dirsep);
-            if (retval)
-            {
-                strcpy(retval, envr);
-                if (add_dirsep)
-                {
-                    retval[envrlen] = '/';
-                    retval[envrlen+1] = '\0';
-                } /* if */
-            } /* if */
-        } /* if */
-    } /* if */
-
-    if (retval == NULL)
-        retval = getUserDirByUID();
-
-    return retval;
+    /* We don't have users on the Wii/GameCube. Just create a userdata folder
+     * in the application's directory. */
+    return buildSubdirPath(subdir, sizeof(subdir));
 } /* __PHYSFS_platformCalcUserDir */
 
 
@@ -332,7 +306,6 @@ int __PHYSFS_platformStat(const char *fname, PHYSFS_Stat *st, const int follow)
 {
     struct stat statbuf;
     const int rc = follow ? stat(fname, &statbuf) : lstat(fname, &statbuf);
-    int err = errno;
     BAIL_IF(rc == -1, errcodeFromErrno(), 0);
 
     if (S_ISREG(statbuf.st_mode))
@@ -368,83 +341,97 @@ int __PHYSFS_platformStat(const char *fname, PHYSFS_Stat *st, const int follow)
 } /* __PHYSFS_platformStat */
 
 
-typedef struct
-{
-    pthread_mutex_t mutex;
-    pthread_t owner;
-    PHYSFS_uint32 count;
-} PthreadMutex;
-
-
 void *__PHYSFS_platformGetThreadID(void)
 {
-    return ( (void *) ((size_t) pthread_self()) );
+    return (void *) LWP_GetSelf();
 } /* __PHYSFS_platformGetThreadID */
 
 
 void *__PHYSFS_platformCreateMutex(void)
 {
-    int rc;
-    PthreadMutex *m = (PthreadMutex *) allocator.Malloc(sizeof (PthreadMutex));
-    BAIL_IF(!m, PHYSFS_ERR_OUT_OF_MEMORY, NULL);
-    rc = pthread_mutex_init(&m->mutex, NULL);
-    if (rc != 0)
-    {
-        allocator.Free(m);
-        BAIL(PHYSFS_ERR_OS_ERROR, NULL);
-    } /* if */
-
-    m->count = 0;
-    m->owner = (pthread_t) 0xDEADBEEF;
-    return ((void *) m);
+    mutex_t m;
+    LWP_MutexInit(&m, true);
+    return (void *) m;
 } /* __PHYSFS_platformCreateMutex */
 
 
 void __PHYSFS_platformDestroyMutex(void *mutex)
 {
-    PthreadMutex *m = (PthreadMutex *) mutex;
+    mutex_t m = (mutex_t) mutex;
 
-    /* Destroying a locked mutex is a bug, but we'll try to be helpful. */
-    if ((m->owner == pthread_self()) && (m->count > 0))
-        pthread_mutex_unlock(&m->mutex);
-
-    pthread_mutex_destroy(&m->mutex);
-    allocator.Free(m);
+    LWP_MutexDestroy(m);
 } /* __PHYSFS_platformDestroyMutex */
 
 
 int __PHYSFS_platformGrabMutex(void *mutex)
 {
-    PthreadMutex *m = (PthreadMutex *) mutex;
-    pthread_t tid = pthread_self();
-    if (m->owner != tid)
-    {
-        if (pthread_mutex_lock(&m->mutex) != 0)
-            return 0;
-        m->owner = tid;
-    } /* if */
-
-    m->count++;
-    return 1;
+    mutex_t m = (mutex_t) mutex;
+    return LWP_MutexLock(m) == 0 ? 1 : 0;
 } /* __PHYSFS_platformGrabMutex */
 
 
 void __PHYSFS_platformReleaseMutex(void *mutex)
 {
-    PthreadMutex *m = (PthreadMutex *) mutex;
-    assert(m->owner == pthread_self());  /* catch programming errors. */
-    assert(m->count > 0);  /* catch programming errors. */
-    if (m->owner == pthread_self())
-    {
-        if (--m->count == 0)
-        {
-            m->owner = (pthread_t) 0xDEADBEEF;
-            pthread_mutex_unlock(&m->mutex);
-        } /* if */
-    } /* if */
+    mutex_t m = (mutex_t) mutex;
+    LWP_MutexUnlock(m);
 } /* __PHYSFS_platformReleaseMutex */
 
-#endif  /* PHYSFS_PLATFORM_POSIX */
 
-/* end of physfs_platform_posix.c ... */
+
+int __PHYSFS_platformInit(void)
+{
+    return 1;  /* always succeed. */
+} /* __PHYSFS_platformInit */
+
+
+void __PHYSFS_platformDeinit(void)
+{
+    /* no-op */
+} /* __PHYSFS_platformDeinit */
+
+
+void __PHYSFS_platformDetectAvailableCDs(PHYSFS_StringCallback cb, void *data)
+{
+} /* __PHYSFS_platformDetectAvailableCDs */
+
+
+char *__PHYSFS_platformCalcBaseDir(const char *argv0)
+{
+    char *retval;
+    const size_t bufsize = 128;
+
+    retval = allocator.Malloc(bufsize);
+    BAIL_IF(!retval, PHYSFS_ERR_OUT_OF_MEMORY, NULL);
+
+    if (getcwd(retval, bufsize - 1))
+    {
+        /* Make sure the path is slash-terminated */
+        size_t length = strlen(retval);
+        if (length > 0 && retval[length - 1] != '/')
+        {
+            retval[length++] = '/';
+            retval[length] = '\0';
+        }
+    }
+    else
+    {
+        strcpy(retval, "/");
+    }
+
+    return retval;
+} /* __PHYSFS_platformCalcBaseDir */
+
+
+char *__PHYSFS_platformCalcPrefDir(const char *org, const char *app)
+{
+    static const char subdir[] = "data/";
+
+    return buildSubdirPath(subdir, sizeof(subdir));
+} /* __PHYSFS_platformCalcPrefDir */
+
+/* end of physfs_platform_unix.c ... */
+
+#endif  /* PHYSFS_PLATFORM_OGC */
+
+/* end of physfs_platform_ogc.c ... */
 
