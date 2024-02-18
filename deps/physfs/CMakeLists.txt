@@ -9,29 +9,31 @@
 #  compile, using preprocessor checks for platform-specific bits instead of
 #  testing in here.
 
-cmake_minimum_required(VERSION 2.8.12)
+set(PHYSFS_VERSION 3.3.0)
 
-project(PhysicsFS)
-set(PHYSFS_VERSION 3.1.0)
+cmake_minimum_required(VERSION 3.5)
+
+project(PhysicsFS VERSION ${PHYSFS_VERSION} LANGUAGES C )
+
+include(GNUInstallDirs)
 
 # Increment this if/when we break backwards compatibility.
 set(PHYSFS_SOVERSION 1)
 
-# I hate that they define "WIN32" ... we're about to move to Win64...I hope!
-if(WIN32 AND NOT WINDOWS)
-    set(WINDOWS TRUE)
-endif()
+set(PHYSFS_M_SRCS)
+set(PHYSFS_CPP_SRCS)
 
-include_directories(./src)
+if(WIN32)
+    list(APPEND OPTIONAL_LIBRARY_LIBS advapi32 shell32)
+endif()
 
 if(APPLE)
     set(OTHER_LDFLAGS ${OTHER_LDFLAGS} "-framework IOKit -framework Foundation")
-    set(PHYSFS_M_SRCS src/physfs_platform_apple.m)
+    list(APPEND PHYSFS_M_SRCS src/physfs_platform_apple.m)
 endif()
 
-if(CMAKE_COMPILER_IS_GNUCC)
-    # Don't use -rpath.
-    set(CMAKE_SKIP_RPATH ON CACHE BOOL "Skip RPATH" FORCE)
+if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
+    add_compile_options(-Wall)
 endif()
 
 if(CMAKE_C_COMPILER_ID STREQUAL "SunPro")
@@ -42,10 +44,10 @@ endif()
 if(HAIKU)
     # We add this explicitly, since we don't want CMake to think this
     #  is a C++ project unless we're on Haiku.
-    set(PHYSFS_CPP_SRCS src/physfs_platform_haiku.cpp)
+    list(APPEND PHYSFS_CPP_SRCS src/physfs_platform_haiku.cpp)
     find_library(BE_LIBRARY be)
     find_library(ROOT_LIBRARY root)
-    set(OPTIONAL_LIBRARY_LIBS ${OPTIONAL_LIBRARY_LIBS} ${BE_LIBRARY} ${ROOT_LIBRARY})
+    list(APPEND OPTIONAL_LIBRARY_LIBS ${BE_LIBRARY} ${ROOT_LIBRARY})
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "WindowsPhone" OR CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
@@ -53,14 +55,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "WindowsPhone" OR CMAKE_SYSTEM_NAME STREQUAL "Wind
 endif()
 
 if(WINRT)
-    set(PHYSFS_CPP_SRCS src/physfs_platform_winrt.cpp)
+    list(APPEND PHYSFS_CPP_SRCS src/physfs_platform_winrt.cpp)
 endif()
 
-if(UNIX AND NOT WINDOWS AND NOT APPLE)  # (MingW and such might be UNIX _and_ WINDOWS!)
+if(UNIX AND NOT WIN32 AND NOT APPLE)  # (MingW and such might be UNIX _and_ WINDOWS!)
     find_library(PTHREAD_LIBRARY pthread)
     if(PTHREAD_LIBRARY)
-        set(OPTIONAL_LIBRARY_LIBS ${OPTIONAL_LIBRARY_LIBS} ${PTHREAD_LIBRARY})
+        list(APPEND OPTIONAL_LIBRARY_LIBS ${PTHREAD_LIBRARY})
     endif()
+endif()
+
+if(PHYSFS_CPP_SRCS)
+    enable_language(CXX)
 endif()
 
 # Almost everything is "compiled" here, but things that don't apply to the
@@ -74,6 +80,7 @@ set(PHYSFS_SRCS
     src/physfs_platform_posix.c
     src/physfs_platform_unix.c
     src/physfs_platform_windows.c
+    src/physfs_platform_ogc.c
     src/physfs_platform_os2.c
     src/physfs_platform_qnx.c
     src/physfs_platform_android.c
@@ -85,6 +92,7 @@ set(PHYSFS_SRCS
     src/physfs_archiver_mvl.c
     src/physfs_archiver_qpak.c
     src/physfs_archiver_wad.c
+    src/physfs_archiver_csm.c
     src/physfs_archiver_zip.c
     src/physfs_archiver_slb.c
     src/physfs_archiver_iso9660.c
@@ -116,6 +124,11 @@ endif()
 option(PHYSFS_ARCHIVE_WAD "Enable Doom WAD support" TRUE)
 if(NOT PHYSFS_ARCHIVE_WAD)
     add_definitions(-DPHYSFS_SUPPORTS_WAD=0)
+endif()
+
+option(PHYSFS_ARCHIVE_CSM "Enable Chasm: The Rift CSM.BIN support" TRUE)
+if(NOT PHYSFS_ARCHIVE_CSM)
+    add_definitions(-DPHYSFS_SUPPORTS_CSM=0)
 endif()
 
 option(PHYSFS_ARCHIVE_HOG "Enable Descent I/II HOG support" TRUE)
@@ -152,6 +165,8 @@ endif()
 option(PHYSFS_BUILD_STATIC "Build static library" TRUE)
 if(PHYSFS_BUILD_STATIC)
     add_library(physfs-static STATIC ${PHYSFS_SRCS})
+    add_library(PhysFS::PhysFS-static ALIAS physfs-static)
+    set_target_properties(physfs-static PROPERTIES EXPORT_NAME PhysFS-static)
     # Don't rename this on Windows, since DLLs will also produce an import
     #  library named "physfs.lib" which would conflict; Unix tend to like the
     #  same library name with a different extension for static libs, but
@@ -164,105 +179,130 @@ if(PHYSFS_BUILD_STATIC)
 		set_target_properties(physfs-static PROPERTIES VS_WINRT_COMPONENT True)
         set_target_properties(physfs-static PROPERTIES STATIC_LIBRARY_FLAGS "/ignore:4264")
     endif()
-
-    set(PHYSFS_LIB_TARGET physfs-static)
-    set(PHYSFS_INSTALL_TARGETS ${PHYSFS_INSTALL_TARGETS} ";physfs-static")
+    if(WIN32 OR WINRT OR OS2)
+        # no dll exports from the static library
+        target_compile_definitions(physfs-static PRIVATE "PHYSFS_STATIC")
+    endif()
+    target_include_directories(physfs-static PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>")
+    target_link_libraries(physfs-static PRIVATE ${OPTIONAL_LIBRARY_LIBS} ${OTHER_LDFLAGS})
+    set(PHYSFS_LIB_TARGET PhysFS::PhysFS-static)
+    list(APPEND PHYSFS_INSTALL_TARGETS "physfs-static")
 endif()
 
 option(PHYSFS_BUILD_SHARED "Build shared library" TRUE)
 if(PHYSFS_BUILD_SHARED)
     add_library(physfs SHARED ${PHYSFS_SRCS})
+    add_library(PhysFS::PhysFS ALIAS physfs)
     set_target_properties(physfs PROPERTIES MACOSX_RPATH 1)
     set_target_properties(physfs PROPERTIES VERSION ${PHYSFS_VERSION})
     set_target_properties(physfs PROPERTIES SOVERSION ${PHYSFS_SOVERSION})
+    set_target_properties(physfs PROPERTIES EXPORT_NAME PhysFS)
     if(WINRT)
-		set_target_properties(physfs PROPERTIES VS_WINRT_COMPONENT True)
+		set_target_properties(physfs PROPERTIES VS_WINRT_COMPONENT TRUE)
     endif()
-    target_link_libraries(physfs ${OPTIONAL_LIBRARY_LIBS} ${OTHER_LDFLAGS})
-    set(PHYSFS_LIB_TARGET physfs)
-    set(PHYSFS_INSTALL_TARGETS ${PHYSFS_INSTALL_TARGETS} ";physfs")
+    if(OS2) # OS/2 does not support a DLL name longer than 8 characters.
+        set_target_properties(physfs PROPERTIES OUTPUT_NAME "physfs")
+    endif()
+    target_include_directories(physfs PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>")
+    target_link_libraries(physfs PRIVATE ${OPTIONAL_LIBRARY_LIBS} ${OTHER_LDFLAGS})
+    set(PHYSFS_LIB_TARGET PhysFS::PhysFS)
+    list(APPEND PHYSFS_INSTALL_TARGETS "physfs")
 endif()
 
 if(NOT PHYSFS_BUILD_SHARED AND NOT PHYSFS_BUILD_STATIC)
     message(FATAL "Both shared and static libraries are disabled!")
 endif()
 
-# CMake FAQ says I need this...
-if(PHYSFS_BUILD_SHARED AND PHYSFS_BUILD_STATIC AND NOT WINDOWS)
-    set_target_properties(physfs PROPERTIES CLEAN_DIRECT_OUTPUT 1)
-    set_target_properties(physfs-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
-endif()
-
 option(PHYSFS_BUILD_TEST "Build stdio test program." TRUE)
 mark_as_advanced(PHYSFS_BUILD_TEST)
 if(PHYSFS_BUILD_TEST)
+    add_executable(test_physfs test/test_physfs.c)
+    target_link_libraries(test_physfs PRIVATE ${PHYSFS_LIB_TARGET} ${OTHER_LDFLAGS})
+
     find_path(READLINE_H readline/readline.h)
     find_path(HISTORY_H readline/history.h)
-    if(READLINE_H AND HISTORY_H)
-        find_library(CURSES_LIBRARY NAMES curses ncurses)
-        set(CMAKE_REQUIRED_LIBRARIES ${CURSES_LIBRARY})
-        find_library(READLINE_LIBRARY readline)
-        if(READLINE_LIBRARY)
-            set(HAVE_SYSTEM_READLINE TRUE)
-            set(TEST_PHYSFS_LIBS ${TEST_PHYSFS_LIBS} ${READLINE_LIBRARY} ${CURSES_LIBRARY})
-            include_directories(SYSTEM ${READLINE_H} ${HISTORY_H})
-            add_definitions(-DPHYSFS_HAVE_READLINE=1)
-        endif()
+    find_library(READLINE_LIBRARY readline)
+    find_package(Curses)
+    if(READLINE_H AND HISTORY_H AND READLINE_LIBRARY AND CURSES_FOUND)
+        set(HAVE_SYSTEM_READLINE TRUE)
+        target_link_libraries(test_physfs PRIVATE ${READLINE_LIBRARY} ${CURSES_LIBRARIES})
+        target_include_directories(test_physfs SYSTEM PRIVATE ${READLINE_H} ${HISTORY_H})
+        target_compile_definitions(test_physfs PRIVATE PHYSFS_HAVE_READLINE=1)
     endif()
-    add_executable(test_physfs test/test_physfs.c)
-    target_link_libraries(test_physfs ${PHYSFS_LIB_TARGET} ${TEST_PHYSFS_LIBS} ${OTHER_LDFLAGS})
-    set(PHYSFS_INSTALL_TARGETS ${PHYSFS_INSTALL_TARGETS} ";test_physfs")
+    list(APPEND PHYSFS_INSTALL_TARGETS test_physfs)
 endif()
 
-# install(TARGETS ${PHYSFS_INSTALL_TARGETS} EXPORT PhysFSExport
-#         RUNTIME DESTINATION bin
-#         LIBRARY DESTINATION lib${LIB_SUFFIX}
-#         ARCHIVE DESTINATION lib${LIB_SUFFIX}
-#         INCLUDES DESTINATION include)
-# install(FILES src/physfs.h DESTINATION include)
+option(PHYSFS_DISABLE_INSTALL "Disable installing PhysFS" OFF)
+if(NOT PHYSFS_DISABLE_INSTALL)
 
-# install(EXPORT PhysFSExport
-#         DESTINATION "lib${LIB_SUFFIX}/cmake/PhysFS"
-#         FILE PhysFSConfig.cmake
-# )
+    install(TARGETS ${PHYSFS_INSTALL_TARGETS} EXPORT PhysFSExport
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    install(FILES src/physfs.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
+    install(EXPORT PhysFSExport
+            DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/PhysFS"
+            FILE PhysFSConfig.cmake
+            NAMESPACE PhysFS::
+    )
 
-# find_package(Doxygen)
-# if(DOXYGEN_FOUND)
-#     set(PHYSFS_OUTPUT_DOXYFILE "${CMAKE_CURRENT_BINARY_DIR}/Doxyfile")
-#     configure_file(
-#         "${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile"
-#         "${PHYSFS_OUTPUT_DOXYFILE}"
-#         COPYONLY
-#     )
-#     file(APPEND "${PHYSFS_OUTPUT_DOXYFILE}" "\n\n# Below auto-generated by cmake...\n\n")
-#     file(APPEND "${PHYSFS_OUTPUT_DOXYFILE}" "PROJECT_NUMBER = \"${PHYSFS_VERSION}\"\n")
-#     file(APPEND "${PHYSFS_OUTPUT_DOXYFILE}" "OUTPUT_DIRECTORY = \"${CMAKE_CURRENT_BINARY_DIR}/docs\"\n")
-#     file(APPEND "${PHYSFS_OUTPUT_DOXYFILE}" "\n# End auto-generated section.\n\n")
+    if(NOT MSVC)
+        configure_file(
+            "extras/physfs.pc.in"
+            "extras/physfs.pc"
+            @ONLY
+        )
 
-#     set(PHYSFS_TARGETNAME_DOCS "docs" CACHE STRING "Name of 'docs' build target")
-#     add_custom_target(
-#         ${PHYSFS_TARGETNAME_DOCS}
-#         ${DOXYGEN_EXECUTABLE} "${PHYSFS_OUTPUT_DOXYFILE}"
-#         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-#         COMMENT "Building documentation in 'docs' directory..."
-#     )
-# else()
-#     message(STATUS "Doxygen not found. You won't be able to build documentation.")
-# endif()
+        install(
+            FILES "${CMAKE_CURRENT_BINARY_DIR}/extras/physfs.pc"
+            DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
+        )
+    endif()
+endif()
+
+option(PHYSFS_BUILD_DOCS "Build doxygen based documentation" TRUE)
+if(PHYSFS_BUILD_DOCS)
+    find_package(Doxygen)
+    if(DOXYGEN_FOUND)
+        set(PHYSFS_OUTPUT_DOXYFILE "${CMAKE_CURRENT_BINARY_DIR}/Doxyfile")
+        configure_file(
+            "${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile"
+            "${PHYSFS_OUTPUT_DOXYFILE}"
+            COPYONLY
+        )
+        file(APPEND "${PHYSFS_OUTPUT_DOXYFILE}" "\n\n# Below auto-generated by cmake...\n\n")
+        file(APPEND "${PHYSFS_OUTPUT_DOXYFILE}" "PROJECT_NUMBER = \"${PHYSFS_VERSION}\"\n")
+        file(APPEND "${PHYSFS_OUTPUT_DOXYFILE}" "OUTPUT_DIRECTORY = \"${CMAKE_CURRENT_BINARY_DIR}/docs\"\n")
+        file(APPEND "${PHYSFS_OUTPUT_DOXYFILE}" "\n# End auto-generated section.\n\n")
+
+        set(PHYSFS_TARGETNAME_DOCS "docs" CACHE STRING "Name of 'docs' build target")
+
+        add_custom_target(
+            ${PHYSFS_TARGETNAME_DOCS}
+            ${DOXYGEN_EXECUTABLE} "${PHYSFS_OUTPUT_DOXYFILE}"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            COMMENT "Building documentation in 'docs' directory..."
+        )
+
+    else()
+        message(STATUS "Doxygen not found. You won't be able to build documentation.")
+    endif()
+endif()
 
 if(UNIX)
-    set(PHYSFS_TARBALL "${CMAKE_CURRENT_SOURCE_DIR}/../physfs-${PHYSFS_VERSION}.tar.bz2")
+    set(PHYSFS_TARBALL "${CMAKE_CURRENT_SOURCE_DIR}/../physfs-${PHYSFS_VERSION}.tar.gz")
 
     set(PHYSFS_TARGETNAME_DIST "dist" CACHE STRING "Name of 'dist' build target")
     add_custom_target(
         ${PHYSFS_TARGETNAME_DIST}
-        hg archive -t tbz2 "${PHYSFS_TARBALL}"
+        git archive --prefix="physfs-${PHYSFS_VERSION}/" --output="${PHYSFS_TARBALL}" HEAD
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         COMMENT "Building source tarball '${PHYSFS_TARBALL}'..."
     )
 
-    set(PHYSFS_TARGETNAME_UNINSTALL "physfs_uninstall" CACHE STRING "Name of 'uninstall' build target")
+    set(PHYSFS_TARGETNAME_UNINSTALL "uninstall" CACHE STRING "Name of 'uninstall' build target")
     add_custom_target(
         ${PHYSFS_TARGETNAME_UNINSTALL}
         "${CMAKE_CURRENT_SOURCE_DIR}/extras/uninstall.sh"
@@ -271,17 +311,6 @@ if(UNIX)
     )
 endif()
 
-if(NOT MSVC)
-    configure_file(
-        "extras/physfs.pc.in"
-        "extras/physfs.pc"
-        @ONLY
-    )
-    install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/extras/physfs.pc"
-        DESTINATION "lib${LIB_SUFFIX}/pkgconfig"
-    )
-endif()
 
 macro(message_bool_option _NAME _VALUE)
     if(${_VALUE})
@@ -296,6 +325,7 @@ message_bool_option("ZIP support" PHYSFS_ARCHIVE_ZIP)
 message_bool_option("7zip support" PHYSFS_ARCHIVE_7Z)
 message_bool_option("GRP support" PHYSFS_ARCHIVE_GRP)
 message_bool_option("WAD support" PHYSFS_ARCHIVE_WAD)
+message_bool_option("CSM support" PHYSFS_ARCHIVE_CSM)
 message_bool_option("HOG support" PHYSFS_ARCHIVE_HOG)
 message_bool_option("MVL support" PHYSFS_ARCHIVE_MVL)
 message_bool_option("QPAK support" PHYSFS_ARCHIVE_QPAK)
@@ -305,9 +335,9 @@ message_bool_option("ISO9660 support" PHYSFS_ARCHIVE_ISO9660)
 message_bool_option("Build static library" PHYSFS_BUILD_STATIC)
 message_bool_option("Build shared library" PHYSFS_BUILD_SHARED)
 message_bool_option("Build stdio test program" PHYSFS_BUILD_TEST)
+message_bool_option("Build Doxygen documentation" PHYSFS_BUILD_DOCS)
 if(PHYSFS_BUILD_TEST)
     message_bool_option("  Use readline in test program" HAVE_SYSTEM_READLINE)
 endif()
 
 # end of CMakeLists.txt ...
-

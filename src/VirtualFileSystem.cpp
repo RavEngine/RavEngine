@@ -2,6 +2,7 @@
 #include <physfs.h>
 #include "Filesystem.hpp"
 #include <span>
+#include <SDL_rwops.h>
 
 #ifdef __APPLE__
     #include <CoreFoundation/CFBundle.h>
@@ -44,6 +45,13 @@ VirtualFilesystem::VirtualFilesystem() {
 #endif
 
     streamingAssetsPath = streamingAssetsPath / Format("{}_Streaming",path);
+
+    SDL_RWops *io = SDL_RWFromFile(cstr, "rb");
+    char name[16]{0};
+    if (io->read(io, name, sizeof (name)) == 0) {
+        auto failure = SDL_GetError();
+        printf("Hello, %s!\n", name);
+    }
 
 	//1 means add to end, can put 0 to make it first searched
 	if (PHYSFS_mount(cstr, "", 1) == 0) {

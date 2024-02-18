@@ -148,6 +148,7 @@
  *   - .HOG (Descent I/II/III HOG file archives)
  *   - .MVL (Descent II movielib archives)
  *   - .WAD (DOOM engine archives)
+ *   - .BIN (Chasm: The Rift engine archives)
  *   - .VDF (Gothic I/II engine archives)
  *   - .SLB (Independence War archives)
  *
@@ -225,7 +226,9 @@ extern "C" {
 
 #if defined(PHYSFS_DECL)
 /* do nothing. */
-#elif defined(_MSC_VER)
+#elif defined(PHYSFS_STATIC)
+#define PHYSFS_DECL   /**/
+#elif defined(_WIN32) || defined(__OS2__)
 #define PHYSFS_DECL __declspec(dllexport)
 #elif defined(__SUNPRO_C)
 #define PHYSFS_DECL __global
@@ -433,7 +436,7 @@ typedef struct PHYSFS_Version
 
 #ifndef DOXYGEN_SHOULD_IGNORE_THIS
 #define PHYSFS_VER_MAJOR 3
-#define PHYSFS_VER_MINOR 1
+#define PHYSFS_VER_MINOR 3
 #define PHYSFS_VER_PATCH 0
 #endif  /* DOXYGEN_SHOULD_IGNORE_THIS */
 
