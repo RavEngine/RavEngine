@@ -2,7 +2,6 @@
 #include <physfs.h>
 #include "Filesystem.hpp"
 #include <span>
-#include <SDL_system.h>
 
 #ifdef __APPLE__
     #include <CoreFoundation/CFBundle.h>
