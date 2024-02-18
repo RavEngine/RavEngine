@@ -81,8 +81,18 @@ App::App()
 	::signal(SIGSEGV, &crash_signal_handler);
 	::signal(SIGABRT, &crash_signal_handler);
 
-	//initialize virtual file system library 
-	PHYSFS_init("");
+	//initialize virtual file system library
+#if __ANDROID__
+    PHYSFS_AndroidInit androidInit{
+        .jnienv = SDL_AndroidGetJNIEnv(),
+        .context = SDL_AndroidGetActivity()
+    };
+	if (PHYSFS_init(reinterpret_cast<const char*>(&androidInit)) == 0){
+        Debug::Fatal("PhysFS failed to init: {}", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode()));
+    }
+#else
+    PHYSFS_init("");
+#endif
 #if !RVE_SERVER
 	Resources = std::make_unique<VirtualFilesystem>();
 #endif

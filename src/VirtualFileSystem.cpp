@@ -2,6 +2,7 @@
 #include <physfs.h>
 #include "Filesystem.hpp"
 #include <span>
+#include <SDL_system.h>
 
 #ifdef __APPLE__
     #include <CoreFoundation/CFBundle.h>
@@ -38,7 +39,7 @@ VirtualFilesystem::VirtualFilesystem() {
     CFRelease(resourcePath);
     CFRelease(resourcesURL);
 #else
-    auto rvedatapath = Format("{}.rvedata",path);;
+    auto rvedatapath = Format("{}.rvedata",path);
     const char* cstr = rvedatapath.c_str();
     streamingAssetsPath = Filesystem::CurrentWorkingDirectory();
 #endif
