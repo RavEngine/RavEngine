@@ -91,12 +91,7 @@ namespace RavEngine {
 	}
 
     dim_t<int> Window::GetSizeInPixels() const{
-#if __APPLE__
-        float scale = GetDPIScale();
-#else
-        float scale = win_scalefactor;
-#endif
-        return {static_cast<int>(windowdims.width * scale), static_cast<int>(windowdims.height * scale)};
+        return {static_cast<int>(windowdims.width), static_cast<int>(windowdims.height)};
     }
 
     float Window::QueryScaleFactor() const{

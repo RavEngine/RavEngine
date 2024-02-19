@@ -115,7 +115,7 @@ void InputManager::CleanupBindings(){
 	});
 }
 
-void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, float scale, int windowWidth, int windowHeight){
+void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, float scale, int windowWidth, int windowHeight, float dpiScale){
 	switch (event.type) {
 		case SDL_EVENT_KEY_DOWN:
 		case SDL_EVENT_KEY_UP:
@@ -128,8 +128,8 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
 				
 				float velscale = 1 / scale;
 				
-				ProcessAxisID(Special::MOUSEMOVE_X, (float)event.motion.x / width, CID::C0);
-				ProcessAxisID(Special::MOUSEMOVE_Y, (float)event.motion.y / height, CID::C0);
+				ProcessAxisID(Special::MOUSEMOVE_X, (float)event.motion.x / (width / dpiScale), CID::C0);
+				ProcessAxisID(Special::MOUSEMOVE_Y, (float)event.motion.y / (height / dpiScale), CID::C0);
 				
 				ProcessAxisID(Special::MOUSEMOVE_XVEL, event.motion.xrel * velscale, CID::C0);
 				ProcessAxisID(Special::MOUSEMOVE_YVEL, event.motion.yrel * velscale, CID::C0);
