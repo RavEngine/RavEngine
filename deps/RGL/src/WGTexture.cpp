@@ -30,6 +30,10 @@ TextureView TextureWG::GetViewForMip(uint32_t mip) const{
     return TextureView{mipViews.at(mip)};
 }
 
+RGLCustomTextureViewPtr TextureWG::MakeCustomTextureView(const CustomTextureViewConfig& config) const{
+    return RGLCustomTextureViewPtr{};
+}
+
 }
 
 #endif

@@ -185,10 +185,6 @@ set(Random_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/random" EXCLUDE_FROM_ALL)
 
 #SDL
-if(TARGET_EMSCRIPTEN)
-	add_definitions(-sUSE_SDL=2)
-	set(SDL2STATIC_LIB "")
-else()
 set(SDL_VIDEO_OPENGL OFF CACHE INTERNAL "")
 set(SDL_VIDEO_OPENGLES OFF CACHE INTERNAL "")
 set(SDL_VIDEO_CAPTURE ON CACHE INTERNAL "")
@@ -251,13 +247,12 @@ if (NOT RAVENGINE_SERVER)
 		else()
 			set(SDL2STATIC_LIB 	"SDL3-shared")
 		endif()
-	endif()
-	if (ANDROID)
-		# SDL android is hardcoded to load "SDL3.so" with no "d" postfix
-		set_target_properties(SDL3-shared PROPERTIES DEBUG_POSTFIX "")
-		# we get a linker error without this
-		target_link_libraries(SDL3-shared PUBLIC camera2ndk mediandk)
-	endif()
+endif()
+if (ANDROID)
+	# SDL android is hardcoded to load "SDL3.so" with no "d" postfix
+	set_target_properties(SDL3-shared PROPERTIES DEBUG_POSTFIX "")
+	# we get a linker error without this
+	target_link_libraries(SDL3-shared PUBLIC camera2ndk mediandk)
 endif()
 
 # if on a platform other than windows or mac, ensure that an audio backend was found

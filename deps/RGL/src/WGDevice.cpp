@@ -122,7 +122,7 @@ namespace RGL{
         WGPUDeviceDescriptor deviceDesc{
             .nextInChain = nullptr,
             .label = "RGL WGPU device",
-            .requiredFeaturesCount = 0,
+            .requiredFeatureCount = 0,
             .defaultQueue = {
                 .nextInChain = nullptr,
                 .label = "RGL Default queue"
