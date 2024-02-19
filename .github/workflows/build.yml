@@ -52,18 +52,18 @@ jobs:
         with:
           submodules: true
       - name: Install Dependencies
-        run: sudo apt-get update && sudo apt-get install cmake clang python3 uuid-dev -y --no-install-recommends
+        run: sudo apt-get update && sudo apt-get install cmake clang python3 uuid-dev ninja-build -y --no-install-recommends
       - name: Setup Emscripten
         run: git clone https://github.com/emscripten-core/emsdk.git --depth=1 && cd emsdk && ./emsdk install latest && ./emsdk activate latest
       - name: Configure
         run: | 
           mkdir -p build && cd build; 
           source ../emsdk/emsdk_env.sh
-          emcmake cmake .. 
+          emcmake cmake -G "Ninja" .. 
       - name: Build
         run: |
           cd build; 
-          cmake --build . --config Release --target RavEngine
+          cmake --build . --config Release --target RavEngine --parallel
  
   build-apple:
     name: Apple Compile Check
