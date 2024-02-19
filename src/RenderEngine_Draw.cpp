@@ -20,6 +20,10 @@
 #include <chrono>
 #include "Transform.hpp"
 
+#if __APPLE__ || __EMSCRIPTEN__
+#define OCCLUSION_CULLING_UNAVAILABLE
+#endif
+
 
 namespace RavEngine {
 
@@ -1052,6 +1056,7 @@ struct LightingType{
 			};
             
 			auto generatePyramid = [this](const DepthPyramid& depthPyramid, RGLTexturePtr depthStencil) {
+#ifndef OCCLUSION_CULLING_UNAVAILABLE
 				// build the depth pyramid using the depth data from the previous frame
 				depthPyramidCopyPass->SetAttachmentTexture(0, depthPyramid.pyramidTexture->GetViewForMip(0));
 				mainCommandBuffer->BeginRendering(depthPyramidCopyPass);
@@ -1087,6 +1092,7 @@ struct LightingType{
 				}
 				mainCommandBuffer->EndComputeDebugMarker();
 				mainCommandBuffer->EndCompute();
+#endif
 			};
 			generatePyramid(target.depthPyramid, target.depthStencil);
 

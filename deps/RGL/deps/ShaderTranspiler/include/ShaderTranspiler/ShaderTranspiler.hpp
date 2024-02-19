@@ -121,6 +121,7 @@ struct Options{
         uint8_t firstIndex = 0;
         
     } pushConstantSettings;
+    std::string preambleContent;   // Put defines here
 };
 
 class ShaderTranspiler{

@@ -47,18 +47,22 @@ namespace librglc {
 		opt.entryPoint = config.entrypointOutputName;
 		if (toAPI == API::Vulkan) {
 			opt.version = 15;
+            opt.preambleContent = "#define RGL_SL_VK 1";
 		}
 		else if (toAPI == API::Direct3D12) {
 			opt.version = 64;
+            opt.preambleContent = "#define RGL_SL_DX 1";
 		}
 		else if (toAPI == API::Metal) {
 			opt.version = 30;
             opt.pushConstantSettings.firstIndex = MTL_FIRST_BUFFER;    // the [[stage_input]] consumes slot 0, extra vertex buffers consume the next slots
+            opt.preambleContent = "#define RGL_SL_MTL 1";
 		}
 		else if (toAPI == API::WebGPU) {
 			opt.version = 13;
+            opt.preambleContent = "#define RGL_SL_WGSL 1";
 		}
-
+        
 		ShaderTranspiler s;
 		auto result = s.CompileTo(task, config.outputBinary ? rgl2shadert_binary(toAPI) : rgl2shadert_source(toAPI), opt);
 
