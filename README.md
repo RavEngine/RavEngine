@@ -16,6 +16,7 @@ A C++20 cross-platform game framework, with emphasis on addressing pain points i
 14. AR/VR support via OpenXR integration
 15. CI/CD-friendly build process powered by CMake
 16. Quality-of-life features like automatic incremental shader compilation
+17. Integrates with GPU debugging tools (Xcode Metal Debugger, RenderDoc, PIX, NSight)
 
 A complete list of third party technologies can be found in the [`deps`](https://github.com/RavEngine/RavEngine/tree/master/deps) folder.
 
@@ -110,7 +111,20 @@ Software
 - Windows, UWP, Xbox
    - Visual Studio 2022 or later with Desktop Development in C++ module
    - CMake (included with Visual Studio)
-   - LunarG Vulkan SDK (optional)
+   - LunarG Vulkan SDK (optional unless Vulkan support is desired)
+- Android
+   - Android Studio 4.2 or later with NDK 25 or later
+   - Linux or macOS host machine (Windows currently not supported)
+      - macOS host: Xcode
+      - Linux host: clang 16 or later (recommended) or gcc 13 or later
+   - The [SDL Android Builder](https://github.com/Ravbug/sdl-android-builder/) wrapper project
+- Web Browsers
+   - Latest [emsdk](https://github.com/emscripten-core/emsdk)
+   - CMake
+   - Host requirements:
+      - macOS: Xcode
+      - Windows: Visual Studio 2022 with Desktop Development in C++ module
+      - Linux: clang 16 or later (recommended) or gcc 13 or later 
 - Linux
    - ninja (recommended) or make
    - clang 16 or later (recommended) or gcc 13 or later
@@ -119,7 +133,7 @@ Software
    - libx11-dev
    - libwayland-dev
    - uuid-dev
-   - alsa-lib-devel or pulseaudio (or another SDL2-supported audio library)
+   - alsa-lib-devel or pulseaudio (or another SDL3-supported audio library)
    - [LunarG Vulkan SDK](https://www.lunarg.com/vulkan-sdk/)
 
 
