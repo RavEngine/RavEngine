@@ -105,7 +105,7 @@ Hardware
 Note that for end users the minimum system requirements are much lower
 
 Software
-- macOS, iOS, tvOS
+- macOS, iOS, tvOS, visionOS
    - Xcode
    - CMake
 - Windows, UWP, Xbox
