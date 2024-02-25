@@ -116,6 +116,9 @@ void InputManager::CleanupBindings(){
 }
 
 void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, float scale, int windowWidth, int windowHeight, float dpiScale){
+#if _WIN32
+	dpiScale = 1;	// don't scale on Windows
+#endif
 	switch (event.type) {
 		case SDL_EVENT_KEY_DOWN:
 		case SDL_EVENT_KEY_UP:
