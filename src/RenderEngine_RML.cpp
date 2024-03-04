@@ -158,8 +158,46 @@ Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices,
 		RGL::BufferAccess::Private
 	});
 
-	vbuf->SetBufferData({vertices, uint32_t(num_vertices * sizeof(Rml::Vertex))});
-	ibuf->SetBufferData({indices, uint32_t(num_indices * sizeof(int))});
+	// first half is for vertex data, second half is for index data
+	auto stagingBuf = device->CreateBuffer({
+		uint32_t(num_vertices * sizeof(Rml::Vertex) + num_indices * sizeof(int)),
+		{.StorageBuffer = true},
+		sizeof(char),
+		RGL::BufferAccess::Shared
+	});
+	stagingBuf->MapMemory();
+	std::byte* ptr = static_cast<std::byte*>(stagingBuf->GetMappedDataPtr());
+	const auto vertSize = num_vertices * sizeof(Rml::Vertex);
+	std::memcpy(ptr, vertices, vertSize);
+
+	const auto indsize = num_indices * sizeof(int);
+	std::memcpy(ptr + vertSize, indices, indsize);
+
+	mainCommandBuffer->CopyBufferToBuffer(
+		{
+			.buffer = stagingBuf,
+			.offset = 0
+		}, 
+		{
+			.buffer = vbuf,
+			.offset = 0
+		}, vertSize);
+
+	mainCommandBuffer->CopyBufferToBuffer(
+		{
+			.buffer = stagingBuf,
+			.offset = uint32_t(vertSize)
+		},
+		{
+			.buffer = ibuf,
+			.offset = 0
+		},
+		indsize
+	);
+
+	stagingBuf->UnmapMemory();
+	// queue staging for destruction
+	gcBuffers.enqueue(stagingBuf);
 
 	CompiledGeoStruct* cgs = new CompiledGeoStruct{ vbuf,ibuf, texture, num_indices };
 	return reinterpret_cast<Rml::CompiledGeometryHandle>(cgs);
