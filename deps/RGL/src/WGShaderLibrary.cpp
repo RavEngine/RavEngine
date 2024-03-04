@@ -1,6 +1,8 @@
 #if RGL_WEBGPU_AVAILABLE
 #include "WGShaderLibrary.hpp"
+#if RGL_RUNTIME_COMPILATION
 #include <librglc.hpp>
+#endif
 #include <streambuf>
 #include <fstream>
 #include "WGDevice.hpp"

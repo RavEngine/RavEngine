@@ -205,10 +205,7 @@ Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices,
 /// Called by RmlUi when it wants to render application-compiled geometry.
 void RenderEngine::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, const Rml::Vector2f& translation){
 	CompiledGeoStruct* cgs = reinterpret_cast<CompiledGeoStruct*>(geometry);
-#if 0
 
-	bgfx::setState( BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_SRC_ALPHA) );
-#endif
 	RGLTexturePtr tx;
 	if (cgs->th) {
 		auto btexture = reinterpret_cast<TextureHandleStruct*>(cgs->th);

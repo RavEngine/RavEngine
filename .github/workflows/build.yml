@@ -46,20 +46,24 @@ jobs:
   build-emscripten:
     name: Emscripten-Linux Compile Check
     runs-on: ubuntu-latest
-    if: false
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: true
       - name: Install Dependencies
-        run: sudo apt-get update && sudo apt-get install cmake clang python3 libgl1-mesa-dev uuid-dev libwayland-dev libxkbcommon-dev libegl-dev -y --no-install-recommends
+        run: sudo apt-get update && sudo apt-get install cmake clang python3 uuid-dev ninja-build -y --no-install-recommends
       - name: Setup Emscripten
-        run: git clone https://github.com/emscripten-core/emsdk.git --depth=1 && cd emsdk && ./emsdk install latest && ./emsdk activate latest && source ./emsdk_env.sh
+        run: git clone https://github.com/emscripten-core/emsdk.git --depth=1 && cd emsdk && ./emsdk install latest && ./emsdk activate latest
       - name: Configure
-        run: mkdir -p build && cd build; cmake -DCMAKE_TOOLCHAIN_FILE=../emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake .. 
+        run: | 
+          mkdir -p build && cd build; 
+          source ../emsdk/emsdk_env.sh
+          emcmake cmake -G "Ninja" .. 
       - name: Build
-        run: cd build; cmake --build . --config Release --target RavEngine
+        run: |
+          cd build; 
+          cmake --build . --config Release --target RavEngine --parallel
  
   build-apple:
     name: Apple Compile Check

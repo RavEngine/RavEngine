@@ -230,6 +230,7 @@ int App::run(int argc, char** argv) {
 	lastFrameTime = clocktype::now();
    
 #if !RVE_SERVER
+    float windowScaleFactor = GetMainWindow()->GetDPIScale();
 	bool exit = false;
 	SDL_Event event;
 	while (!exit) {
@@ -255,6 +256,7 @@ int App::run(int argc, char** argv) {
                 case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
                     Renderer->mainCommandQueue->WaitUntilCompleted();
                     window->NotifySizeChanged(event.window.data1, event.window.data2);
+                    windowScaleFactor = GetMainWindow()->GetDPIScale();
                     {
                         auto size = window->GetSizeInPixels();
                         Renderer->ResizeRenderTargetCollection(mainWindowView.collection, {uint32_t(size.width), uint32_t(size.height)});
@@ -266,9 +268,9 @@ int App::run(int argc, char** argv) {
             }
 			//process others
 			if (inputManager) {
-				inputManager->ProcessInput(event,windowflags,currentScale, window->windowdims.width, window->windowdims.height);
+				inputManager->ProcessInput(event,windowflags,currentScale, window->windowdims.width, window->windowdims.height, windowScaleFactor);
 #ifndef NDEBUG
-				RenderEngine::debuggerInput->ProcessInput(event,windowflags,currentScale, window->windowdims.width, window->windowdims.height);
+				RenderEngine::debuggerInput->ProcessInput(event,windowflags,currentScale, window->windowdims.width, window->windowdims.height, windowScaleFactor);
 #endif
 			}
 		}

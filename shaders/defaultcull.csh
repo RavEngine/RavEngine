@@ -155,6 +155,8 @@ void main() {
 
     // check occlusion
     if (isOnCamera){
+        // occlusion culling is not available on Metal or WebGPU
+#if !defined(RGL_SL_MTL) && !defined(RGL_SL_WGSL)
 		ClipBoundingBoxResult projected = projectWorldSpaceSphere(center, radius, ubo.viewProj);
 
         float mipDim = textureSize(depthPyramid,0).x;
@@ -188,6 +190,7 @@ void main() {
             
             isOnCamera = isOnCamera && projected.referenceZ >= minDepth;
         }
+#endif
     }
 
 	// check 2: what LOD am I in

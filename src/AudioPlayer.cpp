@@ -220,12 +220,17 @@ void AudioPlayer::EnqueueAudioTasks(){
  */
 void AudioPlayer::TickStatic(void *udata, SDL_AudioStream *stream, int additional_amount, int total_amount){
     if (additional_amount > 0) {
-        Uint8 *data = SDL_stack_alloc(Uint8, additional_amount);
+        AudioPlayer* player = static_cast<AudioPlayer*>(udata);
+        // this works because we can queue more audio than is requested.
+        int bytesToGenerate = player->buffer_size * player->nchannels * sizeof(float);
+        auto n_iters = std::ceil((float)additional_amount / bytesToGenerate);
+        Uint8 *data = SDL_stack_alloc(Uint8, bytesToGenerate);
         if (data) {
-            AudioPlayer* player = static_cast<AudioPlayer*>(udata);
-            player->buffer_size = additional_amount;
-            player->Tick(data, additional_amount);
-            SDL_PutAudioStreamData(stream, data, additional_amount);
+            for(int i = 0; i < n_iters; i++){
+                TZero(data, bytesToGenerate);
+                player->Tick(data, bytesToGenerate);
+                SDL_PutAudioStreamData(stream, data, bytesToGenerate);
+            }
             SDL_stack_free(data);
         }
     }
