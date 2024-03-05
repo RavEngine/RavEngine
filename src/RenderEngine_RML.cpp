@@ -158,8 +158,41 @@ Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices,
 		RGL::BufferAccess::Private
 	});
 
-	vbuf->SetBufferData({vertices, uint32_t(num_vertices * sizeof(Rml::Vertex))});
-	ibuf->SetBufferData({indices, uint32_t(num_indices * sizeof(int))});
+	// first half is for vertex data, second half is for index data
+	const auto vertSize = num_vertices * sizeof(Rml::Vertex);
+	const auto indsize = num_indices * sizeof(int);
+
+	if (RGL::CurrentAPI() != RGL::API::Vulkan) {
+		auto vbufStaging = WriteTransient({ vertices, vertSize });
+		auto ibufStaging = WriteTransient({ indices, indsize });
+
+		mainCommandBuffer->CopyBufferToBuffer(
+			{
+				.buffer = transientBuffer,
+				.offset = vbufStaging
+			},
+		{
+			.buffer = vbuf,
+			.offset = 0
+		}, vertSize);
+
+		mainCommandBuffer->CopyBufferToBuffer(
+			{
+				.buffer = transientBuffer,
+				.offset = ibufStaging
+			},
+		{
+			.buffer = ibuf,
+			.offset = 0
+		},
+			indsize
+		);
+	}
+	else {
+		// vulkan requires us to do something inefficient here
+		vbuf->SetBufferData({ vertices, uint32_t(num_vertices * sizeof(Rml::Vertex)) });
+		ibuf->SetBufferData({ indices, uint32_t(num_indices * sizeof(int)) });
+	}
 
 	CompiledGeoStruct* cgs = new CompiledGeoStruct{ vbuf,ibuf, texture, num_indices };
 	return reinterpret_cast<Rml::CompiledGeometryHandle>(cgs);
