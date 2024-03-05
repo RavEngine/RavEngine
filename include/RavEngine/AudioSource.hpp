@@ -105,14 +105,14 @@ struct AudioDataProvider{
     /**
      Starts playing the audio source if it is not playing. Call Pause() to suspend it.
      */
-    inline void Play(){
+    virtual void Play(){
         isPlaying = true;
     }
     
     /**
      Stop the source if it is playing. Call Play() to resume.
      */
-    inline void Pause(){
+    virtual void Pause(){
         isPlaying = false;
     }
     
@@ -153,7 +153,7 @@ class AudioListener : public Queryable<AudioListener>, public AudioGraphComposed
 struct SampledAudioDataProvider : public AudioGraphComposed, public AudioDataProvider{
     Ref<AudioAsset> asset;
     
-    size_t playhead_pos = 0;
+    uint64_t lastPlayTime = 0;
     
     SampledAudioDataProvider(decltype(asset) a, uint8_t nchannels = 1);
     
@@ -168,9 +168,11 @@ struct SampledAudioDataProvider : public AudioGraphComposed, public AudioDataPro
     /**
      Reset the audio playhead to the beginning of this source. This does not trigger it to begin playing.
      */
-    void Restart() final{
-        playhead_pos = 0;
-    }
+    void Restart() final;
+    
+    void Pause() final;
+    
+    void Play() final;
     
     /**
      Get the next region, accounting for looping and volume, of the current track. The playhead advances buffer.size() % (loops? numsamples : 1).

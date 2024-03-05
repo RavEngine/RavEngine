@@ -168,6 +168,8 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     for (int i = 0; i < accumView.size(); i++) {
         accumView[i] = std::clamp(accumView[i], -1.0f, 1.0f);
     }
+    
+    globalSamples += sharedBufferView.sizeOneChannel();
 }
 
 void AudioPlayer::EnqueueAudioTasks(){

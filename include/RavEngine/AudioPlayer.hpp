@@ -22,6 +22,7 @@ class AudioPlayer{
     SDL_AudioStream* stream;
 	WeakRef<World> worldToRender;
     uint64_t currentProcessingID = 0;
+    uint64_t globalSamples = 0; // in units of a single channel
 #endif
 
     
@@ -45,6 +46,7 @@ class AudioPlayer{
     
     void EnqueueAudioTasks();
     UnorderedSet<Ref<AudioDataProvider>> alreadyTicked;
+    
 #endif
 
     
@@ -84,6 +86,10 @@ public:
 	
     const static auto GetBufferCount(){
         return config_nbuffers;
+    }
+    
+    decltype(globalSamples) GetGlobalAudioTime() const{
+        return globalSamples;
     }
 #endif
     

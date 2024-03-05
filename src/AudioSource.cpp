@@ -127,11 +127,40 @@ RavEngine::PlanarSampleBufferInlineView AudioRenderBuffer::SingleRenderBuffer::G
     return PlanarSampleBufferInlineView{scratch_impl, static_cast<size_t>(AudioPlayer::GetBufferSize() * nchannels), static_cast<size_t>(AudioPlayer::GetBufferSize())};
 }
 
+void SampledAudioDataProvider::Play(){
+    if (!isPlaying) {
+        lastPlayTime = GetApp()->GetAudioPlayer()->GetGlobalAudioTime() - lastPlayTime;
+        AudioDataProvider::Play();
+    }
+}
+
+void SampledAudioDataProvider::Restart(){
+    lastPlayTime = GetApp()->GetAudioPlayer()->GetGlobalAudioTime();
+}
+
+void SampledAudioDataProvider::Pause(){
+    // record pause time so that resume begins in the correct place
+    if (isPlaying) {
+        lastPlayTime = GetApp()->GetAudioPlayer()->GetGlobalAudioTime();
+    }
+    AudioDataProvider::Pause();
+}
 
 void SampledAudioDataProvider::ProvideBufferData(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchSpace) {
     const auto nsamples = asset->GetNumSamples();
     const auto nchannels = asset->GetNChanels();
     assert(buffer.GetNChannels() >= nchannels);  // you are trying to do something that doesn't make sense!!
+    
+    // calculate the playhead starting pos
+    const auto globalAudioTime = GetApp()->GetAudioPlayer()->GetGlobalAudioTime();
+    uint64_t playhead_pos = 0;
+    if (loops){
+        playhead_pos = (globalAudioTime - lastPlayTime) % nsamples;
+    }
+    else{
+        playhead_pos = globalAudioTime - lastPlayTime;
+    }
+    
     for(size_t i = 0; i < buffer.sizeOneChannel(); i++){
         //is playhead past end of source?
         if (playhead_pos >= nsamples){
