@@ -113,6 +113,9 @@ namespace RavEngine {
         // since iOS and macOS do not use OpenGL we cannot use the GL call here
         // instead we derive it by querying display data
         return GetWindowScaleFactor(window);
+#else
+	// linux lets use 1.0f as the default here until we figure out a better way to query that
+        return 1.0f; 
 #endif
     }
 
