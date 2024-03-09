@@ -162,7 +162,7 @@ Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices,
 	const auto vertSize = num_vertices * sizeof(Rml::Vertex);
 	const auto indsize = num_indices * sizeof(int);
 
-	if (RGL::CurrentAPI() != RGL::API::Vulkan) {
+	if (RGL::CurrentAPI() == RGL::API::Direct3D12) {
 		auto vbufStaging = WriteTransient({ vertices, vertSize });
 		auto ibufStaging = WriteTransient({ indices, indsize });
 
