@@ -352,19 +352,26 @@ void CommandBufferMTL::CopyTextureToTexture(const TextureCopyConfig& from, const
 }
 
 void CommandBufferMTL::BeginRenderDebugMarker(const std::string &label){
-    [currentCommandEncoder pushDebugGroup:[NSString stringWithUTF8String:label.c_str()]];
+#ifndef NDEBUG
+    auto str = [NSString stringWithUTF8String:label.c_str()];
+    [currentComputeCommandEncoder pushDebugGroup:str];
+    [currentCommandEncoder pushDebugGroup:str];
+#endif
 }
 
 void CommandBufferMTL::BeginComputeDebugMarker(const std::string &label){
-    [currentComputeCommandEncoder pushDebugGroup:[NSString stringWithUTF8String:label.c_str()]];
+    BeginRenderDebugMarker(label);
 }
 
 void CommandBufferMTL::EndRenderDebugMarker(){
+#ifndef NDEBUG
     [currentCommandEncoder popDebugGroup];
+    [currentComputeCommandEncoder popDebugGroup];
+#endif
 }
 
 void CommandBufferMTL::EndComputeDebugMarker(){
-    [currentComputeCommandEncoder popDebugGroup];
+    EndRenderDebugMarker();
 }
 
 void CommandBufferMTL::ExecuteIndirectIndexed(const RGL::IndirectConfig & config) {

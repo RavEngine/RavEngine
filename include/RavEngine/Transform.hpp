@@ -19,14 +19,20 @@ namespace RavEngine {
 	struct Transform : public ComponentWithOwner, public Queryable<Transform> {
     protected:
         mutable matrix4 matrix;				// defined as the world space transform of the PARENT
+        UnorderedVector<ComponentHandle<Transform>>  children;        //non-owning
         quaternion rotation;
         vector3 position, scale;
-        UnorderedVector<ComponentHandle<Transform>>  children;        //non-owning
         ComponentHandle<Transform> parent;    //non-owning
-        mutable bool isDirty = false;		// used for when the transform hierarchy has been changed
+        mutable bool isDirty : 1 = false;		// used for when the transform hierarchy has been changed
+        mutable bool isTickDirty : 1 = false;    // used for when this transform has been updated in the current tick and needs updating in the world's render data
 
+        // sanity checking for optimal struct padding
+        static_assert(sizeof(matrix) >= sizeof(children), "Invalid struct order");
+        static_assert(sizeof(children) >= sizeof(rotation), "Invalid struct order");
+        static_assert(sizeof(rotation) >= sizeof(position), "Invalid struct order");
+        static_assert(sizeof(position) >= sizeof(parent), "Invalid struct order");
+        
 		friend class World;
-		mutable bool isTickDirty = false;	// used for when this transform has been updated in the current tick and needs updating in the world's render data
         
         inline void MarkAsDirty() const{
             isDirty = true;
