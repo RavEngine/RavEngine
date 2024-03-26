@@ -226,7 +226,7 @@ void RavEngine::RigidBodyDynamicComponent::Sleep()
 	static_cast<PxRigidDynamic*>(rigidActor)->putToSleep();
 }
 
-bool RavEngine::RigidBodyDynamicComponent::IsSleeping()
+bool RavEngine::RigidBodyDynamicComponent::IsSleeping() const
 {
 	return static_cast<PxRigidDynamic*>(rigidActor)->isSleeping();
 }

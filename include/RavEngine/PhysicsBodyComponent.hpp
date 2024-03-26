@@ -258,7 +258,7 @@ public Queryable<PhysicsBodyComponent
 		/**
 		@return true if the body is asleep.
 		*/
-		bool IsSleeping();
+		bool IsSleeping() const;
 		
 		enum AxisLock{
 			Linear_X = (1 << 0),
