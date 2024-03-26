@@ -67,12 +67,15 @@ set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
 set(PFFFT_LIBRARY PFFFT)
 set(PFFFT_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/pffft")
 
+add_library(PFFFT::PFFFT ALIAS PFFFT)
+add_library(MySOFA::MySOFA ALIAS mysofa-static)
+
+target_include_directories(mysofa-static PUBLIC "${ZLIB_INCLUDE_DIR}")
+
 set(MySOFA_LIBRARY mysofa-static)
 set(MySOFA_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/libmysofa/src/hrtf")
 
 set(FlatBuffers_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/flatbuffers/include")
 add_subdirectory(steam-audio/core)
-
-target_link_libraries(phonon PUBLIC pffft)
 
 add_dependencies(phonon flatc)

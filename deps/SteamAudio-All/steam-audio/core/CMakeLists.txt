@@ -157,7 +157,6 @@ if (IPL_OS_WINDOWS)
     )
     add_compile_options(
         /EHsc /MP /W3 /Zi
-        $<IF:$<CONFIG:Debug>,/MTd,/MT>
         $<$<CONFIG:Debug>:/RTC1>
         $<$<NOT:$<CONFIG:Debug>>:/Ox>
         $<$<CONFIG:Release>:/GL>

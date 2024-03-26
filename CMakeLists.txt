@@ -350,7 +350,8 @@ if (NOT RAVENGINE_SERVER)
 	endif()
 	add_subdirectory(deps/SteamAudio-All EXCLUDE_FROM_ALL)
 	set(SA_LIB "phonon")
-	set(PFFFT_LIB "pffft")
+	target_link_libraries(mysofa-static zlibstatic)
+	target_include_directories(mysofa-static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/assimp/contrib/zlib/")
 endif()
 
 # recast
@@ -606,7 +607,6 @@ target_link_libraries("${PROJECT_NAME}"
 	"r8brain"
 	PUBLIC
 	${SA_LIB}
-	${PFFFT_LIB}
 	"effolkronium_random"
 	"glm"
 	"fmt"
@@ -740,7 +740,7 @@ BUILD_FUSE_ozz_base;BUILD_FUSE_ozz_geometry;BUILD_FUSE_ozz_options"
 group_in("Libraries/openxr" "openxr_loader" "generate_openxr_header" "xr_global_generated_files")
 
 group_in("Libraries/SteamAudio"
-"core;fbschemas;hrtf;phonon;flatc;PFFFT"
+"core;fbschemas;hrtf;phonon;flatc;PFFFT;mysofa-static"
 )
 
 macro(shader_compile infile stage api extension binary)
