@@ -8,20 +8,21 @@
 #include "AudioPlayer.hpp"
 
 #include "mathtypes.hpp"
-#include <common/room_effects_utils.h>
 
 using namespace RavEngine;
 using namespace std;
 
-AudioRoom::RoomData::RoomData() : audioEngine(vraudio::CreateResonanceAudioApi(AudioPlayer::GetNChannels(), AudioPlayer::GetBufferSize(), AudioPlayer::GetSamplesPerSec())){}
+AudioRoom::RoomData::RoomData() {}
 
 void AudioRoom::RoomData::SetListenerTransform(const vector3 &worldpos, const quaternion &wr){
+#if 0
 	audioEngine->SetHeadPosition(worldpos.x, worldpos.y, worldpos.z);
 	audioEngine->SetHeadRotation(wr.x, wr.y, wr.z, wr.w);
+#endif
 }
 
 void AudioRoom::RoomData::AddEmitter(const float* data, const vector3 &pos, const quaternion &rot, const vector3 &roompos, const quaternion &roomrot, size_t code, float volume){
-    
+#if 0
     auto& worldpos = pos;
     auto& worldrot = rot;
     
@@ -49,10 +50,12 @@ void AudioRoom::RoomData::AddEmitter(const float* data, const vector3 &pos, cons
     audioEngine->SetSourcePosition(src, worldpos.x, worldpos.y, worldpos.z);
     audioEngine->SetSourceRotation(src, worldrot.x, worldrot.y, worldrot.z, worldrot.w);
     audioEngine->SetSourceRoomEffectsGain(src, gain);
+#endif
 }
 
 
 void AudioRoom::RoomData::Simulate(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer){
+#if 0
     auto nchannels = AudioPlayer::GetNChannels();
     
     // convert to an array of pointers for Resonance
@@ -69,6 +72,7 @@ void AudioRoom::RoomData::Simulate(PlanarSampleBufferInlineView& buffer, PlanarS
 		audioEngine->DestroySource(source.second);
 	}
 	allSources.clear();
+#endif
 }
 
 //void RavEngine::AudioRoom::DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const

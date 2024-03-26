@@ -1,5 +1,4 @@
 #pragma once
-#include <api/resonance_audio_api.h>
 #include "mathtypes.hpp"
 #include "Ref.hpp"
 #include "ComponentWithOwner.hpp"
@@ -16,8 +15,6 @@ namespace RavEngine{
 class AudioRoomSyncSystem;
 class AudioPlayer;
 
-using RoomMat = vraudio::MaterialName;
-
 /**
  Renders audio buffers based on its owning world's state
  */
@@ -26,7 +23,6 @@ class AudioRoom : public ComponentWithOwner, public IDebugRenderable, public Que
 	friend class RavEngine::AudioPlayer;
 public:
     struct RoomData : public AudioGraphComposed{
-        UnorderedMap<size_t,vraudio::ResonanceAudioApi::SourceId> allSources;
         
         // Material name of each surface of the shoebox room in this order:
         // [0] (-)ive x-axis wall (left)
@@ -35,6 +31,7 @@ public:
         // [3] (+)ive y-axis wall (top)
         // [4] (-)ive z-axis wall (front)
         // [5] (+)ive z-axis wall (back)
+#if 0
         Array<RoomMat, 6> wallMaterials{
             RoomMat::kTransparent,
             RoomMat::kTransparent,
@@ -43,9 +40,11 @@ public:
             RoomMat::kTransparent,
             RoomMat::kTransparent
         };
+
+        UnorderedMap<size_t, vraudio::ResonanceAudioApi::SourceId> allSources;
+#endif
         //size of 0 = infinite
         vector3 roomDimensions = vector3(0,0,0);
-        vraudio::ResonanceAudioApi* audioEngine = nullptr;
 
         float reflection_scalar = 1, reverb_gain = 1, reverb_time = 1.0, reverb_brightness = 0;
         
@@ -85,7 +84,7 @@ public:
         
         RoomData();
         ~RoomData(){
-            delete audioEngine;
+
         }
     };
     Ref<RoomData> data;
@@ -106,7 +105,9 @@ public:
 	/**
 	 @return a writable reference to the wall materials
 	 */
+#if 0
     inline decltype(RoomData::wallMaterials)& WallMaterials() { return data->wallMaterials; }
+#endif
 	
 	/**
 	 Render the debug shape for this room. Invoke in a debug rendering component

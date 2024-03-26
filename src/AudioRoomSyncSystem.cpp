@@ -3,8 +3,7 @@
 #include "AudioRoom.hpp"
 #include "AudioRoomSyncSystem.hpp"
 #include "mathtypes.hpp"
-#include <common/room_properties.h>
-#include <common/room_effects_utils.h>
+
 #include "Entity.hpp"
 #include "Transform.hpp"
 
@@ -12,6 +11,7 @@ using namespace RavEngine;
 using namespace std;
 
 void AudioRoomSyncSystem::operator()(AudioRoom& room, Transform& tr) const{
+#if 0
     auto pos = tr.GetWorldPosition();
     auto rot = tr.GetWorldRotation();
     auto mtx = tr.GetWorldMatrix();
@@ -55,5 +55,6 @@ void AudioRoomSyncSystem::operator()(AudioRoom& room, Transform& tr) const{
     //write changes
     room.data->audioEngine->SetReflectionProperties(ref_data);
     room.data->audioEngine->SetReverbProperties(rev_data);
+#endif
 }
 #endif

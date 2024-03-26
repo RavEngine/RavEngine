@@ -64,7 +64,7 @@ set(STEAMAUDIO_BUILD_DOCS OFF CACHE INTERNAL "")
 set(STEAMAUDIO_ENABLE_EMBREE ON CACHE INTERNAL "")
 set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
 
-set(PFFFT_LIBRARY pffft)
+set(PFFFT_LIBRARY PFFFT)
 set(PFFFT_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/pffft")
 
 set(MySOFA_LIBRARY mysofa-static)
@@ -72,5 +72,7 @@ set(MySOFA_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/libmysofa/src/hrtf")
 
 set(FlatBuffers_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/flatbuffers/include")
 add_subdirectory(steam-audio/core)
+
+target_link_libraries(phonon PUBLIC pffft)
 
 add_dependencies(phonon flatc)

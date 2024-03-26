@@ -324,10 +324,6 @@ else()
 endif()
 add_dependencies("GameNetworkingSockets_s" "GNS_Deps")
 
-# resonance-audio
-set(BUILD_RESONANCE_AUDIO_API ON CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/resonance-audio" EXCLUDE_FROM_ALL)
-
 # taskflow
 SET(TF_BUILD_BENCHMARKS OFF CACHE INTERNAL "" )
 SET(TF_BUILD_CUDA OFF CACHE INTERNAL "")
@@ -344,14 +340,18 @@ set(ASSIMP_NO_EXPORT ON CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/assimp" EXCLUDE_FROM_ALL)
 
 # steam audio
-set(SA_BUILD_ZLIB OFF CACHE INTERNAL "")
-set(ZLIB_LIBRARY zlibstatic CACHE INTERNAL "")
-set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/deps/assimp/contrib/zlib" CACHE INTERNAL "")
-set(CMAKE_DISABLE_FIND_PACKAGE_ZLIB OFF CACHE INTERNAL "")
-if (CMAKE_CROSSCOMPILING)
-	set(SA_BUILD_FLATC OFF CACHE INTERNAL "")
+if (NOT RAVENGINE_SERVER)
+	set(SA_BUILD_ZLIB OFF CACHE INTERNAL "")
+	set(ZLIB_LIBRARY zlibstatic CACHE INTERNAL "")
+	set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/deps/assimp/contrib/zlib" CACHE INTERNAL "")
+	set(CMAKE_DISABLE_FIND_PACKAGE_ZLIB OFF CACHE INTERNAL "")
+	if (CMAKE_CROSSCOMPILING)
+		set(SA_BUILD_FLATC OFF CACHE INTERNAL "")
+	endif()
+	add_subdirectory(deps/SteamAudio-All EXCLUDE_FROM_ALL)
+	set(SA_LIB "phonon")
+	set(PFFFT_LIB "pffft")
 endif()
-add_subdirectory(deps/SteamAudio-All EXCLUDE_FROM_ALL)
 
 # recast
 SET(RECASTNAVIGATION_DEMO OFF CACHE INTERNAL "")
@@ -599,16 +599,14 @@ target_link_libraries("${PROJECT_NAME}"
 	"assimp"
 	"im3d"
 	"physfs-static"
-	"PffftObj"
-	"SadieHrtfsObj"
-	"ResonanceAudioObj"
 	#"PhysXGPU"
 	${RML_LIB}
 	"libnyquist"
 	"GameNetworkingSockets_s"
 	"r8brain"
-	"phonon"
 	PUBLIC
+	${SA_LIB}
+	${PFFFT_LIB}
 	"effolkronium_random"
 	"glm"
 	"fmt"
@@ -702,7 +700,7 @@ macro(enable_unity targets)
 endmacro()
 
 set(all_unity 
-"LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;im3d;SadieHrtfsObj;ResonanceAudioObj;libnyquist;Detour;ozz_animation;ozz_animation_offline;\
+"LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;im3d;libnyquist;Detour;ozz_animation;ozz_animation_offline;\
 ozz_animation_tools;ozz_base;ozz_geometry;ozz_options;json;libopus;DebugUtils;DetourCrowd;DetourTileCache;harfbuzz;"
 )
 
@@ -717,8 +715,8 @@ enable_unity("${all_unity}"
 SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
 
 group_in("Libraries" "assimp;assimp_cmd;fmt;DebugUtils;Detour;DetourCrowd;DetourTileCache;freetype;GameNetworkingSockets_s;GNS_Deps;\
-im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
-Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
+im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;physfs;physfs-static;BUILD_FUSE_ALL;\
+Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL3-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
 sdl_headers_copy;libprotoc;protoc;
 ")
@@ -742,7 +740,7 @@ BUILD_FUSE_ozz_base;BUILD_FUSE_ozz_geometry;BUILD_FUSE_ozz_options"
 group_in("Libraries/openxr" "openxr_loader" "generate_openxr_header" "xr_global_generated_files")
 
 group_in("Libraries/SteamAudio"
-"core;fbschemas;hrtf;phonon;flatc"
+"core;fbschemas;hrtf;phonon;flatc;PFFFT"
 )
 
 macro(shader_compile infile stage api extension binary)
