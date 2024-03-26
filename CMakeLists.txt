@@ -148,13 +148,22 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	if (NOT (HOST_TOOLS_RESULT EQUAL 0))
 		message(FATAL_ERROR "Failed to configure host tools. See above for output.")
 	endif()
+
+	if(CMAKE_HOST_WIN32)
+		set(FlatBuffers_EXECUTABLE "${TOOLS_DIR}/flatc/Release/flatc.exe")
+	else()
+		set(FlatBuffers_EXECUTABLE "${TOOLS_DIR}/flatc/Release/flatc")
+	endif()
+
 	add_custom_command(
 		PRE_BUILD
-		OUTPUT "${PROTOC_CMD}" "${rglc_path}"
+		OUTPUT "${PROTOC_CMD}" "${rglc_path}" "${FlatBuffers_EXECUTABLE}"
 		COMMAND ${CMAKE_COMMAND} --build . --config Release --target protoc rglc
 		WORKING_DIRECTORY "${TOOLS_DIR}"
 		VERBATIM
 	)
+
+	add_custom_target(flatc DEPENDS "${FlatBuffers_EXECUTABLE}")
 else()
 	set(TOOLS_DIR ${CMAKE_CURRENT_BINARY_DIR}/host-tools CACHE INTERNAL "")
 	set(PROTOC_CMD "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/protoc" CACHE INTERNAL "")
@@ -333,6 +342,16 @@ set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE INTERNAL "")
 set(ASSIMP_INSTALL OFF CACHEN INTERNAL "")
 set(ASSIMP_NO_EXPORT ON CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/assimp" EXCLUDE_FROM_ALL)
+
+# steam audio
+set(SA_BUILD_ZLIB OFF CACHE INTERNAL "")
+set(ZLIB_LIBRARY zlibstatic CACHE INTERNAL "")
+set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/deps/assimp/contrib/zlib" CACHE INTERNAL "")
+set(CMAKE_DISABLE_FIND_PACKAGE_ZLIB OFF CACHE INTERNAL "")
+if (CMAKE_CROSSCOMPILING)
+	set(SA_BUILD_FLATC OFF CACHE INTERNAL "")
+endif()
+add_subdirectory(deps/SteamAudio-All EXCLUDE_FROM_ALL)
 
 # recast
 SET(RECASTNAVIGATION_DEMO OFF CACHE INTERNAL "")
@@ -588,6 +607,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"libnyquist"
 	"GameNetworkingSockets_s"
 	"r8brain"
+	"phonon"
 	PUBLIC
 	"effolkronium_random"
 	"glm"
@@ -720,6 +740,10 @@ BUILD_FUSE_ozz_base;BUILD_FUSE_ozz_geometry;BUILD_FUSE_ozz_options"
 )
 
 group_in("Libraries/openxr" "openxr_loader" "generate_openxr_header" "xr_global_generated_files")
+
+group_in("Libraries/SteamAudio"
+"core;fbschemas;hrtf;phonon;flatc"
+)
 
 macro(shader_compile infile stage api extension binary)
 	if (NOT RAVENGINE_SERVER)
