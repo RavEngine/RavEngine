@@ -21,13 +21,12 @@ set_target_properties(rglc
 # protobuf for build machine
 set(protobuf_BUILD_TESTS OFF CACHE INTERNAL "")
 set(protobuf_MODULE_COMPATIBLE ON CACHE INTERNAL "")
-add_subdirectory(../GameNetworkingSockets/protobuf/cmake ${CMAKE_BINARY_DIR}/protobuf)
+add_subdirectory(../GameNetworkingSockets/protobuf/cmake "${CMAKE_BINARY_DIR}/protobuf")
 
 set_target_properties("protoc" PROPERTIES UNITY_BUILD ON)
 
 # flatc for build machine
 set(FLATBUFFERS_BUILD_TESTS OFF CACHE INTERNAL "")
 set(FLATBUFFERS_INSTALL OFF CACHE INTERNAL "")
-add_subdirectory(flatbuffers EXCLUDE_FROM_ALL)
-set_target_properties(flatc PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/flatc/")
+add_subdirectory(../SteamAudio-All/flatbuffers "${CMAKE_BINARY_DIR}/flatc")
 
