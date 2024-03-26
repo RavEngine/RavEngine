@@ -33,7 +33,7 @@ function (compile_fbs FBS_SOURCE)
 
     add_custom_command(
         OUTPUT      ${CMAKE_CURRENT_BINARY_DIR}/${FBS_OUTPUT}
-        DEPENDS     ${CMAKE_CURRENT_SOURCE_DIR}/${FBS_SOURCE}
+        DEPENDS     ${CMAKE_CURRENT_SOURCE_DIR}/${FBS_SOURCE} flatc
         COMMAND     ${FlatBuffers_EXECUTABLE} ${FlatBuffers_FLAGS} -o ${CMAKE_CURRENT_BINARY_DIR}/ ${CMAKE_CURRENT_SOURCE_DIR}/${FBS_SOURCE}
         COMMENT     "Compiling FlatBuffers schema ${FBS_SOURCE}..."
         VERBATIM
