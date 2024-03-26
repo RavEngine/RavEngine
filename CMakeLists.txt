@@ -158,7 +158,7 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	add_custom_command(
 		PRE_BUILD
 		OUTPUT "${PROTOC_CMD}" "${rglc_path}" "${FlatBuffers_EXECUTABLE}"
-		COMMAND ${CMAKE_COMMAND} --build . --config Release --target protoc rglc
+		COMMAND ${CMAKE_COMMAND} --build . --config Release --target protoc rglc flatc
 		WORKING_DIRECTORY "${TOOLS_DIR}"
 		VERBATIM
 	)
