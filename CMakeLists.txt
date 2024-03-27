@@ -100,10 +100,6 @@ set(CMAKE_OSX_ARCHITECTURES "x86_64"
 
 # ============ build machine tools ==============
 
-macro(set_tools)
-	
-endmacro()
-
 if(NOT (CMAKE_VS_PLATFORM_NAME STREQUAL ""))
 	if(CMAKE_VS_PLATFORM_NAME_DEFAULT STREQUAL CMAKE_VS_PLATFORM_NAME)
 		set(VS_CROSSCOMP OFF CACHE INTERNAL "")
@@ -127,12 +123,12 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	if (CMAKE_GENERATOR STREQUAL "Ninja" OR CMAKE_GENERATOR STREQUAL "Unix Makefiles")
 		set(PROTOC_CMD "${TOOLS_DIR}/protobuf/protoc" CACHE INTERNAL "")
 		set(rglc_path "${TOOLS_DIR}/RGL/rglc${rglc_ext}" CACHE INTERNAL "")
+  		set(FlatBuffers_EXECUTABLE "${TOOLS_DIR}/flatc/flatc")
 	else()
 		set(PROTOC_CMD "${TOOLS_DIR}/protobuf/Release/protoc" CACHE INTERNAL "")
 		set(rglc_path "${TOOLS_DIR}/RGL/Release/rglc${rglc_ext}" CACHE INTERNAL "")
+  		set(FlatBuffers_EXECUTABLE "${TOOLS_DIR}/flatc/Release/flatc")
 	endif()
-
-	set_tools()
 
 	file(MAKE_DIRECTORY ${TOOLS_DIR})
 	if(LINUX OR (CMAKE_HOST_APPLE AND TARGET_EMSCRIPTEN) OR (CMAKE_HOST_APPLE AND TARGET_ANDROID))
@@ -150,9 +146,7 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	endif()
 
 	if(CMAKE_HOST_WIN32)
-		set(FlatBuffers_EXECUTABLE "${TOOLS_DIR}/flatc/Release/flatc.exe")
-	else()
-		set(FlatBuffers_EXECUTABLE "${TOOLS_DIR}/flatc/Release/flatc")
+		set(FlatBuffers_EXECUTABLE "${FlatBuffers_EXECUTABLE}.exe")
 	endif()
 
 	add_custom_command(
@@ -168,8 +162,6 @@ else()
 	set(TOOLS_DIR ${CMAKE_CURRENT_BINARY_DIR}/host-tools CACHE INTERNAL "")
 	set(PROTOC_CMD "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/protoc" CACHE INTERNAL "")
 endif()
-
-set_tools()
 
 if (NOT RAVENGINE_SERVER)
 	set(DISABLE_RTTI_AND_EXCEPTIONS OFF CACHE INTERNAL "")
