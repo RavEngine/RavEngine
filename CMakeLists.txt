@@ -350,7 +350,7 @@ if (NOT RAVENGINE_SERVER)
 	endif()
 	add_subdirectory(deps/SteamAudio-All EXCLUDE_FROM_ALL)
 	set(SA_LIB "phonon")
-	target_link_libraries(mysofa-static zlibstatic)
+	target_link_libraries(mysofa-static PRIVATE zlibstatic)
 	target_include_directories(mysofa-static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/assimp/contrib/zlib/")
 endif()
 
