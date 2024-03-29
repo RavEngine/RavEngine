@@ -41,9 +41,13 @@
 #	define __LITTLE_ENDIAN LITTLE_ENDIAN
 #	define __PDP_ENDIAN    PDP_ENDIAN
 
-#elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__EMSCRIPTEN__)
+#elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 
 #	include <sys/endian.h>
+
+#elif defined(__EMSCRIPTEN__)
+
+#   include <endian.h>
 
 #elif defined(__WINDOWS__)
 
