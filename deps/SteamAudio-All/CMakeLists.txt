@@ -72,6 +72,9 @@ set(MySOFA_LIBRARY mysofa-static)
 set(MySOFA_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/libmysofa/src/hrtf")
 
 set(FlatBuffers_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/flatbuffers/include")
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+    set(IPL_CPU_ARMV8 TRUE)
+endif()
 add_subdirectory(steam-audio/core)
 
 add_dependencies(phonon flatc)
