@@ -14,7 +14,8 @@
 // limitations under the License.
 //
 
-#if !defined(IPL_OS_MACOSX) || defined(IPL_CPU_ARM64)
+//#if !defined(IPL_OS_MACOSX) || defined(IPL_CPU_ARM64)
+#if 1
 
 #include "fft.h"
 
