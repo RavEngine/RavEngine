@@ -1,6 +1,7 @@
 #include "AudioPlayer.hpp"
 #if !RVE_SERVER
 #include <SDL.h>
+#include <phonon.h>
 #endif
 #include "Debug.hpp"
 #include "World.hpp"
@@ -10,7 +11,6 @@
 #include "AudioGraphAsset.hpp"
 #include "App.hpp"
 #include <algorithm>
-#include <phonon.h>
 #if _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
