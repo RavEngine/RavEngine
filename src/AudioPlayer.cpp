@@ -10,6 +10,7 @@
 #include "AudioGraphAsset.hpp"
 #include "App.hpp"
 #include <algorithm>
+#include <phonon.h>
 #if _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -17,6 +18,17 @@
 
 using namespace RavEngine;
 using namespace std;
+
+std::string_view IPLerrorToString(IPLerror error){
+    switch(error){
+        case IPL_STATUS_SUCCESS:    return "IPL_STATUS_SUCCESS";
+        IPL_STATUS_FAILURE:         return "IPL_STATUS_FAILURE";
+        IPL_STATUS_OUTOFMEMORY:     return "IPL_STATUS_OUTOFMEMORY";
+        IPL_STATUS_INITIALIZATION:  return "IPL_STATUS_INITIALIZATION";
+        default:
+            return "Invalid IPLerror";
+    }
+}
 
 STATIC(AudioPlayer::SamplesPerSec) = 0;
 STATIC(AudioPlayer::nchannels) = 0;
@@ -269,9 +281,20 @@ void AudioPlayer::Init(){
     });
     
     SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(stream));
+    
+    // steamaudio
+    IPLContextSettings contextSettings{
+        .version = STEAMAUDIO_VERSION
+    };
+    IPLerror errorCode = iplContextCreate(&contextSettings, &steamAudioContext);
+    if (errorCode){
+        Debug::Fatal("Cannot init SteamAudio: {}", IPLerrorToString(errorCode));
+    }
+    
 }
 
 void AudioPlayer::Shutdown(){
 	SDL_CloseAudioDevice(SDL_GetAudioStreamDevice(stream));
+    iplContextRelease(&steamAudioContext);
 }
 #endif

@@ -77,4 +77,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
 endif()
 add_subdirectory(steam-audio/core)
 
-add_dependencies(phonon flatc)
+
+target_include_directories(phonon PUBLIC
+    "${CMAKE_CURRENT_LIST_DIR}/steam-audio/core/src/core"
+    "${CMAKE_CURRENT_BINARY_DIR}/steam-audio/core/src/core"
+)

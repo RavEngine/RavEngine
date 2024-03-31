@@ -8,6 +8,8 @@
 #include <taskflow/core/worker.hpp>
 #include "DataStructures.hpp"
 
+struct _IPLContext_t;
+
 namespace RavEngine{
 
 class World;
@@ -23,6 +25,7 @@ class AudioPlayer{
 	WeakRef<World> worldToRender;
     uint64_t currentProcessingID = 0;
     uint64_t globalSamples = 0; // in units of a single channel
+    _IPLContext_t* steamAudioContext = nullptr;
 #endif
 
     
