@@ -308,6 +308,7 @@ void AudioPlayer::Init(){
 
 void AudioPlayer::Shutdown(){
 	SDL_CloseAudioDevice(SDL_GetAudioStreamDevice(stream));
+    iplHRTFRelease(&steamAudioHRTF);
     iplContextRelease(&steamAudioContext);
 }
 #endif
