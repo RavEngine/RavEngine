@@ -299,7 +299,10 @@ void AudioPlayer::Init(){
     IPLHRTFSettings hrtfSettings{};
     hrtfSettings.type = IPL_HRTFTYPE_DEFAULT;
 
-    iplHRTFCreate(steamAudioContext, &audioSettings, &hrtfSettings, &steamAudioHRTF);
+    errorCode = iplHRTFCreate(steamAudioContext, &audioSettings, &hrtfSettings, &steamAudioHRTF);
+    if (errorCode) {
+        Debug::Fatal("Cannot load HRTF: {}", IPLerrorToString(errorCode));
+    }
     
 }
 
