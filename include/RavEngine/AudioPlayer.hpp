@@ -9,6 +9,7 @@
 #include "DataStructures.hpp"
 
 struct _IPLContext_t;
+struct _IPLHRTF_t;
 
 namespace RavEngine{
 
@@ -26,6 +27,7 @@ class AudioPlayer{
     uint64_t currentProcessingID = 0;
     uint64_t globalSamples = 0; // in units of a single channel
     _IPLContext_t* steamAudioContext = nullptr;
+    _IPLHRTF_t* steamAudioHRTF;
 #endif
 
     

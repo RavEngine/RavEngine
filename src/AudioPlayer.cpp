@@ -292,6 +292,15 @@ void AudioPlayer::Init(){
         Debug::Fatal("Cannot init SteamAudio: {}", IPLerrorToString(errorCode));
     }
     
+    IPLAudioSettings audioSettings{};
+    audioSettings.samplingRate = SamplesPerSec;
+    audioSettings.frameSize = buffer_size; // the size of audio buffers we intend to process
+
+    IPLHRTFSettings hrtfSettings{};
+    hrtfSettings.type = IPL_HRTFTYPE_DEFAULT;
+
+    iplHRTFCreate(steamAudioContext, &audioSettings, &hrtfSettings, &steamAudioHRTF);
+    
 }
 
 void AudioPlayer::Shutdown(){
