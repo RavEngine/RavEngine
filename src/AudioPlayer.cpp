@@ -292,10 +292,10 @@ void AudioPlayer::Init(){
         Debug::Fatal("Cannot init SteamAudio: {}", IPLerrorToString(errorCode));
     }
     
-    IPLAudioSettings audioSettings{};
-    audioSettings.samplingRate = SamplesPerSec;
-    audioSettings.frameSize = buffer_size; // the size of audio buffers we intend to process
+   
+    auto audioSettings = GetSteamAudioSettings();
 
+    // load HRTF
     IPLHRTFSettings hrtfSettings{};
     hrtfSettings.type = IPL_HRTFTYPE_DEFAULT;
 
@@ -304,11 +304,31 @@ void AudioPlayer::Init(){
         Debug::Fatal("Cannot load HRTF: {}", IPLerrorToString(errorCode));
     }
     
+    // load simulator
+    IPLSimulationSettings simulationSettings{
+        .flags = IPL_SIMULATIONFLAGS_DIRECT,    // this enables occlusion/transmission simulation
+        .sceneType = IPL_SCENETYPE_DEFAULT,
+    };
+    // see below for examples of how to initialize the remaining fields of this structure
+
+    errorCode = iplSimulatorCreate(steamAudioContext, &simulationSettings, &steamAudioSimulator);
+    if (errorCode) {
+        Debug::Fatal("Cannot create Steam Audio Simulator: {}", IPLerrorToString(errorCode));
+    }
 }
 
 void AudioPlayer::Shutdown(){
 	SDL_CloseAudioDevice(SDL_GetAudioStreamDevice(stream));
     iplHRTFRelease(&steamAudioHRTF);
+    iplSimulatorRelease(&steamAudioSimulator);
     iplContextRelease(&steamAudioContext);
 }
 #endif
+
+IPLAudioSettings AudioPlayer::GetSteamAudioSettings() const
+{
+    IPLAudioSettings audioSettings{};
+    audioSettings.samplingRate = SamplesPerSec;
+    audioSettings.frameSize = buffer_size; // the size of audio buffers we intend to process
+    return audioSettings;
+}

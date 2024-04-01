@@ -1242,7 +1242,7 @@ typedef struct {
 } IPLSpeakerLayout;
 
 /** Global settings for audio signal processing. */
-typedef struct {
+typedef struct _IPLAudioSettings_t {
     /** Sampling rate, in Hz. */
     IPLint32 samplingRate;
 

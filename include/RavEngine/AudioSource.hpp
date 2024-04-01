@@ -6,6 +6,8 @@
 #include "Ref.hpp"
 #include "AudioTypes.hpp"
 
+struct _IPLBinauralEffect_t;
+
 namespace RavEngine{
 
 class AudioAsset{
@@ -211,6 +213,9 @@ public:
  */
 struct AudioSourceComponent : public AudioSourceBase, public Queryable<AudioSourceComponent>, public AutoCTTI{
     AudioSourceComponent(Ref<AudioDataProvider> a);
+    void Destroy();
+private:
+    _IPLBinauralEffect_t* saBinauralEffect;
 };
 
 /**
