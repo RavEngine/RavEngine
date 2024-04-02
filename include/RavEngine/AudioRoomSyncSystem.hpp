@@ -5,10 +5,10 @@
 
 namespace RavEngine{
 struct Transform;
-class AudioRoom;
+class SimpleAudioSpace;
 class AudioRoomSyncSystem : public AutoCTTI {
 public:
-	void operator()(AudioRoom& c, Transform& tr) const;
+	void operator()(SimpleAudioSpace& c, Transform& tr) const;
 };
 
 }

@@ -6,22 +6,25 @@
 #include "DataStructures.hpp"
 #include "Transform.hpp"
 #include "AudioPlayer.hpp"
+#include <phonon.h>
+#include "App.hpp"
+#include "Debug.hpp"
 
 #include "mathtypes.hpp"
 
 using namespace RavEngine;
 using namespace std;
 
-AudioRoom::RoomData::RoomData() {}
+SimpleAudioSpace::RoomData::RoomData() {}
 
-void AudioRoom::RoomData::SetListenerTransform(const vector3 &worldpos, const quaternion &wr){
+void SimpleAudioSpace::RoomData::SetListenerTransform(const vector3 &worldpos, const quaternion &wr){
 #if 0
 	audioEngine->SetHeadPosition(worldpos.x, worldpos.y, worldpos.z);
 	audioEngine->SetHeadRotation(wr.x, wr.y, wr.z, wr.w);
 #endif
 }
 
-void AudioRoom::RoomData::AddEmitter(const float* data, const vector3 &pos, const quaternion &rot, const vector3 &roompos, const quaternion &roomrot, size_t code, float volume){
+void SimpleAudioSpace::RoomData::AddEmitter(const float* data, const vector3 &pos, const quaternion &rot, const vector3 &roompos, const quaternion &roomrot, size_t code, float volume){
 #if 0
     auto& worldpos = pos;
     auto& worldrot = rot;
@@ -54,7 +57,7 @@ void AudioRoom::RoomData::AddEmitter(const float* data, const vector3 &pos, cons
 }
 
 
-void AudioRoom::RoomData::Simulate(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer){
+void SimpleAudioSpace::RoomData::Simulate(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer){
 #if 0
     auto nchannels = AudioPlayer::GetNChannels();
     
@@ -73,6 +76,66 @@ void AudioRoom::RoomData::Simulate(PlanarSampleBufferInlineView& buffer, PlanarS
 	}
 	allSources.clear();
 #endif
+}
+
+void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer, PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity, const vector3& listenerPos, const quaternion& listenerRotation)
+{
+    // get the binaural effect
+    IPLBinauralEffect binauralEffect;
+    auto it = steamAudioData.find(owningEntity);
+    if (it == steamAudioData.end()) {
+        IPLBinauralEffectSettings effectSettings{};
+        auto& audioPlayer = GetApp()->GetAudioPlayer();
+        auto state = audioPlayer->GetSteamAudioState();
+        effectSettings.hrtf = state.hrtf;
+
+        auto settings = audioPlayer->GetSteamAudioSettings();
+
+        iplBinauralEffectCreate(state.context, &settings, &effectSettings, &binauralEffect);
+        steamAudioData.emplace(owningEntity, binauralEffect);
+    }
+    else {
+        binauralEffect = it->second;
+    }
+
+    // render it
+    IPLfloat32* inputChannels[]{ monoSourceData.data() };
+    static_assert(std::size(inputChannels) == 1, "Input must be mono!");
+    IPLAudioBuffer inBuffer{
+        .numChannels = 1,
+        .numSamples = IPLint32(monoSourceData.GetNumSamples()),
+        .data = inputChannels,
+    };
+
+    Debug::Assert(buffer.GetNChannels() == 2, "Non-stereo output is not supported");
+
+    IPLfloat32* outputChannels[]{
+        buffer[0].data(),
+        buffer[1].data()
+    };
+    IPLAudioBuffer outputBuffer{
+        .numChannels = 2,
+        .numSamples = IPLint32(buffer.GetNumSamples()),
+        .data = outputChannels
+    };
+
+    IPLBinauralEffectParams params{};
+    params.direction = IPLVector3{ 1.0f, 1.0f, 1.0f }; // TODO: direction from listener to source
+    params.hrtf = GetApp()->GetAudioPlayer()->GetSteamAudioHRTF();
+    params.interpolation = IPL_HRTFINTERPOLATION_NEAREST;
+    params.spatialBlend = 1.0f; 
+    params.peakDelays = nullptr;
+
+    iplBinauralEffectApply(binauralEffect, &params, &inBuffer, &outputBuffer);
+
+    const auto nchannels = AudioPlayer::GetNChannels();
+    AudioGraphComposed::Render(buffer, scratchBuffer, nchannels); // process graph for spatialized audio
+
+}
+
+void RavEngine::SimpleAudioSpace::RoomData::DeleteAudioDataForEntity(entity_t entity)
+{
+    steamAudioData.erase(entity);
 }
 
 //void RavEngine::AudioRoom::DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const

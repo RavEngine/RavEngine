@@ -246,7 +246,7 @@ void World::SetupTaskGraph(){
     }).name("Ambient Audios").succeed(audioClear);
     
     auto copyRooms = audioTasks.emplace([this]{
-        Filter( [this](AudioRoom& room, Transform& transform){
+        Filter( [this](SimpleAudioSpace& room, Transform& transform){
             GetApp()->GetCurrentAudioSnapshot()->rooms.emplace_back(room.data,transform.GetWorldPosition(),transform.GetWorldRotation());
         });
         

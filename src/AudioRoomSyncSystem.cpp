@@ -10,7 +10,7 @@
 using namespace RavEngine;
 using namespace std;
 
-void AudioRoomSyncSystem::operator()(AudioRoom& room, Transform& tr) const{
+void AudioRoomSyncSystem::operator()(SimpleAudioSpace& room, Transform& tr) const{
 #if 0
     auto pos = tr.GetWorldPosition();
     auto rot = tr.GetWorldRotation();

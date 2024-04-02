@@ -21,7 +21,7 @@ struct AudioSnapshot{
     };
     
     struct Room{
-        Ref<AudioRoom::RoomData> room;
+        Ref<SimpleAudioSpace::RoomData> room;
         vector3 worldpos;
         quaternion worldrot;
         Room(const decltype(room)& room,const decltype(worldpos)& wp, const decltype(worldrot)& wr): room(room), worldpos(wp), worldrot(wr){}

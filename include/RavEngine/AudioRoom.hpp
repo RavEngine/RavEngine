@@ -10,6 +10,8 @@
 #include "Types.hpp"
 #include "DebugDrawer.hpp"
 
+struct _IPLBinauralEffect_t;
+
 namespace RavEngine{
 
 class AudioRoomSyncSystem;
@@ -18,35 +20,13 @@ class AudioPlayer;
 /**
  Renders audio buffers based on its owning world's state
  */
-class AudioRoom : public ComponentWithOwner, public IDebugRenderable, public Queryable<AudioRoom,IDebugRenderable>{
+class SimpleAudioSpace : public ComponentWithOwner, public IDebugRenderable, public Queryable<SimpleAudioSpace,IDebugRenderable>{
 	friend class RavEngine::AudioRoomSyncSystem;
 	friend class RavEngine::AudioPlayer;
 public:
     struct RoomData : public AudioGraphComposed{
         
-        // Material name of each surface of the shoebox room in this order:
-        // [0] (-)ive x-axis wall (left)
-        // [1] (+)ive x-axis wall (right)
-        // [2] (-)ive y-axis wall (bottom)
-        // [3] (+)ive y-axis wall (top)
-        // [4] (-)ive z-axis wall (front)
-        // [5] (+)ive z-axis wall (back)
-#if 0
-        Array<RoomMat, 6> wallMaterials{
-            RoomMat::kTransparent,
-            RoomMat::kTransparent,
-            RoomMat::kTransparent,
-            RoomMat::kTransparent,
-            RoomMat::kTransparent,
-            RoomMat::kTransparent
-        };
-
-        UnorderedMap<size_t, vraudio::ResonanceAudioApi::SourceId> allSources;
-#endif
-        //size of 0 = infinite
-        vector3 roomDimensions = vector3(0,0,0);
-
-        float reflection_scalar = 1, reverb_gain = 1, reverb_time = 1.0, reverb_brightness = 0;
+        float radius = INFINITY;
         
         /**
          Add an emitter for this simulation from arbitrary data
@@ -60,14 +40,6 @@ public:
          */
         void AddEmitter(const float* data, const vector3& pos, const quaternion& rot, const vector3& roompos, const quaternion& roomrot, size_t source_hashcode, float volume);
         
-
-        void DestroyEmitterFor(AudioSourceBase* source);
-        
-        /**
-         Set the dimensions of the room. A dimension of 0 is interpreted as unbounded.
-         @param dim the x, y, and z dimensions of the room. Unlike Physics, this is diameter not radius.
-         */
-        void SetRoomDimensions(const vector3& dim){ roomDimensions = dim; }
         
         /**
          Update the position of the listener in the Audio Engine
@@ -81,33 +53,29 @@ public:
          @param buffer destination for the calculated audio
          */
         void Simulate(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer);
+
+        void RenderAudioSource(
+            PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer,
+            PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity,
+            const vector3& listenerPos, const quaternion& listenerRotation
+        );
+
+        // internal use only. Called when an audio source component is destroyed
+        void DeleteAudioDataForEntity(entity_t entity);
         
         RoomData();
         ~RoomData(){
 
         }
+    private:
+        locked_hashmap<entity_t, _IPLBinauralEffect_t*,SpinLock> steamAudioData;
     };
     Ref<RoomData> data;
 	
-    /**
-     Set the dimensions of the room. A dimension of 0 is interpreted as unbounded.
-     @param dim the x, y, and z dimensions of the room. Unlike Physics, this is diameter not radius.
-     */
-    void SetRoomDimensions(const vector3& dim){ data->SetRoomDimensions(dim); }
     
-	AudioRoom(entity_t owner) : ComponentWithOwner(owner), data(std::make_shared<RoomData>()) {}
+	SimpleAudioSpace(entity_t owner) : ComponentWithOwner(owner), data(std::make_shared<RoomData>()) {}
 	
-	/**
-	 @return the dimensions of this room
-	 */
-    inline decltype(RoomData::roomDimensions) GetRoomDimensions() const {return data->roomDimensions; }
 	
-	/**
-	 @return a writable reference to the wall materials
-	 */
-#if 0
-    inline decltype(RoomData::wallMaterials)& WallMaterials() { return data->wallMaterials; }
-#endif
 	
 	/**
 	 Render the debug shape for this room. Invoke in a debug rendering component
