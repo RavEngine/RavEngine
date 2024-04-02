@@ -21,19 +21,6 @@ using namespace std;
 SampledAudioDataProvider::SampledAudioDataProvider(decltype(asset) a, uint8_t nchannels) : asset(a), AudioDataProvider(AudioPlayer::GetBufferCount(), AudioPlayer::GetBufferSize(), nchannels){}
 
 AudioSourceComponent::AudioSourceComponent(Ref<AudioDataProvider> a) : AudioSourceBase(a){
-	IPLBinauralEffectSettings effectSettings{};
-	auto& audioPlayer = GetApp()->GetAudioPlayer();
-	auto state = audioPlayer->GetSteamAudioState();
-	effectSettings.hrtf = state.hrtf;
-
-	auto settings = audioPlayer->GetSteamAudioSettings();
-
-	iplBinauralEffectCreate(state.context, &settings, &effectSettings, &saBinauralEffect);
-}
-
-void RavEngine::AudioSourceComponent::Destroy()
-{
-	iplBinauralEffectRelease(&saBinauralEffect);
 }
 
 AmbientAudioSourceComponent::AmbientAudioSourceComponent(Ref<AudioDataProvider> a)  : AudioSourceBase(a) {}
