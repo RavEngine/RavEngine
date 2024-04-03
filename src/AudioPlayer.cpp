@@ -323,7 +323,6 @@ void AudioPlayer::Shutdown(){
     iplSimulatorRelease(&steamAudioSimulator);
     iplContextRelease(&steamAudioContext);
 }
-#endif
 
 IPLAudioSettings AudioPlayer::GetSteamAudioSettings() const
 {
@@ -332,3 +331,6 @@ IPLAudioSettings AudioPlayer::GetSteamAudioSettings() const
     audioSettings.frameSize = buffer_size; // the size of audio buffers we intend to process
     return audioSettings;
 }
+#endif
+
+
