@@ -78,8 +78,10 @@ void SimpleAudioSpace::RoomData::Simulate(PlanarSampleBufferInlineView& buffer, 
 #endif
 }
 
-void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer, PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity, const vector3& listenerPos, const quaternion& listenerRotation)
+void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer, PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity, const matrix4& invListenerTransform)
 {
+    //TODO: if the source is too far away, bail
+
     // get the binaural effect
     IPLBinauralEffect binauralEffect;
     auto it = steamAudioData.find(owningEntity);
@@ -119,10 +121,13 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
         .data = outputChannels
     };
 
+    auto sourcePosInListenerSpace = invListenerTransform * vector4(sourcePos,1);
+    sourcePosInListenerSpace = glm::normalize(sourcePosInListenerSpace);
+
     IPLBinauralEffectParams params{};
-    params.direction = IPLVector3{ 1.0f, 1.0f, 1.0f }; // TODO: direction from listener to source
+    params.direction = IPLVector3{ sourcePosInListenerSpace.x,sourcePosInListenerSpace.y,sourcePosInListenerSpace.z };
     params.hrtf = GetApp()->GetAudioPlayer()->GetSteamAudioHRTF();
-    params.interpolation = IPL_HRTFINTERPOLATION_NEAREST;
+    params.interpolation = IPL_HRTFINTERPOLATION_BILINEAR;
     params.spatialBlend = 1.0f; 
     params.peakDelays = nullptr;
 

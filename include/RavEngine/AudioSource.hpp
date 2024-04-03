@@ -5,6 +5,8 @@
 #include "mathtypes.hpp"
 #include "Ref.hpp"
 #include "AudioTypes.hpp"
+#include "Types.hpp"
+#include "ComponentWithOwner.hpp"
 
 namespace RavEngine{
 
@@ -209,8 +211,8 @@ public:
 /**
  For attaching a movable source to an Entity. Affected by Rooms.
  */
-struct AudioSourceComponent : public AudioSourceBase, public Queryable<AudioSourceComponent>, public AutoCTTI{
-    AudioSourceComponent(Ref<AudioDataProvider> a);
+struct AudioSourceComponent : public AudioSourceBase, public ComponentWithOwner, public Queryable<AudioSourceComponent>{
+    AudioSourceComponent(entity_t owner, Ref<AudioDataProvider> a);
 };
 
 /**

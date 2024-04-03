@@ -207,13 +207,14 @@ void World::SetupTaskGraph(){
             ptr->listenerRot = transform.GetWorldRotation();
             ptr->listenerGraph = listener.GetGraph();
         });
+        GetApp()->GetCurrentAudioSnapshot()->sourceWorld = shared_from_this();
     }).name("Clear + Listener");
     
   
     
     auto copyAudios = audioTasks.emplace([this]{
         Filter([this](AudioSourceComponent& audioSource, const Transform& transform){
-            GetApp()->GetCurrentAudioSnapshot()->sources.emplace(audioSource.GetPlayer(),transform.GetWorldPosition(),transform.GetWorldRotation());
+            GetApp()->GetCurrentAudioSnapshot()->sources.emplace(audioSource.GetPlayer(),transform.GetWorldPosition(),transform.GetWorldRotation(), audioSource.GetOwner().GetIdInWorld());
         });
         
         // now clean up the fire-and-forget audios that have completed
@@ -223,7 +224,7 @@ void World::SetupTaskGraph(){
         
         // now do fire-and-forget audios that need to play
         for(auto& f : instantaneousToPlay){
-            GetApp()->GetCurrentAudioSnapshot()->sources.emplace(f.GetPlayer(),f.source_position,quaternion(0,0,0,1));
+            GetApp()->GetCurrentAudioSnapshot()->sources.emplace(f.GetPlayer(),f.source_position,quaternion(0,0,0,1), INVALID_ENTITY);
         }
     }).name("Point Audios").succeed(audioClear);
     

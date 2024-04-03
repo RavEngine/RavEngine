@@ -14,7 +14,8 @@ struct AudioSnapshot{
     
     struct PointSource : public PointSourceBase{
         Ref<AudioDataProvider> data;
-        PointSource(const decltype(data)& data, const decltype(worldpos)& wp, const decltype(worldrot)& wr): data(data), PointSourceBase{wp, wr} {}
+        entity_t ownerID = INVALID_ENTITY;
+        PointSource(const decltype(data)& data, const decltype(worldpos)& wp, const decltype(worldrot)& wr, decltype(ownerID) ownerID): data(data), ownerID(ownerID), PointSourceBase{wp, wr} {}
         bool operator==(const PointSource& other) const{
             return data == other.data && worldpos == other.worldpos && worldrot == other.worldrot;
         }
@@ -34,11 +35,13 @@ struct AudioSnapshot{
     vector3 listenerPos;
     quaternion listenerRot;
     Ref<AudioGraphAsset> listenerGraph;
+    WeakRef<World> sourceWorld;
     
     void Clear(){
         sources.clear();
         ambientSources.clear();
         rooms.clear();
+        sourceWorld.reset();
     }
 };
 }

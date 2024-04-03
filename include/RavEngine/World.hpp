@@ -41,6 +41,7 @@ namespace RavEngine {
     class SkeletonAsset;
     struct InstantaneousAudioSource;
     struct InstantaneousAmbientAudioSource;
+    struct AudioSourceComponent;
 
     template <typename T, typename... Ts>
     struct Index;
@@ -84,12 +85,13 @@ namespace RavEngine {
         enum { value = sizeof(test<T>(0)) == sizeof(YesType) };
     };
 
-	class World {
+	class World : public std::enable_shared_from_this<World> {
 		friend class AudioPlayer;
 		friend class App;
         friend class PhysicsBodyComponent;
         Vector<entity_t> localToGlobal;
         Queue<entity_t> available;
+        ConcurrentQueue<entity_t> destroyedAudioSources;
         
         friend class Entity;
         friend class Registry;
@@ -675,6 +677,9 @@ namespace RavEngine {
                 if (renderData) {
                     renderData->spotLightData.EraseAtSparseIndex(local_id);
                 }
+            }
+            else if constexpr (std::is_same_v<T, AudioSourceComponent>) {
+                destroyedAudioSources.enqueue(local_id);
             }
 #endif
             

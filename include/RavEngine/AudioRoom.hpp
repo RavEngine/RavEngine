@@ -57,7 +57,7 @@ public:
         void RenderAudioSource(
             PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer,
             PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity,
-            const vector3& listenerPos, const quaternion& listenerRotation
+            const matrix4& invListenerTransform
         );
 
         // internal use only. Called when an audio source component is destroyed
