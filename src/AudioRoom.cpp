@@ -17,67 +17,6 @@ using namespace std;
 
 SimpleAudioSpace::RoomData::RoomData() {}
 
-void SimpleAudioSpace::RoomData::SetListenerTransform(const vector3 &worldpos, const quaternion &wr){
-#if 0
-	audioEngine->SetHeadPosition(worldpos.x, worldpos.y, worldpos.z);
-	audioEngine->SetHeadRotation(wr.x, wr.y, wr.z, wr.w);
-#endif
-}
-
-void SimpleAudioSpace::RoomData::AddEmitter(const float* data, const vector3 &pos, const quaternion &rot, const vector3 &roompos, const quaternion &roomrot, size_t code, float volume){
-#if 0
-    auto& worldpos = pos;
-    auto& worldrot = rot;
-    
-    //create Eigen structures to calculate attenuation
-    vraudio::WorldPosition eworldpos(worldpos.x,worldpos.y,worldpos.z);
-    vraudio::WorldRotation eroomrot(roomrot.w,roomrot.x,roomrot.y,roomrot.z);
-    vraudio::WorldPosition eroompos(roompos.x,roompos.y,roompos.z);
-    vraudio::WorldPosition eroomdim(roomDimensions.x,roomDimensions.y,roomDimensions.z);
-    auto gain = vraudio::ComputeRoomEffectsGain(eworldpos, eroompos, eroomrot, eroomdim);
-            
-    // TODO: reuse audio sources across computations
-    // get the audio source for the room for this source
-    // if one does not exist, create it
-    vraudio::ResonanceAudioApi::SourceId src;
-    if (!allSources.contains(code)){
-        src = audioEngine->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralLowQuality);
-        allSources[code] = src;
-    }
-    else{
-        src = allSources[code];
-    }
-    
-    audioEngine->SetInterleavedBuffer(src, data, 1, AudioPlayer::GetBufferSize());   // they copy the contents of temp into their own buffer so giving stack memory is fine here
-    audioEngine->SetSourceVolume(src, 1);   // the AudioAsset already applied the volume
-    audioEngine->SetSourcePosition(src, worldpos.x, worldpos.y, worldpos.z);
-    audioEngine->SetSourceRotation(src, worldrot.x, worldrot.y, worldrot.z, worldrot.w);
-    audioEngine->SetSourceRoomEffectsGain(src, gain);
-#endif
-}
-
-
-void SimpleAudioSpace::RoomData::Simulate(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer){
-#if 0
-    auto nchannels = AudioPlayer::GetNChannels();
-    
-    // convert to an array of pointers for Resonance
-    stackarray(allchannelptrs, float*, nchannels);
-    for(uint8_t i = 0; i < nchannels; i++){
-        allchannelptrs[i] = buffer[i].data();
-    }
-    
-    audioEngine->FillPlanarOutputBuffer(nchannels, buffer.sizeOneChannel(), allchannelptrs);
-    AudioGraphComposed::Render(buffer, scratchBuffer, nchannels); // process graph
-	
-	// destroy sources
-	for(const auto& source : allSources){
-		audioEngine->DestroySource(source.second);
-	}
-	allSources.clear();
-#endif
-}
-
 void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer, PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity, const matrix4& invListenerTransform)
 {
     //TODO: if the source is too far away, bail

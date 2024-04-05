@@ -29,31 +29,13 @@ public:
         float radius = INFINITY;
         
         /**
-         Add an emitter for this simulation from arbitrary data
-         @param data the data buffer to pass. Must be AudioRoom::NFRAMES in length and represent MONO audio
-         @param pos location to play at
-         @param rot rotation of the emitter
-         @param roompos the worldspace location of the room
-         @param roomrot the worldspace rotation of the room
-         @param source_hashcode the hashcode for the source emitter. Must be repeatable across calls and should not have collisions.
-         @param volume loudness of the source
-         */
-        void AddEmitter(const float* data, const vector3& pos, const quaternion& rot, const vector3& roompos, const quaternion& roomrot, size_t source_hashcode, float volume);
-        
-        
-        /**
-         Update the position of the listener in the Audio Engine
-         @param worldpos the position of the listener in world space
-         @param worldrotation the rotation of the listener in world space
-         */
-        void SetListenerTransform(const vector3& worldpos, const quaternion& worldrotation);
-        
-        /**
-         Simulate spacial audio for a set of audio sources
-         @param buffer destination for the calculated audio
-         */
-        void Simulate(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer);
-
+        @param buffer destination for the calculated audio
+        @param scratchBuffer scratch memory for effect graphs
+        @param monoSourceData the point source data. Must be AudioRoom::NFRAMES in length and represent MONO audio
+        @param sourcePos the position of the audio source in world space
+        @param owningentity the owning ID of the audio source
+        @param invListenerTransform the inverse of the listener transform in world space
+        */
         void RenderAudioSource(
             PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer,
             PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity,

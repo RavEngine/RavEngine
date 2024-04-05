@@ -102,6 +102,9 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
 
     auto& lpos = SnapshotToRender->listenerPos;
     auto& lrot = SnapshotToRender->listenerRot;
+
+    const matrix4 invListenerTransform = glm::inverse(glm::translate(matrix4(1), (vector3)lpos) * glm::toMat4((quaternion)lrot));
+
     const auto buffers_size = len / sizeof(float);
     stackarray(shared_buffer, float, buffers_size);
     stackarray(effect_scratch_buffer, float, buffers_size);
@@ -134,8 +137,6 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
 
     for (const auto& r : SnapshotToRender->rooms) {
         auto& room = r.room;
-        room->SetListenerTransform(lpos, lrot);
-        resetShared();
 
         // raster sources
         for (const auto& source : SnapshotToRender->sources) {
@@ -145,16 +146,15 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
             auto proc_id = buffer.lastCompletedProcessingIterationID.load();
             if (proc_id == currentProcessingID){
                 auto hashcode = std::hash<decltype(source.data.get())>()(source.data.get());
-                room->AddEmitter(view.data(), source.worldpos, source.worldrot, r.worldpos, r.worldrot, hashcode, source.data->volume);
+
+                resetShared();
+                room->RenderAudioSource(sharedBufferView, effectScratchBuffer,
+                    view, source.worldpos, source.ownerID, 
+                    invListenerTransform
+                    );
+                blendIn();
             }
         }
-
-        //now simulate the fire-and-forget audio
-        resetShared();
-
-        //simulate in the room
-        room->Simulate(sharedBufferView,effectScratchBuffer);
-        blendIn();
     }
 
     for (auto& source : SnapshotToRender->ambientSources) {
