@@ -71,6 +71,20 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     
     GetApp()->SwapRenderAudioSnapshot();
     SnapshotToRender = GetApp()->GetRenderAudioSnapshot();
+
+    auto lockedworld = SnapshotToRender->sourceWorld.lock();
+    if (lockedworld == nullptr) {
+        return;
+    }
+    // copy out the destroyed sources
+    destroyedSources.clear();
+    {
+        entity_t id;
+        while (lockedworld->destroyedAudioSources.enqueue(id)) {
+            destroyedSources.push_back(id);
+        }
+    }
+
     auto buffer_idx = currentProcessingID % GetBufferCount();
         
     // kill all the remaining tasks
@@ -138,7 +152,12 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     for (const auto& r : SnapshotToRender->rooms) {
         auto& room = r.room;
 
-        // raster sources
+        // destroyed-sources
+        for (const auto id : destroyedSources) {
+            room->DeleteAudioDataForEntity(id);
+        }
+
+        // existing sources
         for (const auto& source : SnapshotToRender->sources) {
             // add this source into the room
             auto& buffer = source.data->renderData.buffers[buffer_idx];

@@ -7,6 +7,7 @@
 #include <taskflow/taskflow.hpp>
 #include <taskflow/core/worker.hpp>
 #include "DataStructures.hpp"
+#include "Types.hpp"
 
 struct _IPLContext_t;
 struct _IPLHRTF_t;
@@ -54,7 +55,7 @@ class AudioPlayer{
     
     void EnqueueAudioTasks();
     UnorderedSet<Ref<AudioDataProvider>> alreadyTicked;
-    
+    std::vector<entity_t> destroyedSources;
 #endif
 
     

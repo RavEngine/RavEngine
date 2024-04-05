@@ -223,7 +223,7 @@ void World::SetupTaskGraph(){
         };
         for (const auto& source : instantaneousToPlay) {
             if (checkFunc(source)) {
-                //TODO: enqueue audio IDs that have been destroyed 
+                destroyedAudioSources.enqueue(source.fakeOwner);
                 instantaneousAudioSourceFreeList.ReturnID(source.fakeOwner);    // expired sources return their IDs
             }
         }
