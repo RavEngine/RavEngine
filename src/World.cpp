@@ -218,13 +218,20 @@ void World::SetupTaskGraph(){
         });
         
         // now clean up the fire-and-forget audios that have completed
-        instantaneousToPlay.remove_if([](const InstantaneousAudioSource& ias){
-            return ! ias.GetPlayer()->IsPlaying();
-        });
+        constexpr auto checkFunc = [](const InstantaneousAudioSourceToPlay& ias) {
+            return !ias.source.GetPlayer()->IsPlaying();
+        };
+        for (const auto& source : instantaneousToPlay) {
+            if (checkFunc(source)) {
+                instantaneousAudioSourceFreeList.ReturnID(source.fakeOwner);    // expired sources return their IDs
+            }
+        }
+        instantaneousToPlay.remove_if(checkFunc);
+
         
         // now do fire-and-forget audios that need to play
         for(auto& f : instantaneousToPlay){
-            GetApp()->GetCurrentAudioSnapshot()->sources.emplace(f.GetPlayer(),f.source_position,quaternion(0,0,0,1), INVALID_ENTITY);
+            GetApp()->GetCurrentAudioSnapshot()->sources.emplace(f.source.GetPlayer(),f.source.source_position,quaternion(0,0,0,1), f.fakeOwner);
         }
     }).name("Point Audios").succeed(audioClear);
     
@@ -600,7 +607,7 @@ World::~World() {
 }
 #if !RVE_SERVER
 void RavEngine::World::PlaySound(const InstantaneousAudioSource& ias) {
-    instantaneousToPlay.push_back(ias);
+    instantaneousToPlay.emplace_back(ias,instantaneousAudioSourceFreeList.GetNextID());
 }
 
 void RavEngine::World::PlayAmbientSound(const InstantaneousAmbientAudioSource& iaas) {

@@ -42,6 +42,7 @@ namespace RavEngine {
     struct InstantaneousAudioSource;
     struct InstantaneousAmbientAudioSource;
     struct AudioSourceComponent;
+    struct InstantaneousAudioSourceToPlay;
 
     template <typename T, typename... Ts>
     struct Index;
@@ -92,6 +93,26 @@ namespace RavEngine {
         Vector<entity_t> localToGlobal;
         Queue<entity_t> available;
         ConcurrentQueue<entity_t> destroyedAudioSources;
+
+        class InstantaneousAudioSourceFreeList {
+            entity_t nextID = INVALID_ENTITY - 1;
+            ConcurrentQueue<entity_t> freeList;
+        public:
+            auto GetNextID() {
+                entity_t id;
+                if (freeList.try_dequeue(id)) {
+                    return id;
+                }
+                else {
+                    id = nextID;
+                    nextID--;
+                }
+                return id;
+            }
+            void ReturnID(entity_t id) {
+                freeList.enqueue(id);
+            }
+        } instantaneousAudioSourceFreeList;
         
         friend class Entity;
         friend class Registry;
@@ -1106,7 +1127,9 @@ namespace RavEngine {
 		
 		//fire-and-forget audio
 #if !RVE_SERVER
-		LinkedList<InstantaneousAudioSource> instantaneousToPlay;
+       
+
+		LinkedList<InstantaneousAudioSourceToPlay> instantaneousToPlay;
 		LinkedList<InstantaneousAmbientAudioSource> ambientToPlay;
 #endif
 

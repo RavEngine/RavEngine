@@ -231,6 +231,14 @@ struct InstantaneousAudioSource : public AudioSourceBase{
     InstantaneousAudioSource(Ref<AudioAsset> a, const vector3& position, float vol = 1);
 };
 
+struct InstantaneousAudioSourceToPlay {
+    InstantaneousAudioSource source;
+    entity_t fakeOwner;
+    InstantaneousAudioSourceToPlay(const InstantaneousAudioSource& source, entity_t fakeOwner) :
+        source(source), fakeOwner(fakeOwner) {}
+};
+
+
 /**
  Used for Fire-and-forget audio playing, where spatialization is not necessary. See method on the world for more info
  */
