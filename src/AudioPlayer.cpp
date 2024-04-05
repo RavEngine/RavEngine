@@ -80,7 +80,7 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     destroyedSources.clear();
     {
         entity_t id;
-        while (lockedworld->destroyedAudioSources.enqueue(id)) {
+        while (lockedworld->destroyedAudioSources.try_dequeue(id)) {
             destroyedSources.push_back(id);
         }
     }
