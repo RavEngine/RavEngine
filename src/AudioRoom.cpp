@@ -61,7 +61,9 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
     };
 
     auto sourcePosInListenerSpace = invListenerTransform * vector4(sourcePos,1);
+    auto normalizedMagnitude = sourcePosInListenerSpace.length() / radius;
     sourcePosInListenerSpace = glm::normalize(sourcePosInListenerSpace);
+    sourcePosInListenerSpace /= normalizedMagnitude;
 
     IPLBinauralEffectParams params{};
     params.direction = IPLVector3{ sourcePosInListenerSpace.x,sourcePosInListenerSpace.y,sourcePosInListenerSpace.z };

@@ -13,7 +13,6 @@
 #include "PhysicsLinkSystem.hpp"
 #include "GUI.hpp"
 #include "InputManager.hpp"
-#include "AudioRoomSyncSystem.hpp"
 #include "CameraComponent.hpp"
 #include "StaticMesh.hpp"
 #include "BuiltinMaterials.hpp"
@@ -76,7 +75,6 @@ RavEngine::World::World() : Solver(std::make_unique<PhysicsSolver>()){
 	CreateDependency<SocketSystem, AnimatorSystem>();			// run animator before socket system
 #if !RVE_SERVER
 
-    EmplaceSystem<AudioRoomSyncSystem>();
 #endif
     EmplaceSystem<RPCSystem>();
 #if !RVE_SERVER
