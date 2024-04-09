@@ -73,7 +73,7 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
         .peakDelays = nullptr
     };
 
-    iplBinauralEffectApply(binauralEffect, &params, &inBuffer, &outputBuffer);
+    auto result = iplBinauralEffectApply(binauralEffect, &params, &inBuffer, &outputBuffer);
 
     const auto nchannels = AudioPlayer::GetNChannels();
     AudioGraphComposed::Render(buffer, scratchBuffer, nchannels); // process graph for spatialized audio

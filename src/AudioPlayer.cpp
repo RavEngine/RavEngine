@@ -315,8 +315,10 @@ void AudioPlayer::Init(){
     auto audioSettings = GetSteamAudioSettings();
 
     // load HRTF
-    IPLHRTFSettings hrtfSettings{};
-    hrtfSettings.type = IPL_HRTFTYPE_DEFAULT;
+    IPLHRTFSettings hrtfSettings{
+        .type = IPL_HRTFTYPE_DEFAULT,
+        .volume = 1.0
+    };
 
     errorCode = iplHRTFCreate(steamAudioContext, &audioSettings, &hrtfSettings, &steamAudioHRTF);
     if (errorCode) {
