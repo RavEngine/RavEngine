@@ -13,7 +13,6 @@
 #include "PhysicsLinkSystem.hpp"
 #include "GUI.hpp"
 #include "InputManager.hpp"
-#include "AudioRoomSyncSystem.hpp"
 #include "CameraComponent.hpp"
 #include "StaticMesh.hpp"
 #include "BuiltinMaterials.hpp"
@@ -76,7 +75,6 @@ RavEngine::World::World() : Solver(std::make_unique<PhysicsSolver>()){
 	CreateDependency<SocketSystem, AnimatorSystem>();			// run animator before socket system
 #if !RVE_SERVER
 
-    EmplaceSystem<AudioRoomSyncSystem>();
 #endif
     EmplaceSystem<RPCSystem>();
 #if !RVE_SERVER
@@ -207,23 +205,32 @@ void World::SetupTaskGraph(){
             ptr->listenerRot = transform.GetWorldRotation();
             ptr->listenerGraph = listener.GetGraph();
         });
+        GetApp()->GetCurrentAudioSnapshot()->sourceWorld = shared_from_this();
     }).name("Clear + Listener");
     
   
     
     auto copyAudios = audioTasks.emplace([this]{
         Filter([this](AudioSourceComponent& audioSource, const Transform& transform){
-            GetApp()->GetCurrentAudioSnapshot()->sources.emplace(audioSource.GetPlayer(),transform.GetWorldPosition(),transform.GetWorldRotation());
+            GetApp()->GetCurrentAudioSnapshot()->sources.emplace(audioSource.GetPlayer(),transform.GetWorldPosition(),transform.GetWorldRotation(), audioSource.GetOwner().GetIdInWorld());
         });
         
         // now clean up the fire-and-forget audios that have completed
-        instantaneousToPlay.remove_if([](const InstantaneousAudioSource& ias){
-            return ! ias.GetPlayer()->IsPlaying();
-        });
+        constexpr auto checkFunc = [](const InstantaneousAudioSourceToPlay& ias) {
+            return !ias.source.GetPlayer()->IsPlaying();
+        };
+        for (const auto& source : instantaneousToPlay) {
+            if (checkFunc(source)) {
+                destroyedAudioSources.enqueue(source.fakeOwner);
+                instantaneousAudioSourceFreeList.ReturnID(source.fakeOwner);    // expired sources return their IDs
+            }
+        }
+        instantaneousToPlay.remove_if(checkFunc);
+
         
         // now do fire-and-forget audios that need to play
         for(auto& f : instantaneousToPlay){
-            GetApp()->GetCurrentAudioSnapshot()->sources.emplace(f.GetPlayer(),f.source_position,quaternion(0,0,0,1));
+            GetApp()->GetCurrentAudioSnapshot()->sources.emplace(f.source.GetPlayer(),f.source.source_position,quaternion(0,0,0,1), f.fakeOwner);
         }
     }).name("Point Audios").succeed(audioClear);
     
@@ -246,7 +253,7 @@ void World::SetupTaskGraph(){
     }).name("Ambient Audios").succeed(audioClear);
     
     auto copyRooms = audioTasks.emplace([this]{
-        Filter( [this](AudioRoom& room, Transform& transform){
+        Filter( [this](SimpleAudioSpace& room, Transform& transform){
             GetApp()->GetCurrentAudioSnapshot()->rooms.emplace_back(room.data,transform.GetWorldPosition(),transform.GetWorldRotation());
         });
         
@@ -599,7 +606,7 @@ World::~World() {
 }
 #if !RVE_SERVER
 void RavEngine::World::PlaySound(const InstantaneousAudioSource& ias) {
-    instantaneousToPlay.push_back(ias);
+    instantaneousToPlay.emplace_back(ias,instantaneousAudioSourceFreeList.GetNextID());
 }
 
 void RavEngine::World::PlayAmbientSound(const InstantaneousAmbientAudioSource& iaas) {

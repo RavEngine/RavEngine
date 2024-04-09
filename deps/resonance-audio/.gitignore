@@ -1,6 +1,0 @@
-
-# Ignore build artifacts and install directories by default
-build/
-install/
-
-.DS_Store

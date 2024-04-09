@@ -100,10 +100,6 @@ set(CMAKE_OSX_ARCHITECTURES "x86_64"
 
 # ============ build machine tools ==============
 
-macro(set_tools)
-	
-endmacro()
-
 if(NOT (CMAKE_VS_PLATFORM_NAME STREQUAL ""))
 	if(CMAKE_VS_PLATFORM_NAME_DEFAULT STREQUAL CMAKE_VS_PLATFORM_NAME)
 		set(VS_CROSSCOMP OFF CACHE INTERNAL "")
@@ -127,12 +123,12 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	if (CMAKE_GENERATOR STREQUAL "Ninja" OR CMAKE_GENERATOR STREQUAL "Unix Makefiles")
 		set(PROTOC_CMD "${TOOLS_DIR}/protobuf/protoc" CACHE INTERNAL "")
 		set(rglc_path "${TOOLS_DIR}/RGL/rglc${rglc_ext}" CACHE INTERNAL "")
+  		set(FlatBuffers_EXECUTABLE "${TOOLS_DIR}/flatc/flatc")
 	else()
 		set(PROTOC_CMD "${TOOLS_DIR}/protobuf/Release/protoc" CACHE INTERNAL "")
 		set(rglc_path "${TOOLS_DIR}/RGL/Release/rglc${rglc_ext}" CACHE INTERNAL "")
+  		set(FlatBuffers_EXECUTABLE "${TOOLS_DIR}/flatc/Release/flatc")
 	endif()
-
-	set_tools()
 
 	file(MAKE_DIRECTORY ${TOOLS_DIR})
 	if(LINUX OR (CMAKE_HOST_APPLE AND TARGET_EMSCRIPTEN) OR (CMAKE_HOST_APPLE AND TARGET_ANDROID))
@@ -148,19 +144,24 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	if (NOT (HOST_TOOLS_RESULT EQUAL 0))
 		message(FATAL_ERROR "Failed to configure host tools. See above for output.")
 	endif()
+
+	if(CMAKE_HOST_WIN32)
+		set(FlatBuffers_EXECUTABLE "${FlatBuffers_EXECUTABLE}.exe")
+	endif()
+
 	add_custom_command(
 		PRE_BUILD
-		OUTPUT "${PROTOC_CMD}" "${rglc_path}"
-		COMMAND ${CMAKE_COMMAND} --build . --config Release --target protoc rglc
+		OUTPUT "${PROTOC_CMD}" "${rglc_path}" "${FlatBuffers_EXECUTABLE}"
+		COMMAND ${CMAKE_COMMAND} --build . --config Release --target protoc rglc flatc
 		WORKING_DIRECTORY "${TOOLS_DIR}"
 		VERBATIM
 	)
+
+	add_custom_target(flatc DEPENDS "${FlatBuffers_EXECUTABLE}")
 else()
 	set(TOOLS_DIR ${CMAKE_CURRENT_BINARY_DIR}/host-tools CACHE INTERNAL "")
 	set(PROTOC_CMD "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/protoc" CACHE INTERNAL "")
 endif()
-
-set_tools()
 
 if (NOT RAVENGINE_SERVER)
 	set(DISABLE_RTTI_AND_EXCEPTIONS OFF CACHE INTERNAL "")
@@ -306,18 +307,16 @@ if (CMAKE_CROSSCOMPILING)
 	if (NOT RAVENGINE_SERVER)
 		set(test_rglc "${rglc_path}")
 	endif()
-	add_custom_target("GNS_Deps" DEPENDS "${PROTOC_CMD}" "${test_rglc}")
+	add_custom_target("GNS_Deps" DEPENDS "${PROTOC_CMD}" "${test_rglc}" "flatc")
 else()
 	if (NOT RAVENGINE_SERVER)
 		set(test_rglc "rglc")
+		add_custom_target("GNS_Deps" DEPENDS "${test_rglc}" "protoc" "flatc")
+	else()
+		add_custom_target("GNS_Deps" DEPENDS "${test_rglc}" "protoc")
 	endif()
-	add_custom_target("GNS_Deps" DEPENDS "${test_rglc}" "protoc")
 endif()
 add_dependencies("GameNetworkingSockets_s" "GNS_Deps")
-
-# resonance-audio
-set(BUILD_RESONANCE_AUDIO_API ON CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/resonance-audio" EXCLUDE_FROM_ALL)
 
 # taskflow
 SET(TF_BUILD_BENCHMARKS OFF CACHE INTERNAL "" )
@@ -333,6 +332,21 @@ set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE INTERNAL "")
 set(ASSIMP_INSTALL OFF CACHEN INTERNAL "")
 set(ASSIMP_NO_EXPORT ON CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/assimp" EXCLUDE_FROM_ALL)
+
+# steam audio
+if (NOT RAVENGINE_SERVER)
+	set(SA_BUILD_ZLIB OFF CACHE INTERNAL "")
+	set(ZLIB_LIBRARY zlibstatic CACHE INTERNAL "")
+	set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/deps/assimp/contrib/zlib" CACHE INTERNAL "")
+	set(CMAKE_DISABLE_FIND_PACKAGE_ZLIB OFF CACHE INTERNAL "")
+	if (CMAKE_CROSSCOMPILING)
+		set(SA_BUILD_FLATC OFF CACHE INTERNAL "")
+	endif()
+	add_subdirectory(deps/SteamAudio-All EXCLUDE_FROM_ALL)
+	set(SA_LIB "phonon")
+	target_link_libraries(mysofa-static PRIVATE zlibstatic)
+	target_include_directories(mysofa-static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/assimp/contrib/zlib/")
+endif()
 
 # recast
 SET(RECASTNAVIGATION_DEMO OFF CACHE INTERNAL "")
@@ -580,15 +594,13 @@ target_link_libraries("${PROJECT_NAME}"
 	"assimp"
 	"im3d"
 	"physfs-static"
-	"PffftObj"
-	"SadieHrtfsObj"
-	"ResonanceAudioObj"
 	#"PhysXGPU"
 	${RML_LIB}
 	"libnyquist"
 	"GameNetworkingSockets_s"
 	"r8brain"
 	PUBLIC
+	${SA_LIB}
 	"effolkronium_random"
 	"glm"
 	"fmt"
@@ -682,7 +694,7 @@ macro(enable_unity targets)
 endmacro()
 
 set(all_unity 
-"LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;im3d;SadieHrtfsObj;ResonanceAudioObj;libnyquist;Detour;ozz_animation;ozz_animation_offline;\
+"LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;im3d;libnyquist;Detour;ozz_animation;ozz_animation_offline;\
 ozz_animation_tools;ozz_base;ozz_geometry;ozz_options;json;libopus;DebugUtils;DetourCrowd;DetourTileCache;harfbuzz;"
 )
 
@@ -697,8 +709,8 @@ enable_unity("${all_unity}"
 SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "RavEngine SDK")
 
 group_in("Libraries" "assimp;assimp_cmd;fmt;DebugUtils;Detour;DetourCrowd;DetourTileCache;freetype;GameNetworkingSockets_s;GNS_Deps;\
-im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;PffftObj;physfs;physfs-static;BUILD_FUSE_ALL;\
-Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;SadieHrtfsObj;ssl;\
+im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;physfs;physfs-static;BUILD_FUSE_ALL;\
+Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL3-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
 sdl_headers_copy;libprotoc;protoc;
 ")
@@ -720,6 +732,10 @@ BUILD_FUSE_ozz_base;BUILD_FUSE_ozz_geometry;BUILD_FUSE_ozz_options"
 )
 
 group_in("Libraries/openxr" "openxr_loader" "generate_openxr_header" "xr_global_generated_files")
+
+group_in("Libraries/SteamAudio"
+"core;fbschemas;hrtf;phonon;flatc;PFFFT;mysofa-static"
+)
 
 macro(shader_compile infile stage api extension binary)
 	if (NOT RAVENGINE_SERVER)

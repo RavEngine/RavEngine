@@ -51,6 +51,13 @@ namespace RavEngine{
         auto size() const{
             return combined_buffers.size();
         }
+
+        /**
+        * Gets the number of samples, regardless of the number of channels. For example, a 4-channel view and a 1-channel view will return the same number. 
+        */
+        auto GetNumSamples() const {
+            return combined_buffers.size() / GetNChannels();
+        }
         
         auto data() {
             return combined_buffers.data();

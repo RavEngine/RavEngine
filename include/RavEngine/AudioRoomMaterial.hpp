@@ -1,5 +1,4 @@
 #pragma once
-#include <common/room_properties.h>
 #include "DataStructures.hpp"
 
 namespace RavEngine{
@@ -7,7 +6,9 @@ namespace RavEngine{
 /**
  Reverbation data for a room. Subclass to create new material presets
  */
-class RoomMaterial : public vraudio::ReverbProperties{
+class RoomMaterial {
+#if 0
+	: public vraudio::ReverbProperties{
 public:
 	/**
 	 RT60 values
@@ -23,6 +24,7 @@ public:
 	 Change the gain
 	 */
 	constexpr inline void SetGain(float g){ gain = g; }
+#endif
 };
 
 // put presets here

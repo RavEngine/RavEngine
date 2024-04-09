@@ -7,6 +7,12 @@
 #include <taskflow/taskflow.hpp>
 #include <taskflow/core/worker.hpp>
 #include "DataStructures.hpp"
+#include "Types.hpp"
+
+struct _IPLContext_t;
+struct _IPLHRTF_t;
+struct _IPLAudioSettings_t;
+struct _IPLSimulator_t;
 
 namespace RavEngine{
 
@@ -23,6 +29,9 @@ class AudioPlayer{
 	WeakRef<World> worldToRender;
     uint64_t currentProcessingID = 0;
     uint64_t globalSamples = 0; // in units of a single channel
+    _IPLContext_t* steamAudioContext = nullptr;
+    _IPLHRTF_t* steamAudioHRTF;
+    _IPLSimulator_t* steamAudioSimulator;
 #endif
 
     
@@ -46,12 +55,32 @@ class AudioPlayer{
     
     void EnqueueAudioTasks();
     UnorderedSet<Ref<AudioDataProvider>> alreadyTicked;
-    
+    std::vector<entity_t> destroyedSources;
 #endif
 
     
 public:
 #if !RVE_SERVER
+    auto GetSteamAudioHRTF() const {
+        return steamAudioHRTF;
+    }
+    auto GetSteamAudioContext() const {
+        return steamAudioContext;
+    }
+
+    auto GetSteamAudioState() const {
+         
+        struct SAState{
+            decltype(steamAudioHRTF) hrtf;
+            decltype(steamAudioContext) context;
+        } state{
+            .hrtf = steamAudioHRTF,
+            .context = steamAudioContext
+        };
+        return state;
+    }
+    _IPLAudioSettings_t GetSteamAudioSettings() const;
+
     AudioPlayer();
     
 	/**

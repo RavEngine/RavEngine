@@ -5,6 +5,8 @@
 #include "mathtypes.hpp"
 #include "Ref.hpp"
 #include "AudioTypes.hpp"
+#include "Types.hpp"
+#include "ComponentWithOwner.hpp"
 
 namespace RavEngine{
 
@@ -209,8 +211,8 @@ public:
 /**
  For attaching a movable source to an Entity. Affected by Rooms.
  */
-struct AudioSourceComponent : public AudioSourceBase, public Queryable<AudioSourceComponent>, public AutoCTTI{
-    AudioSourceComponent(Ref<AudioDataProvider> a);
+struct AudioSourceComponent : public AudioSourceBase, public ComponentWithOwner, public Queryable<AudioSourceComponent>{
+    AudioSourceComponent(entity_t owner, Ref<AudioDataProvider> a);
 };
 
 /**
@@ -228,6 +230,14 @@ struct InstantaneousAudioSource : public AudioSourceBase{
 	
     InstantaneousAudioSource(Ref<AudioAsset> a, const vector3& position, float vol = 1);
 };
+
+struct InstantaneousAudioSourceToPlay {
+    InstantaneousAudioSource source;
+    entity_t fakeOwner;
+    InstantaneousAudioSourceToPlay(const InstantaneousAudioSource& source, entity_t fakeOwner) :
+        source(source), fakeOwner(fakeOwner) {}
+};
+
 
 /**
  Used for Fire-and-forget audio playing, where spatialization is not necessary. See method on the world for more info

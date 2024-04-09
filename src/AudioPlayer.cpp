@@ -1,6 +1,7 @@
 #include "AudioPlayer.hpp"
 #if !RVE_SERVER
 #include <SDL.h>
+#include <phonon.h>
 #endif
 #include "Debug.hpp"
 #include "World.hpp"
@@ -17,6 +18,7 @@
 
 using namespace RavEngine;
 using namespace std;
+
 
 STATIC(AudioPlayer::SamplesPerSec) = 0;
 STATIC(AudioPlayer::nchannels) = 0;
@@ -40,6 +42,17 @@ struct AudioWorker : public tf::WorkerInterface{
 };
 
 #if !RVE_SERVER
+std::string_view IPLerrorToString(IPLerror error){
+    switch(error){
+        case IPL_STATUS_SUCCESS:    return "IPL_STATUS_SUCCESS";
+        IPL_STATUS_FAILURE:         return "IPL_STATUS_FAILURE";
+        IPL_STATUS_OUTOFMEMORY:     return "IPL_STATUS_OUTOFMEMORY";
+        IPL_STATUS_INITIALIZATION:  return "IPL_STATUS_INITIALIZATION";
+        default:
+            return "Invalid IPLerror";
+    }
+}
+
 AudioPlayer::AudioPlayer() : audioExecutor{2, std::make_shared<AudioWorker>()}{
     
 }
@@ -58,6 +71,20 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     
     GetApp()->SwapRenderAudioSnapshot();
     SnapshotToRender = GetApp()->GetRenderAudioSnapshot();
+
+    auto lockedworld = SnapshotToRender->sourceWorld.lock();
+    if (lockedworld == nullptr) {
+        return;
+    }
+    // copy out the destroyed sources
+    destroyedSources.clear();
+    {
+        entity_t id;
+        while (lockedworld->destroyedAudioSources.try_dequeue(id)) {
+            destroyedSources.push_back(id);
+        }
+    }
+
     auto buffer_idx = currentProcessingID % GetBufferCount();
         
     // kill all the remaining tasks
@@ -89,6 +116,9 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
 
     auto& lpos = SnapshotToRender->listenerPos;
     auto& lrot = SnapshotToRender->listenerRot;
+
+    const matrix4 invListenerTransform = glm::inverse(glm::translate(matrix4(1), (vector3)lpos) * glm::toMat4((quaternion)lrot));
+
     const auto buffers_size = len / sizeof(float);
     stackarray(shared_buffer, float, buffers_size);
     stackarray(effect_scratch_buffer, float, buffers_size);
@@ -121,10 +151,13 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
 
     for (const auto& r : SnapshotToRender->rooms) {
         auto& room = r.room;
-        room->SetListenerTransform(lpos, lrot);
-        resetShared();
 
-        // raster sources
+        // destroyed-sources
+        for (const auto id : destroyedSources) {
+            room->DeleteAudioDataForEntity(id);
+        }
+
+        // existing sources
         for (const auto& source : SnapshotToRender->sources) {
             // add this source into the room
             auto& buffer = source.data->renderData.buffers[buffer_idx];
@@ -132,16 +165,15 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
             auto proc_id = buffer.lastCompletedProcessingIterationID.load();
             if (proc_id == currentProcessingID){
                 auto hashcode = std::hash<decltype(source.data.get())>()(source.data.get());
-                room->AddEmitter(view.data(), source.worldpos, source.worldrot, r.worldpos, r.worldrot, hashcode, source.data->volume);
+
+                resetShared();
+                room->RenderAudioSource(sharedBufferView, effectScratchBuffer,
+                    view, source.worldpos, source.ownerID, 
+                    invListenerTransform
+                    );
+                blendIn();
             }
         }
-
-        //now simulate the fire-and-forget audio
-        resetShared();
-
-        //simulate in the room
-        room->Simulate(sharedBufferView,effectScratchBuffer);
-        blendIn();
     }
 
     for (auto& source : SnapshotToRender->ambientSources) {
@@ -269,9 +301,55 @@ void AudioPlayer::Init(){
     });
     
     SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(stream));
+    
+    // steamaudio
+    IPLContextSettings contextSettings{
+        .version = STEAMAUDIO_VERSION
+    };
+    IPLerror errorCode = iplContextCreate(&contextSettings, &steamAudioContext);
+    if (errorCode){
+        Debug::Fatal("Cannot init SteamAudio: {}", IPLerrorToString(errorCode));
+    }
+    
+   
+    auto audioSettings = GetSteamAudioSettings();
+
+    // load HRTF
+    IPLHRTFSettings hrtfSettings{};
+    hrtfSettings.type = IPL_HRTFTYPE_DEFAULT;
+
+    errorCode = iplHRTFCreate(steamAudioContext, &audioSettings, &hrtfSettings, &steamAudioHRTF);
+    if (errorCode) {
+        Debug::Fatal("Cannot load HRTF: {}", IPLerrorToString(errorCode));
+    }
+    
+    // load simulator
+    IPLSimulationSettings simulationSettings{
+        .flags = IPL_SIMULATIONFLAGS_DIRECT,    // this enables occlusion/transmission simulation
+        .sceneType = IPL_SCENETYPE_DEFAULT,
+    };
+    // see below for examples of how to initialize the remaining fields of this structure
+
+    errorCode = iplSimulatorCreate(steamAudioContext, &simulationSettings, &steamAudioSimulator);
+    if (errorCode) {
+        Debug::Fatal("Cannot create Steam Audio Simulator: {}", IPLerrorToString(errorCode));
+    }
 }
 
 void AudioPlayer::Shutdown(){
 	SDL_CloseAudioDevice(SDL_GetAudioStreamDevice(stream));
+    iplHRTFRelease(&steamAudioHRTF);
+    iplSimulatorRelease(&steamAudioSimulator);
+    iplContextRelease(&steamAudioContext);
+}
+
+IPLAudioSettings AudioPlayer::GetSteamAudioSettings() const
+{
+    IPLAudioSettings audioSettings{};
+    audioSettings.samplingRate = SamplesPerSec;
+    audioSettings.frameSize = buffer_size; // the size of audio buffers we intend to process
+    return audioSettings;
 }
 #endif
+
+
