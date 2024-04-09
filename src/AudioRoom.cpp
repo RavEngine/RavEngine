@@ -60,17 +60,18 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
         .data = outputChannels
     };
 
-    auto sourcePosInListenerSpace = invListenerTransform * vector4(sourcePos,1);
+    auto sourcePosInListenerSpace = vector3(invListenerTransform * vector4(sourcePos,1));
     auto normalizedMagnitude = sourcePosInListenerSpace.length() / radius;
     sourcePosInListenerSpace = glm::normalize(sourcePosInListenerSpace);
-    sourcePosInListenerSpace /= normalizedMagnitude;
+    //sourcePosInListenerSpace /= normalizedMagnitude;
 
-    IPLBinauralEffectParams params{};
-    params.direction = IPLVector3{ sourcePosInListenerSpace.x,sourcePosInListenerSpace.y,sourcePosInListenerSpace.z };
-    params.hrtf = GetApp()->GetAudioPlayer()->GetSteamAudioHRTF();
-    params.interpolation = IPL_HRTFINTERPOLATION_BILINEAR;
-    params.spatialBlend = 1.0f; 
-    params.peakDelays = nullptr;
+    IPLBinauralEffectParams params{
+        .direction = { sourcePosInListenerSpace.x,sourcePosInListenerSpace.y,sourcePosInListenerSpace.z },
+        .interpolation = IPL_HRTFINTERPOLATION_BILINEAR,
+        .spatialBlend = 1.0f,
+        .hrtf = GetApp()->GetAudioPlayer()->GetSteamAudioHRTF(),
+        .peakDelays = nullptr
+    };
 
     iplBinauralEffectApply(binauralEffect, &params, &inBuffer, &outputBuffer);
 
