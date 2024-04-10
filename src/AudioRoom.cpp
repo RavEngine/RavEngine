@@ -22,21 +22,28 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
     //TODO: if the source is too far away, bail
 
     // get the binaural effect
-    IPLBinauralEffect binauralEffect;
+    auto& audioPlayer = GetApp()->GetAudioPlayer();
+    auto state = audioPlayer->GetSteamAudioState();
+
+    SteamAudioEffects effects;
     auto it = steamAudioData.find(owningEntity);
     if (it == steamAudioData.end()) {
         IPLBinauralEffectSettings effectSettings{};
-        auto& audioPlayer = GetApp()->GetAudioPlayer();
-        auto state = audioPlayer->GetSteamAudioState();
         effectSettings.hrtf = state.hrtf;
 
         auto settings = audioPlayer->GetSteamAudioSettings();
 
-        iplBinauralEffectCreate(state.context, &settings, &effectSettings, &binauralEffect);
-        steamAudioData.emplace(owningEntity, binauralEffect);
+        iplBinauralEffectCreate(state.context, &settings, &effectSettings, &effects.binauralEffect);
+
+        IPLDirectEffectSettings directEffectSettings{
+            .numChannels = 1,
+        };
+        iplDirectEffectCreate(state.context, &settings, &directEffectSettings, &effects.directEffect);
+
+        steamAudioData.emplace(owningEntity, effects);
     }
     else {
-        binauralEffect = it->second;
+        effects = it->second;
     }
 
     // render it
@@ -61,17 +68,28 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
     };
 
     auto sourcePosInListenerSpace = vector3(invListenerTransform * vector4(sourcePos,1));
-    sourcePosInListenerSpace = glm::normalize(sourcePosInListenerSpace);
+    auto normalizedPos = glm::normalize(sourcePosInListenerSpace);
 
     IPLBinauralEffectParams params{
-        .direction = { sourcePosInListenerSpace.x,sourcePosInListenerSpace.y,sourcePosInListenerSpace.z },
+        .direction = { normalizedPos.x,normalizedPos.y,normalizedPos.z },
         .interpolation = IPL_HRTFINTERPOLATION_BILINEAR,
         .spatialBlend = 1.0f,
         .hrtf = GetApp()->GetAudioPlayer()->GetSteamAudioHRTF(),
         .peakDelays = nullptr
     };
 
-    auto result = iplBinauralEffectApply(binauralEffect, &params, &inBuffer, &outputBuffer);
+    auto result = iplBinauralEffectApply(effects.binauralEffect, &params, &inBuffer, &outputBuffer);
+
+    // do distance attenuation in-place
+    IPLDistanceAttenuationModel distanceAttenuationModel{
+       .type = IPL_DISTANCEATTENUATIONTYPE_DEFAULT
+    };
+    IPLDirectEffectParams directParams{
+        .flags = IPL_DIRECTEFFECTFLAGS_APPLYDISTANCEATTENUATION,
+        .distanceAttenuation = iplDistanceAttenuationCalculate(state.context,{sourcePosInListenerSpace.x,sourcePosInListenerSpace.y,sourcePosInListenerSpace.z},{0,0,0},&distanceAttenuationModel)
+    };
+   
+    result = iplDirectEffectApply(effects.directEffect, &directParams, &outputBuffer, &outputBuffer);
 
     const auto nchannels = AudioPlayer::GetNChannels();
     AudioGraphComposed::Render(buffer, scratchBuffer, nchannels); // process graph for spatialized audio
@@ -80,6 +98,10 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
 
 void RavEngine::SimpleAudioSpace::RoomData::DeleteAudioDataForEntity(entity_t entity)
 {
+    steamAudioData.if_contains(entity, [](SteamAudioEffects& effects) {
+        iplBinauralEffectRelease(&effects.binauralEffect);
+        iplDirectEffectRelease(&effects.directEffect);
+    });
     steamAudioData.erase(entity);
 }
 

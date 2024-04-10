@@ -11,6 +11,7 @@
 #include "DebugDrawer.hpp"
 
 struct _IPLBinauralEffect_t;
+struct _IPLDirectEffect_t;
 
 namespace RavEngine{
 
@@ -50,7 +51,11 @@ public:
 
         }
     private:
-        locked_hashmap<entity_t, _IPLBinauralEffect_t*,SpinLock> steamAudioData;
+        struct SteamAudioEffects {
+            _IPLBinauralEffect_t* binauralEffect = nullptr;
+            _IPLDirectEffect_t* directEffect = nullptr;
+        };
+        locked_hashmap<entity_t, SteamAudioEffects,SpinLock> steamAudioData;
     };
     Ref<RoomData> data;
 	
