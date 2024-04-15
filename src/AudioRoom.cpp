@@ -19,8 +19,6 @@ SimpleAudioSpace::RoomData::RoomData() {}
 
 void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer, PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity, const matrix4& invListenerTransform)
 {
-    //TODO: if the source is too far away, bail
-
     // get the binaural effect
     auto& audioPlayer = GetApp()->GetAudioPlayer();
     auto state = audioPlayer->GetSteamAudioState();

@@ -26,6 +26,10 @@ struct AudioSnapshot{
         vector3 worldpos;
         quaternion worldrot;
         Room(const decltype(room)& room,const decltype(worldpos)& wp, const decltype(worldrot)& wr): room(room), worldpos(wp), worldrot(wr){}
+
+        bool IsInsideRoom(const vector3& pos) const{
+            return glm::distance2(pos, worldpos) < (room->radius * room->radius);
+        }
     };
     
     UnorderedSet<PointSource> sources;

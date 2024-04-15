@@ -158,13 +158,22 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
         }
 
         // existing sources
+        // first check that the listener is inside the room
+        if (!r.IsInsideRoom(lpos)) {
+            continue;
+        }
+
         for (const auto& source : SnapshotToRender->sources) {
+            // is this source inside the space? if not, then don't process it
+            if (!r.IsInsideRoom(source.worldpos)) {
+                continue;
+            }
+
             // add this source into the room
             auto& buffer = source.data->renderData.buffers[buffer_idx];
             auto view = buffer.GetDataBufferView();
             auto proc_id = buffer.lastCompletedProcessingIterationID.load();
             if (proc_id == currentProcessingID){
-                auto hashcode = std::hash<decltype(source.data.get())>()(source.data.get());
 
                 resetShared();
                 room->RenderAudioSource(sharedBufferView, effectScratchBuffer,
