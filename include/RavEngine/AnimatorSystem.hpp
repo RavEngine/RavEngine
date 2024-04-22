@@ -5,8 +5,8 @@
 namespace RavEngine{
 class AnimatorSystem : public AutoCTTI{
 public:
-    inline void operator()(AnimatorComponent& c) const {
-		c.Tick();
+    inline void operator()(AnimatorComponent& c, const Transform& t) const {
+		c.Tick(t);
 	}
 };
 }

@@ -110,9 +110,9 @@ private:
 	clamped_vec2 blend_pos;
 };
 
-class AnimatorComponent : public ComponentWithOwner,
+class AnimatorComponent 
 #if !RVE_SERVER
-public IDebugRenderable,
+: public IDebugRenderable,
 #endif
 public Queryable<AnimatorComponent
 #if !RVE_SERVER
@@ -250,7 +250,11 @@ public:
 	
     void Pause();
 
-    void Tick();
+	/**
+	Process one frame of this animator.
+	@param t the transform component on the object
+	*/
+    void Tick(const Transform& t);
 	
     inline decltype(skeleton) GetSkeleton() const{
 		return skeleton;
@@ -307,7 +311,7 @@ public:
 	 Get the current pose of the animation in world space
 	 @return vector of matrices representing the world-space transformations of every joint in the skeleton for the current animation frame
 	 */
-	const decltype(glm_pose)& GetPose() const;
+	const decltype(glm_pose)& GetPose(const Transform& t) const;
 	
 	const decltype(local_pose)& GetLocalPose();
 	

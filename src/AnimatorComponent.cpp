@@ -28,7 +28,7 @@ Create an AnimatorComponent with a SkeletonAsset
 @param sk the skeleton asset
 */
 
-RavEngine::AnimatorComponent::AnimatorComponent(entity_t owner, Ref<SkeletonAsset> sk) : ComponentWithOwner(owner), isPlaying(false), isBlending(false) {
+RavEngine::AnimatorComponent::AnimatorComponent(entity_t owner, Ref<SkeletonAsset> sk) : isPlaying(false), isBlending(false) {
 	UpdateSkeletonData(sk);
 }
 
@@ -92,7 +92,7 @@ void RavEngine::AnimatorComponent::Pause() {
 	isPlaying = false;
 }
 
-void AnimatorComponent::Tick(){
+void AnimatorComponent::Tick(const Transform& t){
 	//skip calculation 
 	if(!isPlaying){
 		return;
@@ -178,7 +178,7 @@ void AnimatorComponent::Tick(){
 	}
 
 	// update world poses
-	GetPose();
+	GetPose(t);
 }
 
 void AnimatorComponent::UpdateSocket(const std::string& name, Transform& t) const{
@@ -219,9 +219,9 @@ Get the current pose of the animation in world space
 @return vector of matrices representing the world-space transformations of every joint in the skeleton for the current animation frame
 */
 
-const decltype(RavEngine::AnimatorComponent::glm_pose)& RavEngine::AnimatorComponent::GetPose() const {
+const decltype(RavEngine::AnimatorComponent::glm_pose)& RavEngine::AnimatorComponent::GetPose(const Transform& t) const {
 	decimalType matrix[16]{ 0 };
-	auto worldMat = GetOwner().GetTransform().GetWorldMatrix();
+	auto worldMat = t.GetWorldMatrix();
 	for (int i = 0; i < models.size(); i++) {
 		auto& t = models[i];
 		for (int r = 0; r < 4; r++) {
@@ -301,8 +301,8 @@ bool AnimBlendTree::Sample(float t, float start, float speed, bool looping, ozz:
 }
 #if !RVE_SERVER
 
-void AnimatorComponent::DebugDraw(RavEngine::DebugDrawer &dbg, const Transform&) const{
-    auto& pose = GetPose();
+void AnimatorComponent::DebugDraw(RavEngine::DebugDrawer &dbg, const Transform& t) const{
+    auto& pose = GetPose(t);
     for (const auto& p : pose) {
         dbg.DrawSphere(p, debug_color, 0.1);
     }
