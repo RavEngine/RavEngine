@@ -113,6 +113,8 @@ private:
 class AnimatorComponent 
 #if !RVE_SERVER
 : public IDebugRenderable,
+#else
+:
 #endif
 public Queryable<AnimatorComponent
 #if !RVE_SERVER
