@@ -111,9 +111,9 @@ private:
 };
 
 #if !RVE_SERVER
-class AnimatorComponent : public IDebugRenderable, public Queryable<AnimatorComponent,IDebugRenderable>
+class AnimatorComponent : public ComponentWithOwner, public IDebugRenderable, public Queryable<AnimatorComponent,IDebugRenderable>
 #else
-class AnimatorComponent : public Queryable<AnimatorComponent>
+class AnimatorComponent : public ComponentWithOwner, public Queryable<AnimatorComponent>
 #endif
 {
 protected:

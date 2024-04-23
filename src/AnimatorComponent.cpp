@@ -28,7 +28,7 @@ Create an AnimatorComponent with a SkeletonAsset
 @param sk the skeleton asset
 */
 
-RavEngine::AnimatorComponent::AnimatorComponent(entity_t owner, Ref<SkeletonAsset> sk) : isPlaying(false), isBlending(false) {
+RavEngine::AnimatorComponent::AnimatorComponent(entity_t owner, Ref<SkeletonAsset> sk) : ComponentWithOwner(owner), isPlaying(false), isBlending(false) {
 	UpdateSkeletonData(sk);
 }
 
