@@ -1,5 +1,4 @@
 #pragma once
-#include "ComponentWithOwner.hpp"
 #include <ozz/animation/runtime/animation.h>
 #include <ozz/base/maths/soa_transform.h>
 #include "AnimationAsset.hpp"
@@ -111,9 +110,9 @@ private:
 };
 
 #if !RVE_SERVER
-class AnimatorComponent : public IDebugRenderable, public Queryable<AnimatorComponent,IDebugRenderable>
+class AnimatorComponent : public AutoCTTI, public IDebugRenderable, public Queryable<AnimatorComponent,IDebugRenderable>
 #else
-class AnimatorComponent : public Queryable<AnimatorComponent>
+class AnimatorComponent : public AutoCTTI, public Queryable<AnimatorComponent>
 #endif
 {
 protected:
