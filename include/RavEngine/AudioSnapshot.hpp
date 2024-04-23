@@ -1,7 +1,7 @@
 #pragma once
 #include "DataStructures.hpp"
 #include "AudioSource.hpp"
-#include "AudioRoom.hpp"
+#include "AudioSpace.hpp"
 
 namespace RavEngine{
 struct AudioGraphAsset;

@@ -1,6 +1,6 @@
 #if !RVE_SERVER
 
-#include "AudioRoom.hpp"
+#include "AudioSpace.hpp"
 #include "Entity.hpp"
 #include "AudioSource.hpp"
 #include "DataStructures.hpp"
@@ -14,8 +14,6 @@
 
 using namespace RavEngine;
 using namespace std;
-
-SimpleAudioSpace::RoomData::RoomData() {}
 
 void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer, PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity, const matrix4& invListenerTransform)
 {
@@ -101,6 +99,23 @@ void RavEngine::SimpleAudioSpace::RoomData::DeleteAudioDataForEntity(entity_t en
         iplDirectEffectRelease(&effects.directEffect);
     });
     steamAudioData.erase(entity);
+}
+
+void RavEngine::GeometryAudioSpace::RoomData::ConsiderAudioSource(PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity, const matrix4& invListenerTransform)
+{
+
+}
+
+void RavEngine::GeometryAudioSpace::RoomData::RenderSpace(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer)
+{
+}
+
+void RavEngine::GeometryAudioSpace::RoomData::DeleteAudioDataForEntity(entity_t entity) {
+
+}
+
+void RavEngine::GeometryAudioSpace::RoomData::DeleteMeshDataForEntity(entity_t entity)
+{
 }
 
 //void RavEngine::AudioRoom::DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const

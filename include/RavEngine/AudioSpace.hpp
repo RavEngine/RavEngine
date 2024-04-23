@@ -46,10 +46,6 @@ public:
         // internal use only. Called when an audio source component is destroyed
         void DeleteAudioDataForEntity(entity_t entity);
         
-        RoomData();
-        ~RoomData(){
-
-        }
     private:
         struct SteamAudioEffects {
             _IPLBinauralEffect_t* binauralEffect = nullptr;
@@ -68,6 +64,38 @@ public:
 	 Render the debug shape for this room. Invoke in a debug rendering component
 	 */
     void DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const override {}
+};
+
+struct GeometryAudioSpace : public ComponentWithOwner, public Queryable<GeometryAudioSpace, IDebugRenderable> {
+    friend class RavEngine::AudioRoomSyncSystem;
+    friend class RavEngine::AudioPlayer;
+public:
+
+    struct RoomData {
+        float sourceRadius = 10, meshRadius = 10;
+
+
+        void ConsiderAudioSource(
+            PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity,
+            const matrix4& invListenerTransform);
+
+        void ConsiderMesh();
+
+        void RenderSpace(
+            PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer
+        );
+
+        // internal use only. Called when an audio source component is destroyed
+        void DeleteAudioDataForEntity(entity_t entity);
+        void DeleteMeshDataForEntity(entity_t entity);
+    private:
+
+    };
+
+    Ref<RoomData> data;
+
+    GeometryAudioSpace(entity_t owner) : ComponentWithOwner(owner), data(std::make_shared<RoomData>()) {}
+
 };
 
 }
