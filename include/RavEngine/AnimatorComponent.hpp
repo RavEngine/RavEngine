@@ -111,9 +111,9 @@ private:
 };
 
 #if !RVE_SERVER
-class AnimatorComponent : public ComponentWithOwner, public IDebugRenderable, public Queryable<AnimatorComponent,IDebugRenderable>
+class AnimatorComponent : public IDebugRenderable, public Queryable<AnimatorComponent,IDebugRenderable>
 #else
-class AnimatorComponent : public ComponentWithOwner, public Queryable<AnimatorComponent>
+class AnimatorComponent : public Queryable<AnimatorComponent>
 #endif
 {
 protected:
@@ -222,7 +222,7 @@ public:
 	 Create an AnimatorComponent with a SkeletonAsset
 	 @param sk the skeleton asset
 	 */
-	AnimatorComponent(entity_t owner, Ref<SkeletonAsset> sk);
+	AnimatorComponent(Ref<SkeletonAsset> sk);
 		
 	/**
 	 Transitions to the new state. If the current state has a transition to the target state, that transition is played.
