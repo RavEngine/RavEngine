@@ -110,7 +110,7 @@ private:
 };
 
 #if !RVE_SERVER
-class AnimatorComponent : public AutoCTTI, public IDebugRenderable, public Queryable<AnimatorComponent,IDebugRenderable>
+class AnimatorComponent : public IDebugRenderable, public Queryable<AnimatorComponent,IDebugRenderable>
 #else
 class AnimatorComponent : public AutoCTTI, public Queryable<AnimatorComponent>
 #endif
