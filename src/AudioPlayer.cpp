@@ -149,7 +149,7 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     };
     
 
-    for (const auto& r : SnapshotToRender->rooms) {
+    for (const auto& r : SnapshotToRender->simpleAudioSpaces) {
         auto& room = r.room;
 
         // destroyed-sources
@@ -159,13 +159,13 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
 
         // existing sources
         // first check that the listener is inside the room
-        if (!r.IsInsideRoom(lpos)) {
+        if (!r.IsInsideSourceArea(lpos)) {
             continue;
         }
 
         for (const auto& source : SnapshotToRender->sources) {
             // is this source inside the space? if not, then don't process it
-            if (!r.IsInsideRoom(source.worldpos)) {
+            if (!r.IsInsideSourceArea(source.worldpos)) {
                 continue;
             }
 

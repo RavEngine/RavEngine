@@ -252,16 +252,23 @@ void World::SetupTaskGraph(){
         
     }).name("Ambient Audios").succeed(audioClear);
     
-    auto copyRooms = audioTasks.emplace([this]{
+    auto copySimpleAudioSpaces = audioTasks.emplace([this]{
         Filter( [this](SimpleAudioSpace& room, Transform& transform){
-            GetApp()->GetCurrentAudioSnapshot()->rooms.emplace_back(room.data,transform.GetWorldPosition(),transform.GetWorldRotation());
+            GetApp()->GetCurrentAudioSnapshot()->simpleAudioSpaces.emplace_back(room.data,transform.GetWorldPosition());
         });
         
-    }).name("Rooms").succeed(audioClear);
+    }).name("Simple Audio Spaces").succeed(audioClear);
+
+    auto copyGeometryAudioSpaces = audioTasks.emplace([this] {
+        Filter([this](GeometryAudioSpace& room, Transform& transform) {
+            GetApp()->GetCurrentAudioSnapshot()->geometryAudioSpaces.emplace_back(room.data, transform.GetWorldPosition());
+        });
+
+    }).name("Geometry Audio Spaces").succeed(audioClear);
     
     auto audioSwap = audioTasks.emplace([]{
         GetApp()->SwapCurrrentAudioSnapshot();
-    }).name("Swap Current").succeed(copyAudios,copyAmbients,copyRooms);
+    }).name("Swap Current").succeed(copyAudios,copyAmbients,copySimpleAudioSpaces,copyGeometryAudioSpaces);
     
     audioTaskModule = masterTasks.composed_of(audioTasks).name("Audio");
     audioTaskModule.succeed(ECSTaskModule);

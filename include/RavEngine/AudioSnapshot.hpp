@@ -21,21 +21,33 @@ struct AudioSnapshot{
         }
     };
     
-    struct Room{
-        Ref<SimpleAudioSpace::RoomData> room;
+    template<typename room_t>
+    struct TAudioSpace{
+        Ref<room_t> room;
         vector3 worldpos;
-        quaternion worldrot;
-        Room(const decltype(room)& room,const decltype(worldpos)& wp, const decltype(worldrot)& wr): room(room), worldpos(wp), worldrot(wr){}
+        TAudioSpace(const decltype(room)& room,const decltype(worldpos)& wp): room(room), worldpos(wp){}
 
-        bool IsInsideRoom(const vector3& pos) const{
-            return glm::distance2(pos, worldpos) < (room->radius * room->radius);
+        bool IsInsideSourceArea(const vector3& pos) const{
+            return glm::distance2(pos, worldpos) < (room->sourceRadius * room->sourceRadius);
+        }
+    };
+
+    using SimpleAudioSpaceData = TAudioSpace<SimpleAudioSpace::RoomData>;
+
+    struct GeometryAudioSpaceData : public TAudioSpace<GeometryAudioSpace::RoomData> {
+
+        GeometryAudioSpaceData(const decltype(room)& room, const decltype(worldpos)& wp) : TAudioSpace(room, wp) {}
+
+        bool IsInsideMeshArea(const vector3& pos) const{
+            return glm::distance2(pos, worldpos) < (room->meshRadius * room->meshRadius);
         }
     };
     
     UnorderedSet<PointSource> sources;
     UnorderedSet<Ref<AudioDataProvider>> ambientSources;
     
-    Vector<Room> rooms;
+    Vector<SimpleAudioSpaceData> simpleAudioSpaces;
+    Vector<GeometryAudioSpaceData> geometryAudioSpaces;
     vector3 listenerPos;
     quaternion listenerRot;
     Ref<AudioGraphAsset> listenerGraph;
@@ -44,7 +56,8 @@ struct AudioSnapshot{
     void Clear(){
         sources.clear();
         ambientSources.clear();
-        rooms.clear();
+        simpleAudioSpaces.clear();
+        geometryAudioSpaces.clear();
         sourceWorld.reset();
     }
 };

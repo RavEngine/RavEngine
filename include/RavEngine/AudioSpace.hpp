@@ -27,7 +27,7 @@ class SimpleAudioSpace : public ComponentWithOwner, public IDebugRenderable, pub
 public:
     struct RoomData : public AudioGraphComposed{
         
-        float radius = 10;
+        float sourceRadius = 10;
         
         /**
         @param buffer destination for the calculated audio
