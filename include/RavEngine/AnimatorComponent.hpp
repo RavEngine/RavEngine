@@ -110,17 +110,12 @@ private:
 	clamped_vec2 blend_pos;
 };
 
-class AnimatorComponent 
 #if !RVE_SERVER
-: public IDebugRenderable,
+class AnimatorComponent : public IDebugRenderable, public Queryable<AnimatorComponent,IDebugRenderable>
 #else
-:
+class AnimatorComponent : public Queryable<AnimatorComponent>
 #endif
-public Queryable<AnimatorComponent
-#if !RVE_SERVER
-,IDebugRenderable
-#endif
->{
+{
 protected:
 	double lastPlayTime = 0;
 	Ref<SkeletonAsset> skeleton;
