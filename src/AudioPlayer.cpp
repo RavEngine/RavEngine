@@ -216,6 +216,9 @@ void AudioPlayer::SetupAudioTaskGraph(){
         stackarray(mixTemp, float, bufferSize);
         PlanarSampleBufferInlineView mixTempView{ mixTemp, bufferSize, sharedBufferView.GetNumSamples()};
 
+
+        TZero(mixTemp, bufferSize);
+
         for (const auto& source : SnapshotToRender->sources) {
             // is this source inside the space? if not, then don't process it
             if (!r.IsInsideSourceArea(source.worldpos)) {
@@ -226,14 +229,16 @@ void AudioPlayer::SetupAudioTaskGraph(){
             auto& buffer = source.data->renderData.buffers[buffer_idx];
             auto view = buffer.GetDataBufferView();
 
-            TZero(mixTemp, bufferSize);
+            TZero(sharedBufferView.data(), sharedBufferView.size());
 
-            room->RenderAudioSource(mixTempView, effectScratchBuffer,
+            room->RenderAudioSource(sharedBufferView, effectScratchBuffer,
                 view, source.worldpos, source.ownerID,
                 invListenerTransform
             );
-            //AdditiveBlendSamples(sharedBufferView, mixTempView);
+            AdditiveBlendSamples(mixTempView, sharedBufferView);
         }
+        AdditiveBlendSamples(sharedBufferView, mixTempView);
+
         buffers.lastCompletedProcessingIterationID = nextID;   // mark it as having completed in this iter cycle
 
     }).name("Process Simple Audio Rooms").succeed(processDataProviders);
