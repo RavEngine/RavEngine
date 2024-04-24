@@ -255,14 +255,14 @@ void World::SetupTaskGraph(){
     
     auto copySimpleAudioSpaces = audioTasks.emplace([this]{
         Filter( [this](const SimpleAudioSpace& room, const Transform& transform){
-            GetApp()->GetCurrentAudioSnapshot()->simpleAudioSpaces.emplace_back(room.data,transform.GetWorldPosition());
+            GetApp()->GetCurrentAudioSnapshot()->simpleAudioSpaces.emplace_back(room.GetData(), transform.GetWorldPosition());
         });
         
     }).name("Simple Audio Spaces").succeed(audioClear);
 
     auto copyGeometryAudioSpaces = audioTasks.emplace([this] {
         Filter([this](const GeometryAudioSpace& room, const Transform& transform) {
-            GetApp()->GetCurrentAudioSnapshot()->geometryAudioSpaces.emplace_back(room.data, transform.GetWorldPosition());
+            GetApp()->GetCurrentAudioSnapshot()->geometryAudioSpaces.emplace_back(room.GetData(), transform.GetWorldPosition());
         });
 
     }).name("Geometry Audio Spaces").succeed(audioClear);

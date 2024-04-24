@@ -47,6 +47,7 @@ struct AudioSnapshot{
     struct AudioMeshData {
         matrix4 worldTransform;
         Ref<AudioMeshAsset> asset;
+        AudioMeshData(const decltype(worldTransform)& wt, const decltype(asset)& a) : worldTransform(wt), asset(a) {}
     };
     
     UnorderedVector<PointSource> sources;

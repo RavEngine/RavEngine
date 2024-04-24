@@ -53,17 +53,27 @@ public:
         };
         locked_hashmap<entity_t, SteamAudioEffects,SpinLock> steamAudioData;
     };
-    Ref<RoomData> data;
 	
     
 	SimpleAudioSpace(entity_t owner) : ComponentWithOwner(owner), data(std::make_shared<RoomData>()) {}
 	
-	
+    void SetRadius(float radius) {
+        data->sourceRadius = radius;
+    }
+    float GetRadius() const {
+        return data->sourceRadius;
+    }
+
+    const auto GetData() const {
+        return data;
+    }
 	
 	/**
 	 Render the debug shape for this room. Invoke in a debug rendering component
 	 */
     void DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const override {}
+private:
+    Ref<RoomData> data;
 };
 
 struct GeometryAudioSpace : public ComponentWithOwner, public Queryable<GeometryAudioSpace, IDebugRenderable> {
@@ -92,10 +102,13 @@ public:
 
     };
 
-    Ref<RoomData> data;
+    const auto GetData() const {
+        return data;
+    }
 
     GeometryAudioSpace(entity_t owner) : ComponentWithOwner(owner), data(std::make_shared<RoomData>()) {}
-
+private:
+    Ref<RoomData> data;
 };
 
 }
