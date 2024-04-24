@@ -54,7 +54,6 @@ class AudioPlayer{
     ConcurrentQueue<tf::Future<void>> theFutures;
     
     void EnqueueAudioTasks();
-    UnorderedSet<Ref<AudioDataProvider>> alreadyTicked;
     std::vector<entity_t> destroyedSources;
 #endif
 

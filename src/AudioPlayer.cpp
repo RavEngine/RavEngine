@@ -234,17 +234,11 @@ void AudioPlayer::EnqueueAudioTasks(){
         numExecuting--;
    
     };
-    alreadyTicked.clear();
     // point sources
-    for (const auto& source : SnapshotToRender->sources) {
-        auto player = source.data;
-        if (!alreadyTicked.contains(player)){
-            alreadyTicked.insert(player);
-            auto renderData = &source.data->renderData;
-            static_assert(sizeof(player) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
-            theFutures.enqueue(audioExecutor.async(doPlayer, renderData, player));
-        }
-      
+    for (const auto& player : SnapshotToRender->dataProviders) {
+        auto renderData = &player->renderData;
+        static_assert(sizeof(player) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
+        theFutures.enqueue(audioExecutor.async(doPlayer, renderData, player));
     }
     // ambient sources
     for (auto& source : SnapshotToRender->ambientSources) {

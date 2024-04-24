@@ -51,6 +51,7 @@ struct AudioSnapshot{
     };
     
     UnorderedVector<PointSource> sources;
+    UnorderedSet<Ref<AudioDataProvider>> dataProviders;
     UnorderedVector<Ref<AudioDataProvider>> ambientSources;
     
     Vector<SimpleAudioSpaceData> simpleAudioSpaces;
@@ -69,6 +70,7 @@ struct AudioSnapshot{
         geometryAudioSpaces.clear();
         sourceWorld.reset();
         audioMeshes.clear();
+        dataProviders.clear();
     }
 };
 }
