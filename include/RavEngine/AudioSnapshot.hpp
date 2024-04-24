@@ -5,6 +5,7 @@
 
 namespace RavEngine{
 struct AudioGraphAsset;
+struct AudioMeshAsset;
 
 struct AudioSnapshot{
     struct PointSourceBase{
@@ -42,12 +43,19 @@ struct AudioSnapshot{
             return glm::distance2(pos, worldpos) < (room->meshRadius * room->meshRadius);
         }
     };
+
+    struct AudioMeshData {
+        matrix4 worldTransform;
+        Ref<AudioMeshAsset> asset;
+    };
     
-    UnorderedSet<PointSource> sources;
-    UnorderedSet<Ref<AudioDataProvider>> ambientSources;
+    UnorderedVector<PointSource> sources;
+    UnorderedVector<Ref<AudioDataProvider>> ambientSources;
     
     Vector<SimpleAudioSpaceData> simpleAudioSpaces;
     Vector<GeometryAudioSpaceData> geometryAudioSpaces;
+    Vector<AudioMeshData> audioMeshes;
+
     vector3 listenerPos;
     quaternion listenerRot;
     Ref<AudioGraphAsset> listenerGraph;
@@ -59,6 +67,7 @@ struct AudioSnapshot{
         simpleAudioSpaces.clear();
         geometryAudioSpaces.clear();
         sourceWorld.reset();
+        audioMeshes.clear();
     }
 };
 }

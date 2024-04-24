@@ -29,6 +29,7 @@
 #include "PhysicsSolver.hpp"
 #if !RVE_SERVER
     #include "VRAMSparseSet.hpp"
+    #include "AudioMeshComponent.hpp"
 #else
     #include "Transform.hpp"
 #endif
@@ -211,7 +212,7 @@ void World::SetupTaskGraph(){
   
     
     auto copyAudios = audioTasks.emplace([this]{
-        Filter([this](AudioSourceComponent& audioSource, const Transform& transform){
+        Filter([this](const AudioSourceComponent& audioSource, const Transform& transform){
             GetApp()->GetCurrentAudioSnapshot()->sources.emplace(audioSource.GetPlayer(),transform.GetWorldPosition(),transform.GetWorldRotation(), audioSource.GetOwner().GetIdInWorld());
         });
         
@@ -236,7 +237,7 @@ void World::SetupTaskGraph(){
     
     auto copyAmbients = audioTasks.emplace([this]{
         // raster audio
-        Filter([this](AmbientAudioSourceComponent& audioSource){
+        Filter([this](const AmbientAudioSourceComponent& audioSource){
             GetApp()->GetCurrentAudioSnapshot()->ambientSources.emplace(audioSource.GetPlayer());
         });
 
@@ -253,22 +254,28 @@ void World::SetupTaskGraph(){
     }).name("Ambient Audios").succeed(audioClear);
     
     auto copySimpleAudioSpaces = audioTasks.emplace([this]{
-        Filter( [this](SimpleAudioSpace& room, Transform& transform){
+        Filter( [this](const SimpleAudioSpace& room, const Transform& transform){
             GetApp()->GetCurrentAudioSnapshot()->simpleAudioSpaces.emplace_back(room.data,transform.GetWorldPosition());
         });
         
     }).name("Simple Audio Spaces").succeed(audioClear);
 
     auto copyGeometryAudioSpaces = audioTasks.emplace([this] {
-        Filter([this](GeometryAudioSpace& room, Transform& transform) {
+        Filter([this](const GeometryAudioSpace& room, const Transform& transform) {
             GetApp()->GetCurrentAudioSnapshot()->geometryAudioSpaces.emplace_back(room.data, transform.GetWorldPosition());
         });
 
     }).name("Geometry Audio Spaces").succeed(audioClear);
+
+    auto copyAudioGeometry = audioTasks.emplace([this] {
+        Filter([this](const AudioMeshComponent& mesh, const Transform& transform) {
+            GetApp()->GetCurrentAudioSnapshot()->audioMeshes.emplace_back(transform.GetWorldMatrix(), mesh.GetAsset());
+        });
+     }).name("Geometry Audio Meshes").succeed(audioClear);
     
     auto audioSwap = audioTasks.emplace([]{
         GetApp()->SwapCurrrentAudioSnapshot();
-    }).name("Swap Current").succeed(copyAudios,copyAmbients,copySimpleAudioSpaces,copyGeometryAudioSpaces);
+    }).name("Swap Current").succeed(copyAudios,copyAmbients,copySimpleAudioSpaces,copyGeometryAudioSpaces, copyAudioGeometry);
     
     audioTaskModule = masterTasks.composed_of(audioTasks).name("Audio");
     audioTaskModule.succeed(ECSTaskModule);
