@@ -8,6 +8,7 @@
 #include <taskflow/core/worker.hpp>
 #include "DataStructures.hpp"
 #include "Types.hpp"
+#include "AudioSnapshot.hpp"
 
 struct _IPLContext_t;
 struct _IPLHRTF_t;
@@ -51,10 +52,15 @@ class AudioPlayer{
     tf::Taskflow audioTaskflow;
     
     AudioSnapshot* SnapshotToRender = nullptr;
-    ConcurrentQueue<tf::Future<void>> theFutures;
+    tf::Future<void> taskflowFuture;
     
-    void EnqueueAudioTasks();
+    void SetupAudioTaskGraph();
     std::vector<entity_t> destroyedSources;
+
+    decltype(AudioSnapshot::dataProviders.begin()) dataProvidersBegin, dataProvidersEnd;
+    decltype(AudioSnapshot::ambientSources.begin()) ambientSourcesBegin, ambientSourcesEnd;
+
+    decltype(currentProcessingID) nextID = 0;
 #endif
 
     

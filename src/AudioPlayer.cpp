@@ -89,22 +89,19 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
         
     // kill all the remaining tasks
     // if there are any, because that means they missed the deadline
-    tf::Future<void> future;
-    uint32_t nCancelled = numExecuting;
-    while (theFutures.try_dequeue(future)){
-        if(future.cancel()){
-            nCancelled++;
-        }
-        // otherwise the task has completed, and can't be cancelled, so don't count it
+    auto nCancelled = numExecuting.load();
+    if (taskflowFuture.valid()) {
+        taskflowFuture.cancel();
     }
     
     if (nCancelled > 0){
         // we dropped worklets! notify the user and drop the next tick to avoid falling behind
         // we will still mix the current tick to avoid dropping too much audio
         GetApp()->OnDropAudioWorklets(nCancelled);
+        
     }
     else{
-        audioExecutor.run(audioTaskflow);   // does not wait - get ahead on process ID +1
+        taskflowFuture = audioExecutor.run(audioTaskflow);   // does not wait - get ahead on process ID +1
     }
     
 
@@ -213,17 +210,10 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     globalSamples += sharedBufferView.sizeOneChannel();
 }
 
-void AudioPlayer::EnqueueAudioTasks(){
-    if (!SnapshotToRender){
-        return;
-    }
-
-    // render out all the buffers
-    int i = 1;
-    decltype(currentProcessingID) nextID = currentProcessingID + i;   // this is the buffer slot we will render
-    auto buffer_idx = nextID % GetBufferCount();
+void AudioPlayer::SetupAudioTaskGraph(){
     
-    auto doPlayer = [buffer_idx, nextID](auto renderData, auto player){    // must be a AudioDataProvider. We use Auto here to avoid vtable.
+    
+    auto doPlayer = [](auto renderData, auto player, uint64_t nextID, uint64_t buffer_idx){    // must be a AudioDataProvider. We use Auto here to avoid vtable.
         numExecuting++;
         auto& buffers = renderData->buffers[buffer_idx];
         auto sharedBufferView = buffers.GetDataBufferView();
@@ -234,18 +224,27 @@ void AudioPlayer::EnqueueAudioTasks(){
         numExecuting--;
    
     };
+    auto updateIterators = audioTaskflow.emplace([this] {
+        dataProvidersBegin = SnapshotToRender->dataProviders.begin();
+        dataProvidersEnd = SnapshotToRender->dataProviders.end();
+        ambientSourcesBegin = SnapshotToRender->ambientSources.begin();
+        ambientSourcesEnd = SnapshotToRender->ambientSources.end();
+        nextID = currentProcessingID + 1;   // this is the buffer slot we will render
+    }).name("Audio Preamble");
+
     // point sources
-    for (const auto& player : SnapshotToRender->dataProviders) {
+    auto processDataProviders = audioTaskflow.for_each(std::ref(dataProvidersBegin), std::ref(dataProvidersEnd), [doPlayer,this](auto&& player) {
         auto renderData = &player->renderData;
         static_assert(sizeof(player) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
-        theFutures.enqueue(audioExecutor.async(doPlayer, renderData, player));
-    }
+        doPlayer(renderData, player, nextID, nextID % GetBufferCount());
+    }).name("Process point source providers").succeed(updateIterators);
+
     // ambient sources
-    for (auto& source : SnapshotToRender->ambientSources) {
+    auto processAmbients = audioTaskflow.for_each(std::ref(ambientSourcesBegin), std::ref(ambientSourcesEnd), [doPlayer, this](auto&& source) {
         auto renderData = &source->renderData;
         static_assert(sizeof(source) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
-        theFutures.enqueue(audioExecutor.async(doPlayer, renderData, source));
-    }
+        doPlayer(renderData, source, nextID, nextID % GetBufferCount());
+    }).name("Process ambient audio").succeed(updateIterators);
 
 }
 
@@ -299,9 +298,8 @@ void AudioPlayer::Init(){
 	
 	Debug::LogTemp("Audio Subsystem initialized");
     
-    audioTaskflow.emplace([this](){
-        EnqueueAudioTasks();
-    });
+    SetupAudioTaskGraph();
+
     
     SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(stream));
     
