@@ -47,6 +47,7 @@ class AudioPlayer{
 #if !RVE_SERVER
 	void Tick(Uint8*, int);
 
+    std::optional<AudioRenderBuffer> playerRenderBuffers;
     
     tf::Executor audioExecutor;
     tf::Taskflow audioTaskflow;
@@ -59,6 +60,11 @@ class AudioPlayer{
 
     decltype(AudioSnapshot::dataProviders.begin()) dataProvidersBegin, dataProvidersEnd;
     decltype(AudioSnapshot::ambientSources.begin()) ambientSourcesBegin, ambientSourcesEnd;
+    decltype(AudioSnapshot::simpleAudioSpaces.begin()) simpleSpacesBegin, simpleSpacesEnd;
+
+    vector3 lpos;
+    quaternion lrot;
+    matrix4 invListenerTransform;
 
     decltype(currentProcessingID) nextID = 0;
 #endif

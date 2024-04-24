@@ -26,7 +26,7 @@ class SimpleAudioSpace : public ComponentWithOwner, public IDebugRenderable, pub
 	friend class RavEngine::AudioPlayer;
 public:
     struct RoomData : public AudioGraphComposed{
-        
+        friend class RavEngine::AudioPlayer;
         float sourceRadius = 10;
         
         /**
@@ -45,6 +45,8 @@ public:
 
         // internal use only. Called when an audio source component is destroyed
         void DeleteAudioDataForEntity(entity_t entity);
+
+        RoomData();
         
     private:
         struct SteamAudioEffects {
@@ -52,6 +54,8 @@ public:
             _IPLDirectEffect_t* directEffect = nullptr;
         };
         locked_hashmap<entity_t, SteamAudioEffects,SpinLock> steamAudioData;
+
+        AudioRenderBuffer renderData;
     };
 	
     

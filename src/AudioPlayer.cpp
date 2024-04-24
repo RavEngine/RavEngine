@@ -72,19 +72,7 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     GetApp()->SwapRenderAudioSnapshot();
     SnapshotToRender = GetApp()->GetRenderAudioSnapshot();
 
-    auto lockedworld = SnapshotToRender->sourceWorld.lock();
-    if (lockedworld == nullptr) {
-        return;
-    }
-    // copy out the destroyed sources
-    destroyedSources.clear();
-    {
-        entity_t id;
-        while (lockedworld->destroyedAudioSources.try_dequeue(id)) {
-            destroyedSources.push_back(id);
-        }
-    }
-
+    
     auto buffer_idx = currentProcessingID % GetBufferCount();
         
     // kill all the remaining tasks
@@ -109,27 +97,13 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
   
     static_assert(sizeof(SnapshotToRender) == sizeof(void*), "Not a pointer! Check this!");
 
-    //use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
-
-    auto& lpos = SnapshotToRender->listenerPos;
-    auto& lrot = SnapshotToRender->listenerRot;
-
-    const matrix4 invListenerTransform = glm::inverse(glm::translate(matrix4(1), (vector3)lpos) * glm::toMat4((quaternion)lrot));
-
     const auto buffers_size = len / sizeof(float);
     stackarray(shared_buffer, float, buffers_size);
-    stackarray(effect_scratch_buffer, float, buffers_size);
     PlanarSampleBufferInlineView sharedBufferView(shared_buffer, buffers_size, buffers_size / GetNChannels());
-    PlanarSampleBufferInlineView effectScratchBuffer(effect_scratch_buffer, buffers_size, buffers_size / GetNChannels());
     float* accum_buffer = reinterpret_cast<float*>(stream);
     InterleavedSampleBufferView accumView{ accum_buffer,buffers_size };
-    TZero(effectScratchBuffer.data(), effectScratchBuffer.size());
 
-    // fill temp buffer with 0s
-    auto resetShared = [sharedBufferView]() mutable {
-        TZero(sharedBufferView.data(), sharedBufferView.size());
-    };
-
+   
     const auto blendBufferIn = [accumView](PlanarSampleBufferInlineView sourceView){
         const auto nchannels = sourceView.GetNChannels();
 #pragma omp simd
@@ -140,66 +114,13 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
         }
     };
     
-    // add blend temp buffer into output buffer
-    const auto blendIn = [&blendBufferIn,accumView, sharedBufferView] {
-        blendBufferIn(sharedBufferView);
-    };
+    // copy the mix created by worker threads to the current mix 
+    auto& buffers = playerRenderBuffers->buffers[buffer_idx];
+
+    auto view = buffers.GetDataBufferView();
+
+    blendBufferIn(view);
     
-
-    for (const auto& r : SnapshotToRender->simpleAudioSpaces) {
-        auto& room = r.room;
-
-        // destroyed-sources
-        for (const auto id : destroyedSources) {
-            room->DeleteAudioDataForEntity(id);
-        }
-
-        // existing sources
-        // first check that the listener is inside the room
-        if (!r.IsInsideSourceArea(lpos)) {
-            continue;
-        }
-
-        for (const auto& source : SnapshotToRender->sources) {
-            // is this source inside the space? if not, then don't process it
-            if (!r.IsInsideSourceArea(source.worldpos)) {
-                continue;
-            }
-
-            // add this source into the room
-            auto& buffer = source.data->renderData.buffers[buffer_idx];
-            auto view = buffer.GetDataBufferView();
-            auto proc_id = buffer.lastCompletedProcessingIterationID.load();
-            if (proc_id == currentProcessingID){
-
-                resetShared();
-                room->RenderAudioSource(sharedBufferView, effectScratchBuffer,
-                    view, source.worldpos, source.ownerID, 
-                    invListenerTransform
-                    );
-                blendIn();
-            }
-        }
-    }
-
-    for (auto& source : SnapshotToRender->ambientSources) {
-        auto& buffer = source->renderData.buffers[buffer_idx];
-        auto proc_id = buffer.lastCompletedProcessingIterationID.load();
-        if (proc_id == currentProcessingID){
-            resetShared();
-
-            auto view = buffer.GetDataBufferView();
-            
-            // mix it in
-            blendBufferIn(view);
-        }
-    }
-
-    // run the graph on the listener, if present
-    if (SnapshotToRender->listenerGraph) {
-        SnapshotToRender->listenerGraph->Render(sharedBufferView, effectScratchBuffer, nchannels);
-        blendIn();
-    }
     currentProcessingID++;  // advance proc id to mark it as completed
     //clipping: clamp all values to [-1,1]
 #pragma omp simd
@@ -207,7 +128,7 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
         accumView[i] = std::clamp(accumView[i], -1.0f, 1.0f);
     }
     
-    globalSamples += sharedBufferView.sizeOneChannel();
+    globalSamples += sharedBufferView.GetNumSamples();
 }
 
 void AudioPlayer::SetupAudioTaskGraph(){
@@ -229,7 +150,30 @@ void AudioPlayer::SetupAudioTaskGraph(){
         dataProvidersEnd = SnapshotToRender->dataProviders.end();
         ambientSourcesBegin = SnapshotToRender->ambientSources.begin();
         ambientSourcesEnd = SnapshotToRender->ambientSources.end();
+
+        simpleSpacesBegin = SnapshotToRender->simpleAudioSpaces.begin();
+        simpleSpacesEnd = SnapshotToRender->simpleAudioSpaces.end();
+
         nextID = currentProcessingID + 1;   // this is the buffer slot we will render
+
+        //use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
+        lpos = SnapshotToRender->listenerPos;
+        lrot = SnapshotToRender->listenerRot;
+        matrix4 invListenerTransform = glm::inverse(glm::translate(matrix4(1), (vector3)lpos) * glm::toMat4((quaternion)lrot));
+  
+        auto lockedworld = SnapshotToRender->sourceWorld.lock();
+        if (lockedworld == nullptr) {
+            return;
+        }
+        // copy out the destroyed sources
+        destroyedSources.clear();
+        {
+            entity_t id = INVALID_ENTITY;
+            while (lockedworld->destroyedAudioSources.try_dequeue(id)) {
+                destroyedSources.push_back(id);
+            }
+        }
+
     }).name("Audio Preamble");
 
     // point sources
@@ -246,6 +190,94 @@ void AudioPlayer::SetupAudioTaskGraph(){
         doPlayer(renderData, source, nextID, nextID % GetBufferCount());
     }).name("Process ambient audio").succeed(updateIterators);
 
+    // once point sources have completed, start processing Rooms
+    auto processSimpleRooms = audioTaskflow.for_each(std::ref(simpleSpacesBegin), std::ref(simpleSpacesEnd), [this](auto&& r) {
+        auto& room = r.room;
+
+        // destroyed-sources
+        for (const auto id : destroyedSources) {
+            room->DeleteAudioDataForEntity(id);
+        }
+
+        // existing sources
+        // first check that the listener is inside the room
+        if (!r.IsInsideSourceArea(lpos)) {
+            return;
+        }
+
+        const auto buffer_idx = nextID % GetBufferCount();
+
+        // the mix for this room
+        auto& buffers = room->renderData.buffers[buffer_idx];
+
+        auto sharedBufferView = buffers.GetDataBufferView();
+        auto effectScratchBuffer = buffers.GetScratchBufferView();
+        const auto bufferSize = sharedBufferView.size();
+        stackarray(mixTemp, float, bufferSize);
+        PlanarSampleBufferInlineView mixTempView{ mixTemp, bufferSize, sharedBufferView.GetNumSamples()};
+
+        for (const auto& source : SnapshotToRender->sources) {
+            // is this source inside the space? if not, then don't process it
+            if (!r.IsInsideSourceArea(source.worldpos)) {
+                continue;
+            }
+
+            // add this source into the room
+            auto& buffer = source.data->renderData.buffers[buffer_idx];
+            auto view = buffer.GetDataBufferView();
+
+            TZero(mixTemp, bufferSize);
+
+            room->RenderAudioSource(mixTempView, effectScratchBuffer,
+                view, source.worldpos, source.ownerID,
+                invListenerTransform
+            );
+            //AdditiveBlendSamples(sharedBufferView, mixTempView);
+        }
+        buffers.lastCompletedProcessingIterationID = nextID;   // mark it as having completed in this iter cycle
+
+    }).name("Process Simple Audio Rooms").succeed(processDataProviders);
+
+    // once rooms are done, do the final mix
+    auto finalMix = audioTaskflow.emplace([this] {
+
+        const auto buffer_idx = nextID % GetBufferCount();
+        auto& buffers = playerRenderBuffers->buffers[buffer_idx];
+        auto sharedBufferView = buffers.GetDataBufferView();
+        auto effectScratchBuffer = buffers.GetScratchBufferView();
+
+        TZero(sharedBufferView.data(), sharedBufferView.size());
+
+        // ambient sources
+        for (auto& source : SnapshotToRender->ambientSources) {
+            auto& buffer = source->renderData.buffers[buffer_idx];
+            auto view = buffer.GetDataBufferView();
+
+            // mix it in
+            AdditiveBlendSamples(sharedBufferView, view);
+            
+        }
+
+        // rooms
+        for (auto& room : SnapshotToRender->simpleAudioSpaces) {
+            auto& buffer = room.room->renderData.buffers[buffer_idx];
+            auto view = buffer.GetDataBufferView();
+
+            // mix it in
+            AdditiveBlendSamples(sharedBufferView, view);
+        }
+
+        const auto bufferSize = sharedBufferView.size();
+        stackarray(mixTemp, float, bufferSize);
+        PlanarSampleBufferInlineView mixTempView{ mixTemp, bufferSize, bufferSize };
+
+        // run the graph on the listener, if present
+        if (SnapshotToRender->listenerGraph) {
+            SnapshotToRender->listenerGraph->Render(mixTempView, effectScratchBuffer, nchannels);
+            AdditiveBlendSamples(sharedBufferView, mixTempView);
+        }
+
+    }).name("Final audio mix").succeed(processDataProviders, processAmbients);
 }
 
 /**
@@ -295,6 +327,7 @@ void AudioPlayer::Init(){
     nchannels = want.channels;
     buffer_size = config_buffersize;
 
+    playerRenderBuffers.emplace(AudioPlayer::GetBufferCount(),buffer_size,nchannels);
 	
 	Debug::LogTemp("Audio Subsystem initialized");
     

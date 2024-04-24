@@ -41,6 +41,7 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
     else {
         effects = it->second;
     }
+    const auto nchannels = AudioPlayer::GetNChannels();
 
     // render it
     IPLfloat32* inputChannels[]{ monoSourceData.data() };
@@ -58,7 +59,7 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
         buffer[1].data()
     };
     IPLAudioBuffer outputBuffer{
-        .numChannels = 2,
+        .numChannels = nchannels,
         .numSamples = IPLint32(buffer.GetNumSamples()),
         .data = outputChannels
     };
@@ -87,7 +88,6 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
    
     result = iplDirectEffectApply(effects.directEffect, &directParams, &outputBuffer, &outputBuffer);
 
-    const auto nchannels = AudioPlayer::GetNChannels();
     AudioGraphComposed::Render(buffer, scratchBuffer, nchannels); // process graph for spatialized audio
 
 }
@@ -99,6 +99,10 @@ void RavEngine::SimpleAudioSpace::RoomData::DeleteAudioDataForEntity(entity_t en
         iplDirectEffectRelease(&effects.directEffect);
     });
     steamAudioData.erase(entity);
+}
+
+RavEngine::SimpleAudioSpace::RoomData::RoomData() : renderData(AudioPlayer::GetBufferCount(), AudioPlayer::GetBufferSize(),AudioPlayer::GetNChannels())
+{
 }
 
 void RavEngine::GeometryAudioSpace::RoomData::ConsiderAudioSource(PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity, const matrix4& invListenerTransform)
