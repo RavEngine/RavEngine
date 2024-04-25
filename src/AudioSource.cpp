@@ -18,7 +18,7 @@
 using namespace RavEngine;
 using namespace std;
 
-SampledAudioDataProvider::SampledAudioDataProvider(decltype(asset) a, uint8_t nchannels) : asset(a), AudioDataProvider(AudioPlayer::GetBufferCount(), AudioPlayer::GetBufferSize(), nchannels){}
+SampledAudioDataProvider::SampledAudioDataProvider(decltype(asset) a, uint8_t nchannels) : asset(a), AudioDataProvider(AudioPlayer::GetBufferSize(), nchannels){}
 
 AudioSourceComponent::AudioSourceComponent(entity_t owner, Ref<AudioDataProvider> a) : ComponentWithOwner(owner), AudioSourceBase(a){
 }
@@ -120,14 +120,6 @@ AudioAsset::~AudioAsset(){
 }
 
 using namespace RavEngine;
-
-RavEngine::PlanarSampleBufferInlineView AudioRenderBuffer::SingleRenderBuffer::GetDataBufferView() const { 
-    return PlanarSampleBufferInlineView{data_impl, static_cast<size_t>(AudioPlayer::GetBufferSize() * nchannels), static_cast<size_t>(AudioPlayer::GetBufferSize())};
-}
-
-RavEngine::PlanarSampleBufferInlineView AudioRenderBuffer::SingleRenderBuffer::GetScratchBufferView() const { 
-    return PlanarSampleBufferInlineView{scratch_impl, static_cast<size_t>(AudioPlayer::GetBufferSize() * nchannels), static_cast<size_t>(AudioPlayer::GetBufferSize())};
-}
 
 void SampledAudioDataProvider::Play(){
     if (!isPlaying) {

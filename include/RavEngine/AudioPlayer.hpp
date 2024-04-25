@@ -28,11 +28,10 @@ class AudioPlayer{
 #if !RVE_SERVER
     SDL_AudioStream* stream;
 	WeakRef<World> worldToRender;
-    uint64_t currentProcessingID = 0;
     uint64_t globalSamples = 0; // in units of a single channel
     _IPLContext_t* steamAudioContext = nullptr;
-    _IPLHRTF_t* steamAudioHRTF;
-    _IPLSimulator_t* steamAudioSimulator;
+    _IPLHRTF_t* steamAudioHRTF = nullptr;
+    _IPLSimulator_t* steamAudioSimulator = nullptr;
 #endif
 
     
@@ -43,10 +42,10 @@ class AudioPlayer{
     static constexpr uint16_t config_buffersize = 512;
     static constexpr uint16_t config_samplesPerSec = 44'100;
     static constexpr uint32_t config_nchannels = 2;
-    static constexpr uint32_t config_nbuffers = 2;  //NOTE: do not change this value, the executor does not currently wait properly for the previous tick to complete before scheduling the next batch
 #if !RVE_SERVER
 	void Tick(Uint8*, int);
 
+    std::optional<SingleAudioRenderBuffer> playerRenderBuffer;
     
     tf::Executor audioExecutor;
     tf::Taskflow audioTaskflow;
@@ -59,8 +58,12 @@ class AudioPlayer{
 
     decltype(AudioSnapshot::dataProviders.begin()) dataProvidersBegin, dataProvidersEnd;
     decltype(AudioSnapshot::ambientSources.begin()) ambientSourcesBegin, ambientSourcesEnd;
+    decltype(AudioSnapshot::simpleAudioSpaces.begin()) simpleSpacesBegin, simpleSpacesEnd;
 
-    decltype(currentProcessingID) nextID = 0;
+    vector3 lpos{0};
+    quaternion lrot{0,0,0,0};
+    matrix4 invListenerTransform{ 1 };
+
 #endif
 
     
@@ -116,10 +119,6 @@ public:
     
     const static auto GetBufferSize(){
         return buffer_size;
-    }
-	
-    const static auto GetBufferCount(){
-        return config_nbuffers;
     }
     
     decltype(globalSamples) GetGlobalAudioTime() const{
