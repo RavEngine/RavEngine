@@ -132,7 +132,7 @@ void AudioPlayer::SetupAudioTaskGraph(){
         //use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
         lpos = SnapshotToRender->listenerPos;
         lrot = SnapshotToRender->listenerRot;
-        matrix4 invListenerTransform = glm::inverse(glm::translate(matrix4(1), (vector3)lpos) * glm::toMat4((quaternion)lrot));
+        invListenerTransform = glm::inverse(glm::translate(matrix4(1), (vector3)lpos) * glm::toMat4((quaternion)lrot));
   
         auto lockedworld = SnapshotToRender->sourceWorld.lock();
         if (lockedworld == nullptr) {
