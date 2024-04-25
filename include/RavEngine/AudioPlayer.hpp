@@ -30,8 +30,8 @@ class AudioPlayer{
 	WeakRef<World> worldToRender;
     uint64_t globalSamples = 0; // in units of a single channel
     _IPLContext_t* steamAudioContext = nullptr;
-    _IPLHRTF_t* steamAudioHRTF;
-    _IPLSimulator_t* steamAudioSimulator;
+    _IPLHRTF_t* steamAudioHRTF = nullptr;
+    _IPLSimulator_t* steamAudioSimulator = nullptr;
 #endif
 
     
@@ -60,9 +60,9 @@ class AudioPlayer{
     decltype(AudioSnapshot::ambientSources.begin()) ambientSourcesBegin, ambientSourcesEnd;
     decltype(AudioSnapshot::simpleAudioSpaces.begin()) simpleSpacesBegin, simpleSpacesEnd;
 
-    vector3 lpos;
-    quaternion lrot;
-    matrix4 invListenerTransform;
+    vector3 lpos{0};
+    quaternion lrot{0,0,0,0};
+    matrix4 invListenerTransform{ 1 };
 
 #endif
 
