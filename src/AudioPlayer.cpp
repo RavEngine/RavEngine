@@ -201,6 +201,7 @@ void AudioPlayer::SetupAudioTaskGraph(){
             auto view = buffer.GetDataBufferView();
 
             TZero(sharedBufferView.data(), sharedBufferView.size());
+            TZero(effectScratchBuffer.data(), effectScratchBuffer.size());
 
             room->RenderAudioSource(sharedBufferView, effectScratchBuffer,
                 view, source.worldpos, source.ownerID,
@@ -237,7 +238,7 @@ void AudioPlayer::SetupAudioTaskGraph(){
             auto view = buffer.GetDataBufferView();
 
             // mix it in
-            //AdditiveBlendSamples(sharedBufferView, view);
+            AdditiveBlendSamples(sharedBufferView, view);
         }
 
         const auto bufferSize = sharedBufferView.size();
