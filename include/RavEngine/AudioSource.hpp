@@ -59,8 +59,13 @@ public:
  A render buffer for audio processing. Allocated and managed internally.
  */
 
+struct SingleAudioRenderBuffer_t_Base{
+protected:
+    static uint16_t impl_GetBufferSize();
+};
+
 template<bool allocateScratchBuffer = true>
-struct SingleAudioRenderBuffer_t {
+struct SingleAudioRenderBuffer_t : protected SingleAudioRenderBuffer_t_Base{
     float* data_impl = nullptr;
     float* scratch_impl = nullptr;
     uint8_t nchannels = 0;
@@ -83,10 +88,10 @@ struct SingleAudioRenderBuffer_t {
         other.scratch_impl = nullptr;
     }
     PlanarSampleBufferInlineView GetDataBufferView() const {
-        return { data_impl, static_cast<size_t>(AudioPlayer::GetBufferSize() * nchannels), static_cast<size_t>(AudioPlayer::GetBufferSize()) };
+        return { data_impl, static_cast<size_t>(impl_GetBufferSize() * nchannels), static_cast<size_t>(impl_GetBufferSize()) };
     }
     PlanarSampleBufferInlineView GetScratchBufferView() const {
-        return { scratch_impl, static_cast<size_t>(AudioPlayer::GetBufferSize() * nchannels), static_cast<size_t>(AudioPlayer::GetBufferSize()) };
+        return { scratch_impl, static_cast<size_t>(impl_GetBufferSize() * nchannels), static_cast<size_t>(impl_GetBufferSize()) };
     }
 };
 

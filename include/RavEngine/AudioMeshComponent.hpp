@@ -1,5 +1,6 @@
 #pragma once
 #include <Ref.hpp>
+#include "CTTI.hpp"
 
 namespace RavEngine {
 	struct AudioMeshAsset;
