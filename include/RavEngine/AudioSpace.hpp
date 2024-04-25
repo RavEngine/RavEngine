@@ -55,7 +55,8 @@ public:
         };
         locked_hashmap<entity_t, SteamAudioEffects,SpinLock> steamAudioData;
 
-        SingleAudioRenderBuffer renderData;
+        SingleAudioRenderBuffer workingBuffers;
+        SingleAudioRenderBufferNoScratch accumulationBuffer;
     };
 	
     

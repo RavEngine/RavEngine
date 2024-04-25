@@ -121,14 +121,6 @@ AudioAsset::~AudioAsset(){
 
 using namespace RavEngine;
 
-RavEngine::PlanarSampleBufferInlineView SingleAudioRenderBuffer::GetDataBufferView() const { 
-    return PlanarSampleBufferInlineView{data_impl, static_cast<size_t>(AudioPlayer::GetBufferSize() * nchannels), static_cast<size_t>(AudioPlayer::GetBufferSize())};
-}
-
-RavEngine::PlanarSampleBufferInlineView SingleAudioRenderBuffer::GetScratchBufferView() const { 
-    return PlanarSampleBufferInlineView{scratch_impl, static_cast<size_t>(AudioPlayer::GetBufferSize() * nchannels), static_cast<size_t>(AudioPlayer::GetBufferSize())};
-}
-
 void SampledAudioDataProvider::Play(){
     if (!isPlaying) {
         lastPlayTime = GetApp()->GetAudioPlayer()->GetGlobalAudioTime() - lastPlayTime;

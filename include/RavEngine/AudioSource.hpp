@@ -59,15 +59,18 @@ public:
  A render buffer for audio processing. Allocated and managed internally.
  */
 
-struct SingleAudioRenderBuffer {
+template<bool allocateScratchBuffer = true>
+struct SingleAudioRenderBuffer_t {
     float* data_impl = nullptr;
     float* scratch_impl = nullptr;
     uint8_t nchannels = 0;
-    SingleAudioRenderBuffer(uint16_t nsamples, uint8_t nchannels) : nchannels(nchannels) {
+    SingleAudioRenderBuffer_t(uint16_t nsamples, uint8_t nchannels) : nchannels(nchannels) {
         data_impl = new float[nsamples * nchannels] {0};
-        scratch_impl = new float[nsamples * nchannels] {0};
+        if constexpr (allocateScratchBuffer) {
+            scratch_impl = new float[nsamples * nchannels] {0};
+        }
     }
-    ~SingleAudioRenderBuffer() {
+    ~SingleAudioRenderBuffer_t() {
         if (data_impl) {
             delete[] data_impl;
         }
@@ -75,13 +78,20 @@ struct SingleAudioRenderBuffer {
             delete[] scratch_impl;
         }
     }
-    SingleAudioRenderBuffer(SingleAudioRenderBuffer&& other) : nchannels(other.nchannels), data_impl(other.data_impl), scratch_impl(other.scratch_impl) {
+    SingleAudioRenderBuffer_t(SingleAudioRenderBuffer_t&& other) : nchannels(other.nchannels), data_impl(other.data_impl), scratch_impl(other.scratch_impl) {
         other.data_impl = nullptr;
         other.scratch_impl = nullptr;
     }
-    PlanarSampleBufferInlineView GetDataBufferView() const;
-    PlanarSampleBufferInlineView GetScratchBufferView() const;
+    PlanarSampleBufferInlineView GetDataBufferView() const {
+        return { data_impl, static_cast<size_t>(AudioPlayer::GetBufferSize() * nchannels), static_cast<size_t>(AudioPlayer::GetBufferSize()) };
+    }
+    PlanarSampleBufferInlineView GetScratchBufferView() const {
+        return { scratch_impl, static_cast<size_t>(AudioPlayer::GetBufferSize() * nchannels), static_cast<size_t>(AudioPlayer::GetBufferSize()) };
+    }
 };
+
+using SingleAudioRenderBuffer = SingleAudioRenderBuffer_t<true>;
+using SingleAudioRenderBufferNoScratch = SingleAudioRenderBuffer_t<false>;
 
 
 struct AudioDataProvider{

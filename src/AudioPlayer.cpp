@@ -166,7 +166,45 @@ void AudioPlayer::SetupAudioTaskGraph(){
     // once point sources have completed, start processing Rooms
     auto processSimpleRooms = audioTaskflow.for_each(std::ref(simpleSpacesBegin), std::ref(simpleSpacesEnd), [this](auto&& r) {
        
+        auto& room = r.room;
 
+        // destroyed-sources
+        for (const auto id : destroyedSources) {
+            room->DeleteAudioDataForEntity(id);
+        }
+
+        // existing sources
+        // first check that the listener is inside the room
+        if (!r.IsInsideSourceArea(lpos)) {
+            return;
+        }
+
+        auto outputView = room->workingBuffers.GetDataBufferView();
+        auto outputScratchView = room->workingBuffers.GetScratchBufferView();
+        auto accumulationView = room->accumulationBuffer.GetDataBufferView();
+
+        TZero(accumulationView.data(), accumulationView.size());
+
+        for (const auto& source : SnapshotToRender->sources) {
+            // is this source inside the space? if not, then don't process it
+            if (!r.IsInsideSourceArea(source.worldpos)) {
+                continue;
+            }
+
+            // add this source into the room
+            auto& buffer = source.data->renderData;
+            auto sourceView = buffer.GetDataBufferView();
+
+            TZero(outputView.data(), outputView.size());
+            TZero(outputScratchView.data(), outputScratchView.size());
+
+            room->RenderAudioSource(outputView, outputScratchView,
+                sourceView, source.worldpos, source.ownerID,
+                invListenerTransform
+            );
+            AdditiveBlendSamples(accumulationView, outputView);
+
+        }
 
     }).name("Process Simple Audio Rooms").succeed(processDataProviders);
 
@@ -190,42 +228,11 @@ void AudioPlayer::SetupAudioTaskGraph(){
 
         // rooms
         for (const auto& r : SnapshotToRender->simpleAudioSpaces) {
-            auto& room = r.room;
+            auto& buffer = r.room->accumulationBuffer;
+            auto view = buffer.GetDataBufferView();
 
-            // destroyed-sources
-            for (const auto id : destroyedSources) {
-                room->DeleteAudioDataForEntity(id);
-            }
-
-            // existing sources
-            // first check that the listener is inside the room
-            if (!r.IsInsideSourceArea(lpos)) {
-                continue;
-            }
-
-            for (const auto& source : SnapshotToRender->sources) {
-                // is this source inside the space? if not, then don't process it
-                if (!r.IsInsideSourceArea(source.worldpos)) {
-                    continue;
-                }
-
-                // add this source into the room
-                auto& buffer = source.data->renderData;
-                auto sourceView = buffer.GetDataBufferView();
-
-                auto outputView = room->renderData.GetDataBufferView();
-                auto outputScratchView = room->renderData.GetScratchBufferView();
-
-                TZero(outputView.data(), outputView.size());
-                TZero(outputScratchView.data(), outputScratchView.size());
-
-                room->RenderAudioSource(outputView, outputScratchView,
-                    sourceView, source.worldpos, source.ownerID,
-                    invListenerTransform
-                );
-                AdditiveBlendSamples(sharedBufferView, outputView);
-
-            }
+            // mix it in
+            AdditiveBlendSamples(sharedBufferView, view);
         }
 
         const auto bufferSize = sharedBufferView.size();
