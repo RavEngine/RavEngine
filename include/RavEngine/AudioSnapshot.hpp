@@ -1,4 +1,5 @@
 #pragma once
+#if !RVE_SERVER
 #include "DataStructures.hpp"
 #include "AudioSource.hpp"
 #include "AudioSpace.hpp"
@@ -83,3 +84,4 @@ namespace std{
         }
     };
 }
+#endif
