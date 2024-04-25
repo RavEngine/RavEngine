@@ -101,7 +101,7 @@ void RavEngine::SimpleAudioSpace::RoomData::DeleteAudioDataForEntity(entity_t en
     steamAudioData.erase(entity);
 }
 
-RavEngine::SimpleAudioSpace::RoomData::RoomData() : renderData(AudioPlayer::GetBufferCount(), AudioPlayer::GetBufferSize(),AudioPlayer::GetNChannels())
+RavEngine::SimpleAudioSpace::RoomData::RoomData() : renderData(AudioPlayer::GetBufferSize(),AudioPlayer::GetNChannels())
 {
 }
 

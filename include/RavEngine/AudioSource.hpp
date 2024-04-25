@@ -58,48 +58,38 @@ public:
 /**
  A render buffer for audio processing. Allocated and managed internally.
  */
-struct AudioRenderBuffer{
-    struct SingleRenderBuffer{
-        std::atomic<uint64_t> lastCompletedProcessingIterationID = 0;
-        float* data_impl = nullptr;
-        float* scratch_impl = nullptr;
-        uint8_t nchannels = 0;
-        SingleRenderBuffer(uint16_t nsamples, uint8_t nchannels) : nchannels(nchannels){
-            data_impl = new float[nsamples * nchannels]{0};
-            scratch_impl = new float[nsamples * nchannels]{0};
+
+struct SingleAudioRenderBuffer {
+    float* data_impl = nullptr;
+    float* scratch_impl = nullptr;
+    uint8_t nchannels = 0;
+    SingleAudioRenderBuffer(uint16_t nsamples, uint8_t nchannels) : nchannels(nchannels) {
+        data_impl = new float[nsamples * nchannels] {0};
+        scratch_impl = new float[nsamples * nchannels] {0};
+    }
+    ~SingleAudioRenderBuffer() {
+        if (data_impl) {
+            delete[] data_impl;
         }
-        ~SingleRenderBuffer(){
-            if (data_impl){
-                delete[] data_impl;
-            }
-            if (scratch_impl){
-                delete[] scratch_impl;
-            }
-        }
-        SingleRenderBuffer(SingleRenderBuffer&& other) : nchannels(other.nchannels), data_impl(other.data_impl), scratch_impl(other.scratch_impl){
-            lastCompletedProcessingIterationID.store(other.lastCompletedProcessingIterationID.load());
-            other.data_impl = nullptr;
-            other.scratch_impl = nullptr;
-        }
-        PlanarSampleBufferInlineView GetDataBufferView() const;
-        PlanarSampleBufferInlineView GetScratchBufferView() const;
-    };
-    std::vector<SingleRenderBuffer> buffers;
-    AudioRenderBuffer(uint16_t nBuffers, uint16_t nsamples, uint8_t nchannels){
-        buffers.reserve(nBuffers);
-        for(decltype(nBuffers) i = 0; i < nBuffers; i++){
-            buffers.emplace_back(nsamples, nchannels);
+        if (scratch_impl) {
+            delete[] scratch_impl;
         }
     }
+    SingleAudioRenderBuffer(SingleAudioRenderBuffer&& other) : nchannels(other.nchannels), data_impl(other.data_impl), scratch_impl(other.scratch_impl) {
+        other.data_impl = nullptr;
+        other.scratch_impl = nullptr;
+    }
+    PlanarSampleBufferInlineView GetDataBufferView() const;
+    PlanarSampleBufferInlineView GetScratchBufferView() const;
 };
 
 
 struct AudioDataProvider{
     virtual void ProvideBufferData(PlanarSampleBufferInlineView& out_buffer, PlanarSampleBufferInlineView& effectScratchBuffer) = 0;
     
-    AudioDataProvider(uint16_t nbuffers, uint16_t nsamples, uint8_t nchannels) : renderData(nbuffers, nsamples, nchannels){}
+    AudioDataProvider(uint16_t nsamples, uint8_t nchannels) : renderData(nsamples, nchannels){}
     
-    AudioRenderBuffer renderData;
+    SingleAudioRenderBuffer renderData;
     float volume = 1;
     bool loops : 1 = false;
     bool isPlaying : 1 = false;

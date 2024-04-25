@@ -24,8 +24,6 @@ STATIC(AudioPlayer::SamplesPerSec) = 0;
 STATIC(AudioPlayer::nchannels) = 0;
 STATIC(AudioPlayer::buffer_size) = 0;
 
-// for interruption system
-static std::atomic<uint32_t> numExecuting = 0;
 
 struct AudioWorker : public tf::WorkerInterface{
     void scheduler_prologue(tf::Worker& worker) final{
@@ -72,25 +70,7 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     GetApp()->SwapRenderAudioSnapshot();
     SnapshotToRender = GetApp()->GetRenderAudioSnapshot();
 
-    
-    auto buffer_idx = currentProcessingID % GetBufferCount();
-        
-    // kill all the remaining tasks
-    // if there are any, because that means they missed the deadline
-    auto nCancelled = numExecuting.load();
-    if (taskflowFuture.valid()) {
-        taskflowFuture.cancel();
-    }
-    
-    if (nCancelled > 0){
-        // we dropped worklets! notify the user and drop the next tick to avoid falling behind
-        // we will still mix the current tick to avoid dropping too much audio
-        GetApp()->OnDropAudioWorklets(nCancelled);
-        
-    }
-    else{
-        taskflowFuture = audioExecutor.run(audioTaskflow);   // does not wait - get ahead on process ID +1
-    }
+    audioExecutor.run(audioTaskflow).wait();
     
 
     TZero(stream, len); // fill with silence
@@ -115,13 +95,11 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
     };
     
     // copy the mix created by worker threads to the current mix 
-    auto& buffers = playerRenderBuffers->buffers[buffer_idx];
 
-    auto view = buffers.GetDataBufferView();
+    auto view = playerRenderBuffer->GetDataBufferView();
 
     blendBufferIn(view);
     
-    currentProcessingID++;  // advance proc id to mark it as completed
     //clipping: clamp all values to [-1,1]
 #pragma omp simd
     for (int i = 0; i < accumView.size(); i++) {
@@ -134,17 +112,13 @@ void AudioPlayer::Tick(Uint8* stream, int len) {
 void AudioPlayer::SetupAudioTaskGraph(){
     
     
-    auto doPlayer = [](auto renderData, auto player, uint64_t nextID, uint64_t buffer_idx){    // must be a AudioDataProvider. We use Auto here to avoid vtable.
-        numExecuting++;
-        auto& buffers = renderData->buffers[buffer_idx];
-        auto sharedBufferView = buffers.GetDataBufferView();
-        auto effectScratchBuffer = buffers.GetScratchBufferView();
+    auto doPlayer = [](auto renderData, auto player){    // must be a AudioDataProvider. We use Auto here to avoid vtable.
+        auto sharedBufferView = renderData->GetDataBufferView();
+        auto effectScratchBuffer = renderData->GetScratchBufferView();
 
-        player->ProvideBufferData(sharedBufferView, effectScratchBuffer);
-        buffers.lastCompletedProcessingIterationID = nextID;   // mark it as having completed in this iter cycle
-        numExecuting--;
-   
+        player->ProvideBufferData(sharedBufferView, effectScratchBuffer);   
     };
+
     auto updateIterators = audioTaskflow.emplace([this] {
         dataProvidersBegin = SnapshotToRender->dataProviders.begin();
         dataProvidersEnd = SnapshotToRender->dataProviders.end();
@@ -154,7 +128,6 @@ void AudioPlayer::SetupAudioTaskGraph(){
         simpleSpacesBegin = SnapshotToRender->simpleAudioSpaces.begin();
         simpleSpacesEnd = SnapshotToRender->simpleAudioSpaces.end();
 
-        nextID = currentProcessingID + 1;   // this is the buffer slot we will render
 
         //use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
         lpos = SnapshotToRender->listenerPos;
@@ -180,14 +153,14 @@ void AudioPlayer::SetupAudioTaskGraph(){
     auto processDataProviders = audioTaskflow.for_each(std::ref(dataProvidersBegin), std::ref(dataProvidersEnd), [doPlayer,this](auto&& player) {
         auto renderData = &player->renderData;
         static_assert(sizeof(player) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
-        doPlayer(renderData, player, nextID, nextID % GetBufferCount());
+        doPlayer(renderData, player);
     }).name("Process point source providers").succeed(updateIterators);
 
     // ambient sources
     auto processAmbients = audioTaskflow.for_each(std::ref(ambientSourcesBegin), std::ref(ambientSourcesEnd), [doPlayer, this](auto&& source) {
         auto renderData = &source->renderData;
         static_assert(sizeof(source) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
-        doPlayer(renderData, source, nextID, nextID % GetBufferCount());
+        doPlayer(renderData, source);
     }).name("Process ambient audio").succeed(updateIterators);
 
     // once point sources have completed, start processing Rooms
@@ -205,10 +178,8 @@ void AudioPlayer::SetupAudioTaskGraph(){
             return;
         }
 
-        const auto buffer_idx = nextID % GetBufferCount();
-
         // the mix for this room
-        auto& buffers = room->renderData.buffers[buffer_idx];
+        auto& buffers = room->renderData;
 
         auto sharedBufferView = buffers.GetDataBufferView();
         auto effectScratchBuffer = buffers.GetScratchBufferView();
@@ -226,7 +197,7 @@ void AudioPlayer::SetupAudioTaskGraph(){
             }
 
             // add this source into the room
-            auto& buffer = source.data->renderData.buffers[buffer_idx];
+            auto& buffer = source.data->renderData;
             auto view = buffer.GetDataBufferView();
 
             TZero(sharedBufferView.data(), sharedBufferView.size());
@@ -239,23 +210,20 @@ void AudioPlayer::SetupAudioTaskGraph(){
         }
         AdditiveBlendSamples(sharedBufferView, mixTempView);
 
-        buffers.lastCompletedProcessingIterationID = nextID;   // mark it as having completed in this iter cycle
 
     }).name("Process Simple Audio Rooms").succeed(processDataProviders);
 
     // once rooms are done, do the final mix
     auto finalMix = audioTaskflow.emplace([this] {
 
-        const auto buffer_idx = nextID % GetBufferCount();
-        auto& buffers = playerRenderBuffers->buffers[buffer_idx];
-        auto sharedBufferView = buffers.GetDataBufferView();
-        auto effectScratchBuffer = buffers.GetScratchBufferView();
+        auto sharedBufferView = playerRenderBuffer->GetDataBufferView();
+        auto effectScratchBuffer = playerRenderBuffer->GetScratchBufferView();
 
         TZero(sharedBufferView.data(), sharedBufferView.size());
 
         // ambient sources
         for (auto& source : SnapshotToRender->ambientSources) {
-            auto& buffer = source->renderData.buffers[buffer_idx];
+            auto& buffer = source->renderData;
             auto view = buffer.GetDataBufferView();
 
             // mix it in
@@ -265,11 +233,11 @@ void AudioPlayer::SetupAudioTaskGraph(){
 
         // rooms
         for (auto& room : SnapshotToRender->simpleAudioSpaces) {
-            auto& buffer = room.room->renderData.buffers[buffer_idx];
+            auto& buffer = room.room->renderData;
             auto view = buffer.GetDataBufferView();
 
             // mix it in
-            AdditiveBlendSamples(sharedBufferView, view);
+            //AdditiveBlendSamples(sharedBufferView, view);
         }
 
         const auto bufferSize = sharedBufferView.size();
@@ -332,7 +300,7 @@ void AudioPlayer::Init(){
     nchannels = want.channels;
     buffer_size = config_buffersize;
 
-    playerRenderBuffers.emplace(AudioPlayer::GetBufferCount(),buffer_size,nchannels);
+    playerRenderBuffer.emplace(buffer_size,nchannels);
 	
 	Debug::LogTemp("Audio Subsystem initialized");
     
