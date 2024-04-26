@@ -9,6 +9,7 @@
 #include "DataStructures.hpp"
 #include "Types.hpp"
 #include "AudioSnapshot.hpp"
+#include <semaphore>
 
 struct _IPLContext_t;
 struct _IPLHRTF_t;
@@ -38,12 +39,13 @@ class AudioPlayer{
     static uint32_t SamplesPerSec;
     static uint8_t nchannels;
     static uint16_t buffer_size;
+    static uint32_t maxAudioSampleLatency;
     
     static constexpr uint16_t config_buffersize = 512;
     static constexpr uint16_t config_samplesPerSec = 44'100;
     static constexpr uint32_t config_nchannels = 2;
 #if !RVE_SERVER
-	void Tick(Uint8*, int);
+	void Tick();
 
     std::optional<SingleAudioRenderBuffer> playerRenderBuffer;
     
@@ -64,6 +66,9 @@ class AudioPlayer{
     quaternion lrot{0,0,0,0};
     matrix4 invListenerTransform{ 1 };
 
+    std::optional<std::thread> audioTickThread;
+    std::atomic<bool> audioThreadShouldRun = true;
+    std::vector<float> interleavedOutputBuffer;
 #endif
 
     
@@ -126,12 +131,6 @@ public:
     }
 #endif
     
-	/**
-	 Tick function, used internally
-	 */
-#if !RVE_SERVER
-	static void TickStatic(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount);
-#endif
 };
 
 }

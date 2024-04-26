@@ -23,6 +23,7 @@ using namespace std;
 STATIC(AudioPlayer::SamplesPerSec) = 0;
 STATIC(AudioPlayer::nchannels) = 0;
 STATIC(AudioPlayer::buffer_size) = 0;
+STATIC(AudioPlayer::maxAudioSampleLatency) = 0;
 
 
 struct AudioWorker : public tf::WorkerInterface{
@@ -65,48 +66,19 @@ inline static void TZero(T* data, size_t nData){
     TMemset<T>(data, 0, nData);
 }
 
-void AudioPlayer::Tick(Uint8* stream, int len) {
+void AudioPlayer::Tick() {
     
-    GetApp()->SwapRenderAudioSnapshot();
-    SnapshotToRender = GetApp()->GetRenderAudioSnapshot();
-
-    audioExecutor.run(audioTaskflow).wait();
-    
-
-    TZero(stream, len); // fill with silence
-  
     static_assert(sizeof(SnapshotToRender) == sizeof(void*), "Not a pointer! Check this!");
-
-    const auto buffers_size = len / sizeof(float);
-    stackarray(shared_buffer, float, buffers_size);
-    PlanarSampleBufferInlineView sharedBufferView(shared_buffer, buffers_size, buffers_size / GetNChannels());
-    float* accum_buffer = reinterpret_cast<float*>(stream);
-    InterleavedSampleBufferView accumView{ accum_buffer,buffers_size };
-
    
-    const auto blendBufferIn = [accumView](PlanarSampleBufferInlineView sourceView){
-        const auto nchannels = sourceView.GetNChannels();
-#pragma omp simd
-        for (int i = 0; i < accumView.size(); i++) {
-            //mix with existing
-            // also perform planar-to-interleaved conversion
-            accumView[i] += sourceView[i % nchannels][i / nchannels];
-        }
-    };
-    
-    // copy the mix created by worker threads to the current mix 
+    auto queuedSize = SDL_GetAudioStreamQueued(stream);
+    if (queuedSize < maxAudioSampleLatency) {
+        GetApp()->SwapRenderAudioSnapshot();
+        SnapshotToRender = GetApp()->GetRenderAudioSnapshot();
 
-    auto view = playerRenderBuffer->GetDataBufferView();
-
-    blendBufferIn(view);
-    
-    //clipping: clamp all values to [-1,1]
-#pragma omp simd
-    for (int i = 0; i < accumView.size(); i++) {
-        accumView[i] = std::clamp(accumView[i], -1.0f, 1.0f);
+        audioExecutor.run(audioTaskflow).wait();
+        
+        SDL_PutAudioStreamData(stream, interleavedOutputBuffer.data(), interleavedOutputBuffer.size() * sizeof(interleavedOutputBuffer[0]));
     }
-    
-    globalSamples += sharedBufferView.GetNumSamples();
 }
 
 void AudioPlayer::SetupAudioTaskGraph(){
@@ -245,32 +217,36 @@ void AudioPlayer::SetupAudioTaskGraph(){
             AdditiveBlendSamples(sharedBufferView, mixTempView);
         }
 
+        InterleavedSampleBufferView accumView{ interleavedOutputBuffer.data(), interleavedOutputBuffer.size() };
+        TZero(accumView.data(), accumView.size());  // reset to silence
+
+        const auto blendBufferIn = [accumView](PlanarSampleBufferInlineView sourceView) {
+            const auto nchannels = sourceView.GetNChannels();
+#pragma omp simd
+            for (int i = 0; i < accumView.size(); i++) {
+                //mix with existing
+                // also perform planar-to-interleaved conversion
+                accumView[i] += sourceView[i % nchannels][i / nchannels];
+            }
+            };
+
+        // copy the mix created by worker threads to the current mix 
+
+        auto view = playerRenderBuffer->GetDataBufferView();
+
+        blendBufferIn(view);
+
+        //clipping: clamp all values to [-1,1]
+#pragma omp simd
+        for (int i = 0; i < accumView.size(); i++) {
+            accumView[i] = std::clamp(accumView[i], -1.0f, 1.0f);
+        }
+
+        globalSamples += GetBufferSize();
+
     }).name("Final audio mix").succeed(processDataProviders, processAmbients, processSimpleRooms);
 }
 
-/**
- The audio player tick function. Called every time there is an audio update
- @param udata user data for application
- @param stream buffer to write the data into
- @param len the length of the buffer
- */
-void AudioPlayer::TickStatic(void *udata, SDL_AudioStream *stream, int additional_amount, int total_amount){
-    if (additional_amount > 0) {
-        AudioPlayer* player = static_cast<AudioPlayer*>(udata);
-        // this works because we can queue more audio than is requested.
-        int bytesToGenerate = player->buffer_size * player->nchannels * sizeof(float);
-        auto n_iters = std::ceil((float)additional_amount / bytesToGenerate);
-        Uint8 *data = SDL_stack_alloc(Uint8, bytesToGenerate);
-        if (data) {
-            for(int i = 0; i < n_iters; i++){
-                TZero(data, bytesToGenerate);
-                player->Tick(data, bytesToGenerate);
-                SDL_PutAudioStreamData(stream, data, bytesToGenerate);
-            }
-            SDL_stack_free(data);
-        }
-    }
-}
 
 void AudioPlayer::Init(){
 	if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0){
@@ -284,7 +260,7 @@ void AudioPlayer::Init(){
 	want.format = SDL_AUDIO_F32;
 	want.channels = config_nchannels;
 	
-    stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_OUTPUT, &want, AudioPlayer::TickStatic, this);
+    stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_OUTPUT, &want, NULL, this);
 	
 	if (stream == NULL){
 		Debug::Fatal("could not open audio device: {}",SDL_GetError());
@@ -296,6 +272,8 @@ void AudioPlayer::Init(){
     buffer_size = config_buffersize;
 
     playerRenderBuffer.emplace(buffer_size,nchannels);
+    interleavedOutputBuffer.resize(buffer_size * nchannels, 0);
+    maxAudioSampleLatency = buffer_size * 16;
 	
 	Debug::LogTemp("Audio Subsystem initialized");
     
@@ -338,9 +316,22 @@ void AudioPlayer::Init(){
     if (errorCode) {
         Debug::Fatal("Cannot create Steam Audio Simulator: {}", IPLerrorToString(errorCode));
     }
+
+    audioTickThread.emplace([this] {
+        while (audioThreadShouldRun) {
+            Tick();
+        }
+    });
+    audioTickThread->detach();
 }
 
 void AudioPlayer::Shutdown(){
+    audioThreadShouldRun = false;
+    if (audioTickThread->joinable()) {
+        audioTickThread->join();
+    }
+    audioTickThread.reset();
+
 	SDL_CloseAudioDevice(SDL_GetAudioStreamDevice(stream));
     iplHRTFRelease(&steamAudioHRTF);
     iplSimulatorRelease(&steamAudioSimulator);
