@@ -66,12 +66,12 @@ extern void Android_JNI_CloseAudioDevice(const int iscapture);
 extern SDL_bool Android_IsDeXMode(void);
 extern SDL_bool Android_IsChromebook(void);
 
-int Android_JNI_FileOpen(SDL_RWops *ctx, const char *fileName, const char *mode);
-Sint64 Android_JNI_FileSize(SDL_RWops *ctx);
-Sint64 Android_JNI_FileSeek(SDL_RWops *ctx, Sint64 offset, int whence);
-size_t Android_JNI_FileRead(SDL_RWops *ctx, void *buffer, size_t size);
-size_t Android_JNI_FileWrite(SDL_RWops *ctx, const void *buffer, size_t size);
-int Android_JNI_FileClose(SDL_RWops *ctx);
+int Android_JNI_FileOpen(void **puserdata, const char *fileName, const char *mode);
+Sint64 Android_JNI_FileSize(void *userdata);
+Sint64 Android_JNI_FileSeek(void *userdata, Sint64 offset, int whence);
+size_t Android_JNI_FileRead(void *userdata, void *buffer, size_t size, SDL_IOStatus *status);
+size_t Android_JNI_FileWrite(void *userdata, const void *buffer, size_t size, SDL_IOStatus *status);
+int Android_JNI_FileClose(void *userdata);
 
 /* Environment support */
 void Android_JNI_GetManifestEnvironmentVariables(void);
@@ -113,7 +113,7 @@ int Android_JNI_SendMessage(int command, int param);
 JNIEXPORT void JNICALL SDL_Android_Init(JNIEnv *mEnv, jclass cls);
 
 /* MessageBox */
-int Android_JNI_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid);
+int Android_JNI_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID);
 
 /* Cursor support */
 int Android_JNI_CreateCustomCursor(SDL_Surface *surface, int hot_x, int hot_y);
@@ -124,9 +124,6 @@ SDL_bool Android_JNI_SetSystemCursor(int cursorID);
 /* Relative mouse support */
 SDL_bool Android_JNI_SupportsRelativeMouse(void);
 SDL_bool Android_JNI_SetRelativeMouseEnabled(SDL_bool enabled);
-
-/* Request permission */
-SDL_bool Android_JNI_RequestPermission(const char *permission);
 
 /* Show toast notification */
 int Android_JNI_ShowToast(const char *message, int duration, int gravity, int xOffset, int yOffset);

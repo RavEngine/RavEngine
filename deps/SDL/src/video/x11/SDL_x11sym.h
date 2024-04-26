@@ -156,6 +156,7 @@ SDL_X11_SYM(int,XQueryTree,(Display* a,Window b,Window* c,Window* d,Window** e,u
 SDL_X11_SYM(Bool,XSupportsLocale,(void),(),return)
 SDL_X11_SYM(Status,XmbTextListToTextProperty,(Display* a,char** b,int c,XICCEncodingStyle d,XTextProperty* e),(a,b,c,d,e),return)
 SDL_X11_SYM(Region,XCreateRegion,(void),(),return)
+SDL_X11_SYM(int,XUnionRectWithRegion,(XRectangle *a, Region b, Region c),(a,b,c), return)
 SDL_X11_SYM(void,XDestroyRegion,(Region),(a),)
 SDL_X11_SYM(void,XrmInitialize,(),(),)
 SDL_X11_SYM(char*,XResourceManagerString,(Display *display),(display),)
@@ -261,6 +262,7 @@ SDL_X11_MODULE(XCURSOR)
 SDL_X11_SYM(XcursorImage*,XcursorImageCreate,(int a,int b),(a,b),return)
 SDL_X11_SYM(void,XcursorImageDestroy,(XcursorImage *a),(a),)
 SDL_X11_SYM(Cursor,XcursorImageLoadCursor,(Display *a,const XcursorImage *b),(a,b),return)
+SDL_X11_SYM(Cursor,XcursorLibraryLoadCursor,(Display *a, const char *b),(a,b),return)
 #endif
 
 /* Xdbe support */

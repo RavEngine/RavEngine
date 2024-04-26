@@ -27,7 +27,7 @@
  *  This code is a part of the SDL test library, not the main SDL library.
  */
 
-/* Ported from original test\common.h file. */
+/* Ported from original test/common.h file. */
 
 #ifndef SDL_test_common_h_
 #define SDL_test_common_h_
@@ -65,7 +65,7 @@ typedef struct
     SDL_DisplayID displayID;
     const char *window_title;
     const char *window_icon;
-    Uint32 window_flags;
+    SDL_WindowFlags window_flags;
     SDL_bool flash_on_focus_loss;
     int window_x;
     int window_y;

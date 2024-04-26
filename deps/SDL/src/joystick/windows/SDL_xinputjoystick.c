@@ -94,9 +94,16 @@ static const char *GetXInputName(const Uint8 userid, BYTE SubType)
 
 static SDL_bool GetXInputDeviceInfo(Uint8 userid, Uint16 *pVID, Uint16 *pPID, Uint16 *pVersion)
 {
-    XINPUT_CAPABILITIES_EX capabilities;
+    SDL_XINPUT_CAPABILITIES_EX capabilities;
 
     if (!XINPUTGETCAPABILITIESEX || XINPUTGETCAPABILITIESEX(1, userid, 0, &capabilities) != ERROR_SUCCESS) {
+        /* Use a generic VID/PID representing an XInput controller */
+        if (pVID) {
+            *pVID = USB_VENDOR_MICROSOFT;
+        }
+        if (pPID) {
+            *pPID = USB_PRODUCT_XBOX360_XUSB_CONTROLLER;
+        }
         return SDL_FALSE;
     }
 
@@ -120,7 +127,7 @@ static SDL_bool GetXInputDeviceInfo(Uint8 userid, Uint16 *pVID, Uint16 *pPID, Ui
 
 int SDL_XINPUT_GetSteamVirtualGamepadSlot(Uint8 userid)
 {
-    XINPUT_CAPABILITIES_EX capabilities;
+    SDL_XINPUT_CAPABILITIES_EX capabilities;
 
     if (XINPUTGETCAPABILITIESEX &&
         XINPUTGETCAPABILITIESEX(1, userid, 0, &capabilities) == ERROR_SUCCESS &&
@@ -199,22 +206,10 @@ static void AddXInputDevice(Uint8 userid, BYTE SubType, JoyStick_DeviceData **pC
         return;
     }
 
-#ifdef SDL_JOYSTICK_HIDAPI
-    /* Since we're guessing about the VID/PID, use a hard-coded VID/PID to represent XInput */
-    if (HIDAPI_IsDevicePresent(USB_VENDOR_MICROSOFT, USB_PRODUCT_XBOX360_XUSB_CONTROLLER, version, pNewJoystick->joystickname)) {
-        /* The HIDAPI driver is taking care of this device */
+    if (SDL_JoystickHandledByAnotherDriver(&SDL_WINDOWS_JoystickDriver, vendor, product, version, pNewJoystick->joystickname)) {
         SDL_free(pNewJoystick);
         return;
     }
-#endif
-
-#ifdef SDL_JOYSTICK_RAWINPUT
-    if (RAWINPUT_IsDevicePresent(vendor, product, version, pNewJoystick->joystickname)) {
-        /* The RAWINPUT driver is taking care of this device */
-        SDL_free(pNewJoystick);
-        return;
-    }
-#endif
 
     WINDOWS_AddJoystickDevice(pNewJoystick);
 }
@@ -235,6 +230,29 @@ void SDL_XINPUT_JoystickDetect(JoyStick_DeviceData **pContext)
             AddXInputDevice(userid, capabilities.SubType, pContext);
         }
     }
+}
+
+SDL_bool SDL_XINPUT_JoystickPresent(Uint16 vendor, Uint16 product, Uint16 version)
+{
+    int iuserid;
+
+    if (!s_bXInputEnabled) {
+        return SDL_FALSE;
+    }
+
+    /* iterate in reverse, so these are in the final list in ascending numeric order. */
+    for (iuserid = 0; iuserid < XUSER_MAX_COUNT; ++iuserid) {
+        const Uint8 userid = (Uint8)iuserid;
+        Uint16 slot_vendor;
+        Uint16 slot_product;
+        Uint16 slot_version;
+        if (GetXInputDeviceInfo(userid, &slot_vendor, &slot_product, &slot_version)) {
+            if (vendor == slot_vendor && product == slot_product && version == slot_version) {
+                return SDL_TRUE;
+            }
+        }
+    }
+    return SDL_FALSE;
 }
 
 int SDL_XINPUT_JoystickOpen(SDL_Joystick *joystick, JoyStick_DeviceData *joystickdevice)
@@ -271,30 +289,36 @@ int SDL_XINPUT_JoystickOpen(SDL_Joystick *joystick, JoyStick_DeviceData *joystic
 
 static void UpdateXInputJoystickBatteryInformation(SDL_Joystick *joystick, XINPUT_BATTERY_INFORMATION_EX *pBatteryInformation)
 {
-    if (pBatteryInformation->BatteryType != BATTERY_TYPE_UNKNOWN) {
-        SDL_JoystickPowerLevel ePowerLevel = SDL_JOYSTICK_POWER_UNKNOWN;
-        if (pBatteryInformation->BatteryType == BATTERY_TYPE_WIRED) {
-            ePowerLevel = SDL_JOYSTICK_POWER_WIRED;
-        } else {
-            switch (pBatteryInformation->BatteryLevel) {
-            case BATTERY_LEVEL_EMPTY:
-                ePowerLevel = SDL_JOYSTICK_POWER_EMPTY;
-                break;
-            case BATTERY_LEVEL_LOW:
-                ePowerLevel = SDL_JOYSTICK_POWER_LOW;
-                break;
-            case BATTERY_LEVEL_MEDIUM:
-                ePowerLevel = SDL_JOYSTICK_POWER_MEDIUM;
-                break;
-            default:
-            case BATTERY_LEVEL_FULL:
-                ePowerLevel = SDL_JOYSTICK_POWER_FULL;
-                break;
-            }
-        }
-
-        SDL_SendJoystickBatteryLevel(joystick, ePowerLevel);
+    SDL_PowerState state;
+    int percent;
+    switch (pBatteryInformation->BatteryType) {
+    case BATTERY_TYPE_WIRED:
+        state = SDL_POWERSTATE_CHARGING;
+        break;
+    case BATTERY_TYPE_UNKNOWN:
+    case BATTERY_TYPE_DISCONNECTED:
+        state = SDL_POWERSTATE_UNKNOWN;
+        break;
+    default:
+        state = SDL_POWERSTATE_ON_BATTERY;
+        break;
     }
+    switch (pBatteryInformation->BatteryLevel) {
+    case BATTERY_LEVEL_EMPTY:
+        percent = 10;
+        break;
+    case BATTERY_LEVEL_LOW:
+        percent = 40;
+        break;
+    case BATTERY_LEVEL_MEDIUM:
+        percent = 70;
+        break;
+    default:
+    case BATTERY_LEVEL_FULL:
+        percent = 100;
+        break;
+    }
+    SDL_SendJoystickPowerInfo(joystick, state, percent);
 }
 
 static void UpdateXInputJoystickState(SDL_Joystick *joystick, XINPUT_STATE *pXInputState, XINPUT_BATTERY_INFORMATION_EX *pBatteryInformation)
@@ -418,6 +442,11 @@ int SDL_XINPUT_JoystickInit(void)
 
 void SDL_XINPUT_JoystickDetect(JoyStick_DeviceData **pContext)
 {
+}
+
+SDL_bool SDL_XINPUT_JoystickPresent(Uint16 vendor, Uint16 product, Uint16 version)
+{
+    return SDL_FALSE;
 }
 
 int SDL_XINPUT_JoystickOpen(SDL_Joystick *joystick, JoyStick_DeviceData *joystickdevice)

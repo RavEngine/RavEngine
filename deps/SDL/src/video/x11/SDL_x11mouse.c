@@ -26,6 +26,7 @@
 #include "SDL_x11video.h"
 #include "SDL_x11mouse.h"
 #include "SDL_x11xinput2.h"
+#include "../SDL_video_c.h"
 #include "../../events/SDL_mouse_c.h"
 
 /* FIXME: Find a better place to put this... */
@@ -212,86 +213,61 @@ static SDL_Cursor *X11_CreateCursor(SDL_Surface *surface, int hot_x, int hot_y)
     return cursor;
 }
 
-static SDL_Cursor *X11_CreateSystemCursor(SDL_SystemCursor id)
+static unsigned int GetLegacySystemCursorShape(SDL_SystemCursor id)
 {
-    SDL_Cursor *cursor;
-    unsigned int shape;
-
     switch (id) {
-    default:
-        SDL_assert(0);
-        return NULL;
-    /* X Font Cursors reference: */
-    /*   http://tronche.com/gui/x/xlib/appendix/b/ */
-    case SDL_SYSTEM_CURSOR_ARROW:
-        shape = XC_left_ptr;
-        break;
-    case SDL_SYSTEM_CURSOR_IBEAM:
-        shape = XC_xterm;
-        break;
-    case SDL_SYSTEM_CURSOR_WAIT:
-        shape = XC_watch;
-        break;
-    case SDL_SYSTEM_CURSOR_CROSSHAIR:
-        shape = XC_tcross;
-        break;
-    case SDL_SYSTEM_CURSOR_WAITARROW:
-        shape = XC_watch;
-        break;
-    case SDL_SYSTEM_CURSOR_SIZENWSE:
-        shape = XC_top_left_corner;
-        break;
-    case SDL_SYSTEM_CURSOR_SIZENESW:
-        shape = XC_top_right_corner;
-        break;
-    case SDL_SYSTEM_CURSOR_SIZEWE:
-        shape = XC_sb_h_double_arrow;
-        break;
-    case SDL_SYSTEM_CURSOR_SIZENS:
-        shape = XC_sb_v_double_arrow;
-        break;
-    case SDL_SYSTEM_CURSOR_SIZEALL:
-        shape = XC_fleur;
-        break;
-    case SDL_SYSTEM_CURSOR_NO:
-        shape = XC_pirate;
-        break;
-    case SDL_SYSTEM_CURSOR_HAND:
-        shape = XC_hand2;
-        break;
-    case SDL_SYSTEM_CURSOR_WINDOW_TOPLEFT:
-        shape = XC_top_left_corner;
-        break;
-    case SDL_SYSTEM_CURSOR_WINDOW_TOP:
-        shape = XC_top_side;
-        break;
-    case SDL_SYSTEM_CURSOR_WINDOW_TOPRIGHT:
-        shape = XC_top_right_corner;
-        break;
-    case SDL_SYSTEM_CURSOR_WINDOW_RIGHT:
-        shape = XC_right_side;
-        break;
-    case SDL_SYSTEM_CURSOR_WINDOW_BOTTOMRIGHT:
-        shape = XC_bottom_right_corner;
-        break;
-    case SDL_SYSTEM_CURSOR_WINDOW_BOTTOM:
-        shape = XC_bottom_side;
-        break;
-    case SDL_SYSTEM_CURSOR_WINDOW_BOTTOMLEFT:
-        shape = XC_bottom_left_corner;
-        break;
-    case SDL_SYSTEM_CURSOR_WINDOW_LEFT:
-        shape = XC_left_side;
-        break;
+        /* X Font Cursors reference: */
+        /*   http://tronche.com/gui/x/xlib/appendix/b/ */
+        case SDL_SYSTEM_CURSOR_ARROW: return XC_left_ptr;
+        case SDL_SYSTEM_CURSOR_IBEAM: return XC_xterm;
+        case SDL_SYSTEM_CURSOR_WAIT: return XC_watch;
+        case SDL_SYSTEM_CURSOR_CROSSHAIR: return XC_tcross;
+        case SDL_SYSTEM_CURSOR_WAITARROW: return XC_watch;
+        case SDL_SYSTEM_CURSOR_SIZENWSE: return XC_top_left_corner;
+        case SDL_SYSTEM_CURSOR_SIZENESW: return XC_top_right_corner;
+        case SDL_SYSTEM_CURSOR_SIZEWE: return XC_sb_h_double_arrow;
+        case SDL_SYSTEM_CURSOR_SIZENS: return XC_sb_v_double_arrow;
+        case SDL_SYSTEM_CURSOR_SIZEALL: return XC_fleur;
+        case SDL_SYSTEM_CURSOR_NO: return XC_pirate;
+        case SDL_SYSTEM_CURSOR_HAND: return XC_hand2;
+        case SDL_SYSTEM_CURSOR_WINDOW_TOPLEFT: return XC_top_left_corner;
+        case SDL_SYSTEM_CURSOR_WINDOW_TOP: return XC_top_side;
+        case SDL_SYSTEM_CURSOR_WINDOW_TOPRIGHT: return XC_top_right_corner;
+        case SDL_SYSTEM_CURSOR_WINDOW_RIGHT: return XC_right_side;
+        case SDL_SYSTEM_CURSOR_WINDOW_BOTTOMRIGHT: return XC_bottom_right_corner;
+        case SDL_SYSTEM_CURSOR_WINDOW_BOTTOM: return XC_bottom_side;
+        case SDL_SYSTEM_CURSOR_WINDOW_BOTTOMLEFT: return XC_bottom_left_corner;
+        case SDL_SYSTEM_CURSOR_WINDOW_LEFT: return XC_left_side;
+        case SDL_NUM_SYSTEM_CURSORS: break;  /* so the compiler might notice if an enum value is missing here. */
     }
 
-    cursor = SDL_calloc(1, sizeof(*cursor));
-    if (cursor) {
-        Cursor x11_cursor;
+    SDL_assert(0);
+    return 0;
+}
 
-        x11_cursor = X11_XCreateFontCursor(GetDisplay(), shape);
+static SDL_Cursor *X11_CreateSystemCursor(SDL_SystemCursor id)
+{
+    SDL_Cursor *cursor = NULL;
+    Display *dpy = GetDisplay();
+    Cursor x11_cursor = None;
 
-        cursor->driverdata = (void *)(uintptr_t)x11_cursor;
+#ifdef SDL_VIDEO_DRIVER_X11_XCURSOR
+    if (SDL_X11_HAVE_XCURSOR) {
+        x11_cursor = X11_XcursorLibraryLoadCursor(dpy, SDL_GetCSSCursorName(id, NULL));
+    }
+#endif
+
+    if (x11_cursor == None) {
+        x11_cursor = X11_XCreateFontCursor(dpy, GetLegacySystemCursorShape(id));
+    }
+
+    if (x11_cursor != None) {
+        cursor = SDL_calloc(1, sizeof(*cursor));
+        if (!cursor) {
+            SDL_OutOfMemory();
+        } else {
+            cursor->driverdata = (void *)(uintptr_t)x11_cursor;
+        }
     }
 
     return cursor;
@@ -342,6 +318,17 @@ static void X11_WarpMouseInternal(Window xwindow, float x, float y)
 {
     SDL_VideoData *videodata = SDL_GetVideoDevice()->driverdata;
     Display *display = videodata->display;
+    SDL_Mouse *mouse = SDL_GetMouse();
+    SDL_bool warp_hack = SDL_FALSE;
+
+    /* XWayland will only warp the cursor if it is hidden, so this workaround is required. */
+    if (videodata->is_xwayland && mouse && mouse->cursor_shown) {
+        warp_hack = SDL_TRUE;
+    }
+
+    if (warp_hack) {
+        X11_ShowCursor(NULL);
+    }
 #ifdef SDL_VIDEO_DRIVER_X11_XINPUT2
     int deviceid = 0;
     if (X11_Xinput2IsInitialized()) {
@@ -359,6 +346,10 @@ static void X11_WarpMouseInternal(Window xwindow, float x, float y)
 #endif
     {
         X11_XWarpPointer(display, None, xwindow, 0, 0, 0, 0, (int)x, (int)y);
+    }
+
+    if (warp_hack) {
+        X11_ShowCursor(SDL_GetCursor());
     }
     X11_XSync(display, False);
     videodata->global_mouse_changed = SDL_TRUE;
@@ -387,7 +378,10 @@ static int X11_WarpMouseGlobal(float x, float y)
 
 static int X11_SetRelativeMouseMode(SDL_bool enabled)
 {
-    return X11_Xinput2IsInitialized() ? 0 : SDL_Unsupported();
+    if (!X11_Xinput2IsInitialized()) {
+        return SDL_Unsupported();
+    }
+    return 0;
 }
 
 static int X11_CaptureMouse(SDL_Window *window)
@@ -397,13 +391,19 @@ static int X11_CaptureMouse(SDL_Window *window)
 
     if (window) {
         SDL_WindowData *data = window->driverdata;
-        const unsigned int mask = ButtonPressMask | ButtonReleaseMask | PointerMotionMask | FocusChangeMask;
-        Window confined = (data->mouse_grabbed ? data->xwindow : None);
-        const int rc = X11_XGrabPointer(display, data->xwindow, False,
-                                        mask, GrabModeAsync, GrabModeAsync,
-                                        confined, None, CurrentTime);
-        if (rc != GrabSuccess) {
-            return SDL_SetError("X server refused mouse capture");
+
+        /* If XInput2 is handling the pointer input, non-confinement grabs will always fail with 'AlreadyGrabbed',
+         * since the pointer is being grabbed by XInput2.
+         */
+        if (!data->xinput2_mouse_enabled || data->mouse_grabbed) {
+            const unsigned int mask = ButtonPressMask | ButtonReleaseMask | PointerMotionMask | FocusChangeMask;
+            Window confined = (data->mouse_grabbed ? data->xwindow : None);
+            const int rc = X11_XGrabPointer(display, data->xwindow, False,
+                                            mask, GrabModeAsync, GrabModeAsync,
+                                            confined, None, CurrentTime);
+            if (rc != GrabSuccess) {
+                return SDL_SetError("X server refused mouse capture");
+            }
         }
     } else if (mouse_focus) {
         SDL_UpdateWindowGrab(mouse_focus);

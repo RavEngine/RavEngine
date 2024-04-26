@@ -66,20 +66,20 @@ static int SDLCALL SDL_SoftBlit(SDL_Surface *src, const SDL_Rect *srcrect,
         /* Set up the blit information */
         info->src = (Uint8 *)src->pixels +
                     (Uint16)srcrect->y * src->pitch +
-                    (Uint16)srcrect->x * info->src_fmt->BytesPerPixel;
+                    (Uint16)srcrect->x * info->src_fmt->bytes_per_pixel;
         info->src_w = srcrect->w;
         info->src_h = srcrect->h;
         info->src_pitch = src->pitch;
         info->src_skip =
-            info->src_pitch - info->src_w * info->src_fmt->BytesPerPixel;
+            info->src_pitch - info->src_w * info->src_fmt->bytes_per_pixel;
         info->dst =
             (Uint8 *)dst->pixels + (Uint16)dstrect->y * dst->pitch +
-            (Uint16)dstrect->x * info->dst_fmt->BytesPerPixel;
+            (Uint16)dstrect->x * info->dst_fmt->bytes_per_pixel;
         info->dst_w = dstrect->w;
         info->dst_h = dstrect->h;
         info->dst_pitch = dst->pitch;
         info->dst_skip =
-            info->dst_pitch - info->dst_w * info->dst_fmt->BytesPerPixel;
+            info->dst_pitch - info->dst_w * info->dst_fmt->bytes_per_pixel;
         RunBlit = (SDL_BlitFunc)src->map->data;
 
         /* Run the actual software blit */
@@ -130,29 +130,21 @@ static SDL_BlitFunc SDL_ChooseBlitFunc(Uint32 src_format, Uint32 dst_format, int
 
     /* Get the available CPU features */
     if (features == 0x7fffffff) {
-        const char *override = SDL_getenv("SDL_BLIT_CPU_FEATURES");
-
         features = SDL_CPU_ANY;
-
-        /* Allow an override for testing .. */
-        if (override) {
-            (void)SDL_sscanf(override, "%u", &features);
-        } else {
-            if (SDL_HasMMX()) {
-                features |= SDL_CPU_MMX;
-            }
-            if (SDL_HasSSE()) {
-                features |= SDL_CPU_SSE;
-            }
-            if (SDL_HasSSE2()) {
-                features |= SDL_CPU_SSE2;
-            }
-            if (SDL_HasAltiVec()) {
-                if (SDL_UseAltivecPrefetch()) {
-                    features |= SDL_CPU_ALTIVEC_PREFETCH;
-                } else {
-                    features |= SDL_CPU_ALTIVEC_NOPREFETCH;
-                }
+        if (SDL_HasMMX()) {
+            features |= SDL_CPU_MMX;
+        }
+        if (SDL_HasSSE()) {
+            features |= SDL_CPU_SSE;
+        }
+        if (SDL_HasSSE2()) {
+            features |= SDL_CPU_SSE2;
+        }
+        if (SDL_HasAltiVec()) {
+            if (SDL_UseAltivecPrefetch()) {
+                features |= SDL_CPU_ALTIVEC_PREFETCH;
+            } else {
+                features |= SDL_CPU_ALTIVEC_NOPREFETCH;
             }
         }
     }
@@ -200,7 +192,7 @@ int SDL_CalculateBlit(SDL_Surface *surface)
     }
 
     /* We don't currently support blitting to < 8 bpp surfaces */
-    if (dst->format->BitsPerPixel < 8) {
+    if (dst->format->bits_per_pixel < 8) {
         SDL_InvalidateMap(map);
         return SDL_SetError("Blit combination not supported");
     }
@@ -232,8 +224,8 @@ int SDL_CalculateBlit(SDL_Surface *surface)
     /* Choose a standard blit function */
     if (!blit) {
         if (src_colorspace != dst_colorspace ||
-            surface->format->BytesPerPixel > 4 ||
-            dst->format->BytesPerPixel > 4) {
+            surface->format->bytes_per_pixel > 4 ||
+            dst->format->bytes_per_pixel > 4) {
             blit = SDL_Blit_Slow_Float;
         }
     }
@@ -244,13 +236,13 @@ int SDL_CalculateBlit(SDL_Surface *surface)
             blit = SDL_Blit_Slow;
         }
 #if SDL_HAVE_BLIT_0
-        else if (surface->format->BitsPerPixel < 8 &&
+        else if (surface->format->bits_per_pixel < 8 &&
                  SDL_ISPIXELFORMAT_INDEXED(surface->format->format)) {
             blit = SDL_CalculateBlit0(surface);
         }
 #endif
 #if SDL_HAVE_BLIT_1
-        else if (surface->format->BytesPerPixel == 1 &&
+        else if (surface->format->bytes_per_pixel == 1 &&
                  SDL_ISPIXELFORMAT_INDEXED(surface->format->format)) {
             blit = SDL_CalculateBlit1(surface);
         }

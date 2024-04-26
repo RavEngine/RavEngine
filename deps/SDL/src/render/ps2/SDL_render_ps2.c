@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-#ifdef SDL_VIDEO_RENDER_PS2
+#if SDL_VIDEO_RENDER_PS2
 
 #include "../SDL_sysrender.h"
 
@@ -492,6 +492,7 @@ static int PS2_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
         case SDL_RENDERCMD_SETVIEWPORT:
         {
             PS2_RenderSetViewPort(renderer, cmd);
+            /* FIXME: We need to update the clip rect too, see https://github.com/libsdl-org/SDL/issues/9094 */
             break;
         }
         case SDL_RENDERCMD_SETCLIPRECT:
@@ -502,10 +503,6 @@ static int PS2_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
         case SDL_RENDERCMD_SETDRAWCOLOR:
         {
             PS2_RenderSetDrawColor(renderer, cmd);
-            break;
-        }
-        case SDL_RENDERCMD_SETCOLORSCALE:
-        {
             break;
         }
         case SDL_RENDERCMD_CLEAR:
@@ -605,44 +602,33 @@ static void PS2_DestroyRenderer(SDL_Renderer *renderer)
     if (vsync_sema_id >= 0) {
         DeleteSema(vsync_sema_id);
     }
-
-    SDL_free(renderer);
 }
 
 static int PS2_SetVSync(SDL_Renderer *renderer, const int vsync)
 {
     PS2_RenderData *data = (PS2_RenderData *)renderer->driverdata;
-    SDL_bool dynamicVsync = SDL_GetHintBoolean(SDL_HINT_PS2_DYNAMIC_VSYNC, SDL_FALSE);
+    SDL_bool dynamicVsync = SDL_GetHintBoolean(SDL_HINT_RENDER_PS2_DYNAMIC_VSYNC, SDL_FALSE);
     data->vsync = vsync ? (dynamicVsync ? 2 : 1) : 0;
     return 0;
 }
 
-static SDL_Renderer *PS2_CreateRenderer(SDL_Window *window, SDL_PropertiesID create_props)
+static int PS2_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_PropertiesID create_props)
 {
-    SDL_Renderer *renderer;
     PS2_RenderData *data;
     GSGLOBAL *gsGlobal;
     ee_sema_t sema;
     SDL_bool dynamicVsync;
 
-    renderer = (SDL_Renderer *)SDL_calloc(1, sizeof(*renderer));
-    if (!renderer) {
-        return NULL;
-    }
-    renderer->magic = &SDL_renderer_magic;
-
     SDL_SetupRendererColorspace(renderer, create_props);
 
     if (renderer->output_colorspace != SDL_COLORSPACE_SRGB) {
-        SDL_SetError("Unsupported output colorspace");
         SDL_free(renderer);
-        return NULL;
+        return SDL_SetError("Unsupported output colorspace");
     }
 
     data = (PS2_RenderData *)SDL_calloc(1, sizeof(*data));
     if (!data) {
-        PS2_DestroyRenderer(renderer);
-        return NULL;
+        return -1;
     }
 
     /* Specific gsKit init */
@@ -683,7 +669,7 @@ static SDL_Renderer *PS2_CreateRenderer(SDL_Window *window, SDL_PropertiesID cre
     gsKit_clear(gsGlobal, GS_BLACK);
 
     data->gsGlobal = gsGlobal;
-    dynamicVsync = SDL_GetHintBoolean(SDL_HINT_PS2_DYNAMIC_VSYNC, SDL_FALSE);
+    dynamicVsync = SDL_GetHintBoolean(SDL_HINT_RENDER_PS2_DYNAMIC_VSYNC, SDL_FALSE);
     if (SDL_GetBooleanProperty(create_props, SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_BOOLEAN, SDL_FALSE)) {
         data->vsync = (dynamicVsync ? 2 : 1);
     }
@@ -697,7 +683,6 @@ static SDL_Renderer *PS2_CreateRenderer(SDL_Window *window, SDL_PropertiesID cre
     renderer->SetRenderTarget = PS2_SetRenderTarget;
     renderer->QueueSetViewport = PS2_QueueSetViewport;
     renderer->QueueSetDrawColor = PS2_QueueNoOp;
-    renderer->QueueSetColorScale = PS2_QueueNoOp;
     renderer->QueueDrawPoints = PS2_QueueDrawPoints;
     renderer->QueueDrawLines = PS2_QueueDrawPoints;
     renderer->QueueGeometry = PS2_QueueGeometry;
@@ -708,7 +693,6 @@ static SDL_Renderer *PS2_CreateRenderer(SDL_Window *window, SDL_PropertiesID cre
     renderer->DestroyRenderer = PS2_DestroyRenderer;
     renderer->SetVSync = PS2_SetVSync;
     renderer->info = PS2_RenderDriver.info;
-    renderer->info.flags = SDL_RENDERER_ACCELERATED;
     renderer->driverdata = data;
     PS2_InvalidateCachedState(renderer);
     renderer->window = window;
@@ -716,14 +700,14 @@ static SDL_Renderer *PS2_CreateRenderer(SDL_Window *window, SDL_PropertiesID cre
     if (data->vsync) {
         renderer->info.flags |= SDL_RENDERER_PRESENTVSYNC;
     }
-    return renderer;
+    return 0;
 }
 
 SDL_RenderDriver PS2_RenderDriver = {
     .CreateRenderer = PS2_CreateRenderer,
     .info = {
         .name = "PS2 gsKit",
-        .flags = (SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC),
+        .flags = SDL_RENDERER_PRESENTVSYNC,
         .num_texture_formats = 2,
         .texture_formats = {
             [0] = SDL_PIXELFORMAT_ABGR1555,

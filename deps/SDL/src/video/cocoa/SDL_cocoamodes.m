@@ -292,16 +292,18 @@ static char *Cocoa_GetDisplayName(CGDirectDisplayID displayID)
 
 static void Cocoa_GetHDRProperties(CGDirectDisplayID displayID, SDL_HDRDisplayProperties *HDR)
 {
-    HDR->enabled = SDL_FALSE;
-    HDR->SDR_whitelevel = 0.0f;
+    HDR->SDR_white_point = 1.0f;
+    HDR->HDR_headroom = 1.0f;
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= 101500 /* Added in the 10.15 SDK */
     if (@available(macOS 10.15, *)) {
         NSScreen *screen = GetNSScreenForDisplayID(displayID);
-
-        if (screen && screen.maximumPotentialExtendedDynamicRangeColorComponentValue > 1.0f) {
-            HDR->enabled = SDL_TRUE;
-            HDR->SDR_whitelevel = 80.0f; /* SDR content is always at scRGB 1.0 */
+        if (screen) {
+            if (screen.maximumExtendedDynamicRangeColorComponentValue > 1.0f) {
+                HDR->HDR_headroom = screen.maximumExtendedDynamicRangeColorComponentValue;
+            } else {
+                HDR->HDR_headroom = screen.maximumPotentialExtendedDynamicRangeColorComponentValue;
+            }
         }
     }
 #endif

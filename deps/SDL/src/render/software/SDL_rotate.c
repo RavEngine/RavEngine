@@ -30,7 +30,7 @@ Andreas Schiffler -- aschiffler at ferzkopp dot net
 */
 #include "SDL_internal.h"
 
-#if SDL_VIDEO_RENDER_SW && !defined(SDL_RENDER_DISABLED)
+#if SDL_VIDEO_RENDER_SW
 
 #if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_GDK)
 #include "../../core/windows/SDL_windows.h"
@@ -508,8 +508,8 @@ SDL_Surface *SDLgfx_rotateSurface(SDL_Surface *src, double angle, int smooth, in
         }
     }
     /* This function requires a 32-bit surface or 8-bit surface with a colorkey */
-    is8bit = src->format->BitsPerPixel == 8 && colorKeyAvailable;
-    if (!(is8bit || (src->format->BitsPerPixel == 32 && src->format->Amask))) {
+    is8bit = src->format->bits_per_pixel == 8 && colorKeyAvailable;
+    if (!(is8bit || (src->format->bits_per_pixel == 32 && src->format->Amask))) {
         return NULL;
     }
 
@@ -613,4 +613,4 @@ SDL_Surface *SDLgfx_rotateSurface(SDL_Surface *src, double angle, int smooth, in
     return rz_dst;
 }
 
-#endif /* SDL_VIDEO_RENDER_SW && !SDL_RENDER_DISABLED */
+#endif /* SDL_VIDEO_RENDER_SW */

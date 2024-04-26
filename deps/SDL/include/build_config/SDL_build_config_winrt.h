@@ -57,7 +57,6 @@
 #define HAVE_TPCSHRD_H 1
 
 #define HAVE_LIBC 1
-#define HAVE_CTYPE_H 1
 #define HAVE_FLOAT_H 1
 #define HAVE_LIMITS_H 1
 #define HAVE_MATH_H 1
@@ -71,12 +70,11 @@
 #define HAVE_WCHAR_H 1
 
 /* C library functions */
+#define HAVE_LIBC   1
 #define HAVE_MALLOC 1
 #define HAVE_CALLOC 1
 #define HAVE_REALLOC 1
 #define HAVE_FREE 1
-#define HAVE_QSORT 1
-#define HAVE_BSEARCH 1
 #define HAVE_ABS 1
 #define HAVE_MEMSET 1
 #define HAVE_MEMCPY 1
@@ -97,8 +95,6 @@
 #define HAVE_ATOF 1
 #define HAVE_STRCMP 1
 #define HAVE_STRNCMP 1
-#define HAVE__STRICMP 1
-#define HAVE__STRNICMP 1
 #define HAVE_VSNPRINTF 1
 /* TODO, WinRT: consider using ??_s versions of the following */
 /* #undef HAVE__STRLWR */
@@ -190,6 +186,9 @@
 #define SDL_THREAD_STDCPP   1
 #endif
 
+/* Enable RTC system */
+#define SDL_TIME_WINDOWS   1
+
 /* Enable various timer systems */
 #define SDL_TIMER_WINDOWS   1
 
@@ -213,5 +212,12 @@
 
 /* Enable system power support */
 #define SDL_POWER_WINRT 1
+
+/* Enable filesystem support */
+#define SDL_FILESYSTEM_WINDOWS  1
+#define SDL_FSOPS_WINDOWS 1
+
+/* Enable the camera driver (src/camera/dummy/\*.c) */  /* !!! FIXME */
+#define SDL_CAMERA_DRIVER_DUMMY  1
 
 #endif /* SDL_build_config_winrt_h_ */

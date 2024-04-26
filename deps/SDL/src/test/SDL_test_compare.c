@@ -36,7 +36,8 @@ static int _CompareSurfaceCount = 0;
 static void
 LogErrorFormat(const char *name, const SDL_PixelFormat *format)
 {
-  SDLTest_LogError("%s: %08" SDL_PRIx32 " %s, %u bits/%u bytes per pixel", name, format->format, SDL_GetPixelFormatName(format->format), format->BitsPerPixel, format->BytesPerPixel);
+  SDLTest_LogError("%s: %08d %s, %u bits/%u bytes per pixel", name, format->format, SDL_GetPixelFormatName(format->format),
+                   format->bits_per_pixel, format->bytes_per_pixel);
   SDLTest_LogError("%s: R mask %08" SDL_PRIx32 ", loss %u, shift %u", name, format->Rmask, format->Rloss, format->Rshift);
   SDLTest_LogError("%s: G mask %08" SDL_PRIx32 ", loss %u, shift %u", name, format->Gmask, format->Gloss, format->Gshift);
   SDLTest_LogError("%s: B mask %08" SDL_PRIx32 ", loss %u, shift %u", name, format->Bmask, format->Bloss, format->Bshift);
@@ -147,4 +148,72 @@ int SDLTest_CompareSurfaces(SDL_Surface *surface, SDL_Surface *referenceSurface,
     }
 
     return ret;
+}
+
+int SDLTest_CompareMemory(const void *actual, size_t size_actual, const void *reference, size_t size_reference) {
+    const size_t size_max = SDL_max(size_actual, size_reference);
+    size_t i;
+    struct {
+        const Uint8 *data;
+        size_t size;
+    } columns[2] = {
+        {
+            actual,
+            size_actual,
+        },
+        {
+            reference,
+            size_reference,
+        },
+    };
+
+#define WIDTH 16
+
+    SDLTest_AssertCheck(size_actual == size_reference, "Sizes of memory blocks must be equal (actual=%" SDL_PRIu64 " expected=%" SDL_PRIu64 ")", (Uint64)size_actual, (Uint64)size_reference);
+    if (size_actual == size_reference) {
+        int equals;
+        equals = SDL_memcmp(actual, reference, size_max) == 0;
+        SDLTest_AssertCheck(equals, "Memory blocks contain the same data (actual | reference)");
+        if (equals) {
+            return 0;
+        }
+    }
+
+    for (i = 0; i < size_max; i += WIDTH) {
+        char line_buffer[16 + SDL_arraysize(columns) * (4 * WIDTH + 1) + (SDL_arraysize(columns) - 1) * 2 + 1];
+        size_t pos = 0;
+        size_t col;
+
+        pos += SDL_snprintf(line_buffer + pos, SDL_arraysize(line_buffer) - pos, "%016" SDL_PRIx64 , (Uint64)i);
+
+        for (col = 0; col < SDL_arraysize(columns); col++) {
+            size_t j;
+
+            for (j = 0; j < WIDTH; j++) {
+                if (i + j < columns[col].size) {
+                    pos += SDL_snprintf(line_buffer + pos, SDL_arraysize(line_buffer) - pos, " %02x", columns[col].data[i + j]);
+                } else {
+                    pos += SDL_snprintf(line_buffer + pos, SDL_arraysize(line_buffer) - pos, "   ");
+                }
+            }
+            pos += SDL_snprintf(line_buffer + pos, SDL_arraysize(line_buffer) - pos, " ");
+            for (j = 0; j < WIDTH; j++) {
+                char c = ' ';
+                if (i + j < columns[col].size) {
+                    c = columns[col].data[i + j];
+                    if (!SDL_isprint(c)) {
+                        c = '.';
+                    }
+                }
+                pos += SDL_snprintf(line_buffer + pos, SDL_arraysize(line_buffer) - pos, "%c", c);
+            }
+            if (col < SDL_arraysize(columns) - 1) {
+                pos += SDL_snprintf(line_buffer + pos, SDL_arraysize(line_buffer), " |");
+            }
+        }
+        SDLTest_LogError("%s", line_buffer);
+        SDL_assert(pos == SDL_arraysize(line_buffer) - 1);
+    }
+#undef WIDTH
+    return 1;
 }

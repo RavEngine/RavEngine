@@ -319,8 +319,9 @@ void VITA_MinimizeWindow(SDL_VideoDevice *_this, SDL_Window *window)
 void VITA_RestoreWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
-void VITA_SetWindowGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
+int VITA_SetWindowGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
 {
+    return 0;
 }
 
 void VITA_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
@@ -403,6 +404,7 @@ void VITA_ImeEventHandler(void *arg, const SceImeEventData *e)
         break;
     case SCE_IME_EVENT_PRESS_ENTER:
         SDL_SendKeyboardKeyAutoRelease(0, SDL_SCANCODE_RETURN);
+        break;
     case SCE_IME_EVENT_PRESS_CLOSE:
         sceImeClose();
         videodata->ime_active = SDL_FALSE;

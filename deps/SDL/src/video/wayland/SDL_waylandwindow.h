@@ -95,6 +95,7 @@ struct SDL_WindowData
     struct xdg_activation_token_v1 *activation_token;
     struct wp_viewport *viewport;
     struct wp_fractional_scale_v1 *fractional_scale;
+    struct zxdg_exported_v2 *exported;
 
     SDL_AtomicInt swap_interval_ready;
 
@@ -166,6 +167,7 @@ struct SDL_WindowData
     SDL_bool suspended;
     SDL_bool active;
     SDL_bool is_fullscreen;
+    SDL_bool fullscreen_exclusive;
     SDL_bool drop_fullscreen_requests;
     SDL_bool fullscreen_was_positioned;
     SDL_bool show_hide_sync_required;
@@ -184,9 +186,9 @@ extern int Wayland_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *windo
                                         SDL_bool fullscreen);
 extern void Wayland_MaximizeWindow(SDL_VideoDevice *_this, SDL_Window *window);
 extern void Wayland_MinimizeWindow(SDL_VideoDevice *_this, SDL_Window *window);
-extern void Wayland_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window);
-extern void Wayland_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
-extern void Wayland_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
+extern int Wayland_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window);
+extern int Wayland_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
+extern int Wayland_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
 extern void Wayland_RestoreWindow(SDL_VideoDevice *_this, SDL_Window *window);
 extern void Wayland_SetWindowBordered(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool bordered);
 extern void Wayland_SetWindowResizable(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool resizable);
@@ -205,5 +207,7 @@ extern int Wayland_SuspendScreenSaver(SDL_VideoDevice *_this);
 extern int Wayland_SetWindowHitTest(SDL_Window *window, SDL_bool enabled);
 extern int Wayland_FlashWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_FlashOperation operation);
 extern int Wayland_SyncWindow(SDL_VideoDevice *_this, SDL_Window *window);
+
+extern void Wayland_RemoveOutputFromWindow(SDL_WindowData *window, SDL_DisplayData *display_data);
 
 #endif /* SDL_waylandwindow_h_ */

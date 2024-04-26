@@ -388,8 +388,6 @@ static int SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwnd
 
     SDL_AddHintCallback(SDL_HINT_MOUSE_RELATIVE_MODE_CENTER, WIN_MouseRelativeModeCenterChanged, data);
 
-    window->driverdata = data;
-
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
     /* Associate the data with the window */
     if (!SetProp(hwnd, TEXT("SDL_WindowData"), data)) {
@@ -398,6 +396,8 @@ static int SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwnd
         return WIN_SetError("SetProp() failed");
     }
 #endif
+    
+    window->driverdata = data;
 
     /* Set up the window proc function */
 #ifdef GWLP_WNDPROC
@@ -453,7 +453,7 @@ static int SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwnd
     }
     if (!(window->flags & SDL_WINDOW_MINIMIZED)) {
         RECT rect;
-        if (GetClientRect(hwnd, &rect) && !IsRectEmpty(&rect)) {
+        if (GetClientRect(hwnd, &rect) && !WIN_IsRectEmpty(&rect)) {
             int w = rect.right;
             int h = rect.bottom;
 
@@ -587,9 +587,6 @@ static void CleanupWindowData(SDL_VideoDevice *_this, SDL_Window *window)
 #endif
             }
         }
-#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
-        SDL_free(data->rawinput);
-#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
         SDL_free(data);
     }
     window->driverdata = NULL;
@@ -1376,23 +1373,27 @@ void WIN_UngrabKeyboard(SDL_Window *window)
     }
 }
 
-void WIN_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window)
+int WIN_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window)
 {
     WIN_UpdateClipCursor(window);
+    return 0;
 }
 
-void WIN_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
+int WIN_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
 {
     WIN_UpdateClipCursor(window);
+    return 0;
 }
 
-void WIN_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
+int WIN_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
 {
     if (grabbed) {
         WIN_GrabKeyboard(window);
     } else {
         WIN_UngrabKeyboard(window);
     }
+
+    return 0;
 }
 #endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
 
@@ -1491,6 +1492,7 @@ static BOOL GetClientScreenRect(HWND hwnd, RECT *rect)
 
 void WIN_UpdateClipCursor(SDL_Window *window)
 {
+    SDL_VideoDevice *videodevice = SDL_GetVideoDevice();
     SDL_WindowData *data = window->driverdata;
     SDL_Mouse *mouse = SDL_GetMouse();
     RECT rect, clipped_rect;
@@ -1564,14 +1566,26 @@ void WIN_UpdateClipCursor(SDL_Window *window)
             }
         }
     } else {
-        POINT first, second;
+        SDL_bool unclip_cursor = SDL_FALSE;
 
-        first.x = clipped_rect.left;
-        first.y = clipped_rect.top;
-        second.x = clipped_rect.right - 1;
-        second.y = clipped_rect.bottom - 1;
-        if (PtInRect(&data->cursor_clipped_rect, first) &&
-            PtInRect(&data->cursor_clipped_rect, second)) {
+        /* If the cursor is clipped to the screen, clear the clip state */
+        if (!videodevice ||
+            (clipped_rect.left == videodevice->desktop_bounds.x &&
+             clipped_rect.top == videodevice->desktop_bounds.y)) {
+            unclip_cursor = SDL_TRUE;
+        } else {
+            POINT first, second;
+
+            first.x = clipped_rect.left;
+            first.y = clipped_rect.top;
+            second.x = clipped_rect.right - 1;
+            second.y = clipped_rect.bottom - 1;
+            if (PtInRect(&data->cursor_clipped_rect, first) &&
+                PtInRect(&data->cursor_clipped_rect, second)) {
+                unclip_cursor = SDL_TRUE;
+            }
+        }
+        if (unclip_cursor) {
             ClipCursor(NULL);
             SDL_zero(data->cursor_clipped_rect);
         }

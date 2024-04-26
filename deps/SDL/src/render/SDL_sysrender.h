@@ -64,7 +64,9 @@ struct SDL_Texture
 {
     const void *magic;
     SDL_Colorspace colorspace;  /**< The colorspace of the texture */
-    Uint32 format;              /**< The pixel format of the texture */
+    float SDR_white_point;      /**< The SDR white point for this content */
+    float HDR_headroom;         /**< The HDR headroom needed by this content */
+    SDL_PixelFormatEnum format; /**< The pixel format of the texture */
     int access;                 /**< SDL_TextureAccess */
     int w;                      /**< The width of the texture */
     int h;                      /**< The height of the texture */
@@ -99,7 +101,6 @@ typedef enum
     SDL_RENDERCMD_SETVIEWPORT,
     SDL_RENDERCMD_SETCLIPRECT,
     SDL_RENDERCMD_SETDRAWCOLOR,
-    SDL_RENDERCMD_SETCOLORSCALE,
     SDL_RENDERCMD_CLEAR,
     SDL_RENDERCMD_DRAW_POINTS,
     SDL_RENDERCMD_DRAW_LINES,
@@ -167,7 +168,6 @@ struct SDL_Renderer
     int (*CreateTexture)(SDL_Renderer *renderer, SDL_Texture *texture, SDL_PropertiesID create_props);
     int (*QueueSetViewport)(SDL_Renderer *renderer, SDL_RenderCommand *cmd);
     int (*QueueSetDrawColor)(SDL_Renderer *renderer, SDL_RenderCommand *cmd);
-    int (*QueueSetColorScale)(SDL_Renderer *renderer, SDL_RenderCommand *cmd);
     int (*QueueDrawPoints)(SDL_Renderer *renderer, SDL_RenderCommand *cmd, const SDL_FPoint *points,
                            int count);
     int (*QueueDrawLines)(SDL_Renderer *renderer, SDL_RenderCommand *cmd, const SDL_FPoint *points,
@@ -216,8 +216,11 @@ struct SDL_Renderer
     void *(*GetMetalLayer)(SDL_Renderer *renderer);
     void *(*GetMetalCommandEncoder)(SDL_Renderer *renderer);
 
+    int (*AddVulkanRenderSemaphores)(SDL_Renderer *renderer, Uint32 wait_stage_mask, Sint64 wait_semaphore, Sint64 signal_semaphore);
+
     /* The current renderer info */
     SDL_RendererInfo info;
+    SDL_bool software;
 
     /* The window associated with the renderer */
     SDL_Window *window;
@@ -254,6 +257,8 @@ struct SDL_Renderer
     SDL_Mutex *target_mutex;
 
     SDL_Colorspace output_colorspace;
+    float SDR_white_point;
+    float HDR_headroom;
 
     float color_scale;
     SDL_FColor color;        /**< Color for drawing operations values */
@@ -277,7 +282,14 @@ struct SDL_Renderer
     size_t vertex_data_used;
     size_t vertex_data_allocation;
 
+    /* Shaped window support */
+    SDL_bool transparent_window;
+    SDL_Surface *shape_surface;
+    SDL_Texture *shape_texture;
+
     SDL_PropertiesID props;
+
+    SDL_bool destroyed;   // already destroyed by SDL_DestroyWindow; just free this struct in SDL_DestroyRenderer.
 
     void *driverdata;
 };
@@ -285,7 +297,7 @@ struct SDL_Renderer
 /* Define the SDL render driver structure */
 struct SDL_RenderDriver
 {
-    SDL_Renderer *(*CreateRenderer)(SDL_Window *window, SDL_PropertiesID props);
+    int (*CreateRenderer)(SDL_Renderer *renderer, SDL_Window *window, SDL_PropertiesID props);
 
     /* Info about the renderer capabilities */
     SDL_RendererInfo info;
@@ -298,6 +310,7 @@ extern SDL_RenderDriver D3D12_RenderDriver;
 extern SDL_RenderDriver GL_RenderDriver;
 extern SDL_RenderDriver GLES2_RenderDriver;
 extern SDL_RenderDriver METAL_RenderDriver;
+extern SDL_RenderDriver VULKAN_RenderDriver;
 extern SDL_RenderDriver PS2_RenderDriver;
 extern SDL_RenderDriver PSP_RenderDriver;
 extern SDL_RenderDriver SW_RenderDriver;
@@ -323,6 +336,9 @@ extern SDL_BlendOperation SDL_GetBlendModeAlphaOperation(SDL_BlendMode blendMode
    for a vertex buffer during RunCommandQueue(). Pointers returned here are only valid until
    the next call, because it might be in an array that gets realloc()'d. */
 extern void *SDL_AllocateRenderVertices(SDL_Renderer *renderer, const size_t numbytes, const size_t alignment, size_t *offset);
+
+// Let the video subsystem destroy a renderer without making its pointer invalid.
+extern void SDL_DestroyRendererWithoutFreeing(SDL_Renderer *renderer);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

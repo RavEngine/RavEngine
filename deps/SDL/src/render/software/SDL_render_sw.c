@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-#if SDL_VIDEO_RENDER_SW && !defined(SDL_RENDER_DISABLED)
+#if SDL_VIDEO_RENDER_SW
 
 #include "../SDL_sysrender.h"
 #include "SDL_render_sw_c.h"
@@ -112,20 +112,17 @@ static int SW_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SDL_Pr
     g = (Uint8)SDL_roundf(SDL_clamp(texture->color.g, 0.0f, 1.0f) * 255.0f);
     b = (Uint8)SDL_roundf(SDL_clamp(texture->color.b, 0.0f, 1.0f) * 255.0f);
     a = (Uint8)SDL_roundf(SDL_clamp(texture->color.a, 0.0f, 1.0f) * 255.0f);
-    SDL_SetSurfaceColorMod(texture->driverdata, r, g, b);
-    SDL_SetSurfaceAlphaMod(texture->driverdata, a);
-    SDL_SetSurfaceBlendMode(texture->driverdata, texture->blendMode);
+    SDL_SetSurfaceColorMod(surface, r, g, b);
+    SDL_SetSurfaceAlphaMod(surface, a);
+    SDL_SetSurfaceBlendMode(surface, texture->blendMode);
 
     /* Only RLE encode textures without an alpha channel since the RLE coder
      * discards the color values of pixels with an alpha value of zero.
      */
     if (texture->access == SDL_TEXTUREACCESS_STATIC && !surface->format->Amask) {
-        SDL_SetSurfaceRLE(texture->driverdata, 1);
+        SDL_SetSurfaceRLE(surface, 1);
     }
 
-    if (!texture->driverdata) {
-        return -1;
-    }
     return 0;
 }
 
@@ -143,8 +140,8 @@ static int SW_UpdateTexture(SDL_Renderer *renderer, SDL_Texture *texture,
     src = (Uint8 *)pixels;
     dst = (Uint8 *)surface->pixels +
           rect->y * surface->pitch +
-          rect->x * surface->format->BytesPerPixel;
-    length = (size_t)rect->w * surface->format->BytesPerPixel;
+          rect->x * surface->format->bytes_per_pixel;
+    length = (size_t)rect->w * surface->format->bytes_per_pixel;
     for (row = 0; row < rect->h; ++row) {
         SDL_memcpy(dst, src, length);
         src += pitch;
@@ -163,7 +160,7 @@ static int SW_LockTexture(SDL_Renderer *renderer, SDL_Texture *texture,
 
     *pixels =
         (void *)((Uint8 *)surface->pixels + rect->y * surface->pitch +
-                 rect->x * surface->format->BytesPerPixel);
+                 rect->x * surface->format->bytes_per_pixel);
     *pitch = surface->pitch;
     return 0;
 }
@@ -363,7 +360,7 @@ static int SW_RenderCopyEx(SDL_Renderer *renderer, SDL_Surface *surface, SDL_Tex
     SDL_GetSurfaceColorMod(src, &rMod, &gMod, &bMod);
 
     /* SDLgfx_rotateSurface only accepts 32-bit surfaces with a 8888 layout. Everything else has to be converted. */
-    if (src->format->BitsPerPixel != 32 || SDL_PIXELLAYOUT(src->format->format) != SDL_PACKEDLAYOUT_8888 || !src->format->Amask) {
+    if (src->format->bits_per_pixel != 32 || SDL_PIXELLAYOUT(src->format->format) != SDL_PACKEDLAYOUT_8888 || !src->format->Amask) {
         blitRequired = SDL_TRUE;
     }
 
@@ -486,7 +483,7 @@ static int SW_RenderCopyEx(SDL_Renderer *renderer, SDL_Surface *surface, SDL_Tex
                          * to be created. This makes all source pixels opaque and the colors get copied correctly.
                          */
                         SDL_Surface *src_rotated_rgb;
-                        int f = SDL_GetPixelFormatEnumForMasks(src_rotated->format->BitsPerPixel,
+                        SDL_PixelFormatEnum f = SDL_GetPixelFormatEnumForMasks(src_rotated->format->bits_per_pixel,
                                                            src_rotated->format->Rmask,
                                                            src_rotated->format->Gmask,
                                                            src_rotated->format->Bmask,
@@ -703,11 +700,6 @@ static int SW_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, vo
             drawstate.color.g = (Uint8)SDL_roundf(SDL_clamp(cmd->data.color.color.g * cmd->data.color.color_scale, 0.0f, 1.0f) * 255.0f);
             drawstate.color.b = (Uint8)SDL_roundf(SDL_clamp(cmd->data.color.color.b * cmd->data.color.color_scale, 0.0f, 1.0f) * 255.0f);
             drawstate.color.a = (Uint8)SDL_roundf(SDL_clamp(cmd->data.color.color.a, 0.0f, 1.0f) * 255.0f);
-            break;
-        }
-
-        case SDL_RENDERCMD_SETCOLORSCALE:
-        {
             break;
         }
 
@@ -995,7 +987,7 @@ static SDL_Surface *SW_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rect *
 
     pixels = (void *)((Uint8 *)surface->pixels +
                       rect->y * surface->pitch +
-                      rect->x * surface->format->BytesPerPixel);
+                      rect->x * surface->format->bytes_per_pixel);
 
     return SDL_DuplicatePixels(rect->w, rect->h, surface->format->format, SDL_COLORSPACE_SRGB, pixels, surface->pitch);
 }
@@ -1026,10 +1018,9 @@ static void SW_DestroyRenderer(SDL_Renderer *renderer)
         SDL_DestroyWindowSurface(window);
     }
     SDL_free(data);
-    SDL_free(renderer);
 }
 
-static void SW_SelectBestFormats(SDL_Renderer *renderer, Uint32 format)
+static void SW_SelectBestFormats(SDL_Renderer *renderer, SDL_PixelFormatEnum format)
 {
     /* Prefer the format used by the framebuffer by default. */
     renderer->info.texture_formats[renderer->info.num_texture_formats++] = format;
@@ -1085,6 +1076,8 @@ static void SW_SelectBestFormats(SDL_Renderer *renderer, Uint32 format)
     case SDL_PIXELFORMAT_BGRA8888:
         renderer->info.texture_formats[renderer->info.num_texture_formats++] = SDL_PIXELFORMAT_BGRX8888;
         break;
+    default:
+        break;
     }
 
     /* Ensure that we always have a SDL_PACKEDLAYOUT_8888 format. Having a matching component order increases the
@@ -1122,26 +1115,20 @@ static void SW_SelectBestFormats(SDL_Renderer *renderer, Uint32 format)
     }
 }
 
-SDL_Renderer *SW_CreateRendererForSurface(SDL_Surface *surface)
+int SW_CreateRendererForSurface(SDL_Renderer *renderer, SDL_Surface *surface, SDL_PropertiesID create_props)
 {
-    SDL_Renderer *renderer;
     SW_RenderData *data;
 
     if (!surface) {
-        SDL_InvalidParamError("surface");
-        return NULL;
+        return SDL_InvalidParamError("surface");
     }
 
-    renderer = (SDL_Renderer *)SDL_calloc(1, sizeof(*renderer));
-    if (!renderer) {
-        return NULL;
-    }
-    renderer->magic = &SDL_renderer_magic;
+    renderer->software = SDL_TRUE;
 
     data = (SW_RenderData *)SDL_calloc(1, sizeof(*data));
     if (!data) {
         SW_DestroyRenderer(renderer);
-        return NULL;
+        return -1;
     }
     data->surface = surface;
     data->window = surface;
@@ -1156,7 +1143,6 @@ SDL_Renderer *SW_CreateRendererForSurface(SDL_Surface *surface)
     renderer->SetRenderTarget = SW_SetRenderTarget;
     renderer->QueueSetViewport = SW_QueueNoOp;
     renderer->QueueSetDrawColor = SW_QueueNoOp;
-    renderer->QueueSetColorScale = SW_QueueNoOp;
     renderer->QueueDrawPoints = SW_QueueDrawPoints;
     renderer->QueueDrawLines = SW_QueueDrawPoints; /* lines and points queue vertices the same way. */
     renderer->QueueFillRects = SW_QueueFillRects;
@@ -1175,23 +1161,21 @@ SDL_Renderer *SW_CreateRendererForSurface(SDL_Surface *surface)
 
     SW_SelectBestFormats(renderer, surface->format->format);
 
-    return renderer;
+    SDL_SetupRendererColorspace(renderer, create_props);
+
+    if (renderer->output_colorspace != SDL_COLORSPACE_SRGB) {
+        SW_DestroyRenderer(renderer);
+        return SDL_SetError("Unsupported output colorspace");
+    }
+
+    return 0;
 }
 
-static SDL_Renderer *SW_CreateRenderer(SDL_Window *window, SDL_PropertiesID create_props)
+static int SW_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_PropertiesID create_props)
 {
-    SDL_Renderer *renderer;
-    const char *hint;
-    SDL_Surface *surface;
-    SDL_bool no_hint_set;
-
     /* Set the vsync hint based on our flags, if it's not already set */
-    hint = SDL_GetHint(SDL_HINT_RENDER_VSYNC);
-    if (!hint || !*hint) {
-        no_hint_set = SDL_TRUE;
-    } else {
-        no_hint_set = SDL_FALSE;
-    }
+    const char *hint = SDL_GetHint(SDL_HINT_RENDER_VSYNC);
+    const SDL_bool no_hint_set = (!hint || !*hint);
 
     if (no_hint_set) {
         if (SDL_GetBooleanProperty(create_props, SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_BOOLEAN, SDL_FALSE)) {
@@ -1201,7 +1185,7 @@ static SDL_Renderer *SW_CreateRenderer(SDL_Window *window, SDL_PropertiesID crea
         }
     }
 
-    surface = SDL_GetWindowSurface(window);
+    SDL_Surface *surface = SDL_GetWindowSurface(window);
 
     /* Reset the vsync hint if we set it above */
     if (no_hint_set) {
@@ -1209,29 +1193,16 @@ static SDL_Renderer *SW_CreateRenderer(SDL_Window *window, SDL_PropertiesID crea
     }
 
     if (!surface) {
-        return NULL;
+        return -1;
     }
 
-    renderer = SW_CreateRendererForSurface(surface);
-    if (!renderer) {
-        return NULL;
-    }
-
-    SDL_SetupRendererColorspace(renderer, create_props);
-
-    if (renderer->output_colorspace != SDL_COLORSPACE_SRGB) {
-        SDL_SetError("Unsupported output colorspace");
-        SW_DestroyRenderer(renderer);
-        return NULL;
-    }
-
-    return renderer;
+    return SW_CreateRendererForSurface(renderer, surface, create_props);
 }
 
 SDL_RenderDriver SW_RenderDriver = {
     SW_CreateRenderer,
-    { "software",
-      (SDL_RENDERER_SOFTWARE | SDL_RENDERER_PRESENTVSYNC),
+    { SDL_SOFTWARE_RENDERER,
+      SDL_RENDERER_PRESENTVSYNC,
       0,
       { /* formats filled in later */
         SDL_PIXELFORMAT_UNKNOWN },
@@ -1239,4 +1210,4 @@ SDL_RenderDriver SW_RenderDriver = {
       0 }
 };
 
-#endif /* SDL_VIDEO_RENDER_SW && !SDL_RENDER_DISABLED */
+#endif /* SDL_VIDEO_RENDER_SW */

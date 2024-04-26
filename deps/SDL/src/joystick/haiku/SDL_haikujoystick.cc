@@ -70,12 +70,14 @@ extern "C"
         for (i = 0; (numjoysticks < MAX_JOYSTICKS) && (i < nports); ++i) {
             if (joystick.GetDeviceName(i, name) == B_OK) {
                 if (joystick.Open(name) != B_ERROR) {
-                      BString stick_name;
-                      joystick.GetControllerName(&stick_name);
-                      SDL_joyport[numjoysticks] = SDL_strdup(name);
-                      SDL_joyname[numjoysticks] = SDL_CreateJoystickName(0, 0, NULL, stick_name.String());
-                      numjoysticks++;
-                      joystick.Close();
+                    BString stick_name;
+                    joystick.GetControllerName(&stick_name);
+                    SDL_joyport[numjoysticks] = SDL_strdup(name);
+                    SDL_joyname[numjoysticks] = SDL_CreateJoystickName(0, 0, NULL, stick_name.String());
+                    numjoysticks++;
+                    joystick.Close();
+
+                    SDL_PrivateJoystickAdded(numjoysticks);
                 }
             }
         }
@@ -89,6 +91,12 @@ extern "C"
 
     static void HAIKU_JoystickDetect(void)
     {
+    }
+
+    static SDL_bool HAIKU_JoystickIsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name)
+    {
+        /* We don't override any other drivers */
+        return SDL_FALSE;
     }
 
     static const char *HAIKU_JoystickGetDeviceName(int device_index)
@@ -133,7 +141,6 @@ extern "C"
         BJoystick *stick;
 
         /* Create the joystick data structure */
-        joystick->instance_id = device_index;
         joystick->hwdata = (struct joystick_hwdata *) SDL_calloc(1, sizeof(*joystick->hwdata));
         if (joystick->hwdata == NULL) {
             return -1;
@@ -293,6 +300,7 @@ extern "C"
         HAIKU_JoystickInit,
         HAIKU_JoystickGetCount,
         HAIKU_JoystickDetect,
+        HAIKU_JoystickIsDevicePresent,
         HAIKU_JoystickGetDeviceName,
         HAIKU_JoystickGetDevicePath,
         HAIKU_JoystickGetDeviceSteamVirtualGamepadSlot,

@@ -117,12 +117,8 @@ SDL_JoystickID SDL_JoystickAttachVirtualInner(const SDL_VirtualJoystickDesc *des
     if (!desc) {
         return SDL_InvalidParamError("desc");
     }
-    if (desc->version != SDL_VIRTUAL_JOYSTICK_DESC_VERSION) {
-        /* Is this an old version that we can support? */
-        return SDL_SetError("Unsupported virtual joystick description version %u", desc->version);
-    }
 
-    hwdata = SDL_calloc(1, sizeof(joystick_hwdata));
+    hwdata = (joystick_hwdata *)SDL_calloc(1, sizeof(joystick_hwdata));
     if (!hwdata) {
         VIRTUAL_FreeHWData(hwdata);
         return 0;
@@ -207,7 +203,7 @@ SDL_JoystickID SDL_JoystickAttachVirtualInner(const SDL_VirtualJoystickDesc *des
 
     /* Allocate fields for different control-types */
     if (hwdata->desc.naxes > 0) {
-        hwdata->axes = SDL_calloc(hwdata->desc.naxes, sizeof(Sint16));
+        hwdata->axes = (Sint16 *)SDL_calloc(hwdata->desc.naxes, sizeof(Sint16));
         if (!hwdata->axes) {
             VIRTUAL_FreeHWData(hwdata);
             return 0;
@@ -222,14 +218,14 @@ SDL_JoystickID SDL_JoystickAttachVirtualInner(const SDL_VirtualJoystickDesc *des
         }
     }
     if (hwdata->desc.nbuttons > 0) {
-        hwdata->buttons = SDL_calloc(hwdata->desc.nbuttons, sizeof(Uint8));
+        hwdata->buttons = (Uint8 *)SDL_calloc(hwdata->desc.nbuttons, sizeof(Uint8));
         if (!hwdata->buttons) {
             VIRTUAL_FreeHWData(hwdata);
             return 0;
         }
     }
     if (hwdata->desc.nhats > 0) {
-        hwdata->hats = SDL_calloc(hwdata->desc.nhats, sizeof(Uint8));
+        hwdata->hats = (Uint8 *)SDL_calloc(hwdata->desc.nhats, sizeof(Uint8));
         if (!hwdata->hats) {
             VIRTUAL_FreeHWData(hwdata);
             return 0;
@@ -353,6 +349,12 @@ static void VIRTUAL_JoystickDetect(void)
 {
 }
 
+static SDL_bool VIRTUAL_JoystickIsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name)
+{
+    /* We don't override any other drivers... or do we? */
+    return SDL_FALSE;
+}
+
 static const char *VIRTUAL_JoystickGetDeviceName(int device_index)
 {
     joystick_hwdata *hwdata = VIRTUAL_HWDataForIndex(device_index);
@@ -416,7 +418,6 @@ static int VIRTUAL_JoystickOpen(SDL_Joystick *joystick, int device_index)
     if (!hwdata) {
         return SDL_SetError("No such device");
     }
-    joystick->instance_id = hwdata->instance_id;
     joystick->hwdata = hwdata;
     joystick->naxes = hwdata->desc.naxes;
     joystick->nbuttons = hwdata->desc.nbuttons;
@@ -749,6 +750,7 @@ SDL_JoystickDriver SDL_VIRTUAL_JoystickDriver = {
     VIRTUAL_JoystickInit,
     VIRTUAL_JoystickGetCount,
     VIRTUAL_JoystickDetect,
+    VIRTUAL_JoystickIsDevicePresent,
     VIRTUAL_JoystickGetDeviceName,
     VIRTUAL_JoystickGetDevicePath,
     VIRTUAL_JoystickGetDeviceSteamVirtualGamepadSlot,

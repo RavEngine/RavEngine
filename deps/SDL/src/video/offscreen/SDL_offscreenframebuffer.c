@@ -23,21 +23,16 @@
 #ifdef SDL_VIDEO_DRIVER_OFFSCREEN
 
 #include "../SDL_sysvideo.h"
+#include "../../SDL_properties_c.h"
 #include "SDL_offscreenframebuffer_c.h"
 
 #define OFFSCREEN_SURFACE "SDL.internal.window.surface"
 
-static void CleanupSurface(void *userdata, void *value)
-{
-    SDL_Surface *surface = (SDL_Surface *)value;
 
-    SDL_DestroySurface(surface);
-}
-
-int SDL_OFFSCREEN_CreateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window *window, Uint32 *format, void **pixels, int *pitch)
+int SDL_OFFSCREEN_CreateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window *window, SDL_PixelFormatEnum *format, void **pixels, int *pitch)
 {
     SDL_Surface *surface;
-    const Uint32 surface_format = SDL_PIXELFORMAT_XRGB8888;
+    const SDL_PixelFormatEnum surface_format = SDL_PIXELFORMAT_XRGB8888;
     int w, h;
 
     /* Create a new framebuffer */
@@ -48,7 +43,7 @@ int SDL_OFFSCREEN_CreateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window *wi
     }
 
     /* Save the info and return! */
-    SDL_SetPropertyWithCleanup(SDL_GetWindowProperties(window), OFFSCREEN_SURFACE, surface, CleanupSurface, NULL);
+    SDL_SetSurfaceProperty(SDL_GetWindowProperties(window), OFFSCREEN_SURFACE, surface);
     *format = surface_format;
     *pixels = surface->pixels;
     *pitch = surface->pitch;

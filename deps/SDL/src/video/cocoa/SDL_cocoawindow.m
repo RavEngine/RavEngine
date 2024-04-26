@@ -191,7 +191,6 @@
         NSData *data;
         NSArray *array;
         NSPoint point;
-        SDL_Mouse *mouse;
         float x, y;
 
         if (desiredType == nil) {
@@ -208,11 +207,10 @@
 
         /* Code addon to update the mouse location */
         point = [sender draggingLocation];
-        mouse = SDL_GetMouse();
         x = point.x;
         y = (sdlwindow->h - point.y);
         if (x >= 0.0f && x < (float)sdlwindow->w && y >= 0.0f && y < (float)sdlwindow->h) {
-            SDL_SendMouseMotion(0, sdlwindow, mouse->mouseID, 0, x, y);
+            SDL_SendMouseMotion(0, sdlwindow, SDL_GLOBAL_MOUSE_ID, SDL_FALSE, x, y);
         }
         /* Code addon to update the mouse location */
 
@@ -601,6 +599,17 @@ static SDL_bool Cocoa_IsZoomed(SDL_Window *window)
     return ret;
 }
 
+static NSCursor *Cocoa_GetDesiredCursor(void)
+{
+    SDL_Mouse *mouse = SDL_GetMouse();
+
+    if (mouse->cursor_shown && mouse->cur_cursor && !mouse->relative_mode) {
+        return (__bridge NSCursor *)mouse->cur_cursor->driverdata;
+    }
+
+    return [NSCursor invisibleCursor];
+}
+
 @implementation Cocoa_WindowListener
 
 - (void)listen:(SDL_CocoaWindowData *)data
@@ -832,6 +841,28 @@ static SDL_bool Cocoa_IsZoomed(SDL_Window *window)
             [self onMovingOrFocusClickPendingStateCleared];
         }
     }
+}
+
+- (void)updateIgnoreMouseState:(NSEvent *)theEvent
+{
+    SDL_Window *window = _data.window;
+    SDL_Surface *shape = (SDL_Surface *)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_SHAPE_POINTER, NULL);
+    BOOL ignoresMouseEvents = NO;
+
+    if (shape) {
+        NSPoint point = [theEvent locationInWindow];
+        NSRect windowRect = [[_data.nswindow contentView] frame];
+        if (NSMouseInRect(point, windowRect, NO)) {
+            int x = (int)SDL_roundf((point.x / (window->w - 1)) * (shape->w - 1));
+            int y = (int)SDL_roundf(((window->h - point.y) / (window->h - 1)) * (shape->h - 1));
+            Uint8 a;
+
+            if (SDL_ReadSurfacePixel(shape, x, y, NULL, NULL, NULL, &a) < 0 || a == SDL_ALPHA_TRANSPARENT) {
+                ignoresMouseEvents = YES;
+            }
+        }
+    }
+    _data.nswindow.ignoresMouseEvents = ignoresMouseEvents;
 }
 
 - (void)setPendingMoveX:(float)x Y:(float)y
@@ -1069,7 +1100,7 @@ static SDL_bool Cocoa_IsZoomed(SDL_Window *window)
         y = (window->h - point.y);
 
         if (x >= 0.0f && x < (float)window->w && y >= 0.0f && y < (float)window->h) {
-            SDL_SendMouseMotion(0, window, mouse->mouseID, 0, x, y);
+            SDL_SendMouseMotion(0, window, SDL_GLOBAL_MOUSE_ID, SDL_FALSE, x, y);
         }
     }
 
@@ -1117,9 +1148,7 @@ static SDL_bool Cocoa_IsZoomed(SDL_Window *window)
     }
 
     if ([oldscale doubleValue] != [_data.nswindow backingScaleFactor]) {
-        /* Force a resize event when the backing scale factor changes. */
-        _data.window->w = 0;
-        _data.window->h = 0;
+        /* Send a resize event when the backing scale factor changes. */
         [self windowDidResize:aNotification];
     }
 }
@@ -1361,8 +1390,8 @@ static SDL_bool Cocoa_IsZoomed(SDL_Window *window)
     const SDL_bool osenabled = ([theEvent modifierFlags] & NSEventModifierFlagCapsLock) ? SDL_TRUE : SDL_FALSE;
     const SDL_bool sdlenabled = (SDL_GetModState() & SDL_KMOD_CAPS) ? SDL_TRUE : SDL_FALSE;
     if (osenabled ^ sdlenabled) {
-        SDL_SendKeyboardKey(0, SDL_PRESSED, SDL_SCANCODE_CAPSLOCK);
-        SDL_SendKeyboardKey(0, SDL_RELEASED, SDL_SCANCODE_CAPSLOCK);
+        SDL_SendKeyboardKey(0, SDL_DEFAULT_KEYBOARD_ID, SDL_PRESSED, SDL_SCANCODE_CAPSLOCK);
+        SDL_SendKeyboardKey(0, SDL_DEFAULT_KEYBOARD_ID, SDL_RELEASED, SDL_SCANCODE_CAPSLOCK);
     }
 }
 - (void)keyDown:(NSEvent *)theEvent
@@ -1382,14 +1411,41 @@ static SDL_bool Cocoa_IsZoomed(SDL_Window *window)
     /*NSLog(@"doCommandBySelector: %@\n", NSStringFromSelector(aSelector));*/
 }
 
+- (void)updateHitTest
+{
+    SDL_Window *window = _data.window;
+    BOOL draggable = NO;
+
+    if (window->hit_test) {
+        float x, y;
+        SDL_Point point;
+
+        SDL_GetGlobalMouseState(&x, &y);
+        point.x = (int)SDL_roundf(x - window->x);
+        point.y = (int)SDL_roundf(y - window->y);
+        if (point.x >= 0 && point.x < window->w && point.y >= 0 && point.y < window->h) {
+            if (window->hit_test(window, &point, window->hit_test_data) == SDL_HITTEST_DRAGGABLE) {
+                draggable = YES;
+            }
+        }
+    }
+
+    if (isDragAreaRunning != draggable) {
+        isDragAreaRunning = draggable;
+        [_data.nswindow setMovableByWindowBackground:draggable];
+    }
+}
+
 - (BOOL)processHitTest:(NSEvent *)theEvent
 {
+    SDL_Window *window = _data.window;
+
     SDL_assert(isDragAreaRunning == [_data.nswindow isMovableByWindowBackground]);
 
-    if (_data.window->hit_test) { /* if no hit-test, skip this. */
+    if (window->hit_test) { /* if no hit-test, skip this. */
         const NSPoint location = [theEvent locationInWindow];
-        const SDL_Point point = { (int)location.x, _data.window->h - (((int)location.y) - 1) };
-        const SDL_HitTestResult rc = _data.window->hit_test(_data.window, &point, _data.window->hit_test_data);
+        const SDL_Point point = { (int)location.x, window->h - (((int)location.y) - 1) };
+        const SDL_HitTestResult rc = window->hit_test(window, &point, window->hit_test_data);
         if (rc == SDL_HITTEST_DRAGGABLE) {
             if (!isDragAreaRunning) {
                 isDragAreaRunning = YES;
@@ -1410,7 +1466,7 @@ static SDL_bool Cocoa_IsZoomed(SDL_Window *window)
 
 static int Cocoa_SendMouseButtonClicks(SDL_Mouse *mouse, NSEvent *theEvent, SDL_Window *window, const Uint8 state, const Uint8 button)
 {
-    const SDL_MouseID mouseID = mouse->mouseID;
+    SDL_MouseID mouseID = SDL_DEFAULT_MOUSE_ID;
     const int clicks = (int)[theEvent clickCount];
     SDL_Window *focus = SDL_GetKeyboardFocus();
     int rc;
@@ -1542,18 +1598,33 @@ static int Cocoa_SendMouseButtonClicks(SDL_Mouse *mouse, NSEvent *theEvent, SDL_
 
 - (void)mouseMoved:(NSEvent *)theEvent
 {
+    SDL_MouseID mouseID = SDL_DEFAULT_MOUSE_ID;
     SDL_Mouse *mouse = SDL_GetMouse();
-    SDL_MouseID mouseID;
     NSPoint point;
     float x, y;
     SDL_Window *window;
+    NSView *contentView;
 
     if (!mouse) {
         return;
     }
 
-    mouseID = mouse->mouseID;
     window = _data.window;
+    contentView = _data.sdlContentView;
+    point = [theEvent locationInWindow];
+
+    if ([contentView mouse:[contentView convertPoint:point fromView:nil] inRect:[contentView bounds]] &&
+        [NSCursor currentCursor] != Cocoa_GetDesiredCursor()) {
+        // The wrong cursor is on screen, fix it. This fixes an macOS bug that is only known to
+        // occur in fullscreen windows on the built-in displays of newer MacBooks with camera
+        // notches. When the mouse is moved near the top of such a window (within about 44 units)
+        // and then moved back down, the cursor rects aren't respected.
+        [_data.nswindow invalidateCursorRectsForView:contentView];
+    }
+
+    if (window->flags & SDL_WINDOW_TRANSPARENT) {
+        [self updateIgnoreMouseState:theEvent];
+    }
 
     if ([self processHitTest:theEvent]) {
         SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_HIT_TEST, 0, 0);
@@ -1564,7 +1635,6 @@ static int Cocoa_SendMouseButtonClicks(SDL_Mouse *mouse, NSEvent *theEvent, SDL_
         return;
     }
 
-    point = [theEvent locationInWindow];
     x = point.x;
     y = (window->h - point.y);
 
@@ -1580,7 +1650,7 @@ static int Cocoa_SendMouseButtonClicks(SDL_Mouse *mouse, NSEvent *theEvent, SDL_
         }
     }
 
-    SDL_SendMouseMotion(Cocoa_GetEventTimestamp([theEvent timestamp]), window, mouseID, 0, x, y);
+    SDL_SendMouseMotion(Cocoa_GetEventTimestamp([theEvent timestamp]), window, mouseID, SDL_FALSE, x, y);
 }
 
 - (void)mouseDragged:(NSEvent *)theEvent
@@ -1646,17 +1716,21 @@ static int Cocoa_SendMouseButtonClicks(SDL_Mouse *mouse, NSEvent *theEvent, SDL_
         }
     }
     if (existingTouchCount == 0) {
-        int numFingers = SDL_GetNumTouchFingers(touchID);
-        DLog("Reset Lost Fingers: %d", numFingers);
-        for (--numFingers; numFingers >= 0; --numFingers) {
-            SDL_Finger *finger = SDL_GetTouchFinger(touchID, numFingers);
-            /* trackpad touches have no window. If we really wanted one we could
-             * use the window that has mouse or keyboard focus.
-             * Sending a null window currently also prevents synthetic mouse
-             * events from being generated from touch events.
-             */
-            SDL_Window *window = NULL;
-            SDL_SendTouch(Cocoa_GetEventTimestamp([theEvent timestamp]), touchID, finger->id, window, SDL_FALSE, 0, 0, 0);
+        int numFingers;
+        SDL_Finger **fingers = SDL_GetTouchFingers(touchID, &numFingers);
+        if (fingers) {
+            DLog("Reset Lost Fingers: %d", numFingers);
+            for (--numFingers; numFingers >= 0; --numFingers) {
+                SDL_Finger *finger = fingers[numFingers];
+                /* trackpad touches have no window. If we really wanted one we could
+                 * use the window that has mouse or keyboard focus.
+                 * Sending a null window currently also prevents synthetic mouse
+                 * events from being generated from touch events.
+                 */
+                SDL_Window *window = NULL;
+                SDL_SendTouch(Cocoa_GetEventTimestamp([theEvent timestamp]), touchID, finger->id, window, SDL_FALSE, 0, 0, 0);
+            }
+            SDL_free(fingers);
         }
     }
 
@@ -1819,17 +1893,9 @@ static int Cocoa_SendMouseButtonClicks(SDL_Mouse *mouse, NSEvent *theEvent, SDL_
 
 - (void)resetCursorRects
 {
-    SDL_Mouse *mouse;
     [super resetCursorRects];
-    mouse = SDL_GetMouse();
-
-    if (mouse->cursor_shown && mouse->cur_cursor && !mouse->relative_mode) {
-        [self addCursorRect:[self bounds]
-                     cursor:(__bridge NSCursor *)mouse->cur_cursor->driverdata];
-    } else {
-        [self addCursorRect:[self bounds]
-                     cursor:[NSCursor invisibleCursor]];
-    }
+    [self addCursorRect:[self bounds]
+                 cursor:Cocoa_GetDesiredCursor()];
 }
 
 - (BOOL)acceptsFirstMouse:(NSEvent *)theEvent
@@ -2702,12 +2768,13 @@ SDL_DisplayID Cocoa_GetDisplayForWindow(SDL_VideoDevice *_this, SDL_Window *wind
     }
 }
 
-void Cocoa_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window)
+int Cocoa_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window)
 {
     Cocoa_UpdateClipCursor(window);
+    return 0;
 }
 
-void Cocoa_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
+int Cocoa_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
 {
     @autoreleasepool {
         SDL_CocoaWindowData *data = (__bridge SDL_CocoaWindowData *)window->driverdata;
@@ -2726,6 +2793,8 @@ void Cocoa_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bo
             }
         }
     }
+
+    return 0;
 }
 
 void Cocoa_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
@@ -2761,7 +2830,8 @@ void Cocoa_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
             }
             [data.listener close];
             data.listener = nil;
-            if (data.created) {
+
+            if (!(window->flags & SDL_WINDOW_EXTERNAL)) {
                 /* Release the content view to avoid further updateLayer callbacks */
                 [data.nswindow setContentView:nil];
                 [data.nswindow close];
@@ -2840,7 +2910,10 @@ SDL_bool Cocoa_SetWindowFullscreenSpace(SDL_Window *window, SDL_bool state, SDL_
 
 int Cocoa_SetWindowHitTest(SDL_Window *window, SDL_bool enabled)
 {
-    return 0; /* just succeed, the real work is done elsewhere. */
+    SDL_CocoaWindowData *data = (__bridge SDL_CocoaWindowData *)window->driverdata;
+
+    [data.listener updateHitTest];
+    return 0;
 }
 
 void Cocoa_AcceptDragAndDrop(SDL_Window *window, SDL_bool accept)

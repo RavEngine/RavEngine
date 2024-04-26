@@ -53,6 +53,7 @@ static SDL_HIDAPI_DeviceDriver *SDL_HIDAPI_drivers[] = {
 #ifdef SDL_JOYSTICK_HIDAPI_PS3
     &SDL_HIDAPI_DriverPS3,
     &SDL_HIDAPI_DriverPS3ThirdParty,
+    &SDL_HIDAPI_DriverPS3SonySixaxis,
 #endif
 #ifdef SDL_JOYSTICK_HIDAPI_PS4
     &SDL_HIDAPI_DriverPS4,
@@ -163,6 +164,10 @@ SDL_bool HIDAPI_SupportsPlaystationDetection(Uint16 vendor, Uint16 product)
         }
         return SDL_TRUE;
     case USB_VENDOR_MADCATZ:
+        if (product == USB_PRODUCT_MADCATZ_SAITEK_SIDE_PANEL_CONTROL_DECK) {
+            /* This is not a Playstation compatible device */
+            return SDL_FALSE;
+        }
         return SDL_TRUE;
     case USB_VENDOR_MAYFLASH:
         return SDL_TRUE;
@@ -1512,6 +1517,13 @@ static int HIDAPI_JoystickOpen(SDL_Joystick *joystick, int device_index)
         return SDL_SetError("HIDAPI device disconnected while opening");
     }
 
+    /* Set the default connection state, can be overridden below */
+    if (device->is_bluetooth) {
+        joystick->connection_state = SDL_JOYSTICK_CONNECTION_WIRELESS;
+    } else {
+        joystick->connection_state = SDL_JOYSTICK_CONNECTION_WIRED;
+    }
+
     if (!device->driver->OpenJoystick(device, joystick)) {
         /* The open failed, mark this device as disconnected and update devices */
         HIDAPI_JoystickDisconnected(device, joystickID);
@@ -1699,6 +1711,7 @@ SDL_JoystickDriver SDL_HIDAPI_JoystickDriver = {
     HIDAPI_JoystickInit,
     HIDAPI_JoystickGetCount,
     HIDAPI_JoystickDetect,
+    HIDAPI_IsDevicePresent,
     HIDAPI_JoystickGetDeviceName,
     HIDAPI_JoystickGetDevicePath,
     HIDAPI_JoystickGetDeviceSteamVirtualGamepadSlot,

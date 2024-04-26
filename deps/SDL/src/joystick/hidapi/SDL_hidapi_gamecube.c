@@ -179,7 +179,7 @@ static SDL_bool HIDAPI_DriverGameCube_InitDevice(SDL_HIDAPI_Device *device)
         }
     }
 
-    SDL_AddHintCallback(SDL_HINT_JOYSTICK_GAMECUBE_RUMBLE_BRAKE,
+    SDL_AddHintCallback(SDL_HINT_JOYSTICK_HIDAPI_GAMECUBE_RUMBLE_BRAKE,
                         SDL_JoystickGameCubeRumbleBrakeHintChanged, ctx);
 
     HIDAPI_SetDeviceName(device, "Nintendo GameCube Controller");
@@ -392,7 +392,11 @@ static SDL_bool HIDAPI_DriverGameCube_OpenJoystick(SDL_HIDAPI_Device *device, SD
         if (joystick->instance_id == ctx->joysticks[i]) {
             joystick->nbuttons = 12;
             joystick->naxes = SDL_GAMEPAD_AXIS_MAX;
-            joystick->epowerlevel = ctx->wireless[i] ? SDL_JOYSTICK_POWER_UNKNOWN : SDL_JOYSTICK_POWER_WIRED;
+            if (ctx->wireless[i]) {
+                joystick->connection_state = SDL_JOYSTICK_CONNECTION_WIRELESS;
+            } else {
+                joystick->connection_state = SDL_JOYSTICK_CONNECTION_WIRED;
+            }
             return SDL_TRUE;
         }
     }
@@ -499,7 +503,7 @@ static void HIDAPI_DriverGameCube_FreeDevice(SDL_HIDAPI_Device *device)
 {
     SDL_DriverGameCube_Context *ctx = (SDL_DriverGameCube_Context *)device->context;
 
-    SDL_DelHintCallback(SDL_HINT_JOYSTICK_GAMECUBE_RUMBLE_BRAKE,
+    SDL_DelHintCallback(SDL_HINT_JOYSTICK_HIDAPI_GAMECUBE_RUMBLE_BRAKE,
                         SDL_JoystickGameCubeRumbleBrakeHintChanged, ctx);
 }
 

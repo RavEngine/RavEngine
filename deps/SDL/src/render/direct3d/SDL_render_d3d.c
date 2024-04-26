@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-#if defined(SDL_VIDEO_RENDER_D3D) && !defined(SDL_RENDER_DISABLED)
+#if SDL_VIDEO_RENDER_D3D
 
 #include "../../core/windows/SDL_windows.h"
 
@@ -29,7 +29,7 @@
 #include "../../video/windows/SDL_windowsvideo.h"
 #include "../../video/SDL_pixels_c.h"
 
-#ifdef SDL_VIDEO_RENDER_D3D
+#if SDL_VIDEO_RENDER_D3D
 #define D3D_DEBUG_INFO
 #include <d3d9.h>
 #endif
@@ -209,7 +209,7 @@ static D3DFORMAT PixelFormatToD3DFMT(Uint32 format)
     }
 }
 
-static Uint32 D3DFMTToPixelFormat(D3DFORMAT format)
+static SDL_PixelFormatEnum D3DFMTToPixelFormat(D3DFORMAT format)
 {
     switch (format) {
     case D3DFMT_R5G6B5:
@@ -998,6 +998,7 @@ static int SetDrawState(D3D_RenderData *data, const SDL_RenderCommand *cmd)
             return -1;
         }
 
+#if SDL_HAVE_YUV
         if (shader != data->drawstate.shader) {
             const HRESULT result = IDirect3DDevice9_SetPixelShader(data->device, data->shaders[shader]);
             if (FAILED(result)) {
@@ -1016,6 +1017,7 @@ static int SetDrawState(D3D_RenderData *data, const SDL_RenderCommand *cmd)
             }
             data->drawstate.shader_params = shader_params;
         }
+#endif /* SDL_HAVE_YUV */
 
         data->drawstate.texture = texture;
     } else if (texture) {
@@ -1179,17 +1181,13 @@ static int D3D_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
             break;
         }
 
-        case SDL_RENDERCMD_SETCOLORSCALE:
-        {
-            break;
-        }
-
         case SDL_RENDERCMD_SETVIEWPORT:
         {
             SDL_Rect *viewport = &data->drawstate.viewport;
             if (SDL_memcmp(viewport, &cmd->data.viewport.rect, sizeof(cmd->data.viewport.rect)) != 0) {
                 SDL_copyp(viewport, &cmd->data.viewport.rect);
                 data->drawstate.viewport_dirty = SDL_TRUE;
+                data->drawstate.cliprect_dirty = SDL_TRUE;
             }
             break;
         }
@@ -1471,7 +1469,6 @@ static void D3D_DestroyRenderer(SDL_Renderer *renderer)
         }
         SDL_free(data);
     }
-    SDL_free(renderer);
 }
 
 static int D3D_Reset(SDL_Renderer *renderer)
@@ -1554,7 +1551,7 @@ static int D3D_Reset(SDL_Renderer *renderer)
 
 static int D3D_SetVSync(SDL_Renderer *renderer, const int vsync)
 {
-    D3D_RenderData *data = renderer->driverdata;
+    D3D_RenderData *data = (D3D_RenderData *)renderer->driverdata;
     if (vsync) {
         data->pparams.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
         renderer->info.flags |= SDL_RENDERER_PRESENTVSYNC;
@@ -1569,9 +1566,8 @@ static int D3D_SetVSync(SDL_Renderer *renderer, const int vsync)
     return 0;
 }
 
-SDL_Renderer *D3D_CreateRenderer(SDL_Window *window, SDL_PropertiesID create_props)
+int D3D_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_PropertiesID create_props)
 {
-    SDL_Renderer *renderer;
     D3D_RenderData *data;
     HRESULT result;
     D3DPRESENT_PARAMETERS pparams;
@@ -1582,31 +1578,20 @@ SDL_Renderer *D3D_CreateRenderer(SDL_Window *window, SDL_PropertiesID create_pro
     SDL_DisplayID displayID;
     const SDL_DisplayMode *fullscreen_mode = NULL;
 
-    renderer = (SDL_Renderer *)SDL_calloc(1, sizeof(*renderer));
-    if (!renderer) {
-        return NULL;
-    }
-    renderer->magic = &SDL_renderer_magic;
-
     SDL_SetupRendererColorspace(renderer, create_props);
 
     if (renderer->output_colorspace != SDL_COLORSPACE_SRGB) {
-        SDL_SetError("Unsupported output colorspace");
-        SDL_free(renderer);
-        return NULL;
+        return SDL_SetError("Unsupported output colorspace");
     }
 
     data = (D3D_RenderData *)SDL_calloc(1, sizeof(*data));
     if (!data) {
-        SDL_free(renderer);
-        return NULL;
+        return -1;
     }
 
     if (!D3D_LoadDLL(&data->d3dDLL, &data->d3d)) {
-        SDL_SetError("Unable to create Direct3D interface");
-        SDL_free(renderer);
         SDL_free(data);
-        return NULL;
+        return SDL_SetError("Unable to create Direct3D interface");
     }
 
     renderer->WindowEvent = D3D_WindowEvent;
@@ -1622,7 +1607,6 @@ SDL_Renderer *D3D_CreateRenderer(SDL_Window *window, SDL_PropertiesID create_pro
     renderer->SetRenderTarget = D3D_SetRenderTarget;
     renderer->QueueSetViewport = D3D_QueueNoOp;
     renderer->QueueSetDrawColor = D3D_QueueNoOp;
-    renderer->QueueSetColorScale = D3D_QueueNoOp;
     renderer->QueueDrawPoints = D3D_QueueDrawPoints;
     renderer->QueueDrawLines = D3D_QueueDrawPoints; /* lines and points queue vertices the same way. */
     renderer->QueueGeometry = D3D_QueueGeometry;
@@ -1634,7 +1618,6 @@ SDL_Renderer *D3D_CreateRenderer(SDL_Window *window, SDL_PropertiesID create_pro
     renderer->DestroyRenderer = D3D_DestroyRenderer;
     renderer->SetVSync = D3D_SetVSync;
     renderer->info = D3D_RenderDriver.info;
-    renderer->info.flags = SDL_RENDERER_ACCELERATED;
     renderer->driverdata = data;
     D3D_InvalidateCachedState(renderer);
 
@@ -1689,23 +1672,20 @@ SDL_Renderer *D3D_CreateRenderer(SDL_Window *window, SDL_PropertiesID create_pro
                                      &pparams, &data->device);
     if (FAILED(result)) {
         D3D_DestroyRenderer(renderer);
-        D3D_SetError("CreateDevice()", result);
-        return NULL;
+        return D3D_SetError("CreateDevice()", result);
     }
 
     /* Get presentation parameters to fill info */
     result = IDirect3DDevice9_GetSwapChain(data->device, 0, &chain);
     if (FAILED(result)) {
         D3D_DestroyRenderer(renderer);
-        D3D_SetError("GetSwapChain()", result);
-        return NULL;
+        return D3D_SetError("GetSwapChain()", result);
     }
     result = IDirect3DSwapChain9_GetPresentParameters(chain, &pparams);
     if (FAILED(result)) {
         IDirect3DSwapChain9_Release(chain);
         D3D_DestroyRenderer(renderer);
-        D3D_SetError("GetPresentParameters()", result);
-        return NULL;
+        return D3D_SetError("GetPresentParameters()", result);
     }
     IDirect3DSwapChain9_Release(chain);
     if (pparams.PresentationInterval == D3DPRESENT_INTERVAL_ONE) {
@@ -1745,13 +1725,13 @@ SDL_Renderer *D3D_CreateRenderer(SDL_Window *window, SDL_PropertiesID create_pro
 
     SDL_SetProperty(SDL_GetRendererProperties(renderer), SDL_PROP_RENDERER_D3D9_DEVICE_POINTER, data->device);
 
-    return renderer;
+    return 0;
 }
 
 SDL_RenderDriver D3D_RenderDriver = {
     D3D_CreateRenderer,
     { "direct3d",
-      (SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC),
+      SDL_RENDERER_PRESENTVSYNC,
       1,
       { SDL_PIXELFORMAT_ARGB8888 },
       0,

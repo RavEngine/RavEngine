@@ -69,14 +69,6 @@ struct SDL_WindowData
     RECT cursor_clipped_rect;
     UINT windowed_mode_corner_rounding;
     COLORREF dwma_border_color;
-#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
-    RAWINPUT *rawinput;
-    UINT rawinput_offset;
-    UINT rawinput_size;
-    UINT rawinput_count;
-    Uint64 last_rawinput_poll;
-#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
-    SDL_Point last_raw_mouse_position;
     SDL_bool mouse_tracked;
     SDL_bool destroy_parent_with_window;
     SDL_DisplayID last_displayID;
@@ -111,9 +103,9 @@ extern void WIN_SetWindowAlwaysOnTop(SDL_VideoDevice *_this, SDL_Window *window,
 extern int WIN_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_VideoDisplay *display, SDL_bool fullscreen);
 extern void WIN_UpdateWindowICCProfile(SDL_Window *window, SDL_bool send_event);
 extern void *WIN_GetWindowICCProfile(SDL_VideoDevice *_this, SDL_Window *window, size_t *size);
-extern void WIN_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window);
-extern void WIN_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
-extern void WIN_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
+extern int WIN_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window);
+extern int WIN_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
+extern int WIN_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
 extern void WIN_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window);
 extern void WIN_OnWindowEnter(SDL_VideoDevice *_this, SDL_Window *window);
 extern void WIN_UpdateClipCursor(SDL_Window *window);

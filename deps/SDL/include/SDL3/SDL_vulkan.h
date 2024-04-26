@@ -28,6 +28,7 @@
 #ifndef SDL_vulkan_h_
 #define SDL_vulkan_h_
 
+#include <SDL3/SDL_error.h>
 #include <SDL3/SDL_video.h>
 
 #include <SDL3/SDL_begin_code.h>
@@ -127,7 +128,7 @@ extern DECLSPEC int SDLCALL SDL_Vulkan_LoadLibrary(const char *path);
 extern DECLSPEC SDL_FunctionPointer SDLCALL SDL_Vulkan_GetVkGetInstanceProcAddr(void);
 
 /**
- * Unload the Vulkan library previously loaded by SDL_Vulkan_LoadLibrary()
+ * Unload the Vulkan library previously loaded by SDL_Vulkan_LoadLibrary().
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -141,7 +142,7 @@ extern DECLSPEC void SDLCALL SDL_Vulkan_UnloadLibrary(void);
  * This should be called after either calling SDL_Vulkan_LoadLibrary() or
  * creating an SDL_Window with the `SDL_WINDOW_VULKAN` flag.
  *
- * On return, the variable pointed to by `pCount` will be set to the number of
+ * On return, the variable pointed to by `count` will be set to the number of
  * elements returned, suitable for using with
  * VkInstanceCreateInfo::enabledExtensionCount, and the returned array can be
  * used with VkInstanceCreateInfo::ppEnabledExtensionNames, for calling
@@ -149,15 +150,14 @@ extern DECLSPEC void SDLCALL SDL_Vulkan_UnloadLibrary(void);
  *
  * You should not free the returned array; it is owned by SDL.
  *
- * \param pCount A pointer to Uint32 that will be filled with the number of
- *               extensions returned.
+ * \param count a pointer filled in with the number of extensions returned.
  * \returns An array of extension name strings on success, NULL on error.
  *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_Vulkan_CreateSurface
  */
-extern DECLSPEC char const* const* SDLCALL SDL_Vulkan_GetInstanceExtensions(Uint32 *pCount);
+extern DECLSPEC char const* const* SDLCALL SDL_Vulkan_GetInstanceExtensions(Uint32 *count);
 
 /**
  * Create a Vulkan rendering surface for a window.

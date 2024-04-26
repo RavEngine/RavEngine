@@ -52,8 +52,6 @@
 #define AKEYCODE_BUTTON_16 203
 #endif
 
-#define ANDROID_ACCELEROMETER_NAME      "Android Accelerometer"
-#define ANDROID_ACCELEROMETER_DEVICE_ID INT_MIN
 #define ANDROID_MAX_NBUTTONS            36
 
 static SDL_joylist_item *JoystickByDeviceId(int device_id);
@@ -207,7 +205,7 @@ int Android_OnPadDown(int device_id, int keycode)
         if (item && item->joystick) {
             SDL_SendJoystickButton(timestamp, item->joystick, button, SDL_PRESSED);
         } else {
-            SDL_SendKeyboardKey(timestamp, SDL_PRESSED, button_to_scancode(button));
+            SDL_SendKeyboardKey(timestamp, SDL_GLOBAL_KEYBOARD_ID, SDL_PRESSED, button_to_scancode(button));
         }
         SDL_UnlockJoysticks();
         return 0;
@@ -227,7 +225,7 @@ int Android_OnPadUp(int device_id, int keycode)
         if (item && item->joystick) {
             SDL_SendJoystickButton(timestamp, item->joystick, button, SDL_RELEASED);
         } else {
-            SDL_SendKeyboardKey(timestamp, SDL_RELEASED, button_to_scancode(button));
+            SDL_SendKeyboardKey(timestamp, SDL_GLOBAL_KEYBOARD_ID, SDL_RELEASED, button_to_scancode(button));
         }
         SDL_UnlockJoysticks();
         return 0;
@@ -303,7 +301,7 @@ int Android_OnHat(int device_id, int hat_id, int x, int y)
     return -1;
 }
 
-int Android_AddJoystick(int device_id, const char *name, const char *desc, int vendor_id, int product_id, SDL_bool is_accelerometer, int button_mask, int naxes, int axis_mask, int nhats)
+int Android_AddJoystick(int device_id, const char *name, const char *desc, int vendor_id, int product_id, int button_mask, int naxes, int axis_mask, int nhats)
 {
     SDL_joylist_item *item;
     SDL_JoystickGUID guid;
@@ -323,12 +321,9 @@ int Android_AddJoystick(int device_id, const char *name, const char *desc, int v
         goto done;
     }
 
-#ifdef SDL_JOYSTICK_HIDAPI
-    if (HIDAPI_IsDevicePresent(vendor_id, product_id, 0, name)) {
-        /* The HIDAPI driver is taking care of this device */
+    if (SDL_JoystickHandledByAnotherDriver(&SDL_ANDROID_JoystickDriver, vendor_id, product_id, 0, name)) {
         goto done;
     }
-#endif
 
 #ifdef DEBUG_JOYSTICK
     SDL_Log("Joystick: %s, descriptor %s, vendor = 0x%.4x, product = 0x%.4x, %d axes, %d hats\n", name, desc, vendor_id, product_id, naxes, nhats);
@@ -366,7 +361,6 @@ int Android_AddJoystick(int device_id, const char *name, const char *desc, int v
         goto done;
     }
 
-    item->is_accelerometer = is_accelerometer;
     if (button_mask == 0xFFFFFFFF) {
         item->nbuttons = ANDROID_MAX_NBUTTONS;
     } else {
@@ -463,11 +457,6 @@ static void ANDROID_JoystickDetect(void);
 static int ANDROID_JoystickInit(void)
 {
     ANDROID_JoystickDetect();
-
-    if (SDL_GetHintBoolean(SDL_HINT_ACCELEROMETER_AS_JOYSTICK, SDL_TRUE)) {
-        /* Default behavior, accelerometer as joystick */
-        Android_AddJoystick(ANDROID_ACCELEROMETER_DEVICE_ID, ANDROID_ACCELEROMETER_NAME, ANDROID_ACCELEROMETER_NAME, 0, 0, SDL_TRUE, 0, 3, 0x0003, 0);
-    }
     return 0;
 }
 
@@ -488,6 +477,12 @@ static void ANDROID_JoystickDetect(void)
         timeout = now + 3000;
         Android_JNI_PollInputDevices();
     }
+}
+
+static SDL_bool ANDROID_JoystickIsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name)
+{
+    /* We don't override any other drivers */
+    return SDL_FALSE;
 }
 
 static SDL_joylist_item *GetJoystickByDevIndex(int device_index)
@@ -577,7 +572,6 @@ static int ANDROID_JoystickOpen(SDL_Joystick *joystick, int device_index)
         return SDL_SetError("Joystick already opened");
     }
 
-    joystick->instance_id = item->device_instance;
     joystick->hwdata = (struct joystick_hwdata *)item;
     item->joystick = joystick;
     joystick->nhats = item->nhats;
@@ -614,31 +608,6 @@ static int ANDROID_JoystickSetSensorsEnabled(SDL_Joystick *joystick, SDL_bool en
 
 static void ANDROID_JoystickUpdate(SDL_Joystick *joystick)
 {
-    SDL_joylist_item *item = (SDL_joylist_item *)joystick->hwdata;
-
-    if (!item) {
-        return;
-    }
-
-    if (item->is_accelerometer) {
-        int i;
-        Sint16 value;
-        float values[3];
-        Uint64 timestamp = SDL_GetTicksNS();
-
-        if (Android_JNI_GetAccelerometerValues(values)) {
-            for (i = 0; i < 3; i++) {
-                if (values[i] > 1.0f) {
-                    values[i] = 1.0f;
-                } else if (values[i] < -1.0f) {
-                    values[i] = -1.0f;
-                }
-
-                value = (Sint16)(values[i] * 32767.0f);
-                SDL_SendJoystickAxis(timestamp, item->joystick, i, value);
-            }
-        }
-    }
 }
 
 static void ANDROID_JoystickClose(SDL_Joystick *joystick)
@@ -679,6 +648,7 @@ SDL_JoystickDriver SDL_ANDROID_JoystickDriver = {
     ANDROID_JoystickInit,
     ANDROID_JoystickGetCount,
     ANDROID_JoystickDetect,
+    ANDROID_JoystickIsDevicePresent,
     ANDROID_JoystickGetDeviceName,
     ANDROID_JoystickGetDevicePath,
     ANDROID_JoystickGetDeviceSteamVirtualGamepadSlot,

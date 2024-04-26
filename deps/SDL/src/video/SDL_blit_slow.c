@@ -34,7 +34,7 @@ typedef enum
 
 static SlowBlitPixelAccess GetPixelAccessMethod(SDL_PixelFormat *pf)
 {
-    if (pf->BytesPerPixel > 4) {
+    if (pf->bytes_per_pixel > 4) {
         return SlowBlitPixelAccess_Large;
     } else if (SDL_ISPIXELFORMAT_10BIT(pf->format)) {
         return SlowBlitPixelAccess_10Bit;
@@ -64,8 +64,8 @@ void SDL_Blit_Slow(SDL_BlitInfo *info)
     Uint64 incy, incx;
     SDL_PixelFormat *src_fmt = info->src_fmt;
     SDL_PixelFormat *dst_fmt = info->dst_fmt;
-    int srcbpp = src_fmt->BytesPerPixel;
-    int dstbpp = dst_fmt->BytesPerPixel;
+    int srcbpp = src_fmt->bytes_per_pixel;
+    int dstbpp = dst_fmt->bytes_per_pixel;
     SlowBlitPixelAccess src_access;
     SlowBlitPixelAccess dst_access;
     Uint32 rgbmask = ~src_fmt->Amask;
@@ -370,7 +370,7 @@ static Uint16 float_to_half(float a)
     return ir;
 }
 
-static void ReadFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, SDL_PixelFormat *fmt, SDL_Colorspace colorspace,
+static void ReadFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, SDL_PixelFormat *fmt, SDL_Colorspace colorspace, float SDR_white_point,
                            float *outR, float *outG, float *outB, float *outA)
 {
     Uint32 pixel;
@@ -380,14 +380,14 @@ static void ReadFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, SDL_PixelF
 
     switch (access) {
     case SlowBlitPixelAccess_RGB:
-        DISEMBLE_RGB(pixels, fmt->BytesPerPixel, fmt, pixel, R, G, B);
+        DISEMBLE_RGB(pixels, fmt->bytes_per_pixel, fmt, pixel, R, G, B);
         fR = (float)R / 255.0f;
         fG = (float)G / 255.0f;
         fB = (float)B / 255.0f;
         fA = 1.0f;
         break;
     case SlowBlitPixelAccess_RGBA:
-        DISEMBLE_RGBA(pixels, fmt->BytesPerPixel, fmt, pixel, R, G, B, A);
+        DISEMBLE_RGBA(pixels, fmt->bytes_per_pixel, fmt, pixel, R, G, B, A);
         fR = (float)R / 255.0f;
         fG = (float)G / 255.0f;
         fB = (float)B / 255.0f;
@@ -421,7 +421,7 @@ static void ReadFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, SDL_PixelF
             v[0] = (float)(((Uint16 *)pixels)[0]) / SDL_MAX_UINT16;
             v[1] = (float)(((Uint16 *)pixels)[1]) / SDL_MAX_UINT16;
             v[2] = (float)(((Uint16 *)pixels)[2]) / SDL_MAX_UINT16;
-            if (fmt->BytesPerPixel == 8) {
+            if (fmt->bytes_per_pixel == 8) {
                 v[3] = (float)(((Uint16 *)pixels)[3]) / SDL_MAX_UINT16;
             } else {
                 v[3] = 1.0f;
@@ -431,7 +431,7 @@ static void ReadFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, SDL_PixelF
             v[0] = half_to_float(((Uint16 *)pixels)[0]);
             v[1] = half_to_float(((Uint16 *)pixels)[1]);
             v[2] = half_to_float(((Uint16 *)pixels)[2]);
-            if (fmt->BytesPerPixel == 8) {
+            if (fmt->bytes_per_pixel == 8) {
                 v[3] = half_to_float(((Uint16 *)pixels)[3]);
             } else {
                 v[3] = 1.0f;
@@ -441,7 +441,7 @@ static void ReadFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, SDL_PixelF
             v[0] = ((float *)pixels)[0];
             v[1] = ((float *)pixels)[1];
             v[2] = ((float *)pixels)[2];
-            if (fmt->BytesPerPixel == 16) {
+            if (fmt->bytes_per_pixel == 16) {
                 v[3] = ((float *)pixels)[3];
             } else {
                 v[3] = 1.0f;
@@ -500,20 +500,19 @@ static void ReadFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, SDL_PixelF
     /* Convert to nits so src and dst are guaranteed to be linear and in the same units */
     switch (SDL_COLORSPACETRANSFER(colorspace)) {
     case SDL_TRANSFER_CHARACTERISTICS_SRGB:
-        fR = SDL_sRGBtoNits(fR);
-        fG = SDL_sRGBtoNits(fG);
-        fB = SDL_sRGBtoNits(fB);
+        fR = SDL_sRGBtoLinear(fR);
+        fG = SDL_sRGBtoLinear(fG);
+        fB = SDL_sRGBtoLinear(fB);
         break;
     case SDL_TRANSFER_CHARACTERISTICS_PQ:
-        fR = SDL_PQtoNits(fR);
-        fG = SDL_PQtoNits(fG);
-        fB = SDL_PQtoNits(fB);
+        fR = SDL_PQtoNits(fR) / SDR_white_point;
+        fG = SDL_PQtoNits(fG) / SDR_white_point;
+        fB = SDL_PQtoNits(fB) / SDR_white_point;
         break;
     case SDL_TRANSFER_CHARACTERISTICS_LINEAR:
-        /* Assuming scRGB for now */
-        fR = SDL_scRGBtoNits(fR);
-        fG = SDL_scRGBtoNits(fG);
-        fB = SDL_scRGBtoNits(fB);
+        fR /= SDR_white_point;
+        fG /= SDR_white_point;
+        fB /= SDR_white_point;
         break;
     default:
         /* Unknown, leave it alone */
@@ -526,7 +525,7 @@ static void ReadFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, SDL_PixelF
     *outA = fA;
 }
 
-static void WriteFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, SDL_PixelFormat *fmt, SDL_Colorspace colorspace,
+static void WriteFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, SDL_PixelFormat *fmt, SDL_Colorspace colorspace, float SDR_white_point,
                             float fR, float fG, float fB, float fA)
 {
     Uint32 R, G, B, A;
@@ -535,20 +534,19 @@ static void WriteFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, SDL_Pixel
     /* We converted to nits so src and dst are guaranteed to be linear and in the same units */
     switch (SDL_COLORSPACETRANSFER(colorspace)) {
     case SDL_TRANSFER_CHARACTERISTICS_SRGB:
-        fR = SDL_sRGBfromNits(fR);
-        fG = SDL_sRGBfromNits(fG);
-        fB = SDL_sRGBfromNits(fB);
+        fR = SDL_sRGBfromLinear(fR);
+        fG = SDL_sRGBfromLinear(fG);
+        fB = SDL_sRGBfromLinear(fB);
         break;
     case SDL_TRANSFER_CHARACTERISTICS_PQ:
-        fR = SDL_PQfromNits(fR);
-        fG = SDL_PQfromNits(fG);
-        fB = SDL_PQfromNits(fB);
+        fR = SDL_PQfromNits(fR * SDR_white_point);
+        fG = SDL_PQfromNits(fG * SDR_white_point);
+        fB = SDL_PQfromNits(fB * SDR_white_point);
         break;
     case SDL_TRANSFER_CHARACTERISTICS_LINEAR:
-        /* Assuming scRGB for now */
-        fR = SDL_scRGBfromNits(fR);
-        fG = SDL_scRGBfromNits(fG);
-        fB = SDL_scRGBfromNits(fB);
+        fR *= SDR_white_point;
+        fG *= SDR_white_point;
+        fB *= SDR_white_point;
         break;
     default:
         /* Unknown, leave it alone */
@@ -560,14 +558,14 @@ static void WriteFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, SDL_Pixel
         R = (Uint8)SDL_roundf(SDL_clamp(fR, 0.0f, 1.0f) * 255.0f);
         G = (Uint8)SDL_roundf(SDL_clamp(fG, 0.0f, 1.0f) * 255.0f);
         B = (Uint8)SDL_roundf(SDL_clamp(fB, 0.0f, 1.0f) * 255.0f);
-        ASSEMBLE_RGB(pixels, fmt->BytesPerPixel, fmt, R, G, B);
+        ASSEMBLE_RGB(pixels, fmt->bytes_per_pixel, fmt, R, G, B);
         break;
     case SlowBlitPixelAccess_RGBA:
         R = (Uint8)SDL_roundf(SDL_clamp(fR, 0.0f, 1.0f) * 255.0f);
         G = (Uint8)SDL_roundf(SDL_clamp(fG, 0.0f, 1.0f) * 255.0f);
         B = (Uint8)SDL_roundf(SDL_clamp(fB, 0.0f, 1.0f) * 255.0f);
         A = (Uint8)SDL_roundf(SDL_clamp(fA, 0.0f, 1.0f) * 255.0f);
-        ASSEMBLE_RGBA(pixels, fmt->BytesPerPixel, fmt, R, G, B, A);
+        ASSEMBLE_RGBA(pixels, fmt->bytes_per_pixel, fmt, R, G, B, A);
         break;
     case SlowBlitPixelAccess_10Bit:
     {
@@ -640,7 +638,7 @@ static void WriteFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, SDL_Pixel
             ((Uint16 *)pixels)[0] = (Uint16)SDL_roundf(SDL_clamp(v[0], 0.0f, 1.0f) * SDL_MAX_UINT16);
             ((Uint16 *)pixels)[1] = (Uint16)SDL_roundf(SDL_clamp(v[1], 0.0f, 1.0f) * SDL_MAX_UINT16);
             ((Uint16 *)pixels)[2] = (Uint16)SDL_roundf(SDL_clamp(v[2], 0.0f, 1.0f) * SDL_MAX_UINT16);
-            if (fmt->BytesPerPixel == 8) {
+            if (fmt->bytes_per_pixel == 8) {
                 ((Uint16 *)pixels)[3] = (Uint16)SDL_roundf(SDL_clamp(v[3], 0.0f, 1.0f) * SDL_MAX_UINT16);
             }
             break;
@@ -648,7 +646,7 @@ static void WriteFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, SDL_Pixel
             ((Uint16 *)pixels)[0] = float_to_half(v[0]);
             ((Uint16 *)pixels)[1] = float_to_half(v[1]);
             ((Uint16 *)pixels)[2] = float_to_half(v[2]);
-            if (fmt->BytesPerPixel == 8) {
+            if (fmt->bytes_per_pixel == 8) {
                 ((Uint16 *)pixels)[3] = float_to_half(v[3]);
             }
             break;
@@ -656,7 +654,7 @@ static void WriteFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, SDL_Pixel
             ((float *)pixels)[0] = v[0];
             ((float *)pixels)[1] = v[1];
             ((float *)pixels)[2] = v[2];
-            if (fmt->BytesPerPixel == 16) {
+            if (fmt->bytes_per_pixel == 16) {
                 ((float *)pixels)[3] = v[3];
             }
             break;
@@ -672,6 +670,7 @@ typedef enum
 {
     SDL_TONEMAP_NONE,
     SDL_TONEMAP_LINEAR,
+    SDL_TONEMAP_CHROME
 } SDL_TonemapOperator;
 
 typedef struct
@@ -682,30 +681,63 @@ typedef struct
         struct {
             float scale;
         } linear;
+
+        struct {
+            float a;
+            float b;
+            const float *color_primaries_matrix;
+        } chrome;
+
     } data;
 
 } SDL_TonemapContext;
+
+static void TonemapLinear(float *r, float *g, float *b, float scale)
+{
+    *r *= scale;
+    *g *= scale;
+    *b *= scale;
+}
+
+/* This uses the same tonemapping algorithm developed by Google for Chrome:
+ * https://colab.research.google.com/drive/1hI10nq6L6ru_UFvz7-f7xQaQp0qarz_K
+ *
+ * Essentially, you use the source headroom and the destination headroom
+ * to calculate scaling factors:
+ *  tonemap_a = (dst_headroom / (src_headroom * src_headroom));
+ *  tonemap_b = (1.0f / dst_headroom);
+ *
+ * Then you normalize your source color by the HDR whitepoint,
+ * and calculate a final scaling factor in BT.2020 colorspace.
+ */
+static void TonemapChrome(float *r, float *g, float *b, float tonemap_a, float tonemap_b)
+{
+    float v1 = *r;
+    float v2 = *g;
+    float v3 = *b;
+    float vmax = SDL_max(v1, SDL_max(v2, v3));
+
+    if (vmax > 0.0f) {
+        float scale = (1.0f + tonemap_a * vmax) / (1.0f + tonemap_b * vmax);
+        TonemapLinear(r, g, b, scale);
+    }
+}
 
 static void ApplyTonemap(SDL_TonemapContext *ctx, float *r, float *g, float *b)
 {
     switch (ctx->op) {
     case SDL_TONEMAP_LINEAR:
-        *r *= ctx->data.linear.scale;
-        *g *= ctx->data.linear.scale;
-        *b *= ctx->data.linear.scale;
+        TonemapLinear(r, g, b, ctx->data.linear.scale);
+        break;
+    case SDL_TONEMAP_CHROME:
+        if (ctx->data.chrome.color_primaries_matrix) {
+            SDL_ConvertColorPrimaries(r, g, b, ctx->data.chrome.color_primaries_matrix);
+        }
+        TonemapChrome(r, g, b, ctx->data.chrome.a, ctx->data.chrome.b);
         break;
     default:
         break;
     }
-}
-
-static SDL_bool IsHDRColorspace(SDL_Colorspace colorspace)
-{
-    if (colorspace == SDL_COLORSPACE_SCRGB ||
-        SDL_COLORSPACETRANSFER(colorspace) == SDL_TRANSFER_CHARACTERISTICS_PQ) {
-        return SDL_TRUE;
-    }
-    return SDL_FALSE;
 }
 
 /* The SECOND TRUE BLITTER
@@ -725,35 +757,68 @@ void SDL_Blit_Slow_Float(SDL_BlitInfo *info)
     Uint64 incy, incx;
     SDL_PixelFormat *src_fmt = info->src_fmt;
     SDL_PixelFormat *dst_fmt = info->dst_fmt;
-    int srcbpp = src_fmt->BytesPerPixel;
-    int dstbpp = dst_fmt->BytesPerPixel;
+    int srcbpp = src_fmt->bytes_per_pixel;
+    int dstbpp = dst_fmt->bytes_per_pixel;
     SlowBlitPixelAccess src_access;
     SlowBlitPixelAccess dst_access;
     SDL_Colorspace src_colorspace;
     SDL_Colorspace dst_colorspace;
+    SDL_ColorPrimaries src_primaries;
+    SDL_ColorPrimaries dst_primaries;
     const float *color_primaries_matrix = NULL;
+    float src_white_point;
+    float dst_white_point;
+    float dst_headroom;
+    float src_headroom;
     SDL_TonemapContext tonemap;
 
     if (SDL_GetSurfaceColorspace(info->src_surface, &src_colorspace) < 0 ||
         SDL_GetSurfaceColorspace(info->dst_surface, &dst_colorspace) < 0) {
         return;
     }
+    src_primaries = SDL_COLORSPACEPRIMARIES(src_colorspace);
+    dst_primaries = SDL_COLORSPACEPRIMARIES(dst_colorspace);
 
-    tonemap.op = SDL_TONEMAP_NONE;
-    if (src_colorspace != dst_colorspace) {
-        SDL_ColorPrimaries src_primaries = SDL_COLORSPACEPRIMARIES(src_colorspace);
-        SDL_ColorPrimaries dst_primaries = SDL_COLORSPACEPRIMARIES(dst_colorspace);
-        color_primaries_matrix = SDL_GetColorPrimariesConversionMatrix(src_primaries, dst_primaries);
+    src_white_point = SDL_GetSurfaceSDRWhitePoint(info->src_surface, src_colorspace);
+    dst_white_point = SDL_GetSurfaceSDRWhitePoint(info->dst_surface, dst_colorspace);
+    src_headroom = SDL_GetSurfaceHDRHeadroom(info->src_surface, src_colorspace);
+    dst_headroom = SDL_GetSurfaceHDRHeadroom(info->dst_surface, dst_colorspace);
+    if (dst_headroom == 0.0f) {
+        /* The destination will have the same headroom as the source */
+        dst_headroom = src_headroom;
+        SDL_SetFloatProperty(SDL_GetSurfaceProperties(info->dst_surface), SDL_PROP_SURFACE_HDR_HEADROOM_FLOAT, dst_headroom);
+    }
 
-        if (IsHDRColorspace(src_colorspace) != IsHDRColorspace(dst_colorspace)) {
-            const char *tonemap_operator = SDL_GetStringProperty(SDL_GetSurfaceProperties(info->src_surface), SDL_PROP_SURFACE_TONEMAP_OPERATOR_STRING, NULL);
-            if (tonemap_operator) {
-                if (SDL_strncmp(tonemap_operator, "*=", 2) == 0) {
-                    tonemap.op = SDL_TONEMAP_LINEAR;
-                    tonemap.data.linear.scale = SDL_atof(tonemap_operator + 2);
-                }
+    SDL_zero(tonemap);
+
+    if (src_headroom > dst_headroom) {
+        const char *tonemap_operator = SDL_GetStringProperty(SDL_GetSurfaceProperties(info->src_surface), SDL_PROP_SURFACE_TONEMAP_OPERATOR_STRING, NULL);
+        if (tonemap_operator) {
+            if (SDL_strncmp(tonemap_operator, "*=", 2) == 0) {
+                tonemap.op = SDL_TONEMAP_LINEAR;
+                tonemap.data.linear.scale = SDL_atof(tonemap_operator + 2);
+            } else if (SDL_strcasecmp(tonemap_operator, "chrome") == 0) {
+                tonemap.op = SDL_TONEMAP_CHROME;
+            } else if (SDL_strcasecmp(tonemap_operator, "none") == 0) {
+                tonemap.op = SDL_TONEMAP_NONE;
+            }
+        } else {
+            tonemap.op = SDL_TONEMAP_CHROME;
+        }
+        if (tonemap.op == SDL_TONEMAP_CHROME) {
+            tonemap.data.chrome.a = (dst_headroom / (src_headroom * src_headroom));
+            tonemap.data.chrome.b = (1.0f / dst_headroom);
+
+            /* We'll convert to BT.2020 primaries for the tonemap operation */
+            tonemap.data.chrome.color_primaries_matrix = SDL_GetColorPrimariesConversionMatrix(src_primaries, SDL_COLOR_PRIMARIES_BT2020);
+            if (tonemap.data.chrome.color_primaries_matrix) {
+                src_primaries = SDL_COLOR_PRIMARIES_BT2020;
             }
         }
+    }
+
+    if (src_primaries != dst_primaries) {
+        color_primaries_matrix = SDL_GetColorPrimariesConversionMatrix(src_primaries, dst_primaries);
     }
 
     src_access = GetPixelAccessMethod(src_fmt);
@@ -773,21 +838,21 @@ void SDL_Blit_Slow_Float(SDL_BlitInfo *info)
             srcx = posx >> 16;
             src = (info->src + (srcy * info->src_pitch) + (srcx * srcbpp));
 
-            ReadFloatPixel(src, src_access, src_fmt, src_colorspace, &srcR, &srcG, &srcB, &srcA);
-
-            if (color_primaries_matrix) {
-                SDL_ConvertColorPrimaries(&srcR, &srcG, &srcB, color_primaries_matrix);
-            }
+            ReadFloatPixel(src, src_access, src_fmt, src_colorspace, src_white_point, &srcR, &srcG, &srcB, &srcA);
 
             if (tonemap.op) {
                 ApplyTonemap(&tonemap, &srcR, &srcG, &srcB);
+            }
+
+            if (color_primaries_matrix) {
+                SDL_ConvertColorPrimaries(&srcR, &srcG, &srcB, color_primaries_matrix);
             }
 
             if (flags & SDL_COPY_COLORKEY) {
                 /* colorkey isn't supported */
             }
             if ((flags & (SDL_COPY_BLEND | SDL_COPY_ADD | SDL_COPY_MOD | SDL_COPY_MUL))) {
-                ReadFloatPixel(dst, dst_access, dst_fmt, dst_colorspace, &dstR, &dstG, &dstB, &dstA);
+                ReadFloatPixel(dst, dst_access, dst_fmt, dst_colorspace, dst_white_point, &dstR, &dstG, &dstB, &dstA);
             } else {
                 /* don't care */
                 dstR = dstG = dstB = dstA = 0.0f;
@@ -839,7 +904,7 @@ void SDL_Blit_Slow_Float(SDL_BlitInfo *info)
                 break;
             }
 
-            WriteFloatPixel(dst, dst_access, dst_fmt, dst_colorspace, dstR, dstG, dstB, dstA);
+            WriteFloatPixel(dst, dst_access, dst_fmt, dst_colorspace, dst_white_point, dstR, dstG, dstB, dstA);
 
             posx += incx;
             dst += dstbpp;

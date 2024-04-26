@@ -88,5 +88,9 @@ typedef unsigned int uintptr_t;
 
 /* Enable the dummy filesystem driver (src/filesystem/dummy/\*.c) */
 #define SDL_FILESYSTEM_DUMMY  1
+#define SDL_FSOPS_DUMMY 1
+
+/* Enable the camera driver (src/camera/dummy/\*.c) */
+#define SDL_CAMERA_DRIVER_DUMMY  1
 
 #endif /* SDL_build_config_minimal_h_ */

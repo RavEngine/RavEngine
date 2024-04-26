@@ -56,10 +56,7 @@
 # define SDL_DISABLE_AVX 1
 #endif
 
-/* This is disabled by default to avoid C runtime dependencies and manifest requirements */
-#ifdef HAVE_LIBC
 /* Useful headers */
-#define HAVE_CTYPE_H 1
 #define HAVE_FLOAT_H 1
 #define HAVE_LIMITS_H 1
 #define HAVE_MATH_H 1
@@ -73,12 +70,11 @@
 #define HAVE_WCHAR_H 1
 
 /* C library functions */
+#define HAVE_LIBC   1
 #define HAVE_MALLOC 1
 #define HAVE_CALLOC 1
 #define HAVE_REALLOC 1
 #define HAVE_FREE 1
-#define HAVE_QSORT 1
-#define HAVE_BSEARCH 1
 #define HAVE_ABS 1
 #define HAVE_MEMSET 1
 #define HAVE_MEMCPY 1
@@ -103,10 +99,6 @@
 #define HAVE_ATOF 1
 #define HAVE_STRCMP 1
 #define HAVE_STRNCMP 1
-#define HAVE__STRICMP 1
-#define HAVE__STRNICMP 1
-#define HAVE__WCSICMP 1
-#define HAVE__WCSNICMP 1
 #define HAVE__WCSDUP 1
 #define HAVE_ACOS   1
 #define HAVE_ASIN   1
@@ -156,11 +148,6 @@
 #define HAVE_TRUNCF 1
 #define HAVE__FSEEKI64 1
 #endif    /* _MSC_VER */
-#else
-#define HAVE_STDARG_H   1
-#define HAVE_STDDEF_H   1
-#define HAVE_STDINT_H   1
-#endif
 
 /* Enable various audio drivers */
 #if defined(HAVE_MMDEVICEAPI_H) && defined(HAVE_AUDIOCLIENT_H)
@@ -179,7 +166,17 @@
 #ifdef HAVE_WINDOWS_GAMING_INPUT_H
 #define SDL_JOYSTICK_WGI    1
 #endif
-#define SDL_JOYSTICK_XINPUT 1
+/* This is XInputOnGameInput for GDK platforms: */
+/*#define SDL_JOYSTICK_XINPUT 1*/
+/* Native GameInput: */
+#define SDL_JOYSTICK_GAMEINPUT 1
+#if defined(SDL_JOYSTICK_GAMEINPUT) && (defined(SDL_JOYSTICK_XINPUT) || defined(SDL_JOYSTICK_DINPUT))
+#error "GameInput cannot co-exist, choose one."
+#endif /* defined(SDL_JOYSTICK_GAMEINPUT) && (defined(SDL_JOYSTICK_XINPUT) || defined(SDL_JOYSTICK_DINPUT)) */
+#if defined(SDL_JOYSTICK_GAMEINPUT) && SDL_JOYSTICK_GAMEINPUT
+/* TODO: Implement proper haptics for GameInput! */
+#define SDL_HAPTIC_DUMMY 1
+#endif /* defined(SDL_JOYSTICK_GAMEINPUT) && SDL_JOYSTICK_GAMEINPUT */
 /*#define SDL_HAPTIC_DINPUT   1*/
 
 /* Enable the sensor driver */
@@ -196,6 +193,9 @@
 #define SDL_THREAD_GENERIC_COND_SUFFIX 1
 #define SDL_THREAD_GENERIC_RWLOCK_SUFFIX 1
 #define SDL_THREAD_WINDOWS  1
+
+/* Enable various time systems */
+#define SDL_TIME_WINDOWS   1
 
 /* Enable various timer systems */
 #define SDL_TIMER_WINDOWS   1
@@ -226,10 +226,15 @@
 /* Enable filesystem support */
 /* #define SDL_FILESYSTEM_WINDOWS 1*/
 #define SDL_FILESYSTEM_XBOX 1
+#define SDL_FSOPS_WINDOWS 1
+
 
 /* Disable IME as not supported yet (TODO: Xbox IME?) */
 #define SDL_DISABLE_WINDOWS_IME 1
 /* Use the (inferior) GDK text input method for GDK platforms */
 #define SDL_GDK_TEXTINPUT 1
+
+/* Enable the camera driver (src/camera/dummy/\*.c) */
+#define SDL_CAMERA_DRIVER_DUMMY  1
 
 #endif /* SDL_build_config_wingdk_h_ */

@@ -25,6 +25,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /* System dependent filesystem routines                                */
 
+#include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
@@ -495,15 +496,14 @@ static char *xdg_user_dir_lookup (const char *type)
         return NULL;
 
     /* Special case desktop for historical compatibility */
-    if (SDL_strcmp(type, "DESKTOP") == 0)
-    {
-        user_dir = (char*) SDL_malloc(SDL_strlen(home_dir) +
-                                      SDL_strlen("/Desktop") + 1);
+    if (SDL_strcmp(type, "DESKTOP") == 0) {
+        size_t length = SDL_strlen(home_dir) + SDL_strlen("/Desktop") + 1;
+        user_dir = (char*) SDL_malloc(length);
         if (!user_dir)
             return NULL;
 
-        strcpy(user_dir, home_dir);
-        strcat(user_dir, "/Desktop");
+        SDL_strlcpy(user_dir, home_dir, length);
+        SDL_strlcat(user_dir, "/Desktop", length);
         return user_dir;
     }
 

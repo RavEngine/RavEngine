@@ -59,10 +59,14 @@ struct SDL_WindowData
     int border_right;
     int border_top;
     int border_bottom;
+    SDL_bool xinput2_mouse_enabled;
+    SDL_bool xinput2_keyboard_enabled;
     SDL_bool mouse_grabbed;
     Uint64 last_focus_event_time;
     PendingFocusEnum pending_focus;
     Uint64 pending_focus_time;
+    SDL_bool pending_move;
+    SDL_Point pending_move_point;
     XConfigureEvent last_xconfigure;
     struct SDL_VideoData *videodata;
     unsigned long user_time;
@@ -126,8 +130,8 @@ extern void X11_SetWindowResizable(SDL_VideoDevice *_this, SDL_Window *window, S
 extern void X11_SetWindowAlwaysOnTop(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool on_top);
 extern int X11_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_VideoDisplay *display, SDL_bool fullscreen);
 extern void *X11_GetWindowICCProfile(SDL_VideoDevice *_this, SDL_Window *window, size_t *size);
-extern void X11_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
-extern void X11_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
+extern int X11_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
+extern int X11_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
 extern void X11_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window);
 extern int X11_SetWindowHitTest(SDL_Window *window, SDL_bool enabled);
 extern void X11_AcceptDragAndDrop(SDL_Window *window, SDL_bool accept);

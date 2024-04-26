@@ -106,7 +106,6 @@ DEFINE_GUID(IID___x_ABI_CWindows_CGaming_CInput_CIRawGameController2, 0x43c0c035
 DEFINE_GUID(IID___x_ABI_CWindows_CGaming_CInput_CIRawGameControllerStatics, 0xeb8d0792, 0xe95a, 0x4b19, 0xaf, 0xc7, 0x0a, 0x59, 0xf8, 0xbf, 0x75, 0x9e);
 
 extern SDL_bool SDL_XINPUT_Enabled(void);
-extern SDL_bool SDL_DINPUT_JoystickPresent(Uint16 vendor, Uint16 product, Uint16 version);
 
 
 static SDL_bool SDL_IsXInputDevice(Uint16 vendor, Uint16 product)
@@ -448,23 +447,12 @@ static HRESULT STDMETHODCALLTYPE IEventHandler_CRawGameControllerVtbl_InvokeAdde
             name = SDL_strdup("");
         }
 
-#ifdef SDL_JOYSTICK_HIDAPI
-        if (!ignore_joystick && HIDAPI_IsDevicePresent(vendor, product, version, name)) {
-            ignore_joystick = SDL_TRUE;
-        }
-#endif
-
-#ifdef SDL_JOYSTICK_RAWINPUT
-        if (!ignore_joystick && RAWINPUT_IsDevicePresent(vendor, product, version, name)) {
-            ignore_joystick = SDL_TRUE;
-        }
-#endif
-
-        if (!ignore_joystick && SDL_DINPUT_JoystickPresent(vendor, product, version)) {
+        if (!ignore_joystick && SDL_JoystickHandledByAnotherDriver(&SDL_WGI_JoystickDriver, vendor, product, version, name)) {
             ignore_joystick = SDL_TRUE;
         }
 
         if (!ignore_joystick && SDL_IsXInputDevice(vendor, product)) {
+            /* This hasn't been detected by the RAWINPUT driver yet, but it will be picked up later. */
             ignore_joystick = SDL_TRUE;
         }
 
@@ -563,6 +551,7 @@ static HRESULT STDMETHODCALLTYPE IEventHandler_CRawGameControllerVtbl_InvokeRemo
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4028) /* formal parameter 3 different from declaration, when using older buggy WGI headers */
+#pragma warning(disable : 4113) /* formal parameter 3 different from declaration (a more specific warning added in VS 2022), when using older buggy WGI headers */
 #endif
 
 static __FIEventHandler_1_Windows__CGaming__CInput__CRawGameControllerVtbl controller_added_vtbl = {
@@ -684,6 +673,12 @@ static void WGI_JoystickDetect(void)
 {
 }
 
+static SDL_bool WGI_JoystickIsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name)
+{
+    /* We don't override any other drivers */
+    return SDL_FALSE;
+}
+
 static const char *WGI_JoystickGetDeviceName(int device_index)
 {
     return wgi.controllers[device_index].name;
@@ -744,7 +739,11 @@ static int WGI_JoystickOpen(SDL_Joystick *joystick, int device_index)
     }
 
     /* Initialize the joystick capabilities */
-    joystick->epowerlevel = wireless ? SDL_JOYSTICK_POWER_UNKNOWN : SDL_JOYSTICK_POWER_WIRED;
+    if (wireless) {
+        joystick->connection_state = SDL_JOYSTICK_CONNECTION_WIRELESS;
+    } else {
+        joystick->connection_state = SDL_JOYSTICK_CONNECTION_WIRED;
+    }
     __x_ABI_CWindows_CGaming_CInput_CIRawGameController_get_ButtonCount(hwdata->controller, &joystick->nbuttons);
     __x_ABI_CWindows_CGaming_CInput_CIRawGameController_get_AxisCount(hwdata->controller, &joystick->naxes);
     __x_ABI_CWindows_CGaming_CInput_CIRawGameController_get_SwitchCount(hwdata->controller, &joystick->nhats);
@@ -898,13 +897,37 @@ static void WGI_JoystickUpdate(SDL_Joystick *joystick)
     SDL_stack_free(hats);
     SDL_stack_free(axes);
 
-    if (joystick->epowerlevel != SDL_JOYSTICK_POWER_WIRED && hwdata->battery) {
+    if (hwdata->battery) {
         __x_ABI_CWindows_CDevices_CPower_CIBatteryReport *report = NULL;
 
         hr = __x_ABI_CWindows_CGaming_CInput_CIGameControllerBatteryInfo_TryGetBatteryReport(hwdata->battery, &report);
         if (SUCCEEDED(hr) && report) {
+            SDL_PowerState state = SDL_POWERSTATE_UNKNOWN;
+            int percent = 0;
+            __x_ABI_CWindows_CSystem_CPower_CBatteryStatus status;
             int full_capacity = 0, curr_capacity = 0;
             __FIReference_1_int *full_capacityP, *curr_capacityP;
+
+            hr = __x_ABI_CWindows_CDevices_CPower_CIBatteryReport_get_Status(report, &status);
+            if (SUCCEEDED(hr)) {
+                switch (status) {
+                case BatteryStatus_NotPresent:
+                    state = SDL_POWERSTATE_NO_BATTERY;
+                    break;
+                case BatteryStatus_Discharging:
+                    state = SDL_POWERSTATE_ON_BATTERY;
+                    break;
+                case BatteryStatus_Idle:
+                    state = SDL_POWERSTATE_CHARGED;
+                    break;
+                case BatteryStatus_Charging:
+                    state = SDL_POWERSTATE_CHARGING;
+                    break;
+                default:
+                    state = SDL_POWERSTATE_UNKNOWN;
+                    break;
+                }
+            }
 
             hr = __x_ABI_CWindows_CDevices_CPower_CIBatteryReport_get_FullChargeCapacityInMilliwattHours(report, &full_capacityP);
             if (SUCCEEDED(hr)) {
@@ -919,18 +942,11 @@ static void WGI_JoystickUpdate(SDL_Joystick *joystick)
             }
 
             if (full_capacity > 0) {
-                float ratio = (float)curr_capacity / full_capacity;
-
-                if (ratio <= 0.05f) {
-                    joystick->epowerlevel = SDL_JOYSTICK_POWER_EMPTY;
-                } else if (ratio <= 0.20f) {
-                    joystick->epowerlevel = SDL_JOYSTICK_POWER_LOW;
-                } else if (ratio <= 0.70f) {
-                    joystick->epowerlevel = SDL_JOYSTICK_POWER_MEDIUM;
-                } else {
-                    joystick->epowerlevel = SDL_JOYSTICK_POWER_FULL;
-                }
+                percent = (int)SDL_roundf(((float)curr_capacity / full_capacity) * 100.0f);
             }
+
+            SDL_SendJoystickPowerInfo(joystick, state, percent);
+
             __x_ABI_CWindows_CDevices_CPower_CIBatteryReport_Release(report);
         }
     }
@@ -1009,6 +1025,7 @@ SDL_JoystickDriver SDL_WGI_JoystickDriver = {
     WGI_JoystickInit,
     WGI_JoystickGetCount,
     WGI_JoystickDetect,
+    WGI_JoystickIsDevicePresent,
     WGI_JoystickGetDeviceName,
     WGI_JoystickGetDevicePath,
     WGI_JoystickGetDeviceSteamVirtualGamepadSlot,

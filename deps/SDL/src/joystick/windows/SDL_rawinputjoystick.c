@@ -886,10 +886,7 @@ static void RAWINPUT_AddDevice(HANDLE hDevice)
     CHECK(GetRawInputDeviceInfoA(hDevice, RIDI_DEVICENAME, dev_name, &size) != (UINT)-1);
     /* Only take XInput-capable devices */
     CHECK(SDL_strstr(dev_name, "IG_") != NULL);
-#ifdef SDL_JOYSTICK_HIDAPI
-    /* Don't take devices handled by HIDAPI */
-    CHECK(!HIDAPI_IsDevicePresent((Uint16)rdi.hid.dwVendorId, (Uint16)rdi.hid.dwProductId, (Uint16)rdi.hid.dwVersionNumber, ""));
-#endif
+    CHECK(!SDL_JoystickHandledByAnotherDriver(&SDL_RAWINPUT_JoystickDriver, (Uint16)rdi.hid.dwVendorId, (Uint16)rdi.hid.dwProductId, (Uint16)rdi.hid.dwVersionNumber, ""));
     device = (SDL_RAWINPUT_Device *)SDL_calloc(1, sizeof(SDL_RAWINPUT_Device));
     CHECK(device);
     device->hDevice = hDevice;
@@ -1062,42 +1059,6 @@ SDL_bool RAWINPUT_IsEnabled()
     return SDL_RAWINPUT_inited && !SDL_RAWINPUT_remote_desktop;
 }
 
-SDL_bool RAWINPUT_IsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name)
-{
-    SDL_RAWINPUT_Device *device;
-
-    /* If we're being asked about a device, that means another API just detected one, so rescan */
-#ifdef SDL_JOYSTICK_RAWINPUT_XINPUT
-    xinput_device_change = SDL_TRUE;
-#endif
-
-    device = SDL_RAWINPUT_devices;
-    while (device) {
-        if (vendor_id == device->vendor_id && product_id == device->product_id) {
-            return SDL_TRUE;
-        }
-
-        /* The Xbox 360 wireless controller shows up as product 0 in WGI.
-           Try to match it to a Raw Input device via name or known product ID. */
-        if (vendor_id == device->vendor_id && product_id == 0 &&
-            ((name && SDL_strstr(device->name, name) != NULL) ||
-             (device->vendor_id == USB_VENDOR_MICROSOFT &&
-              device->product_id == USB_PRODUCT_XBOX360_XUSB_CONTROLLER))) {
-            return SDL_TRUE;
-        }
-
-        /* The Xbox One controller shows up as a hardcoded raw input VID/PID */
-        if (name && SDL_strcmp(name, "Xbox One Game Controller") == 0 &&
-            device->vendor_id == USB_VENDOR_MICROSOFT &&
-            device->product_id == USB_PRODUCT_XBOX_ONE_XBOXGIP_CONTROLLER) {
-            return SDL_TRUE;
-        }
-
-        device = device->next;
-    }
-    return SDL_FALSE;
-}
-
 static void RAWINPUT_PostUpdate(void)
 {
 #ifdef SDL_JOYSTICK_RAWINPUT_MATCHING
@@ -1179,6 +1140,42 @@ static void RAWINPUT_JoystickDetect(void)
         }
     }
     RAWINPUT_PostUpdate();
+}
+
+static SDL_bool RAWINPUT_JoystickIsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name)
+{
+    SDL_RAWINPUT_Device *device;
+
+    /* If we're being asked about a device, that means another API just detected one, so rescan */
+#ifdef SDL_JOYSTICK_RAWINPUT_XINPUT
+    xinput_device_change = SDL_TRUE;
+#endif
+
+    device = SDL_RAWINPUT_devices;
+    while (device) {
+        if (vendor_id == device->vendor_id && product_id == device->product_id) {
+            return SDL_TRUE;
+        }
+
+        /* The Xbox 360 wireless controller shows up as product 0 in WGI.
+           Try to match it to a Raw Input device via name or known product ID. */
+        if (vendor_id == device->vendor_id && product_id == 0 &&
+            ((name && SDL_strstr(device->name, name) != NULL) ||
+             (device->vendor_id == USB_VENDOR_MICROSOFT &&
+              device->product_id == USB_PRODUCT_XBOX360_XUSB_CONTROLLER))) {
+            return SDL_TRUE;
+        }
+
+        /* The Xbox One controller shows up as a hardcoded raw input VID/PID */
+        if (name && SDL_strcmp(name, "Xbox One Game Controller") == 0 &&
+            device->vendor_id == USB_VENDOR_MICROSOFT &&
+            device->product_id == USB_PRODUCT_XBOX_ONE_XBOXGIP_CONTROLLER) {
+            return SDL_TRUE;
+        }
+
+        device = device->next;
+    }
+    return SDL_FALSE;
 }
 
 static SDL_RAWINPUT_Device *RAWINPUT_GetDeviceByIndex(int device_index)
@@ -1428,8 +1425,6 @@ static int RAWINPUT_JoystickOpen(SDL_Joystick *joystick, int device_index)
             ctx->hat_indices[hat_index++] = cap->NotRange.DataIndex;
         }
     }
-
-    joystick->epowerlevel = SDL_JOYSTICK_POWER_UNKNOWN;
 
 #ifdef SDL_JOYSTICK_RAWINPUT_XINPUT
     if (ctx->is_xinput) {
@@ -1964,30 +1959,36 @@ static void RAWINPUT_UpdateOtherAPIs(SDL_Joystick *joystick)
             }
             has_trigger_data = SDL_TRUE;
 
-            if (battery_info->BatteryType != BATTERY_TYPE_UNKNOWN &&
-                battery_info->BatteryType != BATTERY_TYPE_DISCONNECTED) {
-                SDL_JoystickPowerLevel ePowerLevel = SDL_JOYSTICK_POWER_UNKNOWN;
-                if (battery_info->BatteryType == BATTERY_TYPE_WIRED) {
-                    ePowerLevel = SDL_JOYSTICK_POWER_WIRED;
-                } else {
-                    switch (battery_info->BatteryLevel) {
-                    case BATTERY_LEVEL_EMPTY:
-                        ePowerLevel = SDL_JOYSTICK_POWER_EMPTY;
-                        break;
-                    case BATTERY_LEVEL_LOW:
-                        ePowerLevel = SDL_JOYSTICK_POWER_LOW;
-                        break;
-                    case BATTERY_LEVEL_MEDIUM:
-                        ePowerLevel = SDL_JOYSTICK_POWER_MEDIUM;
-                        break;
-                    default:
-                    case BATTERY_LEVEL_FULL:
-                        ePowerLevel = SDL_JOYSTICK_POWER_FULL;
-                        break;
-                    }
-                }
-                SDL_SendJoystickBatteryLevel(joystick, ePowerLevel);
+            SDL_PowerState state;
+            int percent;
+            switch (battery_info->BatteryType) {
+            case BATTERY_TYPE_WIRED:
+                state = SDL_POWERSTATE_CHARGING;
+                break;
+            case BATTERY_TYPE_UNKNOWN:
+            case BATTERY_TYPE_DISCONNECTED:
+                state = SDL_POWERSTATE_UNKNOWN;
+                break;
+            default:
+                state = SDL_POWERSTATE_ON_BATTERY;
+                break;
             }
+            switch (battery_info->BatteryLevel) {
+            case BATTERY_LEVEL_EMPTY:
+                percent = 10;
+                break;
+            case BATTERY_LEVEL_LOW:
+                percent = 40;
+                break;
+            case BATTERY_LEVEL_MEDIUM:
+                percent = 70;
+                break;
+            default:
+            case BATTERY_LEVEL_FULL:
+                percent = 100;
+                break;
+            }
+            SDL_SendJoystickPowerInfo(joystick, state, percent);
         }
     }
 #endif /* SDL_JOYSTICK_RAWINPUT_XINPUT */
@@ -2206,6 +2207,7 @@ SDL_JoystickDriver SDL_RAWINPUT_JoystickDriver = {
     RAWINPUT_JoystickInit,
     RAWINPUT_JoystickGetCount,
     RAWINPUT_JoystickDetect,
+    RAWINPUT_JoystickIsDevicePresent,
     RAWINPUT_JoystickGetDeviceName,
     RAWINPUT_JoystickGetDevicePath,
     RAWINPUT_JoystickGetDeviceSteamVirtualGamepadSlot,

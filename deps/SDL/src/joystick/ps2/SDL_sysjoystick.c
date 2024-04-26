@@ -122,6 +122,7 @@ static int PS2_JoystickInit(void)
                 info->slot = (uint8_t)slot;
                 info->opened = 1;
                 enabled_pads++;
+                SDL_PrivateJoystickAdded(enabled_pads);
             }
         }
     }
@@ -138,6 +139,12 @@ static int PS2_JoystickGetCount()
 /* Function to cause any queued joystick insertions to be processed */
 static void PS2_JoystickDetect()
 {
+}
+
+static SDL_bool PS2_JoystickIsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name)
+{
+    /* We don't override any other drivers */
+    return SDL_FALSE;
 }
 
 /* Function to get the device-dependent name of a joystick */
@@ -208,7 +215,6 @@ static int PS2_JoystickOpen(SDL_Joystick *joystick, int device_index)
     joystick->nbuttons = PS2_BUTTONS;
     joystick->naxes = PS2_TOTAL_AXIS;
     joystick->nhats = 0;
-    joystick->instance_id = device_index;
 
     SDL_SetBooleanProperty(SDL_GetJoystickProperties(joystick), SDL_PROP_JOYSTICK_CAP_RUMBLE_BOOLEAN, SDL_TRUE);
 
@@ -341,6 +347,7 @@ SDL_JoystickDriver SDL_PS2_JoystickDriver = {
     PS2_JoystickInit,
     PS2_JoystickGetCount,
     PS2_JoystickDetect,
+    PS2_JoystickIsDevicePresent,
     PS2_JoystickGetDeviceName,
     PS2_JoystickGetDevicePath,
     PS2_JoystickGetDeviceSteamVirtualGamepadSlot,

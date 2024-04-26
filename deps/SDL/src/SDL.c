@@ -37,19 +37,23 @@
 /* Initialization code for SDL */
 
 #include "SDL_assert_c.h"
+#include "SDL_hints_c.h"
 #include "SDL_log_c.h"
 #include "SDL_properties_c.h"
 #include "audio/SDL_sysaudio.h"
+#include "cpuinfo/SDL_cpuinfo_c.h"
 #include "video/SDL_video_c.h"
 #include "events/SDL_events_c.h"
 #include "haptic/SDL_haptic_c.h"
 #include "joystick/SDL_gamepad_c.h"
 #include "joystick/SDL_joystick_c.h"
 #include "sensor/SDL_sensor_c.h"
+#include "camera/SDL_camera_c.h"
 
 #define SDL_INIT_EVERYTHING ~0U
 
 /* Initialization/Cleanup routines */
+#include "time/SDL_time_c.h"
 #include "timer/SDL_timer_c.h"
 #ifdef SDL_VIDEO_DRIVER_WINDOWS
 extern int SDL_HelperWindowCreate(void);
@@ -66,11 +70,11 @@ SDL_COMPILE_TIME_ASSERT(SDL_BUILD_MICRO_VERSION,
 #endif
 
 SDL_COMPILE_TIME_ASSERT(SDL_MAJOR_VERSION_min, SDL_MAJOR_VERSION >= 0);
-/* Limited only by the need to fit in SDL_version */
+/* Limited only by the need to fit in SDL_Version */
 SDL_COMPILE_TIME_ASSERT(SDL_MAJOR_VERSION_max, SDL_MAJOR_VERSION <= 255);
 
 SDL_COMPILE_TIME_ASSERT(SDL_MINOR_VERSION_min, SDL_MINOR_VERSION >= 0);
-/* Limited only by the need to fit in SDL_version */
+/* Limited only by the need to fit in SDL_Version */
 SDL_COMPILE_TIME_ASSERT(SDL_MINOR_VERSION_max, SDL_MINOR_VERSION <= 255);
 
 SDL_COMPILE_TIME_ASSERT(SDL_PATCHLEVEL_min, SDL_PATCHLEVEL >= 0);
@@ -128,7 +132,11 @@ static void SDL_DecrementSubsystemRefCount(Uint32 subsystem)
 {
     const int subsystem_index = SDL_MostSignificantBitIndex32(subsystem);
     if ((subsystem_index >= 0) && (SDL_SubsystemRefCount[subsystem_index] > 0)) {
-        --SDL_SubsystemRefCount[subsystem_index];
+        if (SDL_bInMainQuit) {
+            SDL_SubsystemRefCount[subsystem_index] = 0;
+        } else {
+            --SDL_SubsystemRefCount[subsystem_index];
+        }
     }
 }
 
@@ -202,6 +210,7 @@ int SDL_InitSubSystem(Uint32 flags)
     }
 #endif
 
+    SDL_InitTime();
     SDL_InitTicks();
 
     /* Initialize the event subsystem */
@@ -365,6 +374,30 @@ int SDL_InitSubSystem(Uint32 flags)
 #endif
     }
 
+    /* Initialize the camera subsystem */
+    if (flags & SDL_INIT_CAMERA) {
+#ifndef SDL_CAMERA_DISABLED
+        if (SDL_ShouldInitSubsystem(SDL_INIT_CAMERA)) {
+            /* camera implies events */
+            if (!SDL_InitOrIncrementSubsystem(SDL_INIT_EVENTS)) {
+                goto quit_and_error;
+            }
+
+            SDL_IncrementSubsystemRefCount(SDL_INIT_CAMERA);
+            if (SDL_CameraInit(NULL) < 0) {
+                SDL_DecrementSubsystemRefCount(SDL_INIT_CAMERA);
+                goto quit_and_error;
+            }
+        } else {
+            SDL_IncrementSubsystemRefCount(SDL_INIT_CAMERA);
+        }
+        flags_initialized |= SDL_INIT_CAMERA;
+#else
+        SDL_SetError("SDL not built with camera support");
+        goto quit_and_error;
+#endif
+    }
+
     (void)flags_initialized; /* make static analysis happy, since this only gets used in error cases. */
 
     return 0;
@@ -382,6 +415,18 @@ int SDL_Init(Uint32 flags)
 void SDL_QuitSubSystem(Uint32 flags)
 {
     /* Shut down requested initialized subsystems */
+
+#ifndef SDL_CAMERA_DISABLED
+    if (flags & SDL_INIT_CAMERA) {
+        if (SDL_ShouldQuitSubsystem(SDL_INIT_CAMERA)) {
+            SDL_QuitCamera();
+            /* camera implies events */
+            SDL_QuitSubSystem(SDL_INIT_EVENTS);
+        }
+        SDL_DecrementSubsystemRefCount(SDL_INIT_CAMERA);
+    }
+#endif
+
 #ifndef SDL_SENSOR_DISABLED
     if (flags & SDL_INIT_SENSOR) {
         if (SDL_ShouldQuitSubsystem(SDL_INIT_SENSOR)) {
@@ -498,6 +543,7 @@ void SDL_Quit(void)
     SDL_QuitSubSystem(SDL_INIT_EVERYTHING);
 
     SDL_QuitTicks();
+    SDL_QuitTime();
 
 #ifdef SDL_USE_LIBDBUS
     SDL_DBus_Quit();
@@ -505,6 +551,8 @@ void SDL_Quit(void)
 
     SDL_ClearHints();
     SDL_AssertionsQuit();
+
+    SDL_QuitCPUInfo();
 
     SDL_QuitProperties();
     SDL_QuitLog();
@@ -534,7 +582,7 @@ Uint32 SDL_GetNextObjectID(void)
 }
 
 /* Get the library version number */
-int SDL_GetVersion(SDL_version *ver)
+int SDL_GetVersion(SDL_Version *ver)
 {
     static SDL_bool check_hint = SDL_TRUE;
     static SDL_bool legacy_version = SDL_FALSE;

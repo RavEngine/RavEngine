@@ -74,6 +74,7 @@ typedef enum
 - (BOOL)isMovingOrFocusClickPending;
 - (void)setFocusClickPending:(NSInteger)button;
 - (void)clearFocusClickPending:(NSInteger)button;
+- (void)updateIgnoreMouseState:(NSEvent *)theEvent;
 - (void)setPendingMoveX:(float)x Y:(float)y;
 - (void)windowDidFinishMoving;
 - (void)onMovingOrFocusClickPendingStateCleared;
@@ -97,6 +98,7 @@ typedef enum
 - (NSApplicationPresentationOptions)window:(NSWindow *)window willUseFullScreenPresentationOptions:(NSApplicationPresentationOptions)proposedOptions;
 
 /* See if event is in a drag area, toggle on window dragging. */
+- (void)updateHitTest;
 - (BOOL)processHitTest:(NSEvent *)theEvent;
 
 /* Window event handling */
@@ -130,7 +132,6 @@ typedef enum
 @property(nonatomic) NSWindow *nswindow;
 @property(nonatomic) NSView *sdlContentView;
 @property(nonatomic) NSMutableArray *nscontexts;
-@property(nonatomic) SDL_bool created;
 @property(nonatomic) BOOL in_blocking_transition;
 @property(nonatomic) BOOL was_zoomed;
 @property(nonatomic) NSInteger window_number;
@@ -170,8 +171,8 @@ extern void Cocoa_SetWindowAlwaysOnTop(SDL_VideoDevice *_this, SDL_Window *windo
 extern int Cocoa_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_VideoDisplay *display, SDL_bool fullscreen);
 extern void *Cocoa_GetWindowICCProfile(SDL_VideoDevice *_this, SDL_Window *window, size_t *size);
 extern SDL_DisplayID Cocoa_GetDisplayForWindow(SDL_VideoDevice *_this, SDL_Window *window);
-extern void Cocoa_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window);
-extern void Cocoa_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
+extern int Cocoa_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window);
+extern int Cocoa_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
 extern void Cocoa_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window);
 extern int Cocoa_SetWindowHitTest(SDL_Window *window, SDL_bool enabled);
 extern void Cocoa_AcceptDragAndDrop(SDL_Window *window, SDL_bool accept);

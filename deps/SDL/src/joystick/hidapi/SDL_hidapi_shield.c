@@ -77,8 +77,10 @@ typedef struct
 {
     Uint8 seq_num;
 
-    SDL_JoystickPowerLevel battery_level;
-    SDL_bool charging;
+    SDL_bool has_charging;
+    Uint8 charging;
+    SDL_bool has_battery_level;
+    Uint8 battery_level;
     Uint64 last_battery_query_time;
 
     SDL_bool rumble_report_pending;
@@ -184,14 +186,12 @@ static SDL_bool HIDAPI_DriverShield_OpenJoystick(SDL_HIDAPI_Device *device, SDL_
         joystick->nbuttons = SDL_GAMEPAD_NUM_SHIELD_V103_BUTTONS;
         joystick->naxes = SDL_GAMEPAD_AXIS_MAX;
         joystick->nhats = 1;
-        joystick->epowerlevel = SDL_JOYSTICK_POWER_WIRED;
 
         SDL_PrivateJoystickAddTouchpad(joystick, 1);
     } else {
         joystick->nbuttons = SDL_GAMEPAD_NUM_SHIELD_V104_BUTTONS;
         joystick->naxes = SDL_GAMEPAD_AXIS_MAX;
         joystick->nhats = 1;
-        joystick->epowerlevel = SDL_JOYSTICK_POWER_UNKNOWN;
     }
 
     /* Request battery and charging info */
@@ -204,7 +204,7 @@ static SDL_bool HIDAPI_DriverShield_OpenJoystick(SDL_HIDAPI_Device *device, SDL_
 
 static int HIDAPI_DriverShield_SendNextRumble(SDL_HIDAPI_Device *device)
 {
-    SDL_DriverShield_Context *ctx = device->context;
+    SDL_DriverShield_Context *ctx = (SDL_DriverShield_Context *)device->context;
     Uint8 rumble_data[3];
 
     if (!ctx->rumble_update_pending) {
@@ -235,7 +235,7 @@ static int HIDAPI_DriverShield_RumbleJoystick(SDL_HIDAPI_Device *device, SDL_Joy
         return 0;
 
     } else {
-        SDL_DriverShield_Context *ctx = device->context;
+        SDL_DriverShield_Context *ctx = (SDL_DriverShield_Context *)device->context;
 
         /* The rumble motors are quite intense, so tone down the intensity like the official driver does */
         ctx->left_motor_amplitude = low_frequency_rumble >> 11;
@@ -268,7 +268,7 @@ static int HIDAPI_DriverShield_SetJoystickLED(SDL_HIDAPI_Device *device, SDL_Joy
 
 static int HIDAPI_DriverShield_SendJoystickEffect(SDL_HIDAPI_Device *device, SDL_Joystick *joystick, const void *data, int size)
 {
-    const Uint8 *data_bytes = data;
+    const Uint8 *data_bytes = (const Uint8 *)data;
 
     if (size > 1) {
         /* Single command byte followed by a variable length payload */
@@ -451,6 +451,17 @@ static void HIDAPI_DriverShield_HandleStatePacketV104(SDL_Joystick *joystick, SD
     SDL_memcpy(ctx->last_state, data, SDL_min(size, sizeof(ctx->last_state)));
 }
 
+static void HIDAPI_DriverShield_UpdatePowerInfo(SDL_Joystick *joystick, SDL_DriverShield_Context *ctx)
+{
+    if (!ctx->has_charging || !ctx->has_battery_level) {
+        return;
+    }
+
+    SDL_PowerState state = ctx->charging ? SDL_POWERSTATE_CHARGING : SDL_POWERSTATE_ON_BATTERY;
+    int percent = ctx->battery_level * 20;
+    SDL_SendJoystickPowerInfo(joystick, state, percent);
+}
+
 static SDL_bool HIDAPI_DriverShield_UpdateDevice(SDL_HIDAPI_Device *device)
 {
     SDL_DriverShield_Context *ctx = (SDL_DriverShield_Context *)device->context;
@@ -496,34 +507,14 @@ static SDL_bool HIDAPI_DriverShield_UpdateDevice(SDL_HIDAPI_Device *device)
                 HIDAPI_DriverShield_SendNextRumble(device);
                 break;
             case CMD_CHARGE_STATE:
-                ctx->charging = cmd_resp_report->payload[0] != 0;
-                if (joystick) {
-                    SDL_SendJoystickBatteryLevel(joystick, ctx->charging ? SDL_JOYSTICK_POWER_WIRED : ctx->battery_level);
-                }
+                ctx->has_charging = SDL_TRUE;
+                ctx->charging = cmd_resp_report->payload[0];
+                HIDAPI_DriverShield_UpdatePowerInfo(joystick, ctx);
                 break;
             case CMD_BATTERY_STATE:
-                switch (cmd_resp_report->payload[2]) {
-                case 0:
-                    ctx->battery_level = SDL_JOYSTICK_POWER_EMPTY;
-                    break;
-                case 1:
-                    ctx->battery_level = SDL_JOYSTICK_POWER_LOW;
-                    break;
-                case 2: /* 40% */
-                case 3: /* 60% */
-                case 4: /* 80% */
-                    ctx->battery_level = SDL_JOYSTICK_POWER_MEDIUM;
-                    break;
-                case 5:
-                    ctx->battery_level = SDL_JOYSTICK_POWER_FULL;
-                    break;
-                default:
-                    ctx->battery_level = SDL_JOYSTICK_POWER_UNKNOWN;
-                    break;
-                }
-                if (joystick) {
-                    SDL_SendJoystickBatteryLevel(joystick, ctx->charging ? SDL_JOYSTICK_POWER_WIRED : ctx->battery_level);
-                }
+                ctx->has_battery_level = SDL_TRUE;
+                ctx->battery_level = cmd_resp_report->payload[2];
+                HIDAPI_DriverShield_UpdatePowerInfo(joystick, ctx);
                 break;
             }
             break;

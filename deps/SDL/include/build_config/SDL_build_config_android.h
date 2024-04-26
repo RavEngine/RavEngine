@@ -36,7 +36,6 @@
 #define HAVE_GCC_ATOMICS    1
 
 #define HAVE_ALLOCA_H 1
-#define HAVE_CTYPE_H 1
 #define HAVE_FLOAT_H 1
 #define HAVE_INTTYPES_H 1
 #define HAVE_LIMITS_H 1
@@ -52,6 +51,7 @@
 #define HAVE_WCHAR_H 1
 
 /* C library functions */
+#define HAVE_LIBC   1
 #define HAVE_DLOPEN 1
 #define HAVE_MALLOC 1
 #define HAVE_CALLOC 1
@@ -62,8 +62,6 @@
 #define HAVE_PUTENV 1
 #define HAVE_SETENV 1
 #define HAVE_UNSETENV   1
-#define HAVE_QSORT  1
-#define HAVE_BSEARCH 1
 #define HAVE_ABS    1
 #define HAVE_BCOPY  1
 #define HAVE_MEMSET 1
@@ -86,8 +84,6 @@
 #define HAVE_ATOF 1
 #define HAVE_STRCMP 1
 #define HAVE_STRNCMP    1
-#define HAVE_STRCASECMP 1
-#define HAVE_STRNCASECMP 1
 #define HAVE_STRCASESTR 1
 #define HAVE_VSSCANF 1
 #define HAVE_VSNPRINTF  1
@@ -138,6 +134,8 @@
 #define HAVE_SIGACTION 1
 #define HAVE_SETJMP 1
 #define HAVE_NANOSLEEP  1
+#define HAVE_GMTIME_R 1
+#define HAVE_LOCALTIME_R 1
 #define HAVE_SYSCONF    1
 #define HAVE_CLOCK_GETTIME  1
 
@@ -162,6 +160,9 @@
 /* Enable various threading systems */
 #define SDL_THREAD_PTHREAD  1
 #define SDL_THREAD_PTHREAD_RECURSIVE_MUTEX  1
+
+/* Enable RTC system */
+#define SDL_TIME_UNIX  1
 
 /* Enable various timer systems */
 #define SDL_TIMER_UNIX  1
@@ -188,5 +189,16 @@
 
 /* Enable the filesystem driver */
 #define SDL_FILESYSTEM_ANDROID   1
+#define SDL_FSOPS_POSIX 1
+
+/* Enable the camera driver */
+#define SDL_CAMERA_DRIVER_ANDROID 1
+#define SDL_CAMERA_DRIVER_DUMMY 1
+
+/* Enable nl_langinfo and high-res file times on version 26 and higher. */
+#if __ANDROID_API__ >= 26
+#define HAVE_NL_LANGINFO 1
+#define HAVE_ST_MTIM 1
+#endif
 
 #endif /* SDL_build_config_android_h_ */

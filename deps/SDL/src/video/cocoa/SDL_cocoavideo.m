@@ -31,6 +31,10 @@
 #include "SDL_cocoametalview.h"
 #include "SDL_cocoaopengles.h"
 #include "SDL_cocoamessagebox.h"
+#include "SDL_cocoashape.h"
+
+#include "../../events/SDL_keyboard_c.h"
+#include "../../events/SDL_mouse_c.h"
 
 @implementation SDL_CocoaVideoData
 
@@ -115,6 +119,7 @@ static SDL_VideoDevice *Cocoa_CreateDevice(void)
         device->DestroyWindow = Cocoa_DestroyWindow;
         device->SetWindowHitTest = Cocoa_SetWindowHitTest;
         device->AcceptDragAndDrop = Cocoa_AcceptDragAndDrop;
+        device->UpdateWindowShape = Cocoa_UpdateWindowShape;
         device->FlashWindow = Cocoa_FlashWindow;
         device->SetWindowFocusable = Cocoa_SetWindowFocusable;
         device->SyncWindow = Cocoa_SyncWindow;
@@ -196,6 +201,11 @@ int Cocoa_VideoInit(SDL_VideoDevice *_this)
             return -1;
         }
 
+        // Assume we have a mouse and keyboard
+        // We could use GCMouse and GCKeyboard if we needed to, as is done in SDL_uikitevents.m
+        SDL_AddKeyboard(SDL_DEFAULT_KEYBOARD_ID, NULL, SDL_FALSE);
+        SDL_AddMouse(SDL_DEFAULT_MOUSE_ID, NULL, SDL_FALSE);
+
         data.allow_spaces = SDL_GetHintBoolean(SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES, SDL_TRUE);
         data.trackpad_is_touch_only = SDL_GetHintBoolean(SDL_HINT_TRACKPAD_IS_TOUCH_ONLY, SDL_FALSE);
 
@@ -258,7 +268,7 @@ NSImage *Cocoa_CreateImage(SDL_Surface *surface)
                                                        isPlanar:NO
                                                  colorSpaceName:NSDeviceRGBColorSpace
                                                     bytesPerRow:converted->pitch
-                                                   bitsPerPixel:converted->format->BitsPerPixel];
+                                                   bitsPerPixel:converted->format->bits_per_pixel];
     if (imgrep == nil) {
         SDL_DestroySurface(converted);
         return nil;

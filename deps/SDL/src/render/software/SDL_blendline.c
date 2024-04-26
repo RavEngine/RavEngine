@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-#if SDL_VIDEO_RENDER_SW && !defined(SDL_RENDER_DISABLED)
+#if SDL_VIDEO_RENDER_SW
 
 #include "SDL_draw.h"
 #include "SDL_blendline.h"
@@ -765,7 +765,7 @@ typedef void (*BlendLineFunc)(SDL_Surface *dst,
 
 static BlendLineFunc SDL_CalculateBlendLineFunc(const SDL_PixelFormat *fmt)
 {
-    switch (fmt->BytesPerPixel) {
+    switch (fmt->bytes_per_pixel) {
     case 2:
         if (fmt->Rmask == 0x7C00) {
             return SDL_BlendLine_RGB555;
@@ -859,4 +859,4 @@ int SDL_BlendLines(SDL_Surface *dst, const SDL_Point *points, int count,
     return 0;
 }
 
-#endif /* SDL_VIDEO_RENDER_SW && !SDL_RENDER_DISABLED */
+#endif /* SDL_VIDEO_RENDER_SW */

@@ -269,7 +269,7 @@ JNIEXPORT void JNICALL SDL_JAVA_CONTROLLER_INTERFACE(onNativeHat)(
 JNIEXPORT jint JNICALL SDL_JAVA_CONTROLLER_INTERFACE(nativeAddJoystick)(
     JNIEnv *env, jclass jcls,
     jint device_id, jstring device_name, jstring device_desc, jint vendor_id, jint product_id,
-    jboolean is_accelerometer, jint button_mask, jint naxes, jint axis_mask, jint nhats);
+    jint button_mask, jint naxes, jint axis_mask, jint nhats);
 
 JNIEXPORT jint JNICALL SDL_JAVA_CONTROLLER_INTERFACE(nativeRemoveJoystick)(
     JNIEnv *env, jclass jcls,
@@ -289,7 +289,7 @@ static JNINativeMethod SDLControllerManager_tab[] = {
     { "onNativePadUp", "(II)I", SDL_JAVA_CONTROLLER_INTERFACE(onNativePadUp) },
     { "onNativeJoy", "(IIF)V", SDL_JAVA_CONTROLLER_INTERFACE(onNativeJoy) },
     { "onNativeHat", "(IIII)V", SDL_JAVA_CONTROLLER_INTERFACE(onNativeHat) },
-    { "nativeAddJoystick", "(ILjava/lang/String;Ljava/lang/String;IIZIIII)I", SDL_JAVA_CONTROLLER_INTERFACE(nativeAddJoystick) },
+    { "nativeAddJoystick", "(ILjava/lang/String;Ljava/lang/String;IIIIII)I", SDL_JAVA_CONTROLLER_INTERFACE(nativeAddJoystick) },
     { "nativeRemoveJoystick", "(I)I", SDL_JAVA_CONTROLLER_INTERFACE(nativeRemoveJoystick) },
     { "nativeAddHaptic", "(ILjava/lang/String;)I", SDL_JAVA_CONTROLLER_INTERFACE(nativeAddHaptic) },
     { "nativeRemoveHaptic", "(I)I", SDL_JAVA_CONTROLLER_INTERFACE(nativeRemoveHaptic) }
@@ -380,9 +380,6 @@ static float fLastAccelerometer[3];
 static SDL_bool bHasNewData;
 
 static SDL_bool bHasEnvironmentVariables;
-
-static SDL_AtomicInt bPermissionRequestPending;
-static SDL_bool bPermissionRequestResult;
 
 /* Android AssetManager */
 static void Internal_Android_Create_AssetManager(void);
@@ -823,7 +820,7 @@ JNIEXPORT int JNICALL SDL_JAVA_INTERFACE(nativeRunMain)(JNIEnv *env, jclass cls,
             argv = SDL_small_alloc(char *, 1 + len + 1, &isstack); /* !!! FIXME: check for NULL */
             argc = 0;
             /* Use the name "app_process" so PHYSFS_platformCalcBaseDir() works.
-               https://bitbucket.org/MartinFelis/love-android-sdl2/issue/23/release-build-crash-on-start
+               https://github.com/love2d/love-android/issues/24
              */
             argv[argc++] = SDL_strdup("app_process");
             for (i = 0; i < len; ++i) {
@@ -997,14 +994,6 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(nativeAddTouch)(
     (*env)->ReleaseStringUTFChars(env, name, utfname);
 }
 
-JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(nativePermissionResult)(
-    JNIEnv *env, jclass cls,
-    jint requestCode, jboolean result)
-{
-    bPermissionRequestResult = result;
-    SDL_AtomicSet(&bPermissionRequestPending, SDL_FALSE);
-}
-
 JNIEXPORT void JNICALL
 SDL_JAVA_AUDIO_INTERFACE(addAudioDevice)(JNIEnv *env, jclass jcls, jboolean is_capture,
                                          jstring name, jint device_id)
@@ -1068,14 +1057,14 @@ JNIEXPORT void JNICALL SDL_JAVA_CONTROLLER_INTERFACE(onNativeHat)(
 JNIEXPORT jint JNICALL SDL_JAVA_CONTROLLER_INTERFACE(nativeAddJoystick)(
     JNIEnv *env, jclass jcls,
     jint device_id, jstring device_name, jstring device_desc,
-    jint vendor_id, jint product_id, jboolean is_accelerometer,
+    jint vendor_id, jint product_id,
     jint button_mask, jint naxes, jint axis_mask, jint nhats)
 {
     int retval;
     const char *name = (*env)->GetStringUTFChars(env, device_name, NULL);
     const char *desc = (*env)->GetStringUTFChars(env, device_desc, NULL);
 
-    retval = Android_AddJoystick(device_id, name, desc, vendor_id, product_id, is_accelerometer, button_mask, naxes, axis_mask, nhats);
+    retval = Android_AddJoystick(device_id, name, desc, vendor_id, product_id, button_mask, naxes, axis_mask, nhats);
 
     (*env)->ReleaseStringUTFChars(env, device_name, name);
     (*env)->ReleaseStringUTFChars(env, device_desc, desc);
@@ -1967,11 +1956,12 @@ static void Internal_Android_Destroy_AssetManager()
     }
 }
 
-int Android_JNI_FileOpen(SDL_RWops *ctx,
-                         const char *fileName, const char *mode)
+int Android_JNI_FileOpen(void **puserdata, const char *fileName, const char *mode)
 {
+    SDL_assert(puserdata != NULL);
+
     AAsset *asset = NULL;
-    ctx->hidden.androidio.asset = NULL;
+    *puserdata = NULL;
 
     if (!asset_manager) {
         Internal_Android_Create_AssetManager();
@@ -1986,14 +1976,13 @@ int Android_JNI_FileOpen(SDL_RWops *ctx,
         return SDL_SetError("Couldn't open asset '%s'", fileName);
     }
 
-    ctx->hidden.androidio.asset = (void *)asset;
+    *puserdata = (void *)asset;
     return 0;
 }
 
-size_t Android_JNI_FileRead(SDL_RWops *ctx, void *buffer, size_t size)
+size_t Android_JNI_FileRead(void *userdata, void *buffer, size_t size, SDL_IOStatus *status)
 {
-    AAsset *asset = (AAsset *)ctx->hidden.androidio.asset;
-    int bytes = AAsset_read(asset, buffer, size);
+    const int bytes = AAsset_read((AAsset *)userdata, buffer, size);
     if (bytes < 0) {
         SDL_SetError("AAsset_read() failed");
         return 0;
@@ -2001,31 +1990,24 @@ size_t Android_JNI_FileRead(SDL_RWops *ctx, void *buffer, size_t size)
     return (size_t)bytes;
 }
 
-size_t Android_JNI_FileWrite(SDL_RWops *ctx, const void *buffer, size_t size)
+size_t Android_JNI_FileWrite(void *userdata, const void *buffer, size_t size, SDL_IOStatus *status)
 {
     return SDL_SetError("Cannot write to Android package filesystem");
 }
 
-Sint64 Android_JNI_FileSize(SDL_RWops *ctx)
+Sint64 Android_JNI_FileSize(void *userdata)
 {
-    off64_t result;
-    AAsset *asset = (AAsset *)ctx->hidden.androidio.asset;
-    result = AAsset_getLength64(asset);
-    return result;
+    return (Sint64) AAsset_getLength64((AAsset *)userdata);
 }
 
-Sint64 Android_JNI_FileSeek(SDL_RWops *ctx, Sint64 offset, int whence)
+Sint64 Android_JNI_FileSeek(void *userdata, Sint64 offset, int whence)
 {
-    off64_t result;
-    AAsset *asset = (AAsset *)ctx->hidden.androidio.asset;
-    result = AAsset_seek64(asset, offset, whence);
-    return result;
+    return (Sint64) AAsset_seek64((AAsset *)userdata, offset, whence);
 }
 
-int Android_JNI_FileClose(SDL_RWops *ctx)
+int Android_JNI_FileClose(void *userdata)
 {
-    AAsset *asset = (AAsset *)ctx->hidden.androidio.asset;
-    AAsset_close(asset);
+    AAsset_close((AAsset *)userdata);
     return 0;
 }
 
@@ -2264,7 +2246,7 @@ SDL_bool Android_JNI_IsScreenKeyboardShown(void)
     return is_shown;
 }
 
-int Android_JNI_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
+int Android_JNI_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
 {
     JNIEnv *env;
     jclass clazz;
@@ -2304,7 +2286,7 @@ int Android_JNI_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *bu
 
         temp = sdlButton->flags;
         (*env)->SetIntArrayRegion(env, button_flags, i, 1, &temp);
-        temp = sdlButton->buttonid;
+        temp = sdlButton->buttonID;
         (*env)->SetIntArrayRegion(env, button_ids, i, 1, &temp);
         text = (*env)->NewStringUTF(env, sdlButton->text);
         (*env)->SetObjectArrayElement(env, button_texts, i, text);
@@ -2333,7 +2315,7 @@ int Android_JNI_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *bu
 
     mid = (*env)->GetMethodID(env, clazz,
                               "messageboxShowMessageBox", "(ILjava/lang/String;Ljava/lang/String;[I[I[Ljava/lang/String;[I)I");
-    *buttonid = (*env)->CallIntMethod(env, context, mid,
+    *buttonID = (*env)->CallIntMethod(env, context, mid,
                                       messageboxdata->flags,
                                       title,
                                       message,
@@ -2568,11 +2550,6 @@ const char *SDL_AndroidGetExternalStoragePath(void)
     return s_AndroidExternalFilesPath;
 }
 
-SDL_bool SDL_AndroidRequestPermission(const char *permission)
-{
-    return Android_JNI_RequestPermission(permission);
-}
-
 int SDL_AndroidShowToast(const char *message, int duration, int gravity, int xOffset, int yOffset)
 {
     return Android_JNI_ShowToast(message, duration, gravity, xOffset, yOffset);
@@ -2640,27 +2617,75 @@ SDL_bool Android_JNI_SetRelativeMouseEnabled(SDL_bool enabled)
     return (*env)->CallStaticBooleanMethod(env, mActivityClass, midSetRelativeMouseEnabled, (enabled == 1));
 }
 
-SDL_bool Android_JNI_RequestPermission(const char *permission)
+typedef struct NativePermissionRequestInfo
 {
-    JNIEnv *env = Android_JNI_GetEnv();
-    jstring jpermission;
-    const int requestCode = 1;
+    int request_code;
+    char *permission;
+    SDL_AndroidRequestPermissionCallback callback;
+    void *userdata;
+    struct NativePermissionRequestInfo *next;
+} NativePermissionRequestInfo;
 
-    /* Wait for any pending request on another thread */
-    while (SDL_AtomicGet(&bPermissionRequestPending) == SDL_TRUE) {
-        SDL_Delay(10);
+static NativePermissionRequestInfo pending_permissions;
+
+JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(nativePermissionResult)(
+    JNIEnv *env, jclass cls,
+    jint requestCode, jboolean result)
+{
+    SDL_LockMutex(Android_ActivityMutex);
+    NativePermissionRequestInfo *prev = &pending_permissions;
+    for (NativePermissionRequestInfo *info = prev->next; info != NULL; info = info->next) {
+        if (info->request_code == (int) requestCode) {
+            prev->next = info->next;
+            SDL_UnlockMutex(Android_ActivityMutex);
+            info->callback(info->userdata, info->permission, result ? SDL_TRUE : SDL_FALSE);
+            SDL_free(info->permission);
+            SDL_free(info);
+            return;
+        }
+        prev = info;
     }
-    SDL_AtomicSet(&bPermissionRequestPending, SDL_TRUE);
 
-    jpermission = (*env)->NewStringUTF(env, permission);
-    (*env)->CallStaticVoidMethod(env, mActivityClass, midRequestPermission, jpermission, requestCode);
+    SDL_UnlockMutex(Android_ActivityMutex);
+    SDL_assert(!"Shouldn't have hit this code");  // we had a permission response for a request we never made...?
+}
+
+int SDL_AndroidRequestPermission(const char *permission, SDL_AndroidRequestPermissionCallback cb, void *userdata)
+{
+    if (!permission) {
+        return SDL_InvalidParamError("permission");
+    } else if (!cb) {
+        return SDL_InvalidParamError("cb");
+    }
+
+    NativePermissionRequestInfo *info = (NativePermissionRequestInfo *) SDL_calloc(1, sizeof (NativePermissionRequestInfo));
+    if (!info) {
+        return -1;
+    }
+
+    info->permission = SDL_strdup(permission);
+    if (!info->permission) {
+        SDL_free(info);
+        return -1;
+    }
+
+    static SDL_AtomicInt next_request_code;
+    info->request_code = SDL_AtomicAdd(&next_request_code, 1);
+
+    info->callback = cb;
+    info->userdata = userdata;
+
+    SDL_LockMutex(Android_ActivityMutex);
+    info->next = pending_permissions.next;
+    pending_permissions.next = info;
+    SDL_UnlockMutex(Android_ActivityMutex);
+
+    JNIEnv *env = Android_JNI_GetEnv();
+    jstring jpermission = (*env)->NewStringUTF(env, permission);
+    (*env)->CallStaticVoidMethod(env, mActivityClass, midRequestPermission, jpermission, info->request_code);
     (*env)->DeleteLocalRef(env, jpermission);
 
-    /* Wait for the request to complete */
-    while (SDL_AtomicGet(&bPermissionRequestPending) == SDL_TRUE) {
-        SDL_Delay(10);
-    }
-    return bPermissionRequestResult;
+    return 0;
 }
 
 /* Show toast notification */

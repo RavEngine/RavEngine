@@ -398,7 +398,7 @@ int SDL_DINPUT_JoystickInit(void)
     HRESULT result;
     HINSTANCE instance;
 
-    if (!SDL_GetHintBoolean(SDL_HINT_DIRECTINPUT_ENABLED, SDL_TRUE)) {
+    if (!SDL_GetHintBoolean(SDL_HINT_JOYSTICK_DIRECTINPUT, SDL_TRUE)) {
         /* In some environments, IDirectInput8_Initialize / _EnumDevices can take a minute even with no controllers. */
         dinput = NULL;
         return 0;
@@ -516,13 +516,7 @@ static BOOL CALLBACK EnumJoystickDetectCallback(LPCDIDEVICEINSTANCE pDeviceInsta
 
     CHECK(!SDL_ShouldIgnoreJoystick(pNewJoystick->joystickname, pNewJoystick->guid));
 
-#ifdef SDL_JOYSTICK_HIDAPI
-    CHECK(!HIDAPI_IsDevicePresent(vendor, product, version, pNewJoystick->joystickname));
-#endif
-
-#ifdef SDL_JOYSTICK_RAWINPUT
-    CHECK(!RAWINPUT_IsDevicePresent(vendor, product, version, pNewJoystick->joystickname));
-#endif
+    CHECK(!SDL_JoystickHandledByAnotherDriver(&SDL_WINDOWS_JoystickDriver, vendor, product, version, pNewJoystick->joystickname));
 
     WINDOWS_AddJoystickDevice(pNewJoystick);
     pNewJoystick = NULL;
@@ -855,6 +849,7 @@ int SDL_DINPUT_JoystickOpen(SDL_Joystick *joystick, JoyStick_DeviceData *joystic
     } else if (FAILED(result)) {
         return SetDIerror("IDirectInputDevice8::SetProperty", result);
     }
+    joystick->hwdata->first_update = SDL_TRUE;
 
     /* Poll and wait for initial device state to be populated */
     result = IDirectInputDevice8_Poll(joystick->hwdata->InputDevice);
@@ -1121,7 +1116,14 @@ void SDL_DINPUT_JoystickUpdate(SDL_Joystick *joystick)
         IDirectInputDevice8_Poll(joystick->hwdata->InputDevice);
     }
 
-    if (joystick->hwdata->buffered) {
+    if (joystick->hwdata->first_update) {
+        /* Poll to get the initial state of the joystick */
+        UpdateDINPUTJoystickState_Polled(joystick);
+        joystick->hwdata->first_update = SDL_FALSE;
+        return;
+    }
+
+    if (joystick->hwdata->buffered ) {
         UpdateDINPUTJoystickState_Buffered(joystick);
     } else {
         UpdateDINPUTJoystickState_Polled(joystick);

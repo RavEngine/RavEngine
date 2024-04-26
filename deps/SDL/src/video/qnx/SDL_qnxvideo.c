@@ -20,6 +20,8 @@
 */
 #include "../../SDL_internal.h"
 #include "../SDL_sysvideo.h"
+#include "../../events/SDL_keyboard_c.h"
+#include "../../events/SDL_mouse_c.h"
 #include "SDL_qnx.h"
 
 static screen_context_t context;
@@ -50,7 +52,10 @@ static int videoInit(SDL_VideoDevice *_this)
         return -1;
     }
 
-    _this->num_displays = 1;
+    /* Assume we have a mouse and keyboard */
+    SDL_AddKeyboard(SDL_DEFAULT_KEYBOARD_ID, NULL, SDL_FALSE);
+    SDL_AddMouse(SDL_DEFAULT_MOUSE_ID, NULL, SDL_FALSE);
+
     return 0;
 }
 
@@ -147,7 +152,7 @@ fail:
  * @param[out]  pitch   Holds the number of bytes per line
  * @return  0 if successful, -1 on error
  */
-static int createWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, Uint32 * format,
+static int createWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, SDL_PixelFormatEnum * format,
                         void ** pixels, int *pitch)
 {
     window_impl_t   *impl = (window_impl_t *)window->driverdata;

@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-#ifdef SDL_VIDEO_RENDER_VITA_GXM
+#if SDL_VIDEO_RENDER_VITA_GXM
 
 #include "../SDL_sysrender.h"
 
@@ -42,7 +42,7 @@
 #include <psp2/sysmodule.h>
 #endif
 
-static SDL_Renderer *VITA_GXM_CreateRenderer(SDL_Window *window, SDL_PropertiesID create_props);
+static int VITA_GXM_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_PropertiesID create_props);
 
 static void VITA_GXM_WindowEvent(SDL_Renderer *renderer, const SDL_WindowEvent *event);
 
@@ -103,7 +103,7 @@ SDL_RenderDriver VITA_GXM_RenderDriver = {
     .CreateRenderer = VITA_GXM_CreateRenderer,
     .info = {
         .name = "VITA gxm",
-        .flags = (SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC),
+        .flags = SDL_RENDERER_PRESENTVSYNC,
         .num_texture_formats = 8,
         .texture_formats = {
             [0] = SDL_PIXELFORMAT_ABGR8888,
@@ -210,29 +210,19 @@ static int VITA_GXM_SetVSync(SDL_Renderer *renderer, const int vsync)
     return 0;
 }
 
-SDL_Renderer *VITA_GXM_CreateRenderer(SDL_Window *window, SDL_PropertiesID create_props)
+static int VITA_GXM_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_PropertiesID create_props)
 {
-    SDL_Renderer *renderer;
     VITA_GXM_RenderData *data;
-
-    renderer = (SDL_Renderer *)SDL_calloc(1, sizeof(*renderer));
-    if (!renderer) {
-        return NULL;
-    }
-    renderer->magic = &SDL_renderer_magic;
 
     SDL_SetupRendererColorspace(renderer, create_props);
 
     if (renderer->output_colorspace != SDL_COLORSPACE_SRGB) {
-        SDL_SetError("Unsupported output colorspace");
-        SDL_free(renderer);
-        return NULL;
+        return SDL_SetError("Unsupported output colorspace");
     }
 
     data = (VITA_GXM_RenderData *)SDL_calloc(1, sizeof(VITA_GXM_RenderData));
     if (!data) {
-        SDL_free(renderer);
-        return NULL;
+        return -1;
     }
 
     renderer->WindowEvent = VITA_GXM_WindowEvent;
@@ -249,7 +239,6 @@ SDL_Renderer *VITA_GXM_CreateRenderer(SDL_Window *window, SDL_PropertiesID creat
     renderer->SetRenderTarget = VITA_GXM_SetRenderTarget;
     renderer->QueueSetViewport = VITA_GXM_QueueNoOp;
     renderer->QueueSetDrawColor = VITA_GXM_QueueSetDrawColor;
-    renderer->QueueSetColorScale = VITA_GXM_QueueNoOp;
     renderer->QueueDrawPoints = VITA_GXM_QueueDrawPoints;
     renderer->QueueDrawLines = VITA_GXM_QueueDrawLines;
     renderer->QueueGeometry = VITA_GXM_QueueGeometry;
@@ -262,7 +251,6 @@ SDL_Renderer *VITA_GXM_CreateRenderer(SDL_Window *window, SDL_PropertiesID creat
     renderer->SetVSync = VITA_GXM_SetVSync;
 
     renderer->info = VITA_GXM_RenderDriver.info;
-    renderer->info.flags = SDL_RENDERER_ACCELERATED;
     renderer->driverdata = data;
     VITA_GXM_InvalidateCachedState(renderer);
     renderer->window = window;
@@ -283,11 +271,10 @@ SDL_Renderer *VITA_GXM_CreateRenderer(SDL_Window *window, SDL_PropertiesID creat
 
     if (gxm_init(renderer) != 0) {
         SDL_free(data);
-        SDL_free(renderer);
-        return NULL;
+        return SDL_SetError("gxm_init failed");
     }
 
-    return renderer;
+    return 0;
 }
 
 static void VITA_GXM_WindowEvent(SDL_Renderer *renderer, const SDL_WindowEvent *event)
@@ -341,13 +328,13 @@ static void VITA_GXM_SetYUVProfile(SDL_Renderer *renderer, SDL_Texture *texture)
 {
     VITA_GXM_RenderData *data = (VITA_GXM_RenderData *)renderer->driverdata;
     int ret = 0;
-    if (SDL_ISCOLORSPACE_YUV_BT601(texture->colorspace)) {
+    if (SDL_ISCOLORSPACE_MATRIX_BT601(texture->colorspace)) {
         if (SDL_ISCOLORSPACE_LIMITED_RANGE(texture->colorspace)) {
             ret = sceGxmSetYuvProfile(data->gxm_context, 0, SCE_GXM_YUV_PROFILE_BT601_STANDARD);
         } else {
             ret = sceGxmSetYuvProfile(data->gxm_context, 0, SCE_GXM_YUV_PROFILE_BT601_FULL_RANGE);
         }
-    } else if (SDL_ISCOLORSPACE_YUV_BT709(texture->colorspace)) {
+    } else if (SDL_ISCOLORSPACE_MATRIX_BT709(texture->colorspace)) {
         if (SDL_ISCOLORSPACE_LIMITED_RANGE(texture->colorspace)) {
             ret = sceGxmSetYuvProfile(data->gxm_context, 0, SCE_GXM_YUV_PROFILE_BT709_STANDARD);
         } else {
@@ -982,6 +969,7 @@ static int VITA_GXM_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *c
             if (SDL_memcmp(viewport, &cmd->data.viewport.rect, sizeof(cmd->data.viewport.rect)) != 0) {
                 SDL_copyp(viewport, &cmd->data.viewport.rect);
                 data->drawstate.viewport_dirty = SDL_TRUE;
+                data->drawstate.cliprect_dirty = SDL_TRUE;
             }
             break;
         }
@@ -1002,11 +990,6 @@ static int VITA_GXM_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *c
         }
 
         case SDL_RENDERCMD_SETDRAWCOLOR:
-        {
-            break;
-        }
-
-        case SDL_RENDERCMD_SETCOLORSCALE:
         {
             break;
         }
@@ -1236,7 +1219,6 @@ static void VITA_GXM_DestroyRenderer(SDL_Renderer *renderer)
         data->drawing = SDL_FALSE;
         SDL_free(data);
     }
-    SDL_free(renderer);
 }
 
 #endif /* SDL_VIDEO_RENDER_VITA_GXM */
