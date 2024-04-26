@@ -3,6 +3,7 @@
 #include "App.hpp"
 #include <SDL_messagebox.h>
 #include "Debug.hpp"
+#include "Window.hpp"
 #include <utility>
 
 using namespace std;
@@ -22,6 +23,6 @@ static inline auto MessageBoxToSDLFlag(Dialog::MessageBoxType type){
 }
 
 void Dialog::ShowBasic(const std::string_view& title, const std::string_view& msg, MessageBoxType type){
-    SDL_ShowSimpleMessageBox(MessageBoxToSDLFlag(type), title.data(), msg.data(), nullptr);
+    SDL_ShowSimpleMessageBox(MessageBoxToSDLFlag(type), title.data(), msg.data(), GetApp()->GetMainWindow()->window);
 }
 #endif
