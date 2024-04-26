@@ -245,7 +245,7 @@ void AudioPlayer::SetupAudioTaskGraph(){
             AdditiveBlendSamples(sharedBufferView, mixTempView);
         }
 
-    }).name("Final audio mix").succeed(processDataProviders, processAmbients);
+    }).name("Final audio mix").succeed(processDataProviders, processAmbients, processSimpleRooms);
 }
 
 /**
