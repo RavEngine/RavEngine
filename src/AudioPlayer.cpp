@@ -175,7 +175,6 @@ void AudioPlayer::SetupAudioTaskGraph(){
                 invListenerTransform
             );
             AdditiveBlendSamples(accumulationView, outputView);
-
         }
 
     }).name("Process Simple Audio Rooms").succeed(processDataProviders);
@@ -209,6 +208,7 @@ void AudioPlayer::SetupAudioTaskGraph(){
 
         const auto bufferSize = sharedBufferView.size();
         stackarray(mixTemp, float, bufferSize);
+        TZero(mixTemp, bufferSize);
         PlanarSampleBufferInlineView mixTempView{ mixTemp, bufferSize, bufferSize };
 
         // run the graph on the listener, if present
