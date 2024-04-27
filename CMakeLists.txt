@@ -543,20 +543,15 @@ target_include_directories("${PROJECT_NAME}"
 if (TARGET_APPLE)
     # some apple-specific libraries
     if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-	    find_library(COCOA_LIB Cocoa REQUIRED)
 	    find_library(SM_LIB ServiceManagement REQUIRED)
     endif()
 
-    find_library(FOUNDATION_LIB Foundation REQUIRED)
     find_library(METAL_LIB Metal REQUIRED)
     find_library(QZC_LIB QuartzCore REQUIRED)
-    find_library(CH_LIB CoreHaptics REQUIRED)
 	find_library(ACCEL_LIB Accelerate REQUIRED)
     find_library(CORETEXT_LIB CoreText REQUIRED)    # visionOS needs this for some reason
     
-	if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  	  find_library(IOKIT_LIB IOKit REQUIRED)
-	endif()
+
     SET(ICONV_LIB "iconv")
 
 endif()
@@ -615,14 +610,10 @@ target_link_libraries("${PROJECT_NAME}"
 	"ozz_options"
 	${WIN32_LIBS}
 	${ICONV_LIB}
-	${COCOA_LIB}
 	${SM_LIB}
-	${FOUNDATION_LIB} 
 	${METAL_LIB}
-	${IOKIT_LIB}
     ${CORETEXT_LIB}
 	${QZC_LIB}
-	${CH_LIB}
     ${ATOMIC_LIB}
 	${DXGI_LIB}
 	${EM_LINK}

@@ -28,7 +28,10 @@ if(WIN32)
 endif()
 
 if(APPLE)
-    set(OTHER_LDFLAGS ${OTHER_LDFLAGS} "-framework IOKit -framework Foundation")
+    if (NOT (CMAKE_SYSTEM_NAME MATCHES "tvOS"))
+        set(iokit_lib "-framework IOKit")
+    endif()
+    set(OTHER_LDFLAGS ${OTHER_LDFLAGS} ${iokit_lib} "-framework Foundation")
     list(APPEND PHYSFS_M_SRCS src/physfs_platform_apple.m)
 endif()
 
