@@ -82,7 +82,7 @@ jobs:
         with:
          xcode-version: "15.2"
       - name: Configure
-        run: mkdir -p build && cd build; cmake -G "Xcode" -DCMAKE_SYSTEM_NAME=${{ matrix.platform }} .. 
+        run: mkdir -p build && cd build; cmake -G "Xcode" -DCMAKE_SYSTEM_NAME=${{ matrix.platform }} -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" .. 
       - name: Build
         run: cd build; cmake --build . --config release --target RavEngine -- -quiet
                 

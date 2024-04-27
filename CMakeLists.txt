@@ -94,10 +94,6 @@ if(MSVC)
 	endif()
 endif()
 
-# ==================== Dependencies =====================
-set(CMAKE_OSX_ARCHITECTURES "x86_64"
-"arm64" CACHE INTERNAL "")
-
 # ============ build machine tools ==============
 
 if(NOT (CMAKE_VS_PLATFORM_NAME STREQUAL ""))
@@ -1035,7 +1031,6 @@ function(pack_resources)
 	set_target_properties(${ARGS_TARGET} PROPERTIES 
 		MACOSX_BUNDLE TRUE
 		#XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH $<$<OR:$<CONFIG:DEBUG>,$<CONFIG:CHECKED>,$<CONFIG:PROFILE>>:YES>
-		OSX_ARCHITECTURES "arm64;x86_64"
 		VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 		XCODE_GENERATE_SCHEME ON	# create a scheme in Xcode
 	)
