@@ -18,7 +18,8 @@ namespace RavEngine{
      Does not own the data.
      */
     class PlanarSampleBufferInlineView{
-        std::span<float,std::dynamic_extent> combined_buffers;
+        using data_t = float;
+        std::span<data_t,std::dynamic_extent> combined_buffers;
         size_t sizeOfOneChannelInFrames = 0;
         
         auto channel_at(size_t i) const{
@@ -68,6 +69,10 @@ namespace RavEngine{
          */
         auto sizeOneChannel() const{
             return sizeOfOneChannelInFrames;
+        }
+
+        auto bytesOneChannel() const {
+            return sizeOneChannel() * sizeof(data_t);
         }
 
         /**

@@ -9,6 +9,7 @@
 #include "AudioSource.hpp"
 #include "Types.hpp"
 #include "DebugDrawer.hpp"
+#include "AudioRingbuffer.hpp"
 
 struct _IPLBinauralEffect_t;
 struct _IPLDirectEffect_t;
@@ -17,6 +18,8 @@ namespace RavEngine{
 
 class AudioRoomSyncSystem;
 class AudioPlayer;
+
+#define ENABLE_RINGBUFFERS 1
 
 /**
  Renders audio buffers based on its owning world's state
@@ -57,6 +60,10 @@ public:
 
         SingleAudioRenderBuffer workingBuffers;
         SingleAudioRenderBufferNoScratch accumulationBuffer;
+
+#if ENABLE_RINGBUFFERS
+        AudioRingbuffer debugBuffer;
+#endif
     };
 	
     
