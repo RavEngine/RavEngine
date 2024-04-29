@@ -10,6 +10,7 @@
 #include "Types.hpp"
 #include "DebugDrawer.hpp"
 #include "AudioRingbuffer.hpp"
+#include "Filesystem.hpp"
 
 struct _IPLBinauralEffect_t;
 struct _IPLDirectEffect_t;
@@ -50,6 +51,12 @@ public:
         void DeleteAudioDataForEntity(entity_t entity);
 
         RoomData();
+#if ENABLE_RINGBUFFERS
+        const auto& GetRingBuffer() const{
+            return debugBuffer;
+        }
+        void OutputSampleData(const Filesystem::Path& path) const;
+#endif
         
     private:
         struct SteamAudioEffects {

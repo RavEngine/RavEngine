@@ -11,6 +11,7 @@
 #include "Debug.hpp"
 
 #include "mathtypes.hpp"
+#include "tinywav.h"
 
 using namespace RavEngine;
 using namespace std;
@@ -111,6 +112,29 @@ RavEngine::SimpleAudioSpace::RoomData::RoomData() : workingBuffers(AudioPlayer::
 #endif
 {
 }
+# if ENABLE_RINGBUFFERS
+void RavEngine::SimpleAudioSpace::RoomData::OutputSampleData(const Filesystem::Path& path) const
+{
+    TinyWav tw;
+    tinywav_open_write(&tw,
+        AudioPlayer::GetNChannels(),
+        AudioPlayer::GetSamplesPerSec(),
+        TW_FLOAT32, // the output samples will be 32-bit floats. TW_INT16 is also supported
+        TW_INLINE,  // the samples to be written will be assumed to be inlined in a single buffer.
+        // Other options include TW_INTERLEAVED and TW_SPLIT
+        path.string().c_str() // the output path
+    );
+
+    std::vector<float> audioData(debugBuffer.GetTotalSize(), 0.0f );
+    debugBuffer.UnwindSampleData({audioData.data(),audioData.size(), audioData.size() / debugBuffer.GetNChannels()});
+
+    tinywav_write_f(&tw, audioData.data(), audioData.size());
+
+    tinywav_close_write(&tw);
+
+    Debug::Log("Wrote debug audio {} for SimpleAudioSpace",path);
+}
+#endif
 
 void RavEngine::GeometryAudioSpace::RoomData::ConsiderAudioSource(PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity, const matrix4& invListenerTransform)
 {

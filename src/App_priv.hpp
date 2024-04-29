@@ -478,11 +478,7 @@ App::~App(){
     if (!PHYSFS_isInit()){  // unit tests do not initialize the vfs, so we don't want to procede here
         return;
     }
-#if !RVE_SERVER
-	inputManager = nullptr;
-#endif
-	renderWorld = nullptr;
-	loadedWorlds.clear();
+
 #if !RVE_SERVER
 #ifndef NDEBUG
 	Renderer->DeactivateDebugger();
@@ -499,6 +495,13 @@ App::~App(){
 #endif
 	networkManager.server.reset();
 	networkManager.client.reset();
+
+#if !RVE_SERVER
+	inputManager = nullptr;
+#endif
+	renderWorld = nullptr;
+	loadedWorlds.clear();
+
 	GameNetworkingSockets_Kill();
 	PHYSFS_deinit();
 #if !RVE_SERVER

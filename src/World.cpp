@@ -618,11 +618,19 @@ entity_t World::CreateEntity(){
 }
 
 World::~World() {
+#if ENABLE_RINGBUFFERS
+    // dump out any live rooms
+    Filter([this](const SimpleAudioSpace& space) {
+        space.GetData()->OutputSampleData(Filesystem::CurrentWorkingDirectory() / (std::to_string(space.GetOwner().id) + ".wav"));
+    });
+#endif
+
     for(entity_t i = 0; i < localToGlobal.size(); i++){
         if (EntityIsValid(localToGlobal[i])){
             DestroyEntity(i); // destroy takes a local ID
         }
     }
+
 }
 #if !RVE_SERVER
 void RavEngine::World::PlaySound(const InstantaneousAudioSource& ias) {
