@@ -7,20 +7,16 @@ namespace RavEngine {
      A render buffer for audio processing. Allocated and managed internally.
      */
 
-    struct SingleAudioRenderBuffer_t_Base {
-    protected:
-        static uint16_t impl_GetBufferSize();
-    };
-
     template<bool allocateScratchBuffer = true>
-    struct SingleAudioRenderBuffer_t : protected SingleAudioRenderBuffer_t_Base {
+    struct SingleAudioRenderBuffer_t {
         float* data_impl = nullptr;
         float* scratch_impl = nullptr;
+        const uint32_t totalBufferSize;
         uint8_t nchannels = 0;
-        SingleAudioRenderBuffer_t(uint32_t nsamples, uint8_t nchannels) : nchannels(nchannels) {
-            data_impl = new float[nsamples * nchannels] {0};
+        SingleAudioRenderBuffer_t(uint32_t nsamples, uint8_t nchannels) : nchannels(nchannels), totalBufferSize(nsamples* nchannels) {
+            data_impl = new float[totalBufferSize] {0};
             if constexpr (allocateScratchBuffer) {
-                scratch_impl = new float[nsamples * nchannels] {0};
+                scratch_impl = new float[totalBufferSize] {0};
             }
         }
         ~SingleAudioRenderBuffer_t() {
@@ -36,10 +32,10 @@ namespace RavEngine {
             other.scratch_impl = nullptr;
         }
         PlanarSampleBufferInlineView GetDataBufferView() const {
-            return { data_impl, static_cast<size_t>(impl_GetBufferSize() * nchannels), static_cast<size_t>(impl_GetBufferSize()) };
+            return { data_impl, totalBufferSize, totalBufferSize / nchannels };
         }
         PlanarSampleBufferInlineView GetScratchBufferView() const {
-            return { scratch_impl, static_cast<size_t>(impl_GetBufferSize() * nchannels), static_cast<size_t>(impl_GetBufferSize()) };
+            return { scratch_impl, totalBufferSize, totalBufferSize / nchannels };
         }
     };
 

@@ -18,10 +18,6 @@
 using namespace RavEngine;
 using namespace std;
 
-uint16_t SingleAudioRenderBuffer_t_Base::impl_GetBufferSize(){
-    return AudioPlayer::GetBufferSize();
-}
-
 SampledAudioDataProvider::SampledAudioDataProvider(decltype(asset) a, uint8_t nchannels) : asset(a), AudioDataProvider(AudioPlayer::GetBufferSize(), nchannels){}
 
 AudioSourceComponent::AudioSourceComponent(entity_t owner, Ref<AudioDataProvider> a) : ComponentWithOwner(owner), AudioSourceBase(a){

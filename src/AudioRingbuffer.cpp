@@ -3,12 +3,19 @@
 #include "App.hpp"
 #include "AudioPlayer.hpp"
 
-constexpr static int nsec = 10;
+constexpr static int nbuffers = 10;
+
+
 
 namespace RavEngine {
+
+	static uint32_t GetSizeForNSec(uint32_t nsecs) {
+		return ceil((AudioPlayer::GetSamplesPerSec() * nsecs) / float(AudioPlayer::GetBufferSize())) * AudioPlayer::GetBufferSize();
+	}
+
 	// it's always a multiple of the buffer size
 	// so we don't have to do any math around wrapping mid-buffer
-	AudioRingbuffer::AudioRingbuffer(uint8_t nchannels) : nchannels(nchannels), renderBuffer{AudioPlayer::GetSamplesPerSec() * nsec, nchannels }
+	AudioRingbuffer::AudioRingbuffer(uint8_t nchannels) : nchannels(nchannels), renderBuffer{ GetSizeForNSec(5u), nchannels}
 	{
 
 	}
