@@ -27,7 +27,7 @@ namespace RavEngine {
 			memcpy(outView[i].data() + playhead, data[i].data(), data.bytesOneChannel());
 		}
 		playhead += data.sizeOneChannel();
-		playhead %= outView.sizeOneChannel();
+		playhead %= data.sizeOneChannel();
 	}
 	uint32_t AudioRingbuffer::GetTotalSize() const
 	{
@@ -38,10 +38,10 @@ namespace RavEngine {
 		auto data = renderBuffer.GetDataBufferView();
 		for (int i = 0; i < data.GetNChannels(); i++) {
 			// copy from the current playhead to the end of the buffer
-			memcpy(outView[i].data(), data[i].data() + playhead, data.bytesOneChannel() - playhead);
+			memcpy(outView[i].data(), data[i].data() + playhead, (data.sizeOneChannel() - playhead) * sizeof(float));
 
 			// copy from the beginning of the data to the playhead
-			memcpy(outView[i].data() + playhead, data[i].data(), playhead);
+			memcpy(outView[i].data() + playhead, data[i].data(), playhead * sizeof(float));
 		}
 	}
 }

@@ -11,7 +11,7 @@
 #include "Debug.hpp"
 
 #include "mathtypes.hpp"
-#include "tinywav.h"
+#include "dr_wav.h"
 
 using namespace RavEngine;
 using namespace std;
@@ -116,23 +116,37 @@ RavEngine::SimpleAudioSpace::RoomData::RoomData() : workingBuffers(AudioPlayer::
 void RavEngine::SimpleAudioSpace::RoomData::OutputSampleData(const Filesystem::Path& path) const
 {
     std::vector<float> audioData(debugBuffer.GetTotalSize(), 0.0f);
-    debugBuffer.UnwindSampleData({ audioData.data(),audioData.size(), audioData.size() / debugBuffer.GetNChannels() });
+    PlanarSampleBufferInlineView sourceView{ audioData.data(),audioData.size(), audioData.size() / debugBuffer.GetNChannels() };
+    debugBuffer.UnwindSampleData(sourceView);
 
-    TinyWav tw;
-    tinywav_open_write(&tw,
-        AudioPlayer::GetNChannels(),
-        audioData.size(),
-        TW_FLOAT32, // the output samples will be 32-bit floats. TW_INT16 is also supported
-        TW_INLINE,  // the samples to be written will be assumed to be inlined in a single buffer.
-        // Other options include TW_INTERLEAVED and TW_SPLIT
-        path.string().c_str() // the output path
-    );
+    const auto nchannels = debugBuffer.GetNChannels();
+
+    drwav outputFile;
+    drwav_data_format outputFormat{};
+    outputFormat.container = drwav_container_riff;
+    outputFormat.format = DR_WAVE_FORMAT_PCM;
+    outputFormat.channels = nchannels;
+    outputFormat.sampleRate = AudioPlayer::GetSamplesPerSec();
+    outputFormat.bitsPerSample = 16;
 
 
-    tinywav_write_f(&tw, audioData.data(), audioData.size());
+#if !defined(_WIN32)
+    drwav_bool32 outputFileOk = drwav_init_file_write(&outputFile, path.c_str(), &outputFormat, nullptr);
+#else
+    drwav_bool32 outputFileOk = drwav_init_file_write_w(&outputFile, path.c_str(), &outputFormat, nullptr);
+#endif
+    std::vector<int16_t> interleavedPcm(debugBuffer.GetTotalSize(),0);
+    // interleave audio
+    for (int i = 0; i < interleavedPcm.size(); i++) {
+        //mix with existing
+        // also perform planar-to-interleaved conversion
+        interleavedPcm[i] += sourceView[i % nchannels][i / nchannels] * std::numeric_limits<int16_t>::max();
+    }
 
-    tinywav_close_write(&tw);
+    drwav_write_pcm_frames(&outputFile, interleavedPcm.size(), interleavedPcm.data());
 
+    drwav_uninit(&outputFile);
+    
     Debug::Log("Wrote debug audio {} for SimpleAudioSpace",path.string());
 }
 #endif

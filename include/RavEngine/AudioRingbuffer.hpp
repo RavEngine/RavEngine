@@ -1,5 +1,6 @@
 #pragma once
 #include "AudioRenderBuffer.hpp"
+#include "Function.hpp"
 
 namespace RavEngine {
 
@@ -15,6 +16,10 @@ namespace RavEngine {
 			return nchannels;
 		}
 		void UnwindSampleData(PlanarSampleBufferInlineView data) const;
+
+		PlanarSampleBufferInlineView getDataView() const {
+			return renderBuffer.GetDataBufferView();
+		}
 	};
 
 }

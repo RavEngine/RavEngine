@@ -176,7 +176,7 @@ add_subdirectory("${DEPS_DIR}/concurrentqueue" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/glm" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/r8brain-cmake" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/fmt" EXCLUDE_FROM_ALL)
-add_subdirectory(deps/tinywav EXCLUDE_FROM_ALL)
+add_subdirectory(deps/dr_wav EXCLUDE_FROM_ALL)
 
 # randoms
 set(Random_BuildTests OFF CACHE INTERNAL "")
@@ -592,7 +592,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"GameNetworkingSockets_s"
 	"r8brain"
 	PUBLIC
-	"tinywav"
+	"dr_wav"
 	${SA_LIB}
 	"effolkronium_random"
 	"glm"
@@ -701,7 +701,7 @@ group_in("Libraries" "assimp;assimp_cmd;fmt;DebugUtils;Detour;DetourCrowd;Detour
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL3-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
-sdl_headers_copy;libprotoc;protoc;tinywav;
+sdl_headers_copy;libprotoc;protoc;dr_wav;
 ")
 
 group_in("Libraries/PhysX SDK" 
