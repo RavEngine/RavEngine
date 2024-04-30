@@ -91,10 +91,12 @@ void *alloca(size_t);
 /**
  * The number of elements in an array.
  *
+ * NOTE: This macro double-evaluates the argument, so you should never have
+ * side effects in the parameter.
+ *
  * \since This macro is available since SDL 3.0.0.
  */
-#define SDL_arraysize(array)    (sizeof(array)/sizeof(array[0]))
-#define SDL_TABLESIZE(table)    SDL_arraysize(table)
+#define SDL_arraysize(array) (sizeof(array)/sizeof(array[0]))
 
 /**
  * Macro useful for building other macros with strings in them.
@@ -439,7 +441,7 @@ SDL_COMPILE_TIME_ASSERT(sint64, sizeof(Sint64) == 8);
 #ifndef DOXYGEN_SHOULD_IGNORE_THIS
 #if !defined(SDL_PLATFORM_VITA) && !defined(SDL_PLATFORM_3DS)
 /* TODO: include/SDL_stdinc.h:390: error: size of array 'SDL_dummy_enum' is negative */
-typedef enum
+typedef enum SDL_DUMMY_ENUM
 {
     DUMMY_ENUM_VALUE
 } SDL_DUMMY_ENUM;
