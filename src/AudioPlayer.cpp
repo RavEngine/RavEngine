@@ -177,9 +177,7 @@ void AudioPlayer::SetupAudioTaskGraph(){
             AdditiveBlendSamples(accumulationView, outputView);
         }
 
-#if ENABLE_RINGBUFFERS
-        room->GetRingBuffer().WriteSampleData(accumulationView);
-#endif
+
 
     }).name("Process Simple Audio Rooms").succeed(processDataProviders);
 
@@ -205,6 +203,10 @@ void AudioPlayer::SetupAudioTaskGraph(){
         for (const auto& r : SnapshotToRender->simpleAudioSpaces) {
             auto& buffer = r.room->accumulationBuffer;
             auto view = buffer.GetDataBufferView();
+
+#if ENABLE_RINGBUFFERS
+            r.room->GetRingBuffer().WriteSampleData(buffer.GetDataBufferView());
+#endif
 
             // mix it in
             AdditiveBlendSamples(sharedBufferView, view);
