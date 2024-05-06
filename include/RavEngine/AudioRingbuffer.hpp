@@ -1,6 +1,7 @@
 #pragma once
 #include "AudioRenderBuffer.hpp"
 #include "Function.hpp"
+#include "Filesystem.hpp"
 
 namespace RavEngine {
 
@@ -20,6 +21,8 @@ namespace RavEngine {
 		PlanarSampleBufferInlineView getDataView() const {
 			return renderBuffer.GetDataBufferView();
 		}
+        
+        void DumpToFileNoProcessing(const Filesystem::Path& path) const;
 	};
 
 }

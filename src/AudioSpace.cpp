@@ -11,7 +11,6 @@
 #include "Debug.hpp"
 
 #include "mathtypes.hpp"
-#include "dr_wav.h"
 
 using namespace RavEngine;
 using namespace std;
@@ -115,39 +114,7 @@ RavEngine::SimpleAudioSpace::RoomData::RoomData() : workingBuffers(AudioPlayer::
 # if ENABLE_RINGBUFFERS
 void RavEngine::SimpleAudioSpace::RoomData::OutputSampleData(const Filesystem::Path& path) const
 {
-    std::vector<float> audioData(debugBuffer.GetTotalSize(), 0.0f);
-    PlanarSampleBufferInlineView sourceView{ audioData.data(),audioData.size(), audioData.size() / debugBuffer.GetNChannels() };
-    debugBuffer.UnwindSampleData(sourceView);
-
-    const auto nchannels = debugBuffer.GetNChannels();
-
-    drwav outputFile;
-    drwav_data_format outputFormat{};
-    outputFormat.container = drwav_container_riff;
-    outputFormat.format = DR_WAVE_FORMAT_PCM;
-    outputFormat.channels = nchannels;
-    outputFormat.sampleRate = AudioPlayer::GetSamplesPerSec();
-    outputFormat.bitsPerSample = 16;
-
-
-#if !defined(_WIN32)
-    drwav_bool32 outputFileOk = drwav_init_file_write(&outputFile, path.c_str(), &outputFormat, nullptr);
-#else
-    drwav_bool32 outputFileOk = drwav_init_file_write_w(&outputFile, path.c_str(), &outputFormat, nullptr);
-#endif
-    std::vector<int16_t> interleavedPcm(debugBuffer.GetTotalSize(),0);
-    // interleave audio
-    for (int i = 0; i < interleavedPcm.size(); i++) {
-        //mix with existing
-        // also perform planar-to-interleaved conversion
-        interleavedPcm[i] += sourceView[i % nchannels][i / nchannels] * std::numeric_limits<int16_t>::max();
-    }
-
-    drwav_write_pcm_frames(&outputFile, interleavedPcm.size(), interleavedPcm.data());
-
-    drwav_uninit(&outputFile);
-    
-    Debug::Log("Wrote debug audio {} for SimpleAudioSpace",path.string());
+    debugBuffer.DumpToFileNoProcessing(path);
 }
 #endif
 
