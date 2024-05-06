@@ -2,12 +2,16 @@
 #include "AudioTypes.hpp"
 #include "SpinLock.hpp"
 
+#define RVE_DEBUG_AUDIO_ACCESS 0
+
 namespace RavEngine {
 
     struct SingleAudioRenderBuffer_t_readwritetrack {
+#if RVE_DEBUG_AUDIO_ACCESS
         mutable uint32_t readerCount = 0;           // fake const is a code smell, but required (this class is not public API)
         mutable bool writersActive = false;
         mutable SpinLock mtx;
+#endif
 
         void AcquireRead() const;
         void ReleaseRead() const;
