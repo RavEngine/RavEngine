@@ -528,7 +528,7 @@ std::string to_string(T* value)
     VALIDATE_POINTER(value); \
     if (value) { \
         VALIDATE_IPLDirectEffectFlags(value->flags); \
-        VALIDATE_IPLTransmissionType(value->flags); \
+        VALIDATE_IPLTransmissionType(value->transmissionType); \
         VALIDATE(IPLfloat32, value->distanceAttenuation, (0.0f <= value->distanceAttenuation && value->distanceAttenuation <= 1.0f)); \
         for (int iBand = 0; iBand < 3; ++iBand) { \
             VALIDATE(IPLfloat32, value->airAbsorption[iBand], (0.0f <= value->airAbsorption[iBand] && value->airAbsorption[iBand] <= 1.0f)); \
@@ -806,7 +806,7 @@ std::string to_string(T* value)
 #define VALIDATE_IPLDirectivity(value) { \
     VALIDATE_POINTER(value); \
     if (value) { \
-        VALIDATE(IPLfloat32, value->dipoleWeight, (0.0f <= value->dipoleWeight && 1.0f <= value->dipoleWeight)); \
+        VALIDATE(IPLfloat32, value->dipoleWeight, (0.0f <= value->dipoleWeight && value->dipoleWeight <= 1.0f)); \
         VALIDATE(IPLfloat32, value->dipolePower, (value->dipolePower >= 0.0f)); \
     } \
 }
