@@ -31,10 +31,18 @@ namespace RavEngine {
             other.data_impl = nullptr;
             other.scratch_impl = nullptr;
         }
-        PlanarSampleBufferInlineView GetDataBufferView() const {
+        PlanarSampleBufferInlineView GetWritableDataBufferView() {
             return { data_impl, totalBufferSize, totalBufferSize / nchannels };
         }
-        PlanarSampleBufferInlineView GetScratchBufferView() const {
+        PlanarSampleBufferInlineView GetWritableScratchBufferView() {
+            return { scratch_impl, totalBufferSize, totalBufferSize / nchannels };
+        }
+
+        const PlanarSampleBufferInlineView GetReadonlyDataBufferView() const {
+            return { data_impl, totalBufferSize, totalBufferSize / nchannels };
+        }
+
+        const PlanarSampleBufferInlineView GetReadonlyScratchBufferView() const {
             return { scratch_impl, totalBufferSize, totalBufferSize / nchannels };
         }
     };

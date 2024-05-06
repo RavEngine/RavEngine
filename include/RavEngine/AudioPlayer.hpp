@@ -27,7 +27,7 @@ struct AudioDataProvider;
  */
 class AudioPlayer{
 #if !RVE_SERVER
-    SDL_AudioStream* stream;
+    SDL_AudioStream* stream = nullptr;
 	WeakRef<World> worldToRender;
     uint64_t globalSamples = 0; // in units of a single channel
     _IPLContext_t* steamAudioContext = nullptr;

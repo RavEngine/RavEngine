@@ -85,8 +85,8 @@ void AudioPlayer::SetupAudioTaskGraph(){
     
     
     auto doPlayer = [](auto renderData, auto player){    // must be a AudioDataProvider. We use Auto here to avoid vtable.
-        auto sharedBufferView = renderData->GetDataBufferView();
-        auto effectScratchBuffer = renderData->GetScratchBufferView();
+        auto sharedBufferView = renderData->GetWritableDataBufferView();
+        auto effectScratchBuffer = renderData->GetWritableScratchBufferView();
 
         player->ProvideBufferData(sharedBufferView, effectScratchBuffer);   
     };
@@ -151,9 +151,9 @@ void AudioPlayer::SetupAudioTaskGraph(){
             return;
         }
 
-        auto outputView = room->workingBuffers.GetDataBufferView();
-        auto outputScratchView = room->workingBuffers.GetScratchBufferView();
-        auto accumulationView = room->accumulationBuffer.GetDataBufferView();
+        auto outputView = room->workingBuffers.GetWritableDataBufferView();
+        auto outputScratchView = room->workingBuffers.GetWritableScratchBufferView();
+        auto accumulationView = room->accumulationBuffer.GetWritableDataBufferView();
 
         TZero(accumulationView.data(), accumulationView.size());
 
@@ -165,7 +165,7 @@ void AudioPlayer::SetupAudioTaskGraph(){
 
             // add this source into the room
             auto& buffer = source.data->renderData;
-            auto sourceView = buffer.GetDataBufferView();
+            auto sourceView = buffer.GetReadonlyDataBufferView();
 
             TZero(outputView.data(), outputView.size());
             TZero(outputScratchView.data(), outputScratchView.size());
@@ -177,22 +177,19 @@ void AudioPlayer::SetupAudioTaskGraph(){
             AdditiveBlendSamples(accumulationView, outputView);
         }
 
-
-
     }).name("Process Simple Audio Rooms").succeed(processDataProviders);
 
     // once rooms are done, do the final mix
     auto finalMix = audioTaskflow.emplace([this] {
 
-        auto sharedBufferView = playerRenderBuffer->GetDataBufferView();
-        auto effectScratchBuffer = playerRenderBuffer->GetScratchBufferView();
+        auto sharedBufferView = playerRenderBuffer->GetWritableDataBufferView();
+        auto effectScratchBuffer = playerRenderBuffer->GetWritableScratchBufferView();
 
         TZero(sharedBufferView.data(), sharedBufferView.size());
 
         // ambient sources
         for (auto& source : SnapshotToRender->ambientSources) {
-            auto& buffer = source->renderData;
-            auto view = buffer.GetDataBufferView();
+            auto view = source->renderData.GetReadonlyDataBufferView();
 
             // mix it in
             AdditiveBlendSamples(sharedBufferView, view);
@@ -201,17 +198,16 @@ void AudioPlayer::SetupAudioTaskGraph(){
 
         // rooms
         for (const auto& r : SnapshotToRender->simpleAudioSpaces) {
-            auto& buffer = r.room->accumulationBuffer;
-            auto view = buffer.GetDataBufferView();
+            const auto view = r.room->accumulationBuffer.GetReadonlyDataBufferView();
 
 #if ENABLE_RINGBUFFERS
-            r.room->GetRingBuffer().WriteSampleData(buffer.GetDataBufferView());
+            r.room->GetRingBuffer().WriteSampleData(view);
 #endif
 
             // mix it in
             AdditiveBlendSamples(sharedBufferView, view);
         }
-
+/*
         const auto bufferSize = sharedBufferView.size();
         stackarray(mixTemp, float, bufferSize);
         TZero(mixTemp, bufferSize);
@@ -222,6 +218,7 @@ void AudioPlayer::SetupAudioTaskGraph(){
             SnapshotToRender->listenerGraph->Render(mixTempView, effectScratchBuffer, nchannels);
             AdditiveBlendSamples(sharedBufferView, mixTempView);
         }
+        */
 
         InterleavedSampleBufferView accumView{ interleavedOutputBuffer.data(), interleavedOutputBuffer.size() };
         TZero(accumView.data(), accumView.size());  // reset to silence
@@ -238,7 +235,7 @@ void AudioPlayer::SetupAudioTaskGraph(){
 
         // copy the mix created by worker threads to the current mix 
 
-        auto view = playerRenderBuffer->GetDataBufferView();
+        auto view = playerRenderBuffer->GetWritableDataBufferView();
 
         blendBufferIn(view);
 
@@ -251,6 +248,7 @@ void AudioPlayer::SetupAudioTaskGraph(){
         globalSamples += GetBufferSize();
 
     }).name("Final audio mix").succeed(processDataProviders, processAmbients, processSimpleRooms);
+    audioTaskflow.dump(std::cout);
 }
 
 

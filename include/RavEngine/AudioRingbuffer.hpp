@@ -18,8 +18,8 @@ namespace RavEngine {
 		}
 		void UnwindSampleData(PlanarSampleBufferInlineView data) const;
 
-		PlanarSampleBufferInlineView getDataView() const {
-			return renderBuffer.GetDataBufferView();
+		PlanarSampleBufferInlineView getDataView() {
+			return renderBuffer.GetWritableDataBufferView();
 		}
         
         void DumpToFileNoProcessing(const Filesystem::Path& path) const;
