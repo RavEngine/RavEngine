@@ -186,6 +186,7 @@ void AudioPlayer::SetupAudioTaskGraph(){
         auto effectScratchBuffer = playerRenderBuffer->GetWritableScratchBufferView();
 
         TZero(sharedBufferView.data(), sharedBufferView.size());
+        TZero(effectScratchBuffer.data(), effectScratchBuffer.size());
 
         // ambient sources
         for (auto& source : SnapshotToRender->ambientSources) {
@@ -234,10 +235,7 @@ void AudioPlayer::SetupAudioTaskGraph(){
             };
 
         // copy the mix created by worker threads to the current mix 
-
-        auto view = playerRenderBuffer->GetWritableDataBufferView();
-
-        blendBufferIn(view);
+        blendBufferIn(sharedBufferView);
 
         //clipping: clamp all values to [-1,1]
 #pragma omp simd

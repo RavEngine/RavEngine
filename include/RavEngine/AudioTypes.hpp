@@ -18,6 +18,7 @@ namespace RavEngine{
      Does not own the data.
      */
     class PlanarSampleBufferInlineView{
+    protected:
         using data_t = float;
         std::span<data_t,std::dynamic_extent> combined_buffers;
         size_t sizeOfOneChannelInFrames = 0;
@@ -89,14 +90,14 @@ namespace RavEngine{
         }
     };
 
-    inline void AdditiveBlendSamples(InterleavedSampleBufferView A, const InterleavedSampleBufferView B){
+    inline void AdditiveBlendSamples(InterleavedSampleBufferView& A, const InterleavedSampleBufferView& B){
         auto bounds = std::min(A.size(),A.size());
 #pragma omp simd
         for(decltype(bounds) i = 0; i < bounds; i++){
             A[i] += B[i];
         }
     }
-    inline void AdditiveBlendSamples(PlanarSampleBufferInlineView A, const PlanarSampleBufferInlineView B){
+    inline void AdditiveBlendSamples(PlanarSampleBufferInlineView& A, const PlanarSampleBufferInlineView& B){
 #pragma omp simd
         for(uint8_t c = 0; c < std::min(A.GetNChannels(),B.GetNChannels()); c++){
 #pragma omp simd

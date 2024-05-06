@@ -11,14 +11,14 @@ namespace RavEngine {
 		const uint8_t nchannels;
 	public:
 		AudioRingbuffer(uint8_t nchannels);
-		void WriteSampleData(PlanarSampleBufferInlineView data);
+		void WriteSampleData(const PlanarSampleBufferInlineView& data);
 		uint32_t GetTotalSize() const;
 		auto GetNChannels() const {
 			return nchannels;
 		}
-		void UnwindSampleData(PlanarSampleBufferInlineView data) const;
+		void UnwindSampleData(PlanarSampleBufferInlineView& data) const;
 
-		PlanarSampleBufferInlineView getDataView() {
+		auto getDataView() {
 			return renderBuffer.GetWritableDataBufferView();
 		}
         

@@ -18,7 +18,7 @@ namespace RavEngine {
 	{
 
 	}
-	void AudioRingbuffer::WriteSampleData(PlanarSampleBufferInlineView data)
+	void AudioRingbuffer::WriteSampleData(const PlanarSampleBufferInlineView& data)
 	{
 		auto outView = renderBuffer.GetWritableDataBufferView();
 
@@ -28,14 +28,13 @@ namespace RavEngine {
 		playhead += data.sizeOneChannel();
         
         // wrap playhead around
-        auto view = getDataView();
-		playhead %= view.sizeOneChannel();
+		playhead %= renderBuffer.GetSizeOneChannel();
 	}
 	uint32_t AudioRingbuffer::GetTotalSize() const
 	{
 		return renderBuffer.GetReadonlyDataBufferView().size();
 	}
-	void AudioRingbuffer::UnwindSampleData(PlanarSampleBufferInlineView outView) const
+	void AudioRingbuffer::UnwindSampleData(PlanarSampleBufferInlineView& outView) const
 	{
 		auto data = renderBuffer.GetReadonlyDataBufferView();
 		for (int i = 0; i < data.GetNChannels(); i++) {
