@@ -25,6 +25,8 @@ STATIC(AudioPlayer::nchannels) = 0;
 STATIC(AudioPlayer::buffer_size) = 0;
 STATIC(AudioPlayer::maxAudioSampleLatency) = 0;
 
+#define USE_MT_IMPL 0
+
 constexpr auto doPlayer = [](auto renderData, auto player) {    // must be a AudioDataProvider. We use Auto here to avoid vtable.
     auto sharedBufferView = renderData->GetWritableDataBufferView();
     auto effectScratchBuffer = renderData->GetWritableScratchBufferView();
@@ -87,14 +89,18 @@ void AudioPlayer::Tick() {
     if (queuedSize < maxAudioSampleLatency) {
         GetApp()->SwapRenderAudioSnapshot();
         SnapshotToRender = GetApp()->GetRenderAudioSnapshot();
-
+#if USE_MT_IMPL
         audioExecutor.run(audioTaskflow).wait();
+#else
+        ST_DoMix();
+#endif
         
         SDL_PutAudioStreamData(stream, interleavedOutputBuffer.data(), interleavedOutputBuffer.size() * sizeof(interleavedOutputBuffer[0]));
     }
 }
 
-void RavEngine::AudioPlayer::CalculateSimpleAudioSpaces(AudioSnapshot::SimpleAudioSpaceData& r)
+
+void RavEngine::AudioPlayer::CalculateSimpleAudioSpace(AudioSnapshot::SimpleAudioSpaceData& r)
 {
     auto& room = r.room;
 
@@ -203,37 +209,59 @@ void RavEngine::AudioPlayer::CalculateFinalMix()
     globalSamples += GetBufferSize();
 }
 
+void RavEngine::AudioPlayer::ST_DoMix()
+{
+    PerformAudioTickPreamble();
+
+    for (auto& provider : SnapshotToRender->dataProviders) {
+        doDataProvider(provider);
+    }
+    for (auto& ambient : SnapshotToRender->ambientSources) {
+        doDataProvider(ambient);
+    }
+
+    for (auto& space : SnapshotToRender->simpleAudioSpaces) {
+        CalculateSimpleAudioSpace(space);
+    }
+
+    CalculateFinalMix();
+}
+
+void RavEngine::AudioPlayer::PerformAudioTickPreamble()
+{
+    dataProvidersBegin = SnapshotToRender->dataProviders.begin();
+    dataProvidersEnd = SnapshotToRender->dataProviders.end();
+    ambientSourcesBegin = SnapshotToRender->ambientSources.begin();
+    ambientSourcesEnd = SnapshotToRender->ambientSources.end();
+
+    simpleSpacesBegin = SnapshotToRender->simpleAudioSpaces.begin();
+    simpleSpacesEnd = SnapshotToRender->simpleAudioSpaces.end();
+
+
+    //use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
+    lpos = SnapshotToRender->listenerPos;
+    lrot = SnapshotToRender->listenerRot;
+    invListenerTransform = glm::inverse(glm::translate(matrix4(1), (vector3)lpos) * glm::toMat4((quaternion)lrot));
+
+    auto lockedworld = SnapshotToRender->sourceWorld.lock();
+    if (lockedworld == nullptr) {
+        return;
+    }
+    // copy out the destroyed sources
+    destroyedSources.clear();
+    {
+        entity_t id = INVALID_ENTITY;
+        while (lockedworld->destroyedAudioSources.try_dequeue(id)) {
+            destroyedSources.push_back(id);
+        }
+    }
+}
+
 void AudioPlayer::SetupAudioTaskGraph(){
     
 
     auto updateIterators = audioTaskflow.emplace([this] {
-        dataProvidersBegin = SnapshotToRender->dataProviders.begin();
-        dataProvidersEnd = SnapshotToRender->dataProviders.end();
-        ambientSourcesBegin = SnapshotToRender->ambientSources.begin();
-        ambientSourcesEnd = SnapshotToRender->ambientSources.end();
-
-        simpleSpacesBegin = SnapshotToRender->simpleAudioSpaces.begin();
-        simpleSpacesEnd = SnapshotToRender->simpleAudioSpaces.end();
-
-
-        //use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
-        lpos = SnapshotToRender->listenerPos;
-        lrot = SnapshotToRender->listenerRot;
-        invListenerTransform = glm::inverse(glm::translate(matrix4(1), (vector3)lpos) * glm::toMat4((quaternion)lrot));
-  
-        auto lockedworld = SnapshotToRender->sourceWorld.lock();
-        if (lockedworld == nullptr) {
-            return;
-        }
-        // copy out the destroyed sources
-        destroyedSources.clear();
-        {
-            entity_t id = INVALID_ENTITY;
-            while (lockedworld->destroyedAudioSources.try_dequeue(id)) {
-                destroyedSources.push_back(id);
-            }
-        }
-
+        PerformAudioTickPreamble();
     }).name("Audio Preamble");
 
     // point sources
@@ -244,7 +272,7 @@ void AudioPlayer::SetupAudioTaskGraph(){
 
     // once point sources have completed, start processing Rooms
     auto processSimpleRooms = audioTaskflow.for_each(std::ref(simpleSpacesBegin), std::ref(simpleSpacesEnd), [this](AudioSnapshot::SimpleAudioSpaceData& r) {
-        CalculateSimpleAudioSpaces(r);
+        CalculateSimpleAudioSpace(r);
     }).name("Process Simple Audio Rooms").succeed(processDataProviders);
 
     // once rooms are done, do the final mix
@@ -287,7 +315,9 @@ void AudioPlayer::Init(){
 	
 	Debug::LogTemp("Audio Subsystem initialized");
     
+#if USE_MT_IMPL
     SetupAudioTaskGraph();
+#endif
 
     
     SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(stream));

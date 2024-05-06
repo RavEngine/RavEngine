@@ -69,6 +69,11 @@ class AudioPlayer{
     std::optional<std::thread> audioTickThread;
     std::atomic<bool> audioThreadShouldRun = true;
     std::vector<float> interleavedOutputBuffer;
+
+    void PerformAudioTickPreamble();
+    void CalculateSimpleAudioSpace(AudioSnapshot::SimpleAudioSpaceData&);
+    void CalculateFinalMix();
+    void ST_DoMix();
 #endif
 
     
