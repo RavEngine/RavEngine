@@ -90,10 +90,6 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
 
     AudioGraphComposed::Render(buffer, scratchBuffer, nchannels); // process graph for spatialized audio
 
-#if ENABLE_RINGBUFFERS
-    debugBuffer.WriteSampleData(buffer);
-#endif
-
 }
 
 void RavEngine::SimpleAudioSpace::RoomData::DeleteAudioDataForEntity(entity_t entity)

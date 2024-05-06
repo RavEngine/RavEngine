@@ -52,7 +52,7 @@ public:
 
         RoomData();
 #if ENABLE_RINGBUFFERS
-        const auto& GetRingBuffer() const{
+        auto& GetRingBuffer(){
             return debugBuffer;
         }
         void OutputSampleData(const Filesystem::Path& path) const;

@@ -177,6 +177,10 @@ void AudioPlayer::SetupAudioTaskGraph(){
             AdditiveBlendSamples(accumulationView, outputView);
         }
 
+#if ENABLE_RINGBUFFERS
+        room->GetRingBuffer().WriteSampleData(accumulationView);
+#endif
+
     }).name("Process Simple Audio Rooms").succeed(processDataProviders);
 
     // once rooms are done, do the final mix
