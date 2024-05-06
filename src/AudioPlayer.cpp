@@ -25,6 +25,19 @@ STATIC(AudioPlayer::nchannels) = 0;
 STATIC(AudioPlayer::buffer_size) = 0;
 STATIC(AudioPlayer::maxAudioSampleLatency) = 0;
 
+constexpr auto doPlayer = [](auto renderData, auto player) {    // must be a AudioDataProvider. We use Auto here to avoid vtable.
+    auto sharedBufferView = renderData->GetWritableDataBufferView();
+    auto effectScratchBuffer = renderData->GetWritableScratchBufferView();
+
+    player->ProvideBufferData(sharedBufferView, effectScratchBuffer);
+};
+
+constexpr auto doDataProvider = [](auto&& player) {
+    auto renderData = &player->renderData;
+    static_assert(sizeof(player) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
+    doPlayer(renderData, player);
+};
+
 
 struct AudioWorker : public tf::WorkerInterface{
     void scheduler_prologue(tf::Worker& worker) final{
@@ -81,15 +94,117 @@ void AudioPlayer::Tick() {
     }
 }
 
+void RavEngine::AudioPlayer::CalculateSimpleAudioSpaces(AudioSnapshot::SimpleAudioSpaceData& r)
+{
+    auto& room = r.room;
+
+    // destroyed-sources
+    for (const auto id : destroyedSources) {
+        room->DeleteAudioDataForEntity(id);
+    }
+
+    // existing sources
+    // first check that the listener is inside the room
+    if (!r.IsInsideSourceArea(lpos)) {
+        return;
+    }
+
+    auto outputView = room->workingBuffers.GetWritableDataBufferView();
+    auto outputScratchView = room->workingBuffers.GetWritableScratchBufferView();
+    auto accumulationView = room->accumulationBuffer.GetWritableDataBufferView();
+
+    TZero(accumulationView.data(), accumulationView.size());
+
+    for (const auto& source : SnapshotToRender->sources) {
+        // is this source inside the space? if not, then don't process it
+        if (!r.IsInsideSourceArea(source.worldpos)) {
+            continue;
+        }
+
+        // add this source into the room
+        auto& buffer = source.data->renderData;
+        auto sourceView = buffer.GetReadonlyDataBufferView();
+
+        TZero(outputView.data(), outputView.size());
+        TZero(outputScratchView.data(), outputScratchView.size());
+
+        room->RenderAudioSource(outputView, outputScratchView,
+            sourceView, source.worldpos, source.ownerID,
+            invListenerTransform
+        );
+        AdditiveBlendSamples(accumulationView, outputView);
+    }
+
+}
+
+void RavEngine::AudioPlayer::CalculateFinalMix()
+{
+    auto sharedBufferView = playerRenderBuffer->GetWritableDataBufferView();
+    auto effectScratchBuffer = playerRenderBuffer->GetWritableScratchBufferView();
+
+    TZero(sharedBufferView.data(), sharedBufferView.size());
+    TZero(effectScratchBuffer.data(), effectScratchBuffer.size());
+
+    // ambient sources
+    for (auto& source : SnapshotToRender->ambientSources) {
+        auto view = source->renderData.GetReadonlyDataBufferView();
+
+        // mix it in
+        AdditiveBlendSamples(sharedBufferView, view);
+
+    }
+
+    // rooms
+    for (const auto& r : SnapshotToRender->simpleAudioSpaces) {
+        const auto view = r.room->accumulationBuffer.GetReadonlyDataBufferView();
+
+#if ENABLE_RINGBUFFERS
+        r.room->GetRingBuffer().WriteSampleData(view);
+#endif
+
+        // mix it in
+        AdditiveBlendSamples(sharedBufferView, view);
+    }
+    /*
+            const auto bufferSize = sharedBufferView.size();
+            stackarray(mixTemp, float, bufferSize);
+            TZero(mixTemp, bufferSize);
+            PlanarSampleBufferInlineView mixTempView{ mixTemp, bufferSize, bufferSize };
+
+            // run the graph on the listener, if present
+            if (SnapshotToRender->listenerGraph) {
+                SnapshotToRender->listenerGraph->Render(mixTempView, effectScratchBuffer, nchannels);
+                AdditiveBlendSamples(sharedBufferView, mixTempView);
+            }
+            */
+
+    InterleavedSampleBufferView accumView{ interleavedOutputBuffer.data(), interleavedOutputBuffer.size() };
+    TZero(accumView.data(), accumView.size());  // reset to silence
+
+    const auto blendBufferIn = [accumView](PlanarSampleBufferInlineView sourceView) {
+        const auto nchannels = sourceView.GetNChannels();
+#pragma omp simd
+        for (int i = 0; i < accumView.size(); i++) {
+            //mix with existing
+            // also perform planar-to-interleaved conversion
+            accumView[i] += sourceView[i % nchannels][i / nchannels];
+        }
+        };
+
+    // copy the mix created by worker threads to the current mix 
+    blendBufferIn(sharedBufferView);
+
+    //clipping: clamp all values to [-1,1]
+#pragma omp simd
+    for (int i = 0; i < accumView.size(); i++) {
+        accumView[i] = std::clamp(accumView[i], -1.0f, 1.0f);
+    }
+
+    globalSamples += GetBufferSize();
+}
+
 void AudioPlayer::SetupAudioTaskGraph(){
     
-    
-    auto doPlayer = [](auto renderData, auto player){    // must be a AudioDataProvider. We use Auto here to avoid vtable.
-        auto sharedBufferView = renderData->GetWritableDataBufferView();
-        auto effectScratchBuffer = renderData->GetWritableScratchBufferView();
-
-        player->ProvideBufferData(sharedBufferView, effectScratchBuffer);   
-    };
 
     auto updateIterators = audioTaskflow.emplace([this] {
         dataProvidersBegin = SnapshotToRender->dataProviders.begin();
@@ -122,132 +237,25 @@ void AudioPlayer::SetupAudioTaskGraph(){
     }).name("Audio Preamble");
 
     // point sources
-    auto processDataProviders = audioTaskflow.for_each(std::ref(dataProvidersBegin), std::ref(dataProvidersEnd), [doPlayer,this](auto&& player) {
-        auto renderData = &player->renderData;
-        static_assert(sizeof(player) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
-        doPlayer(renderData, player);
-    }).name("Process point source providers").succeed(updateIterators);
+    auto processDataProviders = audioTaskflow.for_each(std::ref(dataProvidersBegin), std::ref(dataProvidersEnd), doDataProvider).name("Process point source providers").succeed(updateIterators);
 
     // ambient sources
-    auto processAmbients = audioTaskflow.for_each(std::ref(ambientSourcesBegin), std::ref(ambientSourcesEnd), [doPlayer, this](auto&& source) {
-        auto renderData = &source->renderData;
-        static_assert(sizeof(source) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
-        doPlayer(renderData, source);
-    }).name("Process ambient audio").succeed(updateIterators);
+    auto processAmbients = audioTaskflow.for_each(std::ref(ambientSourcesBegin), std::ref(ambientSourcesEnd), doDataProvider).name("Process ambient audio").succeed(updateIterators);
 
     // once point sources have completed, start processing Rooms
-    auto processSimpleRooms = audioTaskflow.for_each(std::ref(simpleSpacesBegin), std::ref(simpleSpacesEnd), [this](auto&& r) {
-       
-        auto& room = r.room;
-
-        // destroyed-sources
-        for (const auto id : destroyedSources) {
-            room->DeleteAudioDataForEntity(id);
-        }
-
-        // existing sources
-        // first check that the listener is inside the room
-        if (!r.IsInsideSourceArea(lpos)) {
-            return;
-        }
-
-        auto outputView = room->workingBuffers.GetWritableDataBufferView();
-        auto outputScratchView = room->workingBuffers.GetWritableScratchBufferView();
-        auto accumulationView = room->accumulationBuffer.GetWritableDataBufferView();
-
-        TZero(accumulationView.data(), accumulationView.size());
-
-        for (const auto& source : SnapshotToRender->sources) {
-            // is this source inside the space? if not, then don't process it
-            if (!r.IsInsideSourceArea(source.worldpos)) {
-                continue;
-            }
-
-            // add this source into the room
-            auto& buffer = source.data->renderData;
-            auto sourceView = buffer.GetReadonlyDataBufferView();
-
-            TZero(outputView.data(), outputView.size());
-            TZero(outputScratchView.data(), outputScratchView.size());
-
-            room->RenderAudioSource(outputView, outputScratchView,
-                sourceView, source.worldpos, source.ownerID,
-                invListenerTransform
-            );
-            AdditiveBlendSamples(accumulationView, outputView);
-        }
-
+    auto processSimpleRooms = audioTaskflow.for_each(std::ref(simpleSpacesBegin), std::ref(simpleSpacesEnd), [this](AudioSnapshot::SimpleAudioSpaceData& r) {
+        CalculateSimpleAudioSpaces(r);
     }).name("Process Simple Audio Rooms").succeed(processDataProviders);
 
     // once rooms are done, do the final mix
     auto finalMix = audioTaskflow.emplace([this] {
 
-        auto sharedBufferView = playerRenderBuffer->GetWritableDataBufferView();
-        auto effectScratchBuffer = playerRenderBuffer->GetWritableScratchBufferView();
-
-        TZero(sharedBufferView.data(), sharedBufferView.size());
-        TZero(effectScratchBuffer.data(), effectScratchBuffer.size());
-
-        // ambient sources
-        for (auto& source : SnapshotToRender->ambientSources) {
-            auto view = source->renderData.GetReadonlyDataBufferView();
-
-            // mix it in
-            AdditiveBlendSamples(sharedBufferView, view);
-            
-        }
-
-        // rooms
-        for (const auto& r : SnapshotToRender->simpleAudioSpaces) {
-            const auto view = r.room->accumulationBuffer.GetReadonlyDataBufferView();
-
-#if ENABLE_RINGBUFFERS
-            r.room->GetRingBuffer().WriteSampleData(view);
-#endif
-
-            // mix it in
-            AdditiveBlendSamples(sharedBufferView, view);
-        }
-/*
-        const auto bufferSize = sharedBufferView.size();
-        stackarray(mixTemp, float, bufferSize);
-        TZero(mixTemp, bufferSize);
-        PlanarSampleBufferInlineView mixTempView{ mixTemp, bufferSize, bufferSize };
-
-        // run the graph on the listener, if present
-        if (SnapshotToRender->listenerGraph) {
-            SnapshotToRender->listenerGraph->Render(mixTempView, effectScratchBuffer, nchannels);
-            AdditiveBlendSamples(sharedBufferView, mixTempView);
-        }
-        */
-
-        InterleavedSampleBufferView accumView{ interleavedOutputBuffer.data(), interleavedOutputBuffer.size() };
-        TZero(accumView.data(), accumView.size());  // reset to silence
-
-        const auto blendBufferIn = [accumView](PlanarSampleBufferInlineView sourceView) {
-            const auto nchannels = sourceView.GetNChannels();
-#pragma omp simd
-            for (int i = 0; i < accumView.size(); i++) {
-                //mix with existing
-                // also perform planar-to-interleaved conversion
-                accumView[i] += sourceView[i % nchannels][i / nchannels];
-            }
-            };
-
-        // copy the mix created by worker threads to the current mix 
-        blendBufferIn(sharedBufferView);
-
-        //clipping: clamp all values to [-1,1]
-#pragma omp simd
-        for (int i = 0; i < accumView.size(); i++) {
-            accumView[i] = std::clamp(accumView[i], -1.0f, 1.0f);
-        }
-
-        globalSamples += GetBufferSize();
+        CalculateFinalMix();
 
     }).name("Final audio mix").succeed(processDataProviders, processAmbients, processSimpleRooms);
     audioTaskflow.dump(std::cout);
 }
+
 
 
 void AudioPlayer::Init(){
@@ -348,5 +356,3 @@ IPLAudioSettings AudioPlayer::GetSteamAudioSettings() const
     return audioSettings;
 }
 #endif
-
-
