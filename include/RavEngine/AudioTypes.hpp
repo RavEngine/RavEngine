@@ -98,7 +98,6 @@ namespace RavEngine{
         }
     }
     inline void AdditiveBlendSamples(PlanarSampleBufferInlineView& A, const PlanarSampleBufferInlineView& B){
-#pragma omp simd
         for(uint8_t c = 0; c < std::min(A.GetNChannels(),B.GetNChannels()); c++){
 #pragma omp simd
             for(size_t i = 0; i < A.sizeOneChannel();i++){

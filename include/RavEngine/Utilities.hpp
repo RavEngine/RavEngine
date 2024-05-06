@@ -64,4 +64,7 @@ Load a shader given its filename (ie "myshader.vsh"). Must include extension.
 RGLShaderLibraryPtr LoadShaderByFilename(const std::string& name, RGLDevicePtr device);
 #endif
 
+void DumpTextFloat(float* ptr, uint64_t size);
+void DumpTextFloatGraph(float* ptr, uint64_t size);
+
 }
