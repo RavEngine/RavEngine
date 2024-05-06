@@ -9,9 +9,8 @@ namespace RavEngine {
 		if (writersActive) {
 			Debug::Fatal("Audio reader taken when writers are active!");
 		}
-		else {
-			readerCount++;
-		}
+		readerCount++;
+
 	}
 	void SingleAudioRenderBuffer_t_readwritetrack::ReleaseRead() const
 	{
@@ -27,9 +26,8 @@ namespace RavEngine {
 		if (readerCount > 0 || writersActive) {
 			Debug::Fatal("Audio writer taken when writers are active, or readers are active!");
 		}
-		else {
-			writersActive = true;
-		}
+		writersActive = true;
+
 	}
 	void SingleAudioRenderBuffer_t_readwritetrack::ReleaseWrite() const
 	{
