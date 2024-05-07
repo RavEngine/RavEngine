@@ -10,9 +10,16 @@ namespace RavEngine {
 	struct AudioMeshAsset {
 		AudioMeshAsset(Ref<MeshAsset> mesh);
 		~AudioMeshAsset();
+		auto GetRadius() const {
+			return radius;
+		}
+		auto GetScene() const {
+			return iplscene;
+		}
 	private:
 		_IPLStaticMesh_t* staticMesh = nullptr;
 		_IPLScene_t* iplscene = nullptr;
+		float radius = 0;
 	};
 
 }

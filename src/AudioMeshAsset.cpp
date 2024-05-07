@@ -8,7 +8,7 @@
 #include <vector>
 
 namespace RavEngine {
-	AudioMeshAsset::AudioMeshAsset(Ref<MeshAsset> mesh) : staticMesh(nullptr)
+	AudioMeshAsset::AudioMeshAsset(Ref<MeshAsset> mesh) : staticMesh(nullptr), radius(mesh->GetRadius())
 	{
 		Debug::Assert(mesh->hasSystemRAMCopy(), "MeshAsset does not have system RAM data");
 		Debug::AssertSize<IPLint32>(mesh->GetNumVerts(), "Mesh has too many vertices");

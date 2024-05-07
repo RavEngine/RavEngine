@@ -120,7 +120,10 @@ void RavEngine::AudioPlayer::CalculateGeometryAudioSpace(AudioSnapshot::Geometry
 
     TZero(accumulationView.data(), accumulationView.size());
 
-    //TODO: add meshes
+    // add meshes
+    for (const auto& mesh : SnapshotToRender->audioMeshes) {
+        room->ConsiderMesh(mesh.asset, mesh.worldTransform, r.worldpos, r.invRoomTransform, mesh.ownerID);
+    }
 
     for (const auto& source : SnapshotToRender->sources) {
 

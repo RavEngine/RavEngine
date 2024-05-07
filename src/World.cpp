@@ -275,7 +275,7 @@ void World::SetupTaskGraph(){
 
     auto copyAudioGeometry = audioTasks.emplace([this] {
         Filter([this](const AudioMeshComponent& mesh, const Transform& transform) {
-            GetApp()->GetCurrentAudioSnapshot()->audioMeshes.emplace_back(transform.GetWorldMatrix(), mesh.GetAsset());
+            GetApp()->GetCurrentAudioSnapshot()->audioMeshes.emplace_back(transform.GetWorldMatrix(), mesh.GetAsset(), mesh.GetOwner().GetIdInWorld());
         });
      }).name("Geometry Audio Meshes").succeed(audioClear);
     

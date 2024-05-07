@@ -9,8 +9,10 @@
 #include <phonon.h>
 #include "App.hpp"
 #include "Debug.hpp"
+#include "AudioMeshAsset.hpp"
 
 #include "mathtypes.hpp"
+#include <glm/gtc/type_ptr.hpp>
 
 using namespace RavEngine;
 using namespace std;
@@ -164,6 +166,9 @@ RavEngine::GeometryAudioSpace::RoomData::~RoomData()
     for (auto& [entity, sourceData] : steamAudioSourceData) {
         DestroySteamAudioSourceConfig(sourceData);
     }
+    for (auto& [entity, meshData] : steamAudioMeshData) {
+        DestroySteamAudioMeshConfig(meshData);
+    }
 
     iplSimulatorRelease(&steamAudioSimulator);
     iplSceneRelease(&rootScene);
@@ -246,13 +251,48 @@ void RavEngine::GeometryAudioSpace::RoomData::CalculateRoom(const matrix4& invRo
 
     //TODO: make this configurable
     iplSimulatorRunDirect(steamAudioSimulator);
-    iplSimulatorRunPathing(steamAudioSimulator);
-    iplSimulatorRunReflections(steamAudioSimulator);
+    //iplSimulatorRunPathing(steamAudioSimulator);
+    //iplSimulatorRunReflections(steamAudioSimulator);
 }
 
-void RavEngine::GeometryAudioSpace::RoomData::ConsiderMesh(Ref<AudioMeshAsset> mesh)
+void RavEngine::GeometryAudioSpace::RoomData::ConsiderMesh(Ref<AudioMeshAsset> mesh, const matrix4& transform, const vector3& roomPos, const matrix4& invRoomTransform, entity_t ownerID)
 {
+    auto meshPos = transform * vector4(0,0,0,1);
 
+    // is it inside the bounds?
+    bool inRange = glm::distance(vector3(meshPos), roomPos) <= mesh->GetRadius() + meshRadius;
+
+    SteamAudioMeshConfig meshConfig;
+    auto it = steamAudioMeshData.find(ownerID);
+    if (it == steamAudioMeshData.end()) {
+        // not in range, and wasn't in range before? bail
+        if (!inRange) {
+            return;
+        }
+
+        auto transformInRoomSpace = glm::transpose(invRoomTransform * transform);   // col-major to row-major
+
+        static_assert(sizeof(transformInRoomSpace) == sizeof(float) * 4 * 4, "transform is not a 4x4 float matrix!");
+
+        // create mesh data
+        IPLInstancedMeshSettings meshSettings{
+            .subScene = mesh->GetScene(),
+        };
+        memcpy(meshSettings.transform.elements, glm::value_ptr(transformInRoomSpace), sizeof(transformInRoomSpace));
+
+        iplInstancedMeshCreate(rootScene, &meshSettings, &meshConfig.instancedMesh);
+        steamAudioMeshData.emplace(ownerID, meshConfig);
+    }
+    else {
+        if (!inRange) {
+            // was in range but no longer is. Destroy its data
+            DestroySteamAudioMeshConfig(it->second);
+            steamAudioMeshData.erase(ownerID);
+            return;
+        }
+
+        meshConfig = it->second;
+    }
 }
 
 void RavEngine::GeometryAudioSpace::RoomData::RenderSpace(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer, entity_t sourceOwningEntity, PlanarSampleBufferInlineView monoSourceData)
@@ -290,6 +330,11 @@ void RavEngine::GeometryAudioSpace::RoomData::DestroySteamAudioSourceConfig(Stea
     //iplBinauralEffectRelease(&effects.binauralEffect);
     //iplDirectEffectRelease(&effects.directEffect);
     iplSourceRelease(&effects.source);
+}
+
+void RavEngine::GeometryAudioSpace::RoomData::DestroySteamAudioMeshConfig(SteamAudioMeshConfig& config)
+{
+    iplInstancedMeshRelease(&config.instancedMesh);
 }
 
 //void RavEngine::AudioRoom::DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const

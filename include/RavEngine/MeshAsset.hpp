@@ -108,6 +108,10 @@ protected:
     friend class RenderEngine;
 	
 public:
+
+	auto GetRadius() const {
+		return radius;
+	}
 	
     struct Manager : public GenericWeakReadThroughCache<std::string,MeshAsset>{};
     

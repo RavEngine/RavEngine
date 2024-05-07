@@ -17,6 +17,7 @@ struct _IPLDirectEffect_t;
 struct _IPLSource_t;
 struct _IPLSimulator_t;
 struct _IPLScene_t;
+struct _IPLInstancedMesh_t;
 
 namespace RavEngine{
 
@@ -121,7 +122,7 @@ public:
 
         void CalculateRoom(const matrix4& invRoomTransform, const vector3& listenerForwardWorldSpace, const vector3& listenerUpWorldSpace, const vector3& listenerRightWorldSpace);
 
-        void ConsiderMesh(Ref<AudioMeshAsset> mesh);
+        void ConsiderMesh(Ref<AudioMeshAsset> mesh, const matrix4& transform, const vector3& roomPos, const matrix4& invRoomTransform, entity_t ownerID);
 
         void RenderSpace(
             PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer,
@@ -140,6 +141,14 @@ public:
 
 
         locked_hashmap<entity_t, SteamAudioSourceConfig, SpinLock> steamAudioSourceData;
+
+        struct SteamAudioMeshConfig {
+            _IPLInstancedMesh_t* instancedMesh = nullptr;
+        };
+
+        void DestroySteamAudioMeshConfig(SteamAudioMeshConfig&);
+
+        locked_hashmap<entity_t, SteamAudioMeshConfig, SpinLock> steamAudioMeshData;
 
         _IPLSimulator_t* steamAudioSimulator = nullptr;
         _IPLScene_t* rootScene = nullptr;
