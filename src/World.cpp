@@ -268,7 +268,7 @@ void World::SetupTaskGraph(){
 
     auto copyGeometryAudioSpaces = audioTasks.emplace([this] {
         Filter([this](const GeometryAudioSpace& room, const Transform& transform) {
-            GetApp()->GetCurrentAudioSnapshot()->geometryAudioSpaces.emplace_back(room.GetData(), transform.GetWorldPosition());
+            GetApp()->GetCurrentAudioSnapshot()->geometryAudioSpaces.emplace_back(room.GetData(), transform.GetWorldPosition(), glm::inverse(transform.GetWorldMatrix()));
         });
 
     }).name("Geometry Audio Spaces").succeed(audioClear);

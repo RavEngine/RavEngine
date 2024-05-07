@@ -59,6 +59,7 @@ class AudioPlayer{
     decltype(AudioSnapshot::dataProviders.begin()) dataProvidersBegin, dataProvidersEnd;
     decltype(AudioSnapshot::ambientSources.begin()) ambientSourcesBegin, ambientSourcesEnd;
     decltype(AudioSnapshot::simpleAudioSpaces.begin()) simpleSpacesBegin, simpleSpacesEnd;
+    decltype(AudioSnapshot::geometryAudioSpaces.begin()) geometrySpacesBegin, geometrySpacesEnd;
 
     vector3 lpos{0};
     quaternion lrot{0,0,0,0};
@@ -69,6 +70,7 @@ class AudioPlayer{
     std::vector<float> interleavedOutputBuffer;
 
     void PerformAudioTickPreamble();
+    void CalculateGeometryAudioSpace(AudioSnapshot::GeometryAudioSpaceData& r);
     void CalculateSimpleAudioSpace(AudioSnapshot::SimpleAudioSpaceData&);
     void CalculateFinalMix();
     void ST_DoMix();

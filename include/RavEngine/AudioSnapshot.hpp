@@ -37,8 +37,8 @@ struct AudioSnapshot{
     using SimpleAudioSpaceData = TAudioSpace<SimpleAudioSpace::RoomData>;
 
     struct GeometryAudioSpaceData : public TAudioSpace<GeometryAudioSpace::RoomData> {
-
-        GeometryAudioSpaceData(const decltype(room)& room, const decltype(worldpos)& wp) : TAudioSpace(room, wp) {}
+        matrix4 invRoomTransform{ 1 };
+        GeometryAudioSpaceData(const decltype(room)& room, const decltype(worldpos)& wp, decltype(invRoomTransform) ivt) : invRoomTransform(ivt), TAudioSpace(room, wp) {}
 
         bool IsInsideMeshArea(const vector3& pos) const{
             return glm::distance2(pos, worldpos) < (room->meshRadius * room->meshRadius);

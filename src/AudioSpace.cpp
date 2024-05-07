@@ -125,11 +125,20 @@ void RavEngine::SimpleAudioSpace::RoomData::DestroyEffects(SteamAudioEffects& ef
 }
 #endif
 
-RavEngine::GeometryAudioSpace::RoomData::RoomData() {
+RavEngine::GeometryAudioSpace::RoomData::RoomData() : workingBuffers(AudioPlayer::GetBufferSize(), AudioPlayer::GetNChannels()), accumulationBuffer{ AudioPlayer::GetBufferSize(), AudioPlayer::GetNChannels() }{
     // load simulator
     IPLSimulationSettings simulationSettings{
         .flags = IPL_SIMULATIONFLAGS_DIRECT,    // this enables occlusion/transmission simulation
         .sceneType = IPL_SCENETYPE_DEFAULT,
+        .reflectionType = IPL_REFLECTIONEFFECTTYPE_CONVOLUTION, // disabled if flags does not include IPL_SIMULATIONFLAGS_REFLECTIONS
+        .maxNumRays = 4096,
+        .numDiffuseSamples = 32,
+        .maxDuration = 2.0f,
+        .maxOrder = 1,
+        .maxNumSources = 8,
+        .numThreads = 2,
+        .samplingRate = IPLint32(AudioPlayer::GetSamplesPerSec()),
+        .frameSize = AudioPlayer::GetBufferSize()
     };
     // see below for examples of how to initialize the remaining fields of this structure
 
@@ -160,18 +169,28 @@ RavEngine::GeometryAudioSpace::RoomData::~RoomData()
     iplSceneRelease(&rootScene);
 }
 
-void RavEngine::GeometryAudioSpace::RoomData::ConsiderAudioSource(PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity, const matrix4& invListenerTransform)
-{
-    constexpr static auto simulationFlags = IPLSimulationFlags(IPL_SIMULATIONFLAGS_DIRECT | IPL_SIMULATIONFLAGS_REFLECTIONS | IPL_SIMULATIONFLAGS_PATHING); //TODO: make this configurable
+constexpr static auto geometrySpaceSimulationFlags = IPLSimulationFlags(IPL_SIMULATIONFLAGS_DIRECT | IPL_SIMULATIONFLAGS_REFLECTIONS | IPL_SIMULATIONFLAGS_PATHING); //TODO: make this configurable
 
-    //TODO: determine if in-radius or not
+
+void RavEngine::GeometryAudioSpace::RoomData::ConsiderAudioSource(const vector3& sourcePos, entity_t owningEntity, const vector3& roomPos, const matrix4& invRoomTransform)
+{
+
+    // determine if in-radius or not
+    bool inRange = glm::distance2(sourcePos, roomPos) <= sourceRadius * sourceRadius;
+
     // if not in-radius, but previously was in-radius, then destroy associated steam audio data 
 
     SteamAudioSourceConfig sourceData;
     auto it = steamAudioSourceData.find(owningEntity);
     if (it == steamAudioSourceData.end()) {
+
+        // out of range, and wasn't in range before. Skip
+        if (!inRange) {
+            return;
+        }
+
         IPLSourceSettings sourceSettings{
-            .flags = simulationFlags
+            .flags = geometrySpaceSimulationFlags
         };
 
 
@@ -180,10 +199,55 @@ void RavEngine::GeometryAudioSpace::RoomData::ConsiderAudioSource(PlanarSampleBu
         iplSourceAdd(sourceData.source, steamAudioSimulator);
     }
     else {
-        sourceData = it->second;
+        if (!inRange) {
+            // destroy data and bail
+            iplSourceRemove(sourceData.source,steamAudioSimulator);
+            DestroySteamAudioSourceConfig(sourceData);
+            steamAudioSourceData.erase(owningEntity);
+            return;
+        }
+        else {
+            sourceData = it->second;
+        }
     }
    
+    // set source config
+    // all positions are in room space
+
+    auto sourceInRoomSpace = invRoomTransform * vector4(roomPos,1);
+
+    IPLSimulationInputs inputs{
+        .flags = geometrySpaceSimulationFlags,
+        .directFlags = IPLDirectSimulationFlags(IPL_DIRECTSIMULATIONFLAGS_OCCLUSION | IPL_DIRECTSIMULATIONFLAGS_TRANSMISSION),
+        .source = {sourceInRoomSpace.x, sourceInRoomSpace.y, sourceInRoomSpace.z},
+        .occlusionType = IPL_OCCLUSIONTYPE_RAYCAST
+    };
+    iplSourceSetInputs(sourceData.source, geometrySpaceSimulationFlags, &inputs);
     
+}
+
+void RavEngine::GeometryAudioSpace::RoomData::CalculateRoom(const matrix4& invRoomTransform, const vector3& listenerForwardWorldSpace, const vector3& listenerUpWorldSpace, const vector3& listenerRightWorldSpace)
+{
+    iplSimulatorCommit(steamAudioSimulator);        // apply all queued changes
+
+    const auto forwardRoomSpace = invRoomTransform * vector4(listenerForwardWorldSpace, 1);
+    const auto upRoomSpace = invRoomTransform * vector4(listenerUpWorldSpace, 1);
+    const auto rightRoomSpace = invRoomTransform * vector4(listenerRightWorldSpace, 1);
+
+    IPLSimulationSharedInputs sharedInputs{
+        .listener = {
+            .right = {rightRoomSpace.x, rightRoomSpace.y, rightRoomSpace.z},
+            .up = {upRoomSpace.x, upRoomSpace.y, upRoomSpace.z},
+            .ahead = {forwardRoomSpace.x, forwardRoomSpace.y, forwardRoomSpace.z},
+            .origin = {0,0,0}
+         }
+    };
+    iplSimulatorSetSharedInputs(steamAudioSimulator, geometrySpaceSimulationFlags, &sharedInputs);
+
+    //TODO: make this configurable
+    iplSimulatorRunDirect(steamAudioSimulator);
+    iplSimulatorRunPathing(steamAudioSimulator);
+    iplSimulatorRunReflections(steamAudioSimulator);
 }
 
 void RavEngine::GeometryAudioSpace::RoomData::ConsiderMesh(Ref<AudioMeshAsset> mesh)
@@ -191,10 +255,22 @@ void RavEngine::GeometryAudioSpace::RoomData::ConsiderMesh(Ref<AudioMeshAsset> m
 
 }
 
-void RavEngine::GeometryAudioSpace::RoomData::RenderSpace(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer)
+void RavEngine::GeometryAudioSpace::RoomData::RenderSpace(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer, entity_t sourceOwningEntity, PlanarSampleBufferInlineView monoSourceData)
 {
+    auto it = steamAudioSourceData.find(sourceOwningEntity);
+    if (it == steamAudioSourceData.end()) {
+        // something invalid has happend!
+        Debug::Fatal("Attempting to render source that was not calculated in CalculateRoom()");
+    }
+    else {
+        IPLSimulationOutputs outputs{};
 
-    iplSimulatorCommit(steamAudioSimulator);        // apply all queued changes
+        auto& sourceData = it->second;
+        iplSourceGetOutputs(sourceData.source, IPLSimulationFlags(IPL_SIMULATIONFLAGS_DIRECT | IPL_SIMULATIONFLAGS_PATHING | IPL_SIMULATIONFLAGS_REFLECTIONS), &outputs);
+
+        // TODO: use the settings on direct, pathing, and reflection effects 
+    }
+    
 }
 
 void RavEngine::GeometryAudioSpace::RoomData::DeleteAudioDataForEntity(entity_t entity) {

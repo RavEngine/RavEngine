@@ -99,6 +99,36 @@ void AudioPlayer::Tick() {
     }
 }
 
+void RavEngine::AudioPlayer::CalculateGeometryAudioSpace(AudioSnapshot::GeometryAudioSpaceData& r) {
+    auto& room = r.room;
+
+    // destroyed-sources
+    for (const auto id : destroyedSources) {
+        room->DeleteAudioDataForEntity(id);
+    }
+
+    //TODO: destroyed-meshoccluders
+
+    // first check that the listener is inside the room
+    if (!r.IsInsideMeshArea(lpos)) {
+        return;
+    }
+
+    auto outputView = room->workingBuffers.GetWritableDataBufferView();
+    auto outputScratchView = room->workingBuffers.GetWritableScratchBufferView();
+    auto accumulationView = room->accumulationBuffer.GetWritableDataBufferView();
+
+    TZero(accumulationView.data(), accumulationView.size());
+
+    //TODO: add meshes
+
+    for (const auto& source : SnapshotToRender->sources) {
+
+        room->ConsiderAudioSource(source.worldpos, source.ownerID, r.worldpos, r.invRoomTransform);
+    }
+
+    //room->CalculateRoom(r.invRoomTransform, )
+}
 
 void RavEngine::AudioPlayer::CalculateSimpleAudioSpace(AudioSnapshot::SimpleAudioSpaceData& r)
 {
@@ -224,6 +254,10 @@ void RavEngine::AudioPlayer::ST_DoMix()
         CalculateSimpleAudioSpace(space);
     }
 
+    for (auto& space : SnapshotToRender->geometryAudioSpaces) {
+        CalculateGeometryAudioSpace(space);
+    }
+
     CalculateFinalMix();
 }
 
@@ -236,6 +270,9 @@ void RavEngine::AudioPlayer::PerformAudioTickPreamble()
 
     simpleSpacesBegin = SnapshotToRender->simpleAudioSpaces.begin();
     simpleSpacesEnd = SnapshotToRender->simpleAudioSpaces.end();
+
+    geometrySpacesBegin = SnapshotToRender->geometryAudioSpaces.begin();
+    geometrySpacesEnd = SnapshotToRender->geometryAudioSpaces.end();
 
 
     //use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
@@ -275,12 +312,16 @@ void AudioPlayer::SetupAudioTaskGraph(){
         CalculateSimpleAudioSpace(r);
     }).name("Process Simple Audio Rooms").succeed(processDataProviders);
 
+    auto processGeometryRooms = audioTaskflow.for_each(std::ref(geometrySpacesBegin), std::ref(geometrySpacesEnd), [this](AudioSnapshot::GeometryAudioSpaceData& r) {
+        CalculateGeometryAudioSpace(r);
+    }).name("Process Geometry Audio Rooms").succeed(processDataProviders);
+
     // once rooms are done, do the final mix
     auto finalMix = audioTaskflow.emplace([this] {
 
         CalculateFinalMix();
 
-    }).name("Final audio mix").succeed(processDataProviders, processAmbients, processSimpleRooms);
+    }).name("Final audio mix").succeed(processDataProviders, processAmbients, processSimpleRooms, processGeometryRooms);
     audioTaskflow.dump(std::cout);
 }
 

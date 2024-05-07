@@ -109,19 +109,23 @@ struct GeometryAudioSpace : public ComponentWithOwner, public Queryable<Geometry
 public:
 
     struct RoomData {
+        friend class RavEngine::AudioPlayer;
         RoomData();
         ~RoomData();
         float sourceRadius = 10, meshRadius = 10;
 
 
         void ConsiderAudioSource(
-            PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity,
-            const matrix4& invListenerTransform);
+            const vector3& sourcePos, entity_t owningEntity, const vector3& roomPos,
+            const matrix4& invRoomTransform);
+
+        void CalculateRoom(const matrix4& invRoomTransform, const vector3& listenerForwardWorldSpace, const vector3& listenerUpWorldSpace, const vector3& listenerRightWorldSpace);
 
         void ConsiderMesh(Ref<AudioMeshAsset> mesh);
 
         void RenderSpace(
-            PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer
+            PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer,
+            entity_t sourceOwningEntity, PlanarSampleBufferInlineView monoSourceData
         );
 
         // internal use only. Called when an audio source component is destroyed
@@ -139,6 +143,9 @@ public:
 
         _IPLSimulator_t* steamAudioSimulator = nullptr;
         _IPLScene_t* rootScene = nullptr;
+
+        SingleAudioRenderBuffer workingBuffers;
+        SingleAudioRenderBufferNoScratch accumulationBuffer;
     };
 
     const auto GetData() const {
