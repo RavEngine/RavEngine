@@ -34,7 +34,7 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
         iplBinauralEffectCreate(state.context, &settings, &effectSettings, &effects.binauralEffect);
 
         IPLDirectEffectSettings directEffectSettings{
-            .numChannels = 1,
+            .numChannels = AudioPlayer::GetNChannels(),
         };
         iplDirectEffectCreate(state.context, &settings, &directEffectSettings, &effects.directEffect);
 
@@ -202,6 +202,27 @@ void RavEngine::GeometryAudioSpace::RoomData::ConsiderAudioSource(const vector3&
         iplSourceCreate(steamAudioSimulator, &sourceSettings, &sourceData.source);
         steamAudioSourceData.emplace(owningEntity, sourceData);
         iplSourceAdd(sourceData.source, steamAudioSimulator);
+
+        auto& audioPlayer = GetApp()->GetAudioPlayer();
+        auto state = audioPlayer->GetSteamAudioState();
+        auto settings = audioPlayer->GetSteamAudioSettings();
+
+        // create effects
+        IPLDirectEffectSettings directEffectSettings{
+           .numChannels = AudioPlayer::GetNChannels(),
+        };
+        iplDirectEffectCreate(state.context, &settings, &directEffectSettings, &sourceData.directEffect);
+
+        IPLPathEffectSettings pathEffectSettings{
+            .maxOrder = 1,  //TODO: is this a good number? we should make this configurable
+            .spatialize = IPL_TRUE,
+            .speakerLayout = {
+                .type = IPL_SPEAKERLAYOUTTYPE_STEREO,   // other values are optional if type != IPL_SPEAKERLAYOUTTYPE_CUSTOM
+            },
+            .hrtf = state.hrtf
+        };
+
+        iplPathEffectCreate(state.context, &settings, &pathEffectSettings, &sourceData.pathEffect);
     }
     else {
         if (!inRange) {
@@ -322,13 +343,17 @@ void RavEngine::GeometryAudioSpace::RoomData::DeleteAudioDataForEntity(entity_t 
 
 void RavEngine::GeometryAudioSpace::RoomData::DeleteMeshDataForEntity(entity_t entity)
 {
-
+    steamAudioMeshData.if_contains(entity, [this](SteamAudioMeshConfig& effects) {
+        DestroySteamAudioMeshConfig(effects);
+    });
+    steamAudioMeshData.erase(entity);
 }
 
 void RavEngine::GeometryAudioSpace::RoomData::DestroySteamAudioSourceConfig(SteamAudioSourceConfig& effects)
 {
     //iplBinauralEffectRelease(&effects.binauralEffect);
-    //iplDirectEffectRelease(&effects.directEffect);
+    iplDirectEffectRelease(&effects.directEffect);
+    iplPathEffectRelease(&effects.pathEffect);
     iplSourceRelease(&effects.source);
 }
 

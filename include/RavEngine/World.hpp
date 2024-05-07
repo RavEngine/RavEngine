@@ -44,6 +44,7 @@ namespace RavEngine {
     struct InstantaneousAmbientAudioSource;
     struct AudioSourceComponent;
     struct InstantaneousAudioSourceToPlay;
+    struct AudioMeshComponent;
 
     template <typename T, typename... Ts>
     struct Index;
@@ -93,7 +94,7 @@ namespace RavEngine {
         friend class PhysicsBodyComponent;
         Vector<entity_t> localToGlobal;
         Queue<entity_t> available;
-        ConcurrentQueue<entity_t> destroyedAudioSources;
+        ConcurrentQueue<entity_t> destroyedAudioSources, destroyedMeshSources;
 
         class InstantaneousAudioSourceFreeList {
             entity_t nextID = INVALID_ENTITY - 1;
@@ -702,6 +703,9 @@ namespace RavEngine {
             }
             else if constexpr (std::is_same_v<T, AudioSourceComponent>) {
                 destroyedAudioSources.enqueue(local_id);
+            }
+            else if constexpr (std::is_same_v<T, AudioMeshComponent>) {
+                destroyedMeshSources.enqueue(local_id);
             }
 #endif
             

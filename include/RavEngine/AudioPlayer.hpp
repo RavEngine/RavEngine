@@ -54,7 +54,7 @@ class AudioPlayer{
     tf::Future<void> taskflowFuture;
     
     void SetupAudioTaskGraph();
-    std::vector<entity_t> destroyedSources;
+    std::vector<entity_t> destroyedSources, destroyedMeshComponents;
 
     decltype(AudioSnapshot::dataProviders.begin()) dataProvidersBegin, dataProvidersEnd;
     decltype(AudioSnapshot::ambientSources.begin()) ambientSourcesBegin, ambientSourcesEnd;
@@ -63,7 +63,7 @@ class AudioPlayer{
 
     vector3 lpos{0};
     quaternion lrot{0,0,0,0};
-    matrix4 invListenerTransform{ 1 };
+    matrix4 invListenerTransform{ 1 }, listenerTransform{ 1 };
 
     std::optional<std::thread> audioTickThread;
     std::atomic<bool> audioThreadShouldRun = true;

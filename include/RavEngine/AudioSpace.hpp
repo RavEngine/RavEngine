@@ -18,6 +18,7 @@ struct _IPLSource_t;
 struct _IPLSimulator_t;
 struct _IPLScene_t;
 struct _IPLInstancedMesh_t;
+struct _IPLPathEffect_t;
 
 namespace RavEngine{
 
@@ -115,13 +116,34 @@ public:
         ~RoomData();
         float sourceRadius = 10, meshRadius = 10;
 
-
+        /**
+        Present an audio source to the room. Depending on its position, it may or may not be added or removed from the room
+        @param sourcePos the world-space position of the audio source
+        @param owningEntity the world-local entity ID of the source
+        @param roomPos the world-space position of the audio space
+        @param invRoomTransform the inverse of the room's world-space transformation matrix
+        */
         void ConsiderAudioSource(
             const vector3& sourcePos, entity_t owningEntity, const vector3& roomPos,
             const matrix4& invRoomTransform);
 
+        /**
+        Compute the Effect parameters for this room
+        @param invRoomTranform the inverse of the room's world-space transformation matrix
+        @param listenerForwardWorldSpace the forward vector for the listener in world space
+        @param listenerUpWorldSpace the up vector for the listener in world space
+        @param listenerRightWorldSpace the right vector for the listener in world space
+        */
         void CalculateRoom(const matrix4& invRoomTransform, const vector3& listenerForwardWorldSpace, const vector3& listenerUpWorldSpace, const vector3& listenerRightWorldSpace);
 
+        /**
+        Present a mesh occluder to the room. Depending on its position, it may or may not be added or removed from the room
+        @param mesh the asset representing the mesh
+        @param transform the world-space transform of the mesh 
+        @param roomPos the world-space position of the room
+        @param invRoomTransform the inverse of the world-space transformation matrix for the room
+        @param ownerID the world-local owner ID for the mesh
+        */
         void ConsiderMesh(Ref<AudioMeshAsset> mesh, const matrix4& transform, const vector3& roomPos, const matrix4& invRoomTransform, entity_t ownerID);
 
         void RenderSpace(
@@ -135,10 +157,12 @@ public:
     private:
         struct SteamAudioSourceConfig {
             _IPLSource_t* source = nullptr;
+            _IPLDirectEffect_t* directEffect = nullptr;
+            _IPLPathEffect_t* pathEffect = nullptr;
         };
 
+        // must be called when destroying a SteamAudioSourceConfig
         void DestroySteamAudioSourceConfig(SteamAudioSourceConfig&);
-
 
         locked_hashmap<entity_t, SteamAudioSourceConfig, SpinLock> steamAudioSourceData;
 
@@ -146,6 +170,7 @@ public:
             _IPLInstancedMesh_t* instancedMesh = nullptr;
         };
 
+        // must be called when destroying a SteamAudioMeshConfig
         void DestroySteamAudioMeshConfig(SteamAudioMeshConfig&);
 
         locked_hashmap<entity_t, SteamAudioMeshConfig, SpinLock> steamAudioMeshData;

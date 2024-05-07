@@ -107,7 +107,10 @@ void RavEngine::AudioPlayer::CalculateGeometryAudioSpace(AudioSnapshot::Geometry
         room->DeleteAudioDataForEntity(id);
     }
 
-    //TODO: destroyed-meshoccluders
+    // destroyed-meshoccluders
+    for (const auto id : destroyedMeshComponents) {
+        room->DeleteMeshDataForEntity(id);
+    }
 
     // first check that the listener is inside the room
     if (!r.IsInsideMeshArea(lpos)) {
@@ -130,7 +133,17 @@ void RavEngine::AudioPlayer::CalculateGeometryAudioSpace(AudioSnapshot::Geometry
         room->ConsiderAudioSource(source.worldpos, source.ownerID, r.worldpos, r.invRoomTransform);
     }
 
-    //room->CalculateRoom(r.invRoomTransform, )
+    // get dirvecs in world space
+    auto listenerForward = listenerTransform * vector4(vector3_forward, 1);
+    auto listenerRight = listenerTransform * vector4(vector3_right, 1);
+    auto listenerUp = listenerTransform * vector4(vector3_up, 1);
+
+    // transform them into room space
+    listenerForward = r.invRoomTransform * listenerForward;
+    listenerRight = r.invRoomTransform * listenerRight;
+    listenerUp = r.invRoomTransform * listenerUp;
+
+    room->CalculateRoom(r.invRoomTransform, listenerForward, listenerUp, listenerRight);
 }
 
 void RavEngine::AudioPlayer::CalculateSimpleAudioSpace(AudioSnapshot::SimpleAudioSpaceData& r)
@@ -281,7 +294,8 @@ void RavEngine::AudioPlayer::PerformAudioTickPreamble()
     //use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
     lpos = SnapshotToRender->listenerPos;
     lrot = SnapshotToRender->listenerRot;
-    invListenerTransform = glm::inverse(glm::translate(matrix4(1), (vector3)lpos) * glm::toMat4((quaternion)lrot));
+    listenerTransform = glm::translate(matrix4(1), (vector3)lpos) * glm::toMat4((quaternion)lrot);
+    invListenerTransform = glm::inverse(listenerTransform);
 
     auto lockedworld = SnapshotToRender->sourceWorld.lock();
     if (lockedworld == nullptr) {
@@ -293,6 +307,13 @@ void RavEngine::AudioPlayer::PerformAudioTickPreamble()
         entity_t id = INVALID_ENTITY;
         while (lockedworld->destroyedAudioSources.try_dequeue(id)) {
             destroyedSources.push_back(id);
+        }
+    }
+    destroyedMeshComponents.clear();
+    {
+        entity_t id = INVALID_ENTITY;
+        while (lockedworld->destroyedAudioSources.try_dequeue(id)) {
+            destroyedMeshComponents.push_back(id);
         }
     }
 }
