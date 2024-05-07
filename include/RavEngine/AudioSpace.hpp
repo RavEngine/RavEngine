@@ -14,11 +14,15 @@
 
 struct _IPLBinauralEffect_t;
 struct _IPLDirectEffect_t;
+struct _IPLSource_t;
+struct _IPLSimulator_t;
+struct _IPLScene_t;
 
 namespace RavEngine{
 
 class AudioRoomSyncSystem;
 class AudioPlayer;
+struct AudioMeshAsset;
 
 #define ENABLE_RINGBUFFERS 1
 
@@ -51,6 +55,7 @@ public:
         void DeleteAudioDataForEntity(entity_t entity);
 
         RoomData();
+        ~RoomData();
 #if ENABLE_RINGBUFFERS
         auto& GetRingBuffer(){
             return debugBuffer;
@@ -63,6 +68,9 @@ public:
             _IPLBinauralEffect_t* binauralEffect = nullptr;
             _IPLDirectEffect_t* directEffect = nullptr;
         };
+
+        void DestroyEffects(SteamAudioEffects&);
+
         locked_hashmap<entity_t, SteamAudioEffects,SpinLock> steamAudioData;
 
         SingleAudioRenderBuffer workingBuffers;
@@ -101,6 +109,8 @@ struct GeometryAudioSpace : public ComponentWithOwner, public Queryable<Geometry
 public:
 
     struct RoomData {
+        RoomData();
+        ~RoomData();
         float sourceRadius = 10, meshRadius = 10;
 
 
@@ -108,7 +118,7 @@ public:
             PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity,
             const matrix4& invListenerTransform);
 
-        void ConsiderMesh();
+        void ConsiderMesh(Ref<AudioMeshAsset> mesh);
 
         void RenderSpace(
             PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer
@@ -118,7 +128,17 @@ public:
         void DeleteAudioDataForEntity(entity_t entity);
         void DeleteMeshDataForEntity(entity_t entity);
     private:
+        struct SteamAudioSourceConfig {
+            _IPLSource_t* source = nullptr;
+        };
 
+        void DestroySteamAudioSourceConfig(SteamAudioSourceConfig&);
+
+
+        locked_hashmap<entity_t, SteamAudioSourceConfig, SpinLock> steamAudioSourceData;
+
+        _IPLSimulator_t* steamAudioSimulator = nullptr;
+        _IPLScene_t* rootScene = nullptr;
     };
 
     const auto GetData() const {

@@ -14,7 +14,6 @@
 struct _IPLContext_t;
 struct _IPLHRTF_t;
 struct _IPLAudioSettings_t;
-struct _IPLSimulator_t;
 
 namespace RavEngine{
 
@@ -32,7 +31,6 @@ class AudioPlayer{
     uint64_t globalSamples = 0; // in units of a single channel
     _IPLContext_t* steamAudioContext = nullptr;
     _IPLHRTF_t* steamAudioHRTF = nullptr;
-    _IPLSimulator_t* steamAudioSimulator = nullptr;
 #endif
 
     

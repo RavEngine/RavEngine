@@ -94,9 +94,8 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
 
 void RavEngine::SimpleAudioSpace::RoomData::DeleteAudioDataForEntity(entity_t entity)
 {
-    steamAudioData.if_contains(entity, [](SteamAudioEffects& effects) {
-        iplBinauralEffectRelease(&effects.binauralEffect);
-        iplDirectEffectRelease(&effects.directEffect);
+    steamAudioData.if_contains(entity, [this](SteamAudioEffects& effects) {
+        DestroyEffects(effects);
     });
     steamAudioData.erase(entity);
 }
@@ -107,28 +106,114 @@ RavEngine::SimpleAudioSpace::RoomData::RoomData() : workingBuffers(AudioPlayer::
 #endif
 {
 }
+RavEngine::SimpleAudioSpace::RoomData::~RoomData() {
+    for (auto& [entity, effects] : steamAudioData) {
+        DestroyEffects(effects);
+    }
+}
+
+
 # if ENABLE_RINGBUFFERS
 void RavEngine::SimpleAudioSpace::RoomData::OutputSampleData(const Filesystem::Path& path) const
 {
     debugBuffer.DumpToFileNoProcessing(path);
 }
+void RavEngine::SimpleAudioSpace::RoomData::DestroyEffects(SteamAudioEffects& effects)
+{
+    iplBinauralEffectRelease(&effects.binauralEffect);
+    iplDirectEffectRelease(&effects.directEffect);
+}
 #endif
 
+RavEngine::GeometryAudioSpace::RoomData::RoomData() {
+    // load simulator
+    IPLSimulationSettings simulationSettings{
+        .flags = IPL_SIMULATIONFLAGS_DIRECT,    // this enables occlusion/transmission simulation
+        .sceneType = IPL_SCENETYPE_DEFAULT,
+    };
+    // see below for examples of how to initialize the remaining fields of this structure
+
+    auto context = GetApp()->GetAudioPlayer()->GetSteamAudioContext();
+
+    auto errorCode = iplSimulatorCreate(context, &simulationSettings, &steamAudioSimulator);
+    if (errorCode) {
+        Debug::Fatal("Cannot create Steam Audio Simulator: {}", int(errorCode));
+    }
+
+
+    IPLSceneSettings sceneSettings{
+        .type = IPL_SCENETYPE_DEFAULT
+    };
+    iplSceneCreate(context, &sceneSettings, &rootScene);
+
+    iplSimulatorSetScene(steamAudioSimulator, rootScene);
+
+}
+
+RavEngine::GeometryAudioSpace::RoomData::~RoomData()
+{
+    for (auto& [entity, sourceData] : steamAudioSourceData) {
+        DestroySteamAudioSourceConfig(sourceData);
+    }
+
+    iplSimulatorRelease(&steamAudioSimulator);
+    iplSceneRelease(&rootScene);
+}
+
 void RavEngine::GeometryAudioSpace::RoomData::ConsiderAudioSource(PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity, const matrix4& invListenerTransform)
+{
+    constexpr static auto simulationFlags = IPLSimulationFlags(IPL_SIMULATIONFLAGS_DIRECT | IPL_SIMULATIONFLAGS_REFLECTIONS | IPL_SIMULATIONFLAGS_PATHING); //TODO: make this configurable
+
+    //TODO: determine if in-radius or not
+    // if not in-radius, but previously was in-radius, then destroy associated steam audio data 
+
+    SteamAudioSourceConfig sourceData;
+    auto it = steamAudioSourceData.find(owningEntity);
+    if (it == steamAudioSourceData.end()) {
+        IPLSourceSettings sourceSettings{
+            .flags = simulationFlags
+        };
+
+
+        iplSourceCreate(steamAudioSimulator, &sourceSettings, &sourceData.source);
+        steamAudioSourceData.emplace(owningEntity, sourceData);
+        iplSourceAdd(sourceData.source, steamAudioSimulator);
+    }
+    else {
+        sourceData = it->second;
+    }
+   
+    
+}
+
+void RavEngine::GeometryAudioSpace::RoomData::ConsiderMesh(Ref<AudioMeshAsset> mesh)
 {
 
 }
 
 void RavEngine::GeometryAudioSpace::RoomData::RenderSpace(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer)
 {
+
+    iplSimulatorCommit(steamAudioSimulator);        // apply all queued changes
 }
 
 void RavEngine::GeometryAudioSpace::RoomData::DeleteAudioDataForEntity(entity_t entity) {
-
+    steamAudioSourceData.if_contains(entity, [this](SteamAudioSourceConfig& effects) {
+        DestroySteamAudioSourceConfig(effects);
+    });
+    steamAudioSourceData.erase(entity);
 }
 
 void RavEngine::GeometryAudioSpace::RoomData::DeleteMeshDataForEntity(entity_t entity)
 {
+
+}
+
+void RavEngine::GeometryAudioSpace::RoomData::DestroySteamAudioSourceConfig(SteamAudioSourceConfig& effects)
+{
+    //iplBinauralEffectRelease(&effects.binauralEffect);
+    //iplDirectEffectRelease(&effects.directEffect);
+    iplSourceRelease(&effects.source);
 }
 
 //void RavEngine::AudioRoom::DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const
@@ -136,3 +221,4 @@ void RavEngine::GeometryAudioSpace::RoomData::DeleteMeshDataForEntity(entity_t e
 //	dbg.DrawRectangularPrism(tr.CalculateWorldMatrix(), debug_color, data->roomDimensions);
 //}
 #endif
+
