@@ -120,12 +120,13 @@ void RavEngine::SimpleAudioSpace::RoomData::OutputSampleData(const Filesystem::P
 {
     debugBuffer.DumpToFileNoProcessing(path);
 }
+
+#endif
 void RavEngine::SimpleAudioSpace::RoomData::DestroyEffects(SteamAudioEffects& effects)
 {
     iplBinauralEffectRelease(&effects.binauralEffect);
     iplDirectEffectRelease(&effects.directEffect);
 }
-#endif
 
 RavEngine::GeometryAudioSpace::RoomData::RoomData() : workingBuffers(AudioPlayer::GetBufferSize(), AudioPlayer::GetNChannels()), accumulationBuffer{ AudioPlayer::GetBufferSize(), AudioPlayer::GetNChannels() }{
     // load simulator

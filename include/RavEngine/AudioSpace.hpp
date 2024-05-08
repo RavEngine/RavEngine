@@ -26,7 +26,7 @@ class AudioRoomSyncSystem;
 class AudioPlayer;
 struct AudioMeshAsset;
 
-#define ENABLE_RINGBUFFERS 1
+#define ENABLE_RINGBUFFERS 0
 
 /**
  Renders audio buffers based on its owning world's state
