@@ -131,7 +131,7 @@ void RavEngine::SimpleAudioSpace::RoomData::DestroyEffects(SteamAudioEffects& ef
 RavEngine::GeometryAudioSpace::RoomData::RoomData() : workingBuffers(AudioPlayer::GetBufferSize(), AudioPlayer::GetNChannels()), accumulationBuffer{ AudioPlayer::GetBufferSize(), AudioPlayer::GetNChannels() }{
     // load simulator
     IPLSimulationSettings simulationSettings{
-        .flags = IPL_SIMULATIONFLAGS_DIRECT,    // this enables occlusion/transmission simulation
+        .flags = IPLSimulationFlags(IPL_SIMULATIONFLAGS_DIRECT | IPL_SIMULATIONFLAGS_PATHING),    // this enables occlusion/transmission simulation
         .sceneType = IPL_SCENETYPE_DEFAULT,
         .reflectionType = IPL_REFLECTIONEFFECTTYPE_CONVOLUTION, // disabled if flags does not include IPL_SIMULATIONFLAGS_REFLECTIONS
         .maxNumRays = 4096,
@@ -273,13 +273,13 @@ void RavEngine::GeometryAudioSpace::RoomData::CalculateRoom(const matrix4& invRo
 
     //TODO: make this configurable
     iplSimulatorRunDirect(steamAudioSimulator);
-    //iplSimulatorRunPathing(steamAudioSimulator);
+    iplSimulatorRunPathing(steamAudioSimulator);
     //iplSimulatorRunReflections(steamAudioSimulator);
 }
 
 void RavEngine::GeometryAudioSpace::RoomData::ConsiderMesh(Ref<AudioMeshAsset> mesh, const matrix4& transform, const vector3& roomPos, const matrix4& invRoomTransform, entity_t ownerID)
 {
-    auto meshPos = transform * vector4(0,0,0,1);
+    const auto meshPos = transform * vector4(0,0,0,1);
 
     // is it inside the bounds?
     bool inRange = glm::distance(vector3(meshPos), roomPos) <= mesh->GetRadius() + meshRadius;
@@ -315,9 +315,24 @@ void RavEngine::GeometryAudioSpace::RoomData::ConsiderMesh(Ref<AudioMeshAsset> m
 
         meshConfig = it->second;
     }
+
+    // set mesh data
+    const auto posInRoomSpace = invRoomTransform * meshPos;
+    const auto rotInRoomSpace = glm::quat_cast(invRoomTransform * transform);
+    if (meshConfig.lastPos != vector3(posInRoomSpace) || meshConfig.lastRot != rotInRoomSpace) {
+        meshConfig.lastPos = posInRoomSpace;
+        meshConfig.lastRot = rotInRoomSpace;
+
+        auto transformInRoomSpace = glm::transpose(invRoomTransform * transform);   // col-major to row-major
+
+        IPLMatrix4x4 transform;
+        memcpy(transform.elements, glm::value_ptr(transformInRoomSpace), sizeof(transformInRoomSpace));
+
+        iplInstancedMeshUpdateTransform(meshConfig.instancedMesh, rootScene, transform);
+    }
 }
 
-void RavEngine::GeometryAudioSpace::RoomData::RenderSpace(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer, entity_t sourceOwningEntity, PlanarSampleBufferInlineView monoSourceData)
+void RavEngine::GeometryAudioSpace::RoomData::RenderAudioSource(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer, entity_t sourceOwningEntity, PlanarSampleBufferInlineView monoSourceData)
 {
     auto it = steamAudioSourceData.find(sourceOwningEntity);
     if (it == steamAudioSourceData.end()) {
@@ -325,12 +340,40 @@ void RavEngine::GeometryAudioSpace::RoomData::RenderSpace(PlanarSampleBufferInli
         Debug::Fatal("Attempting to render source that was not calculated in CalculateRoom()");
     }
     else {
+        auto& effects = it->second;
+
         IPLSimulationOutputs outputs{};
 
         auto& sourceData = it->second;
         iplSourceGetOutputs(sourceData.source, IPLSimulationFlags(IPL_SIMULATIONFLAGS_DIRECT | IPL_SIMULATIONFLAGS_PATHING | IPL_SIMULATIONFLAGS_REFLECTIONS), &outputs);
 
-        // TODO: use the settings on direct, pathing, and reflection effects 
+        // TODO: use the settings on direct, pathing, and reflection effects
+
+        IPLfloat32* inputChannels[]{ monoSourceData.data() };
+        static_assert(std::size(inputChannels) == 1, "Input must be mono!");
+        IPLAudioBuffer inBuffer{
+            .numChannels = 1,
+            .numSamples = IPLint32(monoSourceData.GetNumSamples()),
+            .data = inputChannels,
+        };
+
+        const auto nchannels = outBuffer.GetNChannels();
+        Debug::Assert(outBuffer.GetNChannels() == 2, "Non-stereo output is not supported");
+
+        IPLfloat32* outputChannels[]{
+            outBuffer[0].data(),
+            outBuffer[1].data()
+        };
+        IPLAudioBuffer outputBuffer{
+            .numChannels = nchannels,
+            .numSamples = IPLint32(outBuffer.GetNumSamples()),
+            .data = outputChannels
+        };
+
+        iplPathEffectApply(effects.pathEffect, &outputs.pathing, &inBuffer, &outputBuffer);    
+        iplDirectEffectApply(effects.directEffect, &outputs.direct, &outputBuffer, &outputBuffer);
+
+        AudioGraphComposed::Render(outBuffer, scratchBuffer, nchannels); // process graph for spatialized audio
     }
     
 }

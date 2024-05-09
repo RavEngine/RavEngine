@@ -117,12 +117,6 @@ void RavEngine::AudioPlayer::CalculateGeometryAudioSpace(AudioSnapshot::Geometry
         return;
     }
 
-    auto outputView = room->workingBuffers.GetWritableDataBufferView();
-    auto outputScratchView = room->workingBuffers.GetWritableScratchBufferView();
-    auto accumulationView = room->accumulationBuffer.GetWritableDataBufferView();
-
-    TZero(accumulationView.data(), accumulationView.size());
-
     // add meshes
     for (const auto& mesh : SnapshotToRender->audioMeshes) {
         room->ConsiderMesh(mesh.asset, mesh.worldTransform, r.worldpos, r.invRoomTransform, mesh.ownerID);
@@ -144,6 +138,22 @@ void RavEngine::AudioPlayer::CalculateGeometryAudioSpace(AudioSnapshot::Geometry
     listenerUp = r.invRoomTransform * listenerUp;
 
     room->CalculateRoom(r.invRoomTransform, listenerForward, listenerUp, listenerRight);
+
+    // render each source
+
+    auto outputView = room->workingBuffers.GetWritableDataBufferView();
+    auto outputScratchView = room->workingBuffers.GetWritableScratchBufferView();
+    auto accumulationView = room->accumulationBuffer.GetWritableDataBufferView();
+
+    TZero(accumulationView.data(), accumulationView.size());
+
+    for (const auto& source : SnapshotToRender->sources) {
+        TZero(outputView.data(), outputView.size());
+        TZero(outputScratchView.data(), outputScratchView.size());
+        room->RenderAudioSource(outputView, outputScratchView, source.ownerID, source.data->renderData.GetReadonlyDataBufferView());
+       
+        AdditiveBlendSamples(accumulationView, outputView);
+    }
 }
 
 void RavEngine::AudioPlayer::CalculateSimpleAudioSpace(AudioSnapshot::SimpleAudioSpaceData& r)

@@ -110,7 +110,7 @@ struct GeometryAudioSpace : public ComponentWithOwner, public Queryable<Geometry
     friend class RavEngine::AudioPlayer;
 public:
 
-    struct RoomData {
+    struct RoomData : public AudioGraphComposed {
         friend class RavEngine::AudioPlayer;
         RoomData();
         ~RoomData();
@@ -146,7 +146,7 @@ public:
         */
         void ConsiderMesh(Ref<AudioMeshAsset> mesh, const matrix4& transform, const vector3& roomPos, const matrix4& invRoomTransform, entity_t ownerID);
 
-        void RenderSpace(
+        void RenderAudioSource(
             PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer,
             entity_t sourceOwningEntity, PlanarSampleBufferInlineView monoSourceData
         );
@@ -168,6 +168,8 @@ public:
 
         struct SteamAudioMeshConfig {
             _IPLInstancedMesh_t* instancedMesh = nullptr;
+            vector3 lastPos{ 0,0,0 };
+            quaternion lastRot{ 0,0,0,0 };
         };
 
         // must be called when destroying a SteamAudioMeshConfig
