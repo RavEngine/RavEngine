@@ -105,16 +105,17 @@ private:
     Ref<RoomData> data;
 };
 
-struct GeometryAudioSpace : public ComponentWithOwner, public Queryable<GeometryAudioSpace, IDebugRenderable> {
+struct GeometryAudioSpace : public ComponentWithOwner, public IDebugRenderable, public Queryable<GeometryAudioSpace, IDebugRenderable> {
     friend class RavEngine::AudioRoomSyncSystem;
     friend class RavEngine::AudioPlayer;
 public:
 
     struct RoomData : public AudioGraphComposed {
         friend class RavEngine::AudioPlayer;
+        friend class GeometryAudioSpace;
+        friend class AudioSnapshot;
         RoomData();
         ~RoomData();
-        float sourceRadius = 10, meshRadius = 10;
 
         /**
         Present an audio source to the room. Depending on its position, it may or may not be added or removed from the room
@@ -155,6 +156,8 @@ public:
         void DeleteAudioDataForEntity(entity_t entity);
         void DeleteMeshDataForEntity(entity_t entity);
     private:
+        float sourceRadius = 10, meshRadius = 10;
+
         struct SteamAudioSourceConfig {
             _IPLSource_t* source = nullptr;
             _IPLDirectEffect_t* directEffect = nullptr;
@@ -188,7 +191,31 @@ public:
         return data;
     }
 
+    /**
+    * Sets the radius where audio sources will be included in the simulation
+    */
+    void SetAudioSourceRadius(float radius) {
+        data->sourceRadius = radius;
+    }
+
+    /**
+   * Sets the radius where audio mesh occluders will be included in the simulation
+   */
+    void SetMeshRadius(float radius) {
+        data->meshRadius = radius;
+    }
+
+    auto GetAudioSourceRadius() const {
+        return data->sourceRadius;
+    }
+
+    auto GetMeshRadius() const {
+        return data->meshRadius;
+    }
+
     GeometryAudioSpace(entity_t owner) : ComponentWithOwner(owner), data(std::make_shared<RoomData>()) {}
+
+    void DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const override {}
 private:
     Ref<RoomData> data;
 };

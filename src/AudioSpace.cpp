@@ -247,7 +247,30 @@ void RavEngine::GeometryAudioSpace::RoomData::ConsiderAudioSource(const vector3&
         .flags = geometrySpaceSimulationFlags,
         .directFlags = IPLDirectSimulationFlags(IPL_DIRECTSIMULATIONFLAGS_OCCLUSION | IPL_DIRECTSIMULATIONFLAGS_TRANSMISSION),
         .source = {sourceInRoomSpace.x, sourceInRoomSpace.y, sourceInRoomSpace.z},
-        .occlusionType = IPL_OCCLUSIONTYPE_RAYCAST
+        .distanceAttenuationModel = IPL_DISTANCEATTENUATIONTYPE_DEFAULT,
+        .airAbsorptionModel = IPL_AIRABSORPTIONTYPE_DEFAULT,
+        .directivity = {        //TODO: allow setting these on audio sources
+            .dipoleWeight = 0,  // purely omni
+            .dipolePower = 1,   // direction sharpness
+            .callback = nullptr,
+            .userData = nullptr,
+        },
+        .occlusionType = IPL_OCCLUSIONTYPE_RAYCAST,
+        .occlusionRadius = 1,   //TODO: what effect does this have? (ignored if occlusion type is not volumetric)
+        .numOcclusionSamples = 0,   // ignored if occlusion type is not volumetric
+        .reverbScale = {1,1,1},
+        .hybridReverbTransitionTime = 1,    //TODO what's a good number for this?
+        .hybridReverbOverlapPercent = 0.25, //TODO: what's a good number for this?
+        .baked = IPL_FALSE,
+        .bakedDataIdentifier = {},  // unused if not baked
+        .pathingProbes = nullptr,
+        .visRadius = 1, // TODO: what's a good number for this?
+        .visThreshold = 0.75,
+        .visRange = sourceRadius * 2,   // diameter of the room
+        .pathingOrder = 1,
+        .enableValidation = IPL_TRUE,
+        .findAlternatePaths = IPL_FALSE,    //TODO: is there overhead to using this?
+        .numTransmissionRays = 4
     };
     iplSourceSetInputs(sourceData.source, geometrySpaceSimulationFlags, &inputs);
     
@@ -267,13 +290,20 @@ void RavEngine::GeometryAudioSpace::RoomData::CalculateRoom(const matrix4& invRo
             .up = {upRoomSpace.x, upRoomSpace.y, upRoomSpace.z},
             .ahead = {forwardRoomSpace.x, forwardRoomSpace.y, forwardRoomSpace.z},
             .origin = {0,0,0}
-         }
+         },
+        .numRays = 32,      // TODO: make these configurable
+        .numBounces = 3,
+        .duration = 1,
+        .order = 1,
+        .irradianceMinDistance = 0.01,
+        .pathingVisCallback = nullptr,
+        .pathingUserData = nullptr,
     };
     iplSimulatorSetSharedInputs(steamAudioSimulator, geometrySpaceSimulationFlags, &sharedInputs);
 
     //TODO: make this configurable
     iplSimulatorRunDirect(steamAudioSimulator);
-    iplSimulatorRunPathing(steamAudioSimulator);
+    //iplSimulatorRunPathing(steamAudioSimulator);          // TODO: need to setup probes (https://valvesoftware.github.io/steam-audio/doc/capi/guide.html#static-geometry) before using this
     //iplSimulatorRunReflections(steamAudioSimulator);
 }
 
