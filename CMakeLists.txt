@@ -347,6 +347,7 @@ if (NOT RAVENGINE_SERVER)
 	# resonance-audio
 	set(BUILD_RESONANCE_AUDIO_API ON CACHE INTERNAL "")
 	add_subdirectory("${DEPS_DIR}/resonance-audio" EXCLUDE_FROM_ALL)
+	set(RESONANCE_LIB ResonanceAudioObj)
 endif()
 
 # recast
@@ -590,7 +591,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"assimp"
 	"im3d"
 	"physfs-static"
-	"ResonanceAudioObj"
+	${RESONANCE_LIB}
 	#"PhysXGPU"
 	${RML_LIB}
 	"libnyquist"
