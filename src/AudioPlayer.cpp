@@ -262,6 +262,10 @@ void RavEngine::AudioPlayer::CalculateFinalMix()
         AdditiveBlendSamples(sharedBufferView, view);
     }
 
+    for (const auto& r : SnapshotToRender->boxAudioSpaces) {
+        AdditiveBlendSamples(sharedBufferView, r.room->workingBuffers.GetReadonlyDataBufferView());
+    }
+
     /*
             const auto bufferSize = sharedBufferView.size();
             stackarray(mixTemp, float, bufferSize);
