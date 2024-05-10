@@ -201,7 +201,6 @@ void RavEngine::GeometryAudioSpace::RoomData::ConsiderAudioSource(const vector3&
 
 
         iplSourceCreate(steamAudioSimulator, &sourceSettings, &sourceData.source);
-        steamAudioSourceData.emplace(owningEntity, sourceData);
         iplSourceAdd(sourceData.source, steamAudioSimulator);
 
         auto& audioPlayer = GetApp()->GetAudioPlayer();
@@ -224,6 +223,8 @@ void RavEngine::GeometryAudioSpace::RoomData::ConsiderAudioSource(const vector3&
         };
 
         iplPathEffectCreate(state.context, &settings, &pathEffectSettings, &sourceData.pathEffect);
+
+        steamAudioSourceData.emplace(owningEntity, sourceData);
     }
     else {
         if (!inRange) {
@@ -377,8 +378,6 @@ void RavEngine::GeometryAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuff
         auto& sourceData = it->second;
         iplSourceGetOutputs(sourceData.source, IPLSimulationFlags(IPL_SIMULATIONFLAGS_DIRECT | IPL_SIMULATIONFLAGS_PATHING | IPL_SIMULATIONFLAGS_REFLECTIONS), &outputs);
 
-        // TODO: use the settings on direct, pathing, and reflection effects
-
         IPLfloat32* inputChannels[]{ monoSourceData.data() };
         static_assert(std::size(inputChannels) == 1, "Input must be mono!");
         IPLAudioBuffer inBuffer{
@@ -400,8 +399,8 @@ void RavEngine::GeometryAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuff
             .data = outputChannels
         };
 
-        iplPathEffectApply(effects.pathEffect, &outputs.pathing, &inBuffer, &outputBuffer);    
-        iplDirectEffectApply(effects.directEffect, &outputs.direct, &outputBuffer, &outputBuffer);
+        //iplPathEffectApply(effects.pathEffect, &outputs.pathing, &inBuffer, &outputBuffer);    
+        //iplDirectEffectApply(effects.directEffect, &outputs.direct, &outputBuffer, &outputBuffer);
 
         AudioGraphComposed::Render(outBuffer, scratchBuffer, nchannels); // process graph for spatialized audio
     }
