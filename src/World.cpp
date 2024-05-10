@@ -281,7 +281,7 @@ void World::SetupTaskGraph(){
 
      auto copyAudioBoxSpaces = audioTasks.emplace([this] {
          Filter([this](const BoxReverbationAudioSpace& room, const Transform& transform) {
-             GetApp()->GetCurrentAudioSnapshot()->boxAudioSpaces.emplace_back(room.GetData(), transform.GetWorldMatrix(), room.GetHalfExts());
+             GetApp()->GetCurrentAudioSnapshot()->boxAudioSpaces.emplace_back(room.GetData(), transform.GetWorldMatrix(), room.GetHalfExts(), room.GetRoomProperties());
          });
     }).name("Box Reverb Audio Meshes").succeed(audioClear);
     

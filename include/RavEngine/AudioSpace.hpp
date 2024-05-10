@@ -4,7 +4,6 @@
 #include "Ref.hpp"
 #include "ComponentWithOwner.hpp"
 #include "Queryable.hpp"
-#include "AudioRoomMaterial.hpp"
 #if !RVE_SERVER
 
 #include "AudioSource.hpp"
@@ -13,6 +12,7 @@
 #include "AudioRingbuffer.hpp"
 #include "Filesystem.hpp"
 #include <api/resonance_audio_api.h>
+#include <common/room_properties.h>
 
 struct _IPLBinauralEffect_t;
 struct _IPLDirectEffect_t;
@@ -27,6 +27,8 @@ namespace RavEngine{
 class AudioRoomSyncSystem;
 class AudioPlayer;
 struct AudioMeshAsset;
+
+using RoomMat = vraudio::MaterialName;
 
 #define ENABLE_RINGBUFFERS 0
 
@@ -222,6 +224,12 @@ private:
 };
 
 class BoxReverbationAudioSpace : public ComponentWithOwner, public IDebugRenderable, public Queryable<BoxReverbationAudioSpace, IDebugRenderable> {
+public:
+    struct RoomProperties {
+        float reflection_scalar = 1, reverb_gain = 1, reverb_time = 1, reverb_brightness = 0;
+    };
+private:
+
     friend class AudioPlayer;
     friend class AudioSnapshot;
     struct RoomData : public AudioGraphComposed {
@@ -234,7 +242,7 @@ class BoxReverbationAudioSpace : public ComponentWithOwner, public IDebugRendera
         // [3] (+)ive y-axis wall (top)
         // [4] (-)ive z-axis wall (front)
         // [5] (+)ive z-axis wall (back)
-#if 0
+
         Array<RoomMat, 6> wallMaterials{
             RoomMat::kTransparent,
             RoomMat::kTransparent,
@@ -243,7 +251,9 @@ class BoxReverbationAudioSpace : public ComponentWithOwner, public IDebugRendera
             RoomMat::kTransparent,
             RoomMat::kTransparent
         };
-#endif
+        SpinLock wallMatMtx;
+        std::atomic<bool> wallsNeedUpdate = false;
+
         RoomData();
         ~RoomData();
     private:
@@ -253,14 +263,14 @@ class BoxReverbationAudioSpace : public ComponentWithOwner, public IDebugRendera
 
         void ConsiderAudioSource(const PlanarSampleBufferInlineView& monoSourceData, const vector3& worldPos, const quaternion& worldRot, const matrix4& invRoomTransform, entity_t ownerID, const vector3& roomHalfExts);
 
-        void RenderSpace(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer, const vector3& listenerPosRoomSpace, const quaternion& listenerRotRoomSpace);
+        void RenderSpace(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer, const vector3& listenerPosRoomSpace, const quaternion& listenerRotRoomSpace, const vector3& roomHalfExts, const RoomProperties& roomProperties);
 
         void DeleteAudioDataForEntity(entity_t entity);
     };
     
     Ref<RoomData> roomData;
     vector3 roomHalfExts{ 10, 10, 10 };
-
+    RoomProperties roomProperties;
 public:
     BoxReverbationAudioSpace(entity_t owner);
     void DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const override {}
@@ -273,6 +283,29 @@ public:
 
     void SetHalfExts(const decltype(roomHalfExts)& h) {
         roomHalfExts = h;
+        roomData->wallsNeedUpdate = true;
+    }
+
+    void SetWallMaterial(uint8_t idx, RoomMat material) {
+        std::lock_guard guard(roomData->wallMatMtx);
+        roomData->wallMaterials.at(idx) = material;
+        roomData->wallsNeedUpdate = true;
+    }
+    void SetWallMaterials(const Array<RoomMat, 6>& materials) {
+        std::lock_guard guard(roomData->wallMatMtx);
+        roomData->wallMaterials = materials;
+        roomData->wallsNeedUpdate = true;
+    }
+    // note: returns a copy!!
+    auto GetWallMaterials() const {
+        std::lock_guard guard(roomData->wallMatMtx);
+        return roomData->wallMaterials;
+    }
+    const auto& GetRoomProperties() const {
+        return roomProperties;
+    }
+    auto& GetRoomProperties() {
+        return roomProperties;
     }
 };
 

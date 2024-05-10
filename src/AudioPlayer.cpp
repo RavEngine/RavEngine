@@ -225,7 +225,7 @@ void RavEngine::AudioPlayer::CalculateBoxAudioSpace(AudioSnapshot::BoxReverbatio
 
     auto listenerRotRoomSpace = glm::quat_cast(r.invRoomTransform * glm::toMat4(lrot));
 
-    room->RenderSpace(outputView, outputScratchView, listenerPosRoomSpace, listenerRotRoomSpace);
+    room->RenderSpace(outputView, outputScratchView, listenerPosRoomSpace, listenerRotRoomSpace, r.roomHalfExts, r.roomProperties);
 }
 
 void RavEngine::AudioPlayer::CalculateFinalMix()

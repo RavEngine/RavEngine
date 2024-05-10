@@ -61,10 +61,34 @@ namespace RavEngine {
 
 	}
 
-	void BoxReverbationAudioSpace::RoomData::RenderSpace(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer, const vector3& listenerPosRoomSpace, const quaternion& listenerRotRoomSpace)
+	void BoxReverbationAudioSpace::RoomData::RenderSpace(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer, const vector3& listenerPosRoomSpace, const quaternion& listenerRotRoomSpace, const vector3& roomHalfExts, const BoxReverbationAudioSpace::RoomProperties& roomProperties)
 	{
 		audioEngine->SetHeadPosition(listenerPosRoomSpace.x, listenerPosRoomSpace.y, listenerPosRoomSpace.z);
 		audioEngine->SetHeadRotation(listenerRotRoomSpace.x, listenerRotRoomSpace.y, listenerRotRoomSpace.z, listenerRotRoomSpace.w);
+
+		if (wallsNeedUpdate) {
+			vraudio::RoomProperties data;
+			data.dimensions[0] = roomHalfExts.x * 2;
+			data.dimensions[1] = roomHalfExts.y * 2;
+			data.dimensions[2] = roomHalfExts.z * 2;
+
+			data.reflection_scalar = roomProperties.reflection_scalar;
+			data.reverb_gain = roomProperties.reverb_gain;
+			data.reverb_time = roomProperties.reverb_time;
+			data.reverb_brightness = roomProperties.reverb_brightness;
+
+			//add material data
+			std::memcpy(data.material_names, wallMaterials.data(), sizeof(data.material_names));
+
+			auto ref_data = vraudio::ComputeReflectionProperties(data);
+			auto rev_data = vraudio::ComputeReverbProperties(data);
+
+			//write changes
+			audioEngine->SetReflectionProperties(ref_data);
+			audioEngine->SetReverbProperties(rev_data);
+
+			wallsNeedUpdate = false;
+		}
 
 		auto nchannels = AudioPlayer::GetNChannels();
 

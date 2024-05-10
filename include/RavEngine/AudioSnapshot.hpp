@@ -49,7 +49,8 @@ struct AudioSnapshot{
         Ref<BoxReverbationAudioSpace::RoomData> room;
         const matrix4 invRoomTransform{ 1 };
         const vector3 roomHalfExts{ 0 };
-        BoxReverbationSpaceData(const decltype(room)& room, const decltype(invRoomTransform)& ivt, const decltype(roomHalfExts)& rhe) : room(room), invRoomTransform(ivt), roomHalfExts(rhe){}
+        const BoxReverbationAudioSpace::RoomProperties roomProperties;
+        BoxReverbationSpaceData(const decltype(room)& room, const decltype(invRoomTransform)& ivt, const decltype(roomHalfExts)& rhe, const decltype(roomProperties) rp) : room(room), invRoomTransform(ivt), roomProperties(rp), roomHalfExts(rhe){}
     };
 
     struct AudioMeshData {
