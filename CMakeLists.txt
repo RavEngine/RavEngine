@@ -343,6 +343,10 @@ if (NOT RAVENGINE_SERVER)
 	set(SA_LIB "phonon")
 	target_link_libraries(mysofa-static PRIVATE zlibstatic)
 	target_include_directories(mysofa-static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/assimp/contrib/zlib/")
+
+	# resonance-audio
+	set(BUILD_RESONANCE_AUDIO_API ON CACHE INTERNAL "")
+	add_subdirectory("${DEPS_DIR}/resonance-audio" EXCLUDE_FROM_ALL)
 endif()
 
 # recast
@@ -586,6 +590,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"assimp"
 	"im3d"
 	"physfs-static"
+	"ResonanceAudioObj"
 	#"PhysXGPU"
 	${RML_LIB}
 	"libnyquist"

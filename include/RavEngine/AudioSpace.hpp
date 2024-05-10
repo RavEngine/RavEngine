@@ -1,4 +1,5 @@
 #pragma once
+
 #include "mathtypes.hpp"
 #include "Ref.hpp"
 #include "ComponentWithOwner.hpp"
@@ -20,6 +21,10 @@ struct _IPLScene_t;
 struct _IPLInstancedMesh_t;
 struct _IPLPathEffect_t;
 
+namespace vraudio {
+    struct ResonanceAudioApi;
+}
+
 namespace RavEngine{
 
 class AudioRoomSyncSystem;
@@ -32,7 +37,6 @@ struct AudioMeshAsset;
  Renders audio buffers based on its owning world's state
  */
 class SimpleAudioSpace : public ComponentWithOwner, public IDebugRenderable, public Queryable<SimpleAudioSpace,IDebugRenderable>{
-	friend class RavEngine::AudioRoomSyncSystem;
 	friend class RavEngine::AudioPlayer;
 public:
     struct RoomData : public AudioGraphComposed{
@@ -219,6 +223,42 @@ public:
 private:
     Ref<RoomData> data;
 };
+
+class BoxReverbationAudioSpace : public ComponentWithOwner, public IDebugRenderable, public Queryable<BoxReverbationAudioSpace, IDebugRenderable> {
+    friend class AudioPlayer;
+    struct RoomData : public AudioGraphComposed {
+        friend class AudioPlayer;
+
+        // Material name of each surface of the shoebox room in this order:
+        // [0] (-)ive x-axis wall (left)
+        // [1] (+)ive x-axis wall (right)
+        // [2] (-)ive y-axis wall (bottom)
+        // [3] (+)ive y-axis wall (top)
+        // [4] (-)ive z-axis wall (front)
+        // [5] (+)ive z-axis wall (back)
+#if 0
+        Array<RoomMat, 6> wallMaterials{
+            RoomMat::kTransparent,
+            RoomMat::kTransparent,
+            RoomMat::kTransparent,
+            RoomMat::kTransparent,
+            RoomMat::kTransparent,
+            RoomMat::kTransparent
+        };
+#endif
+        RoomData();
+        ~RoomData();
+    private:
+        vraudio::ResonanceAudioApi* audioEngine = nullptr;
+
+        void RenderSpace(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer, const vector3& listenerPosRoomSpace, const quaternion& listenerRotRoomSpace);
+    };
+    
+    Ref<RoomData> roomData;
+public:
+    BoxReverbationAudioSpace(entity_t owner);
+};
+
 
 }
 #endif

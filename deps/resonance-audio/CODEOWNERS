@@ -1,0 +1,6 @@
+# Default owners for everything in the repo.
+* @anokta @haroonq
+
+# Wwise plugin.
+platforms/wwise/*     @ralphyon
+
