@@ -348,6 +348,7 @@ if (NOT RAVENGINE_SERVER)
 	set(BUILD_RESONANCE_AUDIO_API ON CACHE INTERNAL "")
 	add_subdirectory("${DEPS_DIR}/resonance-audio" EXCLUDE_FROM_ALL)
 	set(RESONANCE_LIB ResonanceAudioObj)
+	set(SADIE_LIB SadieHrtfsObj)
 endif()
 
 # recast
@@ -592,6 +593,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"im3d"
 	"physfs-static"
 	${RESONANCE_LIB}
+	${SADIE_LIB}
 	#"PhysXGPU"
 	${RML_LIB}
 	"libnyquist"

@@ -142,6 +142,15 @@ namespace RMath {
     auto perspectiveProjection(T fovy, T aspect, T zNear, T zFar) {
         return glm::perspectiveRH_ZO(fovy, aspect, zFar, zNear);
     }
+
+    /**
+    * Point-in-AABB, where the point is in the AABB's local space
+    */
+    static inline bool pointInAABB(const vector3& point, const vector3& boxHalfExts) {
+        return (point.x <= boxHalfExts.x && point.x >= -boxHalfExts.x) &&
+            (point.y <= boxHalfExts.y && point.y >= -boxHalfExts.y) &&
+            (point.z <= boxHalfExts.z && point.z >= -boxHalfExts.z);
+    }
 }
 
 //ssize_t on MSVC

@@ -12,6 +12,7 @@
 #include "DebugDrawer.hpp"
 #include "AudioRingbuffer.hpp"
 #include "Filesystem.hpp"
+#include <api/resonance_audio_api.h>
 
 struct _IPLBinauralEffect_t;
 struct _IPLDirectEffect_t;
@@ -20,10 +21,6 @@ struct _IPLSimulator_t;
 struct _IPLScene_t;
 struct _IPLInstancedMesh_t;
 struct _IPLPathEffect_t;
-
-namespace vraudio {
-    struct ResonanceAudioApi;
-}
 
 namespace RavEngine{
 
@@ -226,6 +223,7 @@ private:
 
 class BoxReverbationAudioSpace : public ComponentWithOwner, public IDebugRenderable, public Queryable<BoxReverbationAudioSpace, IDebugRenderable> {
     friend class AudioPlayer;
+    friend class AudioSnapshot;
     struct RoomData : public AudioGraphComposed {
         friend class AudioPlayer;
 
@@ -250,13 +248,32 @@ class BoxReverbationAudioSpace : public ComponentWithOwner, public IDebugRendera
         ~RoomData();
     private:
         vraudio::ResonanceAudioApi* audioEngine = nullptr;
+        UnorderedMap<entity_t, vraudio::ResonanceAudioApi::SourceId> sourceMap;
+        SingleAudioRenderBuffer workingBuffers;
+
+        void ConsiderAudioSource(const PlanarSampleBufferInlineView& monoSourceData, const vector3& worldPos, const quaternion& worldRot, const matrix4& invRoomTransform, entity_t ownerID, const vector3& roomHalfExts);
 
         void RenderSpace(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer, const vector3& listenerPosRoomSpace, const quaternion& listenerRotRoomSpace);
+
+        void DeleteAudioDataForEntity(entity_t entity);
     };
     
     Ref<RoomData> roomData;
+    vector3 roomHalfExts{ 10, 10, 10 };
+
 public:
     BoxReverbationAudioSpace(entity_t owner);
+    void DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const override {}
+    auto GetData() const {
+        return roomData;
+    }
+    auto GetHalfExts() const {
+        return roomHalfExts;
+    }
+
+    void SetHalfExts(const decltype(roomHalfExts)& h) {
+        roomHalfExts = h;
+    }
 };
 
 

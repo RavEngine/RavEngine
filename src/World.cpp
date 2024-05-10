@@ -278,10 +278,16 @@ void World::SetupTaskGraph(){
             GetApp()->GetCurrentAudioSnapshot()->audioMeshes.emplace_back(transform.GetWorldMatrix(), mesh.GetAsset(), mesh.GetOwner().GetIdInWorld());
         });
      }).name("Geometry Audio Meshes").succeed(audioClear);
+
+     auto copyAudioBoxSpaces = audioTasks.emplace([this] {
+         Filter([this](const BoxReverbationAudioSpace& room, const Transform& transform) {
+             GetApp()->GetCurrentAudioSnapshot()->boxAudioSpaces.emplace_back(room.GetData(), transform.GetWorldMatrix(), room.GetHalfExts());
+         });
+    }).name("Box Reverb Audio Meshes").succeed(audioClear);
     
     auto audioSwap = audioTasks.emplace([]{
         GetApp()->SwapCurrrentAudioSnapshot();
-    }).name("Swap Current").succeed(copyAudios,copyAmbients,copySimpleAudioSpaces,copyGeometryAudioSpaces, copyAudioGeometry);
+    }).name("Swap Current").succeed(copyAudios,copyAmbients,copySimpleAudioSpaces,copyGeometryAudioSpaces, copyAudioGeometry, copyAudioBoxSpaces);
     
     audioTaskModule = masterTasks.composed_of(audioTasks).name("Audio");
     audioTaskModule.succeed(ECSTaskModule);

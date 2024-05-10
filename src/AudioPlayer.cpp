@@ -199,6 +199,35 @@ void RavEngine::AudioPlayer::CalculateSimpleAudioSpace(AudioSnapshot::SimpleAudi
 
 }
 
+void RavEngine::AudioPlayer::CalculateBoxAudioSpace(AudioSnapshot::BoxReverbationSpaceData& r)
+{
+    auto& room = r.room;
+
+    // destroyed-sources
+    for (const auto id : destroyedSources) {
+        room->DeleteAudioDataForEntity(id);
+    }
+
+    auto listenerPosRoomSpace = vector3(r.invRoomTransform * vector4(lpos, 1));
+
+    // existing sources
+    // first check that the listener is inside the room
+    if (!RMath::pointInAABB(lpos, r.roomHalfExts)) {
+        return;
+    }
+
+    auto outputView = room->workingBuffers.GetWritableDataBufferView();
+    auto outputScratchView = room->workingBuffers.GetWritableScratchBufferView();
+
+    for (const auto& source : SnapshotToRender->sources) {
+        room->ConsiderAudioSource(source.data->renderData.GetReadonlyDataBufferView(), source.worldpos, source.worldrot, r.invRoomTransform, source.ownerID, r.roomHalfExts);
+    }
+
+    auto listenerRotRoomSpace = glm::quat_cast(r.invRoomTransform * glm::toMat4(lrot));
+
+    room->RenderSpace(outputView, outputScratchView, listenerPosRoomSpace, listenerRotRoomSpace);
+}
+
 void RavEngine::AudioPlayer::CalculateFinalMix()
 {
     auto sharedBufferView = playerRenderBuffer->GetWritableDataBufferView();
@@ -290,6 +319,10 @@ void RavEngine::AudioPlayer::ST_DoMix()
         CalculateGeometryAudioSpace(space);
     }
 
+    for (auto& space : SnapshotToRender->boxAudioSpaces) {
+        CalculateBoxAudioSpace(space);
+    }
+
     CalculateFinalMix();
 }
 
@@ -306,6 +339,8 @@ void RavEngine::AudioPlayer::PerformAudioTickPreamble()
     geometrySpacesBegin = SnapshotToRender->geometryAudioSpaces.begin();
     geometrySpacesEnd = SnapshotToRender->geometryAudioSpaces.end();
 
+    boxSpacesBegin = SnapshotToRender->boxAudioSpaces.begin();
+    boxSpacesEnd = SnapshotToRender->boxAudioSpaces.end();
 
     //use the first audio listener (TODO: will cause unpredictable behavior if there are multiple listeners)
     lpos = SnapshotToRender->listenerPos;
@@ -356,12 +391,16 @@ void AudioPlayer::SetupAudioTaskGraph(){
         CalculateGeometryAudioSpace(r);
     }).name("Process Geometry Audio Rooms").succeed(processDataProviders);
 
+    auto processBoxRooms = audioTaskflow.for_each(std::ref(boxSpacesBegin), std::ref(boxSpacesEnd), [this](AudioSnapshot::BoxReverbationSpaceData& r) {
+        CalculateBoxAudioSpace(r);
+    }).name("Process Box Audio Rooms").succeed(processDataProviders);
+
     // once rooms are done, do the final mix
     auto finalMix = audioTaskflow.emplace([this] {
 
         CalculateFinalMix();
 
-    }).name("Final audio mix").succeed(processDataProviders, processAmbients, processSimpleRooms, processGeometryRooms);
+    }).name("Final audio mix").succeed(processDataProviders, processAmbients, processSimpleRooms, processGeometryRooms, processBoxRooms);
     audioTaskflow.dump(std::cout);
 }
 

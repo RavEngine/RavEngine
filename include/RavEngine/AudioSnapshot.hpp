@@ -26,7 +26,7 @@ struct AudioSnapshot{
     template<typename room_t>
     struct TAudioSpace{
         Ref<room_t> room;
-        vector3 worldpos;
+        const vector3 worldpos;
         TAudioSpace(const decltype(room)& room,const decltype(worldpos)& wp): room(room), worldpos(wp){}
 
         bool IsInsideSourceArea(const vector3& pos) const{
@@ -45,6 +45,13 @@ struct AudioSnapshot{
         }
     };
 
+    struct BoxReverbationSpaceData {
+        Ref<BoxReverbationAudioSpace::RoomData> room;
+        const matrix4 invRoomTransform{ 1 };
+        const vector3 roomHalfExts{ 0 };
+        BoxReverbationSpaceData(const decltype(room)& room, const decltype(invRoomTransform)& ivt, const decltype(roomHalfExts)& rhe) : room(room), invRoomTransform(ivt), roomHalfExts(rhe){}
+    };
+
     struct AudioMeshData {
         matrix4 worldTransform;
         Ref<AudioMeshAsset> asset;
@@ -58,6 +65,8 @@ struct AudioSnapshot{
     
     Vector<SimpleAudioSpaceData> simpleAudioSpaces;
     Vector<GeometryAudioSpaceData> geometryAudioSpaces;
+    Vector<BoxReverbationSpaceData> boxAudioSpaces;
+
     Vector<AudioMeshData> audioMeshes;
 
     vector3 listenerPos;

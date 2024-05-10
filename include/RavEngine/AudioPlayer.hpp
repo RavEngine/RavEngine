@@ -60,6 +60,7 @@ class AudioPlayer{
     decltype(AudioSnapshot::ambientSources.begin()) ambientSourcesBegin, ambientSourcesEnd;
     decltype(AudioSnapshot::simpleAudioSpaces.begin()) simpleSpacesBegin, simpleSpacesEnd;
     decltype(AudioSnapshot::geometryAudioSpaces.begin()) geometrySpacesBegin, geometrySpacesEnd;
+    decltype(AudioSnapshot::boxAudioSpaces.begin()) boxSpacesBegin, boxSpacesEnd;
 
     vector3 lpos{0};
     quaternion lrot{0,0,0,0};
@@ -72,6 +73,7 @@ class AudioPlayer{
     void PerformAudioTickPreamble();
     void CalculateGeometryAudioSpace(AudioSnapshot::GeometryAudioSpaceData& r);
     void CalculateSimpleAudioSpace(AudioSnapshot::SimpleAudioSpaceData&);
+    void CalculateBoxAudioSpace(AudioSnapshot::BoxReverbationSpaceData&);
     void CalculateFinalMix();
     void ST_DoMix();
 #endif
