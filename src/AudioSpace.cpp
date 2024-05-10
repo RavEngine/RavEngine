@@ -399,8 +399,13 @@ void RavEngine::GeometryAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuff
             .data = outputChannels
         };
 
-        //iplPathEffectApply(effects.pathEffect, &outputs.pathing, &inBuffer, &outputBuffer);    
-        //iplDirectEffectApply(effects.directEffect, &outputs.direct, &outputBuffer, &outputBuffer);
+        //iplPathEffectApply(effects.pathEffect, &outputs.pathing, &inBuffer, &outputBuffer); 
+        
+        //TODO: something better than this
+        memcpy(outputChannels[0], monoSourceData.data(), monoSourceData.bytesOneChannel());
+        memcpy(outputChannels[1], monoSourceData.data(), monoSourceData.bytesOneChannel());
+        
+        iplDirectEffectApply(effects.directEffect, &outputs.direct, &outputBuffer, &outputBuffer);
 
         AudioGraphComposed::Render(outBuffer, scratchBuffer, nchannels); // process graph for spatialized audio
     }
