@@ -85,11 +85,11 @@ int Test_UUID(){
 
 int Test_AddDel(){
     World w;
-    auto e = w.CreatePrototype<Entity>();
+    auto e = w.Instantiate<Entity>();
     auto& ic = e.EmplaceComponent<IntComponent>();
     ic.value = 6;
 
-    auto e2 = w.CreatePrototype<Entity>();
+    auto e2 = w.Instantiate<Entity>();
     e2.EmplaceComponent<FloatComponent>().value = 54.2;
 
     int count = 0;
@@ -133,7 +133,7 @@ int Test_SpawnDestroy(){
     World w;
    std::array<MyExtendedPrototype, 30> entities;
    for( auto& e : entities){
-       e = w.CreatePrototype<MyExtendedPrototype>();
+       e = w.Instantiate<MyExtendedPrototype>();
    }
    {
        int icount = 0;
@@ -179,11 +179,11 @@ int Test_MoveBetweenWorlds(){
     std::array<MyPrototype, 20> w2entities;
     
     for(auto& e : w1entities){
-        e = w1.CreatePrototype<MyPrototype>();
+        e = w1.Instantiate<MyPrototype>();
     }
     
     for(auto& e : w2entities){
-        e = w2.CreatePrototype<MyPrototype>();
+        e = w2.Instantiate<MyPrototype>();
     }
     
     int w1count = 0;
