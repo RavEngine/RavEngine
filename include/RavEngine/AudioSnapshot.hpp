@@ -80,6 +80,7 @@ struct AudioSnapshot{
         ambientSources.clear();
         simpleAudioSpaces.clear();
         geometryAudioSpaces.clear();
+        boxAudioSpaces.clear();
         sourceWorld.reset();
         audioMeshes.clear();
         dataProviders.clear();

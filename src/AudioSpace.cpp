@@ -224,7 +224,14 @@ void RavEngine::GeometryAudioSpace::RoomData::ConsiderAudioSource(const vector3&
 
         iplPathEffectCreate(state.context, &settings, &pathEffectSettings, &sourceData.pathEffect);
 
-        steamAudioSourceData.emplace(owningEntity, sourceData);
+        IPLBinauralEffectSettings effectSettings{
+            .hrtf = state.hrtf
+        };
+
+        iplBinauralEffectCreate(state.context, &settings, &effectSettings, &sourceData.binauralEffect);
+
+
+        it = steamAudioSourceData.emplace(owningEntity, sourceData).first;
     }
     else {
         if (!inRange) {
@@ -242,7 +249,9 @@ void RavEngine::GeometryAudioSpace::RoomData::ConsiderAudioSource(const vector3&
     // set source config
     // all positions are in room space
 
-    auto sourceInRoomSpace = invRoomTransform * vector4(roomPos,1);
+    auto sourceInRoomSpace = invRoomTransform * vector4(sourcePos,1);
+
+    it->second.roomSpacePos = sourceInRoomSpace;
 
     IPLSimulationInputs inputs{
         .flags = geometrySpaceSimulationFlags,
@@ -363,7 +372,7 @@ void RavEngine::GeometryAudioSpace::RoomData::ConsiderMesh(Ref<AudioMeshAsset> m
     }
 }
 
-void RavEngine::GeometryAudioSpace::RoomData::RenderAudioSource(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer, entity_t sourceOwningEntity, PlanarSampleBufferInlineView monoSourceData)
+void RavEngine::GeometryAudioSpace::RoomData::RenderAudioSource(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer, entity_t sourceOwningEntity, PlanarSampleBufferInlineView monoSourceData, const matrix4& invListenerTransform)
 {
     auto it = steamAudioSourceData.find(sourceOwningEntity);
     if (it == steamAudioSourceData.end()) {
@@ -400,10 +409,19 @@ void RavEngine::GeometryAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuff
         };
 
         //iplPathEffectApply(effects.pathEffect, &outputs.pathing, &inBuffer, &outputBuffer); 
+
+        auto listenerSpaceDir = glm::normalize(invListenerTransform * vector4(sourceData.roomSpacePos,1));
         
-        //TODO: something better than this
-        memcpy(outputChannels[0], monoSourceData.data(), monoSourceData.bytesOneChannel());
-        memcpy(outputChannels[1], monoSourceData.data(), monoSourceData.bytesOneChannel());
+        //TODO: replace this with a pathing effect
+        IPLBinauralEffectParams params{
+              .direction = { listenerSpaceDir.x,listenerSpaceDir.y,listenerSpaceDir.z },
+              .interpolation = IPL_HRTFINTERPOLATION_BILINEAR,
+              .spatialBlend = 1.0f,
+              .hrtf = GetApp()->GetAudioPlayer()->GetSteamAudioHRTF(),
+              .peakDelays = nullptr
+        };
+
+        auto result = iplBinauralEffectApply(effects.binauralEffect, &params, &inBuffer, &outputBuffer);
         
         iplDirectEffectApply(effects.directEffect, &outputs.direct, &outputBuffer, &outputBuffer);
 
@@ -429,7 +447,7 @@ void RavEngine::GeometryAudioSpace::RoomData::DeleteMeshDataForEntity(entity_t e
 
 void RavEngine::GeometryAudioSpace::RoomData::DestroySteamAudioSourceConfig(SteamAudioSourceConfig& effects)
 {
-    //iplBinauralEffectRelease(&effects.binauralEffect);
+    iplBinauralEffectRelease(&effects.binauralEffect);
     iplDirectEffectRelease(&effects.directEffect);
     iplPathEffectRelease(&effects.pathEffect);
     iplSourceRelease(&effects.source);

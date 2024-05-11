@@ -25,7 +25,7 @@ STATIC(AudioPlayer::nchannels) = 0;
 STATIC(AudioPlayer::buffer_size) = 0;
 STATIC(AudioPlayer::maxAudioSampleLatency) = 0;
 
-#define USE_MT_IMPL 0
+#define USE_MT_IMPL 1
 
 constexpr auto doPlayer = [](auto renderData, auto player) {    // must be a AudioDataProvider. We use Auto here to avoid vtable.
     auto sharedBufferView = renderData->GetWritableDataBufferView();
@@ -150,7 +150,7 @@ void RavEngine::AudioPlayer::CalculateGeometryAudioSpace(AudioSnapshot::Geometry
     for (const auto& source : SnapshotToRender->sources) {
         TZero(outputView.data(), outputView.size());
         TZero(outputScratchView.data(), outputScratchView.size());
-        room->RenderAudioSource(outputView, outputScratchView, source.ownerID, source.data->renderData.GetReadonlyDataBufferView());
+        room->RenderAudioSource(outputView, outputScratchView, source.ownerID, source.data->renderData.GetReadonlyDataBufferView(), invListenerTransform);
        
         AdditiveBlendSamples(accumulationView, outputView);
     }

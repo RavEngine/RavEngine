@@ -152,7 +152,7 @@ public:
 
         void RenderAudioSource(
             PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer,
-            entity_t sourceOwningEntity, PlanarSampleBufferInlineView monoSourceData
+            entity_t sourceOwningEntity, PlanarSampleBufferInlineView monoSourceData, const matrix4& invListenerTransform
         );
 
         // internal use only. Called when an audio source component is destroyed
@@ -165,6 +165,8 @@ public:
             _IPLSource_t* source = nullptr;
             _IPLDirectEffect_t* directEffect = nullptr;
             _IPLPathEffect_t* pathEffect = nullptr;
+            _IPLBinauralEffect_t* binauralEffect = nullptr; //NOTE: this will be replaced by pathEffect at some point
+            vector3 roomSpacePos{ 0,0,0 };
         };
 
         // must be called when destroying a SteamAudioSourceConfig

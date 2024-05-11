@@ -51,9 +51,9 @@ namespace RavEngine {
 		vraudio::WorldRotation eroomrot(roomSpaceRot.w, roomSpaceRot.x, roomSpaceRot.y, roomSpaceRot.z);
 		vraudio::WorldPosition eroompos(roomSpacePos.x, roomSpacePos.y, roomSpacePos.z);
 		vraudio::WorldPosition eroomdim(roomHalfExts.x, roomHalfExts.y, roomHalfExts.z);
-		auto gain = vraudio::ComputeRoomEffectsGain({0,0,0}, eroompos, eroomrot, eroomdim);
+		auto gain = vraudio::ComputeRoomEffectsGain(eroompos, {0,0,0}, eroomrot, eroomdim);
 
-		audioEngine->SetInterleavedBuffer(src, monoSourceData.data(), 1, AudioPlayer::GetBufferSize());   // they copy the contents of temp into their own buffer
+		audioEngine->SetInterleavedBuffer(src, monoSourceData.data(), 1, monoSourceData.sizeOneChannel());   // they copy the contents of temp into their own buffer
 		audioEngine->SetSourceVolume(src, 1);   // the AudioAsset already applied the volume
 		audioEngine->SetSourcePosition(src, roomSpacePos.x, roomSpacePos.y, roomSpacePos.z);
 		audioEngine->SetSourceRotation(src, roomSpaceRot.x, roomSpaceRot.y, roomSpaceRot.z, roomSpaceRot.w);
