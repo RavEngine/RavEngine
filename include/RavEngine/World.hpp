@@ -919,7 +919,7 @@ namespace RavEngine {
     public:
         
         template<typename T, typename ... A>
-        inline T CreatePrototype(A&& ... args){
+        inline T Instantiate(A&& ... args){
             auto id = CreateEntity();
             T en;
             en.id = id;

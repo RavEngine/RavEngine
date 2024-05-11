@@ -54,7 +54,7 @@ namespace RavEngine {
 		template<typename T>
         constexpr inline void RegisterNetworkedEntity(){
 			NetworkedObjects.insert(std::make_pair(CTTI<T>(),[](World* world) -> Entity{
-                auto e = world->CreatePrototype<T>();
+                auto e = world->Instantiate<T>();
 				if constexpr (HasClientCreate<T>::value) {
 					e.ClientCreate();
 				}

@@ -19,6 +19,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <chrono>
 #include "Transform.hpp"
+#include "ParticleEmitter.hpp"
 
 #if __APPLE__ || __EMSCRIPTEN__
 #define OCCLUSION_CULLING_UNAVAILABLE

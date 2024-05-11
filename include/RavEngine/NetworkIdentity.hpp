@@ -8,7 +8,7 @@ namespace RavEngine {
 	struct NetworkIdentity : public ComponentWithOwner, public Queryable<NetworkIdentity>{
 	private:
         uuids::uuid NetworkID;
-		ctti_t NetTypeID = 0;		// the CTTI type of the T when it was constructed via CreatePrototype<T>, on clients this is set to 0
+		ctti_t NetTypeID = 0;		// the CTTI type of the T when it was constructed via Instantiate<T>, on clients this is set to 0
 	public:
 				
 		//default constructor - used on Server (triggers spawn message)
