@@ -114,8 +114,9 @@ Software
    - LunarG Vulkan SDK (optional unless Vulkan support is desired)
 - Android
    - Android Studio 4.2 or later with NDK 25 or later
-   - Linux or macOS host machine (Windows currently not supported)
+   - Host requirements:
       - macOS host: Xcode
+	  - Windows Host: Visual Studio 2022 with Desktop Development in C++ module
       - Linux host: clang 16 or later (recommended) or gcc 13 or later
    - The [SDL Android Builder](https://github.com/Ravbug/sdl-android-builder/) wrapper project
 - Web Browsers
