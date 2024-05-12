@@ -17,7 +17,7 @@ layout(std430, binding = 1)buffer freelistSSBO
 struct ParticleState
 {
     uint aliveParticleCount;
-    uint freeListCount;
+    int freeListCount;
 };
 
 layout(std430, binding = 2) buffer particleStateSSBO
@@ -29,5 +29,42 @@ layout(std430, binding = 2) buffer particleStateSSBO
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-    
+    // only this many particles can be spawned, don't try to spawn more
+    if (gl_GlobalInvocationID.x > ubo.particlesToSpawn){
+        return;
+    }
+
+    // is another particle possible?
+    const uint particleBufferSlot = atomicAdd(particleState[0].aliveParticleCount,1);
+    if (particleBufferSlot >= ubo.maxTotalParticles){
+        return;
+    }
+
+    // pin to max count
+    if (gl_GlobalInvocationID.x == 0){
+        atomicMin(particleState[0].aliveParticleCount, ubo.maxTotalParticles);
+    }
+
+     // first try getting from the freelist
+    const int freelistIndex = atomicAdd(particleState[0].freeListCount, - 1) - 1;
+
+    uint particleID = 0;
+    if (freelistIndex < 0){
+        // if we can't get it from the freelist, then create a new one if possible
+         if (gl_GlobalInvocationID.x == 0){
+            atomicMax(particleState[0].freeListCount, 0);   // pin to 0
+        }
+
+        // we know that if we are slot N, and there are no free particles in the free list, 
+        // then all IDs from [0, N) are in use. Thus, the next ID = slot
+        particleID = particleBufferSlot;
+    }
+    else{
+        // get it from the freelist
+        particleID = particleFreelist[freelistIndex];
+    }
+
+    // set the particle
+    aliveParticleIndexBuffer[particleBufferSlot] = particleID;
+
 }

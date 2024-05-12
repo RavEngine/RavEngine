@@ -201,6 +201,11 @@ struct LightingType{
 					};
 					mainCommandBuffer->BeginCompute(particleCreatePipeline);
 					mainCommandBuffer->SetComputeBytes(constants, 0);
+
+					mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 0);
+					mainCommandBuffer->BindComputeBuffer(emitter.particleReuseFreelist, 1);
+					mainCommandBuffer->BindComputeBuffer(emitter.particleStateBuffer, 2);
+
 					mainCommandBuffer->DispatchCompute(std::ceil(spawnCount / 64.0f), 1, 1);
 					mainCommandBuffer->EndCompute();
 				}
