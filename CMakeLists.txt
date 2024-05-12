@@ -57,7 +57,7 @@ if(MSVC)
 	if(NOT CMAKE_GENERATOR STREQUAL "Ninja")
     	add_definitions(/MP)				# parallelize each target, unless Ninja is the generator
 	endif()
-	if (UWP)
+	if (WINDOWS_STORE)
 		add_definitions(/sdl-)
 	endif()
 endif()
@@ -319,7 +319,7 @@ if(TARGET_EMSCRIPTEN)
 	set(PLATFORM "Linux" CACHE INTERNAL "")
 elseif (WIN32 OR WINDOWS_STORE)
 	set(TARGET_BUILD_PLATFORM "windows" CACHE INTERNAL "")
-	if (UWP)
+	if (WINDOWS_STORE)
 		set(PLATFORM "uwp")
 	elseif(WIN32)
 		set(PLATFORM "Windows")
@@ -435,7 +435,7 @@ if(APPLE OR LINUX)
 	target_compile_options("${PROJECT_NAME}" PUBLIC -ffast-math -ffp-contract=fast)
 endif()
 
-if (NOT APPLE AND NOT UWP)
+if (NOT APPLE AND NOT WINDOWS_STORE)
 target_precompile_headers("${PROJECT_NAME}" PRIVATE 
 	"<phmap.h>"
 	"<vector>"
@@ -996,7 +996,7 @@ function(pack_resources)
 	set_property(SOURCE "${outpack}" PROPERTY VS_DEPLOYMENT_LOCATION "")	# tells the deployment to put the assets zip in the AppX root directory
 	
 	# copy to target dir on Win
-	if((WIN32 AND NOT UWP) OR LINUX)
+	if((WIN32 AND NOT WINDOWS_STORE) OR LINUX)
 		get_filename_component(outfile ${outpack} NAME)
 		SET(outfile "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${outfile}")
 		add_custom_command(
@@ -1062,7 +1062,7 @@ endmacro()
 
 get_all_targets(all_targets)
 
-if(UWP)
+if(WINDOWS_STORE)
 	# WINNT version is messed up when compiling for UWP, fixes here
 	target_compile_definitions("GameNetworkingSockets_s" PUBLIC "_CRT_SECURE_NO_WARNINGS" "BUILD_DLL" "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS" "_CRT_NONSTDC_NO_DEPRECATE" "_WIN32_WINNT=9501")
 endif()
@@ -1080,7 +1080,7 @@ foreach(TGT ${all_targets})
 				target_compile_options(${TGT} PRIVATE "-w")
 			endif()
 
-			if (UWP)
+			if (WINDOWS_STORE)
 				target_compile_definitions(${TGT} PUBLIC "_CRT_SECURE_NO_WARNINGS" "BUILD_DLL" "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS" "_CRT_NONSTDC_NO_DEPRECATE")
 			endif()
 
