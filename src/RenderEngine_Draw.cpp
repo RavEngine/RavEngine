@@ -185,6 +185,20 @@ struct LightingType{
 			mainCommandBuffer->EndCompute();
 			mainCommandBuffer->EndComputeDebugMarker();
 		};
+
+		auto tickParticles = [this, worldOwning]() {
+			worldOwning->Filter([this](ParticleEmitter& emitter, const Transform& transform) {
+				auto mat = emitter.GetMaterial();
+				auto worldTransform = transform.GetWorldMatrix();
+
+				// burst mode
+				if (emitter.mode == ParticleEmitter::Mode::Burst && emitter.IsEmitting()) {
+					emitter.Stop();
+				}
+			});
+		};
+
+		tickParticles();
 		
 		// don't do operations if there's nothing to skin
 		// these operations run once per frame since the results

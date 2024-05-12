@@ -1,7 +1,14 @@
 #pragma once
 #include <RGL/Types.hpp>
+#include "mathtypes.hpp"
+#include <string>
 
 namespace RavEngine {
+
+	struct ParticleEngineData {
+		quaternion rotation{ 0,0,0,0 };
+		vector3 pos{ 0 }, scale{ 0 };
+	};
 
 	// Subclass this to make custom particle materials
 	struct ParticleMaterial {
