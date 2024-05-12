@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.25)
 project(RavEngine)
 
 # ========== CMake Boilerplate ==============
@@ -19,35 +19,19 @@ option( RAVENGINE_SERVER "Build as a headless server" ${RAVENGINE_BUILD_TESTS})
 
 # ban in-source builds
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
-if ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
-  message(SEND_ERROR "In-source builds are not allowed.")
-endif()
-set(TARGET_APPLE OFF)
-set(TARGET_LINUX OFF)
+
 set(TARGET_EMSCRIPTEN OFF)
-set(TARGET_WINDOWS OFF)
-set(TARGET_UWP OFF)
-set(TARGET_ANDROID OFF)
 if(CMAKE_SYSTEM_NAME MATCHES iOS OR CMAKE_SYSTEM_NAME MATCHES tvOS)
 	set(CMAKE_SYSTEM_PROCESSOR "aarch64")
 endif()
-if(CMAKE_SYSTEM_NAME MATCHES Darwin OR CMAKE_SYSTEM_NAME MATCHES iOS OR CMAKE_SYSTEM_NAME MATCHES tvOS OR CMAKE_SYSTEM_NAME MATCHES visionOS)
-	set(TARGET_APPLE ON CACHE INTERNAL "")
-elseif(CMAKE_SYSTEM_NAME MATCHES Linux)
-	set(TARGET_LINUX ON CACHE INTERNAL "")
-elseif(CMAKE_SYSTEM_NAME MATCHES Emscripten)
+
+if(CMAKE_SYSTEM_NAME MATCHES Emscripten)
 	set(TARGET_EMSCRIPTEN ON CACHE INTERNAL "")
-elseif(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
-	set(TARGET_UWP ON)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-	set(TARGET_WINDOWS ON)
-elseif (CMAKE_SYSTEM_NAME MATCHES "Android")
-	set(TARGET_ANDROID ON)
 endif()
 
 include(deps/cmrc/CMakeRC.cmake)
 
-if (TARGET_APPLE)
+if (APPLE)
 	add_definitions(-fvisibility=default -ftemplate-backtrace-limit=0 -fobjc-arc)	# silence warning when building ARM fat library on Apple platforms, enable arc
 elseif(TARGET_EMSCRIPTEN)
 	# required for higher memory, atomics, and threads
@@ -65,22 +49,6 @@ macro(rve_enable_IPO target)
 	)
 
 endmacro()
-
-
-# linux detection
-if(UNIX AND NOT CMAKE_HOST_APPLE)
-	set(LINUX TRUE CACHE INTERNAL "")
-endif()
-
-# UWP detection
-if (CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
-	set(UWP ON CACHE INTERNAL "")
-endif()
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-	set(WINDOWS ON CACHE INTERNAL "")
-else()
-	set(WINDOWS OFF CACHE INTERNAL "")
-endif()
 
 # enable multiprocessor compilation with vs
 # Remove 'lib' prefix for shared libraries on Windows
@@ -127,7 +95,7 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	endif()
 
 	file(MAKE_DIRECTORY ${TOOLS_DIR})
-	if(LINUX OR (CMAKE_HOST_APPLE AND TARGET_EMSCRIPTEN) OR (CMAKE_HOST_APPLE AND TARGET_ANDROID))
+	if(LINUX OR (CMAKE_HOST_APPLE AND TARGET_EMSCRIPTEN) OR (CMAKE_HOST_APPLE AND ANDROID))
 		# need to ensure that if cross-compiling, we don't use the cross-compiler for the host tools
 		set(LINUX_HOST_CC "-DCMAKE_C_COMPILER=cc" CACHE INTERNAL "")
 		set(LINUX_HOST_CXX "-DCMAKE_CXX_COMPILER=c++" CACHE INTERNAL "")
@@ -183,50 +151,6 @@ set(Random_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory("${DEPS_DIR}/random" EXCLUDE_FROM_ALL)
 
 #SDL
-set(SDL_VIDEO_OPENGL OFF CACHE INTERNAL "")
-set(SDL_VIDEO_OPENGLES OFF CACHE INTERNAL "")
-set(SDL_VIDEO_CAPTURE ON CACHE INTERNAL "")
-if (CMAKE_SYSTEM_NAME STREQUAL "iOS")
-	set(SDL_VIDEO_OPENGLES ON CACHE INTERNAL "")
-	set(IOS ON CACHE INTERNAL "")
-	set(TVOS OFF CACHE INTERNAL "")
-	set(MACOSX OFF CACHE INTERNAL "")
-	set(DARWIN OFF CACHE INTERNAL "")
-elseif(CMAKE_SYSTEM_NAME STREQUAL "tvOS")
-	set(TVOS ON CACHE INTERNAL "")
-	set(IOS OFF CACHE INTERNAL "")
-	set(MACOSX OFF CACHE INTERNAL "")
-	set(DARWIN OFF CACHE INTERNAL "")
-	set(SDL_VIDEO_OPENGLES ON CACHE INTERNAL "")
-elseif(TARGET_LINUX)
-    set(SDL_VIDEO_OPENGL ON CACHE INTERNAL "")  # Linux-wayland requires OpenGL / OpenGL ES
-    set(SDL_VIDEO_OPENGLES ON CACHE INTERNAL "")
-    set(SDL_VIDEO_X11 ON CACHE INTERNAL "")
-    set(SDL_VIDEO_WAYLAND ON CACHE INTERNAL "")
-elseif(UWP)
-	set(WINDOWS_STORE ON CACHE INTERNAL "")
-endif()
-
-	#RavEngine manages its own rendering, so disable SDL render drivers
-	if (NOT UWP)
-		set(RENDER_D3D OFF CACHE INTERNAL "")	
-	else()
-		set(RENDER_D3D ON CACHE INTERNAL "") # UWP needs this on
-	endif()
-	set(SDL_RENDER_METAL OFF CACHE INTERNAL "")
-	set(SDL_VIDEO_VULKAN OFF CACHE INTERNAL "")
-	set(SDL_VIDEO_VIVANTE OFF CACHE INTERNAL "")
-	if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-		set(SDL_VIDEO_COCOA ON CACHE INTERNAL "")
-		set(MACOSX ON CACHE INTERNAL "")
-	else()
-		set(VIDEO_COCOA OFF CACHE INTERNAL "")
-	endif()
-	set(SDL_VIDEO_DUMMY OFF CACHE INTERNAL "")
-if (UWP)
-	set(SDL_SENSOR OFF CACHE INTERNAL "")
-	set(WINDOWS_STORE ON CACHE INTERNAL "")
-endif()
 # ensure library is built correctly for static
 if (NOT RAVENGINE_SERVER)
 	if (NOT ANDROID)
@@ -254,7 +178,7 @@ if (ANDROID)
 endif()
 
 # if on a platform other than windows or mac, ensure that an audio backend was found
-if (NOT TARGET_APPLE AND NOT TARGET_WINDOWS AND NOT TARGET_UWP AND NOT TARGET_EMSCRIPTEN AND NOT TARGET_ANDROID)
+if (NOT APPLE AND NOT WIN32 AND NOT WINDOWS_STORE AND NOT TARGET_EMSCRIPTEN AND NOT ANDROID)
 	find_package(ALSA)
 	find_package(PulseAudio)                                    
 	if (NOT ALSA_FOUND AND NOT PulseAudio_FOUND)
@@ -388,25 +312,25 @@ elseif (WIN32)
 		set(TARGET_BUILD_PLATFORM "windows" CACHE INTERNAL "")
 		set(PLATFORM "Windows")
 	endif()
-elseif(TARGET_APPLE)
+elseif(APPLE)
 	set(TARGET_BUILD_PLATFORM "linux" CACHE INTERNAL "")
 	set(PLATFORM "macOS")
 	if (CMAKE_SYSTEM_NAME MATCHES visionOS)
 		set(CMAKE_SYSTEM_PROCESSOR "aarch64")
 	endif()
-elseif(TARGET_LINUX)
+elseif(LINUX)
 	set(TARGET_BUILD_PLATFORM "linux" CACHE INTERNAL "")
 	set(CMAKE_LIBRARY_ARCHITECTURE "x86_64-linux-gnu" CACHE INTERNAL "")
 	set(PLATFORM "Linux")
 	#set(CMAKE_LIBRARY_ARCHITECTURE "aarch64-linux-gnu" CACHE INTERNAL "")
-elseif(TARGET_ANDROID)
+elseif(ANDROID)
 	set(TARGET_BUILD_PLATFORM "linux" CACHE INTERNAL "")
 	set(PLATFORM "Linux")
 endif()
 
 # Call into PhysX's CMake scripts
 add_subdirectory("${PHYSX_ROOT_DIR}/compiler/public" EXCLUDE_FROM_ALL)
-if(TARGET_EMSCRIPTEN OR ( (TARGET_WINDOWS OR TARGET_UWP) AND CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "ARM64"))
+if(TARGET_EMSCRIPTEN OR ( (WIN32 OR WINDOWS_STORE) AND CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "ARM64"))
 	# disable vectorization
 	target_compile_definitions(LowLevelAABB PRIVATE "PX_SIMD_DISABLED")
 	target_compile_definitions(SceneQuery PRIVATE "PX_SIMD_DISABLED")
@@ -433,7 +357,7 @@ if(ANDROID)
 endif()
 
 # OpenXR - available on Windows only
-if(TARGET_WINDOWS AND NOT RAVENGINE_SERVER)
+if(WIN32 AND NOT RAVENGINE_SERVER)
 	set(DYNAMIC_LOADER OFF)
 	set(BUILD_TESTS OFF)
 	set(BUILD_CONFORMANCE_TESTS OFF)
@@ -442,7 +366,7 @@ if(TARGET_WINDOWS AND NOT RAVENGINE_SERVER)
 	set(OPENXR_LOADER openxr_loader)
 endif()
 
-if(TARGET_LINUX)
+if(LINUX)
 	set(LibUUID_LIBRARIES "uuid")
 elseif(ANDROID)
 	add_subdirectory(deps/android-uuid)
@@ -452,7 +376,7 @@ endif()
 # ========== Building engine ==============
 
 # get all sources for the library with glob
-if(TARGET_APPLE)
+if(APPLE)
 	# also need to compile Objective-C++ files
 	file(GLOB MM_SOURCES "src/*.mm")
 	set_source_files_properties(${MM_SOURCES} PROPERTIES
@@ -495,11 +419,11 @@ source_group("Shaders" FILES ${SHADERS})
 
 # vectorization
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
-if(TARGET_APPLE OR TARGET_LINUX)
+if(APPLE OR LINUX)
 	target_compile_options("${PROJECT_NAME}" PUBLIC -ffast-math -ffp-contract=fast)
 endif()
 
-if (NOT TARGET_APPLE AND NOT UWP)
+if (NOT APPLE AND NOT UWP)
 target_precompile_headers("${PROJECT_NAME}" PRIVATE 
 	"<phmap.h>"
 	"<vector>"
@@ -547,7 +471,7 @@ target_include_directories("${PROJECT_NAME}"
 )
 
 # ====================== Linking ====================
-if (TARGET_APPLE)
+if (APPLE)
     # some apple-specific libraries
     if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	    find_library(SM_LIB ServiceManagement REQUIRED)
@@ -556,14 +480,13 @@ if (TARGET_APPLE)
     find_library(METAL_LIB Metal REQUIRED)
     find_library(QZC_LIB QuartzCore REQUIRED)
 	find_library(ACCEL_LIB Accelerate REQUIRED)
-    find_library(CORETEXT_LIB CoreText REQUIRED)    # visionOS needs this for some reason
-    
+    find_library(CORETEXT_LIB CoreText REQUIRED)    # visionOS needs this for some reason   
 
     SET(ICONV_LIB "iconv")
 
 endif()
 
-if(TARGET_LINUX)
+if(LINUX)
 	set(ATOMIC_LIB "atomic") # need to explicitly link libatomic on linux
 endif()
 
@@ -633,7 +556,7 @@ target_link_libraries("${PROJECT_NAME}"
 )
 
 # raspberry pi needs this set explicitly, incompatible with other targets 
-if(TARGET_LINUX)
+if(LINUX)
 	target_link_libraries("${PROJECT_NAME}" PRIVATE "stdc++fs")
 endif()
 
@@ -846,7 +769,7 @@ function(pack_resources)
 		message(WARNING "Unparsed arguments: ${ARGS_UNPARSED_ARGUMENTS}")
 	endif()
 
-	if(TARGET_APPLE)
+	if(APPLE)
 		set_property(TARGET ${ARGS_TARGET} APPEND_STRING PROPERTY COMPILE_FLAGS "-fobjc-arc")
 		set_target_properties(${ARGS_TARGET} PROPERTIES 
 			XCODE_ATTRIBUTE_MTL_ENABLE_DEBUG_INFO "$<$<NOT:$<CONFIG:RELEASE>>:INCLUDE_SOURCE>"	# enable shader debugging in all but release mode
@@ -901,7 +824,7 @@ function(pack_resources)
 			elseif(NOT TARGET_EMSCRIPTEN)
 				# put it next to the executable
 				file(RELATIVE_PATH relpath "${input_root}" "${FILE}")
-				if (TARGET_UWP)
+				if (WINDOWS_STORE)
 					set(UWP_APPX "AppX")
 				endif()
 				set(asset_relpath "${ARGS_TARGET}_Streaming/${output_root}/${relpath}")
@@ -1061,7 +984,7 @@ function(pack_resources)
 	set_property(SOURCE "${outpack}" PROPERTY VS_DEPLOYMENT_LOCATION "")	# tells the deployment to put the assets zip in the AppX root directory
 	
 	# copy to target dir on Win
-	if((WIN32 AND NOT UWP) OR TARGET_LINUX)
+	if((WIN32 AND NOT UWP) OR LINUX)
 		get_filename_component(outfile ${outpack} NAME)
 		SET(outfile "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${outfile}")
 		add_custom_command(
