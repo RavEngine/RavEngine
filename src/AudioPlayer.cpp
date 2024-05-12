@@ -405,7 +405,7 @@ void AudioPlayer::SetupAudioTaskGraph(){
         CalculateFinalMix();
 
     }).name("Final audio mix").succeed(processDataProviders, processAmbients, processSimpleRooms, processGeometryRooms, processBoxRooms);
-    audioTaskflow.dump(std::cout);
+    //audioTaskflow.dump(std::cout);
 }
 
 

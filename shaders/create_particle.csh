@@ -40,21 +40,13 @@ void main()
         return;
     }
 
-    // pin to max count
-    if (gl_GlobalInvocationID.x == 0){
-        atomicMin(particleState[0].aliveParticleCount, ubo.maxTotalParticles);
-    }
-
+   
      // first try getting from the freelist
     const int freelistIndex = atomicAdd(particleState[0].freeListCount, - 1) - 1;
 
     uint particleID = 0;
     if (freelistIndex < 0){
-        // if we can't get it from the freelist, then create a new one if possible
-         if (gl_GlobalInvocationID.x == 0){
-            atomicMax(particleState[0].freeListCount, 0);   // pin to 0
-        }
-
+        // if we can't get it from the freelist, then create a new one if possible.
         // we know that if we are slot N, and there are no free particles in the free list, 
         // then all IDs from [0, N) are in use. Thus, the next ID = slot
         particleID = particleBufferSlot;
@@ -66,5 +58,12 @@ void main()
 
     // set the particle
     aliveParticleIndexBuffer[particleBufferSlot] = particleID;
+
+    barrier();
+    if (gl_LocalInvocationID.x == 0){
+        // pin to max count
+        atomicMin(particleState[0].aliveParticleCount, ubo.maxTotalParticles);
+        atomicMax(particleState[0].freeListCount, 0);   // pin to 0
+    }
 
 }
