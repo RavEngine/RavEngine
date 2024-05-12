@@ -56,7 +56,7 @@ namespace RavEngine {
 
 		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, spotLightRenderPipeline, lightToFBRenderPipeline, depthPyramidCopyPipeline,
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, ssaoPipeline;
-		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline;
+		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline;
 		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer, spotLightVertexBuffer, spotLightIndexBuffer,
 			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, ssaoSamplesBuffer;
 		uint32_t nPointLightIndices = 0, nSpotLightIndices = 0;
@@ -162,6 +162,12 @@ namespace RavEngine {
 			uint32_t drawCallBufferOffset = 0;
 			uint32_t baseInstanceOffset = 0;
 		};
+
+		struct ParticleCreationPushConstants {
+			uint32_t particlesToSpawn;
+			uint32_t maxParticles;
+		};
+
 
         virtual ~RenderEngine();
         RenderEngine(const AppConfig&, RGLDevicePtr device);

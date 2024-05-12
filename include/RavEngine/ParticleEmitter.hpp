@@ -48,6 +48,16 @@ namespace RavEngine {
 			return emittingThisFrame;
 		}
 
+		auto GetMaxParticles() const {
+			return maxParticleCount;
+		}
+
+		uint32_t spawnRate = 10;
+
+		uint32_t numParticlesToSpawn() const {
+			return spawnRate;
+		}
+
 	private:
 		RGLBufferPtr
 			particleDataBuffer = nullptr,
@@ -61,6 +71,7 @@ namespace RavEngine {
 		uint16_t TotalParticleData() const;
 
 		bool emittingThisFrame = false;
+		uint32_t maxParticleCount;
 	};
 
 }

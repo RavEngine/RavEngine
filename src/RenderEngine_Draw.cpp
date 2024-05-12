@@ -187,15 +187,31 @@ struct LightingType{
 		};
 
 		auto tickParticles = [this, worldOwning]() {
+			mainCommandBuffer->BeginComputeDebugMarker("Particle Update");
 			worldOwning->Filter([this](ParticleEmitter& emitter, const Transform& transform) {
 				auto mat = emitter.GetMaterial();
 				auto worldTransform = transform.GetWorldMatrix();
+
+				// spawning particles?
+				auto spawnCount = emitter.numParticlesToSpawn();
+				if (spawnCount > 0 && emitter.IsEmitting()) {
+					ParticleCreationPushConstants constants{
+						.particlesToSpawn = spawnCount,
+						.maxParticles = emitter.GetMaxParticles(),
+					};
+					mainCommandBuffer->BeginCompute(particleCreatePipeline);
+					mainCommandBuffer->SetComputeBytes(constants, 0);
+					mainCommandBuffer->DispatchCompute(std::ceil(spawnCount / 64.0f), 1, 1);
+					mainCommandBuffer->EndCompute();
+				}
 
 				// burst mode
 				if (emitter.mode == ParticleEmitter::Mode::Burst && emitter.IsEmitting()) {
 					emitter.Stop();
 				}
+				
 			});
+			mainCommandBuffer->EndComputeDebugMarker();
 		};
 
 		tickParticles();

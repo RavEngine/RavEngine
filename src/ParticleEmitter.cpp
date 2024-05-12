@@ -5,7 +5,7 @@
 #include <RGL/CommandBuffer.hpp>
 
 namespace RavEngine {
-	RavEngine::ParticleEmitter::ParticleEmitter(uint32_t maxParticles, Ref<ParticleMaterial> mat) : material(mat)
+	RavEngine::ParticleEmitter::ParticleEmitter(uint32_t maxParticles, Ref<ParticleMaterial> mat) : material(mat), maxParticleCount(maxParticles)
 	{
 
 		// create buffers

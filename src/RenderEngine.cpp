@@ -304,6 +304,7 @@ void RenderEngine::Init(const AppConfig& config)
 }
 
 
+
 /**
 Construct a render engine instance
 @param w the owning world for this engine instance
@@ -1680,6 +1681,37 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	recastLinePipeline = createDebugNavPipeline(RGL::PolygonOverride::Line, RGL::PrimitiveTopology::LineList);
 	recastPointPipeline = createDebugNavPipeline(RGL::PolygonOverride::Line, RGL::PrimitiveTopology::PointList);
 	recastTrianglePipeline = createDebugNavPipeline(RGL::PolygonOverride::Fill, RGL::PrimitiveTopology::TriangleList);
+
+	auto particleCreateShader = LoadShaderByFilename("create_particle.csh", device);
+	auto particleCreateLayout = device->CreatePipelineLayout({
+		.bindings = {
+			{
+				.binding = 0,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+			},
+			{
+				.binding = 1,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+			},
+			{
+				.binding = 2,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+			},
+		},
+		.constants = {
+			{sizeof(ParticleCreationPushConstants), 0, RGL::StageVisibility(RGL::StageVisibility::Compute)}
+		}
+	});
+	particleCreatePipeline = device->CreateComputePipeline({
+		.stage = {
+			.type = RGL::ShaderStageDesc::Type::Compute,
+			.shaderModule = particleCreateShader
+		},
+		.pipelineLayout = particleCreateLayout,
+	});
 }
 
 RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim size, bool createDepth)
