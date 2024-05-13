@@ -24,14 +24,14 @@ namespace RavEngine {
 		});
 
 		activeParticleIndexBuffer = device->CreateBuffer({
-			maxParticles, {.StorageBuffer = true}, sizeof(uint32_t), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Particle freelist"}
+			maxParticles, {.StorageBuffer = true}, sizeof(uint32_t), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Alive particle index Buffer"}
 		});
 
 		indirectDrawBuffer = device->CreateBuffer({
 			2, {.StorageBuffer = true, .IndirectBuffer = true}, sizeof(RGL::ComputeIndirectCommand), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Particle indirect draw buffer"}
 		});
 
-		particleStateBuffer = device->CreateBuffer({
+		emitterStateBuffer = device->CreateBuffer({
 			1, {.StorageBuffer = true}, sizeof(ParticleState), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Particle state buffer"}
 		});
 	}
@@ -40,7 +40,7 @@ namespace RavEngine {
 	{
 		auto& gcBuffers = GetApp()->GetRenderEngine().gcBuffers;
 
-		for (const auto buffer : { particleDataBuffer, particleReuseFreelist, spawnedThisFrameList, activeParticleIndexBuffer, indirectDrawBuffer, particleStateBuffer }) {
+		for (const auto buffer : { particleDataBuffer, particleReuseFreelist, spawnedThisFrameList, activeParticleIndexBuffer, indirectDrawBuffer, emitterStateBuffer }) {
 			gcBuffers.enqueue(buffer);
 		}
 	}

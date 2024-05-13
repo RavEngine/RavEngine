@@ -203,9 +203,9 @@ struct LightingType{
 					mainCommandBuffer->BeginCompute(particleCreatePipeline);
 					mainCommandBuffer->SetComputeBytes(constants, 0);
 
-					mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 0);
+					mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 0);
 					mainCommandBuffer->BindComputeBuffer(emitter.particleReuseFreelist, 1);
-					mainCommandBuffer->BindComputeBuffer(emitter.particleStateBuffer, 2);
+					mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 2);
 					mainCommandBuffer->BindComputeBuffer(emitter.spawnedThisFrameList, 3);
 					mainCommandBuffer->BindComputeBuffer(emitter.indirectDrawBuffer, 4);
 
@@ -213,9 +213,9 @@ struct LightingType{
 					mainCommandBuffer->EndCompute();
 
 					// init particles
-					mainCommandBuffer->BeginCompute(mat->userInitShader);
+					mainCommandBuffer->BeginCompute(mat->userInitPipeline);
 
-					mainCommandBuffer->BindComputeBuffer(emitter.particleStateBuffer,0);
+					mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer,0);
 					mainCommandBuffer->BindComputeBuffer(emitter.spawnedThisFrameList, 1);
 					mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 2);
 
@@ -233,7 +233,23 @@ struct LightingType{
 				}
 
 				// tick particles
-				//mainCommandBuffer->BeginCompute();
+				mainCommandBuffer->BeginCompute(mat->userUpdatePipeline);
+
+				mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 0);
+				mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 1);
+				mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 2);
+
+				ParticleUpdateUBO ubo{
+					.fpsScale = GetApp()->GetCurrentFPSScale()
+				};
+
+				mainCommandBuffer->SetComputeBytes(ubo, 0);
+				mainCommandBuffer->DispatchIndirect({
+					.indirectBuffer = emitter.indirectDrawBuffer,
+					.offsetIntoBuffer = sizeof(RGL::ComputeIndirectCommand)
+				});
+
+				mainCommandBuffer->EndCompute();
 				
 			});
 			mainCommandBuffer->EndComputeDebugMarker();

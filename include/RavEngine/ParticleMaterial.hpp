@@ -10,6 +10,11 @@ namespace RavEngine {
 		vector3 pos{ 0 }, scale{ 0 };
 	};
 
+
+	struct ParticleUpdateUBO {
+		float fpsScale;
+	};
+
 	// Subclass this to make custom particle materials
 	struct ParticleMaterial {
 		friend class RenderEngine;
@@ -23,15 +28,15 @@ namespace RavEngine {
 		}
 
 		const auto GetInitShader() const {
-			return userInitShader;
+			return userInitPipeline;
 		}
 
 		const auto GetUpdateShader() const {
-			return userUpdateShader;
+			return userUpdatePipeline;
 		}
 
 	private:
-		RGLComputePipelinePtr userInitShader, userUpdateShader;
+		RGLComputePipelinePtr userInitPipeline, userUpdatePipeline;
 	};
 
 }

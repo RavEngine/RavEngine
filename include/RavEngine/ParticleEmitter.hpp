@@ -66,7 +66,7 @@ namespace RavEngine {
 			spawnedThisFrameList = nullptr,
 			activeParticleIndexBuffer = nullptr,
 			indirectDrawBuffer = nullptr,
-			particleStateBuffer = nullptr;
+			emitterStateBuffer = nullptr;
 
 		Ref<ParticleMaterial> material;
 
