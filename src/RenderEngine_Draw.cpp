@@ -238,6 +238,7 @@ struct LightingType{
 				mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 0);
 				mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 1);
 				mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 2);
+				mainCommandBuffer->BindComputeBuffer(emitter.particleReuseFreelist, 3);
 
 				ParticleUpdateUBO ubo{
 					.fpsScale = GetApp()->GetCurrentFPSScale()
