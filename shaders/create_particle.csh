@@ -18,12 +18,30 @@ struct ParticleState
 {
     uint aliveParticleCount;
     int freeListCount;
+    uint createdThisFrameCount;
 };
 
 layout(std430, binding = 2) buffer particleStateSSBO
 {   
     ParticleState particleState[];
 };
+
+layout(std430, binding = 3)buffer createdThisFrameSSBO
+{
+    uint particlesCreatedThisFrameBuffer[];
+};
+
+struct IndirectWorkgroupSize {
+    uint x;
+    uint y;
+    uint z;
+};
+
+layout(std430, binding = 4)buffer indirectSSBO
+{
+    IndirectWorkgroupSize indirectBuffers[];    // 0 is initialization shader, 1 is update shader
+};
+
 
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
@@ -58,6 +76,8 @@ void main()
 
     // set the particle
     aliveParticleIndexBuffer[particleBufferSlot] = particleID;
+    const uint createdThisFrameIdx = atomicAdd(particleState[0].createdThisFrameCount, 1);
+    particlesCreatedThisFrameBuffer[createdThisFrameIdx] = particleID;
 
     barrier();
     if (gl_LocalInvocationID.x == 0){
@@ -66,4 +86,10 @@ void main()
         atomicMax(particleState[0].freeListCount, 0);   // pin to 0
     }
 
+    barrier();
+
+    if (gl_GlobalInvocationID.x == 0){
+        indirectBuffers[0] = IndirectWorkgroupSize(uint(ceil(particleState[0].createdThisFrameCount/64.f)),1,1);  // initialization shader
+        indirectBuffers[1] = IndirectWorkgroupSize(uint(ceil(particleState[0].aliveParticleCount/64.f)),1,1);  // initialization shader
+    }
 }

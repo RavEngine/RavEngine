@@ -1700,6 +1700,16 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				.type = RGL::BindingType::StorageBuffer,
 				.stageFlags = RGL::BindingVisibility::Compute,
 			},
+			{
+				.binding = 3,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+			},
+			{
+				.binding = 4,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+			},
 		},
 		.constants = {
 			{sizeof(ParticleCreationPushConstants), 0, RGL::StageVisibility(RGL::StageVisibility::Compute)}
