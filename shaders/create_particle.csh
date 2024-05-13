@@ -17,8 +17,7 @@ layout(std430, binding = 1)buffer freelistSSBO
 struct ParticleState
 {
     uint aliveParticleCount;
-    int freeListCount;
-    uint createdThisFrameCount;
+    uint freeListCount;
 };
 
 layout(std430, binding = 2) buffer particleStateSSBO
@@ -48,7 +47,7 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
     // only this many particles can be spawned, don't try to spawn more
-    if (gl_GlobalInvocationID.x > ubo.particlesToSpawn){
+    if (gl_GlobalInvocationID.x >= ubo.particlesToSpawn){
         return;
     }
 
@@ -76,31 +75,31 @@ void main()
     }
 
    
-     // first try getting from the freelist
-    const int freelistIndex = atomicAdd(particleState[0].freeListCount, - 1) - 1;
+    // first try getting from the freelist
+    // the lower order threads grab from the free list, while the higher order threads create new particles (if applicable)
+    bool canGetFromFreelist = gl_GlobalInvocationID.x < particleState[0].freeListCount;
 
     uint particleID = 0;
-    if (freelistIndex < 0){
+    if (canGetFromFreelist){
+         // get it from the freelist
+        particleID = particleFreelist[gl_GlobalInvocationID.x];
+    }
+    else{
         // if we can't get it from the freelist, then create a new one if possible.
         // we know that if we are slot N, and there are no free particles in the free list, 
         // then all IDs from [0, N) are in use. Thus, the next ID = slot
         particleID = particleBufferSlot;
     }
-    else{
-        // get it from the freelist
-        particleID = particleFreelist[freelistIndex];
-    }
 
     // set the particle
-    //TODO: derive this index instead of using atomics
     aliveParticleIndexBuffer[particleBufferSlot] = particleID;
-    const uint createdThisFrameIdx = atomicAdd(particleState[0].createdThisFrameCount, 1);
+    const uint createdThisFrameIdx = gl_GlobalInvocationID.x;
     particlesCreatedThisFrameBuffer[createdThisFrameIdx] = particleID;
 
     barrier();
     if (gl_LocalInvocationID.x == 0){
-        // pin to max count
-        atomicMax(particleState[0].freeListCount, 0);   // pin to 0
+        // update freelist size
+        particleState[0].freeListCount = (ubo.particlesToSpawn > particleState[0].freeListCount) ? 0 : particleState[0].freeListCount - ubo.particlesToSpawn;
     }
 
 }

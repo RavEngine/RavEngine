@@ -11,7 +11,6 @@ namespace RavEngine {
 	struct ParticleState {
 		uint32_t aliveParticleCount = 0;
 		uint32_t freeListCount = 0;
-		uint32_t createdThisFrameCount = 0;
 	};
 
 	struct ParticleEmitter : public Queryable<ParticleEmitter>, public AutoCTTI {
