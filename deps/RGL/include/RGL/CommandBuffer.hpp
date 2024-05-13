@@ -60,6 +60,10 @@ namespace RGL {
 		uint32_t baseInstance;
 	};
 
+	struct ComputeIndirectCommand {
+		uint32_t x, y, z;
+	};
+
 	struct IndirectCommand {
 		uint32_t vertexCount;
 		uint32_t instanceCount;

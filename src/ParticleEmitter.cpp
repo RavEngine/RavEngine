@@ -28,7 +28,7 @@ namespace RavEngine {
 		});
 
 		indirectDrawBuffer = device->CreateBuffer({
-			2, {.StorageBuffer = true, .IndirectBuffer = true}, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Particle indirect draw buffer"}
+			2, {.StorageBuffer = true, .IndirectBuffer = true}, sizeof(RGL::ComputeIndirectCommand), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Particle indirect draw buffer"}
 		});
 
 		particleStateBuffer = device->CreateBuffer({

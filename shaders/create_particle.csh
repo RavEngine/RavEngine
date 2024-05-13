@@ -53,9 +53,26 @@ void main()
     }
 
     // is another particle possible?
-    const uint particleBufferSlot = atomicAdd(particleState[0].aliveParticleCount,1);
+    const uint particleBufferSlot = particleState[0].aliveParticleCount + gl_GlobalInvocationID.x;
     if (particleBufferSlot >= ubo.maxTotalParticles){
         return;
+    }
+
+    barrier();
+
+    // set the future workgroup properties
+    if (gl_GlobalInvocationID.x == 0){
+        uint totalCreated = min(
+            ubo.maxTotalParticles - particleState[0].aliveParticleCount, // number of free particles
+            ubo.particlesToSpawn                                         // how many we're asking for
+        );
+
+        uint totalAlive = min(ubo.maxTotalParticles, particleState[0].aliveParticleCount + ubo.particlesToSpawn);
+
+        particleState[0].aliveParticleCount = totalAlive;
+
+        indirectBuffers[0] = IndirectWorkgroupSize(uint(ceil(totalCreated/64.f)),1,1);  // initialization shader
+        indirectBuffers[1] = IndirectWorkgroupSize(uint(ceil(totalAlive/64.f)),1,1);  // update shader
     }
 
    
@@ -75,6 +92,7 @@ void main()
     }
 
     // set the particle
+    //TODO: derive this index instead of using atomics
     aliveParticleIndexBuffer[particleBufferSlot] = particleID;
     const uint createdThisFrameIdx = atomicAdd(particleState[0].createdThisFrameCount, 1);
     particlesCreatedThisFrameBuffer[createdThisFrameIdx] = particleID;
@@ -82,14 +100,7 @@ void main()
     barrier();
     if (gl_LocalInvocationID.x == 0){
         // pin to max count
-        atomicMin(particleState[0].aliveParticleCount, ubo.maxTotalParticles);
         atomicMax(particleState[0].freeListCount, 0);   // pin to 0
     }
 
-    barrier();
-
-    if (gl_GlobalInvocationID.x == 0){
-        indirectBuffers[0] = IndirectWorkgroupSize(uint(ceil(particleState[0].createdThisFrameCount/64.f)),1,1);  // initialization shader
-        indirectBuffers[1] = IndirectWorkgroupSize(uint(ceil(particleState[0].aliveParticleCount/64.f)),1,1);  // initialization shader
-    }
 }
