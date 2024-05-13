@@ -118,6 +118,10 @@ namespace RGL {
 			const IndirectConfig config;
 		};
 
+		struct CmdDispatchIndirect {
+			const DispatchIndirectConfig config;
+		};
+
 		struct CmdBeginDebugMarker {
 			const std::string label;
 		};
@@ -184,6 +188,7 @@ namespace RGL {
 			CmdBindBuffer,
 			CmdExecuteIndirect,
 			CmdExecuteIndirectIndexed,
+			CmdDispatchIndirect,
 			CmdSetPushConstantData,
 			CmdBindRenderPipeline,
 			CmdBeginDebugMarker,
@@ -260,6 +265,7 @@ namespace RGL {
 
 		void ExecuteIndirectIndexed(const IndirectConfig&) final;
 		void ExecuteIndirect(const IndirectConfig&) final;
+		void DispatchIndirect(const DispatchIndirectConfig&) final;
 
 		void BeginRenderDebugMarker(const std::string& label) final;
 		void BeginComputeDebugMarker(const std::string& label) final;

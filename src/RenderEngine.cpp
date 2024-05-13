@@ -1689,26 +1689,31 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				.binding = 0,
 				.type = RGL::BindingType::StorageBuffer,
 				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = true
 			},
 			{
 				.binding = 1,
 				.type = RGL::BindingType::StorageBuffer,
 				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = true
 			},
 			{
 				.binding = 2,
 				.type = RGL::BindingType::StorageBuffer,
 				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = true
 			},
 			{
 				.binding = 3,
 				.type = RGL::BindingType::StorageBuffer,
 				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = true
 			},
 			{
 				.binding = 4,
 				.type = RGL::BindingType::StorageBuffer,
 				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = true
 			},
 		},
 		.constants = {

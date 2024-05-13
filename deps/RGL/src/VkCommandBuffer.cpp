@@ -316,6 +316,11 @@ namespace RGL {
 		RecordBufferBinding(std::static_pointer_cast<BufferVk>(config.indirectBuffer).get(), { .written = false });
 		EncodeCommand(CmdExecuteIndirect{ config });
 	}
+	void CommandBufferVk::DispatchIndirect(const DispatchIndirectConfig& config)
+	{
+		RecordBufferBinding(std::static_pointer_cast<BufferVk>(config.indirectBuffer).get(), { .written = false });
+		EncodeCommand(CmdDispatchIndirect{config});
+	}
 	void CommandBufferVk::BeginRenderDebugMarker(const std::string& label)
 	{
 #ifndef NDEBUG
@@ -731,6 +736,14 @@ namespace RGL {
 					config.offsetIntoBuffer,
 					config.nDraws,
 					sizeof(IndirectCommand)
+				);
+			},
+			[this](const CmdDispatchIndirect& arg) {
+				auto& config = arg.config;
+				const auto buffer = std::static_pointer_cast<BufferVk>(config.indirectBuffer);
+				vkCmdDispatchIndirect(commandBuffer,
+					buffer->buffer,
+					config.offsetIntoBuffer
 				);
 			},
 			[this](const CmdSetPushConstantData& arg) {

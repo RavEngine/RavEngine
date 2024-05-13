@@ -30,7 +30,7 @@ namespace RGL {
 
 		Microsoft::WRL::ComPtr<ID3D12Fence> deviceRemovedFence;
 
-		Microsoft::WRL::ComPtr<ID3D12CommandSignature> multidrawSignature, multidrawIndexedSignature;
+		Microsoft::WRL::ComPtr<ID3D12CommandSignature> multidrawSignature, multidrawIndexedSignature, dispatchIndirectSignature;
 
 		//TODO: make these vectors of descriptorpiles
 		// where new ones are created when they fill up 

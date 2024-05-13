@@ -216,6 +216,9 @@ struct LightingType{
 				if (emitter.mode == ParticleEmitter::Mode::Burst && emitter.IsEmitting()) {
 					emitter.Stop();
 				}
+
+				// tick particles
+				//mainCommandBuffer->BeginCompute();
 				
 			});
 			mainCommandBuffer->EndComputeDebugMarker();

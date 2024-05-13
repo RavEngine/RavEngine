@@ -110,6 +110,7 @@ namespace RGL {
 
 		void ExecuteIndirectIndexed(const IndirectConfig&) final;
 		void ExecuteIndirect(const IndirectConfig&) final;
+		void DispatchIndirect(const DispatchIndirectConfig&) final;
 
 		void BeginRenderDebugMarker(const std::string& label) final;
 		void BeginComputeDebugMarker(const std::string& label) final;

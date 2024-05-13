@@ -498,6 +498,23 @@ namespace RGL {
 			0
 		);
 	}
+	void CommandBufferD3D12::DispatchIndirect(const DispatchIndirectConfig& config)
+	{
+		auto buffer = std::static_pointer_cast<BufferD3D12>(config.indirectBuffer);
+
+		SyncIfNeeded(static_cast<const BufferD3D12*>(buffer.get()), D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, false);
+
+		auto sig = buffer->owningDevice->dispatchIndirectSignature;
+		commandList->ExecuteIndirect(
+			sig.Get(),
+			1,
+			buffer->buffer.Get(),
+			config.offsetIntoBuffer,
+			nullptr,
+			0
+		);
+
+	}
 	void CommandBufferD3D12::BeginRenderDebugMarker(const std::string& label)
 	{
 		auto fn = GetBeginEvent();

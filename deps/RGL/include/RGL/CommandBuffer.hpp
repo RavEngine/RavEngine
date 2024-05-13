@@ -77,6 +77,11 @@ namespace RGL {
 		uint32_t nDraws;
 	};
 
+	struct DispatchIndirectConfig {
+		RGLBufferPtr indirectBuffer;
+		uint32_t offsetIntoBuffer = 0;
+	};
+
 	struct VertexBufferBinding {
 		uint32_t bindingPosition = 0;
 		uint32_t offsetIntoBuffer = 0;
@@ -161,6 +166,7 @@ struct TextureView;
 
 		virtual void ExecuteIndirectIndexed(const IndirectConfig&) = 0;
 		virtual void ExecuteIndirect(const IndirectConfig&) = 0;
+		virtual void DispatchIndirect(const DispatchIndirectConfig&) = 0;
 
 		virtual void BeginRenderDebugMarker(const std::string& label) = 0;
 		virtual void BeginComputeDebugMarker(const std::string& label) = 0;

@@ -87,6 +87,11 @@ namespace RGL{
             
     void CommandBufferWG::ExecuteIndirectIndexed(const IndirectConfig&) { }
     void CommandBufferWG::ExecuteIndirect(const IndirectConfig&) { }
+
+    void CommandBufferWG::DispatchIndirect(const DispatchIndirectConfig&)
+    {
+
+    }
         
     void CommandBufferWG::BeginRenderDebugMarker(const std::string& label) { }
     void CommandBufferWG::BeginComputeDebugMarker(const std::string& label) { }

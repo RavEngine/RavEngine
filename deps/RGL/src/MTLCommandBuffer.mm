@@ -389,6 +389,10 @@ void CommandBufferMTL::ExecuteIndirectIndexed(const RGL::IndirectConfig & config
     
 }
 
+void CommandBufferMTL::DispatchIndirect(const DispatchIndirectConfig&){
+
+}
+
 void CommandBufferMTL::ExecuteIndirect(const RGL::IndirectConfig & config) {
     auto buffer = std::static_pointer_cast<BufferMTL>(config.indirectBuffer);
     

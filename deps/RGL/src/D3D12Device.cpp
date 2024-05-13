@@ -194,6 +194,20 @@ namespace RGL {
             };
             device->CreateCommandSignature(&signature, nullptr, __uuidof(ID3D12CommandSignature), &multidrawIndexedSignature);
         }
+        {
+            D3D12_INDIRECT_ARGUMENT_DESC argumentDescs[]{
+                {
+                    .Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH
+                }
+            };
+            D3D12_COMMAND_SIGNATURE_DESC signature{
+               .ByteStride = sizeof(D3D12_DISPATCH_ARGUMENTS),
+               .NumArgumentDescs = std::size(argumentDescs),
+               .pArgumentDescs = argumentDescs,
+               .NodeMask = 0
+            };
+            device->CreateCommandSignature(&signature, nullptr, __uuidof(ID3D12CommandSignature), &dispatchIndirectSignature);
+        }
     }
 
     DeviceD3D12::~DeviceD3D12() {

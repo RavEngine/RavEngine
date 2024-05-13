@@ -68,6 +68,7 @@ struct BufferMTL;
                 
         virtual void ExecuteIndirectIndexed(const IndirectConfig&) final;
         virtual void ExecuteIndirect(const IndirectConfig&) final;
+        void DispatchIndirect(const DispatchIndirectConfig&) final;
         
         virtual ~CommandBufferMTL(){}
         

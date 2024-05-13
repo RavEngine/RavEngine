@@ -56,6 +56,7 @@ namespace RGL{
                 
         void ExecuteIndirectIndexed(const IndirectConfig&) final;
         void ExecuteIndirect(const IndirectConfig&) final;
+        void DispatchIndirect(const DispatchIndirectConfig&) final;
         
         virtual ~CommandBufferWG();
         
