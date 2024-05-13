@@ -20,6 +20,7 @@
 #include <chrono>
 #include "Transform.hpp"
 #include "ParticleEmitter.hpp"
+#include "ParticleMaterial.hpp"
 
 #if __APPLE__ || __EMSCRIPTEN__
 #define OCCLUSION_CULLING_UNAVAILABLE
@@ -209,6 +210,20 @@ struct LightingType{
 					mainCommandBuffer->BindComputeBuffer(emitter.indirectDrawBuffer, 4);
 
 					mainCommandBuffer->DispatchCompute(std::ceil(spawnCount / 64.0f), 1, 1);
+					mainCommandBuffer->EndCompute();
+
+					// init particles
+					mainCommandBuffer->BeginCompute(mat->userInitShader);
+
+					mainCommandBuffer->BindComputeBuffer(emitter.particleStateBuffer,0);
+					mainCommandBuffer->BindComputeBuffer(emitter.spawnedThisFrameList, 1);
+					mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 2);
+
+					mainCommandBuffer->DispatchIndirect({
+						.indirectBuffer = emitter.indirectDrawBuffer,
+						.offsetIntoBuffer = 0
+					});
+
 					mainCommandBuffer->EndCompute();
 				}
 

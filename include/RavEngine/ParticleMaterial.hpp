@@ -12,6 +12,7 @@ namespace RavEngine {
 
 	// Subclass this to make custom particle materials
 	struct ParticleMaterial {
+		friend class RenderEngine;
 		ParticleMaterial(const std::string& initShaderName, const std::string& updateShaderName);
 
 		/**

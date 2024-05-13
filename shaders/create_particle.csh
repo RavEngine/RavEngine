@@ -18,6 +18,7 @@ struct ParticleState
 {
     uint aliveParticleCount;
     uint freeListCount;
+    uint createdThisFrame;
 };
 
 layout(std430, binding = 2) buffer particleStateSSBO
@@ -69,6 +70,7 @@ void main()
         uint totalAlive = min(ubo.maxTotalParticles, particleState[0].aliveParticleCount + ubo.particlesToSpawn);
 
         particleState[0].aliveParticleCount = totalAlive;
+        particleState[0].createdThisFrame = totalCreated;
 
         indirectBuffers[0] = IndirectWorkgroupSize(uint(ceil(totalCreated/64.f)),1,1);  // initialization shader
         indirectBuffers[1] = IndirectWorkgroupSize(uint(ceil(totalAlive/64.f)),1,1);  // update shader
