@@ -20,20 +20,16 @@ option( RAVENGINE_SERVER "Build as a headless server" ${RAVENGINE_BUILD_TESTS})
 # ban in-source builds
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
-set(TARGET_EMSCRIPTEN OFF)
 if(CMAKE_SYSTEM_NAME MATCHES iOS OR CMAKE_SYSTEM_NAME MATCHES tvOS)
 	set(CMAKE_SYSTEM_PROCESSOR "aarch64")
 endif()
 
-if(CMAKE_SYSTEM_NAME MATCHES Emscripten)
-	set(TARGET_EMSCRIPTEN ON CACHE INTERNAL "")
-endif()
 
 include(deps/cmrc/CMakeRC.cmake)
 
 if (APPLE)
 	add_definitions(-fvisibility=default -ftemplate-backtrace-limit=0 -fobjc-arc)	# silence warning when building ARM fat library on Apple platforms, enable arc
-elseif(TARGET_EMSCRIPTEN)
+elseif(EMSCRIPTEN)
 	# required for higher memory, atomics, and threads
 	add_definitions(-pthread)
 	add_definitions(-fexceptions)
@@ -95,7 +91,7 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	endif()
 
 	file(MAKE_DIRECTORY ${TOOLS_DIR})
-	if(LINUX OR (CMAKE_HOST_APPLE AND TARGET_EMSCRIPTEN) OR (CMAKE_HOST_APPLE AND ANDROID))
+	if(LINUX OR (CMAKE_HOST_APPLE AND EMSCRIPTEN) OR (CMAKE_HOST_APPLE AND ANDROID))
 		# need to ensure that if cross-compiling, we don't use the cross-compiler for the host tools
 		set(LINUX_HOST_CC "-DCMAKE_C_COMPILER=cc" CACHE INTERNAL "")
 		set(LINUX_HOST_CXX "-DCMAKE_CXX_COMPILER=c++" CACHE INTERNAL "")
@@ -309,7 +305,7 @@ set(PX_OUTPUT_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}/deps/physx/output_bin/$<CONFI
 set(PX_GENERATE_STATIC_LIBRARIES ON CACHE INTERNAL "")
 set(GPU_LIB_COPIED ON CACHE INTERNAL "")
 #set(PX_FLOAT_POINT_PRECISE_MATH OFF)
-if(TARGET_EMSCRIPTEN)
+if(EMSCRIPTEN)
 	set(TARGET_BUILD_PLATFORM "linux" CACHE INTERNAL "")
 	set(PLATFORM "Linux" CACHE INTERNAL "")
 elseif (WIN32 OR WINDOWS_STORE)
@@ -337,7 +333,7 @@ endif()
 
 # Call into PhysX's CMake scripts
 add_subdirectory("${PHYSX_ROOT_DIR}/compiler/public" EXCLUDE_FROM_ALL)
-if(TARGET_EMSCRIPTEN OR ( (WIN32 OR WINDOWS_STORE) AND CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "ARM64"))
+if(EMSCRIPTEN OR ( (WIN32 OR WINDOWS_STORE) AND CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "ARM64"))
 	# disable vectorization
 	target_compile_definitions(LowLevelAABB PRIVATE "PX_SIMD_DISABLED")
 	target_compile_definitions(SceneQuery PRIVATE "PX_SIMD_DISABLED")
@@ -827,7 +823,7 @@ function(pack_resources)
 				get_filename_component(relpath "${relpath}" DIRECTORY)
 				target_sources(${ARGS_TARGET} PRIVATE ${FILE})
 				set_property(SOURCE ${FILE} PROPERTY MACOSX_PACKAGE_LOCATION "Resources/${ARGS_TARGET}_Streaming/${relpath}")
-			elseif(NOT TARGET_EMSCRIPTEN)
+			elseif(NOT EMSCRIPTEN)
 				# put it next to the executable
 				file(RELATIVE_PATH relpath "${input_root}" "${FILE}")
 				if (WINDOWS_STORE)
