@@ -95,7 +95,7 @@ void RavEngine::SceneLoader::LoadMeshes(const Function<bool(const PreloadedAsset
 				// load textures
 				aiString texpath;
 				if (aimat->Get(AI_MATKEY_TEXTURE(aiTextureType_DIFFUSE, 0), texpath) == AI_SUCCESS) {
-					auto imgpath = Filesystem::Path(VFormat("{}/{}", base_path.string(), texpath.C_Str()));
+					auto imgpath = Filesystem::Path(Format("{}/{}", base_path.string(), texpath.C_Str()));
 					auto tx = New<Texture>(imgpath);
 					matinst->SetAlbedoTexture(tx);
 				}

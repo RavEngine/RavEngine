@@ -57,7 +57,7 @@ namespace RavEngine {
 				}
 			}
 			if (!backendSupported) {
-				Debug::Fatal(VFormat("OpenXR Runtime does not support the selected API: {}", RGL::APIToString(currentAPI)).c_str());
+				Debug::Fatal(Format("OpenXR Runtime does not support the selected API: {}", RGL::APIToString(currentAPI)).c_str());
 			}
 
 			const char* apiStr = nullptr;
