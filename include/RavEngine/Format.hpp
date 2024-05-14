@@ -1,8 +1,13 @@
 #pragma once
 #include <string_view>
 
+#if __has_include(<format>)
 #include <format>
 #define fmt_src std
+#else
+#include <fmt/format.h>
+#define fmt_src fmt
+#endif
 
 namespace RavEngine{
 

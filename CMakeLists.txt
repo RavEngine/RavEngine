@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.22)
 project(RavEngine)
 
 # ========== CMake Boilerplate ==============
@@ -149,6 +149,7 @@ add_subdirectory("${DEPS_DIR}/concurrentqueue" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/glm" EXCLUDE_FROM_ALL)
 add_subdirectory("${DEPS_DIR}/r8brain-cmake" EXCLUDE_FROM_ALL)
 add_subdirectory(deps/dr_wav EXCLUDE_FROM_ALL)
+add_subdirectory(deps/fmt EXCLUDE_FROM_ALL)
 
 # randoms
 set(Random_BuildTests OFF CACHE INTERNAL "")
@@ -527,6 +528,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"r8brain"
 	PUBLIC
 	"dr_wav"
+	"fmt"
 	${SA_LIB}
 	"effolkronium_random"
 	"glm"
