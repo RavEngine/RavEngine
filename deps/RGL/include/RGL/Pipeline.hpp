@@ -53,6 +53,7 @@ namespace RGL {
 		Vertex = 0x00000001,
 		Fragment = 0x00000010,
 		Compute = 0x00000020,
+		VertexFragment = Vertex | Fragment
 	};
 
 	struct PipelineLayoutDescriptor {

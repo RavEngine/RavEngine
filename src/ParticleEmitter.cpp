@@ -58,7 +58,7 @@ namespace RavEngine {
 	}
 	uint16_t ParticleEmitter::TotalParticleData() const
 	{
-		return sizeof(ParticleEngineData) + material->ParticleUserDataSize();
+		return sizeof(BilboardParticleEngineData) + material->ParticleUserDataSize();
 	}
 }
 

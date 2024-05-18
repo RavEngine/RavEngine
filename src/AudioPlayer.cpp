@@ -448,7 +448,7 @@ void AudioPlayer::Init(){
     
     // steamaudio
     IPLContextSettings contextSettings{
-        .version = STEAMAUDIO_VERSION
+        .version = STEAMAUDIO_VERSION,
     };
     IPLerror errorCode = iplContextCreate(&contextSettings, &steamAudioContext);
     if (errorCode){

@@ -3,7 +3,7 @@
 #include "App.hpp"
 
 namespace RavEngine {
-	ParticleMaterial::ParticleMaterial(const std::string& initShaderName, const std::string& updateShaderName)
+	ParticleMaterial::ParticleMaterial(const std::string& initShaderName, const std::string& updateShaderName, const std::string& particleVS, const std::string& particleFS)
 	{
 		auto device = GetApp()->GetDevice();
 
@@ -70,7 +70,7 @@ namespace RavEngine {
 				},
 				.constants = {
 					{
-						sizeof(ParticleUpdateUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Compute)
+						sizeof(ParticleUpdateUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Compute)				//TODO: don't hardcode the constants size, this is dependent on billboard vs mesh render mode
 					}
 				}
 			});
@@ -80,6 +80,68 @@ namespace RavEngine {
 					.type = RGL::ShaderStageDesc::Type::Compute,
 					.shaderModule = LoadShaderByFilename(Format("{}.csh", updateShaderName), device)
 				},
+				.pipelineLayout = layout
+			});
+		}
+
+		// render pipeline
+		{
+			auto layout = device->CreatePipelineLayout({
+				.bindings = {
+					{
+						.binding = 0,
+						.type = RGL::BindingType::StorageBuffer,
+						.stageFlags = RGL::BindingVisibility::VertexFragment,
+						.writable = false,
+					},
+					{
+						.binding = 1,
+						.type = RGL::BindingType::StorageBuffer,
+						.stageFlags = RGL::BindingVisibility::VertexFragment,
+						.writable = false,
+					}
+				},
+				.constants = {
+					{
+						sizeof(ParticleBillboardUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
+					}
+				}	
+			});
+
+			userRenderPipeline = device->CreateRenderPipeline({
+				.stages = {
+					{
+						.type = RGL::ShaderStageDesc::Type::Vertex,
+						.shaderModule = LoadShaderByFilename(Format("{}.vsh",particleVS),device)
+					},
+					{
+						.type = RGL::ShaderStageDesc::Type::Fragment,
+						.shaderModule = LoadShaderByFilename(Format("{}.fsh",particleFS),device)
+					},
+				},
+				.vertexConfig = {
+					.vertexBindings = {
+						{
+							.binding = 0,
+							.stride = sizeof(ParticleQuadVert)
+						}
+					},
+					.attributeDescs = {
+						{
+							.location = 0,
+							.binding = 0,
+							.offset = offsetof(ParticleQuadVert,pos),
+							.format = RGL::VertexAttributeFormat::R32G32_SignedFloat
+						}
+					}
+				},
+				.inputAssembly = {
+					.topology = RGL::PrimitiveTopology::TriangleList,
+				},
+				.rasterizerConfig = {
+					.windingOrder = RGL::WindingOrder::Counterclockwise,
+				},
+				.colorBlendConfig = RavEngine::defaultColorBlendConfig,
 				.pipelineLayout = layout
 			});
 		}
