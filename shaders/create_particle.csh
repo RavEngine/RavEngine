@@ -42,6 +42,17 @@ layout(std430, binding = 4)buffer indirectSSBO
     IndirectWorkgroupSize indirectBuffers[];    // 0 is initialization shader, 1 is update shader
 };
 
+struct IndirectCommand {
+	uint vertexCount;
+	uint instanceCount;
+	uint baseVertex;
+	uint baseInstance;
+};
+
+layout(std430, binding = 5)buffer indirectDrawSSBO
+{
+    IndirectCommand indirectDrawBuffer[];    // for rendering
+};
 
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
@@ -71,6 +82,7 @@ void main()
 
         particleState[0].aliveParticleCount = totalAlive;
         particleState[0].createdThisFrame = totalCreated;
+        indirectDrawBuffer[0].instanceCount = totalAlive;
 
         indirectBuffers[0] = IndirectWorkgroupSize(uint(ceil(totalCreated/64.f)),1,1);  // initialization shader
         indirectBuffers[1] = IndirectWorkgroupSize(uint(ceil(totalAlive/64.f)),1,1);  // update shader

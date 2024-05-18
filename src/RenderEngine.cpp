@@ -60,6 +60,7 @@
 #include <winrt/Windows.Graphics.Display.h>
 using namespace winrt;
 #endif
+#include <ParticleMaterial.hpp>
 
 using namespace std;
 using namespace RavEngine;
@@ -1155,6 +1156,21 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		});
 	screenTriVerts->SetBufferData(vertices);
 
+	constexpr static ParticleQuadVert quadVerts[] = {
+		{{-1,-1}},
+		{{-1,1}},
+		{{1,1}},
+		{{1,-1}}
+	};
+
+	quadVertBuffer = device->CreateBuffer({
+		{.VertexBuffer = true},
+		sizeof(ParticleQuadVert),
+		quadVerts,
+		RGL::BufferAccess::Private
+	});
+	quadVertBuffer->SetBufferData(quadVerts);
+
 	auto pointLightMeshData = genIcosphere(2);
 
 	pointLightVertexBuffer = device->CreateBuffer({
@@ -1711,6 +1727,12 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			},
 			{
 				.binding = 4,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = true
+			},
+			{
+				.binding = 5,
 				.type = RGL::BindingType::StorageBuffer,
 				.stageFlags = RGL::BindingVisibility::Compute,
 				.writable = true

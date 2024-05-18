@@ -27,9 +27,20 @@ namespace RavEngine {
 			maxParticles, {.StorageBuffer = true}, sizeof(uint32_t), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Alive particle index Buffer"}
 		});
 
-		indirectDrawBuffer = device->CreateBuffer({
-			2, {.StorageBuffer = true, .IndirectBuffer = true}, sizeof(RGL::ComputeIndirectCommand), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Particle indirect draw buffer"}
+		indirectComputeBuffer = device->CreateBuffer({
+			2, {.StorageBuffer = true, .IndirectBuffer = true}, sizeof(RGL::ComputeIndirectCommand), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Particle indirect compute buffer"}
 		});
+
+		indirectDrawBuffer = device->CreateBuffer({
+			1, {.StorageBuffer = true, .IndirectBuffer = true}, sizeof(RGL::IndirectCommand), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Particle indirect draw buffer"}
+		});
+		RGL::IndirectCommand initData{
+			.vertexCount = 4,
+			.instanceCount = 0,
+			.firstVertex = 0,
+			.firstInstance = 0,
+		};
+		indirectDrawBuffer->SetBufferData(initData);
 
 		emitterStateBuffer = device->CreateBuffer({
 			1, {.StorageBuffer = true}, sizeof(ParticleState), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Particle state buffer"}
@@ -40,7 +51,7 @@ namespace RavEngine {
 	{
 		auto& gcBuffers = GetApp()->GetRenderEngine().gcBuffers;
 
-		for (const auto buffer : { particleDataBuffer, particleReuseFreelist, spawnedThisFrameList, activeParticleIndexBuffer, indirectDrawBuffer, emitterStateBuffer }) {
+		for (const auto buffer : { particleDataBuffer, particleReuseFreelist, spawnedThisFrameList, activeParticleIndexBuffer, indirectComputeBuffer, emitterStateBuffer }) {
 			gcBuffers.enqueue(buffer);
 		}
 	}

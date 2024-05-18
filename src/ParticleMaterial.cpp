@@ -136,12 +136,18 @@ namespace RavEngine {
 					}
 				},
 				.inputAssembly = {
-					.topology = RGL::PrimitiveTopology::TriangleList,
+					.topology = RGL::PrimitiveTopology::TriangleFan,
 				},
 				.rasterizerConfig = {
 					.windingOrder = RGL::WindingOrder::Counterclockwise,
 				},
 				.colorBlendConfig = RavEngine::defaultColorBlendConfig,
+				.depthStencilConfig = {
+					.depthFormat = RGL::TextureFormat::D32SFloat,
+					.depthTestEnabled = true,
+					.depthWriteEnabled = true,
+					.depthFunction = RGL::DepthCompareFunction::Greater,
+				},
 				.pipelineLayout = layout
 			});
 		}

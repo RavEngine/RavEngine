@@ -207,7 +207,8 @@ struct LightingType{
 					mainCommandBuffer->BindComputeBuffer(emitter.particleReuseFreelist, 1);
 					mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 2);
 					mainCommandBuffer->BindComputeBuffer(emitter.spawnedThisFrameList, 3);
-					mainCommandBuffer->BindComputeBuffer(emitter.indirectDrawBuffer, 4);
+					mainCommandBuffer->BindComputeBuffer(emitter.indirectComputeBuffer, 4);
+					mainCommandBuffer->BindComputeBuffer(emitter.indirectDrawBuffer, 5);
 
 					mainCommandBuffer->DispatchCompute(std::ceil(spawnCount / 64.0f), 1, 1);
 					mainCommandBuffer->EndCompute();
@@ -220,7 +221,7 @@ struct LightingType{
 					mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 2);
 
 					mainCommandBuffer->DispatchIndirect({
-						.indirectBuffer = emitter.indirectDrawBuffer,
+						.indirectBuffer = emitter.indirectComputeBuffer,
 						.offsetIntoBuffer = 0
 					});
 
@@ -246,7 +247,7 @@ struct LightingType{
 
 				mainCommandBuffer->SetComputeBytes(ubo, 0);
 				mainCommandBuffer->DispatchIndirect({
-					.indirectBuffer = emitter.indirectDrawBuffer,
+					.indirectBuffer = emitter.indirectComputeBuffer,
 					.offsetIntoBuffer = sizeof(RGL::ComputeIndirectCommand)
 				});
 
@@ -267,7 +268,7 @@ struct LightingType{
 			prepareSkeletalCullingBuffer();
 		}
 
-		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid){
+		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, bool includeParticles){
 
 			auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning](matrix4 viewproj, const DepthPyramid pyramid) {
 			// the culling shader will decide for each draw if the draw should exist (and set its instance count to 1 from 0).
@@ -438,7 +439,7 @@ struct LightingType{
 					mainCommandBuffer->EndCompute();
 				}
 				};
-			auto renderTheRenderData = [this, &viewproj, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
+			auto renderTheRenderData = [this, &viewproj, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, includeParticles](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
 				// do static meshes
 				mainCommandBuffer->SetViewport({
 					.x = float(viewportScissor.offset[0]),
@@ -527,7 +528,32 @@ struct LightingType{
 						.nDraws = uint32_t(drawcommand.indirectBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand))	// the number of structs in the buffer
 						});
 				}
-				};
+
+				// particles
+				if (includeParticles) {
+					worldOwning->Filter([this, &viewproj](const ParticleEmitter& emitter, const Transform& t) {
+						auto mat = emitter.GetMaterial();
+						mainCommandBuffer->BindRenderPipeline(mat->userRenderPipeline);
+						mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
+						mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, 0);
+						mainCommandBuffer->BindBuffer(emitter.activeParticleIndexBuffer, 1);
+
+						ParticleBillboardUBO ubo{
+							.viewProj = viewproj,
+							.spritesheetDim = {},
+							.spritesheetFrameDim = {}
+						};
+						mainCommandBuffer->SetVertexBytes(ubo, 0);
+						mainCommandBuffer->SetFragmentBytes(ubo, 0);
+
+						mainCommandBuffer->ExecuteIndirect({
+							.indirectBuffer = emitter.indirectDrawBuffer,
+							.offsetIntoBuffer = 0,
+							.nDraws = 1,
+							});
+						});
+				}
+			};
 
 			// do culling operations
 			mainCommandBuffer->BeginComputeDebugMarker("Cull Static Meshes");
@@ -591,7 +617,7 @@ struct LightingType{
 					auto shadowMapSize = shadowTexture->GetSize().width;
 					renderFromPerspective(lightSpaceMatrix, lightMats.camPos, shadowRenderPass, [](Ref<Material>&& mat) {
 						return mat->GetShadowRenderPipeline();
-						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true }, lightMats.depthPyramid);
+						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true }, lightMats.depthPyramid, false);
 
 				}
 				postshadowmapFunction(owner);
@@ -700,7 +726,7 @@ struct LightingType{
 
 				renderFromPerspective(viewproj, camPos, deferredRenderPass, [](Ref<Material>&& mat) {
 					return mat->GetMainRenderPipeline();
-                }, renderArea, {.Lit = true}, target.depthPyramid);
+                }, renderArea, {.Lit = true}, target.depthPyramid, true);
 
 				
 			};
@@ -925,7 +951,7 @@ struct LightingType{
                 unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
                 renderFromPerspective(viewproj, camPos, unlitRenderPass, [](Ref<Material>&& mat) {
                     return mat->GetMainRenderPipeline();
-                }, renderArea, {.Unlit = true}, target.depthPyramid);
+                }, renderArea, {.Unlit = true}, target.depthPyramid, false);
                 
                 // then do the skybox, if one is defined.
                 mainCommandBuffer->BeginRendering(unlitRenderPass);

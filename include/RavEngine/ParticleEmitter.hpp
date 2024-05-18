@@ -65,6 +65,7 @@ namespace RavEngine {
 			particleReuseFreelist = nullptr,
 			spawnedThisFrameList = nullptr,
 			activeParticleIndexBuffer = nullptr,
+			indirectComputeBuffer = nullptr,
 			indirectDrawBuffer = nullptr,
 			emitterStateBuffer = nullptr;
 
