@@ -1157,10 +1157,10 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	screenTriVerts->SetBufferData(vertices);
 
 	constexpr static ParticleQuadVert quadVerts[] = {
-		{{-1,-1}},
-		{{-1,1}},
+		{{1,-1}},
 		{{1,1}},
-		{{1,-1}}
+		{{-1,1}},
+		{{-1,-1}},
 	};
 
 	quadVertBuffer = device->CreateBuffer({
