@@ -3,10 +3,12 @@ on:
   push:
     paths-ignore: 
     - "README.md"
+    - "README-android.md"
     - ".gitignore"
   pull_request:
     paths-ignore:
       - 'README.md'
+      - "README-android.md"
       - ".gitignore"
 
 jobs:
