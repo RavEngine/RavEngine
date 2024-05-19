@@ -114,6 +114,8 @@ namespace RGL {
             "VK_KHR_surface",
     #if _WIN32
             "VK_KHR_win32_surface",
+    #elif __ANDROID__
+            "VK_KHR_android_surface"
     #else
             "VK_KHR_xlib_surface",
             "VK_KHR_wayland_surface"
