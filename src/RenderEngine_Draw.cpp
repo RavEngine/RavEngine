@@ -189,9 +189,23 @@ struct LightingType{
 
 		auto tickParticles = [this, worldOwning]() {
 			mainCommandBuffer->BeginComputeDebugMarker("Particle Update");
+
 			worldOwning->Filter([this](ParticleEmitter& emitter, const Transform& transform) {
 				auto mat = emitter.GetMaterial();
 				auto worldTransform = transform.GetWorldMatrix();
+
+				auto dispatchSizeUpdate = [this, &emitter] {
+					// setup dispatch sizes
+					// we always need to run this because the Update shader may kill particles, changing the number of active particles
+					mainCommandBuffer->BeginCompute(particleDispatchSetupPipeline);
+					mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 0);
+					mainCommandBuffer->BindComputeBuffer(emitter.indirectComputeBuffer, 1);
+					mainCommandBuffer->BindComputeBuffer(emitter.indirectDrawBuffer, 2);
+					mainCommandBuffer->DispatchCompute(1, 1, 1);	// this is kinda terrible...
+					mainCommandBuffer->EndCompute();
+				};
+
+				bool hasCalculatedSizes = false;
 
 				// spawning particles?
 				auto spawnCount = emitter.numParticlesToSpawn();
@@ -207,11 +221,12 @@ struct LightingType{
 					mainCommandBuffer->BindComputeBuffer(emitter.particleReuseFreelist, 1);
 					mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 2);
 					mainCommandBuffer->BindComputeBuffer(emitter.spawnedThisFrameList, 3);
-					mainCommandBuffer->BindComputeBuffer(emitter.indirectComputeBuffer, 4);
-					mainCommandBuffer->BindComputeBuffer(emitter.indirectDrawBuffer, 5);
 
 					mainCommandBuffer->DispatchCompute(std::ceil(spawnCount / 64.0f), 1, 1);
 					mainCommandBuffer->EndCompute();
+
+					dispatchSizeUpdate();
+					hasCalculatedSizes = true;
 
 					// init particles
 					mainCommandBuffer->BeginCompute(mat->userInitPipeline);
@@ -231,6 +246,10 @@ struct LightingType{
 				// burst mode
 				if (emitter.mode == ParticleEmitter::Mode::Burst && emitter.IsEmitting()) {
 					emitter.Stop();
+				}
+
+				if (!hasCalculatedSizes) {
+					dispatchSizeUpdate();
 				}
 
 				// tick particles

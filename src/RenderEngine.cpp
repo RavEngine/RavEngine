@@ -1725,18 +1725,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				.stageFlags = RGL::BindingVisibility::Compute,
 				.writable = true
 			},
-			{
-				.binding = 4,
-				.type = RGL::BindingType::StorageBuffer,
-				.stageFlags = RGL::BindingVisibility::Compute,
-				.writable = true
-			},
-			{
-				.binding = 5,
-				.type = RGL::BindingType::StorageBuffer,
-				.stageFlags = RGL::BindingVisibility::Compute,
-				.writable = true
-			},
 		},
 		.constants = {
 			{sizeof(ParticleCreationPushConstants), 0, RGL::StageVisibility(RGL::StageVisibility::Compute)}
@@ -1748,6 +1736,37 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.shaderModule = particleCreateShader
 		},
 		.pipelineLayout = particleCreateLayout,
+	});
+
+	auto particleDispatchLayout = device->CreatePipelineLayout({
+		.bindings = {
+			{
+				.binding = 0,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = false
+			},
+			{
+				.binding = 1,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = true
+			},
+			{
+				.binding = 2,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = true
+			},
+		},
+		.constants = {}
+	});
+	particleDispatchSetupPipeline = device->CreateComputePipeline({
+		.stage = {
+			.type = RGL::ShaderStageDesc::Type::Compute,
+			.shaderModule = LoadShaderByFilename("particle_dispatch_setup.csh",device)
+		},
+		.pipelineLayout = particleDispatchLayout
 	});
 }
 

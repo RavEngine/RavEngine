@@ -27,10 +27,10 @@ layout(location = 0) in vec2 out_uv;
 layout(location = 1) flat in uint out_animationFrame;
 
 layout(location = 0) out vec4 color;
-layout(location = 1) out vec3 normal;
+layout(location = 1) out vec4 normal;
 
 void main(){
     color = vec4(1,0,0,1);
 
-    normal = vec3(0,0,1);
+    normal = vec4(0,0,1,1);
 }
