@@ -86,7 +86,7 @@ namespace RavEngine {
 
 		// render pipeline
 		{
-			auto layout = device->CreatePipelineLayout({
+			auto layout = device->CreatePipelineLayout(RGL::RenderPipelineDescriptor{
 				.bindings = {
 					{
 						.binding = 0,
