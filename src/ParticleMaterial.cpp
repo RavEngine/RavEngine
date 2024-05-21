@@ -86,7 +86,7 @@ namespace RavEngine {
 
 		// render pipeline
 		{
-			auto layout = device->CreatePipelineLayout(RGL::RenderPipelineDescriptor{
+			auto layout = device->CreatePipelineLayout({
 				.bindings = {
 					{
 						.binding = 0,
@@ -108,7 +108,7 @@ namespace RavEngine {
 				}	
 			});
 
-			userRenderPipeline = device->CreateRenderPipeline({
+			userRenderPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
 				.stages = {
 					{
 						.type = RGL::ShaderStageDesc::Type::Vertex,
