@@ -74,6 +74,7 @@ namespace RGL {
 
     D3D12_COMPARISON_FUNC rgl2d3dcompfn(decltype(RenderPipelineDescriptor::DepthStencilConfig::depthFunction) depthFunction) {
         switch (depthFunction) {
+        case decltype(depthFunction)::None: return D3D12_COMPARISON_FUNC(0); //D3D12_COMPARISON_FUNC_NONE:
         case decltype(depthFunction)::Always: return D3D12_COMPARISON_FUNC_ALWAYS;
         case decltype(depthFunction)::Equal: return D3D12_COMPARISON_FUNC_EQUAL;
         case decltype(depthFunction)::Greater: return D3D12_COMPARISON_FUNC_GREATER;

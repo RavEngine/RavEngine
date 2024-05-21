@@ -48,8 +48,10 @@ namespace RGL {
 		}
 	}
 
-	SamplerVk::SamplerVk(decltype(owningDevice) owningDevice, const SamplerConfig& config) : owningDevice(owningDevice)
+	SamplerVk::SamplerVk(decltype(owningDevice) owningDevice, const SamplerConfig& config_orig) : owningDevice(owningDevice)
 	{
+		auto config = config_orig;
+
 		VkSamplerReductionModeCreateInfoEXT createInfoReduction = {
 			.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT,
 			.pNext = nullptr,
@@ -63,6 +65,10 @@ namespace RGL {
 				.float32 = {config.borderColor[0],config.borderColor[1],config.borderColor[2],config.borderColor[3]}
 			}
 		};
+
+		if (config.compareFunction == RGL::DepthCompareFunction::None) {
+			config.compareFunction = RGL::DepthCompareFunction::Always;
+		}
 
 		VkSamplerCreateInfo samplerInfo{
 			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,

@@ -73,6 +73,7 @@ MTLCompareFunction rgl2mtlcomparefunction(DepthCompareFunction fn){
         case decltype(fn)::Greater:         return MTLCompareFunctionGreater;
         case decltype(fn)::NotEqual:        return MTLCompareFunctionNotEqual;
         case decltype(fn)::GreaterOrEqual:  return MTLCompareFunctionGreaterEqual;
+        case decltype(fn)::None:
         case decltype(fn)::Always:          return MTLCompareFunctionAlways;
     }
 }

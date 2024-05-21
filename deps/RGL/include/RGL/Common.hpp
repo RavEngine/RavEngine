@@ -20,5 +20,6 @@ namespace RGL {
 		NotEqual = 5,
 		GreaterOrEqual = 6,
 		Always = 7,
+		None
 	};
 }

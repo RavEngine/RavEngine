@@ -36,7 +36,7 @@ namespace RGL{
             addressModeV = SamplerAddressMode::Wrap,
             addressModeW = SamplerAddressMode::Wrap;
         float borderColor[4]{0,0,0,1};
-        DepthCompareFunction compareFunction = DepthCompareFunction::Always;
+        DepthCompareFunction compareFunction = DepthCompareFunction::None;
         MinMagFilterMode
             minFilter = MinMagFilterMode::Nearest,
             magFilter = MinMagFilterMode::Nearest;

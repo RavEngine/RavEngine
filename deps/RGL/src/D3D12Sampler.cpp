@@ -50,7 +50,12 @@ namespace RGL {
 
 		auto reduction = rgl2d3d12reduction(config.reductionMode);
 
-		if (config.compareFunction!= DepthCompareFunction::Always) {
+		switch (config.compareFunction) {
+		case DepthCompareFunction::Always:
+		case DepthCompareFunction::Never:
+		case DepthCompareFunction::None:
+			break;
+		default:
 			reduction = D3D12_FILTER_REDUCTION_TYPE_COMPARISON;
 		}
 
