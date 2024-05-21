@@ -85,7 +85,7 @@ namespace RGL {
             &heapProperties,
             D3D12_HEAP_FLAG_NONE,
             &resourceDescriptor,
-            nativeState,
+            D3D12_RESOURCE_STATE_COMMON,        // weird D3D12 garbage. We have to create in Common, but we'll pretend it isn't Common because transitioning TO common is very slow
             nullptr,
             IID_PPV_ARGS(&buffer)));
 

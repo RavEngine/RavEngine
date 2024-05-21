@@ -11,6 +11,13 @@
 #include <atlbase.h>
 #include <dxcapi.h>
 
+// Exports for the Agility SDK. For Windows 10 users, Go here: https://www.nuget.org/packages/Microsoft.Direct3D.D3D12/1.614.0 then unzip it, and place 
+// D3D12Core.dll and d3d12SDKLayers.dll in a folder named D3D12 next to the executable.
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 614; }
+extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
+
+#define GPU_BASED_VALIDATION 0
+
 #ifdef REFL_ENABLED
 #pragma comment(lib, "dxcompiler.lib")	// to get access to new compiler api
 #endif
@@ -303,7 +310,7 @@ namespace RGL {
         }
 
         // GPU-based validation
-#if 0
+#if GPU_BASED_VALIDATION
         ComPtr<ID3D12Debug1> spDebugController1;
         DX_CHECK(debugInterface->QueryInterface(IID_PPV_ARGS(&spDebugController1)));
         spDebugController1->SetEnableGPUBasedValidation(true);
