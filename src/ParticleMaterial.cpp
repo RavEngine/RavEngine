@@ -108,7 +108,7 @@ namespace RavEngine {
 				}	
 			});
 
-			userRenderPipeline = device->CreateRenderPipeline({
+			userRenderPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
 				.stages = {
 					{
 						.type = RGL::ShaderStageDesc::Type::Vertex,
