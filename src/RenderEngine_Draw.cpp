@@ -277,6 +277,12 @@ struct LightingType{
 				// kill particles
 				mainCommandBuffer->BeginCompute(particleKillPipeline);
 
+				KillParticleUBO kubo{
+					.maxTotalParticles = emitter.GetMaxParticles()
+				};
+
+				mainCommandBuffer->SetComputeBytes(kubo,0);
+
 				mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 0);
 				mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 1);
 				mainCommandBuffer->BindComputeBuffer(emitter.particleReuseFreelist, 2);

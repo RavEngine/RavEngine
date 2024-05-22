@@ -14,6 +14,7 @@ namespace RavEngine {
 		uint32_t particlesCreatedThisFrame = 0;
 	};
 
+
 	struct ParticleEmitter : public Queryable<ParticleEmitter>, public AutoCTTI {
 	friend class RenderEngine;
 		enum class Mode : uint8_t {

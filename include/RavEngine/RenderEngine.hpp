@@ -168,6 +168,10 @@ namespace RavEngine {
 			uint32_t maxParticles;
 		};
 
+		struct KillParticleUBO {
+			uint32_t maxTotalParticles;
+		};
+
 
         virtual ~RenderEngine();
         RenderEngine(const AppConfig&, RGLDevicePtr device);

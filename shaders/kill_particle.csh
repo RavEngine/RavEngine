@@ -1,4 +1,8 @@
 
+layout(push_constant, std430) uniform UniformBufferObject{
+    uint maxTotalParticles;
+} ubo;
+
 struct ParticleState
 {
     int aliveParticleCount;
@@ -28,6 +32,11 @@ layout(std430, binding = 3) buffer lifeSSBO
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main(){
+    if (gl_GlobalInvocationID.x == 0){
+        // reset # created this frame
+        particleState[0].createdThisFrame = 0;
+    }
+
     if (gl_GlobalInvocationID.x >= atomicAdd(particleState[0].aliveParticleCount,0)){
         return;
     }
@@ -40,6 +49,9 @@ void main(){
 
     // add the particle to the freelist
     const uint freelistIdx = atomicAdd(particleState[0].freeListCount,1);
+    if (freelistIdx >= ubo.maxTotalParticles){
+        return;         // safety mesaure that shouldn't ever trigger
+    }
     particleFreelist[freelistIdx] = particleID;
 
     // replace this slot at invocationID.x with the particle at the end of the alive buffer

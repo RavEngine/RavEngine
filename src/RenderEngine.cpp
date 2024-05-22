@@ -1796,7 +1796,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				.writable = true
 			},
 		},
-		.constants = {}
+		.constants = {{sizeof(KillParticleUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Compute)}}
 	});
 	particleKillPipeline = device->CreateComputePipeline({
 		.stage = {
