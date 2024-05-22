@@ -1768,6 +1768,43 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		},
 		.pipelineLayout = particleDispatchLayout
 	});
+
+	auto particleKillLayout = device->CreatePipelineLayout({
+		.bindings = {
+			{
+				.binding = 0,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = true
+			},
+			{
+				.binding = 1,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = true
+			},
+			{
+				.binding = 2,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = true
+			},
+			{
+				.binding = 3,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = true
+			},
+		},
+		.constants = {}
+	});
+	particleKillPipeline = device->CreateComputePipeline({
+		.stage = {
+			.type = RGL::ShaderStageDesc::Type::Compute,
+			.shaderModule = LoadShaderByFilename("kill_particle.csh",device)
+		},
+		.pipelineLayout = particleKillLayout
+	});
 }
 
 RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim size, bool createDepth)

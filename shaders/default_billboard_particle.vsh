@@ -3,14 +3,12 @@ layout(push_constant, std430) uniform UniformBufferObject{
     mat4 viewProj;
     vec2 spritesheetDim;
     vec2 spritesheetFrameDim;
-
 } ubo;
 
 struct ParticleData{
     vec3 pos;
     vec2 scale;
     uint animationFrame;
-    float age;
 };
 
 layout(std430, binding = 0) readonly buffer particleDataSSBO

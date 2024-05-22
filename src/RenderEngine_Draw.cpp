@@ -234,6 +234,7 @@ struct LightingType{
 					mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer,0);
 					mainCommandBuffer->BindComputeBuffer(emitter.spawnedThisFrameList, 1);
 					mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 2);
+					mainCommandBuffer->BindComputeBuffer(emitter.particleLifeBuffer, 3);
 
 					mainCommandBuffer->DispatchIndirect({
 						.indirectBuffer = emitter.indirectComputeBuffer,
@@ -259,6 +260,7 @@ struct LightingType{
 				mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 1);
 				mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 2);
 				mainCommandBuffer->BindComputeBuffer(emitter.particleReuseFreelist, 3);
+				mainCommandBuffer->BindComputeBuffer(emitter.particleLifeBuffer, 4);
 
 				ParticleUpdateUBO ubo{
 					.fpsScale = GetApp()->GetCurrentFPSScale()
@@ -268,6 +270,21 @@ struct LightingType{
 				mainCommandBuffer->DispatchIndirect({
 					.indirectBuffer = emitter.indirectComputeBuffer,
 					.offsetIntoBuffer = sizeof(RGL::ComputeIndirectCommand)
+				});
+
+				mainCommandBuffer->EndCompute();
+
+				// kill particles
+				mainCommandBuffer->BeginCompute(particleKillPipeline);
+
+				mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 0);
+				mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 1);
+				mainCommandBuffer->BindComputeBuffer(emitter.particleReuseFreelist, 2);
+				mainCommandBuffer->BindComputeBuffer(emitter.particleLifeBuffer, 3);
+
+				mainCommandBuffer->DispatchIndirect({
+					.indirectBuffer = emitter.indirectComputeBuffer,
+					.offsetIntoBuffer = sizeof(RGL::ComputeIndirectCommand)	// uses the same indirect command as the update shader, because it works on the alive set
 				});
 
 				mainCommandBuffer->EndCompute();

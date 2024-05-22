@@ -5,12 +5,10 @@ layout(push_constant, std430) uniform UniformBufferObject{
     vec2 spritesheetFrameDim;
 } ubo;
 
-
 struct ParticleData{
     vec3 pos;
     vec2 scale;
     uint animationFrame;
-    float age;
 };
 
 layout(std430, binding = 0) readonly buffer particleDataSSBO

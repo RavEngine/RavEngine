@@ -45,13 +45,16 @@ namespace RavEngine {
 		emitterStateBuffer = device->CreateBuffer({
 			1, {.StorageBuffer = true}, sizeof(ParticleState), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Particle state buffer"}
 		});
+
+		particleLifeBuffer = device->CreateBuffer({
+			maxParticles, {.StorageBuffer = true}, sizeof(float), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Particle life buffer"}
+		});
 	}
 
 	void RavEngine::ParticleEmitter::Destroy()
 	{
 		auto& gcBuffers = GetApp()->GetRenderEngine().gcBuffers;
-
-		for (const auto buffer : { particleDataBuffer, particleReuseFreelist, spawnedThisFrameList, activeParticleIndexBuffer, indirectComputeBuffer, emitterStateBuffer }) {
+		for (const auto buffer : { particleDataBuffer, particleReuseFreelist, spawnedThisFrameList, activeParticleIndexBuffer, indirectComputeBuffer, indirectDrawBuffer, emitterStateBuffer, particleLifeBuffer }) {
 			gcBuffers.enqueue(buffer);
 		}
 	}
