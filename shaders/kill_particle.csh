@@ -1,3 +1,4 @@
+#extension GL_EXT_debug_printf : enable
 
 layout(push_constant, std430) uniform UniformBufferObject{
     uint maxTotalParticles;
@@ -6,7 +7,7 @@ layout(push_constant, std430) uniform UniformBufferObject{
 struct ParticleState
 {
     int aliveParticleCount;
-    uint freeListCount;
+    int freeListCount;
     uint createdThisFrame;
 };
 
@@ -48,9 +49,10 @@ void main(){
     }
 
     // add the particle to the freelist
-    const uint freelistIdx = atomicAdd(particleState[0].freeListCount,1);
-    if (freelistIdx >= ubo.maxTotalParticles){
-        return;         // safety mesaure that shouldn't ever trigger
+    const int freelistIdx = atomicAdd(particleState[0].freeListCount,1);
+    if (freelistIdx >= ubo.maxTotalParticles || freelistIdx < 0){
+        //return;         // safety mesaure that shouldn't ever trigger
+        debugPrintfEXT("Kill error: freelistIdx = %d", freelistIdx);
     }
     particleFreelist[freelistIdx] = particleID;
 

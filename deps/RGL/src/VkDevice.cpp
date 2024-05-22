@@ -205,6 +205,7 @@ namespace RGL {
 
 #ifndef NDEBUG
         runtimeExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
+        runtimeExtensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
 #endif
 
         VkDeviceCreateInfo deviceCreateInfo{

@@ -1,3 +1,4 @@
+#extension GL_EXT_debug_printf : enable
 
 layout(push_constant, std430) uniform UniformBufferObject{
     uint particlesToSpawn;
@@ -51,18 +52,18 @@ void main()
    
     // first try getting from the freelist
     // the lower order threads grab from the free list, while the higher order threads create new particles (if applicable)
-    int freelistIdx = atomicAdd(particleState[0].freeListCount,-1);
-    bool canGetFromFreelist = freelistIdx >= 0;
+    int freelistSize = atomicAdd(particleState[0].freeListCount,-1);
+    bool canGetFromFreelist = freelistSize > 0;
+    
+    //debugPrintfEXT("freelistSize = %d", freelistSize);
 
     uint particleID = 0;
     if (canGetFromFreelist){
          // get it from the freelist
-        particleID = freelistIdx;
+        particleID = particleFreelist[freelistSize - 1];
     }
     else{
         // if we can't get it from the freelist, then create a new one if possible.
-        // we know that if we are slot N, and there are no free particles in the free list, 
-        // then all IDs from [0, N) are in use. Thus, the next ID = slot
         particleID = particleBufferSlot;
         atomicAdd(particleState[0].freeListCount,1);
     }

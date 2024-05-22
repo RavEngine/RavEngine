@@ -73,12 +73,6 @@ namespace RavEngine {
 						.stageFlags = RGL::BindingVisibility::Compute,
 						.writable = true,
 					},
-					{
-						.binding = 4,
-						.type = RGL::BindingType::StorageBuffer,
-						.stageFlags = RGL::BindingVisibility::Compute,
-						.writable = true,
-					}
 				},
 				.constants = {
 					{

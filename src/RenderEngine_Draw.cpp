@@ -214,6 +214,7 @@ struct LightingType{
 						.particlesToSpawn = spawnCount,
 						.maxParticles = emitter.GetMaxParticles(),
 					};
+					mainCommandBuffer->BeginComputeDebugMarker("Create and Init");
 					mainCommandBuffer->BeginCompute(particleCreatePipeline);
 					mainCommandBuffer->SetComputeBytes(constants, 0);
 
@@ -242,6 +243,7 @@ struct LightingType{
 					});
 
 					mainCommandBuffer->EndCompute();
+					mainCommandBuffer->EndComputeDebugMarker();
 				}
 
 				// burst mode
@@ -254,13 +256,13 @@ struct LightingType{
 				}
 
 				// tick particles
+				mainCommandBuffer->BeginComputeDebugMarker("Update, Kill");
 				mainCommandBuffer->BeginCompute(mat->userUpdatePipeline);
 
 				mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 0);
 				mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 1);
 				mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 2);
-				mainCommandBuffer->BindComputeBuffer(emitter.particleReuseFreelist, 3);
-				mainCommandBuffer->BindComputeBuffer(emitter.particleLifeBuffer, 4);
+				mainCommandBuffer->BindComputeBuffer(emitter.particleLifeBuffer, 3);
 
 				ParticleUpdateUBO ubo{
 					.fpsScale = GetApp()->GetCurrentFPSScale()
@@ -294,6 +296,7 @@ struct LightingType{
 				});
 
 				mainCommandBuffer->EndCompute();
+				mainCommandBuffer->EndComputeDebugMarker();
 				
 			});
 			mainCommandBuffer->EndComputeDebugMarker();

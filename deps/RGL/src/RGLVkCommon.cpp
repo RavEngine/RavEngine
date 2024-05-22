@@ -40,8 +40,9 @@ namespace RGL {
         if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
         {
             //TODO: pass through more message types if the user wants them
-            LogMessage(severity, pCallbackData->pMessage);
+           
         }
+        LogMessage(severity, pCallbackData->pMessage);
 
         return VK_FALSE;
     }
@@ -81,8 +82,10 @@ namespace RGL {
             .apiVersion = VK_API_VERSION_1_3
         };
 
+
         VkInstanceCreateInfo instanceCreateInfo{
             .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+            .pNext = nullptr,
             .pApplicationInfo = &appInfo,
             .enabledLayerCount = 0,
             .enabledExtensionCount = 0
