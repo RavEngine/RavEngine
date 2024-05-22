@@ -80,19 +80,19 @@ RGLShaderLibraryPtr RavEngine::LoadShaderByFilename(const std::string& name, RGL
     return nullptr;
 }
 
-void RavEngine::DumpTextFloat(float* ptr, uint64_t size)
+void RavEngine::DumpTextFloat(float* ptr, uint16_t size)
 {
-    Filesystem::Path outpath(fmt_src::format("{:x}",uint64_t(ptr)));
+    Filesystem::Path outpath(fmt_src::format("{:x}.txt",uint64_t(ptr)));
     ofstream outfile(outpath);
-    for (uint64_t i = 0; i < size; i++) {
+    for (uint16_t i = 0; i < size; i++) {
         outfile << ptr[i] << ",";
     }
 }
-void RavEngine::DumpTextFloatGraph(float* ptr, uint64_t size)
+void RavEngine::DumpTextFloatGraph(float* ptr, uint16_t size)
 {
-    Filesystem::Path outpath(fmt_src::format("{:x}", uint64_t(ptr)));
+    Filesystem::Path outpath(fmt_src::format("{:x}.txt", uint64_t(ptr)));
     ofstream outfile(outpath);
-    for (uint64_t i = 0; i < size; i++) {
+    for (uint16_t i = 0; i < size; i++) {
         outfile << fmt_src::format("({},{}),",i,ptr[i]);
     }
 }
