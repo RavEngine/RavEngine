@@ -194,14 +194,14 @@ struct LightingType{
 			worldOwning->Filter([this, worldOwning](ParticleEmitter& emitter, const Transform& transform) {
 				Ref<ParticleMaterial> mat;
 				
-				std::visit(CaseAnalysis(
-					[&mat](const Ref<BillboardParticleMaterial>& billboardMat) {
-						mat = billboardMat;
-					},
-					[&mat](const Ref<MeshParticleMaterial>& meshMat){
-						mat = meshMat;
-					}
-				), emitter.GetMaterial());
+				std::visit(CaseAnalysis{
+                        [&mat](const Ref <BillboardParticleMaterial> &billboardMat) {
+                            mat = billboardMat;
+                        },
+                        [&mat](const Ref <MeshParticleMaterial> &meshMat) {
+                            mat = meshMat;
+                        }
+                }, emitter.GetMaterial());
 
 				auto worldTransform = transform.GetWorldMatrix();
 
@@ -593,48 +593,52 @@ struct LightingType{
 				if (includeParticles) {
 					worldOwning->Filter([this, &viewproj](const ParticleEmitter& emitter, const Transform& t) {
 						auto mat = emitter.GetMaterial();
-						std::visit(CaseAnalysis(
-							[&mat, this, &emitter,&viewproj](const Ref<BillboardParticleMaterial>& billboardMat) {
-								mainCommandBuffer->BindRenderPipeline(billboardMat->userRenderPipeline);
-								mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
-								mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, 0);
-								mainCommandBuffer->BindBuffer(emitter.activeParticleIndexBuffer, 1);
+						std::visit(CaseAnalysis{
+                                [&mat, this, &emitter, &viewproj](
+                                        const Ref <BillboardParticleMaterial> &billboardMat) {
+                                    mainCommandBuffer->BindRenderPipeline(
+                                            billboardMat->userRenderPipeline);
+                                    mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
+                                    mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, 0);
+                                    mainCommandBuffer->BindBuffer(emitter.activeParticleIndexBuffer,
+                                                                  1);
 
-								ParticleBillboardUBO ubo{
-									.viewProj = viewproj,
-									.spritesheetDim = {},
-									.numSprites = {}
-								};
+                                    ParticleBillboardUBO ubo{
+                                            .viewProj = viewproj,
+                                            .spritesheetDim = {},
+                                            .numSprites = {}
+                                    };
 
-								auto tex = billboardMat->spriteTex;
-								if (tex) {
-									auto dim = tex->GetRHITexturePointer()->GetSize();
-									ubo.spritesheetDim = {
-										dim.width,
-										dim.height,
-									};
-									ubo.numSprites = {
-										billboardMat->spriteDim.numSpritesWidth,
-										billboardMat->spriteDim.numSpritesHeight,
-									};
+                                    auto tex = billboardMat->spriteTex;
+                                    if (tex) {
+                                        auto dim = tex->GetRHITexturePointer()->GetSize();
+                                        ubo.spritesheetDim = {
+                                                dim.width,
+                                                dim.height,
+                                        };
+                                        ubo.numSprites = {
+                                                billboardMat->spriteDim.numSpritesWidth,
+                                                billboardMat->spriteDim.numSpritesHeight,
+                                        };
 
-									mainCommandBuffer->SetFragmentTexture(tex->GetRHITexturePointer()->GetDefaultView(), 3);
-									mainCommandBuffer->SetFragmentSampler(textureSampler, 2);
-								}
+                                        mainCommandBuffer->SetFragmentTexture(
+                                                tex->GetRHITexturePointer()->GetDefaultView(), 3);
+                                        mainCommandBuffer->SetFragmentSampler(textureSampler, 2);
+                                    }
 
-								mainCommandBuffer->SetVertexBytes(ubo, 0);
-								mainCommandBuffer->SetFragmentBytes(ubo, 0);
+                                    mainCommandBuffer->SetVertexBytes(ubo, 0);
+                                    mainCommandBuffer->SetFragmentBytes(ubo, 0);
 
-								mainCommandBuffer->ExecuteIndirect({
-									.indirectBuffer = emitter.indirectDrawBuffer,
-									.offsetIntoBuffer = 0,
-									.nDraws = 1,
-								});
-							},
-							[&mat](const Ref<MeshParticleMaterial>& meshMat) {
-								//TODO
-							}
-						), emitter.GetMaterial());
+                                    mainCommandBuffer->ExecuteIndirect({
+                                                                               .indirectBuffer = emitter.indirectDrawBuffer,
+                                                                               .offsetIntoBuffer = 0,
+                                                                               .nDraws = 1,
+                                                                       });
+                                },
+                                [&mat](const Ref <MeshParticleMaterial> &meshMat) {
+                                    //TODO
+                                }
+                        }, emitter.GetMaterial());
 					});
 				}
 			};

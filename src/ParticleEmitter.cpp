@@ -79,15 +79,16 @@ namespace RavEngine {
 	{
 		uint16_t totalSize = 0;
 
-		std::visit(CaseAnalysis(
-			[&totalSize](const Ref<BillboardParticleMaterial>& billboardMat) {
-				totalSize = sizeof(BilboardParticleEngineData) + billboardMat->ParticleUserDataSize();
-			},
-			[&totalSize](const Ref<MeshParticleMaterial>& meshMat) {
-				Debug::Fatal("Not implemented");
-				totalSize = 0 + meshMat->ParticleUserDataSize();
-			}
-		), material);
+		std::visit(CaseAnalysis{
+                [&totalSize](const Ref <BillboardParticleMaterial> &billboardMat) {
+                    totalSize = sizeof(BilboardParticleEngineData) +
+                                billboardMat->ParticleUserDataSize();
+                },
+                [&totalSize](const Ref <MeshParticleMaterial> &meshMat) {
+                    Debug::Fatal("Not implemented");
+                    totalSize = 0 + meshMat->ParticleUserDataSize();
+                }
+        }, material);
 
 		return totalSize;
 	}
