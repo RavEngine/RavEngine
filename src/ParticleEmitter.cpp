@@ -6,7 +6,7 @@
 #include "RenderEngine.hpp"
 
 namespace RavEngine {
-	RavEngine::ParticleEmitter::ParticleEmitter(uint32_t maxParticles, Ref<ParticleMaterial> mat) : material(mat), maxParticleCount(maxParticles)
+	RavEngine::ParticleEmitter::ParticleEmitter(entity_t ownerID, uint32_t maxParticles, Ref<ParticleMaterial> mat) : ComponentWithOwner(ownerID), material(mat), maxParticleCount(maxParticles)
 	{
 
 		// create buffers
@@ -44,6 +44,9 @@ namespace RavEngine {
 
 		emitterStateBuffer = device->CreateBuffer({
 			1, {.StorageBuffer = true}, sizeof(ParticleState), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Particle state buffer"}
+		});
+		emitterStateBuffer->SetBufferData(ParticleState{
+			.emitterOwnerID = GetOwner().GetIdInWorld()
 		});
 
 		particleLifeBuffer = device->CreateBuffer({

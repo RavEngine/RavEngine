@@ -27,6 +27,7 @@
 #include "RenderEngine.hpp"
 #include "Skybox.hpp"
 #include "PhysicsSolver.hpp"
+#include "ParticleEmitter.hpp"
 #if !RVE_SERVER
     #include "VRAMSparseSet.hpp"
     #include "AudioMeshComponent.hpp"
@@ -360,8 +361,18 @@ void World::setupRenderTasks(){
             });
         }, ptrForTemplate2);
     }).name("Upate invalidated skinned mesh transforms");
+
+    auto updateParticleSystems = renderTasks.emplace([this] {
+        Filter([this](const ParticleEmitter& emitter, const Transform& t) {
+            if (t.getTickDirty()) {
+                auto owner = t.GetOwner();
+                auto ownerIDInWorld = owner.GetIdInWorld();
+                renderData->worldTransforms[ownerIDInWorld] = t.GetWorldMatrix();
+            }
+        });
+    });
     
-    resizeBuffer.precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
+    resizeBuffer.precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh, updateParticleSystems);
     
     auto updateInvalidatedDirs = renderTasks.emplace([this]{
         if (auto ptr = GetAllComponentsOfType<DirectionalLight>()){

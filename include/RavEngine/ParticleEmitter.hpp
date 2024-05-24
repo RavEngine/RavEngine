@@ -3,6 +3,7 @@
 #include "CTTI.hpp"
 #include "RGL/Types.hpp"
 #include "Ref.hpp"
+#include "ComponentWithOwner.hpp"
 
 namespace RavEngine {
 
@@ -12,17 +13,17 @@ namespace RavEngine {
 		uint32_t aliveParticleCount = 0;
 		uint32_t freeListCount = 0;
 		uint32_t particlesCreatedThisFrame = 0;
+		entity_t emitterOwnerID;
 	};
 
-
-	struct ParticleEmitter : public Queryable<ParticleEmitter>, public AutoCTTI {
+	struct ParticleEmitter : public ComponentWithOwner, public Queryable<ParticleEmitter>{
 	friend class RenderEngine;
 		enum class Mode : uint8_t {
 			Stream,
 			Burst
 		} mode = Mode::Stream;
 
-		ParticleEmitter(uint32_t maxParticles, Ref<ParticleMaterial> mat);
+		ParticleEmitter(entity_t owner, uint32_t maxParticles, Ref<ParticleMaterial> mat);
 
 		void Destroy();
 

@@ -32,6 +32,7 @@ void main(){
     ParticleData data = particleData[particle];
 
     vec4 vert = vec4(vec3(in_position * data.scale,0) + data.pos,1);
+
     vert = ubo.viewProj * vert;
 
     gl_Position = vert;

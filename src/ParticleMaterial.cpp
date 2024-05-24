@@ -6,7 +6,7 @@ namespace RavEngine {
 	ParticleMaterial::ParticleMaterial(const std::string& initShaderName, const std::string& updateShaderName, const std::string& particleVS, const std::string& particleFS)
 	{
 		auto device = GetApp()->GetDevice();
-
+		// init shader
 		{
 			auto layout = device->CreatePipelineLayout({
 				.bindings = {
@@ -33,10 +33,16 @@ namespace RavEngine {
 						.type = RGL::BindingType::StorageBuffer,
 						.stageFlags = RGL::BindingVisibility::Compute,
 						.writable = true,
+					},
+					{
+						.binding = 4,
+						.type = RGL::BindingType::StorageBuffer,
+						.stageFlags = RGL::BindingVisibility::Compute,
+						.writable = false,
 					}
 				},
 				.constants = {}
-				});
+			});
 
 			userInitPipeline = device->CreateComputePipeline({
 				.stage = {
@@ -46,6 +52,7 @@ namespace RavEngine {
 				.pipelineLayout = layout
 			});
 		}
+		// update shader
 		{
 			auto layout = device->CreatePipelineLayout({
 				.bindings = {
@@ -142,7 +149,7 @@ namespace RavEngine {
 					}
 				},
 				.inputAssembly = {
-					.topology = RGL::PrimitiveTopology::TriangleFan,
+					.topology = RGL::PrimitiveTopology::TriangleStrip,
 				},
 				.rasterizerConfig = {
 					.windingOrder = RGL::WindingOrder::Counterclockwise,

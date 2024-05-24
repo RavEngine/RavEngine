@@ -24,8 +24,8 @@ namespace RavEngine {
         quaternion rotation;
         vector3 position, scale;
         ComponentHandle<Transform> parent;    //non-owning
-        mutable bool isDirty : 1 = false;		// used for when the transform hierarchy has been changed
-        mutable bool isTickDirty : 1 = false;    // used for when this transform has been updated in the current tick and needs updating in the world's render data
+        mutable bool isDirty : 1 = true;		// used for when the transform hierarchy has been changed
+        mutable bool isTickDirty : 1 = true;    // used for when this transform has been updated in the current tick and needs updating in the world's render data
 
         // sanity checking for optimal struct padding
 #if RVE_64_BIT

@@ -190,7 +190,7 @@ struct LightingType{
 		auto tickParticles = [this, worldOwning]() {
 			mainCommandBuffer->BeginComputeDebugMarker("Particle Update");
 
-			worldOwning->Filter([this](ParticleEmitter& emitter, const Transform& transform) {
+			worldOwning->Filter([this, worldOwning](ParticleEmitter& emitter, const Transform& transform) {
 				auto mat = emitter.GetMaterial();
 				auto worldTransform = transform.GetWorldMatrix();
 
@@ -236,6 +236,7 @@ struct LightingType{
 					mainCommandBuffer->BindComputeBuffer(emitter.spawnedThisFrameList, 1);
 					mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 2);
 					mainCommandBuffer->BindComputeBuffer(emitter.particleLifeBuffer, 3);
+					mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->worldTransforms.buffer, 4);
 
 					mainCommandBuffer->DispatchIndirect({
 						.indirectBuffer = emitter.indirectComputeBuffer,

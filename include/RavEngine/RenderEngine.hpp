@@ -172,8 +172,7 @@ namespace RavEngine {
 			uint32_t maxTotalParticles;
 		};
 
-
-        virtual ~RenderEngine();
+		virtual ~RenderEngine();
         RenderEngine(const AppConfig&, RGLDevicePtr device);
 
 		RenderTargetCollection CreateRenderTargetCollection(dim size, bool createDepth = true);
