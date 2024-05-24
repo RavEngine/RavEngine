@@ -603,7 +603,7 @@ struct LightingType{
 								ParticleBillboardUBO ubo{
 									.viewProj = viewproj,
 									.spritesheetDim = {},
-									.spritesheetFrameDim = {}
+									.numSprites = {}
 								};
 
 								auto tex = billboardMat->spriteTex;
@@ -613,10 +613,13 @@ struct LightingType{
 										dim.width,
 										dim.height,
 									};
-									ubo.spritesheetFrameDim = {
-										dim.width / billboardMat->spriteDim.numSpritesWidth,
-										dim.height / billboardMat->spriteDim.numSpritesHeight,
+									ubo.numSprites = {
+										billboardMat->spriteDim.numSpritesWidth,
+										billboardMat->spriteDim.numSpritesHeight,
 									};
+
+									mainCommandBuffer->SetFragmentTexture(tex->GetRHITexturePointer()->GetDefaultView(), 3);
+									mainCommandBuffer->SetFragmentSampler(textureSampler, 2);
 								}
 
 								mainCommandBuffer->SetVertexBytes(ubo, 0);

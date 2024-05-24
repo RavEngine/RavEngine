@@ -112,6 +112,18 @@ namespace RavEngine {
 						.type = RGL::BindingType::StorageBuffer,
 						.stageFlags = RGL::BindingVisibility::VertexFragment,
 						.writable = false,
+					},
+					{
+						.binding = 2,
+						.type = RGL::BindingType::Sampler,
+						.stageFlags = RGL::BindingVisibility::Fragment,
+						.writable = false,
+					},
+					{
+						.binding = 3,
+						.type = RGL::BindingType::SampledImage,
+						.stageFlags = RGL::BindingVisibility::Fragment,
+						.writable = false,
 					}
 				},
 				.constants = {

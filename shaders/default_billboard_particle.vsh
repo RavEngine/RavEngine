@@ -2,7 +2,7 @@
 layout(push_constant, std430) uniform UniformBufferObject{
     mat4 viewProj;
     ivec2 spritesheetDim;
-    ivec2 spritesheetFrameDim;
+    ivec2 numSprites;
 } ubo;
 
 struct ParticleData{
@@ -24,7 +24,6 @@ layout(std430, binding = 1) readonly buffer aliveSSBO
 layout(location = 0) in vec2 in_position;
 
 layout(location = 0) out vec2 out_uv; 
-layout(location = 1) out uint out_animationFrame;
 
 void main(){
 
@@ -35,7 +34,27 @@ void main(){
 
     vert = ubo.viewProj * vert;
 
+    vec2 cellDim = (ubo.spritesheetDim / vec2(ubo.numSprites)) / ubo.spritesheetDim;  // [0,1] for a single frame
+
+    uint frame = data.animationFrame;
+
+    // using     
+    vec2 uvs[] = {
+        vec2(0,0),
+        vec2(0,1) * cellDim,
+        vec2(1,0) * cellDim,
+        vec2(1,1) * cellDim
+    };
+    vec2 uv = uvs[gl_VertexID];
+
+    float row = frame / ubo.numSprites.x;
+    float col = frame % ubo.numSprites.y;
+
+    row /= ubo.numSprites.y;
+    col /= ubo.numSprites.x;
+
+    uv += (vec2(col,row));
+
     gl_Position = vert;
-    out_uv = vec2(0,0);
-    out_animationFrame = data.animationFrame;
+    out_uv = uv;
 }

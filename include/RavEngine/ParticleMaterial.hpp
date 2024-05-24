@@ -23,7 +23,7 @@ namespace RavEngine {
 	struct ParticleBillboardUBO {
 		matrix4 viewProj;
 		vector2i spritesheetDim;
-		vector2i spritesheetFrameDim;
+		vector2i numSprites;
 	};
 
 	struct ParticleQuadVert {
