@@ -4,9 +4,11 @@
 #include "App.hpp"
 #include <RGL/CommandBuffer.hpp>
 #include "RenderEngine.hpp"
+#include "CaseAnalysis.hpp"
+#include "Debug.hpp"
 
 namespace RavEngine {
-	RavEngine::ParticleEmitter::ParticleEmitter(entity_t ownerID, uint32_t maxParticles, Ref<ParticleMaterial> mat) : ComponentWithOwner(ownerID), material(mat), maxParticleCount(maxParticles)
+	RavEngine::ParticleEmitter::ParticleEmitter(entity_t ownerID, uint32_t maxParticles, const ParticleMaterialVariant& mat) : ComponentWithOwner(ownerID), material(mat), maxParticleCount(maxParticles)
 	{
 
 		// create buffers
@@ -75,7 +77,19 @@ namespace RavEngine {
 	}
 	uint16_t ParticleEmitter::TotalParticleData() const
 	{
-		return sizeof(BilboardParticleEngineData) + material->ParticleUserDataSize();
+		uint16_t totalSize = 0;
+
+		std::visit(CaseAnalysis(
+			[&totalSize](const Ref<BillboardParticleMaterial>& billboardMat) {
+				totalSize = sizeof(BilboardParticleEngineData) + billboardMat->ParticleUserDataSize();
+			},
+			[&totalSize](const Ref<MeshParticleMaterial>& meshMat) {
+				Debug::Fatal("Not implemented");
+				totalSize = 0 + meshMat->ParticleUserDataSize();
+			}
+		), material);
+
+		return totalSize;
 	}
 }
 

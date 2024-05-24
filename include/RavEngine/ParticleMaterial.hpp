@@ -3,8 +3,11 @@
 #include "mathtypes.hpp"
 #include <string>
 #include <variant>
+#include "Ref.hpp"
 
 namespace RavEngine {
+
+	struct Texture;
 
 	struct BilboardParticleEngineData {
 		vector3 pos{ 0 };
@@ -19,20 +22,21 @@ namespace RavEngine {
 
 	struct ParticleBillboardUBO {
 		matrix4 viewProj;
-		vector2 spritesheetDim;
-		vector2 spritesheetFrameDim;
+		vector2i spritesheetDim;
+		vector2i spritesheetFrameDim;
 	};
 
 	struct ParticleQuadVert {
 		vector2 pos;
 	};
 
-	// Subclass this to make custom particle materials
+
 	struct ParticleMaterial {
 		friend class RenderEngine;
-
+	protected:
 		ParticleMaterial(const std::string& initShaderName, const std::string& updateShaderName, const std::string& particleVS, const std::string& particleFS);
 
+	public:
 		/**
 		* @return The number of bytes required for your material's per-particle user data. This data is placed immediately after the engine's required particle data for each particle
 		*/
@@ -53,5 +57,22 @@ namespace RavEngine {
 		RGLRenderPipelinePtr userRenderPipeline;
 	};
 
+	// Subclass this to make custom particle materials
+	struct BillboardParticleMaterial : public ParticleMaterial {
+	protected:
+		BillboardParticleMaterial(const std::string& initShaderName, const std::string& updateShaderName, const std::string& particleVS, const std::string& particleFS) : ParticleMaterial(initShaderName, updateShaderName, particleVS, particleFS) {}
 
+	public:
+		Ref<Texture> spriteTex;
+		struct spriteCount {
+			uint16_t numSpritesWidth = 0;
+			uint16_t numSpritesHeight;
+		} spriteDim;
+
+	};
+	// Subclass this to make custom particle materials
+	struct MeshParticleMaterial : public ParticleMaterial {
+	protected:
+		MeshParticleMaterial(const std::string& initShaderName, const std::string& updateShaderName, const std::string& particleVS, const std::string& particleFS) : ParticleMaterial(initShaderName, updateShaderName, particleVS, particleFS) {}
+	};
 }

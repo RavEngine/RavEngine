@@ -21,6 +21,7 @@
 #include "Transform.hpp"
 #include "ParticleEmitter.hpp"
 #include "ParticleMaterial.hpp"
+#include "CaseAnalysis.hpp"
 
 #if __APPLE__ || __EMSCRIPTEN__
 #define OCCLUSION_CULLING_UNAVAILABLE
@@ -191,7 +192,17 @@ struct LightingType{
 			mainCommandBuffer->BeginComputeDebugMarker("Particle Update");
 
 			worldOwning->Filter([this, worldOwning](ParticleEmitter& emitter, const Transform& transform) {
-				auto mat = emitter.GetMaterial();
+				Ref<ParticleMaterial> mat;
+				
+				std::visit(CaseAnalysis(
+					[&mat](const Ref<BillboardParticleMaterial>& billboardMat) {
+						mat = billboardMat;
+					},
+					[&mat](const Ref<MeshParticleMaterial>& meshMat){
+						mat = meshMat;
+					}
+				), emitter.GetMaterial());
+
 				auto worldTransform = transform.GetWorldMatrix();
 
 				auto dispatchSizeUpdate = [this, &emitter] {
@@ -575,29 +586,50 @@ struct LightingType{
 						});
 				}
 
-				// particles
+				// render particles
 				if (includeParticles) {
 					worldOwning->Filter([this, &viewproj](const ParticleEmitter& emitter, const Transform& t) {
 						auto mat = emitter.GetMaterial();
-						mainCommandBuffer->BindRenderPipeline(mat->userRenderPipeline);
-						mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
-						mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, 0);
-						mainCommandBuffer->BindBuffer(emitter.activeParticleIndexBuffer, 1);
+						std::visit(CaseAnalysis(
+							[&mat, this, &emitter,&viewproj](const Ref<BillboardParticleMaterial>& billboardMat) {
+								mainCommandBuffer->BindRenderPipeline(billboardMat->userRenderPipeline);
+								mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
+								mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, 0);
+								mainCommandBuffer->BindBuffer(emitter.activeParticleIndexBuffer, 1);
 
-						ParticleBillboardUBO ubo{
-							.viewProj = viewproj,
-							.spritesheetDim = {},
-							.spritesheetFrameDim = {}
-						};
-						mainCommandBuffer->SetVertexBytes(ubo, 0);
-						mainCommandBuffer->SetFragmentBytes(ubo, 0);
+								ParticleBillboardUBO ubo{
+									.viewProj = viewproj,
+									.spritesheetDim = {},
+									.spritesheetFrameDim = {}
+								};
 
-						mainCommandBuffer->ExecuteIndirect({
-							.indirectBuffer = emitter.indirectDrawBuffer,
-							.offsetIntoBuffer = 0,
-							.nDraws = 1,
-							});
-						});
+								auto tex = billboardMat->spriteTex;
+								if (tex) {
+									auto dim = tex->GetRHITexturePointer()->GetSize();
+									ubo.spritesheetDim = {
+										dim.width,
+										dim.height,
+									};
+									ubo.spritesheetFrameDim = {
+										dim.width / billboardMat->spriteDim.numSpritesWidth,
+										dim.height / billboardMat->spriteDim.numSpritesHeight,
+									};
+								}
+
+								mainCommandBuffer->SetVertexBytes(ubo, 0);
+								mainCommandBuffer->SetFragmentBytes(ubo, 0);
+
+								mainCommandBuffer->ExecuteIndirect({
+									.indirectBuffer = emitter.indirectDrawBuffer,
+									.offsetIntoBuffer = 0,
+									.nDraws = 1,
+								});
+							},
+							[&mat](const Ref<MeshParticleMaterial>& meshMat) {
+								//TODO
+							}
+						), emitter.GetMaterial());
+					});
 				}
 			};
 

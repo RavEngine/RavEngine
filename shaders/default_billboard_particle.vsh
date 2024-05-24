@@ -1,8 +1,8 @@
 
 layout(push_constant, std430) uniform UniformBufferObject{
     mat4 viewProj;
-    vec2 spritesheetDim;
-    vec2 spritesheetFrameDim;
+    ivec2 spritesheetDim;
+    ivec2 spritesheetFrameDim;
 } ubo;
 
 struct ParticleData{

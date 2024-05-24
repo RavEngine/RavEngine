@@ -7,7 +7,8 @@
 
 namespace RavEngine {
 
-	struct ParticleMaterial;
+	struct BillboardParticleMaterial;
+	struct MeshParticleMaterial;
 
 	struct ParticleState {
 		uint32_t aliveParticleCount = 0;
@@ -16,14 +17,16 @@ namespace RavEngine {
 		entity_t emitterOwnerID;
 	};
 
+	using ParticleMaterialVariant = std::variant<Ref<BillboardParticleMaterial>, Ref<MeshParticleMaterial>>;
+
 	struct ParticleEmitter : public ComponentWithOwner, public Queryable<ParticleEmitter>{
-	friend class RenderEngine;
+		friend class RenderEngine;
 		enum class Mode : uint8_t {
 			Stream,
 			Burst
 		} mode = Mode::Stream;
 
-		ParticleEmitter(entity_t owner, uint32_t maxParticles, Ref<ParticleMaterial> mat);
+		ParticleEmitter(entity_t owner, uint32_t maxParticles, const ParticleMaterialVariant& mat);
 
 		void Destroy();
 
@@ -72,7 +75,7 @@ namespace RavEngine {
 			emitterStateBuffer = nullptr,
 			particleLifeBuffer = nullptr;
 
-		Ref<ParticleMaterial> material;
+		ParticleMaterialVariant material;
 
 		uint16_t TotalParticleData() const;
 
