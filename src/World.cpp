@@ -27,10 +27,10 @@
 #include "RenderEngine.hpp"
 #include "Skybox.hpp"
 #include "PhysicsSolver.hpp"
-#include "ParticleEmitter.hpp"
 #if !RVE_SERVER
     #include "VRAMSparseSet.hpp"
     #include "AudioMeshComponent.hpp"
+    #include "ParticleEmitter.hpp"
 #else
     #include "Transform.hpp"
 #endif

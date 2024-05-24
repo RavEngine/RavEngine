@@ -251,7 +251,8 @@ struct LightingType{
 
 					mainCommandBuffer->DispatchIndirect({
 						.indirectBuffer = emitter.indirectComputeBuffer,
-						.offsetIntoBuffer = 0
+						.offsetIntoBuffer = 0,
+                        .blocksizeX = 64, .blocksizeY = 1, .blocksizeZ = 1
 					});
 
 					mainCommandBuffer->EndCompute();
@@ -283,7 +284,8 @@ struct LightingType{
 				mainCommandBuffer->SetComputeBytes(ubo, 0);
 				mainCommandBuffer->DispatchIndirect({
 					.indirectBuffer = emitter.indirectComputeBuffer,
-					.offsetIntoBuffer = sizeof(RGL::ComputeIndirectCommand)
+					.offsetIntoBuffer = sizeof(RGL::ComputeIndirectCommand),
+                    .blocksizeX = 64, .blocksizeY = 1, .blocksizeZ = 1
 				});
 
 				mainCommandBuffer->EndCompute();
@@ -304,7 +306,8 @@ struct LightingType{
 
 				mainCommandBuffer->DispatchIndirect({
 					.indirectBuffer = emitter.indirectComputeBuffer,
-					.offsetIntoBuffer = sizeof(RGL::ComputeIndirectCommand)	// uses the same indirect command as the update shader, because it works on the alive set
+					.offsetIntoBuffer = sizeof(RGL::ComputeIndirectCommand),	// uses the same indirect command as the update shader, because it works on the alive set
+                    .blocksizeX = 64, .blocksizeY = 1, .blocksizeZ = 1
 				});
 
 				mainCommandBuffer->EndCompute();

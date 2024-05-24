@@ -80,6 +80,7 @@ namespace RGL {
 	struct DispatchIndirectConfig {
 		RGLBufferPtr indirectBuffer;
 		uint32_t offsetIntoBuffer = 0;
+        uint32_t blocksizeX = 0, blocksizeY = 0, blocksizeZ = 0;
 	};
 
 	struct VertexBufferBinding {

@@ -389,8 +389,9 @@ void CommandBufferMTL::ExecuteIndirectIndexed(const RGL::IndirectConfig & config
     
 }
 
-void CommandBufferMTL::DispatchIndirect(const DispatchIndirectConfig&){
-
+void CommandBufferMTL::DispatchIndirect(const DispatchIndirectConfig& config){
+    auto buffer = std::static_pointer_cast<BufferMTL>(config.indirectBuffer);
+    [currentComputeCommandEncoder dispatchThreadgroupsWithIndirectBuffer:buffer->buffer indirectBufferOffset:config.offsetIntoBuffer threadsPerThreadgroup:MTLSizeMake(config.blocksizeX, config.blocksizeY, config.blocksizeZ)];
 }
 
 void CommandBufferMTL::ExecuteIndirect(const RGL::IndirectConfig & config) {
