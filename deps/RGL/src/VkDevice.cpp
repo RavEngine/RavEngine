@@ -131,13 +131,59 @@ namespace RGL {
             // in the future implement a scoring system to pick the best device
             return deviceProperties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && queueFamilyData.isComplete() && extensionsSupported;
         };
-        for (const auto& device : devices) {
-            if (isDeviceSuitable(device)) {
-                physicalDevice = device;
-                break;
+
+
+        // sort devices
+        std::sort(devices.begin(), devices.end(), [](const VkPhysicalDevice& d1, const VkPhysicalDevice& d2) -> bool{
+            // return TRUE if d1 is WORSE than d2
+
+            // first check: discrete vs integrated -- pick discrete
+
+            constexpr static auto GetFeatures = [](const VkPhysicalDevice& dev){
+                VkPhysicalDeviceProperties vdp;
+                vkGetPhysicalDeviceProperties(dev,&vdp);
+                return vdp;
+            };
+
+            constexpr static auto typeRank = [](VkPhysicalDeviceType type){
+                switch(type){
+                    case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:  return 10;
+                    case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: return 5;
+                    case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU: return 3;
+                    case VK_PHYSICAL_DEVICE_TYPE_CPU: return 2;
+                    case VK_PHYSICAL_DEVICE_TYPE_OTHER: return 0;
+                }
+            };
+
+            const auto features1 = GetFeatures(d1);
+            const auto features2 = GetFeatures(d2);
+
+            if (typeRank(features1.deviceType) < typeRank(features2.deviceType)){
+                return true;
             }
-        }
-        Assert(physicalDevice != VK_NULL_HANDLE, "failed to find a suitable GPU!");
+
+            constexpr static auto GetTotalVRAM = [](VkPhysicalDevice dev){
+                VkPhysicalDeviceMemoryProperties mem;
+                vkGetPhysicalDeviceMemoryProperties(dev,&mem);
+
+                uint64_t totalMem = 0;
+                for(uint32_t i = 0; i < mem.memoryHeapCount; i++){
+                    totalMem += mem.memoryHeaps[i].size;
+                }
+                return totalMem;
+            };
+
+            // tiebreak: we have two discrete GPUs
+            // return the one with less VRAM
+            if (GetTotalVRAM(d1) < GetTotalVRAM(d2)){
+                return true;
+            }
+
+            // give up and say they're equivalent
+            return false;
+        });
+
+        physicalDevice = devices.back();
 
         return std::make_shared<DeviceVk>(physicalDevice);
     }
@@ -205,7 +251,6 @@ namespace RGL {
 
 #ifndef NDEBUG
         runtimeExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-        runtimeExtensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
 #endif
 
         VkDeviceCreateInfo deviceCreateInfo{
