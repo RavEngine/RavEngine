@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <mutex>
 #include <unordered_map>
 
 // In addition to RGL library copyright:
