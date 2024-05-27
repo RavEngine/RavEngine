@@ -1,3 +1,4 @@
+#extension GL_EXT_debug_printf : enable
 
 struct ParticleState
 {
@@ -40,8 +41,16 @@ layout(std430, binding = 2)buffer indirectDrawSSBO
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main(){
 
+    if (gl_GlobalInvocationID.x > 0){
+        return;
+    }
     indirectDrawBuffer[0].instanceCount = particleState[0].aliveParticleCount;
 
     indirectBuffers[0] = IndirectWorkgroupSize(uint(ceil(particleState[0].createdThisFrame/64.f)),1,1);  // initialization shader
     indirectBuffers[1] = IndirectWorkgroupSize(uint(ceil(particleState[0].aliveParticleCount/64.f)),1,1);  // update shader
+
+    debugPrintfEXT("Indirect data: (%d, %d, %d), (%d, %d, %d)", 
+        indirectBuffers[0].x,indirectBuffers[0].y,indirectBuffers[0].z,
+        indirectBuffers[1].x,indirectBuffers[1].y,indirectBuffers[1].z
+    );
 }

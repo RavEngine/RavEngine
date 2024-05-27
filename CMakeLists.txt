@@ -134,7 +134,7 @@ endif()
 
 if (NOT RAVENGINE_SERVER)
 	set(DISABLE_RTTI_AND_EXCEPTIONS OFF CACHE INTERNAL "")
-	add_subdirectory("${DEPS_DIR}/RmlUi-freetype" EXCLUDE_FROM_ALL)
+	add_subdirectory(deps/RmlUi-freetype EXCLUDE_FROM_ALL)
 	set(RML_LIB "RmlCore")
 endif()
 
@@ -143,17 +143,17 @@ if (ANDROID)
 endif()
 
 # no extra flags required
-add_subdirectory("${DEPS_DIR}/im3d-cmake" EXCLUDE_FROM_ALL)
-add_subdirectory("${DEPS_DIR}/tweeny" EXCLUDE_FROM_ALL)
-add_subdirectory("${DEPS_DIR}/concurrentqueue" EXCLUDE_FROM_ALL)
-add_subdirectory("${DEPS_DIR}/glm" EXCLUDE_FROM_ALL)
-add_subdirectory("${DEPS_DIR}/r8brain-cmake" EXCLUDE_FROM_ALL)
+add_subdirectory(deps/im3d-cmake EXCLUDE_FROM_ALL)
+add_subdirectory(deps/tweeny EXCLUDE_FROM_ALL)
+add_subdirectory(deps/concurrentqueue EXCLUDE_FROM_ALL)
+add_subdirectory(deps/glm EXCLUDE_FROM_ALL)
+add_subdirectory(deps/r8brain-cmake EXCLUDE_FROM_ALL)
 add_subdirectory(deps/dr_wav EXCLUDE_FROM_ALL)
 add_subdirectory(deps/fmt EXCLUDE_FROM_ALL)
 
 # randoms
 set(Random_BuildTests OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/random" EXCLUDE_FROM_ALL)
+add_subdirectory(deps/random EXCLUDE_FROM_ALL)
 
 #SDL
 # ensure library is built correctly for static
@@ -168,7 +168,7 @@ if (NOT RAVENGINE_SERVER)
 	set(SDL_LIBC ON CACHE BOOL "" FORCE)
 	set(SDL_TESTS OFF CACHE INTERNAL "")
     set(SDL_TEST_LIBRARY OFF CACHE INTERNAL "")
-	add_subdirectory("${DEPS_DIR}/SDL" EXCLUDE_FROM_ALL)
+	add_subdirectory(deps/SDL EXCLUDE_FROM_ALL)
 		if(SDL_STATIC)
 			set(SDL2STATIC_LIB 	"SDL3-static")
 		else()
@@ -195,18 +195,18 @@ set(PHYSFS_BUILD_TEST OFF CACHE INTERNAL "")
 set(PHYSFS_BUILD_STATIC ON CACHE INTERNAL "")
 set(PHYSFS_BUILD_SHARED OFF CACHE INTERNAL "")
 set(PHYSFS_BUILD_DOCS OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/physfs" EXCLUDE_FROM_ALL)
+add_subdirectory(deps/physfs EXCLUDE_FROM_ALL)
 
 # ozz animation
 set(ozz_build_samples OFF CACHE INTERNAL "")
 set(ozz_build_howtos OFF CACHE INTERNAL "")
 set(ozz_build_tests OFF CACHE INTERNAL "")
 set(ozz_build_tools OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/ozz-animation" EXCLUDE_FROM_ALL)
+add_subdirectory(deps/ozz-animation EXCLUDE_FROM_ALL)
 
 # libnyquist
 SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/libnyquist" EXCLUDE_FROM_ALL)
+add_subdirectory(deps/libnyquist EXCLUDE_FROM_ALL)
 
 # RavEngine Graphics Library (RGL)
 if (NOT CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
@@ -218,7 +218,7 @@ set(SPIRV_SKIP_TESTS ON CACHE INTERNAL "")
 set(SPIRV_SKIP_EXECUTABLES ON CACHE INTERNAL "")
 set(RGL_IDE_ROOT "RavEngine SDK/Libraries/RGL/")
 if (NOT RAVENGINE_SERVER)
-	add_subdirectory("${DEPS_DIR}/RGL")
+	add_subdirectory(deps/RGL)
 	set(RGL_LIB "RGL")
 endif()
 
@@ -228,7 +228,7 @@ if(CMAKE_CROSSCOMPILING)
 else()
 	set(protobuf_BUILD_PROTOC_BINARIES ON CACHE INTERNAL "")	# this instance will build protoc
 endif()
-add_subdirectory("${DEPS_DIR}/GameNetworkingSockets" EXCLUDE_FROM_ALL)
+add_subdirectory(deps/GameNetworkingSockets EXCLUDE_FROM_ALL)
 if (CMAKE_CROSSCOMPILING)
 	if (NOT RAVENGINE_SERVER)
 		set(test_rglc "${rglc_path}")
@@ -249,7 +249,7 @@ SET(TF_BUILD_BENCHMARKS OFF CACHE INTERNAL "" )
 SET(TF_BUILD_CUDA OFF CACHE INTERNAL "")
 SET(TF_BUILD_TESTS OFF CACHE INTERNAL "")
 SET(TF_BUILD_EXAMPLES OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/taskflow" EXCLUDE_FROM_ALL)
+add_subdirectory(deps/taskflow EXCLUDE_FROM_ALL)
 
 # assimp
 SET(IGNORE_GIT_HASH ON CACHE INTERNAL "")
@@ -257,7 +257,7 @@ SET(ASSIMP_BUILD_TESTS OFF CACHE INTERNAL "")
 set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE INTERNAL "")
 set(ASSIMP_INSTALL OFF CACHEN INTERNAL "")
 set(ASSIMP_NO_EXPORT ON CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/assimp" EXCLUDE_FROM_ALL)
+add_subdirectory(deps/assimp EXCLUDE_FROM_ALL)
 
 # steam audio
 if (NOT RAVENGINE_SERVER)
@@ -275,7 +275,7 @@ if (NOT RAVENGINE_SERVER)
 
 	# resonance-audio
 	set(BUILD_RESONANCE_AUDIO_API ON CACHE INTERNAL "")
-	add_subdirectory("${DEPS_DIR}/resonance-audio" EXCLUDE_FROM_ALL)
+	add_subdirectory(deps/resonance-audio EXCLUDE_FROM_ALL)
 	set(RESONANCE_LIB ResonanceAudioObj)
 	set(SADIE_LIB SadieHrtfsObj)
 endif()
@@ -284,7 +284,7 @@ endif()
 SET(RECASTNAVIGATION_DEMO OFF CACHE INTERNAL "")
 SET(RECASTNAVIGATION_TESTS OFF CACHE INTERNAL "")
 SET(RECASTNAVIGATION_EXAMPLES OFF CACHE INTERNAL "")
-add_subdirectory("${DEPS_DIR}/recastnavigation" EXCLUDE_FROM_ALL)
+add_subdirectory(deps/recastnavigation EXCLUDE_FROM_ALL)
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 set(CMAKE_CXX_STANDARD 17)	# workaround g++ issue with C++20 and PhysX
@@ -576,28 +576,9 @@ if (WIN32)
 
 endif()
 
-# globals for managing state
-define_property(GLOBAL PROPERTY ALL_SHADERS
-		BRIEF_DOCS "Aggregate shader list"
-		FULL_DOCS "GLOBAL shader list"
-	)
-set_property(GLOBAL PROPERTY ALL_SHADERS "")
-define_property(GLOBAL PROPERTY ALL_SHADER_SOURCES
-	BRIEF_DOCS "Aggregate shader source list"
-	FULL_DOCS "GLOBAL shader source list"
-)
-set_property(GLOBAL PROPERTY ALL_SHADER_SOURCES "")
+include(cmake/shaders.cmake)
+include(cmake/pack_resources.cmake)
 
-define_property(GLOBAL PROPERTY ENG_DIR
-	BRIEF_DOCS "Engine Directory"
-	FULL_DOCS "Engine Directory"
-)
-set_property(GLOBAL PROPERTY ENG_DIR "${CMAKE_CURRENT_LIST_DIR}")
-
-define_property(GLOBAL PROPERTY COPY_DEPENDS
-	BRIEF_DOCS "Engine Directory"
-	FULL_DOCS "Engine Directory"
-)
 
 # group libraries and projects
 macro(group_in destination targets)
@@ -661,347 +642,7 @@ group_in("Libraries/SteamAudio"
 "core;fbschemas;hrtf;phonon;flatc;PFFFT;mysofa-static"
 )
 
-macro(shader_compile infile stage api extension binary)
-	if (NOT RAVENGINE_SERVER)
-		set(bindir "${shader_target}_ShaderIntermediate")
-		set(shader_inc_dir "${eng_dir}/shaders")
 
-		get_filename_component(name_only ${infile} NAME)
-		set(outname "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}.${extension}")
-		set(finalrootpath "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}")
-		if (${api} MATCHES "Metal")
-			STRING(REPLACE "." "_" name_fixed ${name_only} )
-			set(entrypoint "--entrypoint" "${name_fixed}")
-		endif()
-		add_custom_command(
-			PRE_BUILD
-			OUTPUT "${outname}"
-			DEPENDS ${infile} GNS_Deps "${eng_dir}/shaders/ravengine_shader.glsl" "${eng_dir}/shaders/ravengine_fsh.h" "${eng_dir}/shaders/ravengine_vsh.h" "${eng_dir}/shaders/ravengine_shader_defs.h" "${eng_dir}/shaders/lightingbindings_shared.h" "${eng_dir}/shaders/BRDF.glsl" "${eng_dir}/shaders/lighting_preamble.glsl"
-			COMMAND ${rglc_path} -f "${infile}" -o "${outname}" --api ${api} --stage ${stage} --include "${shader_inc_dir}" --debug ${binary} ${entrypoint}
-		)
-	endif()
-endmacro()
-
-function(declare_shader infile shader_target)
-	if (RAVENGINE_SERVER)
-		return()
-	endif()
-
-	get_filename_component(shader_ext ${infile} EXT)
-
-	if (shader_ext MATCHES "vsh")
-		set(stage "vertex")
-		set(dxc_profile "v")
-	elseif (shader_ext MATCHES "fsh")
-		set(stage "fragment")
-		set(dxc_profile "p")
-	elseif (shader_ext MATCHES "csh")
-		set(stage "compute")
-		set(dxc_profile "c")
-	endif()
-
-	if(RGL_VK_AVAILABLE)
-		shader_compile("${infile}" "${stage}" "Vulkan" "spv" "")
-		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${outname})
-	endif()
-	if (RGL_WEBGPU_AVAILABLE)
-		shader_compile("${infile}" "${stage}" "WebGPU" "wgsl" "")
-		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${outname})
-	endif()
-	if(RGL_DX12_AVAILABLE)
-		shader_compile("${infile}" "${stage}" "Direct3D12" "hlsl" "")
-
-		if (stage MATCHES "vertex")
-			set(dxc_type "Vertex")
-		elseif (stage MATCHES "fragment")
-			set(dxc_type "Pixel")
-		elseif (stage MATCHES "compute")
-			set(dxc_type "Compute")
-		endif()
-		target_sources(${shader_target} PUBLIC ${outname})
-		source_group("Generated" FILES "${outname}")
-		set(dx_final_name "${finalrootpath}.cso")
-		set_source_files_properties(${outname} PROPERTIES 
-			GENERATED TRUE
-			HEADER_FILE_ONLY ON
-			VS_SHADER_MODEL "6.4"
-			VS_SHADER_TYPE ${dxc_type}
-			VS_SHADER_ENABLE_DEBUG ON
-			VS_SHADER_DISABLE_OPTIMIZATIONS ON
-			# VS_SHADER_FLAGS "/Fd ${CMAKE_BINARY_DIR}/$<CONFIG>/"
-			VS_SHADER_OBJECT_FILE_NAME ${dx_final_name}
-		)
-		set_source_files_properties(dx_final_name PROPERTIES GENERATED TRUE)
-		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${dx_final_name})
-		# manually invoke dxc.exe
-		add_custom_command(
-			PRE_BUILD 
-			OUTPUT "${dx_final_name}"
-			DEPENDS "${outname}"
-			COMMAND dxc.exe $<$<CONFIG:Debug>:-Qembed_debug> $<$<CONFIG:Debug>:-Zi> $<$<CONFIG:Debug>:-Od> -Fo \"${dx_final_name}\" -T ${dxc_profile}s_6_4 \"${outname}\"
-		)
-	endif()
-	if(RGL_MTL_AVAILABLE)
-		shader_compile("${infile}" "${stage}" "Metal" "metal" "")
-		set_source_files_properties(${outname} PROPERTIES 
-			GENERATED TRUE
-			HEADER_FILE_ONLY OFF
-			LANGUAGE METAL
-			XCODE_EXPLICIT_FILE_TYPE "sourcecode.metal"
-            COMPILE_FLAGS "-gline-tables-only -frecord-sources" # enable shader source debugging
-		)
-			# goes into the bundle Metallib, so we don't need to include the shader in the asset package
-		target_sources(${shader_target} PUBLIC ${outname})
-		source_group("Generated" FILES "${outname}")
-	endif()
-endfunction()
-
-# pack resources
-function(pack_resources)
-	set(optional )
-	set(args TARGET OUTPUT_FILE STREAMING_INPUT_ROOT)
-	set(list_args SHADERS OBJECTS TEXTURES UIS FONTS SOUNDS STREAMING_ASSETS)
-	cmake_parse_arguments(
-		PARSE_ARGV 0
-		ARGS
-		"${optional}"
-		"${args}"
-		"${list_args}"
-	)
-
-	if(${ARGS_UNPARSED_ARGUMENTS})
-		message(WARNING "Unparsed arguments: ${ARGS_UNPARSED_ARGUMENTS}")
-	endif()
-
-	if(APPLE)
-		set_property(TARGET ${ARGS_TARGET} APPEND_STRING PROPERTY COMPILE_FLAGS "-fobjc-arc")
-		set_target_properties(${ARGS_TARGET} PROPERTIES 
-			XCODE_ATTRIBUTE_MTL_ENABLE_DEBUG_INFO "$<$<NOT:$<CONFIG:RELEASE>>:INCLUDE_SOURCE>"	# enable shader debugging in all but release mode
-			XCODE_ATTRIBUTE_MTL_OPTIMIZATION_LEVEL "$<$<CONFIG:RELEASE>:default>"				# optimize shaders in release builds
-			XCODE_ATTRIBUTE_MTL_LANGUAGE_REVISION "Metal30"										# use Metal 3
-			)
-	endif()	
-
-	get_property(eng_dir GLOBAL PROPERTY ENG_DIR)
-
-	# add polygon primitives provided by engine
-	file(GLOB ENG_OBJECTS "${eng_dir}/objects/*")
-
-	# add engine-provided shaders
-	file(GLOB ENG_SHADERS "${eng_dir}/shaders/*.vsh" "${eng_dir}/shaders/*.fsh" "${eng_dir}/shaders/*.csh")
-
-	# add engine-provided fonts
-	file(GLOB ENG_FONTS "${eng_dir}/fonts/*.ttf")
-
-	file(GLOB ENG_UIS "${eng_dir}/ui/*.rcss" "${eng_dir}/ui/*.rml")
-
-	# clear copy-depends
-	set_property(GLOBAL PROPERTY COPY_DEPENDS "")
-
-	function(copy_helper_impl FILE_LIST output_dir root_dir)
-		foreach(FILE ${FILE_LIST})
-			# copy objects pre-build if they are changed
-			get_filename_component(output_name "${FILE}" NAME)
-			set(outname "${CMAKE_CURRENT_BINARY_DIR}/${ARGS_TARGET}/${root_dir}/${output_name}")
-			add_custom_command(PRE_BUILD 
-				OUTPUT "${outname}" 
-				COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FILE} "${outname}"
-				DEPENDS ${FILE}
-				)
-			set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS ${outname})
-		endforeach()
-	endfunction()
-
-	# helper for copying to staging directory
-	function(copy_helper FILE_LIST output_dir)
-		copy_helper_impl("${FILE_LIST}" ${ARGS_TARGET} "${output_dir}")
-	endfunction()
-
-	function(copy_streaming_helper FILE_LIST output_root input_root)
-		foreach(FILE ${FILE_LIST})
-			if (APPLE)
-				# put it in the resources bundle
-				file(RELATIVE_PATH relpath "${input_root}" "${FILE}")
-				get_filename_component(relpath "${relpath}" DIRECTORY)
-				target_sources(${ARGS_TARGET} PRIVATE ${FILE})
-				set_property(SOURCE ${FILE} PROPERTY MACOSX_PACKAGE_LOCATION "Resources/${ARGS_TARGET}_Streaming/${relpath}")
-			elseif(NOT EMSCRIPTEN)
-				# put it next to the executable
-				file(RELATIVE_PATH relpath "${input_root}" "${FILE}")
-				if (WINDOWS_STORE)
-					set(UWP_APPX "AppX")
-				endif()
-				set(asset_relpath "${ARGS_TARGET}_Streaming/${output_root}/${relpath}")
-				set(outname "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${UWP_APPX}/${asset_relpath}")
-				add_custom_command(PRE_BUILD 
-					OUTPUT "${outname}" 
-					COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FILE} "${outname}"
-					DEPENDS ${FILE}
-				)
-				target_sources("${ARGS_TARGET}" PRIVATE "${FILE}")
-				source_group("Streaming Assets" FILES ${FILE})
-				set_source_files_properties(${FILE} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "archive.ar")
-				set_property(SOURCE "${FILE}" PROPERTY VS_DEPLOYMENT_CONTENT 1)
-				set_property(SOURCE "${FILE}" PROPERTY VS_DEPLOYMENT_LOCATION "${asset_relpath}")
-				set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS ${outname})
-			endif()
-		endforeach()
-	endfunction()
-
-	copy_helper("${ARGS_OBJECTS}" "objects")
-	copy_helper("${ENG_OBJECTS}" "objects")
-	copy_helper("${ARGS_TEXTURES}" "textures")
-	copy_helper("${ARGS_UIS}" "uis")
-	copy_helper("${ENG_UIS}" "uis")
-	copy_helper("${ARGS_FONTS}" "fonts")
-	copy_helper("${ENG_FONTS}" "fonts")
-	copy_helper("${ARGS_SOUNDS}" "sounds")
-	
-	copy_streaming_helper("${ARGS_STREAMING_ASSETS}" "" "${ARGS_STREAMING_INPUT_ROOT}")
-
-	target_sources(${ARGS_TARGET} PUBLIC ${ARGS_OBJECTS} ${ARGS_TEXTURES} ${ARGS_SOUNDS})
-	set_source_files_properties(${ARGS_OBJECTS} ${ARGS_TEXTURES} ${ARGS_SOUNDS} PROPERTIES HEADER_FILE_ONLY ON)
-	
-	source_group("Objects" FILES ${ARGS_OBJECTS})
-	source_group("Textures" FILES ${ARGS_TEXTURES})
-	source_group("Sounds" FILES ${ARGS_SOUNDS})
-	source_group("UI" FILES ${ARGS_UIS})
-	source_group("Streaming" FILES ${ARGS_STREAMING_ASSETS})
-
-
-	# get dependency outputs
-	get_property(copy_depends GLOBAL PROPERTY COPY_DEPENDS)
-
-	# clear global shaders property
-	set_property(GLOBAL PROPERTY ALL_SHADERS "")
-
-	# setup shader compiler
-	foreach(SHADER ${ENG_SHADERS} ${ARGS_SHADERS})
-		declare_shader("${SHADER}" "${ARGS_TARGET}")
-	endforeach()
-
-	set_property(GLOBAL PROPERTY ALL_SHADER_SOURCES "")
-	foreach(SHADER ${ARGS_SHADERS})
-		list(APPEND all_shader_sources "${SHADER}")
-	endforeach()
-
-	get_property(sc_comp_name GLOBAL PROPERTY SC_COMP_NAME)
-	get_property(sc_include_dir GLOBAL PROPERTY SC_INCLUDE_DIR)
-
-	#track all the shaders for compilation
-	get_property(all_shaders_property GLOBAL PROPERTY ALL_SHADERS)
-	add_custom_target("${ARGS_TARGET}_CompileShaders" ALL DEPENDS ${all_shaders_property})
-	add_dependencies("${ARGS_TARGET}" "${ARGS_TARGET}_CompileShaders" "RavEngine")
-
-	if(NOT APPLE)
-		set(rve_cmrc_resource_name "${ARGS_TARGET}_ShaderResources")
-		cmrc_add_resource_library("${rve_cmrc_resource_name}" WHENCE "${CMAKE_CURRENT_BINARY_DIR}/${ARGS_TARGET}_ShaderIntermediate/" ${all_shaders_property} )
-		set_target_properties("${rve_cmrc_resource_name}" PROPERTIES
-			LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cmrc/$<CONFIGURATION>/"
-			ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cmrc/$<CONFIGURATION>/"
-		)
-		target_link_libraries("${ARGS_TARGET}" PRIVATE "${rve_cmrc_resource_name}")
-		set(cmrc_shader_libfn_cpp "${CMAKE_BINARY_DIR}/__cmrc_${rve_cmrc_resource_name}/lib_extern.cpp")
-		file(GENERATE OUTPUT "${cmrc_shader_libfn_cpp}" CONTENT "
-		#include <cmrc/cmrc.hpp>
-		#include <span>
-		#include <string_view>
-		#include <string>
-		CMRC_DECLARE(${rve_cmrc_resource_name});
-
-		#define CMRC_NS cmrc::${rve_cmrc_resource_name}
-
-		const std::span<const char> cmrc_get_file_data(const std::string_view& path){
-			auto fs = CMRC_NS::get_filesystem();
-
-			auto file = fs.open(std::string(path));
-
-
-			return {file.begin(),file.size()};
-		}
-		")
-		target_sources(${rve_cmrc_resource_name} PRIVATE "${cmrc_shader_libfn_cpp}")
-		target_compile_features(${rve_cmrc_resource_name} PRIVATE cxx_std_20)
-	endif()
-
-	set(rve_externs_cpp "${CMAKE_BINARY_DIR}/${ARGS_TARGET}_ShaderIntermediate/externs.cpp")
-	file(GENERATE OUTPUT "${rve_externs_cpp}" CONTENT "
-	#include <string_view>
-	const std::string_view RVE_VFS_get_name(){
-		return \"${ARGS_TARGET}\";
-	}
-	")
-	set(rve_externs_lib "${ARGS_TARGET}_Externs")
-	add_library(${rve_externs_lib} "${rve_externs_cpp}")
-	set_target_properties("${rve_externs_lib}" PROPERTIES
-		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cmrc/$<CONFIGURATION>/"
-		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cmrc/$<CONFIGURATION>/"
-	)
-	target_compile_features(${rve_externs_lib} PRIVATE cxx_std_20)
-	target_link_libraries("${ARGS_TARGET}" PRIVATE "${rve_externs_lib}")
-
-	set_target_properties(${rve_cmrc_resource_name} "${ARGS_TARGET}_CompileShaders" ${rve_externs_lib} PROPERTIES
-		FOLDER "RavEngine Auxillary"
-	)
-
-	# add files to IDE sidebar for convenience
-	target_sources("${ARGS_TARGET}" PUBLIC ${ARGS_UIS} ${all_shader_sources})
-	set_source_files_properties(${ARGS_UIS} ${all_shader_sources} PROPERTIES HEADER_FILE_ONLY TRUE)	# prevents visual studio from trying to build these
-	set_source_files_properties(${all_shader_sources} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "sourcecode.glsl")
-	set_source_files_properties(${ARGS_UIS} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "text.html")
-	set_source_files_properties(${ARGS_OBJECTS} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "compiled")
-	set_source_files_properties(${ARGS_SOUNDS} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "audio.wav")
-	source_group("Shaders" FILES ${all_shader_sources})
-
-	set(outpack "${CMAKE_BINARY_DIR}/${ARGS_TARGET}.rvedata")
-
-	# allow inserting into the mac / ios resource bundle
-	set_target_properties(${ARGS_TARGET} PROPERTIES 
-		MACOSX_BUNDLE TRUE
-		#XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH $<$<OR:$<CONFIG:DEBUG>,$<CONFIG:CHECKED>,$<CONFIG:PROFILE>>:YES>
-		VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
-		XCODE_GENERATE_SCHEME ON	# create a scheme in Xcode
-	)
-
-	set(assets ${ARGS_OBJECTS} ${ENG_OBJECTS} ${ARGS_TEXTURES} ${copy_depends})
-
-	# the command to pack into a zip
-	add_custom_command(
-		POST_BUILD 
-		OUTPUT "${outpack}"
-		DEPENDS ${assets}
-		COMMENT "Packing resources for ${ARGS_TARGET}"
-		COMMAND ${CMAKE_COMMAND} -E tar "cfv" "${outpack}" --format=zip "${CMAKE_CURRENT_BINARY_DIR}/${ARGS_TARGET}"
-		VERBATIM
-	)
-
-	# make part of the target, and add to the resources folder if applicable
-	target_sources("${ARGS_TARGET}" PRIVATE "${outpack}")
-	set_source_files_properties("${outpack}" PROPERTIES
-		MACOSX_PACKAGE_LOCATION Resources
-	)
-	source_group("Resources" FILES ${outpack})
-	set_source_files_properties(${outpack} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "archive.ar")
-
-	# Set the assets zip location on UWP
-	set_property(SOURCE "${outpack}" PROPERTY VS_DEPLOYMENT_CONTENT 1)
-	set_property(SOURCE "${outpack}" PROPERTY VS_DEPLOYMENT_LOCATION "")	# tells the deployment to put the assets zip in the AppX root directory
-	
-	# copy to target dir on Win
-	if((WIN32 AND NOT WINDOWS_STORE) OR LINUX)
-		get_filename_component(outfile ${outpack} NAME)
-		SET(outfile "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/${outfile}")
-		add_custom_command(
-			POST_BUILD
-			TARGET "${ARGS_TARGET}"
-			DEPENDS "${outpack}"
-			COMMAND ${CMAKE_COMMAND} -E copy_if_different "${outpack}" "${outfile}"
-			COMMENT "Copying assets package to executable directory"
-		)
-	endif()
-
-	set(${ARGS_OUTPUT_FILE} ${outpack} CACHE INTERNAL "")
-endfunction()
 
 # tests
 if (RAVENGINE_BUILD_TESTS)
