@@ -150,6 +150,8 @@ add_subdirectory(deps/glm EXCLUDE_FROM_ALL)
 add_subdirectory(deps/r8brain-cmake EXCLUDE_FROM_ALL)
 add_subdirectory(deps/dr_wav EXCLUDE_FROM_ALL)
 add_subdirectory(deps/fmt EXCLUDE_FROM_ALL)
+add_subdirectory(deps/cxxopts EXCLUDE_FROM_ALL)
+add_subdirectory(deps/simdjson EXCLUDE_FROM_ALL)
 
 # randoms
 set(Random_BuildTests OFF CACHE INTERNAL "")
@@ -220,6 +222,12 @@ set(RGL_IDE_ROOT "RavEngine SDK/Libraries/RGL/")
 if (NOT RAVENGINE_SERVER)
 	add_subdirectory(deps/RGL)
 	set(RGL_LIB "RGL")
+endif()
+
+if (NOT CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
+	include(cmake/rvesc.cmake)
+else()
+	#TODO: host tools needs to configure this
 endif()
 
 
@@ -617,8 +625,10 @@ group_in("Libraries" "assimp;assimp_cmd;DebugUtils;Detour;DetourCrowd;DetourTile
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL3-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
-sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;
+sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt
 ")
+
+group_in("Tools" "rvesc")
 
 group_in("Libraries/PhysX SDK" 
 "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\
