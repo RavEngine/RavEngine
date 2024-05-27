@@ -150,12 +150,17 @@ add_subdirectory(deps/glm EXCLUDE_FROM_ALL)
 add_subdirectory(deps/r8brain-cmake EXCLUDE_FROM_ALL)
 add_subdirectory(deps/dr_wav EXCLUDE_FROM_ALL)
 add_subdirectory(deps/fmt EXCLUDE_FROM_ALL)
-add_subdirectory(deps/cxxopts EXCLUDE_FROM_ALL)
 add_subdirectory(deps/simdjson EXCLUDE_FROM_ALL)
 
 # randoms
 set(Random_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(deps/random EXCLUDE_FROM_ALL)
+
+set(CXXOPTS_BUILD_TESTS OFF CACHE INTERNAL "")
+set(CXXOPTS_BUILD_EXAMPLES OFF CACHE INTERNAL "")
+set(CXXOPTS_ENABLE_INSTALL OFF CACHE INTERNAL "")
+add_subdirectory(deps/cxxopts EXCLUDE_FROM_ALL)
+
 
 #SDL
 # ensure library is built correctly for static
@@ -226,7 +231,7 @@ endif()
 
 if (NOT CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	include(cmake/rvesc.cmake)
-	set(RVESC_PATH rvesc)
+	set(RVESC_PATH rvesc CACHE INTERNAL "")
 else()
 	#TODO: host tools needs to configure this
 endif()
@@ -626,7 +631,7 @@ group_in("Libraries" "assimp;assimp_cmd;DebugUtils;Detour;DetourCrowd;DetourTile
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL3-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
-sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt
+sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt;simdjson;
 ")
 
 group_in("Tools" "rvesc")

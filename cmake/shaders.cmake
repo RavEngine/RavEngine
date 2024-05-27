@@ -42,15 +42,75 @@ macro(shader_compile infile stage api extension binary)
 	endif()
 endmacro()
 
-function(rvesc_compile descfile shader_target)
+macro(rvesc_compile_shader infile api ext)
+	set(shader_inc_dir "${eng_dir}/shaders")	
+	set(outname "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}.${extension}")
+
+	message("-f \"${infile}\" -o \"${outname}\" --api ${api} --include \"${shader_inc_dir}\" --debug")
 
 	add_custom_command(
 		PRE_BUILD
-		OUTPUT "test"
-		COMMAND ${RVESC_PATH}
+		OUTPUT "${outname}"
+		DEPENDS "${infile}" GNS_Deps 
+		COMMAND ${RVESC_PATH} -f "${infile}" -o "${outname}" --api ${api} --include "${shader_inc_dir}" --debug 
 	)
 
-endfunction()
+endmacro()
+
+macro(rvesc_compile descfile shader_target)
+
+	set(bindir "${shader_target}_ShaderIntermediate")
+
+	file(READ "${descfile}" desc_STR)
+	string(JSON infilename GET "${desc_STR}" shader)
+	
+		
+	get_filename_component(name_only ${descfile} NAME_WE)
+	set(finalrootpath "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}")
+
+	if(RGL_VK_AVAILABLE)
+		rvesc_compile_shader("${infile}" "Vulkan" "spv")
+		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${outname})
+	endif()
+	if (RGL_WEBGPU_AVAILABLE)
+		rvesc_compile_shader("${infile}" "WebGPU" "wgsl")
+		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${outname})
+	endif()
+	if(RGL_DX12_AVAILABLE)
+		rvesc_compile_shader("${infile}" "Direct3D12" "hlsl")
+		string(JSON stage GET "${desc_STR}" stage)
+		
+		if (stage MATCHES "vertex")
+			set(dxc_type "Vertex")
+		elseif (stage MATCHES "fragment")
+			set(dxc_type "Pixel")
+		elseif (stage MATCHES "compute")
+			set(dxc_type "Compute")
+		endif()
+		target_sources(${shader_target} PUBLIC ${outname})
+		source_group("Generated" FILES "${outname}")
+		set(dx_final_name "${finalrootpath}.cso")
+		set_source_files_properties(${outname} PROPERTIES 
+			GENERATED TRUE
+			HEADER_FILE_ONLY ON
+			VS_SHADER_MODEL "6.4"
+		)
+		set_source_files_properties(dx_final_name PROPERTIES GENERATED TRUE)
+		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${dx_final_name})
+		# manually invoke dxc.exe
+		add_custom_command(
+			PRE_BUILD 
+			OUTPUT "${dx_final_name}"
+			DEPENDS "${outname}"
+			COMMAND dxc.exe $<$<CONFIG:Debug>:-Qembed_debug> $<$<CONFIG:Debug>:-Zi> $<$<CONFIG:Debug>:-Od> -Fo \"${dx_final_name}\" -T ${dxc_profile}s_6_4 \"${outname}\"
+		)
+	endif()
+	
+	if(RGL_MTL_AVAILABLE)
+	
+	endif()
+
+endmacro()
 
 function(declare_shader infile shader_target)
 	if (RAVENGINE_SERVER)
@@ -60,7 +120,7 @@ function(declare_shader infile shader_target)
 	get_filename_component(shader_ext ${infile} EXT)
 	
 	if (shader_ext MATCHES "json")
-		rvesc_compile(infile shader_target)
+		rvesc_compile("${infile}" ${shader_target})
 		return()
 	endif()
 
