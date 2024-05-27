@@ -226,6 +226,7 @@ endif()
 
 if (NOT CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	include(cmake/rvesc.cmake)
+	set(RVESC_PATH rvesc)
 else()
 	#TODO: host tools needs to configure this
 endif()

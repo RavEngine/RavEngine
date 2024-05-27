@@ -42,12 +42,27 @@ macro(shader_compile infile stage api extension binary)
 	endif()
 endmacro()
 
+function(rvesc_compile descfile shader_target)
+
+	add_custom_command(
+		PRE_BUILD
+		OUTPUT "test"
+		COMMAND ${RVESC_PATH}
+	)
+
+endfunction()
+
 function(declare_shader infile shader_target)
 	if (RAVENGINE_SERVER)
 		return()
 	endif()
 
 	get_filename_component(shader_ext ${infile} EXT)
+	
+	if (shader_ext MATCHES "json")
+		rvesc_compile(infile shader_target)
+		return()
+	endif()
 
 	if (shader_ext MATCHES "vsh")
 		set(stage "vertex")

@@ -1,0 +1,5 @@
+{
+  "shader": "pbr.fsh",
+  "stage": "fragment",
+  "type" :  "lit-mesh"
+}
