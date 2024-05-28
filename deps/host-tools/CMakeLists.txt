@@ -33,6 +33,7 @@ add_subdirectory(../SteamAudio-All/flatbuffers "${CMAKE_BINARY_DIR}/flatc")
 # rvesc
 include(../cmrc/CMakeRC.cmake)
 add_subdirectory(../simdjson EXCLUDE_FROM_ALL "${CMAKE_BINARY_DIR}/simdjson")
+add_subdirectory(../fmt EXCLUDE_FROM_ALL "${CMAKE_BINARY_DIR}/fmt")
 set(CXXOPTS_BUILD_TESTS OFF CACHE INTERNAL "")
 set(CXXOPTS_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 set(CXXOPTS_ENABLE_INSTALL OFF CACHE INTERNAL "")

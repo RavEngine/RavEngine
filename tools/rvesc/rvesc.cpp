@@ -4,7 +4,7 @@
 #include <librglc.hpp>
 #include <fstream>
 #include <cmrc/cmrc.hpp>
-#include <format>
+#include <fmt/format.h>
 
 CMRC_DECLARE(rvesc_resources);
 
@@ -74,7 +74,7 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 		}
 	}
 	else {
-		FATAL(std::format("{} is not a supported material type",mat_type));
+		FATAL(fmt::format("{} is not a supported material type",mat_type));
 		return 1;
 	}
 
@@ -102,7 +102,7 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 		ofstream out(outfile, ios::out | ios::binary);
 		out.write(result.data(), result.size() * sizeof(decltype(result)::value_type));
 		if (!out.good()) {
-			FATAL(std::format("Error writing to {}\n", outfile.string()));
+			FATAL(fmt::format("Error writing to {}\n", outfile.string()));
 		}
 	}
 	catch (exception& e) {
