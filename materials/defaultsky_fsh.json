@@ -1,0 +1,5 @@
+{
+    "shader": "defaultsky.fsh",
+    "stage": "fragment",
+    "type" :  "skybox"
+  }

@@ -84,10 +84,12 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 		set(PROTOC_CMD "${TOOLS_DIR}/protobuf/protoc" CACHE INTERNAL "")
 		set(rglc_path "${TOOLS_DIR}/RGL/rglc${rglc_ext}" CACHE INTERNAL "")
   		set(FlatBuffers_EXECUTABLE "${TOOLS_DIR}/flatc/flatc")
+		set(RVESC_PATH "${TOOLS_DIR}/RVESC/rvesc" CACHE INTERNAL "")
 	else()
 		set(PROTOC_CMD "${TOOLS_DIR}/protobuf/Release/protoc" CACHE INTERNAL "")
 		set(rglc_path "${TOOLS_DIR}/RGL/Release/rglc${rglc_ext}" CACHE INTERNAL "")
   		set(FlatBuffers_EXECUTABLE "${TOOLS_DIR}/flatc/Release/flatc")
+		 set(RVESC_PATH "${TOOLS_DIR}/RVESC/Release/rvesc" CACHE INTERNAL "")
 	endif()
 
 	file(MAKE_DIRECTORY ${TOOLS_DIR})
@@ -116,17 +118,20 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 
 	if(CMAKE_HOST_WIN32)
 		set(FlatBuffers_EXECUTABLE "${FlatBuffers_EXECUTABLE}.exe")
+		set(RVESC_PATH "${RVESC_PATH}.exe" CACHE INTERNAL "")
 	endif()
 
 	add_custom_command(
 		PRE_BUILD
 		OUTPUT "${PROTOC_CMD}" "${rglc_path}" "${FlatBuffers_EXECUTABLE}"
-		COMMAND ${CMAKE_COMMAND} --build . --config Release --target protoc rglc flatc
+		COMMAND ${CMAKE_COMMAND} --build . --config Release --target protoc rglc flatc rvesc
 		WORKING_DIRECTORY "${TOOLS_DIR}"
 		VERBATIM
 	)
 
 	add_custom_target(flatc DEPENDS "${FlatBuffers_EXECUTABLE}")
+
+	add_custom_target(rvesc DEPENDS "${RVESC_PATH}")
 else()
 	set(TOOLS_DIR ${CMAKE_CURRENT_BINARY_DIR}/host-tools CACHE INTERNAL "")
 	set(PROTOC_CMD "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/protoc" CACHE INTERNAL "")
@@ -150,12 +155,17 @@ add_subdirectory(deps/glm EXCLUDE_FROM_ALL)
 add_subdirectory(deps/r8brain-cmake EXCLUDE_FROM_ALL)
 add_subdirectory(deps/dr_wav EXCLUDE_FROM_ALL)
 add_subdirectory(deps/fmt EXCLUDE_FROM_ALL)
-add_subdirectory(deps/cxxopts EXCLUDE_FROM_ALL)
 add_subdirectory(deps/simdjson EXCLUDE_FROM_ALL)
 
 # randoms
 set(Random_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(deps/random EXCLUDE_FROM_ALL)
+
+set(CXXOPTS_BUILD_TESTS OFF CACHE INTERNAL "")
+set(CXXOPTS_BUILD_EXAMPLES OFF CACHE INTERNAL "")
+set(CXXOPTS_ENABLE_INSTALL OFF CACHE INTERNAL "")
+add_subdirectory(deps/cxxopts EXCLUDE_FROM_ALL)
+
 
 #SDL
 # ensure library is built correctly for static
@@ -226,8 +236,15 @@ endif()
 
 if (NOT CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	include(cmake/rvesc.cmake)
+	set(RVESC_PATH rvesc CACHE INTERNAL "")
+	set_target_properties(rvesc
+		PROPERTIES
+		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/RVESC"
+		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/RVESC"
+		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/RVESC"
+	)
 else()
-	#TODO: host tools needs to configure this
+	#host tools configures it
 endif()
 
 
@@ -625,10 +642,10 @@ group_in("Libraries" "assimp;assimp_cmd;DebugUtils;Detour;DetourCrowd;DetourTile
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL3-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
-sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt
+sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt;simdjson;
 ")
 
-group_in("Tools" "rvesc")
+group_in("Tools" "rvesc;rvesc_resources")
 
 group_in("Libraries/PhysX SDK" 
 "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\

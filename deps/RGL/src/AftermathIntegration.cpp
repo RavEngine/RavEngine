@@ -1,4 +1,4 @@
-#if RGL_AFTERMATH_AVAILABLE
+#if RGL_AFTERMATH_AVAILABLE && RGL_DX12_AVAILABLE
 #include <d3d12.h>
 #include <GFSDK_Aftermath.h>
 #include <GFSDK_Aftermath_GpuCrashDump.h>

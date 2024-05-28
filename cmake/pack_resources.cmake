@@ -30,7 +30,7 @@ function(pack_resources)
 	file(GLOB ENG_OBJECTS "${eng_dir}/objects/*")
 
 	# add engine-provided shaders
-	file(GLOB ENG_SHADERS "${eng_dir}/shaders/*.vsh" "${eng_dir}/shaders/*.fsh" "${eng_dir}/shaders/*.csh")
+	file(GLOB ENG_SHADERS "${eng_dir}/shaders/*.vsh" "${eng_dir}/shaders/*.fsh" "${eng_dir}/shaders/*.csh" "${eng_dir}/materials/*.json")
 
 	# add engine-provided fonts
 	file(GLOB ENG_FONTS "${eng_dir}/fonts/*.ttf")

@@ -1,5 +1,6 @@
 
-#include "ravengine_shader_defs.h"
+#define MODEL_MATRIX_BINDING 10
+#define ENTITY_INPUT_LOCATION 10
 
 #define VS_INPUTS() \
 layout(location = 0) in vec3 inPosition;\

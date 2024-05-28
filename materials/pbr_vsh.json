@@ -1,0 +1,5 @@
+{
+  "shader": "pbr.vsh",
+  "stage": "vertex",
+  "type" :  "lit-mesh"
+}

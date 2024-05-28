@@ -102,6 +102,14 @@ protected:
     // directories and the nominal name of the header.
     virtual IncludeResult* readLocalPath(const char* headerName, const char* includerName, int depth)
     {
+        // first check for absolute paths:
+        std::ifstream file(headerName, std::ios_base::binary | std::ios_base::ate);
+        if (file) {
+            directoryStack.push_back(getDirectory(headerName));
+            includedFiles.insert(headerName);
+            return newIncludeResult(headerName, file, (int)file.tellg());
+        }
+
         // Discard popped include directories, and
         // initialize when at parse-time first level.
         directoryStack.resize(depth + externalLocalDirectoryCount);
