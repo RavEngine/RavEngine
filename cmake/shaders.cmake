@@ -49,7 +49,6 @@ macro(rvesc_compile_shader infile shaderfile api extension)
 	get_filename_component(desc_dir "${infile}" DIRECTORY )
 	
 	set(shaderfilepath  "${desc_dir}/${shaderfile}")
-	message(filepath = "${shaderfilepath}")
 	
 	add_custom_command(
 		PRE_BUILD
