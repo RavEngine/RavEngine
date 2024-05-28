@@ -30,3 +30,19 @@ set(FLATBUFFERS_BUILD_TESTS OFF CACHE INTERNAL "")
 set(FLATBUFFERS_INSTALL OFF CACHE INTERNAL "")
 add_subdirectory(../SteamAudio-All/flatbuffers "${CMAKE_BINARY_DIR}/flatc")
 
+# rvesc
+include(../cmrc/CMakeRC.cmake)
+add_subdirectory(../simdjson EXCLUDE_FROM_ALL "${CMAKE_BINARY_DIR}/simdjson")
+set(CXXOPTS_BUILD_TESTS OFF CACHE INTERNAL "")
+set(CXXOPTS_BUILD_EXAMPLES OFF CACHE INTERNAL "")
+set(CXXOPTS_ENABLE_INSTALL OFF CACHE INTERNAL "")
+add_subdirectory(../cxxopts EXCLUDE_FROM_ALL "${CMAKE_BINARY_DIR}/cxxopts")
+
+include(../../cmake/rvesc.cmake)
+
+set_target_properties(rvesc
+    PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/RVESC"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/RVESC"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/RVESC"
+)
