@@ -12,14 +12,9 @@ layout(std430, binding = MODEL_MATRIX_BINDING) readonly buffer modelMatrixBuffer
 
 struct LitVertexOut{
     vec4 position;
-    vec2 uv;
-    vec3 T, B, N;
 };
 
 #include "%s"
-
-layout(location = 0) out vec2 outUV;
-layout(location = 1) out vec3[3] outTBN;
 
 void main(){
     mat4 inModel = model[inEntityID];
@@ -27,10 +22,4 @@ void main(){
     LitVertexOut user_out = vertex(inModel);
 
     gl_Position = user_out.position;
-
-    outUV = user_out.uv;
-
-    outTBN[0] = user_out.T;
-	outTBN[1] = user_out.B;
-	outTBN[2] = user_out.N;
 }
