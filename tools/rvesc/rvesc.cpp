@@ -73,6 +73,14 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 			shaderTemplateName = "skybox.fsh";
 		}
 	}
+	else if (mat_type == "unlit-mesh") {
+		if (inputStage == librglc::ShaderStage::Vertex) {
+			shaderTemplateName = "unlit_mesh.vsh";
+		}
+		else {
+			shaderTemplateName = "unlit_mesh.fsh";
+		}
+	}
 	else {
 		FATAL(fmt::format("{} is not a supported material type",mat_type));
 		return 1;
