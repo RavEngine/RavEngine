@@ -14,12 +14,19 @@ struct LitVertexOut{
     vec4 position;
 };
 
+struct EntityIn{
+    mat4 modelMtx;
+    uint entityID;
+};
+
 #include "%s"
 
 void main(){
-    mat4 inModel = model[inEntityID];
+    EntityIn entity;
+    entity.entityID = inEntityID;
+    entity.modelMtx = model[inEntityID];
 
-    LitVertexOut user_out = vertex(inModel);
+    LitVertexOut user_out = vertex(entity);
 
     gl_Position = user_out.position;
 }

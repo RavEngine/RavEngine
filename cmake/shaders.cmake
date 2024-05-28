@@ -42,14 +42,19 @@ macro(shader_compile infile stage api extension binary)
 	endif()
 endmacro()
 
-macro(rvesc_compile_shader infile api extension)
+macro(rvesc_compile_shader infile shaderfile api extension)
 	set(shader_inc_dir "${eng_dir}/shaders")	
 	set(outname "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}.${extension}")
-
+	
+	get_filename_component(desc_dir "${infile}" DIRECTORY )
+	
+	set(shaderfilepath  "${desc_dir}/${shaderfile}")
+	message(filepath = "${shaderfilepath}")
+	
 	add_custom_command(
 		PRE_BUILD
 		OUTPUT "${outname}"
-		DEPENDS "${infile}" GNS_Deps 
+		DEPENDS "${infile}" GNS_Deps "${shaderfilepath}"
 		COMMAND ${RVESC_PATH} -f "${infile}" -o "${outname}" --api ${api} --include "${shader_inc_dir}" --debug 
 	)
 
@@ -60,21 +65,21 @@ macro(rvesc_compile descfile shader_target)
 	set(bindir "${shader_target}_ShaderIntermediate")
 
 	file(READ "${descfile}" desc_STR)
-	string(JSON infilename GET "${desc_STR}" shader)
+	string(JSON inshadername GET "${desc_STR}" shader)
 	
 		
 	get_filename_component(name_only ${descfile} NAME_WE)
 
 	if(RGL_VK_AVAILABLE)
-		rvesc_compile_shader("${infile}" "Vulkan" "spv")
+		rvesc_compile_shader("${descfile}" "${inshadername}" "Vulkan" "spv")
 		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${outname})
 	endif()
 	if (RGL_WEBGPU_AVAILABLE)
-		rvesc_compile_shader("${infile}" "WebGPU" "wgsl")
+		rvesc_compile_shader("${descfile}" "${inshadername}" "WebGPU" "wgsl")
 		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${outname})
 	endif()
 	if(RGL_DX12_AVAILABLE)
-		rvesc_compile_shader("${infile}" "Direct3D12" "hlsl")
+		rvesc_compile_shader("${descfile}" "${inshadername}" "Direct3D12" "hlsl")
 		string(JSON stage GET "${desc_STR}" stage)
 		
 		set(finalrootpath "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/Direct3D12/${name_only}")
