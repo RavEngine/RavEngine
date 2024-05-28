@@ -1,0 +1,5 @@
+{
+    "shader": "defaultsky.vsh",
+    "stage": "vertex",
+    "type" :  "skybox"
+  }

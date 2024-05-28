@@ -1,4 +1,3 @@
-#include "ravengine_vsh.h"
 
 layout(push_constant, std430) uniform UniformBufferObject{
     mat4 viewProj;
@@ -8,26 +7,21 @@ layout(push_constant, std430) uniform UniformBufferObject{
 	float specularTint;
 } ubo;
 
-VS_INPUTS()
 
-layout(location = 0) out vec2 outUV;
-layout(location = 1) out vec3[3] outTBN;
-
-
-void main()
+LitVertexOut vertex(mat4 inModel)
 {
-	mat4 inModel = model[inEntityID];
+	LitVertexOut v_out;
 
 	vec4 worldPos = inModel * vec4(inPosition,1);
 
-	outUV = inUV;
+	v_out.uv = inUV;
 
-	gl_Position = ubo.viewProj * worldPos;
+	v_out.position = ubo.viewProj * worldPos;
 
-	vec3 T = normalize(vec3(inModel * vec4(inTangent,   0.0)));
-   	vec3 B = normalize(vec3(inModel * vec4(inBitangent, 0.0)));
-   	vec3 N = normalize(vec3(inModel * vec4(inNormal,    0.0)));
-	outTBN[0] = T;
-	outTBN[1] = B;
-	outTBN[2] = N;
+	v_out.T = normalize(vec3(inModel * vec4(inTangent,   0.0)));
+   	v_out.B = normalize(vec3(inModel * vec4(inBitangent, 0.0)));
+   	v_out.N = normalize(vec3(inModel * vec4(inNormal,    0.0)));
+
+	return v_out;
+	
 }

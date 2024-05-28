@@ -634,7 +634,7 @@ test_physfs;tweeny-dummy;zlib;zlibstatic;SDL3-static;json;physfs_uninstall;dist;
 sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt;simdjson;
 ")
 
-group_in("Tools" "rvesc")
+group_in("Tools" "rvesc;rvesc_resources")
 
 group_in("Libraries/PhysX SDK" 
 "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\

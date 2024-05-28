@@ -3,21 +3,14 @@
 #include <cxxopts.hpp>
 #include <librglc.hpp>
 #include <fstream>
+#include <cmrc/cmrc.hpp>
+
+CMRC_DECLARE(rvesc_resources);
 
 using namespace std;
 
-constexpr std::string_view lit_shader_template = R"(
-
-#include "%s"
-
-void main(){
-
-}
-
-)";
 
 #define FATAL(reason) {std::cerr << "rvesc error: " << reason << std::endl; return 1;}
-
 
 int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem::path& outfile, const std::vector<std::filesystem::path>& includeDirs, librglc::API targetAPI, bool debug) {
 	simdjson::ondemand::parser parser;
@@ -60,25 +53,48 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 		std::replace(entrypoint.begin(), entrypoint.end(), '.', '_');
 	}
 
-	std::string full_shader;
+
+	std::string shaderTemplateName;
 
 	if (mat_type == "lit-mesh") {
-		auto name = std::filesystem::relative(infile, in_desc_file.parent_path());
-		//const auto normalized = name.lexically_normal().string();
-
-
-		std::vector<char> buffer(lit_shader_template.size() + infile.string().length(), 0);
-		snprintf(buffer.data(), buffer.size(), lit_shader_template.data(), infile.string().c_str());
-		full_shader = buffer.data();
+		if (inputStage == librglc::ShaderStage::Vertex) {
+			shaderTemplateName = "lit_mesh.vsh";
+		}
+		else {
+			shaderTemplateName = "lit_mesh.fsh";
+		}
+	}
+	else if (mat_type == "skybox") {
+		if (inputStage == librglc::ShaderStage::Vertex) {
+			shaderTemplateName = "skybox.vsh";
+		}
+		else {
+			shaderTemplateName = "skybox.fsh";
+		}
 	}
 	else {
 		FATAL(std::format("{} is not a supported material type",mat_type));
 		return 1;
 	}
 
+	auto resources = cmrc::rvesc_resources::get_filesystem();
+	assert(resources.exists(shaderTemplateName));
+	auto templateFile = resources.open(shaderTemplateName);
+
+	std::string shaderTemplate{ templateFile.begin(), templateFile.end() };
+
+	auto name = std::filesystem::relative(infile, in_desc_file.parent_path());
+	//const auto normalized = name.lexically_normal().string();
+
+
+	std::vector<char> buffer(shaderTemplate.size() + infile.string().length(), 0);
+	snprintf(buffer.data(), buffer.size(), shaderTemplate.data(), infile.string().c_str());
+	std::string full_shader = buffer.data();
+
+
 	try {
 		auto result = librglc::CompileString(full_shader, targetAPI, inputStage, {
-			.include_paths = includeDirs, .outputBinary = false, .enableDebug = debug, .entrypointOutputName = entrypoint
+			.include_paths = includeDirs, .outputBinary = targetAPI == librglc::API::Vulkan, .enableDebug = debug, .entrypointOutputName = entrypoint
 		});
 
 		std::filesystem::create_directories(outfile.parent_path());		// make all the folders necessary

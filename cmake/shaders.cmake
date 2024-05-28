@@ -42,11 +42,9 @@ macro(shader_compile infile stage api extension binary)
 	endif()
 endmacro()
 
-macro(rvesc_compile_shader infile api ext)
+macro(rvesc_compile_shader infile api extension)
 	set(shader_inc_dir "${eng_dir}/shaders")	
 	set(outname "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}.${extension}")
-
-	message("-f \"${infile}\" -o \"${outname}\" --api ${api} --include \"${shader_inc_dir}\" --debug")
 
 	add_custom_command(
 		PRE_BUILD
@@ -66,7 +64,6 @@ macro(rvesc_compile descfile shader_target)
 	
 		
 	get_filename_component(name_only ${descfile} NAME_WE)
-	set(finalrootpath "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}")
 
 	if(RGL_VK_AVAILABLE)
 		rvesc_compile_shader("${infile}" "Vulkan" "spv")
@@ -80,12 +77,17 @@ macro(rvesc_compile descfile shader_target)
 		rvesc_compile_shader("${infile}" "Direct3D12" "hlsl")
 		string(JSON stage GET "${desc_STR}" stage)
 		
+		set(finalrootpath "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/Direct3D12/${name_only}")
+		
 		if (stage MATCHES "vertex")
 			set(dxc_type "Vertex")
+			set(dxc_profile "v")
 		elseif (stage MATCHES "fragment")
 			set(dxc_type "Pixel")
+			set(dxc_profile "p")
 		elseif (stage MATCHES "compute")
 			set(dxc_type "Compute")
+			set(dxc_profile "c")
 		endif()
 		target_sources(${shader_target} PUBLIC ${outname})
 		source_group("Generated" FILES "${outname}")

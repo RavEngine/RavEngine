@@ -30,8 +30,8 @@ RavEngine::Material::Material(const std::string_view vsh_name, const std::string
     auto device = GetApp()->GetDevice();
 
     //get all shader files for this programs
-    auto vertshaderName = Format("{}.vsh", vsh_name);
-    auto fragShaderName = Format("{}.fsh", fsh_name);
+    auto vertshaderName = Format("{}_vsh", vsh_name);
+    auto fragShaderName = Format("{}_fsh", fsh_name);
 
     auto vertShader = LoadShaderByFilename(vertshaderName, device);
     auto fragShader = LoadShaderByFilename(fragShaderName, device);
