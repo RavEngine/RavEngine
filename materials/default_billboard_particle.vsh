@@ -11,24 +11,12 @@ struct ParticleData{
     uint animationFrame;
 };
 
-layout(scalar, binding = 0) readonly buffer particleDataSSBO
-{
-    ParticleData particleData[];
-};
-
-layout(std430, binding = 1) readonly buffer aliveSSBO
-{
-    uint aliveParticleIndexBuffer[];
-};
-
-layout(location = 0) in vec2 in_position;
-
 layout(location = 0) out vec2 out_uv; 
 
-void main(){
 
-    uint particle = aliveParticleIndexBuffer[gl_InstanceID];
-    ParticleData data = particleData[particle];
+ParticleVertexOut vertex(ParticleData data){
+
+    ParticleVertexOut v_out;
 
     vec4 vert = vec4(vec3(in_position * data.scale,0) + data.pos,1);
 
@@ -55,6 +43,8 @@ void main(){
 
     uv += (vec2(col,row));
 
-    gl_Position = vert;
+    v_out.position = vert;
     out_uv = uv;
+
+    return v_out;
 }

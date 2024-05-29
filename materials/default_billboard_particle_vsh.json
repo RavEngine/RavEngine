@@ -1,0 +1,5 @@
+{
+  "shader": "default_billboard_particle.vsh",
+  "stage": "vertex",
+  "type": "lit-particle-quad"
+}

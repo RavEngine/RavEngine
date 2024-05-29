@@ -81,6 +81,14 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 			shaderTemplateName = "unlit_mesh.fsh";
 		}
 	}
+	else if (mat_type == "lit-particle-quad") {
+		if (inputStage == librglc::ShaderStage::Vertex) {
+			shaderTemplateName = "particle_quad.vsh";
+		}
+		else {
+			shaderTemplateName = "lit_particle_quad.fsh";
+		}
+	}
 	else {
 		FATAL(fmt::format("{} is not a supported material type",mat_type));
 		return 1;

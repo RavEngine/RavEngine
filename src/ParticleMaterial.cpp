@@ -104,13 +104,13 @@ namespace RavEngine {
 					{
 						.binding = 0,
 						.type = RGL::BindingType::StorageBuffer,
-						.stageFlags = RGL::BindingVisibility::VertexFragment,
+						.stageFlags = RGL::BindingVisibility::Vertex,
 						.writable = false,
 					},
 					{
 						.binding = 1,
 						.type = RGL::BindingType::StorageBuffer,
-						.stageFlags = RGL::BindingVisibility::VertexFragment,
+						.stageFlags = RGL::BindingVisibility::Vertex,
 						.writable = false,
 					},
 					{
