@@ -89,6 +89,14 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 			shaderTemplateName = "lit_particle_quad.fsh";
 		}
 	}
+	else if (mat_type == "particle-update") {
+		inputStage = librglc::ShaderStage::Compute;
+		shaderTemplateName = "particle_update.csh";
+	}
+	else if (mat_type == "particle-init") {
+		inputStage = librglc::ShaderStage::Compute;
+		shaderTemplateName = "particle_init.csh";
+	}
 	else {
 		FATAL(fmt::format("{} is not a supported material type",mat_type));
 		return 1;
