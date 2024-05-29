@@ -47,7 +47,7 @@ namespace RavEngine {
 			userInitPipeline = device->CreateComputePipeline({
 				.stage = {
 					.type = RGL::ShaderStageDesc::Type::Compute,
-					.shaderModule = LoadShaderByFilename(Format("{}.csh", initShaderName), device),
+					.shaderModule = LoadShaderByFilename(Format("{}", initShaderName), device),
 				},
 				.pipelineLayout = layout
 			});
@@ -91,7 +91,7 @@ namespace RavEngine {
 			userUpdatePipeline = device->CreateComputePipeline({
 				.stage = {
 					.type = RGL::ShaderStageDesc::Type::Compute,
-					.shaderModule = LoadShaderByFilename(Format("{}.csh", updateShaderName), device)
+					.shaderModule = LoadShaderByFilename(Format("{}", updateShaderName), device)
 				},
 				.pipelineLayout = layout
 			});
@@ -137,11 +137,11 @@ namespace RavEngine {
 				.stages = {
 					{
 						.type = RGL::ShaderStageDesc::Type::Vertex,
-						.shaderModule = LoadShaderByFilename(Format("{}.vsh",particleVS),device)
+						.shaderModule = LoadShaderByFilename(Format("{}_vsh",particleVS),device)
 					},
 					{
 						.type = RGL::ShaderStageDesc::Type::Fragment,
-						.shaderModule = LoadShaderByFilename(Format("{}.fsh",particleFS),device)
+						.shaderModule = LoadShaderByFilename(Format("{}_fsh",particleFS),device)
 					},
 				},
 				.vertexConfig = {
