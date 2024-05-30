@@ -104,9 +104,9 @@ struct LightingType{
 					}
 				}
 
-				resizeSkeletonBuffer(drawcommand.indirectBuffer, sizeof(RGL::IndirectIndexedCommand), totalEntitiesForThisCommand + 5, { .StorageBuffer = true, .IndirectBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Skeleton per-material IndirectBuffer" });
+				resizeSkeletonBuffer(drawcommand.indirectBuffer, sizeof(RGL::IndirectIndexedCommand), totalEntitiesForThisCommand, { .StorageBuffer = true, .IndirectBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Skeleton per-material IndirectBuffer" });
 				//TODO: skinned meshes do not support LOD groups
-				resizeSkeletonBuffer(drawcommand.cullingBuffer, sizeof(entity_t), totalEntitiesForThisCommand + 5, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Skeleton per-material culingBuffer" });
+				resizeSkeletonBuffer(drawcommand.cullingBuffer, sizeof(entity_t), totalEntitiesForThisCommand, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Skeleton per-material cullingBuffer" });
 			}
 
 			resizeSkeletonBuffer(sharedSkeletonMatrixBuffer, sizeof(matrix4), totalJointsToSkin, { .StorageBuffer = true }, RGL::BufferAccess::Shared, { .debugName = "sharedSkeletonMatrixBuffer" });
@@ -330,7 +330,68 @@ struct LightingType{
 
 		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, bool includeParticles){
 
-			auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning](matrix4 viewproj, const DepthPyramid pyramid) {
+			auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
+				if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
+					// trash old buffer if it exists
+					if (buffer) {
+						gcBuffers.enqueue(buffer);
+					}
+					buffer = device->CreateBuffer({
+						size_count,
+						type,
+						stride,
+						access,
+						flags
+						});
+					if (access == RGL::BufferAccess::Shared) {
+						buffer->MapMemory();
+					}
+				}
+				};
+
+			auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning, &reallocBuffer](matrix4 viewproj, const DepthPyramid pyramid) {
+			// first reset the indirect buffers
+			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+
+				reallocBuffer(drawcommand.indirectStagingBuffer, 1, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "Indirect Staging Buffer" });
+
+				for (const auto& command : drawcommand.commands) {
+					uint32_t meshID = 0;
+					uint32_t baseInstance = 0;
+					for (const auto& command : drawcommand.commands) {			// for each mesh
+
+						const auto nEntitiesInThisCommand = command.entities.DenseSize();
+						RGL::IndirectIndexedCommand initData;
+						if (auto mesh = command.mesh.lock()) {
+							for (uint32_t lodID = 0; lodID < mesh->GetNumLods(); lodID++) {
+								initData = {
+									.indexCount = uint32_t(mesh->totalIndices),
+									.instanceCount = 0,
+									.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
+									.baseVertex = uint32_t(mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
+									.baseInstance = baseInstance,	// sets the offset into the material-global culling buffer (and other per-instance data buffers). we allocate based on worst-case here, so the offset is known.
+								};
+								baseInstance += nEntitiesInThisCommand;
+								drawcommand.indirectStagingBuffer->UpdateBufferData(initData, (meshID + lodID) * sizeof(RGL::IndirectIndexedCommand));
+							}
+
+						}
+						meshID++;
+					}
+
+					mainCommandBuffer->CopyBufferToBuffer(
+						{
+							.buffer = drawcommand.indirectStagingBuffer,
+							.offset = 0
+						},
+						{
+							.buffer = drawcommand.indirectBuffer,
+							.offset = 0
+						}, drawcommand.indirectStagingBuffer->getBufferSize()
+					);
+				}
+			}
+
 			// the culling shader will decide for each draw if the draw should exist (and set its instance count to 1 from 0).
 
 			mainCommandBuffer->BeginComputeDebugMarker("Cull Skinned Meshes");
@@ -373,7 +434,7 @@ struct LightingType{
 			};
 
 
-			auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos, &pyramid, &lightingFilter](auto&& renderData) {
+			auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos, &pyramid, &lightingFilter, &reallocBuffer](auto&& renderData) {
 				for (auto& [materialInstance, drawcommand] : renderData) {
 					bool shouldCull = false;
 					std::visit([lightingFilter, &shouldCull](const auto& var) {
@@ -404,24 +465,7 @@ struct LightingType{
 						}
 					}
 
-					auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
-						if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
-							// trash old buffer if it exists
-							if (buffer) {
-								gcBuffers.enqueue(buffer);
-							}
-							buffer = device->CreateBuffer({
-								size_count,
-								type,
-								stride,
-								access,
-								flags
-								});
-							if (access == RGL::BufferAccess::Shared) {
-								buffer->MapMemory();
-							}
-						}
-						};
+				
 					const auto cullingbufferTotalSlots = numEntities * numLODs;
 					reallocBuffer(drawcommand.cullingBuffer, cullingbufferTotalSlots, sizeof(entity_t), RGL::BufferAccess::Private, { .StorageBuffer = true, .VertexBuffer = true }, { .Writable = true, .debugName = "Culling Buffer" });
 					reallocBuffer(drawcommand.indirectBuffer, numLODs, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, { .StorageBuffer = true, .IndirectBuffer = true }, { .Writable = true, .debugName = "Indirect Buffer" });
