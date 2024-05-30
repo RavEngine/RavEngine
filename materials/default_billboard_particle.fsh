@@ -10,7 +10,7 @@ layout(binding = 3) uniform texture2D t_spritesheet;
 
 layout(location = 0) in vec2 inUV; 
 
-LitParticleOutput fragment(){
+LitParticleOutput frag(){
     LitParticleOutput fs_out;
 
     fs_out.color = texture(sampler2D(t_spritesheet, g_sampler), inUV);

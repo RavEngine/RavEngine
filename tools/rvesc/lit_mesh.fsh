@@ -15,7 +15,7 @@ layout(location = 2) out vec4 outRoughnessSpecularMetalicAO;
 
 void main(){
 
-    LitOutput user_out = fragment();
+    LitOutput user_out = frag();
 
     outcolor = user_out.color;
     outnormal = vec4(user_out.normal,1);

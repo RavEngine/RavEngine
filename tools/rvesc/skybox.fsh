@@ -10,7 +10,7 @@ struct SkyboxFragmentOut{
 
 void main(){
 
-    SkyboxFragmentOut user_out = fragment();
+    SkyboxFragmentOut user_out = frag();
 
     outcolor = user_out.color;
 }

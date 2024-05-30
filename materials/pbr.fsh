@@ -18,7 +18,7 @@ layout(push_constant, std430) uniform UniformBufferObject{
 layout(location = 0) in vec2 inUV;
 layout(location = 1) in vec3[3] inTBN;
 
-LitOutput fragment()
+LitOutput frag()
 {
 	LitOutput mat_out;
 

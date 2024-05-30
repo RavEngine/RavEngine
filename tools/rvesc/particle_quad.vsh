@@ -22,7 +22,7 @@ void main(){
 
     uint particle = aliveParticleIndexBuffer[gl_InstanceID];
 
-    ParticleVertexOut user_out = vertex(particleData[particle]);
+    ParticleVertexOut user_out = vert(particleData[particle]);
 
     gl_Position = user_out.position;
 }

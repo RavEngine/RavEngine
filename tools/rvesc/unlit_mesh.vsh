@@ -26,7 +26,7 @@ void main(){
     entity.entityID = inEntityID;
     entity.modelMtx = model[inEntityID];
 
-    UnlitVertexOut user_out = vertex(entity);
+    UnlitVertexOut user_out = vert(entity);
 
     gl_Position = user_out.position;
 }

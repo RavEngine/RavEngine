@@ -5,7 +5,7 @@ layout(push_constant) uniform UniformBufferObject{
 	//float timeSinceStart;
 } ubo;
 
-SkyboxVertexOut vertex(mat3 rotScaleOnly){
+SkyboxVertexOut vert(mat3 rotScaleOnly){
 	SkyboxVertexOut vs_out;
 
    	vs_out.position = vec4(rotScaleOnly * inPosition,1);

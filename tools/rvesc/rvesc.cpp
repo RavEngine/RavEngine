@@ -50,7 +50,8 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 
 	std::string entrypoint = "main";
 	if (targetAPI == librglc::API::Metal) {
-		entrypoint = infile.filename().string();
+		entrypoint = outfile.filename().string();
+        entrypoint = entrypoint.substr(0,entrypoint.find_last_of('.'));
 		std::replace(entrypoint.begin(), entrypoint.end(), '.', '_');
 	}
 

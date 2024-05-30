@@ -123,7 +123,7 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 
 	add_custom_command(
 		PRE_BUILD
-		OUTPUT "${PROTOC_CMD}" "${rglc_path}" "${FlatBuffers_EXECUTABLE}"
+		OUTPUT "${PROTOC_CMD}" "${rglc_path}" "${FlatBuffers_EXECUTABLE}" "${RVESC_PATH}"
 		COMMAND ${CMAKE_COMMAND} --build . --config Release --target protoc rglc flatc rvesc
 		WORKING_DIRECTORY "${TOOLS_DIR}"
 		VERBATIM
@@ -131,7 +131,7 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 
 	add_custom_target(flatc DEPENDS "${FlatBuffers_EXECUTABLE}")
 
-	add_custom_target(rvesc DEPENDS "${RVESC_PATH}")
+	add_custom_target(rvesc DEPENDS "${RVESC_PATH}" flatc)
 else()
 	set(TOOLS_DIR ${CMAKE_CURRENT_BINARY_DIR}/host-tools CACHE INTERNAL "")
 	set(PROTOC_CMD "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/protoc" CACHE INTERNAL "")
@@ -258,7 +258,7 @@ if (CMAKE_CROSSCOMPILING)
 	if (NOT RAVENGINE_SERVER)
 		set(test_rglc "${rglc_path}")
 	endif()
-	add_custom_target("GNS_Deps" DEPENDS "${PROTOC_CMD}" "${test_rglc}" "flatc")
+	add_custom_target("GNS_Deps" DEPENDS "${PROTOC_CMD}" "${test_rglc}" "flatc" )
 else()
 	if (NOT RAVENGINE_SERVER)
 		set(test_rglc "rglc")

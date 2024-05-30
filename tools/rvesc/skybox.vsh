@@ -17,7 +17,7 @@ void main()
 		0,0,2
 	);
 
-    SkyboxVertexOut user_out = vertex(rotScaleOnly);
+    SkyboxVertexOut user_out = vert(rotScaleOnly);
 	
 	gl_Position = user_out.position;
 }

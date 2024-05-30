@@ -53,7 +53,7 @@ macro(rvesc_compile_shader infile shaderfile api extension)
 	add_custom_command(
 		PRE_BUILD
 		OUTPUT "${outname}"
-		DEPENDS "${infile}" GNS_Deps "${shaderfilepath}"
+		DEPENDS "${infile}" GNS_Deps "${RVESC_PATH}" "${shaderfilepath}"
 		COMMAND ${RVESC_PATH} -f "${infile}" -o "${outname}" --api ${api} --include "${shader_inc_dir}" --debug 
 	)
 
@@ -113,7 +113,17 @@ macro(rvesc_compile descfile shader_target)
 	endif()
 	
 	if(RGL_MTL_AVAILABLE)
-	
+		rvesc_compile_shader("${descfile}" "${inshadername}" "Metal" "metal")
+		set_source_files_properties(${outname} PROPERTIES 
+			GENERATED TRUE
+			HEADER_FILE_ONLY OFF
+			LANGUAGE METAL
+			XCODE_EXPLICIT_FILE_TYPE "sourcecode.metal"
+            COMPILE_FLAGS "-gline-tables-only -frecord-sources" # enable shader source debugging
+		)
+			# goes into the bundle Metallib, so we don't need to include the shader in the asset package
+		target_sources(${shader_target} PUBLIC ${outname})
+		source_group("Generated" FILES "${outname}")
 	endif()
 
 endmacro()

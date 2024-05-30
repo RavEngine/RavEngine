@@ -8,6 +8,6 @@ struct UnlitOut{
 layout(location = 0) out vec4 outcolor;
 
 void main(){
-  UnlitOut user_out = fragment();
+  UnlitOut user_out = frag();
   outcolor = user_out.color;
 }

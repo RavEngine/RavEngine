@@ -14,7 +14,7 @@ struct ParticleData{
 layout(location = 0) out vec2 out_uv; 
 
 
-ParticleVertexOut vertex(ParticleData data){
+ParticleVertexOut vert(ParticleData data){
 
     ParticleVertexOut v_out;
 

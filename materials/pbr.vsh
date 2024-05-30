@@ -10,7 +10,7 @@ layout(push_constant, std430) uniform UniformBufferObject{
 layout(location = 0) out vec2 outUV;
 layout(location = 1) out vec3[3] outTBN;
 
-LitVertexOut vertex(EntityIn entity)
+LitVertexOut vert(EntityIn entity)
 {
     mat4 inModel = entity.modelMtx;
 	LitVertexOut v_out;
