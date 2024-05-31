@@ -159,7 +159,7 @@ struct LightingType{
 			using mat_t = glm::mat4;
 			std::span<mat_t> matbufMem{ static_cast<mat_t*>(sharedSkeletonMatrixBuffer->GetMappedDataPtr()), sharedSkeletonMatrixBuffer->getBufferSize() / sizeof(mat_t) };
 			SkinningUBO subo;
-			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+			for (const auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
 				for (auto& command : drawcommand.commands) {
 					auto skeleton = command.skeleton.lock();
 					auto mesh = command.mesh.lock();
@@ -351,6 +351,8 @@ struct LightingType{
 
 			auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning, &reallocBuffer](matrix4 viewproj, const DepthPyramid pyramid) {
 			// first reset the indirect buffers
+				uint32_t skeletalVertexOffset = 0;
+				uint32_t skeletalIndexOffset = 0;
 			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
 
 				reallocBuffer(drawcommand.indirectStagingBuffer, 1, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "Indirect Staging Buffer" });
@@ -363,16 +365,20 @@ struct LightingType{
 						const auto nEntitiesInThisCommand = command.entities.DenseSize();
 						RGL::IndirectIndexedCommand initData;
 						if (auto mesh = command.mesh.lock()) {
+							Debug::Assert(mesh->GetNumLods() == 1, "Skeletal meshes cannot have more than 1 LOD currently");
 							for (uint32_t lodID = 0; lodID < mesh->GetNumLods(); lodID++) {
 								initData = {
 									.indexCount = uint32_t(mesh->totalIndices),
 									.instanceCount = 0,
-									.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
-									.baseVertex = uint32_t(mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
+									.indexStart = skeletalIndexOffset,
+									.baseVertex = skeletalVertexOffset,
 									.baseInstance = baseInstance,	// sets the offset into the material-global culling buffer (and other per-instance data buffers). we allocate based on worst-case here, so the offset is known.
 								};
 								baseInstance += nEntitiesInThisCommand;
 								drawcommand.indirectStagingBuffer->UpdateBufferData(initData, (meshID + lodID) * sizeof(RGL::IndirectIndexedCommand));
+								//TODO: this increment needs to account for the LOD size
+								skeletalVertexOffset += mesh->GetNumVerts();
+								skeletalIndexOffset += mesh->GetNumIndices();
 							}
 
 						}
@@ -580,9 +586,6 @@ struct LightingType{
 					// bind the pipeline
 					auto pipeline = pipelineSelectorFunction(materialInstance->GetMat());
 					mainCommandBuffer->BindRenderPipeline(pipeline);
-
-
-
 
 					// set push constant data
 					auto pushConstantData = materialInstance->GetPushConstantData();
