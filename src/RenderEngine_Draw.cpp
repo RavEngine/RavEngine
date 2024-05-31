@@ -379,7 +379,7 @@ struct LightingType{
 									.instanceCount = 0,
 									.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)) * i,
 									.baseVertex = skeletalVertexOffset,
-									.baseInstance = 0
+									.baseInstance = i
 								};
 								drawcommand.indirectStagingBuffer->UpdateBufferData(initData, ((meshID * mesh->GetNumLods() + lodID + i)) * sizeof(RGL::IndirectIndexedCommand));
 								//TODO: this increment needs to account for the LOD size

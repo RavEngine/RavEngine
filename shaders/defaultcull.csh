@@ -201,7 +201,9 @@ void main() {
 	if (isOnCamera) {
 		uint idx = atomicAdd(indirectBuffer[ubo.indirectBufferOffset + lodID + ubo.isSingleInstanceMode * gl_GlobalInvocationID.x].instanceCount,1);
 		uint idxLODOffset = ubo.numObjects * lodID + ubo.cullingBufferOffset;
-		entityIDsToRender[idx + idxLODOffset] = entityID;
+
+        uint cullingSingleObjectModeOffset = gl_GlobalInvocationID.x * ubo.isSingleInstanceMode; 
+		entityIDsToRender[idx + idxLODOffset + cullingSingleObjectModeOffset] = entityID;
 	}
 
 }
