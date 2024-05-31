@@ -93,7 +93,7 @@ macro(rvesc_compile descfile shader_target)
 			set(dxc_type "Compute")
 			set(dxc_profile "c")
 		endif()
-		target_sources(${shader_target} PUBLIC ${outname})
+		target_sources(${shader_target} PUBLIC "${outname}")
 		source_group("Generated" FILES "${outname}")
 		set(dx_final_name "${finalrootpath}.cso")
 		set_source_files_properties(${outname} PROPERTIES 
@@ -125,6 +125,14 @@ macro(rvesc_compile descfile shader_target)
 		target_sources(${shader_target} PUBLIC ${outname})
 		source_group("Generated" FILES "${outname}")
 	endif()
+	
+	# add to the IDE project
+	target_sources(${shader_target} PUBLIC "${shaderfilepath}")
+	source_group("Shaders" FILES "${shaderfilepath}")
+	set_source_files_properties("${shaderfilepath}" PROPERTIES 
+		HEADER_FILE_ONLY ON
+		XCODE_EXPLICIT_FILE_TYPE "sourcecode.glsl"
+	)
 
 endmacro()
 
