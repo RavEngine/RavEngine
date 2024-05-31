@@ -346,7 +346,7 @@ namespace RavEngine {
 		 */
         template<class U,typename T>
         inline void BindAction(const std::string& name, T thisptr, void(U::* f)(), ActionState type, CID controllers){
-			auto binding = [=](){
+			auto binding = [=]() mutable{
 				(thisptr.get()->*f)();
 			};
 			ActionBinding ab(thisptr.get_id(),binding,&f,controllers,type);

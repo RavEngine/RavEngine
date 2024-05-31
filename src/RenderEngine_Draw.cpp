@@ -352,7 +352,6 @@ struct LightingType{
 			auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning, &reallocBuffer](matrix4 viewproj, const DepthPyramid pyramid) {
 			// first reset the indirect buffers
 				uint32_t skeletalVertexOffset = 0;
-				uint32_t skeletalIndexOffset = 0;
 			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
 
 				reallocBuffer(drawcommand.indirectStagingBuffer, 1, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "Indirect Staging Buffer" });
@@ -370,7 +369,7 @@ struct LightingType{
 								initData = {
 									.indexCount = uint32_t(mesh->totalIndices),
 									.instanceCount = 0,
-									.indexStart = skeletalIndexOffset,
+									.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
 									.baseVertex = skeletalVertexOffset,
 									.baseInstance = baseInstance,	// sets the offset into the material-global culling buffer (and other per-instance data buffers). we allocate based on worst-case here, so the offset is known.
 								};
@@ -378,7 +377,6 @@ struct LightingType{
 								drawcommand.indirectStagingBuffer->UpdateBufferData(initData, (meshID + lodID) * sizeof(RGL::IndirectIndexedCommand));
 								//TODO: this increment needs to account for the LOD size
 								skeletalVertexOffset += mesh->GetNumVerts();
-								skeletalIndexOffset += mesh->GetNumIndices();
 							}
 
 						}
