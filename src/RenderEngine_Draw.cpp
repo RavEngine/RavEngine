@@ -172,10 +172,14 @@ struct LightingType{
 					subo.vertexReadOffset = mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV);
 
 					// write joint transform matrices into buffer and update uniform offset
-					for (const auto& ownerid : command.entities.reverse_map) {
-						auto& animator = worldOwning->GetComponent<AnimatorComponent>(ownerid);
-						const auto& skinningMats = animator.GetSkinningMats();
-						std::copy(skinningMats.begin(), skinningMats.end(), matbufMem.begin() + subo.boneReadOffset);
+					{
+						uint32_t object_id = 0;
+						for (const auto& ownerid : command.entities.reverse_map) {
+							auto& animator = worldOwning->GetComponent<AnimatorComponent>(ownerid);
+							const auto& skinningMats = animator.GetSkinningMats();
+							std::copy(skinningMats.begin(), skinningMats.end(), (matbufMem.begin() + subo.boneReadOffset) + object_id * skinningMats.size());
+							object_id++;
+						}
 					}
 
 					mainCommandBuffer->SetComputeBytes(subo, 0);
@@ -354,31 +358,33 @@ struct LightingType{
 				uint32_t skeletalVertexOffset = 0;
 			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
 
-				reallocBuffer(drawcommand.indirectStagingBuffer, 1, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "Indirect Staging Buffer" });
+				uint32_t total_entities = 0;
+				for (const auto& command : drawcommand.commands) {
+					total_entities += command.entities.DenseSize();
+				}
+
+				reallocBuffer(drawcommand.indirectStagingBuffer, total_entities, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "Indirect Staging Buffer" });
 
 				for (const auto& command : drawcommand.commands) {
 					uint32_t meshID = 0;
-					uint32_t baseInstance = 0;
-					for (const auto& command : drawcommand.commands) {			// for each mesh
 
-						const auto nEntitiesInThisCommand = command.entities.DenseSize();
-						RGL::IndirectIndexedCommand initData;
-						if (auto mesh = command.mesh.lock()) {
-							Debug::Assert(mesh->GetNumLods() == 1, "Skeletal meshes cannot have more than 1 LOD currently");
+					const auto nEntitiesInThisCommand = command.entities.DenseSize();
+					RGL::IndirectIndexedCommand initData;
+					if (auto mesh = command.mesh.lock()) {
+						Debug::Assert(mesh->GetNumLods() == 1, "Skeletal meshes cannot have more than 1 LOD currently");
+						for(uint32_t i = 0; i < nEntitiesInThisCommand; i++){
 							for (uint32_t lodID = 0; lodID < mesh->GetNumLods(); lodID++) {
 								initData = {
 									.indexCount = uint32_t(mesh->totalIndices),
 									.instanceCount = 0,
-									.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
+									.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)) * i,
 									.baseVertex = skeletalVertexOffset,
-									.baseInstance = baseInstance,	// sets the offset into the material-global culling buffer (and other per-instance data buffers). we allocate based on worst-case here, so the offset is known.
+									.baseInstance = 0
 								};
-								baseInstance += nEntitiesInThisCommand;
-								drawcommand.indirectStagingBuffer->UpdateBufferData(initData, (meshID + lodID) * sizeof(RGL::IndirectIndexedCommand));
+								drawcommand.indirectStagingBuffer->UpdateBufferData(initData, ((meshID * mesh->GetNumLods() + lodID + i)) * sizeof(RGL::IndirectIndexedCommand));
 								//TODO: this increment needs to account for the LOD size
 								skeletalVertexOffset += mesh->GetNumVerts();
 							}
-
 						}
 						meshID++;
 					}
@@ -405,6 +411,7 @@ struct LightingType{
 				CullingUBO cubo{
 					.viewProj = viewproj,
 					.indirectBufferOffset = 0,
+					.isSingleInstanceMode = 1,
 				};
 				for (auto& command : drawcommand.commands) {
 					mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
