@@ -96,11 +96,11 @@ struct LightingType{
 					totalEntitiesForThisCommand += subCommandEntityCount;
 
 					if (auto mesh = command.mesh.lock()) {
-						totalVertsToSkin += mesh->GetNumVerts();
+						totalVertsToSkin += mesh->GetNumVerts() * subCommandEntityCount;
 					}
 
 					if (auto skeleton = command.skeleton.lock()) {
-						totalJointsToSkin += skeleton->GetSkeleton()->num_joints();
+						totalJointsToSkin += skeleton->GetSkeleton()->num_joints() * subCommandEntityCount;
 					}
 				}
 
