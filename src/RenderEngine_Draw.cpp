@@ -374,10 +374,11 @@ struct LightingType{
 						Debug::Assert(mesh->GetNumLods() == 1, "Skeletal meshes cannot have more than 1 LOD currently");
 						for(uint32_t i = 0; i < nEntitiesInThisCommand; i++){
 							for (uint32_t lodID = 0; lodID < mesh->GetNumLods(); lodID++) {
+								const auto indexRange = mesh->meshAllocation.indexRange;
 								initData = {
 									.indexCount = uint32_t(mesh->totalIndices),
 									.instanceCount = 0,
-									.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)) * i,
+									.indexStart = uint32_t((indexRange->start + (indexRange->count) * i) / sizeof(uint32_t)),
 									.baseVertex = skeletalVertexOffset,
 									.baseInstance = i
 								};
