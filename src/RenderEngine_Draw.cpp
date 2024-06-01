@@ -378,7 +378,7 @@ struct LightingType{
 								initData = {
 									.indexCount = uint32_t(mesh->totalIndices),
 									.instanceCount = 0,
-									.indexStart = uint32_t((indexRange->start + (indexRange->count) * i) / sizeof(uint32_t)),
+									.indexStart = uint32_t((indexRange->start) / sizeof(uint32_t)),
 									.baseVertex = skeletalVertexOffset,
 									.baseInstance = i
 								};
