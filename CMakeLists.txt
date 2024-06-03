@@ -134,7 +134,7 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	add_custom_target(rvesc DEPENDS "${RVESC_PATH}" flatc)
 else()
 	set(TOOLS_DIR ${CMAKE_CURRENT_BINARY_DIR}/host-tools CACHE INTERNAL "")
-	set(PROTOC_CMD "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/protoc" CACHE INTERNAL "")
+	set(PROTOC_CMD "protoc" CACHE INTERNAL "")
 endif()
 
 if (NOT RAVENGINE_SERVER)
@@ -266,6 +266,12 @@ else()
 	else()
 		add_custom_target("GNS_Deps" DEPENDS "${test_rglc}" "protoc")
 	endif()
+	set_target_properties(protoc
+		PROPERTIES
+		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/protoc"
+		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/protoc"
+		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/protoc"
+	)
 endif()
 add_dependencies("GameNetworkingSockets_s" "GNS_Deps")
 

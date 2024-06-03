@@ -195,103 +195,105 @@ void World::SetupTaskGraph(){
 	read.second.succeed(RunPhysics);	// if checkRunPhysics returns a 1, it goes here anyways.
     
 #if !RVE_SERVER
-    // setup audio tasks
-    audioTasks.name("Audio");
+        // setup audio tasks
+        if (GetApp()->GetAudioActive()){
+        audioTasks.name("Audio");
     
-    auto audioClear = audioTasks.emplace([this]{
-        GetApp()->GetCurrentAudioSnapshot()->Clear();
-        //TODO: currently this selects the LAST listener, but there is no need for this
-        Filter([](const AudioListener& listener, const Transform& transform){
-            auto ptr = GetApp()->GetCurrentAudioSnapshot();
-            ptr->listenerPos = transform.GetWorldPosition();
-            ptr->listenerRot = transform.GetWorldRotation();
-            ptr->listenerGraph = listener.GetGraph();
-        });
-        GetApp()->GetCurrentAudioSnapshot()->sourceWorld = shared_from_this();
-    }).name("Clear + Listener");
+        auto audioClear = audioTasks.emplace([this]{
+            GetApp()->GetCurrentAudioSnapshot()->Clear();
+            //TODO: currently this selects the LAST listener, but there is no need for this
+            Filter([](const AudioListener& listener, const Transform& transform){
+                auto ptr = GetApp()->GetCurrentAudioSnapshot();
+                ptr->listenerPos = transform.GetWorldPosition();
+                ptr->listenerRot = transform.GetWorldRotation();
+                ptr->listenerGraph = listener.GetGraph();
+            });
+            GetApp()->GetCurrentAudioSnapshot()->sourceWorld = shared_from_this();
+        }).name("Clear + Listener");
     
   
     
-    auto copyAudios = audioTasks.emplace([this]{
-        Filter([this](const AudioSourceComponent& audioSource, const Transform& transform){
-            auto snapshot = GetApp()->GetCurrentAudioSnapshot();
-            auto provider = audioSource.GetPlayer();
-            snapshot->sources.emplace(provider,transform.GetWorldPosition(),transform.GetWorldRotation(), audioSource.GetOwner().GetIdInWorld());
-            snapshot->dataProviders.insert(provider);
-        });
+        auto copyAudios = audioTasks.emplace([this]{
+            Filter([this](const AudioSourceComponent& audioSource, const Transform& transform){
+                auto snapshot = GetApp()->GetCurrentAudioSnapshot();
+                auto provider = audioSource.GetPlayer();
+                snapshot->sources.emplace(provider,transform.GetWorldPosition(),transform.GetWorldRotation(), audioSource.GetOwner().GetIdInWorld());
+                snapshot->dataProviders.insert(provider);
+            });
         
-        // now clean up the fire-and-forget audios that have completed
-        constexpr auto checkFunc = [](const InstantaneousAudioSourceToPlay& ias) {
-            return !ias.source.GetPlayer()->IsPlaying();
-        };
-        for (const auto& source : instantaneousToPlay) {
-            if (checkFunc(source)) {
-                destroyedAudioSources.enqueue(source.fakeOwner);
-                instantaneousAudioSourceFreeList.ReturnID(source.fakeOwner);    // expired sources return their IDs
+            // now clean up the fire-and-forget audios that have completed
+            constexpr auto checkFunc = [](const InstantaneousAudioSourceToPlay& ias) {
+                return !ias.source.GetPlayer()->IsPlaying();
+            };
+            for (const auto& source : instantaneousToPlay) {
+                if (checkFunc(source)) {
+                    destroyedAudioSources.enqueue(source.fakeOwner);
+                    instantaneousAudioSourceFreeList.ReturnID(source.fakeOwner);    // expired sources return their IDs
+                }
             }
-        }
-        instantaneousToPlay.remove_if(checkFunc);
+            instantaneousToPlay.remove_if(checkFunc);
 
         
-        // now do fire-and-forget audios that need to play
-        for(auto& f : instantaneousToPlay){
-            auto snapshot = GetApp()->GetCurrentAudioSnapshot();
-            auto provider = f.source.GetPlayer();
-            snapshot->sources.emplace(provider,f.source.source_position,quaternion(0,0,0,1), f.fakeOwner);
-            snapshot->dataProviders.insert(provider);
-        }
-    }).name("Point Audios").succeed(audioClear);
+            // now do fire-and-forget audios that need to play
+            for(auto& f : instantaneousToPlay){
+                auto snapshot = GetApp()->GetCurrentAudioSnapshot();
+                auto provider = f.source.GetPlayer();
+                snapshot->sources.emplace(provider,f.source.source_position,quaternion(0,0,0,1), f.fakeOwner);
+                snapshot->dataProviders.insert(provider);
+            }
+        }).name("Point Audios").succeed(audioClear);
     
-    auto copyAmbients = audioTasks.emplace([this]{
-        // raster audio
-        Filter([this](const AmbientAudioSourceComponent& audioSource){
-            GetApp()->GetCurrentAudioSnapshot()->ambientSources.emplace(audioSource.GetPlayer());
-        });
+        auto copyAmbients = audioTasks.emplace([this]{
+            // raster audio
+            Filter([this](const AmbientAudioSourceComponent& audioSource){
+                GetApp()->GetCurrentAudioSnapshot()->ambientSources.emplace(audioSource.GetPlayer());
+            });
 
-        // now clean up the fire-and-forget audios that have completed
-        ambientToPlay.remove_if([](const InstantaneousAmbientAudioSource& ias) {
-            return !ias.GetPlayer()->IsPlaying();
-        });
+            // now clean up the fire-and-forget audios that have completed
+            ambientToPlay.remove_if([](const InstantaneousAmbientAudioSource& ias) {
+                return !ias.GetPlayer()->IsPlaying();
+            });
         
-        // now do fire-and-forget audios that need to play
-        for(auto& f : ambientToPlay){
-            GetApp()->GetCurrentAudioSnapshot()->ambientSources.emplace(f.GetPlayer());
-        }
+            // now do fire-and-forget audios that need to play
+            for(auto& f : ambientToPlay){
+                GetApp()->GetCurrentAudioSnapshot()->ambientSources.emplace(f.GetPlayer());
+            }
         
-    }).name("Ambient Audios").succeed(audioClear);
+        }).name("Ambient Audios").succeed(audioClear);
     
-    auto copySimpleAudioSpaces = audioTasks.emplace([this]{
-        Filter( [this](const SimpleAudioSpace& room, const Transform& transform){
-            GetApp()->GetCurrentAudioSnapshot()->simpleAudioSpaces.emplace_back(room.GetData(), transform.GetWorldPosition());
-        });
+        auto copySimpleAudioSpaces = audioTasks.emplace([this]{
+            Filter( [this](const SimpleAudioSpace& room, const Transform& transform){
+                GetApp()->GetCurrentAudioSnapshot()->simpleAudioSpaces.emplace_back(room.GetData(), transform.GetWorldPosition());
+            });
         
-    }).name("Simple Audio Spaces").succeed(audioClear);
+        }).name("Simple Audio Spaces").succeed(audioClear);
 
-    auto copyGeometryAudioSpaces = audioTasks.emplace([this] {
-        Filter([this](const GeometryAudioSpace& room, const Transform& transform) {
-            GetApp()->GetCurrentAudioSnapshot()->geometryAudioSpaces.emplace_back(room.GetData(), transform.GetWorldPosition(), glm::inverse(transform.GetWorldMatrix()));
-        });
+        auto copyGeometryAudioSpaces = audioTasks.emplace([this] {
+            Filter([this](const GeometryAudioSpace& room, const Transform& transform) {
+                GetApp()->GetCurrentAudioSnapshot()->geometryAudioSpaces.emplace_back(room.GetData(), transform.GetWorldPosition(), glm::inverse(transform.GetWorldMatrix()));
+            });
 
-    }).name("Geometry Audio Spaces").succeed(audioClear);
+        }).name("Geometry Audio Spaces").succeed(audioClear);
 
-    auto copyAudioGeometry = audioTasks.emplace([this] {
-        Filter([this](const AudioMeshComponent& mesh, const Transform& transform) {
-            GetApp()->GetCurrentAudioSnapshot()->audioMeshes.emplace_back(transform.GetWorldMatrix(), mesh.GetAsset(), mesh.GetOwner().GetIdInWorld());
-        });
-     }).name("Geometry Audio Meshes").succeed(audioClear);
+        auto copyAudioGeometry = audioTasks.emplace([this] {
+            Filter([this](const AudioMeshComponent& mesh, const Transform& transform) {
+                GetApp()->GetCurrentAudioSnapshot()->audioMeshes.emplace_back(transform.GetWorldMatrix(), mesh.GetAsset(), mesh.GetOwner().GetIdInWorld());
+            });
+         }).name("Geometry Audio Meshes").succeed(audioClear);
 
-     auto copyAudioBoxSpaces = audioTasks.emplace([this] {
-         Filter([this](const BoxReverbationAudioSpace& room, const Transform& transform) {
-             GetApp()->GetCurrentAudioSnapshot()->boxAudioSpaces.emplace_back(room.GetData(), transform.GetWorldMatrix(), room.GetHalfExts(), room.GetRoomProperties());
-         });
-    }).name("Box Reverb Audio Meshes").succeed(audioClear);
+         auto copyAudioBoxSpaces = audioTasks.emplace([this] {
+             Filter([this](const BoxReverbationAudioSpace& room, const Transform& transform) {
+                 GetApp()->GetCurrentAudioSnapshot()->boxAudioSpaces.emplace_back(room.GetData(), transform.GetWorldMatrix(), room.GetHalfExts(), room.GetRoomProperties());
+             });
+        }).name("Box Reverb Audio Meshes").succeed(audioClear);
     
-    auto audioSwap = audioTasks.emplace([]{
-        GetApp()->SwapCurrrentAudioSnapshot();
-    }).name("Swap Current").succeed(copyAudios,copyAmbients,copySimpleAudioSpaces,copyGeometryAudioSpaces, copyAudioGeometry, copyAudioBoxSpaces);
+        auto audioSwap = audioTasks.emplace([]{
+            GetApp()->SwapCurrrentAudioSnapshot();
+        }).name("Swap Current").succeed(copyAudios,copyAmbients,copySimpleAudioSpaces,copyGeometryAudioSpaces, copyAudioGeometry, copyAudioBoxSpaces);
     
-    audioTaskModule = masterTasks.composed_of(audioTasks).name("Audio");
-    audioTaskModule.succeed(ECSTaskModule);
+        audioTaskModule = masterTasks.composed_of(audioTasks).name("Audio");
+        audioTaskModule.succeed(ECSTaskModule);
+    }
 #endif
 }
 #if !RVE_SERVER

@@ -72,9 +72,6 @@ static void DebugOutput( ESteamNetworkingSocketsDebugOutputType eType, const cha
 }
 
 App::App()
-#if !RVE_SERVER
-: player(std::make_unique<AudioPlayer>())
-#endif
 {
     currentApp = this;
 	// crash signal handlers
@@ -152,20 +149,20 @@ int App::run(int argc, char** argv) {
 		Renderer = std::make_unique<RenderEngine>(config, device);
 
 		window = std::make_unique<Window>(960, 540, "RavEngine", device, Renderer->mainCommandQueue);
-        auto size = window->GetSizeInPixels();
-        mainWindowView = { Renderer->CreateRenderTargetCollection({ static_cast<unsigned int>(size.width), static_cast<unsigned int>(size.height) })};
+		auto size = window->GetSizeInPixels();
+		mainWindowView = { Renderer->CreateRenderTargetCollection({ static_cast<unsigned int>(size.width), static_cast<unsigned int>(size.height) }) };
 
 #ifdef RVE_XR_AVAILABLE
 		if (wantsXR) {
 			OpenXRIntegration::init_openxr({
 				.device = device,
 				.commandQueue = Renderer->mainCommandQueue
-			});
+				});
 			xrRenderViewCollections = OpenXRIntegration::CreateRenderTargetCollections();
 		}
 #endif
 	}
-	
+
 	//setup GUI rendering
 	Rml::SetSystemInterface(&GetRenderEngine());
 	Rml::SetRenderInterface(&GetRenderEngine());
@@ -189,14 +186,19 @@ int App::run(int argc, char** argv) {
 		});
 
 	//setup Audio
-	player->Init();
+	if (NeedsAudio()) {
+		player = std::make_unique<AudioPlayer>();
+		player->Init();
+	}
 #endif
 	//setup networking
-	SteamDatagramErrMsg errMsg;
-	if (!GameNetworkingSockets_Init(nullptr, errMsg)) {
-		Debug::Fatal("Networking initialization failed: {}", errMsg);
+	if (NeedsNetworking()) {
+		SteamDatagramErrMsg errMsg;
+		if (!GameNetworkingSockets_Init(nullptr, errMsg)) {
+			Debug::Fatal("Networking initialization failed: {}", errMsg);
+		}
+		SteamNetworkingUtils()->SetDebugOutputFunction(k_ESteamNetworkingSocketsDebugOutputType_Msg, DebugOutput);
 	}
-	SteamNetworkingUtils()->SetDebugOutputFunction(k_ESteamNetworkingSocketsDebugOutputType_Msg, DebugOutput);
 	
 	// if built in non-UWP for Windows, need to manually set DPI awareness
 	// for some weird reason, it's not present on ARM
@@ -361,8 +363,9 @@ int App::run(int argc, char** argv) {
 			OpenXRIntegration::EndXRFrame(xrBeginData.second);
 		}
 #endif
-
-		player->SetWorld(renderWorld);
+		if (GetAudioActive()) {
+			player->SetWorld(renderWorld);
+		}
 		//make up the difference
 		//can't use sleep because sleep is not very accurate
 		/*clocktype::duration work_time;
@@ -491,7 +494,9 @@ App::~App(){
 
 	Texture::Manager::defaultTexture.reset();
     Texture::Manager::Clear();
-	player->Shutdown();
+	if (GetAudioActive()) {
+		player->Shutdown();
+	}
 #endif
 	networkManager.server.reset();
 	networkManager.client.reset();
@@ -535,6 +540,11 @@ std::optional<Ref<World>> RavEngine::App::GetWorldByName(const std::string& name
 
 void App::OnDropAudioWorklets(uint32_t nDropped){
     Debug::Warning("Dropped {} audio tasks.", nDropped);
+}
+
+bool RavEngine::App::GetAudioActive() const
+{
+	return player.operator bool();
 }
 
 

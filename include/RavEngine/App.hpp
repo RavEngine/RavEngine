@@ -67,6 +67,18 @@ struct AudioPlayer;
          Override to be notified if too much audio work was submitted. The default implementation logs a warning.
          */
         virtual void OnDropAudioWorklets(uint32_t ndropped);
+
+		// Override to disable audio. If false, audio backend will not be initialized and audio player threads will not be created.
+		virtual bool NeedsAudio() const {
+			return true;
+		}
+
+		bool GetAudioActive() const;
+
+		// Override to disable networking. If true, networking backend and associated threads will be created. 
+		virtual bool NeedsNetworking() const {
+			return false;
+		}
 		
 		/**
 		 Signal to gracefully shut down the application

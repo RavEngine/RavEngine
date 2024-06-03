@@ -85,11 +85,14 @@ if (RGL_ENABLE_RGLC)
 	target_compile_features(rglc PRIVATE cxx_std_20)
 	target_link_libraries(rglc PRIVATE librglc)
 	target_include_directories(rglc PRIVATE "deps/cxxopts/include")
-	if(MSVC)
-		set(rglc_ext ".exe")
-	endif()
-	set(rglc_path "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/rglc${rglc_ext}" CACHE INTERNAL "rglc compiler path")
+	set(rglc_path "rglc" CACHE INTERNAL "rglc compiler path")
 	set(rglc_exe "rglc")
+	set_target_properties(rglc
+		PROPERTIES
+		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/rglc"
+		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/rglc"
+		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/rglc"
+	)
 endif()
 
 find_package(Vulkan)
