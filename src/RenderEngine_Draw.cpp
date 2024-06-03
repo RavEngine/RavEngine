@@ -22,6 +22,7 @@
 #include "ParticleEmitter.hpp"
 #include "ParticleMaterial.hpp"
 #include "CaseAnalysis.hpp"
+#include "Profile.hpp"
 
 #if __APPLE__ || __EMSCRIPTEN__
 #define OCCLUSION_CULLING_UNAVAILABLE
@@ -730,6 +731,7 @@ struct LightingType{
 
 
 		// the generic shadowmap rendering function
+		Profile::BeginFrame(Profile::RenderEncodeShadowmaps);
 		auto renderLightShadowmap = [this, &renderFromPerspective, &worldOwning](auto&& lightStore, uint32_t numShadowmaps, auto&& genLightViewProjAtIndex, auto&& postshadowmapFunction) {
 			if (lightStore.uploadData.DenseSize() <= 0) {
 				return;
@@ -856,7 +858,9 @@ struct LightingType{
 					);
 				}
 		});
+		Profile::EndFrame(Profile::RenderEncodeShadowmaps);
 
+		Profile::BeginFrame(Profile::RenderEncodeAllViews);
 		for (const auto& view : targets) {
 			currentRenderSize = view.pixelDimensions;
 			auto nextImgSize = view.pixelDimensions;
@@ -871,7 +875,7 @@ struct LightingType{
 
 				
 			};
-
+			
 			auto renderLightingPass = [this, &target, &renderFromPerspective, &nextImgSize, &worldOwning, &spotlightShadowMapFunction, &pointLightShadowmapFunction, &renderLightShadowmap](auto&& viewproj, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// do lighting pass
 				// these run in window coordinates, even if in split screen
@@ -1396,9 +1400,11 @@ struct LightingType{
 
 			mainCommandBuffer->BeginRendering(deferredClearRenderPass);
 			mainCommandBuffer->EndRendering();
+			Profile::BeginFrame(Profile::RenderEncodeDeferredPass);
 			for (const auto& camdata : view.camDatas) {
 				doPassWithCamData(camdata, renderDeferredPass);
 			}
+			Profile::EndFrame(Profile::RenderEncodeDeferredPass);
 			mainCommandBuffer->EndRenderDebugMarker();
             
             if (VideoSettings.ssao){
@@ -1462,6 +1468,8 @@ struct LightingType{
             }
 
 			// lighting pass
+			Profile::BeginFrame(Profile::RenderEncodeLightingPass);
+
 			mainCommandBuffer->BeginRenderDebugMarker("Lighting Pass");
 			lightingRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 			lightingRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
@@ -1476,8 +1484,10 @@ struct LightingType{
 				doPassWithCamData(camdata, renderLightingPass);
 			}
 			mainCommandBuffer->EndRenderDebugMarker();
+			Profile::EndFrame(Profile::RenderEncodeLightingPass);
 
 			// final render pass
+			Profile::BeginFrame(Profile::RenderEncodeForwardPass);
 			finalRenderPass->SetAttachmentTexture(0, target.finalFramebuffer->GetDefaultView());
 			finalRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
@@ -1493,8 +1503,10 @@ struct LightingType{
 				doPassWithCamData(camdata, renderFinalPass);
 			}
 			mainCommandBuffer->EndRenderDebugMarker();
+			Profile::EndFrame(Profile::RenderEncodeForwardPass);
 
 		}
+		Profile::EndFrame(Profile::RenderEncodeAllViews);
 		mainCommandBuffer->End();
 
 		return mainCommandBuffer;

@@ -166,6 +166,9 @@ set(CXXOPTS_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 set(CXXOPTS_ENABLE_INSTALL OFF CACHE INTERNAL "")
 add_subdirectory(deps/cxxopts EXCLUDE_FROM_ALL)
 
+# tracy
+add_subdirectory(deps/tracy EXCLUDE_FROM_ALL)
+
 
 #SDL
 # ensure library is built correctly for static
@@ -557,6 +560,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"libnyquist"
 	"GameNetworkingSockets_s"
 	"r8brain"
+	"TracyClient"
 	PUBLIC
 	"dr_wav"
 	"fmt"
@@ -648,7 +652,7 @@ group_in("Libraries" "assimp;assimp_cmd;DebugUtils;Detour;DetourCrowd;DetourTile
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL3-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
-sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt;simdjson;
+sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt;simdjson;TracyClient;
 ")
 
 group_in("Tools" "rvesc;rvesc_resources")

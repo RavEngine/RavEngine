@@ -47,6 +47,7 @@
 #include <RGL/Sampler.hpp>
 #include "MeshAsset.hpp"
 #include "Texture.hpp"
+#include "Profile.hpp"
 
 #ifdef __APPLE__
 	#include "AppleUtilities.h"

@@ -32,6 +32,7 @@
 #include "CameraComponent.hpp"
 #include <csignal>
 #include "Debug.hpp"
+#include "Profile.hpp"
 
 #ifdef _WIN32
 	#include <Windows.h>
@@ -286,6 +287,7 @@ int App::run(int argc, char** argv) {
 
 		auto windowSize = window->GetSizeInPixels();
 		auto scale = window->GetDPIScale();
+		Profile::BeginFrame(Profile::TickWorld);
 #endif
 		//tick all worlds
 		for (const auto world : loadedWorlds) {
@@ -308,6 +310,7 @@ int App::run(int argc, char** argv) {
 				front();
 			}
 		}
+		Profile::EndFrame(Profile::TickWorld);
 #if !RVE_SERVER
 		auto nextTexture = window->GetNextSwapchainImage();
 		mainWindowView.collection.finalFramebuffer = nextTexture.texture;
@@ -347,14 +350,19 @@ int App::run(int argc, char** argv) {
 		}
 #endif
 
+		Profile::BeginFrame(Profile::RenderBuildCommandlist);
 		auto mainCommandBuffer = Renderer->Draw(renderWorld, allViews,scale);
+		Profile::EndFrame(Profile::RenderBuildCommandlist);
+
 
 		// show the results to the user
 		RGL::CommitConfig commitconfig{
 			.signalFence = window->swapchainFence,
 		};
+		Profile::BeginFrame(Profile::RenderExecuteCommandlist);
 		mainCommandBuffer->Commit(commitconfig);
 		mainCommandBuffer->BlockUntilCompleted();
+		Profile::EndFrame(Profile::RenderExecuteCommandlist);
 
 		window->swapchain->Present(nextTexture.presentConfig);
 
