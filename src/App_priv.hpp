@@ -544,7 +544,11 @@ void App::OnDropAudioWorklets(uint32_t nDropped){
 
 bool RavEngine::App::GetAudioActive() const
 {
+#if !RVE_SERVER
 	return player.operator bool();
+#else
+	return false;
+#endif
 }
 
 
