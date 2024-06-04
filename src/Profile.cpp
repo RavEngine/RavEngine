@@ -1,5 +1,8 @@
 #include "Profile.hpp"
-#include <tracy/Tracy.hpp>
+#if (__has_include(<tracy/Tracy.hpp>))
+	#include <tracy/Tracy.hpp>
+	#define PROFILE 1
+#endif
 
 namespace RavEngine {
 	namespace Profile {
@@ -16,11 +19,15 @@ namespace RavEngine {
 
 		void BeginFrame(const char* const name)
 		{
+#if PROFILE
 			FrameMarkStart(name);
+#endif
 		}
 		void EndFrame(const char* const name)
 		{
+#if PROFILE
 			FrameMarkEnd(name);
+#endif
 		}
 	}
 }

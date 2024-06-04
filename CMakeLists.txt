@@ -167,6 +167,7 @@ set(CXXOPTS_ENABLE_INSTALL OFF CACHE INTERNAL "")
 add_subdirectory(deps/cxxopts EXCLUDE_FROM_ALL)
 
 # tracy
+set(TRACY_ENABLE $<IF:$<CONFIG:profile>,ON,OFF> CACHE INTERNAL "")
 add_subdirectory(deps/tracy EXCLUDE_FROM_ALL)
 
 
@@ -560,7 +561,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"libnyquist"
 	"GameNetworkingSockets_s"
 	"r8brain"
-	"TracyClient"
+	$<$<CONFIG:profile>:TracyClient>
 	PUBLIC
 	"dr_wav"
 	"fmt"
