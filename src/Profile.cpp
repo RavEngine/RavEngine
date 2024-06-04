@@ -9,6 +9,8 @@ namespace RavEngine {
 		PROF_STR(RenderEncodeLightingPass) = "Render Encode Lighting Pass";
 		PROF_STR(RenderEncodeForwardPass) = "Render Encode Forward Pass";
 		PROF_STR(RenderEncodeShadowmaps) = "Render Encode Shadowmaps";
+		PROF_STR(RenderEncodePointShadows) = "Render Encode Point Lights";
+		PROF_STR(RenderEncodeSpotShadows) = "Render Encode Spot Lights";
 		PROF_STR(RenderEncodeAllViews) = "Render Encode All Views";
 		PROF_STR(TickWorld) = "Tick World";
 

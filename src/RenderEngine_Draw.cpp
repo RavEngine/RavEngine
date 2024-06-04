@@ -739,6 +739,9 @@ struct LightingType{
 			mainCommandBuffer->BeginRenderDebugMarker("Render shadowmap");
 			for (uint32_t i = 0; i < lightStore.uploadData.DenseSize(); i++) {
 				const auto& light = lightStore.uploadData.GetDense()[i];
+				if (!light.castsShadows) {
+					continue;	// don't do anything if the light doesn't cast
+				}
 				auto sparseIdx = lightStore.uploadData.GetSparseIndexForDense(i);
 				auto owner = worldOwning->GetLocalToGlobal()[sparseIdx];
 
@@ -768,6 +771,7 @@ struct LightingType{
 			mainCommandBuffer->EndRenderDebugMarker();
 		};
 
+		Profile::BeginFrame(Profile::RenderEncodeSpotShadows);
 		const auto spotlightShadowMapFunction = [](uint8_t index, const RavEngine::World::SpotLightDataUpload& light, auto unusedAux, entity_t owner) {
 
 			auto lightProj = RMath::perspectiveProjection<float>(light.coneAndPenumbra.x * 2, 1, 0.1, 100);
@@ -796,7 +800,9 @@ struct LightingType{
 			spotlightShadowMapFunction,
 			[](entity_t unused) {}
 		);
+		Profile::EndFrame(Profile::RenderEncodeSpotShadows);
 
+		Profile::BeginFrame(Profile::RenderEncodePointShadows);
 		const auto pointLightShadowmapFunction = [](uint8_t index, const RavEngine::World::PointLightUploadData& light, auto unusedAux, entity_t owner) {
 			auto lightProj = RMath::perspectiveProjection<float>(90, 1, 0.1, 100);
 
@@ -858,6 +864,7 @@ struct LightingType{
 					);
 				}
 		});
+		Profile::EndFrame(Profile::RenderEncodePointShadows);
 		Profile::EndFrame(Profile::RenderEncodeShadowmaps);
 
 		Profile::BeginFrame(Profile::RenderEncodeAllViews);
