@@ -11,7 +11,10 @@
 #include "D3D12RenderPass.hpp"
 #include "D3D12ComputePipeline.hpp"
 
+#if __has_include(<pix3.h>)
 #include <pix3.h>
+#define PIX_ENABLED 1
+#endif
 
 namespace RGL {
 
@@ -524,8 +527,9 @@ namespace RGL {
 			fn(commandList.Get(), 0, label.c_str());
 		}
 		*/
-
+#if PIX_ENABLED
 		PIXBeginEvent(commandList.Get(), 0, label.c_str());
+#endif
 	}
 	void CommandBufferD3D12::BeginComputeDebugMarker(const std::string& label)
 	{
@@ -539,7 +543,9 @@ namespace RGL {
 			fn(commandList.Get());
 		}
 		*/
+#if PIX_ENABLED
 		PIXEndEvent(commandList.Get());
+#endif
 	}
 	void CommandBufferD3D12::EndComputeDebugMarker()
 	{

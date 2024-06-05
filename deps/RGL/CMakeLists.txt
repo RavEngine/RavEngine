@@ -141,7 +141,7 @@ if(MSVC AND NOT RGL_DISABLE_DX)
 	# PIX stuff
 
 	add_subdirectory(deps/PixEvents-cmake)
-	set(PIXLIB "WinPixEventRuntime")
+	set(PIXLIB $<$<NOT:$<CONFIG:release>>:WinPixEventRuntime>)
 
 	set_target_properties("WinPixEventRuntime" "WinPixEventRuntime_ETW" PROPERTIES 
 	FOLDER "${RGL_IDE_ROOT}/Libraries/"
