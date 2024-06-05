@@ -7,7 +7,7 @@
 #include "BuiltinMaterials.hpp"
 #include "Common3D.hpp"
 #include "Debug.hpp"
-#include <SDL_clipboard.h>
+#include <SDL3/SDL_clipboard.h>
 #include <RGL/Texture.hpp>
 #include <RGL/CommandBuffer.hpp>
 #include "VirtualFileSystem.hpp"

@@ -20,26 +20,26 @@
 */
 
 /**
- *  \file SDL_pen.h
+ * # CategoryPen
  *
- *  Include file for SDL pen event handling.
+ * Include file for SDL pen event handling.
  *
- *  This file describes operations for pressure-sensitive pen (stylus and/or eraser) handling, e.g., for input
- *    and drawing tablets or suitably equipped mobile / tablet devices.
+ * This file describes operations for pressure-sensitive pen (stylus and/or
+ * eraser) handling, e.g., for input and drawing tablets or suitably equipped
+ * mobile / tablet devices.
  *
- *  To get started with pens:
- *  - Listen to SDL_PenMotionEvent and SDL_PenButtonEvent
- *  - To avoid treating pen events as mouse events, ignore  SDL_MouseMotionEvent and SDL_MouseButtonEvent
- *    whenever "which" == SDL_PEN_MOUSEID.
+ * To get started with pens:
  *
- *  This header file describes advanced functionality that can be useful for managing user configuration
- *    and understanding the capabilities of the attached pens.
+ * - Listen to SDL_PenMotionEvent and SDL_PenButtonEvent
+ * - To avoid treating pen events as mouse events, ignore SDL_MouseMotionEvent
+ *   and SDL_MouseButtonEvent whenever `which` == SDL_PEN_MOUSEID.
  *
- *  We primarily identify pens by SDL_PenID.  The implementation makes a best effort to relate each :SDL_PenID
- *    to the same physical device during a session.  Formerly valid SDL_PenID values remain valid
- *    even if a device disappears.
+ * We primarily identify pens by SDL_PenID. The implementation makes a best
+ * effort to relate each SDL_PenID to the same physical device during a
+ * session. Formerly valid SDL_PenID values remain valid even if a device
+ * disappears.
  *
- *  For identifying pens across sessions, the API provides the type SDL_GUID .
+ * For identifying pens across sessions, the API provides the type SDL_GUID .
  */
 
 #ifndef SDL_pen_h_
@@ -107,7 +107,13 @@ typedef enum SDL_PenAxis
 #define SDL_PEN_TIP_INK    SDL_PEN_FLAG_INK_BIT_INDEX     /**< Regular pen tip (for drawing) touched the surface */
 #define SDL_PEN_TIP_ERASER SDL_PEN_FLAG_ERASER_BIT_INDEX  /**< Eraser pen tip touched the surface */
 
-/* Pen capabilities reported by SDL_GetPenCapabilities */
+/**
+ * Pen capabilities reported by SDL_GetPenCapabilities.
+ *
+ * \since This datatype is available since SDL 3.0.0.
+ */
+typedef Uint32 SDL_PenCapabilityFlags;
+
 #define SDL_PEN_DOWN_MASK          SDL_PEN_CAPABILITY(SDL_PEN_FLAG_DOWN_BIT_INDEX)   /**< Pen tip is currently touching the drawing surface. */
 #define SDL_PEN_INK_MASK           SDL_PEN_CAPABILITY(SDL_PEN_FLAG_INK_BIT_INDEX)    /**< Pen has a regular drawing tip (SDL_GetPenCapabilities).  For events (SDL_PenButtonEvent, SDL_PenMotionEvent, SDL_GetPenStatus) this flag is mutually exclusive with SDL_PEN_ERASER_MASK .  */
 #define SDL_PEN_ERASER_MASK        SDL_PEN_CAPABILITY(SDL_PEN_FLAG_ERASER_BIT_INDEX) /**< Pen has an eraser tip (SDL_GetPenCapabilities) or is being used as eraser (SDL_PenButtonEvent , SDL_PenMotionEvent , SDL_GetPenStatus)  */
@@ -117,7 +123,6 @@ typedef enum SDL_PenAxis
 #define SDL_PEN_AXIS_DISTANCE_MASK SDL_PEN_AXIS_CAPABILITY(SDL_PEN_AXIS_DISTANCE)    /**< Pen provides distance to drawing tablet in SDL_PEN_AXIS_DISTANCE */
 #define SDL_PEN_AXIS_ROTATION_MASK SDL_PEN_AXIS_CAPABILITY(SDL_PEN_AXIS_ROTATION)    /**< Pen provides barrel rotation information in axis SDL_PEN_AXIS_ROTATION */
 #define SDL_PEN_AXIS_SLIDER_MASK   SDL_PEN_AXIS_CAPABILITY(SDL_PEN_AXIS_SLIDER)      /**< Pen provides slider / finger wheel or similar in axis SDL_PEN_AXIS_SLIDER */
-
 #define SDL_PEN_AXIS_BIDIRECTIONAL_MASKS (SDL_PEN_AXIS_XTILT_MASK | SDL_PEN_AXIS_YTILT_MASK)
 
 /**
@@ -157,7 +162,7 @@ typedef enum SDL_PenSubtype
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC SDL_PenID *SDLCALL SDL_GetPens(int *count);
+extern SDL_DECLSPEC SDL_PenID *SDLCALL SDL_GetPens(int *count);
 
 /**
  * Retrieves the pen's current status.
@@ -178,7 +183,7 @@ extern DECLSPEC SDL_PenID *SDLCALL SDL_GetPens(int *count);
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC Uint32 SDLCALL SDL_GetPenStatus(SDL_PenID instance_id, float *x, float *y, float *axes, size_t num_axes);
+extern SDL_DECLSPEC Uint32 SDLCALL SDL_GetPenStatus(SDL_PenID instance_id, float *x, float *y, float *axes, size_t num_axes);
 
 /**
  * Retrieves an SDL_PenID for the given SDL_GUID.
@@ -189,7 +194,7 @@ extern DECLSPEC Uint32 SDLCALL SDL_GetPenStatus(SDL_PenID instance_id, float *x,
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC SDL_PenID SDLCALL SDL_GetPenFromGUID(SDL_GUID guid);
+extern SDL_DECLSPEC SDL_PenID SDLCALL SDL_GetPenFromGUID(SDL_GUID guid);
 
 /**
  * Retrieves the SDL_GUID for a given SDL_PenID.
@@ -200,7 +205,7 @@ extern DECLSPEC SDL_PenID SDLCALL SDL_GetPenFromGUID(SDL_GUID guid);
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC SDL_GUID SDLCALL SDL_GetPenGUID(SDL_PenID instance_id);
+extern SDL_DECLSPEC SDL_GUID SDLCALL SDL_GetPenGUID(SDL_PenID instance_id);
 
 /**
  * Checks whether a pen is still attached.
@@ -214,10 +219,12 @@ extern DECLSPEC SDL_GUID SDLCALL SDL_GetPenGUID(SDL_PenID instance_id);
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC SDL_bool SDLCALL SDL_PenConnected(SDL_PenID instance_id);
+extern SDL_DECLSPEC SDL_bool SDLCALL SDL_PenConnected(SDL_PenID instance_id);
 
 /**
  * Retrieves a human-readable description for a SDL_PenID.
+ *
+ * The returned string follows the SDL_GetStringRule.
  *
  * \param instance_id The pen to query.
  * \returns A string that contains the name of the pen, intended for human
@@ -230,7 +237,7 @@ extern DECLSPEC SDL_bool SDLCALL SDL_PenConnected(SDL_PenID instance_id);
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC const char *SDLCALL SDL_GetPenName(SDL_PenID instance_id);
+extern SDL_DECLSPEC const char *SDLCALL SDL_GetPenName(SDL_PenID instance_id);
 
 /**
  * Pen capabilities, as reported by SDL_GetPenCapabilities()
@@ -254,7 +261,7 @@ typedef struct SDL_PenCapabilityInfo
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC Uint32 SDLCALL SDL_GetPenCapabilities(SDL_PenID instance_id, SDL_PenCapabilityInfo *capabilities);
+extern SDL_DECLSPEC SDL_PenCapabilityFlags SDLCALL SDL_GetPenCapabilities(SDL_PenID instance_id, SDL_PenCapabilityInfo *capabilities);
 
 /**
  * Retrieves the pen type for a given SDL_PenID.
@@ -269,7 +276,7 @@ extern DECLSPEC Uint32 SDLCALL SDL_GetPenCapabilities(SDL_PenID instance_id, SDL
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC SDL_PenSubtype SDLCALL SDL_GetPenType(SDL_PenID instance_id);
+extern SDL_DECLSPEC SDL_PenSubtype SDLCALL SDL_GetPenType(SDL_PenID instance_id);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

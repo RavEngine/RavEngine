@@ -206,6 +206,8 @@ static int WIN_AdjustWindowRectWithStyle(SDL_Window *window, DWORD style, DWORD 
         default:
             /* Should never be here */
             SDL_assert_release(SDL_FALSE);
+            *width = 0;
+            *height = 0;
     }
 
     /* Copy the client size in pixels into this rect structure,
@@ -984,9 +986,11 @@ void WIN_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
         WIN_SetWindowPosition(_this, window);
     }
 
+#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
     if (window->flags & SDL_WINDOW_MODAL) {
         EnableWindow(window->parent->driverdata->hwnd, FALSE);
     }
+#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
 
     hwnd = window->driverdata->hwnd;
     style = GetWindowLong(hwnd, GWL_EXSTYLE);
@@ -1011,9 +1015,11 @@ void WIN_HideWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
     HWND hwnd = window->driverdata->hwnd;
 
+#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
     if (window->flags & SDL_WINDOW_MODAL) {
         EnableWindow(window->parent->driverdata->hwnd, TRUE);
     }
+#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
 
     ShowWindow(hwnd, SW_HIDE);
 
@@ -1084,24 +1090,29 @@ void WIN_RaiseWindow(SDL_VideoDevice *_this, SDL_Window *window)
 void WIN_MaximizeWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
     SDL_WindowData *data = window->driverdata;
-    HWND hwnd = data->hwnd;
-    data->expected_resize = SDL_TRUE;
-    ShowWindow(hwnd, SW_MAXIMIZE);
-    data->expected_resize = SDL_FALSE;
 
-    /* Clamp the maximized window size to the max window size.
-     * This is automatic if maximizing from the window controls.
-     */
-    if (window->max_w || window->max_h) {
-        int fx, fy, fw, fh;
-
-        window->windowed.w = window->max_w ? SDL_min(window->w, window->max_w) : window->windowed.w;
-        window->windowed.h = window->max_h ? SDL_min(window->h, window->max_h) : window->windowed.h;
-        WIN_AdjustWindowRect(window, &fx, &fy, &fw, &fh, SDL_WINDOWRECT_WINDOWED);
-
+    if (!(window->flags & SDL_WINDOW_FULLSCREEN)) {
+        HWND hwnd = data->hwnd;
         data->expected_resize = SDL_TRUE;
-        SetWindowPos(hwnd, HWND_TOP, fx, fy, fw, fh, data->copybits_flag | SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
+        ShowWindow(hwnd, SW_MAXIMIZE);
         data->expected_resize = SDL_FALSE;
+
+        /* Clamp the maximized window size to the max window size.
+         * This is automatic if maximizing from the window controls.
+         */
+        if (window->max_w || window->max_h) {
+            int fx, fy, fw, fh;
+
+            window->windowed.w = window->max_w ? SDL_min(window->w, window->max_w) : window->windowed.w;
+            window->windowed.h = window->max_h ? SDL_min(window->h, window->max_h) : window->windowed.h;
+            WIN_AdjustWindowRect(window, &fx, &fy, &fw, &fh, SDL_WINDOWRECT_WINDOWED);
+
+            data->expected_resize = SDL_TRUE;
+            SetWindowPos(hwnd, HWND_TOP, fx, fy, fw, fh, data->copybits_flag | SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
+            data->expected_resize = SDL_FALSE;
+        }
+    }else {
+        data->windowed_mode_was_maximized = SDL_TRUE;
     }
 }
 
@@ -1148,10 +1159,14 @@ void WIN_SetWindowAlwaysOnTop(SDL_VideoDevice *_this, SDL_Window *window, SDL_bo
 void WIN_RestoreWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
     SDL_WindowData *data = window->driverdata;
-    HWND hwnd = data->hwnd;
-    data->expected_resize = SDL_TRUE;
-    ShowWindow(hwnd, SW_RESTORE);
-    data->expected_resize = SDL_FALSE;
+    if (!(window->flags & SDL_WINDOW_FULLSCREEN)) {
+        HWND hwnd = data->hwnd;
+        data->expected_resize = SDL_TRUE;
+        ShowWindow(hwnd, SW_RESTORE);
+        data->expected_resize = SDL_FALSE;
+    } else {
+        data->windowed_mode_was_maximized = SDL_FALSE;
+    }
 }
 
 static DWM_WINDOW_CORNER_PREFERENCE WIN_UpdateCornerRoundingForHWND(HWND hwnd, DWM_WINDOW_CORNER_PREFERENCE cornerPref)
@@ -1195,7 +1210,7 @@ static COLORREF WIN_UpdateBorderColorForHWND(HWND hwnd, COLORREF colorRef)
 /**
  * Reconfigures the window to fill the given display, if fullscreen is true, otherwise restores the window.
  */
-int WIN_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_VideoDisplay *display, SDL_bool fullscreen)
+int WIN_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_VideoDisplay *display, SDL_FullscreenOp fullscreen)
 {
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
     SDL_DisplayData *displaydata = display->driverdata;
@@ -1206,6 +1221,7 @@ int WIN_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_Vide
     HWND top;
     int x, y;
     int w, h;
+    SDL_bool enterMaximized = SDL_FALSE;
 
 #ifdef HIGHDPI_DEBUG
     SDL_Log("WIN_SetWindowFullscreen: %d", (int)fullscreen);
@@ -1270,6 +1286,7 @@ int WIN_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_Vide
         */
         if (data->windowed_mode_was_maximized && !data->in_window_deactivation) {
             style |= WS_MAXIMIZE;
+            enterMaximized = SDL_TRUE;
         }
 
         menu = (style & WS_CHILDWINDOW) ? FALSE : (GetMenu(hwnd) != NULL);
@@ -1281,7 +1298,13 @@ int WIN_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_Vide
     }
     SetWindowLong(hwnd, GWL_STYLE, style);
     data->expected_resize = SDL_TRUE;
-    SetWindowPos(hwnd, top, x, y, w, h, data->copybits_flag | SWP_NOACTIVATE);
+
+    if (!enterMaximized) {
+        SetWindowPos(hwnd, top, x, y, w, h, data->copybits_flag | SWP_NOACTIVATE);
+    } else {
+        WIN_MaximizeWindow(_this, window);
+    }
+
     data->expected_resize = SDL_FALSE;
 
 #ifdef HIGHDPI_DEBUG
@@ -1731,6 +1754,7 @@ void WIN_UpdateDarkModeForHWND(HWND hwnd)
 
 int WIN_SetWindowModalFor(SDL_VideoDevice *_this, SDL_Window *modal_window, SDL_Window *parent_window)
 {
+#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
     SDL_WindowData *modal_data = modal_window->driverdata;
     const LONG_PTR parent_hwnd = (LONG_PTR)(parent_window ? parent_window->driverdata->hwnd : NULL);
     const LONG_PTR old_ptr = GetWindowLongPtr(modal_data->hwnd, GWLP_HWNDPARENT);
@@ -1760,6 +1784,7 @@ int WIN_SetWindowModalFor(SDL_VideoDevice *_this, SDL_Window *modal_window, SDL_
     if (!(modal_window->flags & SDL_WINDOW_HIDDEN) && parent_hwnd) {
         EnableWindow((HWND)parent_hwnd, FALSE);
     }
+#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
 
     return 0;
 }

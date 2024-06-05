@@ -998,12 +998,12 @@ static void touch_handler_down(void *data, struct wl_touch *touch, uint32_t seri
         if (window_data->current.logical_width <= 1) {
             x = 0.5f;
         } else {
-            x = wl_fixed_to_double(fx) / (window_data->current.logical_width - 1);
+            x = (float)wl_fixed_to_double(fx) / (window_data->current.logical_width - 1);
         }
         if (window_data->current.logical_height <= 1) {
             y = 0.5f;
         } else {
-            y = wl_fixed_to_double(fy) / (window_data->current.logical_height - 1);
+            y = (float)wl_fixed_to_double(fy) / (window_data->current.logical_height - 1);
         }
 
         SDL_SetMouseFocus(window_data->sdlwindow);
@@ -1026,8 +1026,8 @@ static void touch_handler_up(void *data, struct wl_touch *touch, uint32_t serial
         SDL_WindowData *window_data = (SDL_WindowData *)wl_surface_get_user_data(surface);
 
         if (window_data) {
-            const float x = wl_fixed_to_double(fx) / window_data->current.logical_width;
-            const float y = wl_fixed_to_double(fy) / window_data->current.logical_height;
+            const float x = (float)wl_fixed_to_double(fx) / window_data->current.logical_width;
+            const float y = (float)wl_fixed_to_double(fy) / window_data->current.logical_height;
 
             SDL_SendTouch(Wayland_GetTouchTimestamp(input, timestamp), (SDL_TouchID)(uintptr_t)touch,
                           (SDL_FingerID)(id + 1), window_data->sdlwindow, SDL_FALSE, x, y, 0.0f);
@@ -1055,8 +1055,8 @@ static void touch_handler_motion(void *data, struct wl_touch *touch, uint32_t ti
         SDL_WindowData *window_data = (SDL_WindowData *)wl_surface_get_user_data(surface);
 
         if (window_data) {
-            const float x = wl_fixed_to_double(fx) / window_data->current.logical_width;
-            const float y = wl_fixed_to_double(fy) / window_data->current.logical_height;
+            const float x = (float)wl_fixed_to_double(fx) / window_data->current.logical_width;
+            const float y = (float)wl_fixed_to_double(fy) / window_data->current.logical_height;
 
             SDL_SendTouchMotion(Wayland_GetPointerTimestamp(input, timestamp), (SDL_TouchID)(uintptr_t)touch,
                                 (SDL_FingerID)(id + 1), window_data->sdlwindow, x, y, 1.0f);
@@ -1732,7 +1732,7 @@ static void seat_handle_capabilities(void *data, struct wl_seat *seat,
         input->pointer = NULL;
         input->display->pointer = NULL;
 
-        SDL_RemoveMouse(input->pointer_id);
+        SDL_RemoveMouse(input->pointer_id, SDL_TRUE);
         input->pointer_id = 0;
     }
 
@@ -1760,7 +1760,7 @@ static void seat_handle_capabilities(void *data, struct wl_seat *seat,
         wl_keyboard_destroy(input->keyboard);
         input->keyboard = NULL;
 
-        SDL_RemoveKeyboard(input->keyboard_id);
+        SDL_RemoveKeyboard(input->keyboard_id, SDL_TRUE);
         input->keyboard_id = 0;
     }
 
@@ -2296,7 +2296,6 @@ static void text_input_preedit_string(void *data,
                                       int32_t cursor_end)
 {
     SDL_WaylandTextInput *text_input = data;
-    char buf[SDL_TEXTEDITINGEVENT_TEXT_SIZE];
     text_input->has_preedit = SDL_TRUE;
     if (text) {
         int cursor_begin_utf8 = cursor_begin >= 0 ? (int)SDL_utf8strnlen(text, cursor_begin) : -1;
@@ -2313,8 +2312,7 @@ static void text_input_preedit_string(void *data,
         }
         SDL_SendEditingText(text, cursor_begin_utf8, cursor_size_utf8);
     } else {
-        buf[0] = '\0';
-        SDL_SendEditingText(buf, 0, 0);
+        SDL_SendEditingText("", 0, 0);
     }
 }
 
@@ -2785,7 +2783,7 @@ static void tablet_tool_handle_slider(void *data, struct zwp_tablet_tool_v2 *too
 {
     struct SDL_WaylandTool *sdltool = data;
     struct SDL_WaylandTabletInput *input = sdltool->tablet;
-    input->current_pen.update_status.axes[SDL_PEN_AXIS_SLIDER] = position / 65535.0;
+    input->current_pen.update_status.axes[SDL_PEN_AXIS_SLIDER] = position / 65535.f;
 }
 
 static void tablet_tool_handle_wheel(void *data, struct zwp_tablet_tool_v2 *tool, int32_t degrees, int32_t clicks)
@@ -3199,32 +3197,47 @@ static const struct zwp_locked_pointer_v1_listener locked_pointer_listener = {
     locked_pointer_unlocked,
 };
 
-static void lock_pointer_to_window(SDL_Window *window,
-                                   struct SDL_WaylandInput *input)
+int Wayland_input_lock_pointer(struct SDL_WaylandInput *input, SDL_Window *window)
 {
     SDL_WindowData *w = window->driverdata;
     SDL_VideoData *d = input->display;
-    struct zwp_locked_pointer_v1 *locked_pointer;
 
     if (!d->pointer_constraints || !input->pointer) {
-        return;
+        return -1;
     }
+
+    if (!w->locked_pointer) {
+        if (w->confined_pointer) {
+            /* If the pointer is already confined to the surface, the lock will fail with a protocol error. */
+            Wayland_input_unconfine_pointer(input, window);
+        }
+
+        w->locked_pointer = zwp_pointer_constraints_v1_lock_pointer(d->pointer_constraints,
+                                                                    w->surface,
+                                                                    input->pointer,
+                                                                    NULL,
+                                                                    ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_PERSISTENT);
+        zwp_locked_pointer_v1_add_listener(w->locked_pointer,
+                                           &locked_pointer_listener,
+                                           window);
+    }
+
+    return 0;
+}
+
+int Wayland_input_unlock_pointer(struct SDL_WaylandInput *input, SDL_Window *window)
+{
+    SDL_WindowData *w = window->driverdata;
 
     if (w->locked_pointer) {
-        return;
+        zwp_locked_pointer_v1_destroy(w->locked_pointer);
+        w->locked_pointer = NULL;
     }
 
-    locked_pointer =
-        zwp_pointer_constraints_v1_lock_pointer(d->pointer_constraints,
-                                                w->surface,
-                                                input->pointer,
-                                                NULL,
-                                                ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_PERSISTENT);
-    zwp_locked_pointer_v1_add_listener(locked_pointer,
-                                       &locked_pointer_listener,
-                                       window);
+    /* Restore existing pointer confinement. */
+    Wayland_input_confine_pointer(input, window);
 
-    w->locked_pointer = locked_pointer;
+    return 0;
 }
 
 static void pointer_confine_destroy(SDL_Window *window)
@@ -3236,7 +3249,7 @@ static void pointer_confine_destroy(SDL_Window *window)
     }
 }
 
-int Wayland_input_lock_pointer(struct SDL_WaylandInput *input)
+int Wayland_input_enable_relative_pointer(struct SDL_WaylandInput *input)
 {
     SDL_VideoDevice *vd = SDL_GetVideoDevice();
     SDL_VideoData *d = input->display;
@@ -3263,10 +3276,7 @@ int Wayland_input_lock_pointer(struct SDL_WaylandInput *input)
     }
 
     if (!input->relative_pointer) {
-        relative_pointer =
-            zwp_relative_pointer_manager_v1_get_relative_pointer(
-                d->relative_pointer_manager,
-                input->pointer);
+        relative_pointer = zwp_relative_pointer_manager_v1_get_relative_pointer(d->relative_pointer_manager, input->pointer);
         zwp_relative_pointer_v1_add_listener(relative_pointer,
                                              &relative_pointer_listener,
                                              input);
@@ -3274,7 +3284,7 @@ int Wayland_input_lock_pointer(struct SDL_WaylandInput *input)
     }
 
     for (window = vd->windows; window; window = window->next) {
-        lock_pointer_to_window(window, input);
+        Wayland_input_lock_pointer(input, window);
     }
 
     d->relative_mouse_mode = 1;
@@ -3282,19 +3292,14 @@ int Wayland_input_lock_pointer(struct SDL_WaylandInput *input)
     return 0;
 }
 
-int Wayland_input_unlock_pointer(struct SDL_WaylandInput *input)
+int Wayland_input_disable_relative_pointer(struct SDL_WaylandInput *input)
 {
     SDL_VideoDevice *vd = SDL_GetVideoDevice();
     SDL_VideoData *d = input->display;
     SDL_Window *window;
-    SDL_WindowData *w;
 
     for (window = vd->windows; window; window = window->next) {
-        w = window->driverdata;
-        if (w->locked_pointer) {
-            zwp_locked_pointer_v1_destroy(w->locked_pointer);
-        }
-        w->locked_pointer = NULL;
+        Wayland_input_unlock_pointer(input, window);
     }
 
     if (input->relative_pointer) {

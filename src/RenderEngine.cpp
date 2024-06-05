@@ -25,8 +25,8 @@
 	#define SDL_VIDEO_DRIVER_X11 1		//Without this X11 support doesn't work
 	#define SDL_VIDEO_DRIVER_WAYLAND 1
 #endif
-#include <SDL.h>
-#include <SDL_video.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_video.h>
 #include <im3d.h>
 #include <BuiltinMaterials.hpp>
 #include "Common3D.hpp"

@@ -126,7 +126,7 @@ static int ReserveMemoryPoolBlocks(SDL_MemoryPool *pool, size_t num_blocks)
         void *block = AllocNewMemoryPoolBlock(pool);
 
         if (block == NULL) {
-            return SDL_OutOfMemory();
+            return -1;
         }
 
         *(void **)block = pool->free_blocks;
@@ -625,7 +625,7 @@ int SDL_ResetAudioQueueHistory(SDL_AudioQueue *queue, int num_frames)
     Uint8 *history_buffer = queue->history_buffer;
 
     if (queue->history_capacity < length) {
-        history_buffer = SDL_aligned_alloc(SDL_SIMDGetAlignment(), length);
+        history_buffer = SDL_aligned_alloc(SDL_GetSIMDAlignment(), length);
         if (!history_buffer) {
             return -1;
         }

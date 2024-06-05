@@ -1,10 +1,10 @@
 #pragma once
 #if !RVE_SERVER
 #include "Ref.hpp"
-    #include <SDL_scancode.h>
-    #include <SDL_mouse.h>
-    #include <SDL_events.h>
-    #include <SDL_gamepad.h>
+    #include <SDL3/SDL_scancode.h>
+    #include <SDL3/SDL_mouse.h>
+    #include <SDL3/SDL_events.h>
+    #include <SDL3/SDL_gamepad.h>
 #include "Function.hpp"
 #include "IInputListener.hpp"
 #include "SpinLock.hpp"

@@ -60,7 +60,7 @@ extern "C" {
 static void SDL_InitDynamicAPI(void);
 
 /* BE CAREFUL CALLING ANY SDL CODE IN HERE, IT WILL BLOW UP.
-   Even self-contained stuff might call SDL_Error and break everything. */
+   Even self-contained stuff might call SDL_SetError() and break everything. */
 
 /* behold, the macro salsa! */
 
@@ -282,7 +282,7 @@ static int SDLCALL SDL_swprintf_LOGSDLCALLS(SDL_OUT_Z_CAP(maxlen) wchar_t *buf, 
     va_end(ap);
     return retval;
 }
-_static size_t SDLCALL SDL_IOprintf_LOGSDLCALLS(SDL_IOStream *context, SDL_PRINTF_FORMAT_STRING const char *fmt, ...)
+static size_t SDLCALL SDL_IOprintf_LOGSDLCALLS(SDL_IOStream *context, SDL_PRINTF_FORMAT_STRING const char *fmt, ...)
 {
     size_t retval;
     va_list ap;
@@ -382,7 +382,7 @@ static Sint32 initialize_jumptable(Uint32 apiver, void *table, Uint32 tablesize)
 /* Here's the exported entry point that fills in the jump table. */
 /*  Use specific types when an "int" might suffice to keep this sane. */
 typedef Sint32 (SDLCALL *SDL_DYNAPI_ENTRYFN)(Uint32 apiver, void *table, Uint32 tablesize);
-extern DECLSPEC Sint32 SDLCALL SDL_DYNAPI_entry(Uint32, void *, Uint32);
+extern SDL_DECLSPEC Sint32 SDLCALL SDL_DYNAPI_entry(Uint32, void *, Uint32);
 
 Sint32 SDL_DYNAPI_entry(Uint32 apiver, void *table, Uint32 tablesize)
 {

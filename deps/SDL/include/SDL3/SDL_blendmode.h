@@ -20,13 +20,17 @@
 */
 
 /**
- *  \file SDL_blendmode.h
+ * # CategoryBlendmode
  *
- *  Header file declaring the SDL_BlendMode enumeration
+ * Blend modes decide how two colors will mix together. There are both
+ * standard modes for basic needs and a means to create custom modes,
+ * dictating what sort of math to do what on what color components.
  */
 
 #ifndef SDL_blendmode_h_
 #define SDL_blendmode_h_
+
+#include <SDL3/SDL_stdinc.h>
 
 #include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
@@ -35,36 +39,32 @@ extern "C" {
 #endif
 
 /**
- * An enumeration of blend modes used in drawing operations.
+ * A set of blend modes used in drawing operations.
  *
  * Note that additional values may be obtained from
  * SDL_ComposeCustomBlendMode.
  *
- * \since This enum is available since SDL 3.0.0.
+ * \since This datatype is available since SDL 3.0.0.
  *
  * \sa SDL_ComposeCustomBlendMode
  */
-typedef enum SDL_BlendMode
-{
-    SDL_BLENDMODE_NONE = 0x00000000,     /**< no blending
-                                              dstRGBA = srcRGBA */
-    SDL_BLENDMODE_BLEND = 0x00000001,    /**< alpha blending
-                                              dstRGB = (srcRGB * srcA) + (dstRGB * (1-srcA))
-                                              dstA = srcA + (dstA * (1-srcA)) */
-    SDL_BLENDMODE_ADD = 0x00000002,      /**< additive blending
-                                              dstRGB = (srcRGB * srcA) + dstRGB
-                                              dstA = dstA */
-    SDL_BLENDMODE_MOD = 0x00000004,      /**< color modulate
-                                              dstRGB = srcRGB * dstRGB
-                                              dstA = dstA */
-    SDL_BLENDMODE_MUL = 0x00000008,      /**< color multiply
-                                              dstRGB = (srcRGB * dstRGB) + (dstRGB * (1-srcA))
-                                              dstA = dstA */
-    SDL_BLENDMODE_INVALID = 0x7FFFFFFF
+typedef Uint32 SDL_BlendMode;
 
-    /* Additional custom blend modes can be returned by SDL_ComposeCustomBlendMode() */
-
-} SDL_BlendMode;
+#define SDL_BLENDMODE_NONE      0x00000000u /**< no blending
+                                                 dstRGBA = srcRGBA */
+#define SDL_BLENDMODE_BLEND     0x00000001u /**< alpha blending
+                                                 dstRGB = (srcRGB * srcA) + (dstRGB * (1-srcA))
+                                                 dstA = srcA + (dstA * (1-srcA)) */
+#define SDL_BLENDMODE_ADD       0x00000002u /**< additive blending
+                                                 dstRGB = (srcRGB * srcA) + dstRGB
+                                                 dstA = dstA */
+#define SDL_BLENDMODE_MOD       0x00000004u /**< color modulate
+                                                 dstRGB = srcRGB * dstRGB
+                                                 dstA = dstA */
+#define SDL_BLENDMODE_MUL       0x00000008u /**< color multiply
+                                                 dstRGB = (srcRGB * dstRGB) + (dstRGB * (1-srcA))
+                                                 dstA = dstA */
+#define SDL_BLENDMODE_INVALID   0x7FFFFFFFu
 
 /**
  * The blend operation used when combining source and destination pixel
@@ -190,7 +190,7 @@ typedef enum SDL_BlendFactor
  * \sa SDL_SetTextureBlendMode
  * \sa SDL_GetTextureBlendMode
  */
-extern DECLSPEC SDL_BlendMode SDLCALL SDL_ComposeCustomBlendMode(SDL_BlendFactor srcColorFactor,
+extern SDL_DECLSPEC SDL_BlendMode SDLCALL SDL_ComposeCustomBlendMode(SDL_BlendFactor srcColorFactor,
                                                                  SDL_BlendFactor dstColorFactor,
                                                                  SDL_BlendOperation colorOperation,
                                                                  SDL_BlendFactor srcAlphaFactor,

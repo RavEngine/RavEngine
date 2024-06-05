@@ -1,6 +1,6 @@
 #include "AudioPlayer.hpp"
 #if !RVE_SERVER
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include <phonon.h>
 #endif
 #include "Debug.hpp"

@@ -3,7 +3,7 @@
 #include <chrono>
 #include <date/date.h>
 #if !RVE_SERVER
-#include <SDL_log.h>
+#include <SDL3/SDL_log.h>
 #endif
 
 using namespace RavEngine;

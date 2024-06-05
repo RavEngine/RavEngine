@@ -23,9 +23,9 @@ freely, subject to the following restrictions:
 #define SDL_time_h_
 
 /**
- *  \file SDL_time.h
+ * # CategoryTime
  *
- *  Header for the SDL realtime clock and date/time routines.
+ * SDL realtime clock and date/time routines.
  */
 
 #include <SDL3/SDL_error.h>
@@ -61,7 +61,7 @@ typedef struct SDL_DateTime
  *
  * \since This enum is available since SDL 3.0.0.
  *
- * \sa SDL_PROP_GLOBAL_SYSTEM_DATE_FORMAT_NUMBER
+ * \sa SDL_GetDateTimeLocalePreferences
  */
 typedef enum SDL_DateFormat
 {
@@ -75,7 +75,7 @@ typedef enum SDL_DateFormat
  *
  * \since This enum is available since SDL 3.0.0.
  *
- * \sa SDL_PROP_GLOBAL_SYSTEM_TIME_FORMAT_NUMBER
+ * \sa SDL_GetDateTimeLocalePreferences
  */
 typedef enum SDL_TimeFormat
 {
@@ -83,16 +83,24 @@ typedef enum SDL_TimeFormat
     SDL_TIME_FORMAT_12HR = 1  /**< 12 hour time */
 } SDL_TimeFormat;
 
-/*
- *  Global date/time properties.
+/**
+ * Gets the current preferred date and time format for the system locale.
  *
- *  - `SDL_PROP_GLOBAL_SYSTEM_DATE_FORMAT_NUMBER`: the SDL_DateFormat to use as the preferred date display format
- *    for the current system locale.
- *  - `SDL_PROP_GLOBAL_SYSTEM_TIME_FORMAT_NUMBER`: the SDL_TimeFormat to use as the preferred time display format
- *    for the current system locale.
+ * This might be a "slow" call that has to query the operating system. It's
+ * best to ask for this once and save the results. However, the preferred
+ * formats can change, usually because the user has changed a system
+ * preference outside of your program.
+ *
+ * \param dateFormat a pointer to the SDL_DateFormat to hold the returned date
+ *                   format, may be NULL
+ * \param timeFormat a pointer to the SDL_TimeFormat to hold the returned time
+ *                   format, may be NULL
+ * \returns 0 on success or -1 on error; call SDL_GetError() for more
+ *          information.
+ *
+ * \since This function is available since SDL 3.0.0.
  */
-#define SDL_PROP_GLOBAL_SYSTEM_DATE_FORMAT_NUMBER "SDL.time.date_format"
-#define SDL_PROP_GLOBAL_SYSTEM_TIME_FORMAT_NUMBER "SDL.time.time_format"
+extern SDL_DECLSPEC int SDLCALL SDL_GetDateTimeLocalePreferences(SDL_DateFormat *dateFormat, SDL_TimeFormat *timeFormat);
 
 /**
  * Gets the current value of the system realtime clock in nanoseconds since
@@ -104,7 +112,7 @@ typedef enum SDL_TimeFormat
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_GetCurrentTime(SDL_Time *ticks);
+extern SDL_DECLSPEC int SDLCALL SDL_GetCurrentTime(SDL_Time *ticks);
 
 /**
  * Converts an SDL_Time in nanoseconds since the epoch to a calendar time in
@@ -120,7 +128,7 @@ extern DECLSPEC int SDLCALL SDL_GetCurrentTime(SDL_Time *ticks);
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_TimeToDateTime(SDL_Time ticks, SDL_DateTime *dt, SDL_bool localTime);
+extern SDL_DECLSPEC int SDLCALL SDL_TimeToDateTime(SDL_Time ticks, SDL_DateTime *dt, SDL_bool localTime);
 
 /**
  * Converts a calendar time to an SDL_Time in nanoseconds since the epoch.
@@ -135,7 +143,7 @@ extern DECLSPEC int SDLCALL SDL_TimeToDateTime(SDL_Time ticks, SDL_DateTime *dt,
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_DateTimeToTime(const SDL_DateTime *dt, SDL_Time *ticks);
+extern SDL_DECLSPEC int SDLCALL SDL_DateTimeToTime(const SDL_DateTime *dt, SDL_Time *ticks);
 
 /**
  * Converts an SDL time into a Windows FILETIME (100-nanosecond intervals
@@ -151,7 +159,7 @@ extern DECLSPEC int SDLCALL SDL_DateTimeToTime(const SDL_DateTime *dt, SDL_Time 
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC void SDLCALL SDL_TimeToWindows(SDL_Time ticks, Uint32 *dwLowDateTime, Uint32 *dwHighDateTime);
+extern SDL_DECLSPEC void SDLCALL SDL_TimeToWindows(SDL_Time ticks, Uint32 *dwLowDateTime, Uint32 *dwHighDateTime);
 
 /**
  * Converts a Windows FILETIME (100-nanosecond intervals since January 1,
@@ -166,7 +174,7 @@ extern DECLSPEC void SDLCALL SDL_TimeToWindows(SDL_Time ticks, Uint32 *dwLowDate
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC SDL_Time SDLCALL SDL_TimeFromWindows(Uint32 dwLowDateTime, Uint32 dwHighDateTime);
+extern SDL_DECLSPEC SDL_Time SDLCALL SDL_TimeFromWindows(Uint32 dwLowDateTime, Uint32 dwHighDateTime);
 
 /**
  * Get the number of days in a month for a given year.
@@ -178,7 +186,7 @@ extern DECLSPEC SDL_Time SDLCALL SDL_TimeFromWindows(Uint32 dwLowDateTime, Uint3
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_GetDaysInMonth(int year, int month);
+extern SDL_DECLSPEC int SDLCALL SDL_GetDaysInMonth(int year, int month);
 
 /**
  * Get the day of year for a calendar date.
@@ -191,7 +199,7 @@ extern DECLSPEC int SDLCALL SDL_GetDaysInMonth(int year, int month);
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_GetDayOfYear(int year, int month, int day);
+extern SDL_DECLSPEC int SDLCALL SDL_GetDayOfYear(int year, int month, int day);
 
 /**
  * Get the day of week for a calendar date.
@@ -204,7 +212,7 @@ extern DECLSPEC int SDLCALL SDL_GetDayOfYear(int year, int month, int day);
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_GetDayOfWeek(int year, int month, int day);
+extern SDL_DECLSPEC int SDLCALL SDL_GetDayOfWeek(int year, int month, int day);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

@@ -20,10 +20,42 @@
 */
 
 /**
- *  \file SDL_audio.h
+ * # CategoryAudio
  *
- *  Audio functionality for the SDL library.
+ * Audio functionality for the SDL library.
+ *
+ * All audio in SDL3 revolves around SDL_AudioStream. Whether you want to play
+ * or record audio, convert it, stream it, buffer it, or mix it, you're going
+ * to be passing it through an audio stream.
+ *
+ * Audio streams are quite flexible; they can accept any amount of data at a
+ * time, in any supported format, and output it as needed in any other format,
+ * even if the data format changes on either side halfway through.
+ *
+ * An app opens an audio device and binds any number of audio streams to it,
+ * feeding more data to it as available. When the devices needs more data, it
+ * will pull it from all bound streams and mix them together for playback.
+ *
+ * Audio streams can also use an app-provided callback to supply data
+ * on-demand, which maps pretty closely to the SDL2 audio model.
+ *
+ * SDL also provides a simple .WAV loader in SDL_LoadWAV (and SDL_LoadWAV_IO
+ * if you aren't reading from a file) as a basic means to load sound data into
+ * your program.
+ *
+ * For multi-channel audio, the default SDL channel mapping is:
+ *
+ * ```
+ * 2:  FL  FR                          (stereo)
+ * 3:  FL  FR LFE                      (2.1 surround)
+ * 4:  FL  FR  BL  BR                  (quad)
+ * 5:  FL  FR LFE  BL  BR              (4.1 surround)
+ * 6:  FL  FR  FC LFE  SL  SR          (5.1 surround - last two can also be BL BR)
+ * 7:  FL  FR  FC LFE  BC  SL  SR      (6.1 surround)
+ * 8:  FL  FR  FC LFE  BL  BR  SL  SR  (7.1 surround)
+ * ```
  */
+
 
 #ifndef SDL_audio_h_
 #define SDL_audio_h_
@@ -41,17 +73,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/*
- *  For multi-channel audio, the default SDL channel mapping is:
- *  2:  FL  FR                          (stereo)
- *  3:  FL  FR LFE                      (2.1 surround)
- *  4:  FL  FR  BL  BR                  (quad)
- *  5:  FL  FR LFE  BL  BR              (4.1 surround)
- *  6:  FL  FR  FC LFE  SL  SR          (5.1 surround - last two can also be BL BR)
- *  7:  FL  FR  FC LFE  BC  SL  SR      (6.1 surround)
- *  8:  FL  FR  FC LFE  BL  BR  SL  SR  (7.1 surround)
- */
 
 /**
  * Audio format flags.
@@ -86,17 +107,14 @@ extern "C" {
  */
 typedef Uint16 SDL_AudioFormat;
 
-#define SDL_AUDIO_U8        0x0008  /**< Unsigned 8-bit samples */
-#define SDL_AUDIO_S8        0x8008  /**< Signed 8-bit samples */
-
-#define SDL_AUDIO_S16LE     0x8010  /**< Signed 16-bit samples */
-#define SDL_AUDIO_S16BE     0x9010  /**< As above, but big-endian byte order */
-
-#define SDL_AUDIO_S32LE     0x8020  /**< 32-bit integer samples */
-#define SDL_AUDIO_S32BE     0x9020  /**< As above, but big-endian byte order */
-
-#define SDL_AUDIO_F32LE     0x8120  /**< 32-bit floating point samples */
-#define SDL_AUDIO_F32BE     0x9120  /**< As above, but big-endian byte order */
+#define SDL_AUDIO_U8        0x0008u /**< Unsigned 8-bit samples */
+#define SDL_AUDIO_S8        0x8008u /**< Signed 8-bit samples */
+#define SDL_AUDIO_S16LE     0x8010u /**< Signed 16-bit samples */
+#define SDL_AUDIO_S16BE     0x9010u /**< As above, but big-endian byte order */
+#define SDL_AUDIO_S32LE     0x8020u /**< 32-bit integer samples */
+#define SDL_AUDIO_S32BE     0x9020u /**< As above, but big-endian byte order */
+#define SDL_AUDIO_F32LE     0x8120u /**< 32-bit floating point samples */
+#define SDL_AUDIO_F32BE     0x9120u /**< As above, but big-endian byte order */
 
 #if SDL_BYTEORDER == SDL_LIL_ENDIAN
 #define SDL_AUDIO_S16    SDL_AUDIO_S16LE
@@ -110,10 +128,10 @@ typedef Uint16 SDL_AudioFormat;
 
 
 /* masks for different parts of SDL_AudioFormat. */
-#define SDL_AUDIO_MASK_BITSIZE       (0xFF)
-#define SDL_AUDIO_MASK_FLOAT         (1<<8)
-#define SDL_AUDIO_MASK_BIG_ENDIAN    (1<<12)
-#define SDL_AUDIO_MASK_SIGNED        (1<<15)
+#define SDL_AUDIO_MASK_BITSIZE       (0xFFu)
+#define SDL_AUDIO_MASK_FLOAT         (1u<<8)
+#define SDL_AUDIO_MASK_BIG_ENDIAN    (1u<<12)
+#define SDL_AUDIO_MASK_SIGNED        (1u<<15)
 
 
 /**
@@ -312,7 +330,6 @@ typedef struct SDL_AudioSpec
  *
  * \sa SDL_CreateAudioStream
  */
-struct SDL_AudioStream;  /**< this is opaque to the outside world. */
 typedef struct SDL_AudioStream SDL_AudioStream;
 
 
@@ -347,7 +364,7 @@ typedef struct SDL_AudioStream SDL_AudioStream;
  *
  * \sa SDL_GetAudioDriver
  */
-extern DECLSPEC int SDLCALL SDL_GetNumAudioDrivers(void);
+extern SDL_DECLSPEC int SDLCALL SDL_GetNumAudioDrivers(void);
 
 /**
  * Use this function to get the name of a built in audio driver.
@@ -357,8 +374,10 @@ extern DECLSPEC int SDLCALL SDL_GetNumAudioDrivers(void);
  * first (as far as the SDL developers believe) are earlier in the list.
  *
  * The names of drivers are all simple, low-ASCII identifiers, like "alsa",
- * "coreaudio" or "xaudio2". These never have Unicode characters, and are not
+ * "coreaudio" or "wasapi". These never have Unicode characters, and are not
  * meant to be proper names.
+ *
+ * The returned string follows the SDL_GetStringRule.
  *
  * \param index the index of the audio driver; the value ranges from 0 to
  *              SDL_GetNumAudioDrivers() - 1
@@ -371,17 +390,17 @@ extern DECLSPEC int SDLCALL SDL_GetNumAudioDrivers(void);
  *
  * \sa SDL_GetNumAudioDrivers
  */
-extern DECLSPEC const char *SDLCALL SDL_GetAudioDriver(int index);
+extern SDL_DECLSPEC const char *SDLCALL SDL_GetAudioDriver(int index);
 /* @} */
 
 /**
  * Get the name of the current audio driver.
  *
- * The returned string points to internal static memory and thus never becomes
- * invalid, even if you quit the audio subsystem and initialize a new driver
- * (although such a case would return a different static string from another
- * call to this function, of course). As such, you should not modify or free
- * the returned string.
+ * The names of drivers are all simple, low-ASCII identifiers, like "alsa",
+ * "coreaudio" or "wasapi". These never have Unicode characters, and are not
+ * meant to be proper names.
+ *
+ * The returned string follows the SDL_GetStringRule.
  *
  * \returns the name of the current audio driver or NULL if no driver has been
  *          initialized.
@@ -390,7 +409,7 @@ extern DECLSPEC const char *SDLCALL SDL_GetAudioDriver(int index);
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC const char *SDLCALL SDL_GetCurrentAudioDriver(void);
+extern SDL_DECLSPEC const char *SDLCALL SDL_GetCurrentAudioDriver(void);
 
 /**
  * Get a list of currently-connected audio output devices.
@@ -403,7 +422,11 @@ extern DECLSPEC const char *SDLCALL SDL_GetCurrentAudioDriver(void);
  * This only returns a list of physical devices; it will not have any device
  * IDs returned by SDL_OpenAudioDevice().
  *
- * \param count a pointer filled in with the number of devices returned
+ * If this function returns NULL, to signify an error, `*count` will be set to
+ * zero.
+ *
+ * \param count a pointer filled in with the number of devices returned. NULL
+ *              is allowed.
  * \returns a 0 terminated array of device instance IDs which should be freed
  *          with SDL_free(), or NULL on error; call SDL_GetError() for more
  *          details.
@@ -415,7 +438,7 @@ extern DECLSPEC const char *SDLCALL SDL_GetCurrentAudioDriver(void);
  * \sa SDL_OpenAudioDevice
  * \sa SDL_GetAudioCaptureDevices
  */
-extern DECLSPEC SDL_AudioDeviceID *SDLCALL SDL_GetAudioOutputDevices(int *count);
+extern SDL_DECLSPEC SDL_AudioDeviceID *SDLCALL SDL_GetAudioOutputDevices(int *count);
 
 /**
  * Get a list of currently-connected audio capture devices.
@@ -428,7 +451,11 @@ extern DECLSPEC SDL_AudioDeviceID *SDLCALL SDL_GetAudioOutputDevices(int *count)
  * This only returns a list of physical devices; it will not have any device
  * IDs returned by SDL_OpenAudioDevice().
  *
- * \param count a pointer filled in with the number of devices returned
+ * If this function returns NULL, to signify an error, `*count` will be set to
+ * zero.
+ *
+ * \param count a pointer filled in with the number of devices returned. NULL
+ *              is allowed.
  * \returns a 0 terminated array of device instance IDs which should be freed
  *          with SDL_free(), or NULL on error; call SDL_GetError() for more
  *          details.
@@ -440,13 +467,12 @@ extern DECLSPEC SDL_AudioDeviceID *SDLCALL SDL_GetAudioOutputDevices(int *count)
  * \sa SDL_OpenAudioDevice
  * \sa SDL_GetAudioOutputDevices
  */
-extern DECLSPEC SDL_AudioDeviceID *SDLCALL SDL_GetAudioCaptureDevices(int *count);
+extern SDL_DECLSPEC SDL_AudioDeviceID *SDLCALL SDL_GetAudioCaptureDevices(int *count);
 
 /**
  * Get the human-readable name of a specific audio device.
  *
- * The string returned by this function is UTF-8 encoded. The caller should
- * call SDL_free on the return value when done with it.
+ * The returned string follows the SDL_GetStringRule.
  *
  * \param devid the instance ID of the device to query.
  * \returns the name of the audio device, or NULL on error.
@@ -459,7 +485,7 @@ extern DECLSPEC SDL_AudioDeviceID *SDLCALL SDL_GetAudioCaptureDevices(int *count
  * \sa SDL_GetAudioCaptureDevices
  * \sa SDL_GetDefaultAudioInfo
  */
-extern DECLSPEC char *SDLCALL SDL_GetAudioDeviceName(SDL_AudioDeviceID devid);
+extern SDL_DECLSPEC const char *SDLCALL SDL_GetAudioDeviceName(SDL_AudioDeviceID devid);
 
 /**
  * Get the current audio format of a specific audio device.
@@ -494,7 +520,7 @@ extern DECLSPEC char *SDLCALL SDL_GetAudioDeviceName(SDL_AudioDeviceID devid);
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_GetAudioDeviceFormat(SDL_AudioDeviceID devid, SDL_AudioSpec *spec, int *sample_frames);
+extern SDL_DECLSPEC int SDLCALL SDL_GetAudioDeviceFormat(SDL_AudioDeviceID devid, SDL_AudioSpec *spec, int *sample_frames);
 
 
 /**
@@ -570,7 +596,7 @@ extern DECLSPEC int SDLCALL SDL_GetAudioDeviceFormat(SDL_AudioDeviceID devid, SD
  * \sa SDL_CloseAudioDevice
  * \sa SDL_GetAudioDeviceFormat
  */
-extern DECLSPEC SDL_AudioDeviceID SDLCALL SDL_OpenAudioDevice(SDL_AudioDeviceID devid, const SDL_AudioSpec *spec);
+extern SDL_DECLSPEC SDL_AudioDeviceID SDLCALL SDL_OpenAudioDevice(SDL_AudioDeviceID devid, const SDL_AudioSpec *spec);
 
 /**
  * Use this function to pause audio playback on a specified device.
@@ -601,7 +627,7 @@ extern DECLSPEC SDL_AudioDeviceID SDLCALL SDL_OpenAudioDevice(SDL_AudioDeviceID 
  * \sa SDL_ResumeAudioDevice
  * \sa SDL_AudioDevicePaused
  */
-extern DECLSPEC int SDLCALL SDL_PauseAudioDevice(SDL_AudioDeviceID dev);
+extern SDL_DECLSPEC int SDLCALL SDL_PauseAudioDevice(SDL_AudioDeviceID dev);
 
 /**
  * Use this function to unpause audio playback on a specified device.
@@ -629,7 +655,7 @@ extern DECLSPEC int SDLCALL SDL_PauseAudioDevice(SDL_AudioDeviceID dev);
  * \sa SDL_AudioDevicePaused
  * \sa SDL_PauseAudioDevice
  */
-extern DECLSPEC int SDLCALL SDL_ResumeAudioDevice(SDL_AudioDeviceID dev);
+extern SDL_DECLSPEC int SDLCALL SDL_ResumeAudioDevice(SDL_AudioDeviceID dev);
 
 /**
  * Use this function to query if an audio device is paused.
@@ -651,7 +677,7 @@ extern DECLSPEC int SDLCALL SDL_ResumeAudioDevice(SDL_AudioDeviceID dev);
  * \sa SDL_PauseAudioDevice
  * \sa SDL_ResumeAudioDevice
  */
-extern DECLSPEC SDL_bool SDLCALL SDL_AudioDevicePaused(SDL_AudioDeviceID dev);
+extern SDL_DECLSPEC SDL_bool SDLCALL SDL_AudioDevicePaused(SDL_AudioDeviceID dev);
 
 /**
  * Close a previously-opened audio device.
@@ -672,7 +698,7 @@ extern DECLSPEC SDL_bool SDLCALL SDL_AudioDevicePaused(SDL_AudioDeviceID dev);
  *
  * \sa SDL_OpenAudioDevice
  */
-extern DECLSPEC void SDLCALL SDL_CloseAudioDevice(SDL_AudioDeviceID devid);
+extern SDL_DECLSPEC void SDLCALL SDL_CloseAudioDevice(SDL_AudioDeviceID devid);
 
 /**
  * Bind a list of audio streams to an audio device.
@@ -709,7 +735,7 @@ extern DECLSPEC void SDLCALL SDL_CloseAudioDevice(SDL_AudioDeviceID devid);
  * \sa SDL_UnbindAudioStream
  * \sa SDL_GetAudioStreamDevice
  */
-extern DECLSPEC int SDLCALL SDL_BindAudioStreams(SDL_AudioDeviceID devid, SDL_AudioStream **streams, int num_streams);
+extern SDL_DECLSPEC int SDLCALL SDL_BindAudioStreams(SDL_AudioDeviceID devid, SDL_AudioStream **streams, int num_streams);
 
 /**
  * Bind a single audio stream to an audio device.
@@ -730,7 +756,7 @@ extern DECLSPEC int SDLCALL SDL_BindAudioStreams(SDL_AudioDeviceID devid, SDL_Au
  * \sa SDL_UnbindAudioStream
  * \sa SDL_GetAudioStreamDevice
  */
-extern DECLSPEC int SDLCALL SDL_BindAudioStream(SDL_AudioDeviceID devid, SDL_AudioStream *stream);
+extern SDL_DECLSPEC int SDLCALL SDL_BindAudioStream(SDL_AudioDeviceID devid, SDL_AudioStream *stream);
 
 /**
  * Unbind a list of audio streams from their audio devices.
@@ -750,7 +776,7 @@ extern DECLSPEC int SDLCALL SDL_BindAudioStream(SDL_AudioDeviceID devid, SDL_Aud
  *
  * \sa SDL_BindAudioStreams
  */
-extern DECLSPEC void SDLCALL SDL_UnbindAudioStreams(SDL_AudioStream **streams, int num_streams);
+extern SDL_DECLSPEC void SDLCALL SDL_UnbindAudioStreams(SDL_AudioStream **streams, int num_streams);
 
 /**
  * Unbind a single audio stream from its audio device.
@@ -766,7 +792,7 @@ extern DECLSPEC void SDLCALL SDL_UnbindAudioStreams(SDL_AudioStream **streams, i
  *
  * \sa SDL_BindAudioStream
  */
-extern DECLSPEC void SDLCALL SDL_UnbindAudioStream(SDL_AudioStream *stream);
+extern SDL_DECLSPEC void SDLCALL SDL_UnbindAudioStream(SDL_AudioStream *stream);
 
 /**
  * Query an audio stream for its currently-bound device.
@@ -786,7 +812,7 @@ extern DECLSPEC void SDLCALL SDL_UnbindAudioStream(SDL_AudioStream *stream);
  * \sa SDL_BindAudioStream
  * \sa SDL_BindAudioStreams
  */
-extern DECLSPEC SDL_AudioDeviceID SDLCALL SDL_GetAudioStreamDevice(SDL_AudioStream *stream);
+extern SDL_DECLSPEC SDL_AudioDeviceID SDLCALL SDL_GetAudioStreamDevice(SDL_AudioStream *stream);
 
 /**
  * Create a new audio stream.
@@ -807,7 +833,7 @@ extern DECLSPEC SDL_AudioDeviceID SDLCALL SDL_GetAudioStreamDevice(SDL_AudioStre
  * \sa SDL_ChangeAudioStreamOutput
  * \sa SDL_DestroyAudioStream
  */
-extern DECLSPEC SDL_AudioStream *SDLCALL SDL_CreateAudioStream(const SDL_AudioSpec *src_spec, const SDL_AudioSpec *dst_spec);
+extern SDL_DECLSPEC SDL_AudioStream *SDLCALL SDL_CreateAudioStream(const SDL_AudioSpec *src_spec, const SDL_AudioSpec *dst_spec);
 
 /**
  * Get the properties associated with an audio stream.
@@ -821,7 +847,7 @@ extern DECLSPEC SDL_AudioStream *SDLCALL SDL_CreateAudioStream(const SDL_AudioSp
  * \sa SDL_GetProperty
  * \sa SDL_SetProperty
  */
-extern DECLSPEC SDL_PropertiesID SDLCALL SDL_GetAudioStreamProperties(SDL_AudioStream *stream);
+extern SDL_DECLSPEC SDL_PropertiesID SDLCALL SDL_GetAudioStreamProperties(SDL_AudioStream *stream);
 
 /**
  * Query the current format of an audio stream.
@@ -836,7 +862,7 @@ extern DECLSPEC SDL_PropertiesID SDLCALL SDL_GetAudioStreamProperties(SDL_AudioS
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_GetAudioStreamFormat(SDL_AudioStream *stream,
+extern SDL_DECLSPEC int SDLCALL SDL_GetAudioStreamFormat(SDL_AudioStream *stream,
                                                      SDL_AudioSpec *src_spec,
                                                      SDL_AudioSpec *dst_spec);
 
@@ -868,7 +894,7 @@ extern DECLSPEC int SDLCALL SDL_GetAudioStreamFormat(SDL_AudioStream *stream,
  * \sa SDL_GetAudioStreamFormat
  * \sa SDL_SetAudioStreamFrequencyRatio
  */
-extern DECLSPEC int SDLCALL SDL_SetAudioStreamFormat(SDL_AudioStream *stream,
+extern SDL_DECLSPEC int SDLCALL SDL_SetAudioStreamFormat(SDL_AudioStream *stream,
                                                      const SDL_AudioSpec *src_spec,
                                                      const SDL_AudioSpec *dst_spec);
 
@@ -885,7 +911,7 @@ extern DECLSPEC int SDLCALL SDL_SetAudioStreamFormat(SDL_AudioStream *stream,
  *
  * \sa SDL_SetAudioStreamFrequencyRatio
  */
-extern DECLSPEC float SDLCALL SDL_GetAudioStreamFrequencyRatio(SDL_AudioStream *stream);
+extern SDL_DECLSPEC float SDLCALL SDL_GetAudioStreamFrequencyRatio(SDL_AudioStream *stream);
 
 /**
  * Change the frequency ratio of an audio stream.
@@ -912,7 +938,7 @@ extern DECLSPEC float SDLCALL SDL_GetAudioStreamFrequencyRatio(SDL_AudioStream *
  * \sa SDL_GetAudioStreamFrequencyRatio
  * \sa SDL_SetAudioStreamFormat
  */
-extern DECLSPEC int SDLCALL SDL_SetAudioStreamFrequencyRatio(SDL_AudioStream *stream, float ratio);
+extern SDL_DECLSPEC int SDLCALL SDL_SetAudioStreamFrequencyRatio(SDL_AudioStream *stream, float ratio);
 
 /**
  * Add data to the stream.
@@ -942,7 +968,7 @@ extern DECLSPEC int SDLCALL SDL_SetAudioStreamFrequencyRatio(SDL_AudioStream *st
  * \sa SDL_GetAudioStreamData
  * \sa SDL_GetAudioStreamQueued
  */
-extern DECLSPEC int SDLCALL SDL_PutAudioStreamData(SDL_AudioStream *stream, const void *buf, int len);
+extern SDL_DECLSPEC int SDLCALL SDL_PutAudioStreamData(SDL_AudioStream *stream, const void *buf, int len);
 
 /**
  * Get converted/resampled data from the stream.
@@ -971,7 +997,7 @@ extern DECLSPEC int SDLCALL SDL_PutAudioStreamData(SDL_AudioStream *stream, cons
  * \sa SDL_GetAudioStreamAvailable
  * \sa SDL_PutAudioStreamData
  */
-extern DECLSPEC int SDLCALL SDL_GetAudioStreamData(SDL_AudioStream *stream, void *buf, int len);
+extern SDL_DECLSPEC int SDLCALL SDL_GetAudioStreamData(SDL_AudioStream *stream, void *buf, int len);
 
 /**
  * Get the number of converted/resampled bytes available.
@@ -996,7 +1022,7 @@ extern DECLSPEC int SDLCALL SDL_GetAudioStreamData(SDL_AudioStream *stream, void
  * \sa SDL_GetAudioStreamData
  * \sa SDL_PutAudioStreamData
  */
-extern DECLSPEC int SDLCALL SDL_GetAudioStreamAvailable(SDL_AudioStream *stream);
+extern SDL_DECLSPEC int SDLCALL SDL_GetAudioStreamAvailable(SDL_AudioStream *stream);
 
 
 /**
@@ -1028,7 +1054,7 @@ extern DECLSPEC int SDLCALL SDL_GetAudioStreamAvailable(SDL_AudioStream *stream)
  * \sa SDL_PutAudioStreamData
  * \sa SDL_ClearAudioStream
  */
-extern DECLSPEC int SDLCALL SDL_GetAudioStreamQueued(SDL_AudioStream *stream);
+extern SDL_DECLSPEC int SDLCALL SDL_GetAudioStreamQueued(SDL_AudioStream *stream);
 
 
 /**
@@ -1049,7 +1075,7 @@ extern DECLSPEC int SDLCALL SDL_GetAudioStreamQueued(SDL_AudioStream *stream);
  *
  * \sa SDL_PutAudioStreamData
  */
-extern DECLSPEC int SDLCALL SDL_FlushAudioStream(SDL_AudioStream *stream);
+extern SDL_DECLSPEC int SDLCALL SDL_FlushAudioStream(SDL_AudioStream *stream);
 
 /**
  * Clear any pending data in the stream.
@@ -1070,7 +1096,51 @@ extern DECLSPEC int SDLCALL SDL_FlushAudioStream(SDL_AudioStream *stream);
  * \sa SDL_GetAudioStreamQueued
  * \sa SDL_PutAudioStreamData
  */
-extern DECLSPEC int SDLCALL SDL_ClearAudioStream(SDL_AudioStream *stream);
+extern SDL_DECLSPEC int SDLCALL SDL_ClearAudioStream(SDL_AudioStream *stream);
+
+/**
+ * Use this function to pause audio playback on the audio device associated
+ * with an audio stream.
+ *
+ * This function pauses audio processing for a given device. Any bound audio
+ * streams will not progress, and no audio will be generated. Pausing one
+ * device does not prevent other unpaused devices from running.
+ *
+ * Pausing a device can be useful to halt all audio without unbinding all the
+ * audio streams. This might be useful while a game is paused, or a level is
+ * loading, etc.
+ *
+ * \param stream The audio stream associated with the audio device to pause
+ * \returns 0 on success or a negative error code on failure; call
+ *          SDL_GetError() for more information.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_ResumeAudioStreamDevice
+ */
+extern SDL_DECLSPEC int SDLCALL SDL_PauseAudioStreamDevice(SDL_AudioStream *stream);
+
+/**
+ * Use this function to unpause audio playback on the audio device associated
+ * with an audio stream.
+ *
+ * This function unpauses audio processing for a given device that has
+ * previously been paused. Once unpaused, any bound audio streams will begin
+ * to progress again, and audio can be generated.
+ *
+ * \param stream The audio stream associated with the audio device to resume
+ * \returns 0 on success or a negative error code on failure; call
+ *          SDL_GetError() for more information.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_PauseAudioStreamDevice
+ */
+extern SDL_DECLSPEC int SDLCALL SDL_ResumeAudioStreamDevice(SDL_AudioStream *stream);
 
 /**
  * Lock an audio stream for serialized access.
@@ -1098,7 +1168,7 @@ extern DECLSPEC int SDLCALL SDL_ClearAudioStream(SDL_AudioStream *stream);
  *
  * \sa SDL_UnlockAudioStream
  */
-extern DECLSPEC int SDLCALL SDL_LockAudioStream(SDL_AudioStream *stream);
+extern SDL_DECLSPEC int SDLCALL SDL_LockAudioStream(SDL_AudioStream *stream);
 
 
 /**
@@ -1117,7 +1187,7 @@ extern DECLSPEC int SDLCALL SDL_LockAudioStream(SDL_AudioStream *stream);
  *
  * \sa SDL_LockAudioStream
  */
-extern DECLSPEC int SDLCALL SDL_UnlockAudioStream(SDL_AudioStream *stream);
+extern SDL_DECLSPEC int SDLCALL SDL_UnlockAudioStream(SDL_AudioStream *stream);
 
 /**
  * A callback that fires when data passes through an SDL_AudioStream.
@@ -1204,7 +1274,7 @@ typedef void (SDLCALL *SDL_AudioStreamCallback)(void *userdata, SDL_AudioStream 
  *
  * \sa SDL_SetAudioStreamPutCallback
  */
-extern DECLSPEC int SDLCALL SDL_SetAudioStreamGetCallback(SDL_AudioStream *stream, SDL_AudioStreamCallback callback, void *userdata);
+extern SDL_DECLSPEC int SDLCALL SDL_SetAudioStreamGetCallback(SDL_AudioStream *stream, SDL_AudioStreamCallback callback, void *userdata);
 
 /**
  * Set a callback that runs when data is added to an audio stream.
@@ -1252,7 +1322,7 @@ extern DECLSPEC int SDLCALL SDL_SetAudioStreamGetCallback(SDL_AudioStream *strea
  *
  * \sa SDL_SetAudioStreamGetCallback
  */
-extern DECLSPEC int SDLCALL SDL_SetAudioStreamPutCallback(SDL_AudioStream *stream, SDL_AudioStreamCallback callback, void *userdata);
+extern SDL_DECLSPEC int SDLCALL SDL_SetAudioStreamPutCallback(SDL_AudioStream *stream, SDL_AudioStreamCallback callback, void *userdata);
 
 
 /**
@@ -1274,7 +1344,7 @@ extern DECLSPEC int SDLCALL SDL_SetAudioStreamPutCallback(SDL_AudioStream *strea
  *
  * \sa SDL_CreateAudioStream
  */
-extern DECLSPEC void SDLCALL SDL_DestroyAudioStream(SDL_AudioStream *stream);
+extern SDL_DECLSPEC void SDLCALL SDL_DestroyAudioStream(SDL_AudioStream *stream);
 
 
 /**
@@ -1299,7 +1369,9 @@ extern DECLSPEC void SDLCALL SDL_DestroyAudioStream(SDL_AudioStream *stream);
  *
  * The `spec` parameter represents the app's side of the audio stream. That
  * is, for recording audio, this will be the output format, and for playing
- * audio, this will be the input format.
+ * audio, this will be the input format. If spec is NULL, the system will
+ * choose the format, and the app can use SDL_GetAudioStreamFormat() to obtain
+ * this information later.
  *
  * If you don't care about opening a specific audio device, you can (and
  * probably _should_), use SDL_AUDIO_DEVICE_DEFAULT_OUTPUT for playback and
@@ -1310,9 +1382,12 @@ extern DECLSPEC void SDLCALL SDL_DestroyAudioStream(SDL_AudioStream *stream);
  * capturing). Otherwise, the callback will begin to fire once the device is
  * unpaused.
  *
+ * Destroying the returned stream with SDL_DestroyAudioStream will also close
+ * the audio device associated with this stream.
+ *
  * \param devid an audio device to open, or SDL_AUDIO_DEVICE_DEFAULT_OUTPUT or
  *              SDL_AUDIO_DEVICE_DEFAULT_CAPTURE.
- * \param spec the audio stream's data format. Required.
+ * \param spec the audio stream's data format. Can be NULL.
  * \param callback A callback where the app will provide new data for
  *                 playback, or receive new data for capture. Can be NULL, in
  *                 which case the app will need to call SDL_PutAudioStreamData
@@ -1331,7 +1406,7 @@ extern DECLSPEC void SDLCALL SDL_DestroyAudioStream(SDL_AudioStream *stream);
  * \sa SDL_GetAudioStreamDevice
  * \sa SDL_ResumeAudioDevice
  */
-extern DECLSPEC SDL_AudioStream *SDLCALL SDL_OpenAudioDeviceStream(SDL_AudioDeviceID devid, const SDL_AudioSpec *spec, SDL_AudioStreamCallback callback, void *userdata);
+extern SDL_DECLSPEC SDL_AudioStream *SDLCALL SDL_OpenAudioDeviceStream(SDL_AudioDeviceID devid, const SDL_AudioSpec *spec, SDL_AudioStreamCallback callback, void *userdata);
 
 /**
  * A callback that fires when data is about to be fed to an audio device.
@@ -1349,7 +1424,7 @@ extern DECLSPEC SDL_AudioStream *SDLCALL SDL_OpenAudioDeviceStream(SDL_AudioDevi
  * always provided here in SDL_AUDIO_F32 format.
  *
  * \param userdata a pointer provided by the app through
- *                 SDL_SetAudioDevicePostmixCallback, for its own use.
+ *                 SDL_SetAudioPostmixCallback, for its own use.
  * \param spec the current format of audio that is to be submitted to the
  *             audio device.
  * \param buffer the buffer of audio samples to be submitted. The callback can
@@ -1362,7 +1437,7 @@ extern DECLSPEC SDL_AudioStream *SDLCALL SDL_OpenAudioDeviceStream(SDL_AudioDevi
  *
  * \since This datatype is available since SDL 3.0.0.
  *
- * \sa SDL_SetAudioDevicePostmixCallback
+ * \sa SDL_SetAudioPostmixCallback
  */
 typedef void (SDLCALL *SDL_AudioPostmixCallback)(void *userdata, const SDL_AudioSpec *spec, float *buffer, int buflen);
 
@@ -1418,7 +1493,7 @@ typedef void (SDLCALL *SDL_AudioPostmixCallback)(void *userdata, const SDL_Audio
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_SetAudioPostmixCallback(SDL_AudioDeviceID devid, SDL_AudioPostmixCallback callback, void *userdata);
+extern SDL_DECLSPEC int SDLCALL SDL_SetAudioPostmixCallback(SDL_AudioDeviceID devid, SDL_AudioPostmixCallback callback, void *userdata);
 
 
 /**
@@ -1499,7 +1574,7 @@ extern DECLSPEC int SDLCALL SDL_SetAudioPostmixCallback(SDL_AudioDeviceID devid,
  * \sa SDL_free
  * \sa SDL_LoadWAV
  */
-extern DECLSPEC int SDLCALL SDL_LoadWAV_IO(SDL_IOStream * src, SDL_bool closeio,
+extern SDL_DECLSPEC int SDLCALL SDL_LoadWAV_IO(SDL_IOStream * src, SDL_bool closeio,
                                            SDL_AudioSpec * spec, Uint8 ** audio_buf,
                                            Uint32 * audio_len);
 
@@ -1537,12 +1612,8 @@ extern DECLSPEC int SDLCALL SDL_LoadWAV_IO(SDL_IOStream * src, SDL_bool closeio,
  * \sa SDL_free
  * \sa SDL_LoadWAV_IO
  */
-extern DECLSPEC int SDLCALL SDL_LoadWAV(const char *path, SDL_AudioSpec * spec,
+extern SDL_DECLSPEC int SDLCALL SDL_LoadWAV(const char *path, SDL_AudioSpec * spec,
                                         Uint8 ** audio_buf, Uint32 * audio_len);
-
-
-
-#define SDL_MIX_MAXVOLUME 128
 
 /**
  * Mix audio data in a specified format.
@@ -1561,16 +1632,16 @@ extern DECLSPEC int SDLCALL SDL_LoadWAV(const char *path, SDL_AudioSpec * spec,
  *
  * It is a common misconception that this function is required to write audio
  * data to an output stream in an audio callback. While you can do that,
- * SDL_MixAudioFormat() is really only needed when you're mixing a single
- * audio stream with a volume adjustment.
+ * SDL_MixAudio() is really only needed when you're mixing a single audio
+ * stream with a volume adjustment.
  *
  * \param dst the destination for the mixed audio
  * \param src the source audio buffer to be mixed
  * \param format the SDL_AudioFormat structure representing the desired audio
  *               format
  * \param len the length of the audio buffer in bytes
- * \param volume ranges from 0 - 128, and should be set to SDL_MIX_MAXVOLUME
- *               for full audio volume
+ * \param volume ranges from 0.0 - 1.0, and should be set to 1.0 for full
+ *               audio volume
  * \returns 0 on success or a negative error code on failure; call
  *          SDL_GetError() for more information.
  *
@@ -1578,10 +1649,10 @@ extern DECLSPEC int SDLCALL SDL_LoadWAV(const char *path, SDL_AudioSpec * spec,
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_MixAudioFormat(Uint8 * dst,
-                                               const Uint8 * src,
-                                               SDL_AudioFormat format,
-                                               Uint32 len, int volume);
+extern SDL_DECLSPEC int SDLCALL SDL_MixAudio(Uint8 * dst,
+                                         const Uint8 * src,
+                                         SDL_AudioFormat format,
+                                         Uint32 len, float volume);
 
 /**
  * Convert some audio data of one format to another format.
@@ -1611,7 +1682,7 @@ extern DECLSPEC int SDLCALL SDL_MixAudioFormat(Uint8 * dst,
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_ConvertAudioSamples(const SDL_AudioSpec *src_spec,
+extern SDL_DECLSPEC int SDLCALL SDL_ConvertAudioSamples(const SDL_AudioSpec *src_spec,
                                                     const Uint8 *src_data,
                                                     int src_len,
                                                     const SDL_AudioSpec *dst_spec,
@@ -1633,7 +1704,7 @@ extern DECLSPEC int SDLCALL SDL_ConvertAudioSamples(const SDL_AudioSpec *src_spe
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_GetSilenceValueForFormat(SDL_AudioFormat format);
+extern SDL_DECLSPEC int SDLCALL SDL_GetSilenceValueForFormat(SDL_AudioFormat format);
 
 
 /* Ends C function definitions when using C++ */

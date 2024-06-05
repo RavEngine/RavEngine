@@ -44,8 +44,6 @@ typedef struct SDL_DRect
 /* The SDL 2D rendering system */
 
 typedef struct SDL_RenderDriver SDL_RenderDriver;
-extern char SDL_renderer_magic;
-extern char SDL_texture_magic;
 
 /* Rendering view state */
 typedef struct SDL_RenderViewState
@@ -62,7 +60,6 @@ typedef struct SDL_RenderViewState
 /* Define the SDL texture structure */
 struct SDL_Texture
 {
-    const void *magic;
     SDL_Colorspace colorspace;  /**< The colorspace of the texture */
     float SDR_white_point;      /**< The SDR white point for this content */
     float HDR_headroom;         /**< The HDR headroom needed by this content */
@@ -160,8 +157,6 @@ typedef enum
 /* Define the SDL renderer structure */
 struct SDL_Renderer
 {
-    const void *magic;
-
     void (*WindowEvent)(SDL_Renderer *renderer, const SDL_WindowEvent *event);
     int (*GetOutputSize)(SDL_Renderer *renderer, int *w, int *h);
     SDL_bool (*SupportsBlendMode)(SDL_Renderer *renderer, SDL_BlendMode blendMode);
@@ -219,7 +214,9 @@ struct SDL_Renderer
     int (*AddVulkanRenderSemaphores)(SDL_Renderer *renderer, Uint32 wait_stage_mask, Sint64 wait_semaphore, Sint64 signal_semaphore);
 
     /* The current renderer info */
-    SDL_RendererInfo info;
+    const char *name;
+    SDL_PixelFormatEnum *texture_formats;
+    int num_texture_formats;
     SDL_bool software;
 
     /* The window associated with the renderer */
@@ -299,8 +296,7 @@ struct SDL_RenderDriver
 {
     int (*CreateRenderer)(SDL_Renderer *renderer, SDL_Window *window, SDL_PropertiesID props);
 
-    /* Info about the renderer capabilities */
-    SDL_RendererInfo info;
+    const char *name;
 };
 
 /* Not all of these are available in a given build. Use #ifdefs, etc. */
@@ -315,6 +311,9 @@ extern SDL_RenderDriver PS2_RenderDriver;
 extern SDL_RenderDriver PSP_RenderDriver;
 extern SDL_RenderDriver SW_RenderDriver;
 extern SDL_RenderDriver VITA_GXM_RenderDriver;
+
+/* Add a supported texture format to a renderer */
+extern int SDL_AddSupportedTextureFormat(SDL_Renderer *renderer, SDL_PixelFormatEnum format);
 
 /* Setup colorspace conversion */
 extern void SDL_SetupRendererColorspace(SDL_Renderer *renderer, SDL_PropertiesID props);

@@ -35,8 +35,8 @@ PAPPSTATE_REGISTRATION hPLM = {};
 PAPPCONSTRAIN_REGISTRATION hCPLM = {};
 HANDLE plmSuspendComplete = nullptr;
 
-extern "C" DECLSPEC int
-SDL_GDKGetTaskQueue(XTaskQueueHandle *outTaskQueue)
+extern "C"
+int SDL_GDKGetTaskQueue(XTaskQueueHandle *outTaskQueue)
 {
     /* If this is the first call, first create the global task queue. */
     if (!GDK_GlobalTaskQueue) {
@@ -61,8 +61,8 @@ SDL_GDKGetTaskQueue(XTaskQueueHandle *outTaskQueue)
     return 0;
 }
 
-extern "C" void
-GDK_DispatchTaskQueue(void)
+extern "C"
+void GDK_DispatchTaskQueue(void)
 {
     /* If there is no global task queue, don't do anything.
      * This gives the option to opt-out for those who want to handle everything themselves.
@@ -75,8 +75,7 @@ GDK_DispatchTaskQueue(void)
 }
 
 /* Pop up an out of memory message, returns to Windows */
-extern "C" static BOOL
-OutOfMemory(void)
+static BOOL OutOfMemory(void)
 {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Fatal Error", "Out of memory - aborting", NULL);
     return FALSE;
@@ -84,8 +83,8 @@ OutOfMemory(void)
 
 /* Gets the arguments with GetCommandLine, converts them to argc and argv
    and calls SDL_main */
-extern "C" DECLSPEC int
-SDL_RunApp(int, char**, SDL_main_func mainFunction, void *reserved)
+extern "C"
+int SDL_RunApp(int, char**, SDL_main_func mainFunction, void *reserved)
 {
     LPWSTR *argvw;
     char **argv;
@@ -109,18 +108,21 @@ SDL_RunApp(int, char**, SDL_main_func mainFunction, void *reserved)
         return OutOfMemory();
     }
     for (i = 0; i < argc; ++i) {
-        DWORD len;
-        char *arg = WIN_StringToUTF8W(argvw[i]);
-        if (arg == NULL) {
-            return OutOfMemory();
+        const int utf8size = WideCharToMultiByte(CP_UTF8, 0, argvw[i], -1, NULL, 0, NULL, NULL);
+        if (!utf8size) {  // uhoh?
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Fatal Error", "Error processing command line arguments", NULL);
+            return -1;
         }
-        len = (DWORD)SDL_strlen(arg);
-        argv[i] = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, len + 1);
+
+        argv[i] = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, utf8size);  // this size includes the null-terminator character.
         if (!argv[i]) {
             return OutOfMemory();
         }
-        SDL_memcpy(argv[i], arg, len);
-        SDL_free(arg);
+
+        if (WideCharToMultiByte(CP_UTF8, 0, argvw[i], -1, argv[i], utf8size, NULL, NULL) == 0) {  // failed? uhoh!
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Fatal Error", "Error processing command line arguments", NULL);
+            return -1;
+        }
     }
     argv[i] = NULL;
     LocalFree(argvw);
@@ -228,16 +230,16 @@ SDL_RunApp(int, char**, SDL_main_func mainFunction, void *reserved)
     return result;
 }
 
-extern "C" DECLSPEC void
-SDL_GDKSuspendComplete()
+extern "C"
+void SDL_GDKSuspendComplete()
 {
     if (plmSuspendComplete) {
         SetEvent(plmSuspendComplete);
     }
 }
 
-extern "C" DECLSPEC int
-SDL_GDKGetDefaultUser(XUserHandle *outUserHandle)
+extern "C"
+int SDL_GDKGetDefaultUser(XUserHandle *outUserHandle)
 {
     XAsyncBlock block = { 0 };
     HRESULT result;

@@ -1,6 +1,6 @@
 #if !RVE_SERVER
 #include "Window.hpp"
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "Debug.hpp"
 #include <RGL/RGL.hpp>
 #include <RGL/Surface.hpp>

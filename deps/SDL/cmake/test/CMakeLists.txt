@@ -2,6 +2,10 @@
 
 cmake_minimum_required(VERSION 3.12)
 project(sdl_test LANGUAGES C)
+
+message(STATUS "CMAKE_SYSTEM_NAME=      ${CMAKE_SYSTEM_NAME}")
+message(STATUS "CMAKE_SYSTEM_PROCESSOR= ${CMAKE_SYSTEM_PROCESSOR}")
+
 if(WINDOWS_STORE)
     enable_language(CXX)
     add_compile_options(/ZW)
@@ -41,8 +45,6 @@ add_feature_info("TEST_FULL" TEST_FULL "Build full SDL testsuite")
 find_package(SDL3 REQUIRED CONFIG COMPONENTS Headers)
 add_library(headers_test_slash OBJECT inc_sdl_slash.c)
 target_link_libraries(headers_test_slash PRIVATE SDL3::Headers)
-add_library(headers_test_noslash OBJECT inc_sdl_noslash.c)
-target_link_libraries(headers_test_noslash PRIVATE SDL3::Headers)
 
 if(TEST_SHARED)
     find_package(SDL3 REQUIRED CONFIG COMPONENTS SDL3-shared)

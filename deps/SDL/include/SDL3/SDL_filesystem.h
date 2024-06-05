@@ -20,9 +20,9 @@
 */
 
 /**
- *  \file SDL_filesystem.h
+ * # CategoryFilesystem
  *
- *  Include file for filesystem SDL API functions
+ * SDL Filesystem API.
  */
 
 #ifndef SDL_filesystem_h_
@@ -80,7 +80,7 @@ extern "C" {
  *
  * \sa SDL_GetPrefPath
  */
-extern DECLSPEC char *SDLCALL SDL_GetBasePath(void);
+extern SDL_DECLSPEC char *SDLCALL SDL_GetBasePath(void);
 
 /**
  * Get the user-and-app-specific path where files can be written.
@@ -137,7 +137,7 @@ extern DECLSPEC char *SDLCALL SDL_GetBasePath(void);
  *
  * \sa SDL_GetBasePath
  */
-extern DECLSPEC char *SDLCALL SDL_GetPrefPath(const char *org, const char *app);
+extern SDL_DECLSPEC char *SDLCALL SDL_GetPrefPath(const char *org, const char *app);
 
 /**
  * The type of the OS-provided default folder for a specific purpose.
@@ -224,6 +224,9 @@ typedef enum SDL_Folder
  * Note that the function is expensive, and should be called once at the
  * beginning of the execution and kept for as long as needed.
  *
+ * The returned path is guaranteed to end with a path separator ('\\' on
+ * Windows, '/' on most other platforms).
+ *
  * The returned value is owned by the caller and should be freed with
  * SDL_free().
  *
@@ -234,8 +237,10 @@ typedef enum SDL_Folder
  *          folder, or NULL if an error happened.
  *
  * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_Folder
  */
-extern DECLSPEC char *SDLCALL SDL_GetUserFolder(SDL_Folder folder);
+extern SDL_DECLSPEC char *SDLCALL SDL_GetUserFolder(SDL_Folder folder);
 
 
 /* Abstract filesystem interface */
@@ -258,6 +263,18 @@ typedef struct SDL_PathInfo
 } SDL_PathInfo;
 
 /**
+ * Flags for path matching
+ *
+ * \since This datatype is available since SDL 3.0.0.
+ *
+ * \sa SDL_GlobDirectory
+ * \sa SDL_GlobStorageDirectory
+ */
+typedef Uint32 SDL_GlobFlags;
+
+#define SDL_GLOB_CASEINSENSITIVE (1u << 0)
+
+/**
  * Create a directory.
  *
  * \param path the path of the directory to create
@@ -266,7 +283,7 @@ typedef struct SDL_PathInfo
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_CreateDirectory(const char *path);
+extern SDL_DECLSPEC int SDLCALL SDL_CreateDirectory(const char *path);
 
 /* Callback for directory enumeration. Return 1 to keep enumerating,
    0 to stop enumerating (no error), -1 to stop enumerating and
@@ -289,7 +306,7 @@ typedef int (SDLCALL *SDL_EnumerateDirectoryCallback)(void *userdata, const char
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_EnumerateDirectory(const char *path, SDL_EnumerateDirectoryCallback callback, void *userdata);
+extern SDL_DECLSPEC int SDLCALL SDL_EnumerateDirectory(const char *path, SDL_EnumerateDirectoryCallback callback, void *userdata);
 
 /**
  * Remove a file or an empty directory.
@@ -300,7 +317,7 @@ extern DECLSPEC int SDLCALL SDL_EnumerateDirectory(const char *path, SDL_Enumera
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_RemovePath(const char *path);
+extern SDL_DECLSPEC int SDLCALL SDL_RemovePath(const char *path);
 
 /**
  * Rename a file or directory.
@@ -312,7 +329,7 @@ extern DECLSPEC int SDLCALL SDL_RemovePath(const char *path);
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_RenamePath(const char *oldpath, const char *newpath);
+extern SDL_DECLSPEC int SDLCALL SDL_RenamePath(const char *oldpath, const char *newpath);
 
 /**
  * Get information about a filesystem path.
@@ -325,10 +342,7 @@ extern DECLSPEC int SDLCALL SDL_RenamePath(const char *oldpath, const char *newp
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_GetPathInfo(const char *path, SDL_PathInfo *info);
-
-
-#define SDL_GLOB_CASEINSENSITIVE (1 << 0)
+extern SDL_DECLSPEC int SDLCALL SDL_GetPathInfo(const char *path, SDL_PathInfo *info);
 
 /**
  * Enumerate a directory tree, filtered by pattern, and return a list.
@@ -363,7 +377,7 @@ extern DECLSPEC int SDLCALL SDL_GetPathInfo(const char *path, SDL_PathInfo *info
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC char **SDLCALL SDL_GlobDirectory(const char *path, const char *pattern, Uint32 flags, int *count);
+extern SDL_DECLSPEC char **SDLCALL SDL_GlobDirectory(const char *path, const char *pattern, SDL_GlobFlags flags, int *count);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

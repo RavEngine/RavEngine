@@ -7,7 +7,7 @@
 #include "Debug.hpp"
 #include <libnyquist/Decoders.h>
 #include <libnyquist/Encoders.h>
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "Filesystem.hpp"
 #include <r8bbase.h>
 #include <CDSPResampler.h>

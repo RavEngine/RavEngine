@@ -1,6 +1,6 @@
 #pragma once
 #if !RVE_SERVER
-#include <SDL_audio.h>
+#include <SDL3/SDL_audio.h>
 #endif
 #include "Ref.hpp"
 #include "WeakRef.hpp"

@@ -1,7 +1,7 @@
 #if !RVE_SERVER
 #include "InputManager.hpp"
-#include <SDL_events.h>
-#include <SDL.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL.h>
 #include <RenderEngine.hpp>
 #include "Debug.hpp"
 #include "App.hpp"

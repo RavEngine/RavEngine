@@ -1,7 +1,7 @@
 #include "App.hpp"
 #if !RVE_SERVER
     #include "RenderEngine.hpp"
-    #include <SDL_events.h>
+    #include <SDL3/SDL_events.h>
     #include "Texture.hpp"
     #include <RmlUi/Core.h>
     #include "GUI.hpp"
@@ -9,7 +9,7 @@
     #include "RMLFileInterface.hpp"
     #include "InputManager.hpp"
     #include "Skybox.hpp"
-    #include <SDL.h>
+    #include <SDL3/SDL.h>
     #include "AudioPlayer.hpp"
     #include "Window.hpp"
     #include <RGL/Swapchain.hpp>

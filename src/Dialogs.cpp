@@ -1,7 +1,7 @@
 #if !RVE_SERVER
 #include "Dialogs.hpp"
 #include "App.hpp"
-#include <SDL_messagebox.h>
+#include <SDL3/SDL_messagebox.h>
 #include "Debug.hpp"
 #include "Window.hpp"
 #include <utility>
