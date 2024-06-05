@@ -8,7 +8,7 @@
 #endif
 
 #if __ANDROID__
-#include <SDL_iostream.h>
+#include <SDL3/SDL_iostream.h>
 
 // Android sucks and makes reading data out of the Apk difficult.
 // we must emulate some behavior in order for PhysFS to work with it.
