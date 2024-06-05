@@ -2,7 +2,7 @@
 #if !RVE_SERVER
     #import <QuartzCore/CAMetalLayer.h>
     #import <Metal/Metal.h>
-    #include <SDL.h>
+    #include <SDL3/SDL.h>
     #include <RGL/RGL.hpp>
     #include <RGL/Device.hpp>
 #else
