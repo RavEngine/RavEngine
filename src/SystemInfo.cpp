@@ -90,12 +90,11 @@ std::string SystemInfo::CPUBrandString(){
     return "Mystery WinARM64 CPU";
 #endif
 #elif __linux__
-	ifstream in("/proc/cpuinfo");
-	string line;
-	while (in >> line && line != "model");
-	in >> line >> line >> line >> line >> line;
-	getline(in,line);
-	return line;
+#if __arm__ || __aarch64__
+    return "Unknown ARM CPU";
+#else
+    return "Unknown x86_64 CPU";
+#endif
 #endif
     return "Unknown CPU";
 }
@@ -111,18 +110,7 @@ std::string SystemInfo::OperatingSystemNameString(){
 #elif _WIN32
     return "Windows WIN32";
 #elif __linux__
-    ifstream in("/etc/os-release");
-    if (!in.is_open()){
-    	return "Linux-Unknown";
-    }
-    string str;
-    while(getline(in,str,'=') && str != "PRETTY_NAME"){
-    	getline(in,str);
-    }
-    char c;
-    in >> c;
-    getline(in,str,'"');
-    return str;
+    return "Linux";
 #endif
     return "Unknown OS";
 }
