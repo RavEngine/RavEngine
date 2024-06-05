@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{8264C7F3-A41B-4695-8008-A27F674ADEB0}</ProjectGuid>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <TargetName>WinPixEventRuntime</TargetName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\lib\WinPixEventRuntime.lib.vcxproj">
+      <Project>{341700af-6368-49cd-be4d-8e8b11017528}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ItemDefinitionGroup>
+    <Link>
+      <ModuleDefinitionFile>WinPixEventRuntime.def</ModuleDefinitionFile>
+    </Link>
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);USE_PIX;USE_PIX_ON_ALL_ARCHITECTURES;</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>
+        $(XeSharedIntermediatePath);
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <Import Project="..\shared\WinPixEventRuntime.shared.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

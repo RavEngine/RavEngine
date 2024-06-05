@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{750CF23A-1B4A-4F62-ACB7-45FE8B78A7A7}</ProjectGuid>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <TargetName>PixEventDecoder.lib</TargetName>
+    <VersionInfoFileDescription>PixEventDecoder</VersionInfoFileDescription>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <Link>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="EventReading.cpp" />
+    <ClCompile Include="pch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="BlockParser.cpp" />
+    <ClCompile Include="PixEventDecoder.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\PixEventDecoder\DecodedPixEventTypes.h" />
+    <ClInclude Include="..\include\PixEventDecoder\PixEventDecoder.h" />
+    <ClInclude Include="pch.h">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClInclude>
+    <ClInclude Include="EventReading.h" />
+    <ClInclude Include="BlockParser.h" />
+    <ClInclude Include="PIXEventsFormat.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

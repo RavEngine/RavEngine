@@ -11,6 +11,7 @@
 #include "D3D12RenderPass.hpp"
 #include "D3D12ComputePipeline.hpp"
 
+#include <pix3.h>
 
 namespace RGL {
 
@@ -517,11 +518,14 @@ namespace RGL {
 	}
 	void CommandBufferD3D12::BeginRenderDebugMarker(const std::string& label)
 	{
+		/*
 		auto fn = GetBeginEvent();
 		if (fn != nullptr) {
 			fn(commandList.Get(), 0, label.c_str());
 		}
+		*/
 
+		PIXBeginEvent(commandList.Get(), 0, label.c_str());
 	}
 	void CommandBufferD3D12::BeginComputeDebugMarker(const std::string& label)
 	{
@@ -529,10 +533,13 @@ namespace RGL {
 	}
 	void CommandBufferD3D12::EndRenderDebugMarker()
 	{
+		/*
 		auto fn = GetEndEvent();
 		if (fn != nullptr) {
 			fn(commandList.Get());
 		}
+		*/
+		PIXEndEvent(commandList.Get());
 	}
 	void CommandBufferD3D12::EndComputeDebugMarker()
 	{

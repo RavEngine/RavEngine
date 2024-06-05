@@ -137,6 +137,15 @@ if(MSVC AND NOT RGL_DISABLE_DX)
 		FOLDER "${RGL_IDE_ROOT}/Libraries"
 	)
 	target_include_directories(${PROJECT_NAME} PUBLIC "deps/DirectXTK12/Inc")
+
+	# PIX stuff
+
+	add_subdirectory(deps/PixEvents-cmake)
+	set(PIXLIB "WinPixEventRuntime")
+
+	set_target_properties("WinPixEventRuntime" "WinPixEventRuntime_ETW" PROPERTIES 
+	FOLDER "${RGL_IDE_ROOT}/Libraries/"
+)
 else()
 	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_DX12_AVAILABLE=0)
 	set(RGL_DX12_AVAILABLE OFF CACHE INTERNAL "RGL DX12")
@@ -168,6 +177,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	${QZC_LIB}
 	${X11_LIBRARIES}
     ${RGL_RUNTIME_COMPILER_LIB}
+	${PIXLIB}
 	SPIRV-Reflect
 )
 
@@ -217,7 +227,6 @@ endif()
 set_target_properties("GenericCodeGen" "glslang" "MachineIndependent" "OGLCompiler" "OSDependent" "SPIRV" "SPVRemapper" "glslang-default-resource-limits" PROPERTIES 
 	FOLDER "${RGL_IDE_ROOT}/Libraries/glslang"
 )
-
 
 set_target_properties(
 	"SPIRV-Tools-opt" "SPIRV-Tools-reduce" "SPIRV-Tools-static" "SPIRV-Tools-shared" "SPIRV-Tools-lint" "SPIRV-Tools-diff" "SPIRV-Tools-link"

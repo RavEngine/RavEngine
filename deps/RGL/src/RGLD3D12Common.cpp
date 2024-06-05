@@ -11,10 +11,15 @@
 #include <atlbase.h>
 #include <dxcapi.h>
 
+#define DX12_USE_AGILITY 1
+
 // Exports for the Agility SDK. For Windows 10 users, Go here: https://www.nuget.org/packages/Microsoft.Direct3D.D3D12/1.614.0 then unzip it, and place 
 // D3D12Core.dll and d3d12SDKLayers.dll in a folder named D3D12 next to the executable.
+
+#if DX12_USE_AGILITY
 extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 614; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
+#endif
 
 #define GPU_BASED_VALIDATION 0
 

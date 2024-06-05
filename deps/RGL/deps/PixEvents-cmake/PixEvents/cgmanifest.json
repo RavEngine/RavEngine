@@ -1,0 +1,23 @@
+{
+  "Registrations": [
+    {
+      "component": {
+        "type": "git",
+        "git": {
+          "repositoryUrl": "https://github.com/google/googletest",
+          "commitHash": "703bd9caab50b139428cea1aaff9974ebee5742e"
+        }
+      }
+    },
+    {
+      "component": {
+        "type": "git",
+        "git": {
+          "repositoryUrl": "https://github.com/microsoft/wil/",
+          "commitHash": "9db6276dce851dc2b6807fc81bffbec2e27acd0b"
+        }
+      }
+    },
+  ],
+  "Version": 1
+}

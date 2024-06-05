@@ -1,0 +1,18 @@
+LIBRARY WinPixEventRuntime_UAP
+
+EXPORTS
+PIXBeginCapture2 PRIVATE
+PIXEndCapture PRIVATE
+PIXGetCaptureState
+PIXEventsReplaceBlock
+PIXGetThreadInfo
+PIXReportCounter
+PIXNotifyWakeFromFenceSignal
+PIXRecordMemoryAllocationEvent
+PIXRecordMemoryFreeEvent
+PIXEndEventOnCommandList
+PIXBeginEventOnCommandList
+PIXSetMarkerOnCommandList
+PIXEndEventOnCommandQueue
+PIXBeginEventOnCommandQueue
+PIXSetMarkerOnCommandQueue

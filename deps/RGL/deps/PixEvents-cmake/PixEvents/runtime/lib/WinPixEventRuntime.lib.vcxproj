@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{341700AF-6368-49CD-BE4D-8E8B11017528}</ProjectGuid>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <TargetName>WinPixEventRuntime</TargetName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>$(MSBuildThisFileDirectory)pch.h</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>$(MSBuildThisFileDirectory)pch.h;$(ForcedIncludeFiles)</ForcedIncludeFiles> 
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);USE_PIX;USE_PIX_ON_ALL_ARCHITECTURES;</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>
+        $(XeSharedIntermediatePath);
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="BlockAllocator.h" />
+    <ClInclude Include="PEvtBlk.h" />
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="ThreadData.h" />
+    <ClInclude Include="ThreadedWorker.h" />
+    <ClInclude Include="Threads.h" />
+    <ClInclude Include="WinPixEventRuntime.h" />
+    <ClInclude Include="Worker.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <mc Include="PixEtw.man" />
+    <ClCompile Include="BlockAllocator.cpp" />
+    <ClCompile Include="ThreadData.cpp" />
+    <ClCompile Include="ThreadedWorker.cpp" />
+    <ClCompile Include="Threads.cpp" />
+    <ClCompile Include="WinPixEventRuntime.cpp" />
+    <ClCompile Include="pch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Target Outputs="$(XeSharedIntermediatePath)\%(filename).rc" Inputs="@(mc)" Name="GenerateEtwHeader">
+    <MakeDir Directories="$(XeSharedIntermediatePath)" />
+    <Exec Command="mc @(mc) -um -P ETW_EVENT -r $(XeSharedIntermediatePath) -h $(XeSharedIntermediatePath)" />
+  </Target>
+  <PropertyGroup>
+    <BeforeClCompileTargets>$(BeforeClCompileTargets);GenerateEtwHeader</BeforeClCompileTargets>
+  </PropertyGroup>
+</Project>
