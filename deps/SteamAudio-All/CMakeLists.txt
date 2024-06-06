@@ -67,6 +67,9 @@ add_library(PFFFT::PFFFT ALIAS PFFFT)
 add_library(MySOFA::MySOFA ALIAS mysofa-static)
 
 target_include_directories(mysofa-static PUBLIC "${ZLIB_INCLUDE_DIR}")
+set_target_properties(mysofa-static PROPERTIES
+	POSITION_INDEPENDENT_CODE ON
+)
 
 set(MySOFA_LIBRARY mysofa-static)
 set(MySOFA_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/libmysofa/src/hrtf")
