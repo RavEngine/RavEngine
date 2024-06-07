@@ -229,12 +229,12 @@ namespace RGL {
             auto missing = getMissingDeviceExtensions(physicalDevice);
             std::string message = "vkCreateDevice error: Missing extensions:\n";
             for (const auto& ext : missing) {
-                message += std::format("\t - {}\n", ext);
+                message += "\t - " + ext + "\n";
             }
             FatalError(message);
         }
         else if (result != VK_SUCCESS) {
-            FatalError(std::format("vkCreateDevice failed: {}", string_VkResult(result)));
+            FatalError(std::string("vkCreateDevice failed: ") + string_VkResult(result));
         }
 #endif
 
