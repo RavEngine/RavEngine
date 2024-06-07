@@ -653,7 +653,6 @@ struct LightingType{
                                     mainCommandBuffer->BindRenderPipeline(
                                             billboardMat->userRenderPipeline);
                                     mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
-									mainCommandBuffer->SetIndexBuffer(quadIndBuffer);
                                     mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, 0);
                                     mainCommandBuffer->BindBuffer(emitter.activeParticleIndexBuffer,
                                                                   1);

@@ -1176,14 +1176,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	});
 	quadVertBuffer->SetBufferData(quadVerts);
 
-	quadIndBuffer = device->CreateBuffer({
-		{.IndexBuffer = true},
-		sizeof(uint16_t),
-		quadInds,
-		RGL::BufferAccess::Private
-	});
-	quadIndBuffer->SetBufferData(quadInds);
-
 	auto pointLightMeshData = genIcosphere(2);
 
 	pointLightVertexBuffer = device->CreateBuffer({
