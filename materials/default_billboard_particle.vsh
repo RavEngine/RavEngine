@@ -14,11 +14,11 @@ struct ParticleData{
 layout(location = 0) out vec2 out_uv; 
 
 
-ParticleVertexOut vert(ParticleData data){
+ParticleVertexOut vert(ParticleData data, vec2 inVertex){
 
     ParticleVertexOut v_out;
 
-    vec4 vert = vec4(vec3(in_position * data.scale,0) + data.pos,1);
+    vec4 vert = vec4(vec3(inVertex * data.scale, 0) + data.pos, 1);
 
     vert = ubo.viewProj * vert;
 

@@ -1164,10 +1164,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		{{1,-1}},
 	};
 
-	constexpr static uint16_t quadInds[] = {
-		2, 0, 1, 2, 1, 3
-	};
-
 	quadVertBuffer = device->CreateBuffer({
 		{.VertexBuffer = true},
 		sizeof(ParticleQuadVert),
