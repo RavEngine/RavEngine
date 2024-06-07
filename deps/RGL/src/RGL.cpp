@@ -59,6 +59,10 @@ namespace RGL {
 #endif
     };
 
+    static fatal_callback_t fatalCallbackFn = [](const std::string& message) {
+        throw std::runtime_error(message);
+    };
+
     RGLDevicePtr RGL::IDevice::CreateSystemDefaultDevice()
     {
         switch (RGL::currentAPI) {
@@ -93,6 +97,9 @@ namespace RGL {
     {
         if (options.callback) {
             callbackFn = options.callback;
+        }
+        if (options.fatal_callback) {
+            fatalCallbackFn = options.fatal_callback;
         }
 
         if (options.api == API::PlatformDefault) {
@@ -202,7 +209,7 @@ namespace RGL {
         // crash the program 
         // the user should not try to catch this, UB lies beyond
         if (severity == MessageSeverity::Fatal) {
-            throw std::runtime_error(str);
+            fatalCallbackFn(str);
         }
     }
     void FatalError(const std::string& str) {
@@ -219,7 +226,7 @@ namespace RGL {
 #endif
 
 
-        LogMessage(MessageSeverity::Fatal, result);
+        FatalError(result);
     }
 
     RGLRenderPassPtr CreateRenderPass(const RenderPassConfig& config) {

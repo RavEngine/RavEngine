@@ -42,10 +42,12 @@ namespace RGL {
 	};
 
 	using callback_t = std::function<void(MessageSeverity, const std::string&)>;
+	using fatal_callback_t = std::function<void(const std::string&)>;
 
 	struct InitOptions {
 		API api = API::PlatformDefault;	// what graphics API to use
 		callback_t callback;			// what function to invoke with debug messages
+		fatal_callback_t fatal_callback;	// what function to invoke when a non-recoverable error occurs
 
 		std::string appName;			// Name of your app. Used only on Vulkan.
 		std::string engineName;			// Name of your game engine. Used only on Vulkan.

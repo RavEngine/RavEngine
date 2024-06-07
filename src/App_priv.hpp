@@ -51,6 +51,25 @@ using namespace std::chrono;
 // pointer to the current app instance
 static App* currentApp = nullptr;
 
+static auto RGLFatalCallback = [](const std::string& msg) {
+	Debug::Fatal(msg);
+};
+
+static auto RGLmsgCallback = [](RGL::MessageSeverity severity, const std::string& msg) {
+	switch (severity) {
+	case RGL::MessageSeverity::Info:
+		Debug::Log(msg);
+		break;
+	case RGL::MessageSeverity::Warning:
+		Debug::Warning(msg);
+		break;
+	case RGL::MessageSeverity::Error:
+		Debug::Error(msg);
+		break;
+	}
+	// fatal errors are handled by the fatal callback
+};
+
 // on crash, call this
 void crash_signal_handler(int signum) {
 	::signal(signum, SIG_DFL);
@@ -141,6 +160,8 @@ int App::run(int argc, char** argv) {
 
 		RGL::InitOptions opt{
 			.api = api,
+			.callback = RGLmsgCallback,
+			.fatal_callback = RGLFatalCallback,
 			.engineName = "RavEngine",
 		};
 		RGL::Init(opt);

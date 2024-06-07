@@ -28,21 +28,12 @@ namespace RGL {
 
     constexpr static const char* const deviceExtensions[] = {
            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-           VK_KHR_IMAGELESS_FRAMEBUFFER_EXTENSION_NAME,
-           VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,
-           VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
-           VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
-           VK_KHR_MAINTENANCE1_EXTENSION_NAME,
-           VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
            VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
-           VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
-           VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
            VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
-           VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
-           VK_EXT_MEMORY_BUDGET_EXTENSION_NAME
+           VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
     };
 
-    bool checkDeviceExtensionSupport(const VkPhysicalDevice device) {
+    auto getMissingDeviceExtensions(const VkPhysicalDevice device) {
         uint32_t extensionCount;
         vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
 
@@ -55,7 +46,7 @@ namespace RGL {
             requiredExtensions.erase(extension.extensionName);
         }
 
-        return requiredExtensions.empty();
+        return requiredExtensions;
     };
 
     // find a queue of the right family
@@ -98,39 +89,6 @@ namespace RGL {
 
         std::vector<VkPhysicalDevice> devices(deviceCount);
         vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
-
-
-        constexpr auto isDeviceSuitable = [](const VkPhysicalDevice device) -> bool {
-            // look for all the features we want
-            VkPhysicalDevicePushDescriptorPropertiesKHR devicePushDescriptors{
-                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR,
-                .pNext = nullptr
-            };
-
-            VkPhysicalDeviceProperties2 deviceProperties{
-                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
-                .pNext = &devicePushDescriptors,
-            };
-            vkGetPhysicalDeviceProperties2(device, &deviceProperties);
-
-            VkPhysicalDeviceFeatures deviceFeatures;
-            vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-
-            auto queueFamilyData = findQueueFamilies(device);
-
-            auto extensionsSupported = checkDeviceExtensionSupport(device);
-
-            bool swapChainAdequate = false;
-            if (extensionsSupported) {
-                /*SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
-                bool swapchainSupported = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();*/
-                swapChainAdequate = /*swapchainSupported &&*/ swapChainAdequate;
-            }
-
-            // right now we don't care so pick any gpu
-            // in the future implement a scoring system to pick the best device
-            return deviceProperties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && queueFamilyData.isComplete() && extensionsSupported;
-        };
 
 
         // sort devices
@@ -234,9 +192,6 @@ namespace RGL {
         if (vulkan1_3Features.dynamicRendering == VK_FALSE) {
             FatalError("Cannot init - dynamic rendering is not supported");
         }
-        if (vulkan1_3Features.synchronization2 == VK_FALSE) {
-            FatalError("Cannot init - synchronization2 is not supported");
-        }
         if (vulkan1_2Features.scalarBlockLayout == VK_FALSE) {
             FatalError("Cannot init - ScalarBlockLayout is not supported");
         }
@@ -266,7 +221,22 @@ namespace RGL {
             deviceCreateInfo.enabledLayerCount = std::size(validationLayers);
             deviceCreateInfo.ppEnabledLayerNames = validationLayers;
         }
+#if !__ANDROID__
         VK_CHECK(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device));
+#else
+        auto result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device);
+        if (result == VK_ERROR_EXTENSION_NOT_PRESENT) {
+            auto missing = getMissingDeviceExtensions(physicalDevice);
+            std::string message = "vkCreateDevice error: Missing extensions:\n";
+            for (const auto& ext : missing) {
+                message += std::format("\t - {}\n", ext);
+            }
+            FatalError(message);
+        }
+        else if (result != VK_SUCCESS) {
+            FatalError(std::format("vkCreateDevice failed: {}", string_VkResult(result)));
+        }
+#endif
 
         // load extra functions
         loadVulkanFunction(device, vkCmdPushDescriptorSetKHR, "vkCmdPushDescriptorSetKHR");
