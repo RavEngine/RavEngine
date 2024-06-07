@@ -143,7 +143,7 @@ if(MSVC AND NOT RGL_DISABLE_DX)
 	add_subdirectory(deps/PixEvents-cmake)
 	set(PIXLIB $<$<NOT:$<CONFIG:release>>:WinPixEventRuntime>)
 
-	set_target_properties("WinPixEventRuntime" "WinPixEventRuntime_ETW" PROPERTIES 
+	set_target_properties("WinPixEventRuntime" "WinPixEventRuntime_ETW" "PixDecoder" PROPERTIES 
 	FOLDER "${RGL_IDE_ROOT}/Libraries/"
 )
 else()

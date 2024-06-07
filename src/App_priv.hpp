@@ -51,6 +51,7 @@ using namespace std::chrono;
 // pointer to the current app instance
 static App* currentApp = nullptr;
 
+#if !RVE_SERVER
 static auto RGLFatalCallback = [](const std::string& msg) {
 	Debug::Fatal(msg);
 };
@@ -69,6 +70,7 @@ static auto RGLmsgCallback = [](RGL::MessageSeverity severity, const std::string
 	}
 	// fatal errors are handled by the fatal callback
 };
+#endif
 
 // on crash, call this
 void crash_signal_handler(int signum) {
