@@ -161,7 +161,7 @@ namespace RavEngine {
 					}
 				},
 				.inputAssembly = {
-					.topology = RGL::PrimitiveTopology::TriangleStrip,
+					.topology = RGL::PrimitiveTopology::TriangleList,
 				},
 				.rasterizerConfig = {
 					.windingOrder = RGL::WindingOrder::Counterclockwise,
