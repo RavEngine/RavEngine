@@ -727,7 +727,7 @@ namespace RavEngine {
         }
         
         template<typename T, bool isPolymorphic = false>
-        inline void FilterValidityCheck(entity_t id, void* set, bool& satisfies){
+        inline void FilterValidityCheck(entity_t id, void* set, bool& satisfies) const{
             // in this order so that the first one the entity does not have aborts the rest of them
             if constexpr (!isPolymorphic) {
                 satisfies = satisfies && static_cast<EntitySparseSet<T>*>(set)->HasComponent(id);
@@ -812,6 +812,14 @@ namespace RavEngine {
                 return funcmode_t::isPolymorphic();
             }
         };
+
+        template< bool isPolymorphic, typename ... A>
+        bool DoesEntitySatisfyFilter(entity_t owner, const auto& pointerArray) {
+            bool satisfies = true;
+            uint32_t i = 0;
+            ((FilterValidityCheck<A, isPolymorphic>(owner, pointerArray[i], satisfies), i++), ...);
+            return satisfies;
+        }
                 
         template<typename ... A, typename filterone_t>
         inline void FilterOne(filterone_t& fom, entity_t i){
@@ -838,8 +846,7 @@ namespace RavEngine {
                     owner = static_cast<SparseSetForPolymorphic*>(fom.ptrs[0])->GetOwnerForDenseIdx(i);
                 }
                 if (EntityIsValid(owner)){
-                    bool satisfies = true;
-                    (FilterValidityCheck<A,filterone_t::isPolymorphic()>(owner, fom.ptrs[Index_v<A, A...>], satisfies), ...);
+                    bool satisfies = DoesEntitySatisfyFilter<filterone_t::isPolymorphic(), A...>(owner, fom.ptrs);
                     if (satisfies){
                         if constexpr (!filterone_t::isPolymorphic()){
                             fom.fm.f(FilterComponentGet<A>(owner,fom.ptrs[Index_v<A, A...>])...);
