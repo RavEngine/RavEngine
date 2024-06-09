@@ -333,7 +333,7 @@ struct LightingType{
 			prepareSkeletalCullingBuffer();
 		}
 
-		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult](matrix4 viewproj, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, bool includeParticles){
+		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult](matrix4 viewproj, matrix4 viewonly, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, bool includeParticles){
 
 			auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
 				if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
@@ -556,7 +556,7 @@ struct LightingType{
 					mainCommandBuffer->EndCompute();
 				}
 				};
-			auto renderTheRenderData = [this, &viewproj, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, includeParticles](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
+			auto renderTheRenderData = [this, &viewproj, &viewonly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, includeParticles](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
 				// do static meshes
 				mainCommandBuffer->SetViewport({
 					.x = float(viewportScissor.offset[0]),
@@ -645,10 +645,24 @@ struct LightingType{
 
 				// render particles
 				if (includeParticles) {
-					worldOwning->Filter([this, &viewproj](const ParticleEmitter& emitter, const Transform& t) {
+					struct QuadParticleData {
+						glm::mat4 viewProj;
+						glm::mat3 billboard;
+					};
+
+					glm::mat3 rotationOnly = viewonly;
+					
+
+					QuadParticleData quadData{
+						.viewProj = viewproj,
+						.billboard = glm::transpose(rotationOnly)
+					};
+
+					auto bufferBinding = WriteTransient(quadData);
+					worldOwning->Filter([this, &viewproj, &bufferBinding](const ParticleEmitter& emitter, const Transform& t) {
 						auto mat = emitter.GetMaterial();
 						std::visit(CaseAnalysis{
-                                [&mat, this, &emitter, &viewproj](
+                                [&mat, this, &emitter, &viewproj,&bufferBinding](
                                         const Ref <BillboardParticleMaterial> &billboardMat) {
                                     mainCommandBuffer->BindRenderPipeline(
                                             billboardMat->userRenderPipeline);
@@ -656,9 +670,9 @@ struct LightingType{
                                     mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, 0);
                                     mainCommandBuffer->BindBuffer(emitter.activeParticleIndexBuffer,
                                                                   1);
+									mainCommandBuffer->BindBuffer(transientBuffer, 2, bufferBinding);
 
                                     ParticleBillboardUBO ubo{
-                                            .viewProj = viewproj,
                                             .spritesheetDim = {},
                                             .numSprites = {}
                                     };
@@ -676,8 +690,8 @@ struct LightingType{
                                         };
 
                                         mainCommandBuffer->SetFragmentTexture(
-                                                tex->GetRHITexturePointer()->GetDefaultView(), 3);
-                                        mainCommandBuffer->SetFragmentSampler(textureSampler, 2);
+                                                tex->GetRHITexturePointer()->GetDefaultView(), 4);
+                                        mainCommandBuffer->SetFragmentSampler(textureSampler, 3);
                                     }
 
                                     mainCommandBuffer->SetVertexBytes(ubo, 0);
@@ -761,7 +775,7 @@ struct LightingType{
 
 					shadowRenderPass->SetDepthAttachmentTexture(shadowTexture->GetDefaultView());
 					auto shadowMapSize = shadowTexture->GetSize().width;
-					renderFromPerspective(lightSpaceMatrix, lightMats.camPos, shadowRenderPass, [](Ref<Material>&& mat) {
+					renderFromPerspective(lightSpaceMatrix, lightMats.lightView, lightMats.camPos, shadowRenderPass, [](Ref<Material>&& mat) {
 						return mat->GetShadowRenderPipeline();
 						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true }, lightMats.depthPyramid, false);
 
@@ -873,17 +887,17 @@ struct LightingType{
 			auto nextImgSize = view.pixelDimensions;
 			auto& target = view.collection;
 
-			auto renderDeferredPass = [this,&target, &renderFromPerspective](auto&& viewproj, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+			auto renderDeferredPass = [this,&target, &renderFromPerspective](auto&& viewproj, auto&& viewonly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// render all the static meshes
 
-				renderFromPerspective(viewproj, camPos, deferredRenderPass, [](Ref<Material>&& mat) {
+				renderFromPerspective(viewproj, viewonly, camPos, deferredRenderPass, [](Ref<Material>&& mat) {
 					return mat->GetMainRenderPipeline();
                 }, renderArea, {.Lit = true}, target.depthPyramid, true);
 
 				
 			};
 			
-			auto renderLightingPass = [this, &target, &renderFromPerspective, &nextImgSize, &worldOwning, &spotlightShadowMapFunction, &pointLightShadowmapFunction, &renderLightShadowmap](auto&& viewproj, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+			auto renderLightingPass = [this, &target, &renderFromPerspective, &nextImgSize, &worldOwning, &spotlightShadowMapFunction, &pointLightShadowmapFunction, &renderLightShadowmap](auto&& viewproj, auto&& viewonly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// do lighting pass
 				// these run in window coordinates, even if in split screen
 				// but are confined by the scissor rect
@@ -1096,12 +1110,12 @@ struct LightingType{
 
 			};
 
-            auto renderFinalPass = [this, &target, &worldOwning, &view, &guiScaleFactor, &nextImgSize, &renderFromPerspective](auto&& viewproj, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+            auto renderFinalPass = [this, &target, &worldOwning, &view, &guiScaleFactor, &nextImgSize, &renderFromPerspective](auto&& viewproj, auto&& viewonly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
                 
                 //render unlits
                 unlitRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
                 unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
-                renderFromPerspective(viewproj, camPos, unlitRenderPass, [](Ref<Material>&& mat) {
+                renderFromPerspective(viewproj, viewonly, camPos, unlitRenderPass, [](Ref<Material>&& mat) {
                     return mat->GetMainRenderPipeline();
                 }, renderArea, {.Unlit = true}, target.depthPyramid, false);
                 
@@ -1303,7 +1317,7 @@ struct LightingType{
 						.extent = { uint32_t(nextImgSize.width), uint32_t(nextImgSize.height) }
 				};
 
-				function(viewproj, camPos, fullSizeViewport, fullSizeScissor, renderArea);
+				function(viewproj, camdata.viewOnly,  camPos, fullSizeViewport, fullSizeScissor, renderArea);
 			};
             
 			auto generatePyramid = [this](const DepthPyramid& depthPyramid, RGLTexturePtr depthStencil) {
@@ -1419,7 +1433,7 @@ struct LightingType{
 				stackarray(offsets, uint32_t, view.camDatas.size());
 				uint32_t offset_index = 0;
 
-				auto renderSSAOPass = [this, &target, &nextImgSize, &worldOwning, &offsets, &offset_index](auto&& viewproj, auto&& camPos, auto&& fullsizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+				auto renderSSAOPass = [this, &target, &nextImgSize, &worldOwning, &offsets, &offset_index](auto&& viewproj, auto&& viewonly, auto&& camPos, auto&& fullsizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 
 					ssaoUBO pushConstants{
 						.viewProj = viewproj,

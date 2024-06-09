@@ -3,6 +3,10 @@ struct ParticleVertexOut{
     vec4 position;
 };
 
+struct ParticleMatrices{
+    mat4 viewProj;
+    mat3 billboard;
+};
 
 #include "%s"
 
@@ -19,6 +23,14 @@ layout(std430, binding = 1) readonly buffer aliveSSBO
 };
 
 
+
+layout(std430, binding = 2) readonly buffer matrixSSBO
+{
+    ParticleMatrices matrixData[];
+};
+
+
+
 void main(){
     
     vec2 quadPositions[] =
@@ -33,7 +45,7 @@ void main(){
 
     uint particle = aliveParticleIndexBuffer[gl_InstanceID];
 
-    ParticleVertexOut user_out = vert(particleData[particle], inPos);
+    ParticleVertexOut user_out = vert(particleData[particle], matrixData[0], inPos);
 
     gl_Position = user_out.position;
 }

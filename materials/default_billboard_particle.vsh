@@ -1,6 +1,5 @@
 
 layout(push_constant, std430) uniform UniformBufferObject{
-    mat4 viewProj;
     ivec2 spritesheetDim;
     ivec2 numSprites;
 } ubo;
@@ -14,13 +13,16 @@ struct ParticleData{
 layout(location = 0) out vec2 out_uv; 
 
 
-ParticleVertexOut vert(ParticleData data, vec2 inVertex){
+ParticleVertexOut vert(ParticleData data, ParticleMatrices matrices, vec2 inVertex){
 
     ParticleVertexOut v_out;
 
-    vec4 vert = vec4(vec3(inVertex * data.scale, 0) + data.pos, 1);
+    vec3 localPoint = vec3(inVertex * data.scale, 0);
+    localPoint = matrices.billboard * localPoint;
 
-    vert = ubo.viewProj * vert;
+    vec4 vert = vec4(localPoint + data.pos, 1);
+
+    vert = matrices.viewProj * vert;
 
     vec2 cellDim = (ubo.spritesheetDim / vec2(ubo.numSprites)) / ubo.spritesheetDim;  // [0,1] for a single frame
 

@@ -1,12 +1,11 @@
 
 layout(push_constant, std430) uniform UniformBufferObject{
-    mat4 viewProj;
     ivec2 spritesheetDim;
     ivec2 spritesheetFrameDim;
 } ubo;
 
-layout(binding = 2) uniform sampler g_sampler; 
-layout(binding = 3) uniform texture2D t_spritesheet;
+layout(binding = 3) uniform sampler g_sampler; 
+layout(binding = 4) uniform texture2D t_spritesheet;
 
 layout(location = 0) in vec2 inUV; 
 
