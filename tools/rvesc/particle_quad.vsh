@@ -4,8 +4,8 @@ struct ParticleVertexOut{
 };
 
 struct ParticleMatrices{
-    mat4 viewProj;
-    mat3 billboard;
+    mat4 view;
+    mat4 proj;
 };
 
 #include "%s"

@@ -17,12 +17,13 @@ ParticleVertexOut vert(ParticleData data, ParticleMatrices matrices, vec2 inVert
 
     ParticleVertexOut v_out;
 
-    vec3 localPoint = vec3(inVertex * data.scale, 0);
-    localPoint = matrices.billboard * localPoint;
+    const vec3 centerInViewSpace = (matrices.view * vec4(data.pos,1)).xyz;
 
-    vec4 vert = vec4(localPoint + data.pos, 1);
+    const vec3 offsetPoint = vec3(inVertex * data.scale, 0);
 
-    vert = matrices.viewProj * vert;
+    vec4 vert = vec4(centerInViewSpace + offsetPoint,1);
+
+    vert = matrices.proj * vert;
 
     vec2 cellDim = (ubo.spritesheetDim / vec2(ubo.numSprites)) / ubo.spritesheetDim;  // [0,1] for a single frame
 
