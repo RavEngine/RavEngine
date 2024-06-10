@@ -184,6 +184,7 @@ if (NOT RAVENGINE_SERVER)
 	set(SDL_LIBC ON CACHE BOOL "" FORCE)
 	set(SDL_TESTS OFF CACHE INTERNAL "")
     set(SDL_TEST_LIBRARY OFF CACHE INTERNAL "")
+	set(SDL_REVISION "RVE Vendored SDL" CACHE INTERNAL "") # this prevents re-configures every time a git change occurs: https://github.com/libsdl-org/SDL/issues/9998
 	add_subdirectory(deps/SDL EXCLUDE_FROM_ALL)
 		if(SDL_STATIC)
 			set(SDL2STATIC_LIB 	"SDL3-static")
