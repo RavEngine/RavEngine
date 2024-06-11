@@ -334,6 +334,23 @@ struct LightingType{
 		}
 
 		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult](const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, bool includeParticles){
+            
+            uint32_t particleBillboardMatrices = 0;
+            if (includeParticles){
+                struct QuadParticleData {
+                    glm::mat4 viewProj;
+                    glm::mat3 billboard;
+                };
+                
+                glm::mat3 rotComp = viewonly;
+                
+                QuadParticleData quadData{
+                    .viewProj = viewproj,
+                    .billboard = glm::inverse(rotComp),
+                };
+                
+                particleBillboardMatrices = WriteTransient(quadData);
+            }
 
 			auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
 				if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
@@ -556,7 +573,7 @@ struct LightingType{
 					mainCommandBuffer->EndCompute();
 				}
 				};
-			auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, includeParticles](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
+			auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, includeParticles, particleBillboardMatrices](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
 				// do static meshes
 				mainCommandBuffer->SetViewport({
 					.x = float(viewportScissor.offset[0]),
@@ -645,23 +662,11 @@ struct LightingType{
 
 				// render particles
 				if (includeParticles) {
-					struct QuadParticleData {
-						glm::mat4 viewProj;
-						glm::mat3 billboard;
-					};
 
-					glm::mat3 rotComp = viewonly;
-					
-					QuadParticleData quadData{
-						.viewProj = viewproj,
-						.billboard = glm::inverse(rotComp),
-					};
-
-					auto bufferBinding = WriteTransient(quadData);
-					worldOwning->Filter([this, &viewproj, &bufferBinding](const ParticleEmitter& emitter, const Transform& t) {
+					worldOwning->Filter([this, &viewproj, &particleBillboardMatrices](const ParticleEmitter& emitter, const Transform& t) {
 						auto mat = emitter.GetMaterial();
 						std::visit(CaseAnalysis{
-                                [&mat, this, &emitter, &viewproj,&bufferBinding](
+                                [&mat, this, &emitter, &viewproj,&particleBillboardMatrices](
                                         const Ref <BillboardParticleMaterial> &billboardMat) {
                                     mainCommandBuffer->BindRenderPipeline(
                                             billboardMat->userRenderPipeline);
@@ -669,7 +674,7 @@ struct LightingType{
                                     mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, 0);
                                     mainCommandBuffer->BindBuffer(emitter.activeParticleIndexBuffer,
                                                                   1);
-									mainCommandBuffer->BindBuffer(transientBuffer, 2, bufferBinding);
+									mainCommandBuffer->BindBuffer(transientBuffer, 2, particleBillboardMatrices);
 
                                     ParticleBillboardUBO ubo{
                                             .spritesheetDim = {},
