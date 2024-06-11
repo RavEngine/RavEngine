@@ -4,8 +4,8 @@ struct ParticleVertexOut{
 };
 
 struct ParticleMatrices{
-    mat4 view;
-    mat4 proj;
+    mat4 viewProj;
+    mat3 billboard;
 };
 
 #include "%s"
@@ -24,7 +24,7 @@ layout(std430, binding = 1) readonly buffer aliveSSBO
 
 
 
-layout(std430, binding = 2) readonly buffer matrixSSBO
+layout(scalar, binding = 2) readonly buffer matrixSSBO
 {
     ParticleMatrices matrixData[];
 };

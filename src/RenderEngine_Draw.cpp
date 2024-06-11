@@ -646,13 +646,15 @@ struct LightingType{
 				// render particles
 				if (includeParticles) {
 					struct QuadParticleData {
-						glm::mat4 viewMat;
-						glm::mat4 projMat;
+						glm::mat4 viewProj;
+						glm::mat3 billboard;
 					};
+
+					glm::mat3 rotComp = viewonly;
 					
 					QuadParticleData quadData{
-						.viewMat = viewproj,
-						.projMat = projOnly,
+						.viewProj = viewproj,
+						.billboard = glm::inverse(rotComp),
 					};
 
 					auto bufferBinding = WriteTransient(quadData);
