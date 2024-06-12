@@ -168,8 +168,8 @@ namespace RavEngine {
 
 		transientOffset += data.size();
         
-#if __APPLE__
-        // Metal requires that buffer offsets be multiples of 16
+#if 1 ;//__APPLE__
+        // Metal and Vulkan require that buffer offsets be multiples of 16
         transientOffset = closest_multiple_of<decltype(transientOffset)>(transientOffset, 16);
 #endif
 
