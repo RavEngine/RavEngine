@@ -19,7 +19,7 @@ ParticleVertexOut vert(ParticleData data, ParticleMatrices matrices, vec2 inVert
 
     mat3 billboardmtx = matrices.billboard;
 
-    vec3 rotated_quad = billboardmtx * vec3(inVertex,0);
+    vec3 rotated_quad = billboardmtx * vec3(inVertex * data.scale,0);
 
     vec4 vert = vec4(data.pos + rotated_quad,1);
 
