@@ -66,6 +66,7 @@ namespace RavEngine {
 	void ParticleEmitter::Play()
 	{
 		emittingThisFrame = true;	// in burst mode, this will be set to false on the next frame
+		lastSpawnTime = GetApp()->GetCurrentTime();
 	}
 	void ParticleEmitter::Stop()
 	{
@@ -74,6 +75,28 @@ namespace RavEngine {
 	void ParticleEmitter::Reset()
 	{
 
+	}
+	void ParticleEmitter::SetEmissionRate(uint32_t rate)
+	{
+		spawnRate = rate;
+	}
+	uint32_t ParticleEmitter::GetNextParticleSpawnCount()
+	{
+		if (mode == ParticleEmitter::Mode::Burst) {
+			return spawnRate;
+		}
+		else {
+			// rate is particles per second
+			auto now = GetApp()->GetCurrentTime();
+			auto delta = now - lastSpawnTime;
+			uint32_t nParticles = std::round(delta * spawnRate);
+			if (nParticles > 0) {
+				lastSpawnTime = now;
+			}
+
+			return nParticles;
+		}
+		
 	}
 	uint16_t ParticleEmitter::TotalParticleData() const
 	{

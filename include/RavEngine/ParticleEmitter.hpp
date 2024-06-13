@@ -58,11 +58,11 @@ namespace RavEngine {
 			return maxParticleCount;
 		}
 
-		uint32_t spawnRate = 10;
+		void SetEmissionRate(uint32_t rate);
 
-		uint32_t numParticlesToSpawn() const {
-			return spawnRate;
-		}
+		// this function modifies internal state.
+		// for internal use only
+		uint32_t GetNextParticleSpawnCount();
 
 	private:
 		RGLBufferPtr
@@ -81,6 +81,10 @@ namespace RavEngine {
 
 		bool emittingThisFrame = false;
 		uint32_t maxParticleCount;
+
+		uint32_t spawnRate = 10;
+
+		double lastSpawnTime = 0;
 	};
 
 }

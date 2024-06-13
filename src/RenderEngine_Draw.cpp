@@ -224,7 +224,7 @@ struct LightingType{
 				bool hasCalculatedSizes = false;
 
 				// spawning particles?
-				auto spawnCount = emitter.numParticlesToSpawn();
+				auto spawnCount = emitter.GetNextParticleSpawnCount();
 				if (spawnCount > 0 && emitter.IsEmitting()) {
 					ParticleCreationPushConstants constants{
 						.particlesToSpawn = spawnCount,
