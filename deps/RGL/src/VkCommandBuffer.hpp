@@ -208,6 +208,7 @@ namespace RGL {
 		void EncodeCommand(auto&& commandValue) {
 			renderCommands.push_back(commandValue);
 			if (!isInsideRenderingBlock) {
+				ApplyBarriers();
 				EncodeQueuedCommands();				// run it immediately if not inside a beginrendering
 			}
 		}

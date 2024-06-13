@@ -1,4 +1,3 @@
-#extension GL_EXT_debug_printf : enable
 
 struct ParticleState
 {
@@ -49,8 +48,4 @@ void main(){
     indirectBuffers[0] = IndirectWorkgroupSize(uint(ceil(particleState[0].createdThisFrame/64.f)),1,1);  // initialization shader
     indirectBuffers[1] = IndirectWorkgroupSize(uint(ceil(particleState[0].aliveParticleCount/64.f)),1,1);  // update shader
 
-    debugPrintfEXT("Indirect data: (%d, %d, %d), (%d, %d, %d)", 
-        indirectBuffers[0].x,indirectBuffers[0].y,indirectBuffers[0].z,
-        indirectBuffers[1].x,indirectBuffers[1].y,indirectBuffers[1].z
-    );
 }
