@@ -3,100 +3,9 @@
 #include "App.hpp"
 
 namespace RavEngine {
-	ParticleMaterial::ParticleMaterial(const std::string& initShaderName, const std::string& updateShaderName, const std::string& particleVS, const std::string& particleFS)
+	ParticleRenderMaterial::ParticleRenderMaterial(const std::string& particleVS, const std::string& particleFS)
 	{
 		auto device = GetApp()->GetDevice();
-		// init shader
-		{
-			auto layout = device->CreatePipelineLayout({
-				.bindings = {
-					{
-						.binding = 0,
-						.type = RGL::BindingType::StorageBuffer,
-						.stageFlags = RGL::BindingVisibility::Compute,
-						.writable = false,
-					},
-					{
-						.binding = 1,
-						.type = RGL::BindingType::StorageBuffer,
-						.stageFlags = RGL::BindingVisibility::Compute,
-						.writable = false,
-					},
-					{
-						.binding = 2,
-						.type = RGL::BindingType::StorageBuffer,
-						.stageFlags = RGL::BindingVisibility::Compute,
-						.writable = true,
-					},
-					{
-						.binding = 3,
-						.type = RGL::BindingType::StorageBuffer,
-						.stageFlags = RGL::BindingVisibility::Compute,
-						.writable = true,
-					},
-					{
-						.binding = 4,
-						.type = RGL::BindingType::StorageBuffer,
-						.stageFlags = RGL::BindingVisibility::Compute,
-						.writable = false,
-					}
-				},
-				.constants = {}
-			});
-
-			userInitPipeline = device->CreateComputePipeline({
-				.stage = {
-					.type = RGL::ShaderStageDesc::Type::Compute,
-					.shaderModule = LoadShaderByFilename(Format("{}", initShaderName), device),
-				},
-				.pipelineLayout = layout
-			});
-		}
-		// update shader
-		{
-			auto layout = device->CreatePipelineLayout({
-				.bindings = {
-					{
-						.binding = 0,
-						.type = RGL::BindingType::StorageBuffer,
-						.stageFlags = RGL::BindingVisibility::Compute,
-						.writable = true,
-					},
-					{
-						.binding = 1,
-						.type = RGL::BindingType::StorageBuffer,
-						.stageFlags = RGL::BindingVisibility::Compute,
-						.writable = true,
-					},
-					{
-						.binding = 2,
-						.type = RGL::BindingType::StorageBuffer,
-						.stageFlags = RGL::BindingVisibility::Compute,
-						.writable = true,
-					},
-					{
-						.binding = 3,
-						.type = RGL::BindingType::StorageBuffer,
-						.stageFlags = RGL::BindingVisibility::Compute,
-						.writable = true,
-					},
-				},
-				.constants = {
-					{
-						sizeof(ParticleUpdateUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Compute)				//TODO: don't hardcode the constants size, this is dependent on billboard vs mesh render mode
-					}
-				}
-			});
-
-			userUpdatePipeline = device->CreateComputePipeline({
-				.stage = {
-					.type = RGL::ShaderStageDesc::Type::Compute,
-					.shaderModule = LoadShaderByFilename(Format("{}", updateShaderName), device)
-				},
-				.pipelineLayout = layout
-			});
-		}
-
 		// render pipeline
 		{
 			auto layout = device->CreatePipelineLayout({
@@ -181,6 +90,100 @@ namespace RavEngine {
 				},
 				.pipelineLayout = layout
 			});
+		}
+	}
+	ParticleUpdateMaterial::ParticleUpdateMaterial(const std::string& initShaderName, const std::string& updateShaderName)
+	{
+		auto device = GetApp()->GetDevice();
+		// init shader
+		{
+			auto layout = device->CreatePipelineLayout({
+				.bindings = {
+					{
+						.binding = 0,
+						.type = RGL::BindingType::StorageBuffer,
+						.stageFlags = RGL::BindingVisibility::Compute,
+						.writable = false,
+					},
+					{
+						.binding = 1,
+						.type = RGL::BindingType::StorageBuffer,
+						.stageFlags = RGL::BindingVisibility::Compute,
+						.writable = false,
+					},
+					{
+						.binding = 2,
+						.type = RGL::BindingType::StorageBuffer,
+						.stageFlags = RGL::BindingVisibility::Compute,
+						.writable = true,
+					},
+					{
+						.binding = 3,
+						.type = RGL::BindingType::StorageBuffer,
+						.stageFlags = RGL::BindingVisibility::Compute,
+						.writable = true,
+					},
+					{
+						.binding = 4,
+						.type = RGL::BindingType::StorageBuffer,
+						.stageFlags = RGL::BindingVisibility::Compute,
+						.writable = false,
+					}
+				},
+				.constants = {}
+				});
+
+			userInitPipeline = device->CreateComputePipeline({
+				.stage = {
+					.type = RGL::ShaderStageDesc::Type::Compute,
+					.shaderModule = LoadShaderByFilename(Format("{}", initShaderName), device),
+				},
+				.pipelineLayout = layout
+				});
+		}
+		// update shader
+		{
+			auto layout = device->CreatePipelineLayout({
+				.bindings = {
+					{
+						.binding = 0,
+						.type = RGL::BindingType::StorageBuffer,
+						.stageFlags = RGL::BindingVisibility::Compute,
+						.writable = true,
+					},
+					{
+						.binding = 1,
+						.type = RGL::BindingType::StorageBuffer,
+						.stageFlags = RGL::BindingVisibility::Compute,
+						.writable = true,
+					},
+					{
+						.binding = 2,
+						.type = RGL::BindingType::StorageBuffer,
+						.stageFlags = RGL::BindingVisibility::Compute,
+						.writable = true,
+					},
+					{
+						.binding = 3,
+						.type = RGL::BindingType::StorageBuffer,
+						.stageFlags = RGL::BindingVisibility::Compute,
+						.writable = true,
+					},
+				},
+				.constants = {
+					{
+						sizeof(ParticleUpdateUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Compute)				//TODO: don't hardcode the constants size, this is dependent on billboard vs mesh render mode
+					}
+				}
+				});
+
+			userUpdatePipeline = device->CreateComputePipeline({
+				.stage = {
+					.type = RGL::ShaderStageDesc::Type::Compute,
+					.shaderModule = LoadShaderByFilename(Format("{}", updateShaderName), device)
+				},
+				.pipelineLayout = layout
+				});
 		}
 	}
 }

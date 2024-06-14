@@ -29,20 +29,12 @@ namespace RavEngine {
 		vector2 pos;
 	};
 
-
-	struct ParticleMaterial {
+	struct ParticleUpdateMaterial {
 		friend class RenderEngine;
 	protected:
-		ParticleMaterial(const std::string& initShaderName, const std::string& updateShaderName, const std::string& particleVS, const std::string& particleFS);
-
+		ParticleUpdateMaterial(const std::string& initShaderName, const std::string& updateShaderName);
+		
 	public:
-		/**
-		* @return The number of bytes required for your material's per-particle user data. This data is placed immediately after the engine's required particle data for each particle
-		*/
-		virtual uint16_t ParticleUserDataSize() const {
-			return 0;
-		}
-
 		const auto GetInitShader() const {
 			return userInitPipeline;
 		}
@@ -53,25 +45,43 @@ namespace RavEngine {
 
 	private:
 		RGLComputePipelinePtr userInitPipeline, userUpdatePipeline;
+	};
+
+	struct ParticleRenderMaterial {
+		friend class RenderEngine;
+	protected:
+		ParticleRenderMaterial(const std::string& particleVS, const std::string& particleFS);
+
+	public:
+		/**
+		* @return The number of bytes required for your material's per-particle user data. This data is placed immediately after the engine's required particle data for each particle
+		*/
+		virtual uint16_t ParticleUserDataSize() const {
+			return 0;
+		}
+	private:
+	
 		RGLRenderPipelinePtr userRenderPipeline;
 	};
 
 	// Subclass this to make custom particle materials
-	struct BillboardParticleMaterial : public ParticleMaterial {
+	struct BillboardRenderParticleMaterial : public ParticleRenderMaterial {
 	protected:
-		BillboardParticleMaterial(const std::string& initShaderName, const std::string& updateShaderName, const std::string& particleVS, const std::string& particleFS) : ParticleMaterial(initShaderName, updateShaderName, particleVS, particleFS) {}
+		BillboardRenderParticleMaterial(const std::string& particleVS, const std::string& particleFS) : ParticleRenderMaterial(particleVS, particleFS) {}
 
 	public:
 		Ref<Texture> spriteTex;
 		struct spriteCount {
 			uint16_t numSpritesWidth = 0;
-			uint16_t numSpritesHeight;
+			uint16_t numSpritesHeight = 0;
 		} spriteDim;
 
 	};
+
 	// Subclass this to make custom particle materials
-	struct MeshParticleMaterial : public ParticleMaterial {
+	struct MeshParticleRenderMaterial : public ParticleRenderMaterial {
 	protected:
-		MeshParticleMaterial(const std::string& initShaderName, const std::string& updateShaderName, const std::string& particleVS, const std::string& particleFS) : ParticleMaterial(initShaderName, updateShaderName, particleVS, particleFS) {}
+		MeshParticleRenderMaterial(const std::string& particleVS, const std::string& particleFS) : ParticleRenderMaterial(particleVS, particleFS) {}
 	};
+
 }

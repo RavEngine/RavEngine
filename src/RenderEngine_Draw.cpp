@@ -197,16 +197,17 @@ struct LightingType{
 			mainCommandBuffer->BeginComputeDebugMarker("Particle Update");
 
 			worldOwning->Filter([this, worldOwning](ParticleEmitter& emitter, const Transform& transform) {
-				Ref<ParticleMaterial> mat;
+				Ref<ParticleRenderMaterial> renderMat;
+				auto updateMat = emitter.GetUpdateMaterial();
 				
 				std::visit(CaseAnalysis{
-                        [&mat](const Ref <BillboardParticleMaterial> &billboardMat) {
-                            mat = billboardMat;
+                        [&renderMat](const Ref <BillboardRenderParticleMaterial> &billboardMat) {
+                            renderMat = billboardMat;
                         },
-                        [&mat](const Ref <MeshParticleMaterial> &meshMat) {
-                            mat = meshMat;
+                        [&renderMat](const Ref <MeshParticleRenderMaterial> &meshMat) {
+                            renderMat = meshMat;
                         }
-                }, emitter.GetMaterial());
+                }, emitter.GetRenderMaterial());
 
 				auto worldTransform = transform.GetWorldMatrix();
 
@@ -246,7 +247,7 @@ struct LightingType{
 					hasCalculatedSizes = true;
 
 					// init particles
-					mainCommandBuffer->BeginCompute(mat->userInitPipeline);
+					mainCommandBuffer->BeginCompute(updateMat->userInitPipeline);
 
 					mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer,0);
 					mainCommandBuffer->BindComputeBuffer(emitter.spawnedThisFrameList, 1);
@@ -275,7 +276,7 @@ struct LightingType{
 
 				// tick particles
 				mainCommandBuffer->BeginComputeDebugMarker("Update, Kill");
-				mainCommandBuffer->BeginCompute(mat->userUpdatePipeline);
+				mainCommandBuffer->BeginCompute(updateMat->userUpdatePipeline);
 
 				mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 0);
 				mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 1);
@@ -664,10 +665,9 @@ struct LightingType{
 				if (includeParticles) {
 
 					worldOwning->Filter([this, &viewproj, &particleBillboardMatrices](const ParticleEmitter& emitter, const Transform& t) {
-						auto mat = emitter.GetMaterial();
 						std::visit(CaseAnalysis{
-                                [&mat, this, &emitter, &viewproj,&particleBillboardMatrices](
-                                        const Ref <BillboardParticleMaterial> &billboardMat) {
+                                [this, &emitter, &viewproj,&particleBillboardMatrices](
+                                        const Ref <BillboardRenderParticleMaterial> &billboardMat) {
                                     mainCommandBuffer->BindRenderPipeline(
                                             billboardMat->userRenderPipeline);
                                     mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
@@ -707,10 +707,10 @@ struct LightingType{
                                                                                .nDraws = 1,
                                                                        });
                                 },
-                                [&mat](const Ref <MeshParticleMaterial> &meshMat) {
+                                [](const Ref <MeshParticleRenderMaterial> &meshMat) {
                                     //TODO
                                 }
-                        }, emitter.GetMaterial());
+                        }, emitter.GetRenderMaterial());
 					});
 				}
 			};

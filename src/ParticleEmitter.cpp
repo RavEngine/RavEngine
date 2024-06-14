@@ -8,7 +8,7 @@
 #include "Debug.hpp"
 
 namespace RavEngine {
-	RavEngine::ParticleEmitter::ParticleEmitter(entity_t ownerID, uint32_t maxParticles, const ParticleMaterialVariant& mat) : ComponentWithOwner(ownerID), material(mat), maxParticleCount(maxParticles)
+	RavEngine::ParticleEmitter::ParticleEmitter(entity_t ownerID, uint32_t maxParticles, const Ref<ParticleUpdateMaterial> updateMat, const ParticleRenderMaterialVariant& mat) : ComponentWithOwner(ownerID), renderMaterial(mat), updateMaterial(updateMat), maxParticleCount(maxParticles)
 	{
 
 		// create buffers
@@ -103,15 +103,15 @@ namespace RavEngine {
 		uint16_t totalSize = 0;
 
 		std::visit(CaseAnalysis{
-                [&totalSize](const Ref <BillboardParticleMaterial> &billboardMat) {
+                [&totalSize](const Ref <BillboardRenderParticleMaterial> &billboardMat) {
                     totalSize = sizeof(BilboardParticleEngineData) +
                                 billboardMat->ParticleUserDataSize();
                 },
-                [&totalSize](const Ref <MeshParticleMaterial> &meshMat) {
+                [&totalSize](const Ref <MeshParticleRenderMaterial> &meshMat) {
                     Debug::Fatal("Not implemented");
                     totalSize = 0 + meshMat->ParticleUserDataSize();
                 }
-        }, material);
+        }, renderMaterial);
 
 		return totalSize;
 	}
