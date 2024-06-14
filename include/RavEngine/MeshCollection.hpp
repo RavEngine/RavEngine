@@ -1,4 +1,5 @@
 #pragma once
+#if !RVE_SERVER
 #include "Ref.hpp"
 #include "DataStructures.hpp"
 #include "VRAMVector.hpp"
@@ -38,3 +39,4 @@ namespace RavEngine {
 	};
 
 }
+#endif

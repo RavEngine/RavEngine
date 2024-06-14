@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #include "MeshCollection.hpp"
 
 namespace RavEngine {
@@ -37,3 +38,4 @@ namespace RavEngine {
 		meshes.push_back(m.mesh);
 	}
 }
+#endif
