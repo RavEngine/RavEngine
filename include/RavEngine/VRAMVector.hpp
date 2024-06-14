@@ -195,11 +195,11 @@ namespace RavEngine {
 		}
 
 		void erase(iterator i) {
-			erase(i.data() - data());
+			erase(uintptr_t(i.data - data()));
 		}
 
 		void erase(const_iterator i) {
-			erase(i.data() - data());
+			erase(uintptr_t(i.data - data()));
 		}
 
 		void pop_back() {
