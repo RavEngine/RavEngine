@@ -68,20 +68,56 @@ namespace RavEngine {
 	struct BillboardRenderParticleMaterial : public ParticleRenderMaterial {
 	protected:
 		BillboardRenderParticleMaterial(const std::string& particleVS, const std::string& particleFS) : ParticleRenderMaterial(particleVS, particleFS) {}
-
-	public:
-		Ref<Texture> spriteTex;
-		struct spriteCount {
-			uint16_t numSpritesWidth = 0;
-			uint16_t numSpritesHeight = 0;
-		} spriteDim;
-
 	};
 
 	// Subclass this to make custom particle materials
 	struct MeshParticleRenderMaterial : public ParticleRenderMaterial {
 	protected:
 		MeshParticleRenderMaterial(const std::string& particleVS, const std::string& particleFS) : ParticleRenderMaterial(particleVS, particleFS) {}
+	};
+
+	struct ParticleRenderMaterialInstance {
+	protected:
+		Ref<ParticleRenderMaterial> material;
+	public:
+		ParticleRenderMaterialInstance(decltype(material) m) : material(m) {};
+	};
+
+	// subclass to define your own particle material instances
+	struct BillboardParticleRenderMaterialInstance : ParticleRenderMaterialInstance {
+		BillboardParticleRenderMaterialInstance(Ref<BillboardRenderParticleMaterial> mat) : ParticleRenderMaterialInstance(mat) {};
+		Ref<Texture> spriteTex;
+		struct spriteCount {
+			uint16_t numSpritesWidth = 0;
+			uint16_t numSpritesHeight = 0;
+		} spriteDim;
+
+		auto GetMaterial() const {
+			return material;
+		}
+	};
+
+	// subclass to define your own particle material instances
+	struct MeshParticleRenderMaterialInstance : ParticleRenderMaterialInstance {
+		MeshParticleRenderMaterialInstance(Ref<MeshParticleRenderMaterial> mat) : ParticleRenderMaterialInstance(mat) {}
+		auto GetMaterial() const {
+			return material;
+		}
+	};
+
+	// subclass to define your own particle material instances
+	struct ParticleUpdateMaterialInstance {
+		Ref<ParticleUpdateMaterial> mat;
+		ParticleUpdateMaterialInstance(decltype(mat) m) : mat(m) {}
+	};
+
+	// built-in billboard renderer that does spritesheets
+	struct SpritesheetParticleRenderMaterial : public RavEngine::BillboardRenderParticleMaterial {
+		SpritesheetParticleRenderMaterial() : BillboardRenderParticleMaterial("default_billboard_particle", "default_billboard_particle") {}
+
+		uint16_t ParticleUserDataSize() const final {
+			return 0;   // needs no extra data
+		}
 	};
 
 }
