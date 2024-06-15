@@ -5,7 +5,7 @@
 #include <RGL/Texture.hpp>
 
 namespace RavEngine {
-	ParticleRenderMaterial::ParticleRenderMaterial(const std::string& particleVS, const std::string& particleFS)
+	ParticleRenderMaterial::ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS)
 	{
 		auto device = GetApp()->GetDevice();
 		// render pipeline
@@ -94,7 +94,7 @@ namespace RavEngine {
 			});
 		}
 	}
-	ParticleUpdateMaterial::ParticleUpdateMaterial(const std::string& initShaderName, const std::string& updateShaderName)
+	ParticleUpdateMaterial::ParticleUpdateMaterial(const std::string_view initShaderName, const std::string_view updateShaderName)
 	{
 		auto device = GetApp()->GetDevice();
 		// init shader

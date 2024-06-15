@@ -35,7 +35,7 @@ namespace RavEngine {
 	struct ParticleUpdateMaterial {
 		friend class RenderEngine;
 	protected:
-		ParticleUpdateMaterial(const std::string& initShaderName, const std::string& updateShaderName);
+		ParticleUpdateMaterial(const std::string_view initShaderName, const std::string_view updateShaderName);
 		
 	public:
 		const auto GetInitShader() const {
@@ -53,7 +53,7 @@ namespace RavEngine {
 	struct ParticleRenderMaterial {
 		friend class RenderEngine;
 	protected:
-		ParticleRenderMaterial(const std::string& particleVS, const std::string& particleFS);
+		ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS);
 
 	public:
 		/**
@@ -70,13 +70,13 @@ namespace RavEngine {
 	// Subclass this to make custom particle materials
 	struct BillboardRenderParticleMaterial : public ParticleRenderMaterial {
 	protected:
-		BillboardRenderParticleMaterial(const std::string& particleVS, const std::string& particleFS) : ParticleRenderMaterial(particleVS, particleFS) {}
+		BillboardRenderParticleMaterial(const std::string_view particleVS, const std::string_view particleFS) : ParticleRenderMaterial(particleVS, particleFS) {}
 	};
 
 	// Subclass this to make custom particle materials
 	struct MeshParticleRenderMaterial : public ParticleRenderMaterial {
 	protected:
-		MeshParticleRenderMaterial(const std::string& particleVS, const std::string& particleFS) : ParticleRenderMaterial(particleVS, particleFS) {}
+		MeshParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS) : ParticleRenderMaterial(particleVS, particleFS) {}
 	};
 
 	struct ParticleRenderMaterialInstance {
