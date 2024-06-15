@@ -666,40 +666,37 @@ struct LightingType{
 
 					worldOwning->Filter([this, &viewproj, &particleBillboardMatrices](const ParticleEmitter& emitter, const Transform& t) {
 						std::visit(CaseAnalysis{
-                                [this, &emitter, &viewproj,&particleBillboardMatrices](
-                                        const Ref <BillboardParticleRenderMaterialInstance> &billboardMat) {
-                                    mainCommandBuffer->BindRenderPipeline(
-                                            billboardMat->GetMaterial()->userRenderPipeline);
-                                    mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
-                                    mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, 0);
-                                    mainCommandBuffer->BindBuffer(emitter.activeParticleIndexBuffer,
-                                                                  1);
+								[this, &emitter, &viewproj,&particleBillboardMatrices](
+										const Ref <BillboardParticleRenderMaterialInstance>& billboardMat) {
+									mainCommandBuffer->BindRenderPipeline(
+											billboardMat->GetMaterial()->userRenderPipeline);
+									mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
+									mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, 0);
+									mainCommandBuffer->BindBuffer(emitter.activeParticleIndexBuffer,
+																  1);
 									mainCommandBuffer->BindBuffer(transientBuffer, 2, particleBillboardMatrices);
 
-                                    ParticleBillboardUBO ubo{
-                                            .spritesheetDim = {},
-                                            .numSprites = {}
-                                    };
+									std::byte pushConstants[128]{  };
 
-                                    auto tex = billboardMat->spriteTex;
-                                    if (tex) {
-                                        auto dim = tex->GetRHITexturePointer()->GetSize();
-                                        ubo.spritesheetDim = {
-                                                dim.width,
-                                                dim.height,
-                                        };
-                                        ubo.numSprites = {
-                                                billboardMat->spriteDim.numSpritesWidth,
-                                                billboardMat->spriteDim.numSpritesHeight,
-                                        };
+									auto nbytes = billboardMat->SetPushConstantData(pushConstants);
 
-                                        mainCommandBuffer->SetFragmentTexture(
-                                                tex->GetRHITexturePointer()->GetDefaultView(), 4);
-                                        mainCommandBuffer->SetFragmentSampler(textureSampler, 3);
-                                    }
+									mainCommandBuffer->SetVertexBytes({pushConstants, nbytes}, 0);
+									mainCommandBuffer->SetFragmentBytes({ pushConstants, nbytes }, 0);
 
-                                    mainCommandBuffer->SetVertexBytes(ubo, 0);
-                                    mainCommandBuffer->SetFragmentBytes(ubo, 0);
+									// set samplers (currently sampler is not configurable)
+									for (uint32_t i = 0; i < billboardMat->samplerBindings.size(); i++) {
+										if (billboardMat->samplerBindings[i]) {
+											mainCommandBuffer->SetFragmentSampler(textureSampler, i);
+										}
+									}
+	
+									// bind textures
+									for (uint32_t i = 0; i < billboardMat->textureBindings.size(); i++) {
+										if (billboardMat->textureBindings[i] != nullptr) {
+											mainCommandBuffer->SetFragmentTexture(
+												billboardMat->textureBindings[i]->GetRHITexturePointer()->GetDefaultView(), i);
+										}
+									}
 
                                     mainCommandBuffer->ExecuteIndirect({
                                                                                .indirectBuffer = emitter.indirectDrawBuffer,

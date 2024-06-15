@@ -1,6 +1,8 @@
 #if !RVE_SERVER
 #include "ParticleMaterial.hpp"
 #include "App.hpp"
+#include "Texture.hpp"
+#include <RGL/Texture.hpp>
 
 namespace RavEngine {
 	ParticleRenderMaterial::ParticleRenderMaterial(const std::string& particleVS, const std::string& particleFS)
@@ -185,6 +187,29 @@ namespace RavEngine {
 				.pipelineLayout = layout
 				});
 		}
+	}
+	uint8_t SpritesheetParticleRenderMaterialInstance::SetPushConstantData(std::span<std::byte, 128> data) const
+	{
+		ParticleBillboardUBO str{
+			.spritesheetDim = {},
+			.numSprites = {}
+		};
+
+			auto dim = textureBindings[SpritesheetBindingSlot]->GetRHITexturePointer()->GetSize();
+			str.spritesheetDim = {
+					dim.width,
+					dim.height,
+			};
+			str.numSprites = {
+					spriteDim.numSpritesWidth,
+					spriteDim.numSpritesHeight,
+			};
+
+			
+		
+
+		std::memcpy(data.data(), &str, sizeof(str));
+		return sizeof(str);
 	}
 }
 

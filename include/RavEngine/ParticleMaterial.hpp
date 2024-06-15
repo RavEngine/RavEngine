@@ -4,6 +4,9 @@
 #include <string>
 #include <variant>
 #include "Ref.hpp"
+#include <RGL/Span.hpp>
+#include <bitset>
+#include <span>
 
 namespace RavEngine {
 
@@ -77,32 +80,36 @@ namespace RavEngine {
 	};
 
 	struct ParticleRenderMaterialInstance {
+		friend class RenderEngine;
 	protected:
 		Ref<ParticleRenderMaterial> material;
+		std::array<Ref<Texture>, 16> textureBindings;
+		std::bitset<16> samplerBindings;
 	public:
 		ParticleRenderMaterialInstance(decltype(material) m) : material(m) {};
-	};
-
-	// subclass to define your own particle material instances
-	struct BillboardParticleRenderMaterialInstance : ParticleRenderMaterialInstance {
-		BillboardParticleRenderMaterialInstance(Ref<BillboardRenderParticleMaterial> mat) : ParticleRenderMaterialInstance(mat) {};
-		Ref<Texture> spriteTex;
-		struct spriteCount {
-			uint16_t numSpritesWidth = 0;
-			uint16_t numSpritesHeight = 0;
-		} spriteDim;
 
 		auto GetMaterial() const {
 			return material;
 		}
+
+		/**
+		Provide data to be uploaded to shader push constants.
+		@return Number of bytes written, 0 if there is no data to upload.
+		*/
+		virtual uint8_t SetPushConstantData(std::span<std::byte,128> data) const {
+			return 0;
+		}
+	};
+
+	// subclass to define your own particle material instances
+	struct BillboardParticleRenderMaterialInstance : ParticleRenderMaterialInstance {
+		BillboardParticleRenderMaterialInstance(Ref<BillboardRenderParticleMaterial> mat) : ParticleRenderMaterialInstance(mat) {}
+		
 	};
 
 	// subclass to define your own particle material instances
 	struct MeshParticleRenderMaterialInstance : ParticleRenderMaterialInstance {
 		MeshParticleRenderMaterialInstance(Ref<MeshParticleRenderMaterial> mat) : ParticleRenderMaterialInstance(mat) {}
-		auto GetMaterial() const {
-			return material;
-		}
 	};
 
 	// subclass to define your own particle material instances
@@ -120,4 +127,22 @@ namespace RavEngine {
 		}
 	};
 
+	struct SpritesheetParticleRenderMaterialInstance : BillboardParticleRenderMaterialInstance {
+		constexpr static uint16_t SpritesheetBindingSlot = 4;
+		constexpr static uint16_t SamplerBindingSlot = 3;
+
+		SpritesheetParticleRenderMaterialInstance(Ref<SpritesheetParticleRenderMaterial> mat) : BillboardParticleRenderMaterialInstance(mat) {
+			samplerBindings[SamplerBindingSlot] = true;
+		};
+		struct spriteCount {
+			uint16_t numSpritesWidth = 0;
+			uint16_t numSpritesHeight = 0;
+		} spriteDim;
+
+		void SetSpritesheet(Ref<Texture> spriteTex) {
+			textureBindings[SpritesheetBindingSlot] = spriteTex;
+		}
+
+		virtual uint8_t SetPushConstantData(std::span<std::byte, 128> data) const;
+	};
 }
