@@ -3,10 +3,10 @@
 #include "Ref.hpp"
 #include "DataStructures.hpp"
 #include "VRAMVector.hpp"
+#include "MeshAsset.hpp"
 
 namespace RavEngine {
 
-	class MeshAsset;
 	class MeshAssetSkinned;
 
 	template<typename T>
@@ -24,6 +24,7 @@ namespace RavEngine {
 		MeshCollectionStatic(std::span<Entry> meshes);
 		MeshCollectionStatic(std::initializer_list<Entry> meshes);
 		MeshCollectionStatic(Ref<MeshAsset> mesh);
+		MeshCollectionStatic(const std::string& meshName, const MeshAssetOptions& opt = {}) : MeshCollectionStatic(MeshAsset::Manager::Get(meshName, opt)) {}
 
 		void AddMesh(const Entry& m);
 
@@ -49,6 +50,8 @@ namespace RavEngine {
 	struct MeshCollectionSkinned : protected MeshCollection<MeshAssetSkinned> {
 		MeshCollectionSkinned(const Entry& m);
 	};
+
+	struct MeshCollectionStaticManager : public GenericWeakReadThroughCache<std::string, MeshCollectionStatic> {};
 
 }
 #endif

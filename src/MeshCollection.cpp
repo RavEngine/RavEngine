@@ -21,6 +21,7 @@ namespace RavEngine {
 	{
 		AddMesh({mesh, std::numeric_limits<float>::infinity()});
 	}
+
 	void MeshCollectionStatic::AddMesh(const Entry& m)
 	{
 		meshes.push_back(m.mesh);
