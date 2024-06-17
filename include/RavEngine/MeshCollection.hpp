@@ -22,6 +22,8 @@ namespace RavEngine {
 		
 		MeshCollectionStatic() {}
 		MeshCollectionStatic(std::span<Entry> meshes);
+		MeshCollectionStatic(std::initializer_list<Entry> meshes);
+		MeshCollectionStatic(Ref<MeshAsset> mesh);
 
 		void AddMesh(const Entry& m);
 
@@ -29,6 +31,16 @@ namespace RavEngine {
 
 		void Reserve(uint16_t size);
 		void Resize(uint16_t size);
+
+		auto GetNumLods() const {
+			return lodDistances.size();
+		}
+
+		auto GetMeshForLOD(uint32_t i) const {
+			return meshes[i];
+		}
+
+		float GetRadius() const;
 
 	private:
 		VRAMVector<float> lodDistances;

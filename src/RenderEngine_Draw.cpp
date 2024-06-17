@@ -23,6 +23,7 @@
 #include "ParticleMaterial.hpp"
 #include "CaseAnalysis.hpp"
 #include "Profile.hpp"
+#include "MeshCollection.hpp"
 
 #if __APPLE__ || __EMSCRIPTEN__
 #define OCCLUSION_CULLING_UNAVAILABLE
@@ -512,11 +513,12 @@ struct LightingType{
 							RGL::IndirectIndexedCommand initData;
 							if (auto mesh = command.mesh.lock()) {
 								for (uint32_t lodID = 0; lodID < mesh->GetNumLods(); lodID++) {
+									const auto meshInst = mesh->GetMeshForLOD(lodID);
 									initData = {
-										.indexCount = uint32_t(mesh->totalIndices),
+										.indexCount = uint32_t(meshInst->totalIndices),
 										.instanceCount = 0,
-										.indexStart = uint32_t(mesh->meshAllocation.indexRange->start / sizeof(uint32_t)),
-										.baseVertex = uint32_t(mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
+										.indexStart = uint32_t(meshInst->meshAllocation.indexRange->start / sizeof(uint32_t)),
+										.baseVertex = uint32_t(meshInst->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
 										.baseInstance = baseInstance,	// sets the offset into the material-global culling buffer (and other per-instance data buffers). we allocate based on worst-case here, so the offset is known.
 									};
 									baseInstance += nEntitiesInThisCommand;
@@ -554,7 +556,7 @@ struct LightingType{
 
 							cubo.numObjects = command.entities.DenseSize();
 							mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
-							cubo.radius = mesh->radius;
+							cubo.radius = mesh->GetRadius();
 
 #if __APPLE__
 							constexpr size_t byte_size = closest_multiple_of<ssize_t>(sizeof(cubo), 16);

@@ -9,31 +9,32 @@
 #include "ComponentWithOwner.hpp"
 
 namespace RavEngine {
+    struct MeshCollectionStatic;
+
     class StaticMesh : public ComponentWithOwner, public Disableable{
     private:
-        Ref<MeshAsset> mesh;
+        Ref<MeshCollectionStatic> mesh;
         MeshMaterial material;
-        StaticMesh(entity_t owner, Ref<MeshAsset> m) : ComponentWithOwner(owner){
+        StaticMesh(entity_t owner, decltype(mesh) m) : ComponentWithOwner(owner){
             SetMesh(m);
         }
         void updateMaterialInWorldRenderData(MeshMaterial mat);
+        inline void SetMesh(decltype(mesh) m) {
+            mesh = m;
+            //TODO: notify world render datastructure of this change
+        }
     public:
 
         template<typename T> requires std::is_same_v<T, LitMeshMaterialInstance> || std::is_same_v<T, UnlitMeshMaterialInstance>
-        StaticMesh(entity_t owner, Ref<MeshAsset> m, T mat) : StaticMesh(owner, m) {
+        StaticMesh(entity_t owner, Ref<MeshCollectionStatic> m, T mat) : StaticMesh(owner, m) {
             SetMaterial(mat);
 		}
         
 		virtual ~StaticMesh(){}
 		
-		inline Ref<MeshAsset> GetMesh() const{
+		inline auto GetMesh() const{
             return mesh;
-		}
-
-        inline void SetMesh(Ref<MeshAsset> m) {
-            mesh = m;
-            //TODO: notify world render datastructure of this change
-        }
+		} 
 
         /**
         Assign a material to this staticmesh

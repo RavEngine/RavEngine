@@ -31,6 +31,7 @@
     #include "VRAMSparseSet.hpp"
     #include "AudioMeshComponent.hpp"
     #include "ParticleEmitter.hpp"
+    #include "MeshCollection.hpp"
 #else
     #include "Transform.hpp"
 #endif
@@ -531,7 +532,7 @@ void updateMeshMaterialGeneric(auto&& renderData, entity_t localID, auto oldMat,
     
 }
 
-void RavEngine::World::updateStaticMeshMaterial(entity_t localId, MeshMaterial oldMat, MeshMaterial newMat, Ref<MeshAsset> mesh)
+void RavEngine::World::updateStaticMeshMaterial(entity_t localId, MeshMaterial oldMat, MeshMaterial newMat, Ref<MeshCollectionStatic> mesh)
 {
     // do nothing if renderer is not online
     if (!renderData) {

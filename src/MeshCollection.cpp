@@ -1,5 +1,6 @@
 #if !RVE_SERVER
 #include "MeshCollection.hpp"
+#include "MeshAsset.hpp"
 
 namespace RavEngine {
 	MeshCollectionStatic::MeshCollectionStatic(std::span<Entry> meshes)
@@ -8,6 +9,17 @@ namespace RavEngine {
 		for (const auto& m : meshes) {
 			AddMesh(m);
 		}
+	}
+	MeshCollectionStatic::MeshCollectionStatic(std::initializer_list<Entry> meshes) 
+	{
+		Reserve(meshes.size());
+		for (const auto& m : meshes) {
+			AddMesh(m);
+		}
+	}
+	MeshCollectionStatic::MeshCollectionStatic(Ref<MeshAsset> mesh)
+	{
+		AddMesh({mesh, std::numeric_limits<float>::infinity()});
 	}
 	void MeshCollectionStatic::AddMesh(const Entry& m)
 	{
@@ -30,6 +42,12 @@ namespace RavEngine {
 	{
 		meshes.resize(size);
 		lodDistances.resize(size);
+	}
+
+	float MeshCollectionStatic::GetRadius() const
+	{
+		Debug::Assert(meshes.size() > 0, "Mesh collection is empty!");
+		return meshes.front()->GetRadius();
 	}
 
 
