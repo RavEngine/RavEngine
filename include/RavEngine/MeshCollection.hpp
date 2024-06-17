@@ -41,6 +41,10 @@ namespace RavEngine {
 			return meshes[i];
 		}
 
+		void SetMeshForLOD(uint32_t i, Ref<MeshAsset> mesh) {
+			meshes.at(i) = mesh;
+		}
+
 		float GetRadius() const;
 
 	private:
