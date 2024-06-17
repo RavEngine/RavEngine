@@ -112,6 +112,11 @@ public:
 	auto GetRadius() const {
 		return radius;
 	}
+#if !RVE_SERVER
+	auto GetAllocation() const {
+		return meshAllocation;
+	}
+#endif
 	
     struct Manager : public GenericWeakReadThroughCache<std::string,MeshAsset>{};
     

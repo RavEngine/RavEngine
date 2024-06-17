@@ -46,6 +46,7 @@ namespace RavEngine {
     struct InstantaneousAudioSourceToPlay;
     struct AudioMeshComponent;
     struct MeshCollectionStatic;
+    struct MeshCollectionSkinned;
 
     template <typename T, typename... Ts>
     struct Index;
@@ -302,7 +303,7 @@ namespace RavEngine {
 
         struct MDIICommandSkinned : public MDICommandBase {
             struct command {
-                WeakRef<MeshAssetSkinned> mesh;
+                WeakRef<MeshCollectionSkinned> mesh;
                 WeakRef<SkeletonAsset> skeleton;
                 using set_t = VRAMSparseSet<entity_t,entity_t>;
                 set_t entities;
@@ -383,7 +384,7 @@ namespace RavEngine {
         std::optional<RenderData> renderData;
 
         void updateStaticMeshMaterial(entity_t localId, MeshMaterial oldMat, MeshMaterial newMat, Ref<MeshCollectionStatic> mesh);
-        void updateSkinnedMeshMaterial(entity_t localId, MeshMaterial oldMat, MeshMaterial newMat, Ref<MeshAssetSkinned> mesh, Ref<SkeletonAsset> skeleton);
+        void updateSkinnedMeshMaterial(entity_t localId, MeshMaterial oldMat, MeshMaterial newMat, Ref<MeshCollectionSkinned> mesh, Ref<SkeletonAsset> skeleton);
         void StaticMeshChangedVisibility(const StaticMesh*);
         void SkinnedMeshChangedVisibility(const SkinnedMeshComponent*);
 #endif

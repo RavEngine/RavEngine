@@ -4,10 +4,13 @@
 #include "DataStructures.hpp"
 #include "VRAMVector.hpp"
 #include "MeshAsset.hpp"
+#include "MeshAssetSkinned.hpp"
 
 namespace RavEngine {
 
 	class MeshAssetSkinned;
+	struct MeshRange;
+	struct SkeletonAsset;
 
 	template<typename T>
 	struct MeshCollection {
@@ -52,10 +55,23 @@ namespace RavEngine {
 	};
 
 	struct MeshCollectionSkinned : protected MeshCollection<MeshAssetSkinned> {
+	friend class RenderEngine;
 		MeshCollectionSkinned(const Entry& m);
+		MeshCollectionSkinned(const std::string& name, Ref<SkeletonAsset> skeleton, float scale = 1.0) : MeshCollectionSkinned({ MeshAssetSkinned::Manager::Get(name,skeleton, scale) }) {}
+
+		uint32_t GetNumVerts() const;
+		uint32_t GetNumIndices() const;
+		uint32_t GetNumLods() const;
+		float GetRadius() const;
+		RGLBufferPtr GetWeightsBuffer() const;
+		MeshRange GetAllocation() const;
+
+	private:
+		VRAMVector<float> lodDistances;
 	};
 
 	struct MeshCollectionStaticManager : public GenericWeakReadThroughCache<std::string, MeshCollectionStatic> {};
+	struct MeshCollectionSkinnedManager : public GenericWeakReadThroughCache<std::string, MeshCollectionSkinned> {};
 
 }
 #endif

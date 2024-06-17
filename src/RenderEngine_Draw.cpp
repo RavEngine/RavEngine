@@ -136,7 +136,7 @@ struct LightingType{
 
 					ubo.nVerticesInThisMesh = vertexCount;
 					ubo.nTotalObjects = objectCount;
-					ubo.indexBufferOffset = mesh->meshAllocation.indexRange->start / sizeof(uint32_t);
+					ubo.indexBufferOffset = mesh->GetAllocation().indexRange->start / sizeof(uint32_t);
 					ubo.nIndicesInThisMesh = mesh->GetNumIndices();
 
 					mainCommandBuffer->SetComputeBytes(ubo, 0);
@@ -171,7 +171,7 @@ struct LightingType{
 					subo.numObjects = command.entities.DenseSize();
 					subo.numVertices = mesh->GetNumVerts();
 					subo.numBones = skeleton->GetSkeleton()->num_joints();
-					subo.vertexReadOffset = mesh->meshAllocation.vertRange->start / sizeof(VertexNormalUV);
+					subo.vertexReadOffset = mesh->GetAllocation().vertRange->start / sizeof(VertexNormalUV);
 
 					// write joint transform matrices into buffer and update uniform offset
 					{
@@ -394,9 +394,9 @@ struct LightingType{
 						Debug::Assert(mesh->GetNumLods() == 1, "Skeletal meshes cannot have more than 1 LOD currently");
 						for(uint32_t i = 0; i < nEntitiesInThisCommand; i++){
 							for (uint32_t lodID = 0; lodID < mesh->GetNumLods(); lodID++) {
-								const auto indexRange = mesh->meshAllocation.indexRange;
+								const auto indexRange = mesh->GetAllocation().indexRange;
 								initData = {
-									.indexCount = uint32_t(mesh->totalIndices),
+									.indexCount = uint32_t(mesh->GetNumIndices()),
 									.instanceCount = 0,
 									.indexStart = uint32_t((indexRange->start) / sizeof(uint32_t)),
 									.baseVertex = skeletalVertexOffset,
@@ -433,6 +433,7 @@ struct LightingType{
 					.viewProj = viewproj,
 					.indirectBufferOffset = 0,
 					.isSingleInstanceMode = 1,
+					.numLODs = 1,
 				};
 				for (auto& command : drawcommand.commands) {
 					mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
@@ -443,7 +444,8 @@ struct LightingType{
 
 						cubo.numObjects = command.entities.DenseSize();
 						mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
-						cubo.radius = mesh->radius;
+						mainCommandBuffer->BindComputeBuffer(mesh->lodDistances.buffer, 4);
+						cubo.radius = mesh->GetRadius();
 #if __APPLE__
 						constexpr size_t byte_size = closest_multiple_of<ssize_t>(sizeof(cubo), 16);
 						std::byte bytes[byte_size]{};
@@ -452,8 +454,8 @@ struct LightingType{
 #else
 						mainCommandBuffer->SetComputeBytes(cubo, 0);
 #endif
-						mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 4);
-						mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 5);
+						mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 5);
+						mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 6);
 						mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 						cubo.indirectBufferOffset += lodsForThisMesh;
 						cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();

@@ -3,14 +3,15 @@
 #include "Queryable.hpp"
 #include "SkeletonAsset.hpp"
 #include "Ref.hpp"
-#include "MeshAssetSkinned.hpp"
 #include "BuiltinMaterials.hpp"
 
 namespace RavEngine {
 
+	struct MeshCollectionSkinned;
+
 class SkinnedMeshComponent : public ComponentWithOwner, public Queryable<SkinnedMeshComponent>, public Disableable{
 private:
-    Ref<MeshAssetSkinned> mesh;
+    Ref<MeshCollectionSkinned> mesh;
 #if !RVE_SERVER
     MeshMaterial mat;
 #endif
@@ -20,7 +21,7 @@ private:
 #endif
 public:
 	
-	SkinnedMeshComponent(entity_t owner, Ref<SkeletonAsset> sk, Ref<MeshAssetSkinned> mesh) : ComponentWithOwner(owner), skeleton(sk), mesh(mesh){}
+	SkinnedMeshComponent(entity_t owner, Ref<SkeletonAsset> sk, Ref<MeshCollectionSkinned> mesh) : ComponentWithOwner(owner), skeleton(sk), mesh(mesh){}
 #if !RVE_SERVER
 	inline void SetMaterial(MeshMaterial newMat){
 		updateMaterialInWorldRenderData(newMat);
@@ -29,16 +30,16 @@ public:
 	/**
 	 @returns the currently assigned material
 	 */
-	inline auto GetMaterial() const{
+	auto GetMaterial() const{
 		return mat;
 	}
 #endif
 	
-	inline Ref<MeshAssetSkinned> GetMesh() const{
+	auto GetMesh() const{
 		return mesh;
 	}
 
-	inline Ref<SkeletonAsset> GetSkeleton() const {
+	Ref<SkeletonAsset> GetSkeleton() const {
 		return skeleton;
 	}
 	

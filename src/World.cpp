@@ -554,7 +554,7 @@ void RavEngine::World::updateStaticMeshMaterial(entity_t localId, MeshMaterial o
     );
 }
 
-void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, MeshMaterial oldMat, MeshMaterial newMat, Ref<MeshAssetSkinned> mesh, Ref<SkeletonAsset> skeleton)
+void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, MeshMaterial oldMat, MeshMaterial newMat, Ref<MeshCollectionSkinned> mesh, Ref<SkeletonAsset> skeleton)
 {
     // if render engine is not online, do nothing
     if (!renderData) {

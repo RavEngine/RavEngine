@@ -1,6 +1,8 @@
 #if !RVE_SERVER
 #include "MeshCollection.hpp"
 #include "MeshAsset.hpp"
+#include "MeshAssetSkinned.hpp"
+#include "MeshAllocation.hpp"
 
 namespace RavEngine {
 	MeshCollectionStatic::MeshCollectionStatic(std::span<Entry> meshes)
@@ -55,6 +57,32 @@ namespace RavEngine {
 	MeshCollectionSkinned::MeshCollectionSkinned(const Entry& m)
 	{
 		meshes.push_back(m.mesh);
+		lodDistances.push_back(std::numeric_limits<float>::infinity());
+	}
+
+	uint32_t MeshCollectionSkinned::GetNumVerts() const
+	{
+		return meshes.front()->GetNumVerts();
+	}
+	uint32_t MeshCollectionSkinned::GetNumIndices() const
+	{
+		return meshes.front()->GetNumIndices();
+	}
+	uint32_t MeshCollectionSkinned::GetNumLods() const
+	{
+		return meshes.size();
+	}
+	float MeshCollectionSkinned::GetRadius() const
+	{
+		return meshes.front()->GetRadius();
+	}
+	RGLBufferPtr MeshCollectionSkinned::GetWeightsBuffer() const
+	{
+		return meshes.front()->GetWeightsBuffer();
+	}
+	MeshRange MeshCollectionSkinned::GetAllocation() const
+	{
+		return meshes.front()->GetAllocation();
 	}
 }
 #endif
