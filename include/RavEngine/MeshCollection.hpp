@@ -18,8 +18,8 @@ namespace RavEngine {
 		};
 	};
 
-	struct MeshCollectionStatic : protected MeshCollection<MeshAsset> {
-		
+	struct MeshCollectionStatic : public MeshCollection<MeshAsset> {
+		friend class RenderEngine;
 		MeshCollectionStatic() {}
 		MeshCollectionStatic(std::span<Entry> meshes);
 		MeshCollectionStatic(std::initializer_list<Entry> meshes);

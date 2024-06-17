@@ -152,6 +152,7 @@ namespace RavEngine {
 			uint32_t cullingBufferOffset = 0;
             float radius = 0;
 			uint32_t isSingleInstanceMode = 0;	// skinning vs not skinning
+			uint32_t numLODs = 0;
 		};
 
 		struct SkinningPrepareUBO {

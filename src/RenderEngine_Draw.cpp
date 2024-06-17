@@ -556,7 +556,9 @@ struct LightingType{
 
 							cubo.numObjects = command.entities.DenseSize();
 							mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
+							mainCommandBuffer->BindComputeBuffer(mesh->lodDistances.buffer, 4);
 							cubo.radius = mesh->GetRadius();
+							cubo.numLODs = lodsForThisMesh;
 
 #if __APPLE__
 							constexpr size_t byte_size = closest_multiple_of<ssize_t>(sizeof(cubo), 16);
@@ -566,8 +568,8 @@ struct LightingType{
 #else
 							mainCommandBuffer->SetComputeBytes(cubo, 0);
 #endif
-							mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 4);
-							mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 5);
+							mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 5);
+							mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 6);
 							mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 							cubo.indirectBufferOffset += lodsForThisMesh;
 							cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();

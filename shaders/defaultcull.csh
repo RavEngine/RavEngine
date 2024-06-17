@@ -7,6 +7,7 @@ layout(push_constant, std430) uniform UniformBufferObject{
 	uint cullingBufferOffset;
     float radius;
     uint isSingleInstanceMode;
+    uint numLODs;
 } ubo;
 
 layout(std430, binding = 0) readonly buffer idBuffer
@@ -38,8 +39,12 @@ layout(std430, binding = 3) buffer drawcallBuffer
 	IndirectCommand indirectBuffer[];
 };
 
-layout(binding = 4) uniform texture2D depthPyramid;
-layout(binding = 5) uniform sampler depthPyramidSampler;
+layout(std430, binding = 4) readonly buffer lodDistanceBuffer{
+    float maxDistances[];
+};
+
+layout(binding = 5) uniform texture2D depthPyramid;
+layout(binding = 6) uniform sampler depthPyramidSampler;
 
 // adapted from: https://gist.github.com/XProger/6d1fd465c823bba7138b638691831288
 // Computes signed distance between a point and a plane
@@ -74,6 +79,13 @@ void MakeFrustumPlanes(mat4 viewProj, inout vec4 planes[6]){
     }
 }
 
+// https://stackoverflow.com/questions/38112526/why-do-people-use-sqrtdotdistancevector-distancevector-over-opengls-distan
+float distSquared( vec3 A, vec3 B )
+{
+    vec3 C = A - B;
+    return dot( C, C );
+
+}
 
 struct ClipBoundingBoxResult{
     float minX, maxX, minY, maxY;
@@ -195,7 +207,30 @@ void main() {
     }
 
 	// check 2: what LOD am I in
-	uint lodID = 0;	//TODO: when multi-LOD support is added
+    uint lodID = 0;	
+
+    if (ubo.numLODs > 1){       // if there's only one answer, skip doing any of this
+
+        const vec3 worldSpacePos = (model * vec4(0,0,0,1)).xyz;
+        float distFromCamera = distSquared(worldSpacePos, ubo.camPos);
+
+        float closestDistance = 1/0;    // inf
+
+        for(uint i = 0; i < ubo.numLODs; i++){
+            // the LOD distances may not be in sorted order.
+            // to select a LOD, we use "price is right" rules selecting the closest distance value 
+            // without going over. 
+            // we use squared distance here.
+            float distForThisLOD = maxDistances[i];
+            distForThisLOD *= distForThisLOD;   // on host side, these are not expressed in squared distanecs
+
+            if (distForThisLOD > distFromCamera && distForThisLOD < closestDistance){
+                lodID = i;
+                closestDistance = distForThisLOD;
+            }
+
+        }
+    }
 
 	// if both checks are true, atomic-increment the instance count and write the entity ID into the output ID buffer based on the previous value of the instance count
 	if (isOnCamera) {
