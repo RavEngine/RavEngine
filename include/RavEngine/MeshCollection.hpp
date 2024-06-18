@@ -17,7 +17,7 @@ namespace RavEngine {
 		Vector<Ref<T>> meshes;
 		struct Entry {
 			Ref<T> mesh;
-			float maxDistance = 0;
+			float minDistance = 0;	// the minimum distance from the object to the camera for this LOD to be usable
 		};
 	};
 

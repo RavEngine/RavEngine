@@ -39,8 +39,8 @@ layout(std430, binding = 3) buffer drawcallBuffer
 	IndirectCommand indirectBuffer[];
 };
 
-layout(std430, binding = 4) readonly buffer lodDistanceBuffer{
-    float maxDistances[];
+layout(std430, binding = 4) readonly buffer lodDistanceSSBO{
+    float lodDistanceBuffer[];
 };
 
 layout(binding = 5) uniform texture2D depthPyramid;
@@ -206,34 +206,36 @@ void main() {
 #endif
     }
 
-	// check 2: what LOD am I in
-    uint lodID = 0;	
-
-    if (ubo.numLODs > 1){       // if there's only one answer, skip doing any of this
-
-        const vec3 worldSpacePos = (model * vec4(0,0,0,1)).xyz;
-        float distFromCamera = distSquared(worldSpacePos, ubo.camPos);
-
-        float closestDistance = 1/0;    // inf
-
-        for(uint i = 0; i < ubo.numLODs; i++){
-            // the LOD distances may not be in sorted order.
-            // to select a LOD, we use "price is right" rules selecting the closest distance value 
-            // without going over. 
-            // we use squared distance here.
-            float distForThisLOD = maxDistances[i];
-            distForThisLOD *= distForThisLOD;   // on host side, these are not expressed in squared distanecs
-
-            if (distForThisLOD > distFromCamera && distForThisLOD < closestDistance){
-                lodID = i;
-                closestDistance = distForThisLOD;
-            }
-
-        }
-    }
-
-	// if both checks are true, atomic-increment the instance count and write the entity ID into the output ID buffer based on the previous value of the instance count
 	if (isOnCamera) {
+
+        // check 2: what LOD am I in
+        uint lodID = 0;	
+
+        if (ubo.numLODs > 1){       // if there's only one answer, skip doing any of this
+
+            const vec3 worldSpacePos = (model * vec4(0,0,0,1)).xyz;
+            float distFromCamera = distSquared(worldSpacePos, ubo.camPos);
+
+            float currentBest = lodDistanceBuffer[0];
+
+            for(uint i = 0; i < ubo.numLODs; i++){
+                // the LOD distances may not be in sorted order.
+                // to select a LOD, we use "price is right" rules.
+                // we use squared distance here.
+                float minDisplayableDistForThisLOD = lodDistanceBuffer[i];
+                minDisplayableDistForThisLOD *= minDisplayableDistForThisLOD;   // on host side, these are not expressed in squared distanecs
+
+                // to use a LOD, the distance must be > the LOD's min distance
+
+                if (distFromCamera > minDisplayableDistForThisLOD && minDisplayableDistForThisLOD > currentBest){
+                    lodID = i;
+                    currentBest = minDisplayableDistForThisLOD;
+                }
+
+            }
+        }
+
+        // atomic-increment the instance count and write the entity ID into the output ID buffer based on the previous value of the instance count
 		uint idx = atomicAdd(indirectBuffer[ubo.indirectBufferOffset + lodID + ubo.isSingleInstanceMode * gl_GlobalInvocationID.x].instanceCount,1);
 		uint idxLODOffset = ubo.numObjects * lodID + ubo.cullingBufferOffset;
 

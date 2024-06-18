@@ -27,7 +27,7 @@ namespace RavEngine {
 	void MeshCollectionStatic::AddMesh(const Entry& m)
 	{
 		meshes.push_back(m.mesh);
-		lodDistances.push_back(m.maxDistance);
+		lodDistances.push_back(m.minDistance);
 	}
 	void MeshCollectionStatic::RemoveMeshAtIndex(uint16_t idx)
 	{
