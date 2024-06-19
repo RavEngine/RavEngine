@@ -13,7 +13,7 @@ layout(location = 0) out vec2 out_uv;
 ParticleVertexOut vert(uint particleID, ParticleMatrices matrices, vec2 inVertex){
 
     // load the data
-    const uint particleDataOffset = particleID * ubo.bytesPerParticle;
+    const uint particleDataOffset = (particleID * ubo.bytesPerParticle) / 4;
 
     const uint posOffset = particleDataOffset + ubo.particlePositionOffset / 4;
     vec3 data_pos = vec3(
