@@ -24,6 +24,7 @@ namespace librglc {
 
 	struct Config {
 		std::vector<std::filesystem::path> include_paths;
+		std::vector<std::string> defines;
 		bool outputBinary = false;
 		bool enableDebug = false;
         std::string entrypointOutputName = "main";

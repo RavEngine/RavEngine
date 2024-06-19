@@ -117,10 +117,28 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 	snprintf(buffer.data(), buffer.size(), shaderTemplate.data(), infile.string().c_str());
 	std::string full_shader = buffer.data();
 
+	// get the defines
+	simdjson::ondemand::array array;
+	auto err = doc["defines"].get(array);
+	std::vector<std::string> defines;
+	if (err) {
+		// no defines were present
+	}
+	else {
+		// pull out the defines
+		for (auto str : array) {
+			defines.push_back(std::string(str.get_string().value()));
+		}
+	}
+
 
 	try {
 		auto result = librglc::CompileString(full_shader, targetAPI, inputStage, {
-			.include_paths = includeDirs, .outputBinary = targetAPI == librglc::API::Vulkan, .enableDebug = debug, .entrypointOutputName = entrypoint
+			.include_paths = includeDirs, 
+			.defines = defines,
+			.outputBinary = targetAPI == librglc::API::Vulkan, 
+			.enableDebug = debug, 
+			.entrypointOutputName = entrypoint
 		});
 
 		std::filesystem::create_directories(outfile.parent_path());		// make all the folders necessary

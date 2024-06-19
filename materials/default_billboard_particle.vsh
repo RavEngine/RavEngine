@@ -2,32 +2,46 @@
 layout(push_constant, std430) uniform UniformBufferObject{
     ivec2 spritesheetDim;
     ivec2 numSprites;
+    uint bytesPerParticle;
+    uint particlePositionOffset;
+    uint particleScaleOffset;
+    uint particleFrameOffset;
 } ubo;
-
-struct ParticleData{
-    vec3 pos;
-    vec2 scale;
-    uint animationFrame;
-};
 
 layout(location = 0) out vec2 out_uv; 
 
+ParticleVertexOut vert(uint particleID, ParticleMatrices matrices, vec2 inVertex){
 
-ParticleVertexOut vert(ParticleData data, ParticleMatrices matrices, vec2 inVertex){
+    // load the data
+    const uint particleDataOffset = particleID * ubo.bytesPerParticle;
+
+    const uint posOffset = particleDataOffset + ubo.particlePositionOffset / 4;
+    vec3 data_pos = vec3(
+        uintBitsToFloat(particleDataBytes[posOffset]),
+        uintBitsToFloat(particleDataBytes[posOffset+1]),
+        uintBitsToFloat(particleDataBytes[posOffset+2])
+    );
+
+    const uint scaleOffset = particleDataOffset + ubo.particleScaleOffset / 4;
+
+    vec2 data_scale = vec2(
+        uintBitsToFloat(particleDataBytes[scaleOffset]),
+        uintBitsToFloat(particleDataBytes[scaleOffset+1])
+    );
 
     ParticleVertexOut v_out;
 
     mat3 billboardmtx = matrices.billboard;
 
-    vec3 rotated_quad = billboardmtx * vec3(inVertex * data.scale,0);
+    vec3 rotated_quad = billboardmtx * vec3(inVertex * data_scale,0);
 
-    vec4 vert = vec4(data.pos + rotated_quad,1);
+    vec4 vert = vec4(data_pos + rotated_quad,1);
 
     vert = matrices.viewProj * vert;
 
     vec2 cellDim = (ubo.spritesheetDim / vec2(ubo.numSprites)) / ubo.spritesheetDim;  // [0,1] for a single frame
 
-    uint frame = data.animationFrame;
+    uint frame = particleDataBytes[particleDataOffset + ubo.particleFrameOffset / 4];
 
     // using     
     vec2 uvs[] = {

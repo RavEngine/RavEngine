@@ -62,6 +62,11 @@ namespace librglc {
 			opt.version = 13;
             opt.preambleContent = "#define RGL_SL_WGSL 1";
 		}
+
+		// add user defines
+		for (const auto& define : config.defines) {
+			opt.preambleContent += "\n#define " + define + "\n";
+		}
         
 		ShaderTranspiler s;
 		auto result = s.CompileTo(task, config.outputBinary ? rgl2shadert_binary(toAPI) : rgl2shadert_source(toAPI), opt);

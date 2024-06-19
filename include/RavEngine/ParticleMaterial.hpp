@@ -26,6 +26,10 @@ namespace RavEngine {
 	struct ParticleBillboardUBO {
 		vector2i spritesheetDim;
 		vector2i numSprites;
+		uint32_t bytesPerParticle;
+		uint32_t particlePositionOffset;
+		uint32_t particleScaleOffset;
+		uint32_t particleFrameOffset;
 	};
 
 	struct ParticleQuadVert {
@@ -131,7 +135,7 @@ namespace RavEngine {
 		constexpr static uint16_t SpritesheetBindingSlot = 4;
 		constexpr static uint16_t SamplerBindingSlot = 3;
 
-		SpritesheetParticleRenderMaterialInstance(Ref<SpritesheetParticleRenderMaterial> mat) : BillboardParticleRenderMaterialInstance(mat) {
+		SpritesheetParticleRenderMaterialInstance(Ref<SpritesheetParticleRenderMaterial> mat, uint32_t bytesPerParticle, uint32_t particlePositionOffset, uint32_t particleScaleOffset, uint32_t particleFrameOffset) : BillboardParticleRenderMaterialInstance(mat), bytesPerParticle(bytesPerParticle), particlePositionOffset(particlePositionOffset), particleScaleOffset(particleScaleOffset), particleFrameOffset(particleFrameOffset){
 			samplerBindings[SamplerBindingSlot] = true;
 		};
 		struct spriteCount {
@@ -144,5 +148,10 @@ namespace RavEngine {
 		}
 
 		virtual uint8_t SetPushConstantData(std::span<std::byte, 128> data) const;
+	private:
+		uint32_t bytesPerParticle;
+		uint32_t particlePositionOffset;
+		uint32_t particleScaleOffset;
+		uint32_t particleFrameOffset;
 	};
 }

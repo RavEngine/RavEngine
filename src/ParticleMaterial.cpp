@@ -192,7 +192,10 @@ namespace RavEngine {
 	{
 		ParticleBillboardUBO str{
 			.spritesheetDim = {},
-			.numSprites = {}
+			.numSprites = {},
+			.bytesPerParticle = bytesPerParticle,
+			.particleScaleOffset = particleScaleOffset,
+			.particleFrameOffset = particleFrameOffset
 		};
 
 			auto dim = textureBindings[SpritesheetBindingSlot]->GetRHITexturePointer()->GetSize();

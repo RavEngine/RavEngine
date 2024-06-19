@@ -1,5 +1,8 @@
 {
   "shader": "default_billboard_particle.vsh",
   "stage": "vertex",
-  "type": "lit-particle-quad"
+  "type": "lit-particle-quad",
+  "defines": [
+    "CUSTOM_INDEXING 1" 
+  ]
 }
