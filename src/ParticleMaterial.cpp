@@ -194,6 +194,7 @@ namespace RavEngine {
 			.spritesheetDim = {},
 			.numSprites = {},
 			.bytesPerParticle = bytesPerParticle,
+			.particlePositionOffset = particlePositionOffset,
 			.particleScaleOffset = particleScaleOffset,
 			.particleFrameOffset = particleFrameOffset
 		};
