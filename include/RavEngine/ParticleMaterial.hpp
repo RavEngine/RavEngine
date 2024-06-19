@@ -12,13 +12,6 @@ namespace RavEngine {
 
 	struct Texture;
 
-	struct BilboardParticleEngineData {
-		vector3 pos{ 0 };
-		vector2 scale{ 0 };
-		uint32_t animationFrame = 0;
-	};
-
-
 	struct ParticleUpdateUBO {
 		float fpsScale;
 	};
