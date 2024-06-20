@@ -53,7 +53,7 @@ public:
         }
     };
 
-    // if we do not want this meshasset having ownership of the mesh (for example in use with Exchange)
+    // if we do not want this meshasset having ownership of the mesh
     // set this to false
     bool destroyOnDestruction = true;
     
@@ -119,11 +119,6 @@ public:
 #endif
 	
     struct Manager : public GenericWeakReadThroughCache<std::string,MeshAsset>{};
-    
-	/**
-	 Default constructor that creates an invalid MeshAsset. Useful in conjunction with Exchange.
-	 */
-	MeshAsset(){}
 	
 	/**
 	 Create a MeshAsset
@@ -165,29 +160,6 @@ public:
     MeshAsset(const MeshPartView& mesh, const MeshAssetOptions& options = MeshAssetOptions()){
         InitializeFromRawMeshView(mesh,options);
     }
-    
-#if !RVE_SERVER
-	/**
-	 Move a MeshAsset's data into this MeshAsset.
-	 @param other the other MeshAsset, which will become invalid after this call and should not be used.
-	 */
-	inline void Exchange(Ref<MeshAsset> other, bool destroyCurrent = true){
-
-		vertexBuffer = other->vertexBuffer;
-		indexBuffer = other->indexBuffer;
-		totalVerts = other->totalVerts;
-		totalIndices = other->totalIndices;
-		meshAllocation = other->meshAllocation;
-
-		radius = other->radius;
-		bounds = other->bounds;
-		
-		other->meshAllocation = {};
-        other->vertexBuffer.reset();
-		other->indexBuffer.reset();
-
-	}
-#endif
     
     constexpr inline const decltype(bounds)& GetBounds() const{
         return bounds;
