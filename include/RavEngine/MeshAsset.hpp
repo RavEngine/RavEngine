@@ -52,10 +52,6 @@ public:
 			indices = { other.indices.data(), other.indices.size() };
         }
     };
-
-    // if we do not want this meshasset having ownership of the mesh
-    // set this to false
-    bool destroyOnDestruction = true;
     
 	/**
 	Convert an assimp mesh to a MeshPart
@@ -64,10 +60,6 @@ public:
 	@return converted MeshPart
 	*/
 	static MeshPart AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scaleMat);
-    
-	uint32_t GetNumLods() const {
-		return 1;	// TODO: lods are not yet supported
-	}
 
 	MeshAsset(const MeshAsset&) = delete;
 	MeshAsset(MeshAsset&&) = delete;
