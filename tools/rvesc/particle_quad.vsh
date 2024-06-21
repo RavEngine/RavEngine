@@ -2,42 +2,19 @@ struct ParticleVertexOut{
     vec4 position;
 };
 
+
 struct ParticleMatrices{
     mat4 viewProj;
     mat3 billboard;
 };
 
-// because GLSL doesn't allow passing buffers to functions for ... reasons
-#if CUSTOM_INDEXING
-layout(scalar, binding = 0) readonly buffer ParticleDataSSBO
-{
-    uint particleDataBytes[];
-};
-#endif
+#include "particle_bindings_preamble.glsl"
 
 #include "%s"
 
+#include "particle_bindings_sub.glsl"
+
 layout(location = 0) in vec2 in_position;
-
-#if !CUSTOM_INDEXING
-layout(scalar, binding = 0) readonly buffer ParticleDataSSBO
-{
-    ParticleData particleData[];
-};
-#endif
-
-layout(std430, binding = 1) readonly buffer aliveSSBO
-{
-    uint aliveParticleIndexBuffer[];
-};
-
-layout(scalar, binding = 2) readonly buffer matrixSSBO
-{
-    ParticleMatrices matrixData[];
-};
-
-
-
 
 void main(){
     

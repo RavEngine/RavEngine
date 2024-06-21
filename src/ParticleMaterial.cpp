@@ -4,51 +4,46 @@
 #include "Texture.hpp"
 #include <RGL/Texture.hpp>
 
+
 namespace RavEngine {
-	ParticleRenderMaterial::ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS)
+	ParticleRenderMaterial::ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config)
 	{
 		auto device = GetApp()->GetDevice();
 		// render pipeline
 		{
-			auto layout = device->CreatePipelineLayout({
+			RGL::PipelineLayoutDescriptor rpl = {
 				.bindings = {
 					{
-						.binding = 0,
+						.binding = particleDataBufferBinding,
 						.type = RGL::BindingType::StorageBuffer,
 						.stageFlags = RGL::BindingVisibility::Vertex,
 						.writable = false,
 					},
 					{
-						.binding = 1,
+						.binding = particleAliveIndexBufferBinding,
 						.type = RGL::BindingType::StorageBuffer,
 						.stageFlags = RGL::BindingVisibility::Vertex,
 						.writable = false,
 					},
 					{
-						.binding = 2,
+						.binding = particleMatrixBufferBinding,
 						.type = RGL::BindingType::StorageBuffer,
 						.stageFlags = RGL::BindingVisibility::Vertex,
 						.writable = false,
 					},
-					{
-						.binding = 3,
-						.type = RGL::BindingType::Sampler,
-						.stageFlags = RGL::BindingVisibility::Fragment,
-						.writable = false,
-					},
-					{
-						.binding = 4,
-						.type = RGL::BindingType::SampledImage,
-						.stageFlags = RGL::BindingVisibility::Fragment,
-						.writable = false,
-					}
+
 				},
 				.constants = {
 					{
 						sizeof(ParticleBillboardUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
 					}
-				}	
-			});
+				}
+			};
+			for (const auto& binding : config.bindings) {
+				rpl.bindings.push_back(binding);
+			}
+
+			auto layout = device->CreatePipelineLayout(rpl);
 
 			userRenderPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
 				.stages = {
@@ -215,6 +210,28 @@ namespace RavEngine {
 		std::memcpy(data.data(), &str, sizeof(str));
 		return sizeof(str);
 	}
+
+	SpritesheetParticleRenderMaterial::SpritesheetParticleRenderMaterial() : BillboardRenderParticleMaterial("default_billboard_particle", "default_billboard_particle", {
+			.bindings = {
+				{
+					.binding = SpritesheetParticleRenderMaterialInstance::SamplerBindingSlot,
+					.type = RGL::BindingType::Sampler,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+					.writable = false,
+				},
+				{
+					.binding = SpritesheetParticleRenderMaterialInstance::SpritesheetBindingSlot,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+					.writable = false,
+				}
+			}
+		}) {}
+	PBRMeshParticleRenderMaterial::PBRMeshParticleRenderMaterial() : MeshParticleRenderMaterial("pbr_particle", "pbr_particle", 
+		{
+
+		}
+	) {}
 }
 
 #endif

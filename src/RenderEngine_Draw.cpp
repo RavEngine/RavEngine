@@ -200,13 +200,18 @@ struct LightingType{
 			worldOwning->Filter([this, worldOwning](ParticleEmitter& emitter, const Transform& transform) {
 				Ref<ParticleRenderMaterialInstance> renderMat;
 				auto updateMat = emitter.GetUpdateMaterial();
+
+				RGLComputePipelinePtr meshSelFn = nullptr;
+				bool isMeshPipeline = false;
 				
 				std::visit(CaseAnalysis{
                         [&renderMat](const Ref <BillboardParticleRenderMaterialInstance> &billboardMat) {
                             renderMat = billboardMat;
                         },
-                        [&renderMat](const Ref <MeshParticleRenderMaterialInstance> &meshMat) {
+                        [&renderMat, &meshSelFn, &isMeshPipeline](const Ref <MeshParticleRenderMaterialInstance> &meshMat) {
                             renderMat = meshMat;
+							meshSelFn = meshMat->meshSelFn;
+							isMeshPipeline = true;
                         }
                 }, emitter.GetRenderMaterial());
 
@@ -319,6 +324,10 @@ struct LightingType{
 
 				mainCommandBuffer->EndCompute();
 				mainCommandBuffer->EndComputeDebugMarker();
+
+				if (isMeshPipeline && meshSelFn) {
+					//TODO: mesh selection 
+				}
 				
 			});
 			mainCommandBuffer->EndComputeDebugMarker();
@@ -672,15 +681,14 @@ struct LightingType{
 
 					worldOwning->Filter([this, &viewproj, &particleBillboardMatrices](const ParticleEmitter& emitter, const Transform& t) {
 						std::visit(CaseAnalysis{
-								[this, &emitter, &viewproj,&particleBillboardMatrices](
-										const Ref <BillboardParticleRenderMaterialInstance>& billboardMat) {
+								[this, &emitter, &viewproj,&particleBillboardMatrices](const Ref <BillboardParticleRenderMaterialInstance>& billboardMat) {
+										auto material = billboardMat->GetMaterial();
 									mainCommandBuffer->BindRenderPipeline(
-											billboardMat->GetMaterial()->userRenderPipeline);
+											material->userRenderPipeline);
 									mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
-									mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, 0);
-									mainCommandBuffer->BindBuffer(emitter.activeParticleIndexBuffer,
-																  1);
-									mainCommandBuffer->BindBuffer(transientBuffer, 2, particleBillboardMatrices);
+									mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, material->particleDataBufferBinding);
+									mainCommandBuffer->BindBuffer(emitter.activeParticleIndexBuffer, material->particleAliveIndexBufferBinding);
+									mainCommandBuffer->BindBuffer(transientBuffer, material->particleMatrixBufferBinding);
 
 									std::byte pushConstants[128]{  };
 

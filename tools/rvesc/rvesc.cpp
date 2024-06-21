@@ -90,6 +90,14 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 			shaderTemplateName = "lit_particle_quad.fsh";
 		}
 	}
+	else if (mat_type == "lit-particle-mesh") {
+		if (inputStage == librglc::ShaderStage::Vertex) {
+			shaderTemplateName = "particle_mesh.vsh";
+		}
+		else {
+			shaderTemplateName = "lit_particle_quad.fsh";
+		}
+	}
 	else if (mat_type == "particle-update") {
 		inputStage = librglc::ShaderStage::Compute;
 		shaderTemplateName = "particle_update.csh";
@@ -205,7 +213,11 @@ int main(int argc, char** argv) {
 	catch (exception& e) {
 	}
 
+
 	includepaths.push_back(std::filesystem::current_path());
+
+	std::filesystem::path this_source_file = __FILE__;
+	includepaths.push_back(this_source_file.parent_path()); 	// enable #include for items next to this .cpp file
 
 	// get the target API
 	librglc::API api;

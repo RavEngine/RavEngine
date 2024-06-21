@@ -5,6 +5,7 @@
 #include <variant>
 #include "Ref.hpp"
 #include <RGL/Span.hpp>
+#include <RGL/Pipeline.hpp>
 #include <bitset>
 #include <span>
 
@@ -47,18 +48,20 @@ namespace RavEngine {
 		RGLComputePipelinePtr userInitPipeline, userUpdatePipeline;
 	};
 
+	struct ParticleRenderMaterialConfig {
+		std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> bindings;
+	};
+
 	struct ParticleRenderMaterial {
 		friend class RenderEngine;
+		constexpr static uint8_t
+			particleDataBufferBinding = 12,
+			particleAliveIndexBufferBinding = 13,
+			particleMatrixBufferBinding = 14
+			;
 	protected:
-		ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS);
+		ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {});
 
-	public:
-		/**
-		* @return The number of bytes required for your material's per-particle user data. This data is placed immediately after the engine's required particle data for each particle
-		*/
-		virtual uint16_t ParticleUserDataSize() const {
-			return 0;
-		}
 	private:
 	
 		RGLRenderPipelinePtr userRenderPipeline;
@@ -67,13 +70,13 @@ namespace RavEngine {
 	// Subclass this to make custom particle materials
 	struct BillboardRenderParticleMaterial : public ParticleRenderMaterial {
 	protected:
-		BillboardRenderParticleMaterial(const std::string_view particleVS, const std::string_view particleFS) : ParticleRenderMaterial(particleVS, particleFS) {}
+		BillboardRenderParticleMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {}) : ParticleRenderMaterial(particleFS, particleVS, config) {}
 	};
 
 	// Subclass this to make custom particle materials
 	struct MeshParticleRenderMaterial : public ParticleRenderMaterial {
 	protected:
-		MeshParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS) : ParticleRenderMaterial(particleVS, particleFS) {}
+		MeshParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {}) : ParticleRenderMaterial(particleVS, particleFS, config) {}
 	};
 
 	struct ParticleRenderMaterialInstance {
@@ -106,7 +109,10 @@ namespace RavEngine {
 
 	// subclass to define your own particle material instances
 	struct MeshParticleRenderMaterialInstance : ParticleRenderMaterialInstance {
+		friend class RenderEngine;
 		MeshParticleRenderMaterialInstance(Ref<MeshParticleRenderMaterial> mat) : ParticleRenderMaterialInstance(mat) {}
+	private:
+		RGLComputePipelinePtr meshSelFn = nullptr;
 	};
 
 	// subclass to define your own particle material instances
@@ -117,16 +123,13 @@ namespace RavEngine {
 
 	// built-in billboard renderer that does spritesheets
 	struct SpritesheetParticleRenderMaterial : public RavEngine::BillboardRenderParticleMaterial {
-		SpritesheetParticleRenderMaterial() : BillboardRenderParticleMaterial("default_billboard_particle", "default_billboard_particle") {}
+		SpritesheetParticleRenderMaterial();
 
-		uint16_t ParticleUserDataSize() const final {
-			return 0;   // needs no extra data
-		}
 	};
 
 	struct SpritesheetParticleRenderMaterialInstance : BillboardParticleRenderMaterialInstance {
-		constexpr static uint16_t SpritesheetBindingSlot = 4;
-		constexpr static uint16_t SamplerBindingSlot = 3;
+		constexpr static uint16_t SpritesheetBindingSlot = 1;
+		constexpr static uint16_t SamplerBindingSlot = 0;
 
 		SpritesheetParticleRenderMaterialInstance(Ref<SpritesheetParticleRenderMaterial> mat, uint32_t bytesPerParticle, uint32_t particlePositionOffset, uint32_t particleScaleOffset, uint32_t particleFrameOffset) : BillboardParticleRenderMaterialInstance(mat), bytesPerParticle(bytesPerParticle), particlePositionOffset(particlePositionOffset), particleScaleOffset(particleScaleOffset), particleFrameOffset(particleFrameOffset){
 			samplerBindings[SamplerBindingSlot] = true;
@@ -146,5 +149,13 @@ namespace RavEngine {
 		uint32_t particlePositionOffset;
 		uint32_t particleScaleOffset;
 		uint32_t particleFrameOffset;
+	};
+
+	struct PBRMeshParticleRenderMaterial : public MeshParticleRenderMaterial {
+		PBRMeshParticleRenderMaterial();
+	};
+
+	struct PBRMeshParticleRenderMaterialInstance : public MeshParticleRenderMaterialInstance {
+		PBRMeshParticleRenderMaterialInstance(Ref<PBRMeshParticleRenderMaterial> mat) : MeshParticleRenderMaterialInstance(mat) {}
 	};
 }

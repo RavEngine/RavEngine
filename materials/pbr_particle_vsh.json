@@ -1,0 +1,8 @@
+{
+  "shader": "pbr_particle.vsh",
+  "stage": "vertex",
+  "type": "lit-particle-mesh",
+  "defines": [
+    "CUSTOM_INDEXING 1"
+  ]
+}
