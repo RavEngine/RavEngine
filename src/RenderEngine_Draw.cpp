@@ -203,6 +203,7 @@ struct LightingType{
 
 				RGLComputePipelinePtr meshSelFn = nullptr;
 				bool isMeshPipeline = false;
+				uint32_t numMeshes = 0;
 				
 				std::visit(CaseAnalysis{
                         [&renderMat](const Ref <BillboardParticleRenderMaterialInstance> &billboardMat) {
@@ -217,14 +218,69 @@ struct LightingType{
 
 				auto worldTransform = transform.GetWorldMatrix();
 
-				auto dispatchSizeUpdate = [this, &emitter] {
+				auto dispatchSizeUpdate = [this, &emitter, &isMeshPipeline,&renderMat, &numMeshes] {
+
+					if (isMeshPipeline) {
+						// allocate indirect buffer
+						auto asMeshInstance = std::static_pointer_cast<MeshParticleRenderMaterialInstance>(renderMat);
+						auto meshCollection = asMeshInstance->meshes;
+
+						auto nMeshes = meshCollection->GetNumLods();
+						numMeshes = nMeshes;
+						auto nCurrentCommands = emitter.indirectDrawBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand);
+						if (nCurrentCommands != nMeshes) {
+							gcBuffers.enqueue(emitter.indirectDrawBuffer);
+							gcBuffers.enqueue(emitter.indirectDrawBufferStaging);
+							emitter.indirectDrawBuffer = device->CreateBuffer({
+								nMeshes, {.StorageBuffer = true, .IndirectBuffer = true}, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, {.TransferDestination = true, .Writable = true, .debugName = "Particle indirect draw buffer"}
+								});
+
+							emitter.indirectDrawBufferStaging = device->CreateBuffer({ nMeshes, {.StorageBuffer = true}, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, {.Transfersource = true, .debugName = "Particle indirect draw buffer staging"} });
+						}
+						emitter.indirectDrawBufferStaging->MapMemory();
+						auto ptr = static_cast<RGL::IndirectIndexedCommand*>(emitter.indirectDrawBufferStaging->GetMappedDataPtr());
+						for (int i = 0; i < nMeshes; i++) {
+							auto mesh = meshCollection->GetMeshForLOD(i);
+							auto allocation = mesh->GetAllocation();
+							*(ptr + i) = {
+								.indexCount = allocation.indexRange->count,
+								.instanceCount = 0,
+								.indexStart = allocation.indexRange->start,
+								.baseVertex = allocation.vertRange->start,
+								.baseInstance = 0
+							};
+						}
+
+						emitter.indirectDrawBufferStaging->UnmapMemory();
+						mainCommandBuffer->CopyBufferToBuffer(
+							{
+								.buffer = emitter.indirectDrawBufferStaging,
+								.offset = 0,
+							},
+							{
+								.buffer = emitter.indirectDrawBuffer,
+								.offset = 0,
+							},
+							emitter.indirectDrawBufferStaging->getBufferSize());
+					}
+
 					// setup dispatch sizes
 					// we always need to run this because the Update shader may kill particles, changing the number of active particles
-					mainCommandBuffer->BeginCompute(particleDispatchSetupPipeline);
+					if (isMeshPipeline) {
+						mainCommandBuffer->BeginCompute(particleDispatchSetupPipelineIndexed);
+					}
+					else{ 
+						mainCommandBuffer->BeginCompute(particleDispatchSetupPipeline);
+					}
 					mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 0);
 					mainCommandBuffer->BindComputeBuffer(emitter.indirectComputeBuffer, 1);
 					mainCommandBuffer->BindComputeBuffer(emitter.indirectDrawBuffer, 2);
-					mainCommandBuffer->DispatchCompute(1, 1, 1);	// this is kinda terrible...
+					if (isMeshPipeline) {
+						mainCommandBuffer->DispatchCompute(std::ceil(float(numMeshes) / 4), 1, 1);
+					}
+					else {
+						mainCommandBuffer->DispatchCompute(1, 1, 1);	// this is kinda terrible...
+					}
 					mainCommandBuffer->EndCompute();
 				};
 
@@ -680,46 +736,63 @@ struct LightingType{
 				if (includeParticles) {
 
 					worldOwning->Filter([this, &viewproj, &particleBillboardMatrices](const ParticleEmitter& emitter, const Transform& t) {
+						auto sharedParticleImpl = [this](const ParticleEmitter& emitter, Ref<ParticleRenderMaterialInstance> materialInstance) {
+							auto material = materialInstance->GetMaterial();
+
+							mainCommandBuffer->BindRenderPipeline(material->userRenderPipeline);
+							mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, material->particleDataBufferBinding);
+							mainCommandBuffer->BindBuffer(emitter.activeParticleIndexBuffer, material->particleAliveIndexBufferBinding);
+							mainCommandBuffer->BindBuffer(transientBuffer, material->particleMatrixBufferBinding);
+
+							std::byte pushConstants[128]{  };
+
+							auto nbytes = materialInstance->SetPushConstantData(pushConstants);
+
+							mainCommandBuffer->SetVertexBytes({ pushConstants, nbytes }, 0);
+							mainCommandBuffer->SetFragmentBytes({ pushConstants, nbytes }, 0);
+
+							// set samplers (currently sampler is not configurable)
+							for (uint32_t i = 0; i < materialInstance->samplerBindings.size(); i++) {
+								if (materialInstance->samplerBindings[i]) {
+									mainCommandBuffer->SetFragmentSampler(textureSampler, i);
+								}
+							}
+
+							// bind textures
+							for (uint32_t i = 0; i < materialInstance->textureBindings.size(); i++) {
+								if (materialInstance->textureBindings[i] != nullptr) {
+									mainCommandBuffer->SetFragmentTexture(
+										materialInstance->textureBindings[i]->GetRHITexturePointer()->GetDefaultView(), i);
+								}
+							}
+						};
+
 						std::visit(CaseAnalysis{
-								[this, &emitter, &viewproj,&particleBillboardMatrices](const Ref <BillboardParticleRenderMaterialInstance>& billboardMat) {
-										auto material = billboardMat->GetMaterial();
-									mainCommandBuffer->BindRenderPipeline(
-											material->userRenderPipeline);
+								[this, &emitter, &viewproj,&particleBillboardMatrices,&sharedParticleImpl](const Ref <BillboardParticleRenderMaterialInstance>& billboardMat) {
+									sharedParticleImpl(emitter,billboardMat);
+
 									mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
-									mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, material->particleDataBufferBinding);
-									mainCommandBuffer->BindBuffer(emitter.activeParticleIndexBuffer, material->particleAliveIndexBufferBinding);
-									mainCommandBuffer->BindBuffer(transientBuffer, material->particleMatrixBufferBinding);
 
-									std::byte pushConstants[128]{  };
-
-									auto nbytes = billboardMat->SetPushConstantData(pushConstants);
-
-									mainCommandBuffer->SetVertexBytes({pushConstants, nbytes}, 0);
-									mainCommandBuffer->SetFragmentBytes({ pushConstants, nbytes }, 0);
-
-									// set samplers (currently sampler is not configurable)
-									for (uint32_t i = 0; i < billboardMat->samplerBindings.size(); i++) {
-										if (billboardMat->samplerBindings[i]) {
-											mainCommandBuffer->SetFragmentSampler(textureSampler, i);
-										}
-									}
-	
-									// bind textures
-									for (uint32_t i = 0; i < billboardMat->textureBindings.size(); i++) {
-										if (billboardMat->textureBindings[i] != nullptr) {
-											mainCommandBuffer->SetFragmentTexture(
-												billboardMat->textureBindings[i]->GetRHITexturePointer()->GetDefaultView(), i);
-										}
-									}
-
-                                    mainCommandBuffer->ExecuteIndirect({
-                                                                               .indirectBuffer = emitter.indirectDrawBuffer,
-                                                                               .offsetIntoBuffer = 0,
-                                                                               .nDraws = 1,
-                                                                       });
+                                    mainCommandBuffer->ExecuteIndirect(
+										{
+											.indirectBuffer = emitter.indirectDrawBuffer,
+											.offsetIntoBuffer = 0,
+											.nDraws = 1,                   
+										});
                                 },
-                                [](const Ref <MeshParticleRenderMaterialInstance> &meshMat) {
-                                    //TODO
+                                [this,&emitter,&sharedParticleImpl](const Ref <MeshParticleRenderMaterialInstance> &meshMat) {
+								   sharedParticleImpl(emitter,meshMat);
+
+								   mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
+								   mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
+
+								   mainCommandBuffer->ExecuteIndirect(
+									   {
+											.indirectBuffer = emitter.indirectDrawBuffer,
+											.offsetIntoBuffer = 0,
+											.nDraws = meshMat->meshes->GetNumLods(),
+									   }
+									);
                                 }
                         }, emitter.GetRenderMaterial());
 					});

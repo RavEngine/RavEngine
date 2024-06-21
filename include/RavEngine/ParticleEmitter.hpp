@@ -78,7 +78,8 @@ namespace RavEngine {
 			indirectComputeBuffer = nullptr,
 			indirectDrawBuffer = nullptr,
 			emitterStateBuffer = nullptr,
-			particleLifeBuffer = nullptr;
+			particleLifeBuffer = nullptr,
+			indirectDrawBufferStaging = nullptr; // not initialized in the Emitter constructor
 
 		ParticleRenderMaterialVariant renderMaterial;
 		Ref<ParticleUpdateMaterialInstance> updateMaterial;

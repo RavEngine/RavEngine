@@ -12,6 +12,7 @@
 namespace RavEngine {
 
 	struct Texture;
+	struct MeshCollectionStatic;
 
 	struct ParticleUpdateUBO {
 		float fpsScale;
@@ -114,8 +115,9 @@ namespace RavEngine {
 	// subclass to define your own particle material instances
 	struct MeshParticleRenderMaterialInstance : ParticleRenderMaterialInstance {
 		friend class RenderEngine;
-		MeshParticleRenderMaterialInstance(Ref<MeshParticleRenderMaterial> mat) : ParticleRenderMaterialInstance(mat) {}
+		MeshParticleRenderMaterialInstance(Ref<MeshParticleRenderMaterial> mat, Ref<MeshCollectionStatic> meshes) : ParticleRenderMaterialInstance(mat), meshes(meshes) {}
 	private:
+		Ref<MeshCollectionStatic> meshes;
 		RGLComputePipelinePtr meshSelFn = nullptr;
 	};
 
@@ -160,6 +162,6 @@ namespace RavEngine {
 	};
 
 	struct PBRMeshParticleRenderMaterialInstance : public MeshParticleRenderMaterialInstance {
-		PBRMeshParticleRenderMaterialInstance(Ref<PBRMeshParticleRenderMaterial> mat) : MeshParticleRenderMaterialInstance(mat) {}
+		PBRMeshParticleRenderMaterialInstance(Ref<PBRMeshParticleRenderMaterial> mat, Ref<MeshCollectionStatic> meshes) : MeshParticleRenderMaterialInstance(mat, meshes) {}
 	};
 }

@@ -1777,6 +1777,38 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.pipelineLayout = particleDispatchLayout
 	});
 
+	auto particleDispatchLayoutIndexed = device->CreatePipelineLayout({
+		.bindings = {
+			{
+				.binding = 0,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = false
+			},
+			{
+				.binding = 1,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = true
+			},
+			{
+				.binding = 2,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = true
+			},
+		},
+		.constants = {}
+	});
+
+	particleDispatchSetupPipelineIndexed = device->CreateComputePipeline({
+		.stage = {
+			.type = RGL::ShaderStageDesc::Type::Compute,
+			.shaderModule = LoadShaderByFilename("particle_dispatch_setup_indexed.csh",device)
+		},
+		.pipelineLayout = particleDispatchLayoutIndexed
+	});
+
 	auto particleKillLayout = device->CreatePipelineLayout({
 		.bindings = {
 			{
