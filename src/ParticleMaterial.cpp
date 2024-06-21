@@ -4,9 +4,26 @@
 #include "Texture.hpp"
 #include <RGL/Texture.hpp>
 
-
 namespace RavEngine {
-	ParticleRenderMaterial::ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config)
+	static const RGL::RenderPipelineDescriptor::VertexConfig quadVertexConfig{
+		.vertexBindings = {
+			{
+				.binding = 0,
+				.stride = sizeof(ParticleQuadVert)
+			}
+		},
+		.attributeDescs = {
+			{
+				.location = 0,
+				.binding = 0,
+				.offset = offsetof(ParticleQuadVert,pos),
+				.format = RGL::VertexAttributeFormat::R32G32_SignedFloat
+			}
+		}
+	};
+
+
+	ParticleRenderMaterial::ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const InternalConfig& internalConfig, const ParticleRenderMaterialConfig& config)
 	{
 		auto device = GetApp()->GetDevice();
 		// render pipeline
@@ -56,22 +73,7 @@ namespace RavEngine {
 						.shaderModule = LoadShaderByFilename(Format("{}_fsh",particleFS),device)
 					},
 				},
-				.vertexConfig = {
-					.vertexBindings = {
-						{
-							.binding = 0,
-							.stride = sizeof(ParticleQuadVert)
-						}
-					},
-					.attributeDescs = {
-						{
-							.location = 0,
-							.binding = 0,
-							.offset = offsetof(ParticleQuadVert,pos),
-							.format = RGL::VertexAttributeFormat::R32G32_SignedFloat
-						}
-					}
-				},
+				.vertexConfig = internalConfig.vertexConfig,
 				.inputAssembly = {
 					.topology = RGL::PrimitiveTopology::TriangleStrip,
 				},
@@ -229,9 +231,17 @@ namespace RavEngine {
 		}) {}
 	PBRMeshParticleRenderMaterial::PBRMeshParticleRenderMaterial() : MeshParticleRenderMaterial("pbr_particle", "pbr_particle", 
 		{
+			.bindings = {
 
+			}
 		}
 	) {}
+	BillboardRenderParticleMaterial::BillboardRenderParticleMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config) : ParticleRenderMaterial(particleFS, particleVS, {
+			.vertexConfig = quadVertexConfig
+		}, config) {}
+	MeshParticleRenderMaterial::MeshParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config) : ParticleRenderMaterial(particleVS, particleFS, {
+		.vertexConfig = defaultVertexConfig
+	}, config) {}
 }
 
 #endif

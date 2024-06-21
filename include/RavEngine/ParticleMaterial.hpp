@@ -50,7 +50,7 @@ namespace RavEngine {
 
 	struct ParticleRenderMaterialConfig {
 		std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> bindings;
-	};
+	}; 
 
 	struct ParticleRenderMaterial {
 		friend class RenderEngine;
@@ -60,7 +60,11 @@ namespace RavEngine {
 			particleMatrixBufferBinding = 14
 			;
 	protected:
-		ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {});
+		struct InternalConfig {
+			RGL::RenderPipelineDescriptor::VertexConfig vertexConfig;
+		};
+		ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const InternalConfig& internalConfig, const ParticleRenderMaterialConfig& config = {});
+
 
 	private:
 	
@@ -70,13 +74,13 @@ namespace RavEngine {
 	// Subclass this to make custom particle materials
 	struct BillboardRenderParticleMaterial : public ParticleRenderMaterial {
 	protected:
-		BillboardRenderParticleMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {}) : ParticleRenderMaterial(particleFS, particleVS, config) {}
+		BillboardRenderParticleMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {});
 	};
 
 	// Subclass this to make custom particle materials
 	struct MeshParticleRenderMaterial : public ParticleRenderMaterial {
 	protected:
-		MeshParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {}) : ParticleRenderMaterial(particleVS, particleFS, config) {}
+		MeshParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {});
 	};
 
 	struct ParticleRenderMaterialInstance {
