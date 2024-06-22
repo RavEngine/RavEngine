@@ -34,7 +34,7 @@ namespace RavEngine {
 		});
 
 		indirectDrawBuffer = device->CreateBuffer({
-			1, {.StorageBuffer = true, .IndirectBuffer = true}, sizeof(RGL::IndirectCommand), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Particle indirect draw buffer"}
+			1, {.StorageBuffer = true, .IndirectBuffer = true}, sizeof(RGL::IndirectCommand), RGL::BufferAccess::Private, {.TransferDestination = true, .Writable = true, .debugName = "Particle indirect draw buffer"}
 		});
 		RGL::IndirectCommand initData{
 			.vertexCount = 4,
@@ -45,7 +45,7 @@ namespace RavEngine {
 		indirectDrawBuffer->SetBufferData(initData);
 
 		emitterStateBuffer = device->CreateBuffer({
-			1, {.StorageBuffer = true}, sizeof(ParticleState), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Particle state buffer"}
+			1, {.StorageBuffer = true}, sizeof(ParticleState), RGL::BufferAccess::Private, {.Transfersource = true, .Writable = true, .debugName = "Particle state buffer"}
 		});
 		emitterStateBuffer->SetBufferData(ParticleState{
 			.emitterOwnerID = GetOwner().GetIdInWorld()

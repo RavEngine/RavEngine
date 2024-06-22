@@ -84,6 +84,12 @@ namespace RavEngine {
 		MeshParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {});
 	};
 
+	struct MeshParticleMeshSelectionMaterial {
+		MeshParticleMeshSelectionMaterial(const std::string_view name);
+	private:
+		RGLRenderPipelinePtr userSelectionPipeline;
+	};
+
 	struct ParticleRenderMaterialInstance {
 		friend class RenderEngine;
 	protected:

@@ -1791,12 +1791,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				.stageFlags = RGL::BindingVisibility::Compute,
 				.writable = true
 			},
-			{
-				.binding = 2,
-				.type = RGL::BindingType::StorageBuffer,
-				.stageFlags = RGL::BindingVisibility::Compute,
-				.writable = true
-			},
 		},
 		.constants = {}
 	});

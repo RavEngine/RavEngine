@@ -218,7 +218,7 @@ struct LightingType{
 
 				auto worldTransform = transform.GetWorldMatrix();
 
-				auto dispatchSizeUpdate = [this, &emitter, &isMeshPipeline,&renderMat, &numMeshes] {
+				auto dispatchSizeUpdate = [this, &emitter, &isMeshPipeline,&renderMat, &numMeshes, &meshSelFn] {
 
 					if (isMeshPipeline) {
 						// allocate indirect buffer
@@ -228,7 +228,7 @@ struct LightingType{
 						auto nMeshes = meshCollection->GetNumLods();
 						numMeshes = nMeshes;
 						auto nCurrentCommands = emitter.indirectDrawBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand);
-						if (nCurrentCommands != nMeshes) {
+						if (nCurrentCommands != nMeshes || emitter.indirectDrawBuffer == nullptr || emitter.indirectDrawBufferStaging == nullptr) {
 							gcBuffers.enqueue(emitter.indirectDrawBuffer);
 							gcBuffers.enqueue(emitter.indirectDrawBufferStaging);
 							emitter.indirectDrawBuffer = device->CreateBuffer({
@@ -274,14 +274,31 @@ struct LightingType{
 					}
 					mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 0);
 					mainCommandBuffer->BindComputeBuffer(emitter.indirectComputeBuffer, 1);
-					mainCommandBuffer->BindComputeBuffer(emitter.indirectDrawBuffer, 2);
 					if (isMeshPipeline) {
-						mainCommandBuffer->DispatchCompute(std::ceil(float(numMeshes) / 4), 1, 1);
+						mainCommandBuffer->DispatchCompute(1, 1, 1);
 					}
 					else {
+						mainCommandBuffer->BindComputeBuffer(emitter.indirectDrawBuffer, 2);
 						mainCommandBuffer->DispatchCompute(1, 1, 1);	// this is kinda terrible...
 					}
 					mainCommandBuffer->EndCompute();
+
+					// if there's no mesh selector function, or we have 1 mesh total,
+					// sidestep the selector function and populate the count directly
+					if (isMeshPipeline && (meshSelFn == nullptr || numMeshes == 1)) {
+						// put the particle count into the indirect draw buffer
+						mainCommandBuffer->CopyBufferToBuffer(
+							{
+								.buffer = emitter.emitterStateBuffer,
+								.offset = offsetof(ParticleState,aliveParticleCount)
+							},
+							{
+								.buffer = emitter.indirectDrawBuffer,
+								.offset = offsetof(RGL::IndirectIndexedCommand,instanceCount),
+							},
+							sizeof(ParticleState::aliveParticleCount)
+						);
+					}
 				};
 
 				bool hasCalculatedSizes = false;
@@ -748,8 +765,10 @@ struct LightingType{
 
 							auto nbytes = materialInstance->SetPushConstantData(pushConstants);
 
-							mainCommandBuffer->SetVertexBytes({ pushConstants, nbytes }, 0);
-							mainCommandBuffer->SetFragmentBytes({ pushConstants, nbytes }, 0);
+							if (nbytes > 0) {
+								mainCommandBuffer->SetVertexBytes({ pushConstants, nbytes }, 0);
+								mainCommandBuffer->SetFragmentBytes({ pushConstants, nbytes }, 0);
+							}
 
 							// set samplers (currently sampler is not configurable)
 							for (uint32_t i = 0; i < materialInstance->samplerBindings.size(); i++) {
@@ -786,7 +805,7 @@ struct LightingType{
 								   mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
 								   mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
 
-								   mainCommandBuffer->ExecuteIndirect(
+								   mainCommandBuffer->ExecuteIndirectIndexed(
 									   {
 											.indirectBuffer = emitter.indirectDrawBuffer,
 											.offsetIntoBuffer = 0,

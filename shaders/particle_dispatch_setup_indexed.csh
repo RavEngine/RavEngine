@@ -32,19 +32,14 @@ struct IndirectIndexedCommand {
     uint baseInstance;  
 };
 
-layout(std430, binding = 2)buffer indirectDrawSSBO
-{
-    IndirectIndexedCommand indirectDrawBuffer[];    // for rendering
-};
 
 // kinda sucks...
-layout(local_size_x = 4, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main(){
 
     if (gl_GlobalInvocationID.x > 0){
         return;
     }
-    indirectDrawBuffer[0].instanceCount = particleState[0].aliveParticleCount;
 
     indirectBuffers[0] = IndirectWorkgroupSize(uint(ceil(particleState[0].createdThisFrame/64.f)),1,1);  // initialization shader
     indirectBuffers[1] = IndirectWorkgroupSize(uint(ceil(particleState[0].aliveParticleCount/64.f)),1,1);  // update shader

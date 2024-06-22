@@ -196,18 +196,15 @@ namespace RavEngine {
 			.particleFrameOffset = particleFrameOffset
 		};
 
-			auto dim = textureBindings[SpritesheetBindingSlot]->GetRHITexturePointer()->GetSize();
-			str.spritesheetDim = {
-					dim.width,
-					dim.height,
-			};
-			str.numSprites = {
-					spriteDim.numSpritesWidth,
-					spriteDim.numSpritesHeight,
-			};
-
-			
-		
+		auto dim = textureBindings[SpritesheetBindingSlot]->GetRHITexturePointer()->GetSize();
+		str.spritesheetDim = {
+				dim.width,
+				dim.height,
+		};
+		str.numSprites = {
+				spriteDim.numSpritesWidth,
+				spriteDim.numSpritesHeight,
+		};
 
 		std::memcpy(data.data(), &str, sizeof(str));
 		return sizeof(str);
@@ -242,6 +239,12 @@ namespace RavEngine {
 	MeshParticleRenderMaterial::MeshParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config) : ParticleRenderMaterial(particleVS, particleFS, {
 		.vertexConfig = defaultVertexConfig
 	}, config) {}
+
+
+	MeshParticleMeshSelectionMaterial::MeshParticleMeshSelectionMaterial(const std::string_view name)
+	{
+
+	}
 }
 
 #endif
