@@ -753,13 +753,13 @@ struct LightingType{
 				if (includeParticles) {
 
 					worldOwning->Filter([this, &viewproj, &particleBillboardMatrices](const ParticleEmitter& emitter, const Transform& t) {
-						auto sharedParticleImpl = [this](const ParticleEmitter& emitter, Ref<ParticleRenderMaterialInstance> materialInstance) {
+						auto sharedParticleImpl = [this, &particleBillboardMatrices](const ParticleEmitter& emitter, Ref<ParticleRenderMaterialInstance> materialInstance) {
 							auto material = materialInstance->GetMaterial();
 
 							mainCommandBuffer->BindRenderPipeline(material->userRenderPipeline);
 							mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, material->particleDataBufferBinding);
 							mainCommandBuffer->BindBuffer(emitter.activeParticleIndexBuffer, material->particleAliveIndexBufferBinding);
-							mainCommandBuffer->BindBuffer(transientBuffer, material->particleMatrixBufferBinding);
+							mainCommandBuffer->BindBuffer(transientBuffer, material->particleMatrixBufferBinding, particleBillboardMatrices);
 
 							std::byte pushConstants[128]{  };
 

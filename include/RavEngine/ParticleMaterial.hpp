@@ -51,6 +51,7 @@ namespace RavEngine {
 
 	struct ParticleRenderMaterialConfig {
 		std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> bindings;
+		size_t pushConstantSize = 0;
 	}; 
 
 	struct ParticleRenderMaterial {
@@ -64,7 +65,7 @@ namespace RavEngine {
 		struct InternalConfig {
 			RGL::RenderPipelineDescriptor::VertexConfig vertexConfig;
 		};
-		ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const InternalConfig& internalConfig, const ParticleRenderMaterialConfig& config = {});
+		ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const InternalConfig& internalConfig, const ParticleRenderMaterialConfig& config);
 
 
 	private:
@@ -157,10 +158,10 @@ namespace RavEngine {
 
 		virtual uint8_t SetPushConstantData(std::span<std::byte, 128> data) const;
 	private:
-		uint32_t bytesPerParticle;
-		uint32_t particlePositionOffset;
-		uint32_t particleScaleOffset;
-		uint32_t particleFrameOffset;
+		const uint32_t bytesPerParticle;
+		const uint32_t particlePositionOffset;
+		const uint32_t particleScaleOffset;
+		const uint32_t particleFrameOffset;
 	};
 
 	struct PBRMeshParticleRenderMaterial : public MeshParticleRenderMaterial {
@@ -168,6 +169,10 @@ namespace RavEngine {
 	};
 
 	struct PBRMeshParticleRenderMaterialInstance : public MeshParticleRenderMaterialInstance {
-		PBRMeshParticleRenderMaterialInstance(Ref<PBRMeshParticleRenderMaterial> mat, Ref<MeshCollectionStatic> meshes) : MeshParticleRenderMaterialInstance(mat, meshes) {}
+		PBRMeshParticleRenderMaterialInstance(Ref<PBRMeshParticleRenderMaterial> mat, Ref<MeshCollectionStatic> meshes, uint32_t bytesPerParticle, uint32_t positionOffsetBytes) : MeshParticleRenderMaterialInstance(mat, meshes), bytesPerParticle(bytesPerParticle), positionOffsetBytes(positionOffsetBytes){}
+		virtual uint8_t SetPushConstantData(std::span<std::byte, 128> data) const;
+	private:
+		const uint32_t bytesPerParticle;
+		const uint32_t positionOffsetBytes;
 	};
 }

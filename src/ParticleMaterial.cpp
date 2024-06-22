@@ -50,12 +50,16 @@ namespace RavEngine {
 					},
 
 				},
-				.constants = {
-					{
-						sizeof(ParticleBillboardUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
-					}
-				}
 			};
+
+			if (config.pushConstantSize > 0) {
+				rpl.constants = {
+					{
+						config.pushConstantSize, 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
+					}
+				};
+			}
+
 			for (const auto& binding : config.bindings) {
 				rpl.bindings.push_back(binding);
 			}
@@ -224,13 +228,21 @@ namespace RavEngine {
 					.stageFlags = RGL::BindingVisibility::Fragment,
 					.writable = false,
 				}
-			}
+			},
+			.pushConstantSize = sizeof(ParticleBillboardUBO)
 		}) {}
-	PBRMeshParticleRenderMaterial::PBRMeshParticleRenderMaterial() : MeshParticleRenderMaterial("pbr_particle", "pbr_particle", 
+
+	struct PBRUBO {
+		uint32_t bytesPerParticle;
+		uint32_t positionOffset;
+	};
+
+	PBRMeshParticleRenderMaterial::PBRMeshParticleRenderMaterial() : MeshParticleRenderMaterial("pbr_particle", "pbr_particle",
 		{
 			.bindings = {
 
-			}
+			},
+			.pushConstantSize = sizeof(PBRUBO)
 		}
 	) {}
 	BillboardRenderParticleMaterial::BillboardRenderParticleMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config) : ParticleRenderMaterial(particleFS, particleVS, {
@@ -244,6 +256,17 @@ namespace RavEngine {
 	MeshParticleMeshSelectionMaterial::MeshParticleMeshSelectionMaterial(const std::string_view name)
 	{
 
+	}
+
+	uint8_t PBRMeshParticleRenderMaterialInstance::SetPushConstantData(std::span<std::byte, 128> data) const
+	{
+		PBRUBO ubo{
+			.bytesPerParticle = bytesPerParticle,
+			.positionOffset = positionOffsetBytes
+		};
+
+		std::memcpy(data.data(), &ubo, sizeof(ubo));
+		return sizeof(ubo);
 	}
 }
 
