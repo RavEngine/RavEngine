@@ -23,16 +23,6 @@ layout(std430, binding = 1)buffer indirectSSBO
     IndirectWorkgroupSize indirectBuffers[];    // 0 is initialization shader, 1 is update shader
 };
 
-
-struct IndirectIndexedCommand {
-	uint indexCount;
-    uint instanceCount;
-    uint indexStart;
-    uint baseVertex;
-    uint baseInstance;  
-};
-
-
 // kinda sucks...
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main(){

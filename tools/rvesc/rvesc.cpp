@@ -106,6 +106,10 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 		inputStage = librglc::ShaderStage::Compute;
 		shaderTemplateName = "particle_init.csh";
 	}
+	else if (mat_type == "mesh-particle-selection") {
+		inputStage = librglc::ShaderStage::Compute;
+		shaderTemplateName = "particle_mesh_selection.csh";
+	}
 	else {
 		FATAL(fmt::format("{} is not a supported material type",mat_type));
 		return 1;
