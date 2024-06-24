@@ -233,6 +233,10 @@ namespace RavEngine {
 		}) {}
 
 	struct PBRUBO {
+		glm::vec4 colorTint = {1.0f,1,1,1};
+		float metallicTint = 0.6;
+		float roughnessTint = 0.5;
+		float specularTint = 0;
 		uint32_t bytesPerParticle;
 		uint32_t positionOffset;
 	};
@@ -240,6 +244,42 @@ namespace RavEngine {
 	PBRMeshParticleRenderMaterial::PBRMeshParticleRenderMaterial() : MeshParticleRenderMaterial("pbr_particle", "pbr_particle",
 		{
 			.bindings = {
+				{
+					.binding = 0,
+					.type = RGL::BindingType::Sampler,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+				},
+				{
+					.binding = 1,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+				},
+				{
+					.binding = 2,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+				},
+				{
+					.binding = 3,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+				},
+				{
+					.binding = 4,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+				},
+				{
+					.binding = 5,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+				},
+				{
+					.binding = 6,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+				},
+
 				{
 					.binding = 11,									// engine-required binding
 					.type = RGL::BindingType::StorageBuffer,
@@ -311,6 +351,17 @@ namespace RavEngine {
 			},
 			.pipelineLayout = layout
 		});
+	}
+
+	PBRMeshParticleRenderMaterialInstance::PBRMeshParticleRenderMaterialInstance(Ref<PBRMeshParticleRenderMaterial> mat, Ref<MeshCollectionStatic> meshes, uint32_t bytesPerParticle, uint32_t positionOffsetBytes) : MeshParticleRenderMaterialInstance(mat, meshes), bytesPerParticle(bytesPerParticle), positionOffsetBytes(positionOffsetBytes)
+	{
+		samplerBindings[kSamplerBinding] = true;
+		textureBindings[kDiffuseBinding] = Texture::Manager::defaultTexture;
+		textureBindings[kNormalBinding] = Texture::Manager::defaultNormalTexture;
+		textureBindings[kSpecularBinding] = Texture::Manager::defaultTexture;
+		textureBindings[kMetallicBinding] = Texture::Manager::defaultTexture;
+		textureBindings[kRoughnessBinding] = Texture::Manager::defaultTexture;
+		textureBindings[kAOBinding] = Texture::Manager::defaultTexture;
 	}
 
 	uint8_t PBRMeshParticleRenderMaterialInstance::SetPushConstantData(std::span<std::byte, 128> data) const
