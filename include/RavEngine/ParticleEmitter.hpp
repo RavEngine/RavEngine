@@ -91,6 +91,11 @@ namespace RavEngine {
 		uint32_t spawnRate = 10;
 
 		double lastSpawnTime = 0;
+
+		// this is icky and nasty, we need a better solution than this
+		struct RenderState {
+			uint32_t maxTotalParticlesOffset = 0;
+		} renderState;
 	};
 
 }

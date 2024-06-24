@@ -1,5 +1,6 @@
 /*
- * Copyright 2015-2020 Arm Limited
+ * Copyright 2015-2021 Arm Limited
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,6 +13,12 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ */
+
+/*
+ * At your option, you may choose to accept this material under either:
+ *  1. The Apache License, Version 2.0, found at <http://www.apache.org/licenses/LICENSE-2.0>, or
+ *  2. The MIT License, found at <http://opensource.org/licenses/MIT>.
  */
 
 #include "spirv_cpp.hpp"
@@ -33,7 +40,7 @@ void CompilerCPP::emit_buffer_block(const SPIRVariable &var)
 	emit_block_struct(type);
 	auto buffer_name = to_name(type.self);
 
-	statement("internal::Resource<", buffer_name, type_to_array_glsl(type), "> ", instance_name, "__;");
+	statement("internal::Resource<", buffer_name, type_to_array_glsl(type, var.self), "> ", instance_name, "__;");
 	statement_no_indent("#define ", instance_name, " __res->", instance_name, "__.get()");
 	resource_registrations.push_back(
 	    join("s.register_resource(", instance_name, "__", ", ", descriptor_set, ", ", binding, ");"));
@@ -61,7 +68,7 @@ void CompilerCPP::emit_interface_block(const SPIRVariable &var)
 	else
 		buffer_name = type_to_glsl(type);
 
-	statement("internal::", qual, "<", buffer_name, type_to_array_glsl(type), "> ", instance_name, "__;");
+	statement("internal::", qual, "<", buffer_name, type_to_array_glsl(type, var.self), "> ", instance_name, "__;");
 	statement_no_indent("#define ", instance_name, " __res->", instance_name, "__.get()");
 	resource_registrations.push_back(join("s.register_", lowerqual, "(", instance_name, "__", ", ", location, ");"));
 	statement("");
@@ -93,14 +100,14 @@ void CompilerCPP::emit_uniform(const SPIRVariable &var)
 	if (type.basetype == SPIRType::Image || type.basetype == SPIRType::SampledImage ||
 	    type.basetype == SPIRType::AtomicCounter)
 	{
-		statement("internal::Resource<", type_name, type_to_array_glsl(type), "> ", instance_name, "__;");
+		statement("internal::Resource<", type_name, type_to_array_glsl(type, var.self), "> ", instance_name, "__;");
 		statement_no_indent("#define ", instance_name, " __res->", instance_name, "__.get()");
 		resource_registrations.push_back(
 		    join("s.register_resource(", instance_name, "__", ", ", descriptor_set, ", ", binding, ");"));
 	}
 	else
 	{
-		statement("internal::UniformConstant<", type_name, type_to_array_glsl(type), "> ", instance_name, "__;");
+		statement("internal::UniformConstant<", type_name, type_to_array_glsl(type, var.self), "> ", instance_name, "__;");
 		statement_no_indent("#define ", instance_name, " __res->", instance_name, "__.get()");
 		resource_registrations.push_back(
 		    join("s.register_uniform_constant(", instance_name, "__", ", ", location, ");"));
@@ -123,7 +130,7 @@ void CompilerCPP::emit_push_constant_block(const SPIRVariable &var)
 	auto buffer_name = to_name(type.self);
 	auto instance_name = to_name(var.self);
 
-	statement("internal::PushConstant<", buffer_name, type_to_array_glsl(type), "> ", instance_name, ";");
+	statement("internal::PushConstant<", buffer_name, type_to_array_glsl(type, var.self), "> ", instance_name, ";");
 	statement_no_indent("#define ", instance_name, " __res->", instance_name, ".get()");
 	resource_registrations.push_back(join("s.register_push_constant(", instance_name, "__", ");"));
 	statement("");
@@ -267,8 +274,6 @@ void CompilerCPP::emit_resources()
 	if (emitted)
 		statement("");
 
-	declare_undefined_values();
-
 	statement("inline void init(spirv_cross_shader& s)");
 	begin_scope();
 	statement(resource_type, "::init(s);");
@@ -306,6 +311,8 @@ void CompilerCPP::emit_resources()
 
 string CompilerCPP::compile()
 {
+	ir.fixup_reserved_names();
+
 	// Do not deal with ES-isms like precision, older extensions and such.
 	options.es = false;
 	options.version = 450;
@@ -329,11 +336,8 @@ string CompilerCPP::compile()
 	uint32_t pass_count = 0;
 	do
 	{
-		if (pass_count >= 3)
-			SPIRV_CROSS_THROW("Over 3 compilation loops detected. Must be a bug!");
-
 		resource_registrations.clear();
-		reset();
+		reset(pass_count);
 
 		// Move constructor for this type is broken on GCC 4.9 ...
 		buffer.reset();

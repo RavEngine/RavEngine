@@ -164,10 +164,6 @@ namespace RGL {
             queueCreateInfos.push_back(queueCreateInfo);
         }
 
-        VkPhysicalDeviceFeatures deviceFeatures{
-            .samplerAnisotropy = VK_TRUE,   // need to explicity request it
-        };
-
         VkPhysicalDeviceVulkan13Features vulkan1_3Features{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
             .pNext = nullptr
@@ -177,9 +173,15 @@ namespace RGL {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
             .pNext = &vulkan1_3Features
         };
+
+        VkPhysicalDeviceVulkan11Features vulkan1_1Features{                 // shaderDrawParameters 
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
+            .pNext = &vulkan1_2Features
+        };
+
         VkPhysicalDeviceCustomBorderColorFeaturesEXT customBorderColor{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT,
-            .pNext = &vulkan1_2Features,
+            .pNext = &vulkan1_1Features,
         };
         VkPhysicalDeviceFeatures2 deviceFeatures2{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
@@ -200,6 +202,9 @@ namespace RGL {
         }
         if (vulkan1_2Features.samplerFilterMinmax == VK_FALSE) {
             FatalError("Cannot init - Minmax Sampler is not supported");
+        }
+        if (vulkan1_1Features.shaderDrawParameters == VK_FALSE) {
+            FatalError("Cannot init - Shader Draw Parameters (baseInstance et al) are not supported.");
         }
 
         std::vector<const char*> runtimeExtensions{std::begin(deviceExtensions),std::end(deviceExtensions)};

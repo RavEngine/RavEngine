@@ -1,5 +1,6 @@
 /*
- * Copyright 2018-2020 Bradley Austin Davis
+ * Copyright 2018-2021 Bradley Austin Davis
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,6 +13,12 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ */
+
+/*
+ * At your option, you may choose to accept this material under either:
+ *  1. The Apache License, Version 2.0, found at <http://www.apache.org/licenses/LICENSE-2.0>, or
+ *  2. The MIT License, found at <http://opensource.org/licenses/MIT>.
  */
 
 #include "spirv_reflect.hpp"
@@ -267,7 +274,6 @@ string CompilerReflection::compile()
 	json_stream = std::make_shared<simple_json::Stream>();
 	json_stream->set_current_locale_radix_character(current_locale_radix_character);
 	json_stream->begin_json_object();
-	fixup_type_alias();
 	reorder_type_alias();
 	emit_entry_points();
 	emit_types();
@@ -285,8 +291,8 @@ static bool naturally_emit_type(const SPIRType &type)
 bool CompilerReflection::type_is_reference(const SPIRType &type) const
 {
 	// Physical pointers and arrays of physical pointers need to refer to the pointee's type.
-	return type_is_top_level_physical_pointer(type) ||
-	       (!type.array.empty() && type_is_top_level_physical_pointer(get<SPIRType>(type.parent_type)));
+	return is_physical_pointer(type) ||
+	       (type_is_array_of_pointers(type) && type.storage == StorageClassPhysicalStorageBuffer);
 }
 
 void CompilerReflection::emit_types()
@@ -305,8 +311,8 @@ void CompilerReflection::emit_types()
 		else if (type_is_reference(type))
 		{
 			if (!naturally_emit_type(this->get<SPIRType>(type.parent_type)) &&
-			    find(physical_pointee_types.begin(), physical_pointee_types.end(),
-			         uint32_t(type.parent_type)) == physical_pointee_types.end())
+			    find(physical_pointee_types.begin(), physical_pointee_types.end(), type.parent_type) ==
+			        physical_pointee_types.end())
 			{
 				physical_pointee_types.push_back(type.parent_type);
 			}
@@ -327,9 +333,6 @@ void CompilerReflection::emit_type(uint32_t type_id, bool &emitted_open_tag)
 	auto &type = get<SPIRType>(type_id);
 	auto name = type_to_glsl(type);
 
-	if (type.type_alias != TypeID(0))
-		return;
-
 	if (!emitted_open_tag)
 	{
 		json_stream->emit_json_key_object("types");
@@ -338,7 +341,7 @@ void CompilerReflection::emit_type(uint32_t type_id, bool &emitted_open_tag)
 	json_stream->emit_json_key_object("_" + std::to_string(type_id));
 	json_stream->emit_json_key_value("name", name);
 
-	if (type_is_top_level_physical_pointer(type))
+	if (is_physical_pointer(type))
 	{
 		json_stream->emit_json_key_value("type", "_" + std::to_string(type.parent_type));
 		json_stream->emit_json_key_value("physical_pointer", true);
@@ -401,7 +404,7 @@ void CompilerReflection::emit_type_member(const SPIRType &type, uint32_t index)
 
 void CompilerReflection::emit_type_array(const SPIRType &type)
 {
-	if (!type_is_top_level_physical_pointer(type) && !type.array.empty())
+	if (!is_physical_pointer(type) && !type.array.empty())
 	{
 		json_stream->emit_json_key_array("array");
 		// Note that we emit the zeros here as a means of identifying
@@ -441,7 +444,7 @@ void CompilerReflection::emit_type_member_qualifiers(const SPIRType &type, uint3
 		if (dec.decoration_flags.get(DecorationRowMajor))
 			json_stream->emit_json_key_value("row_major", true);
 
-		if (type_is_top_level_physical_pointer(membertype))
+		if (is_physical_pointer(membertype))
 			json_stream->emit_json_key_value("physical_pointer", true);
 	}
 }
@@ -584,18 +587,18 @@ void CompilerReflection::emit_resources(const char *tag, const SmallVector<Resou
 		{
 			bool ssbo_block = type.storage == StorageClassStorageBuffer ||
 			                  (type.storage == StorageClassUniform && typeflags.get(DecorationBufferBlock));
-			if (ssbo_block)
-			{
-				auto buffer_flags = get_buffer_block_flags(res.id);
-				if (buffer_flags.get(DecorationNonReadable))
-					json_stream->emit_json_key_value("writeonly", true);
-				if (buffer_flags.get(DecorationNonWritable))
-					json_stream->emit_json_key_value("readonly", true);
-				if (buffer_flags.get(DecorationRestrict))
-					json_stream->emit_json_key_value("restrict", true);
-				if (buffer_flags.get(DecorationCoherent))
-					json_stream->emit_json_key_value("coherent", true);
-			}
+			Bitset qualifier_mask = ssbo_block ? get_buffer_block_flags(res.id) : mask;
+
+			if (qualifier_mask.get(DecorationNonReadable))
+				json_stream->emit_json_key_value("writeonly", true);
+			if (qualifier_mask.get(DecorationNonWritable))
+				json_stream->emit_json_key_value("readonly", true);
+			if (qualifier_mask.get(DecorationRestrict))
+				json_stream->emit_json_key_value("restrict", true);
+			if (qualifier_mask.get(DecorationCoherent))
+				json_stream->emit_json_key_value("coherent", true);
+			if (qualifier_mask.get(DecorationVolatile))
+				json_stream->emit_json_key_value("volatile", true);
 		}
 
 		emit_type_array(type);
@@ -630,6 +633,10 @@ void CompilerReflection::emit_resources(const char *tag, const SmallVector<Resou
 			                                 get_decoration(res.id, DecorationInputAttachmentIndex));
 		if (mask.get(DecorationOffset))
 			json_stream->emit_json_key_value("offset", get_decoration(res.id, DecorationOffset));
+		if (mask.get(DecorationWeightTextureQCOM))
+			json_stream->emit_json_key_value("WeightTextureQCOM", get_decoration(res.id, DecorationWeightTextureQCOM));
+		if (mask.get(DecorationBlockMatchTextureQCOM))
+			json_stream->emit_json_key_value("BlockMatchTextureQCOM", get_decoration(res.id, DecorationBlockMatchTextureQCOM));
 
 		// For images, the type itself adds a layout qualifer.
 		// Only emit the format for storage images.
@@ -651,7 +658,7 @@ void CompilerReflection::emit_specialization_constants()
 		return;
 
 	json_stream->emit_json_key_array("specialization_constants");
-	for (const auto spec_const : specialization_constants)
+	for (const auto &spec_const : specialization_constants)
 	{
 		auto &c = get<SPIRConstant>(spec_const.id);
 		auto type = get<SPIRType>(c.constant_type);

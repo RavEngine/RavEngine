@@ -14,10 +14,24 @@ struct ParticleMatrices{
 
 #include "particle_bindings_sub.glsl"
 
+struct EngineData{
+    uint numMeshes;
+    uint maxPossibleParticles;
+};
+
+layout(scalar, binding = 11) readonly buffer engineDataSSBO
+{
+    EngineData config[];
+};
+
 
 void main(){
 
-    uint particle = aliveParticleIndexBuffer[gl_InstanceID];
+// if we are in single-mesh mode, then the particle ID can be found at buffer[gl_InstanceID].
+// if we are in multi-mesh mode, then the particle ID can be found at (gl_BaseInstance * config.maxPossibleParticles) + gl_InstanceID
+    // we only need to do the second line because if in single-mesh mode, gl_BaseInstance will always be 0
+
+    uint particle = aliveParticleIndexBuffer[gl_BaseInstance * config[0].maxPossibleParticles + gl_InstanceID];
 
 #if CUSTOM_INDEXING
     ParticleVertexOut user_out = vert(particle, matrixData[0]);

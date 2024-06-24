@@ -239,7 +239,7 @@ struct LightingType{
 						}
 						emitter.indirectDrawBufferStaging->MapMemory();
 						auto ptr = static_cast<RGL::IndirectIndexedCommand*>(emitter.indirectDrawBufferStaging->GetMappedDataPtr());
-						for (int i = 0; i < nMeshes; i++) {
+						for (uint32_t i = 0; i < nMeshes; i++) {
 							auto mesh = meshCollection->GetMeshForLOD(i);
 							auto allocation = mesh->GetAllocation();
 							*(ptr + i) = {
@@ -247,7 +247,7 @@ struct LightingType{
 								.instanceCount = 0,
 								.indexStart = allocation.indexRange->start,
 								.baseVertex = allocation.vertRange->start,
-								.baseInstance = 0
+								.baseInstance = i
 							};
 						}
 
@@ -417,6 +417,7 @@ struct LightingType{
 					};
 
 					auto transientOffset = WriteTransient(engineData);
+					emitter.renderState.maxTotalParticlesOffset = transientOffset;
 
 					// setup rendering
 					auto selMat = meshSelFn->material;
@@ -842,6 +843,7 @@ struct LightingType{
 
 								   mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
 								   mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
+								   mainCommandBuffer->BindBuffer(transientBuffer, 11, emitter.renderState.maxTotalParticlesOffset);
 
 								   mainCommandBuffer->ExecuteIndirectIndexed(
 									   {

@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright 2016-2021 The Khronos Group Inc.
+# SPDX-License-Identifier: Apache-2.0
 
 PROFILE=Release
 
@@ -13,7 +15,7 @@ fi
 echo "Building glslang."
 mkdir -p external/glslang-build
 cd external/glslang-build
-cmake ../glslang -DCMAKE_BUILD_TYPE=$PROFILE -DCMAKE_INSTALL_PREFIX=output
+cmake ../glslang -DCMAKE_BUILD_TYPE=$PROFILE -DCMAKE_INSTALL_PREFIX=output -DENABLE_OPT=OFF
 cmake --build . --config $PROFILE --target install ${NPROC}
 cd ../..
 

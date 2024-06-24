@@ -240,7 +240,12 @@ namespace RavEngine {
 	PBRMeshParticleRenderMaterial::PBRMeshParticleRenderMaterial() : MeshParticleRenderMaterial("pbr_particle", "pbr_particle",
 		{
 			.bindings = {
-
+				{
+					.binding = 11,									// engine-required binding
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Vertex,
+					.writable = false
+				}
 			},
 			.pushConstantSize = sizeof(PBRUBO)
 		}

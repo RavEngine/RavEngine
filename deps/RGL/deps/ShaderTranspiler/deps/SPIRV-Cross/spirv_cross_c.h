@@ -1,5 +1,6 @@
 /*
- * Copyright 2019-2020 Hans-Kristian Arntzen
+ * Copyright 2019-2021 Hans-Kristian Arntzen
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,6 +13,12 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ */
+
+/*
+ * At your option, you may choose to accept this material under either:
+ *  1. The Apache License, Version 2.0, found at <http://www.apache.org/licenses/LICENSE-2.0>, or
+ *  2. The MIT License, found at <http://opensource.org/licenses/MIT>.
  */
 
 #ifndef SPIRV_CROSS_C_API_H
@@ -33,7 +40,7 @@ extern "C" {
 /* Bumped if ABI or API breaks backwards compatibility. */
 #define SPVC_C_API_VERSION_MAJOR 0
 /* Bumped if APIs or enumerations are added in a backwards compatible way. */
-#define SPVC_C_API_VERSION_MINOR 35
+#define SPVC_C_API_VERSION_MINOR 61
 /* Bumped if internal implementation details change. */
 #define SPVC_C_API_VERSION_PATCH 0
 
@@ -91,6 +98,13 @@ typedef struct spvc_reflected_resource
 	spvc_type_id type_id;
 	const char *name;
 } spvc_reflected_resource;
+
+typedef struct spvc_reflected_builtin_resource
+{
+	SpvBuiltIn builtin;
+	spvc_type_id value_type_id;
+	spvc_reflected_resource resource;
+} spvc_reflected_builtin_resource;
 
 /* See C++ API. */
 typedef struct spvc_entry_point
@@ -211,8 +225,17 @@ typedef enum spvc_resource_type
 	SPVC_RESOURCE_TYPE_SEPARATE_SAMPLERS = 11,
 	SPVC_RESOURCE_TYPE_ACCELERATION_STRUCTURE = 12,
 	SPVC_RESOURCE_TYPE_RAY_QUERY = 13,
+	SPVC_RESOURCE_TYPE_SHADER_RECORD_BUFFER = 14,
 	SPVC_RESOURCE_TYPE_INT_MAX = 0x7fffffff
 } spvc_resource_type;
+
+typedef enum spvc_builtin_resource_type
+{
+	SPVC_BUILTIN_RESOURCE_TYPE_UNKNOWN = 0,
+	SPVC_BUILTIN_RESOURCE_TYPE_STAGE_INPUT = 1,
+	SPVC_BUILTIN_RESOURCE_TYPE_STAGE_OUTPUT = 2,
+	SPVC_BUILTIN_RESOURCE_TYPE_INT_MAX = 0x7fffffff
+} spvc_builtin_resource_type;
 
 /* Maps to spirv_cross::SPIRType::BaseType. */
 typedef enum spvc_basetype
@@ -259,21 +282,38 @@ typedef enum spvc_msl_platform
 } spvc_msl_platform;
 
 /* Maps to C++ API. */
-typedef enum spvc_msl_shader_input_format
+typedef enum spvc_msl_index_type
 {
-	SPVC_MSL_SHADER_INPUT_FORMAT_OTHER = 0,
-	SPVC_MSL_SHADER_INPUT_FORMAT_UINT8 = 1,
-	SPVC_MSL_SHADER_INPUT_FORMAT_UINT16 = 2,
+	SPVC_MSL_INDEX_TYPE_NONE = 0,
+	SPVC_MSL_INDEX_TYPE_UINT16 = 1,
+	SPVC_MSL_INDEX_TYPE_UINT32 = 2,
+	SPVC_MSL_INDEX_TYPE_MAX_INT = 0x7fffffff
+} spvc_msl_index_type;
+
+/* Maps to C++ API. */
+typedef enum spvc_msl_shader_variable_format
+{
+	SPVC_MSL_SHADER_VARIABLE_FORMAT_OTHER = 0,
+	SPVC_MSL_SHADER_VARIABLE_FORMAT_UINT8 = 1,
+	SPVC_MSL_SHADER_VARIABLE_FORMAT_UINT16 = 2,
+	SPVC_MSL_SHADER_VARIABLE_FORMAT_ANY16 = 3,
+	SPVC_MSL_SHADER_VARIABLE_FORMAT_ANY32 = 4,
 
 	/* Deprecated names. */
-	SPVC_MSL_VERTEX_FORMAT_OTHER = SPVC_MSL_SHADER_INPUT_FORMAT_OTHER,
-	SPVC_MSL_VERTEX_FORMAT_UINT8 = SPVC_MSL_SHADER_INPUT_FORMAT_UINT8,
-	SPVC_MSL_VERTEX_FORMAT_UINT16 = SPVC_MSL_SHADER_INPUT_FORMAT_UINT16,
+	SPVC_MSL_VERTEX_FORMAT_OTHER = SPVC_MSL_SHADER_VARIABLE_FORMAT_OTHER,
+	SPVC_MSL_VERTEX_FORMAT_UINT8 = SPVC_MSL_SHADER_VARIABLE_FORMAT_UINT8,
+	SPVC_MSL_VERTEX_FORMAT_UINT16 = SPVC_MSL_SHADER_VARIABLE_FORMAT_UINT16,
+	SPVC_MSL_SHADER_INPUT_FORMAT_OTHER = SPVC_MSL_SHADER_VARIABLE_FORMAT_OTHER,
+	SPVC_MSL_SHADER_INPUT_FORMAT_UINT8 = SPVC_MSL_SHADER_VARIABLE_FORMAT_UINT8,
+	SPVC_MSL_SHADER_INPUT_FORMAT_UINT16 = SPVC_MSL_SHADER_VARIABLE_FORMAT_UINT16,
+	SPVC_MSL_SHADER_INPUT_FORMAT_ANY16 = SPVC_MSL_SHADER_VARIABLE_FORMAT_ANY16,
+	SPVC_MSL_SHADER_INPUT_FORMAT_ANY32 = SPVC_MSL_SHADER_VARIABLE_FORMAT_ANY32,
+
 
 	SPVC_MSL_SHADER_INPUT_FORMAT_INT_MAX = 0x7fffffff
-} spvc_msl_shader_input_format, spvc_msl_vertex_format;
+} spvc_msl_shader_variable_format, spvc_msl_shader_input_format, spvc_msl_vertex_format;
 
-/* Maps to C++ API. Deprecated; use spvc_msl_shader_input. */
+/* Maps to C++ API. Deprecated; use spvc_msl_shader_interface_var. */
 typedef struct spvc_msl_vertex_attribute
 {
 	unsigned location;
@@ -296,21 +336,52 @@ typedef struct spvc_msl_vertex_attribute
  */
 SPVC_PUBLIC_API void spvc_msl_vertex_attribute_init(spvc_msl_vertex_attribute *attr);
 
-/* Maps to C++ API. */
-typedef struct spvc_msl_shader_input
+/* Maps to C++ API. Deprecated; use spvc_msl_shader_interface_var_2. */
+typedef struct spvc_msl_shader_interface_var
 {
 	unsigned location;
 	spvc_msl_vertex_format format;
 	SpvBuiltIn builtin;
 	unsigned vecsize;
-} spvc_msl_shader_input;
+} spvc_msl_shader_interface_var, spvc_msl_shader_input;
 
 /*
  * Initializes the shader input struct.
+ * Deprecated. Use spvc_msl_shader_interface_var_init_2().
+ */
+SPVC_PUBLIC_API void spvc_msl_shader_interface_var_init(spvc_msl_shader_interface_var *var);
+/*
+ * Deprecated. Use spvc_msl_shader_interface_var_init_2().
  */
 SPVC_PUBLIC_API void spvc_msl_shader_input_init(spvc_msl_shader_input *input);
 
 /* Maps to C++ API. */
+typedef enum spvc_msl_shader_variable_rate
+{
+	SPVC_MSL_SHADER_VARIABLE_RATE_PER_VERTEX = 0,
+	SPVC_MSL_SHADER_VARIABLE_RATE_PER_PRIMITIVE = 1,
+	SPVC_MSL_SHADER_VARIABLE_RATE_PER_PATCH = 2,
+
+	SPVC_MSL_SHADER_VARIABLE_RATE_INT_MAX = 0x7fffffff,
+} spvc_msl_shader_variable_rate;
+
+/* Maps to C++ API. */
+typedef struct spvc_msl_shader_interface_var_2
+{
+	unsigned location;
+	spvc_msl_shader_variable_format format;
+	SpvBuiltIn builtin;
+	unsigned vecsize;
+	spvc_msl_shader_variable_rate rate;
+} spvc_msl_shader_interface_var_2;
+
+/*
+ * Initializes the shader interface variable struct.
+ */
+SPVC_PUBLIC_API void spvc_msl_shader_interface_var_init_2(spvc_msl_shader_interface_var_2 *var);
+
+/* Maps to C++ API.
+ * Deprecated. Use spvc_msl_resource_binding_2. */
 typedef struct spvc_msl_resource_binding
 {
 	SpvExecutionModel stage;
@@ -321,11 +392,24 @@ typedef struct spvc_msl_resource_binding
 	unsigned msl_sampler;
 } spvc_msl_resource_binding;
 
+typedef struct spvc_msl_resource_binding_2
+{
+	SpvExecutionModel stage;
+	unsigned desc_set;
+	unsigned binding;
+	unsigned count;
+	unsigned msl_buffer;
+	unsigned msl_texture;
+	unsigned msl_sampler;
+} spvc_msl_resource_binding_2;
+
 /*
  * Initializes the resource binding struct.
  * The defaults are non-zero.
+ * Deprecated: Use spvc_msl_resource_binding_init_2.
  */
 SPVC_PUBLIC_API void spvc_msl_resource_binding_init(spvc_msl_resource_binding *binding);
+SPVC_PUBLIC_API void spvc_msl_resource_binding_init_2(spvc_msl_resource_binding_2 *binding);
 
 #define SPVC_MSL_PUSH_CONSTANT_DESC_SET (~(0u))
 #define SPVC_MSL_PUSH_CONSTANT_BINDING (0)
@@ -595,7 +679,11 @@ typedef enum spvc_compiler_option
 	SPVC_COMPILER_OPTION_MSL_DYNAMIC_OFFSETS_BUFFER_INDEX = 43 | SPVC_COMPILER_OPTION_MSL_BIT,
 	SPVC_COMPILER_OPTION_MSL_TEXTURE_1D_AS_2D = 44 | SPVC_COMPILER_OPTION_MSL_BIT,
 	SPVC_COMPILER_OPTION_MSL_ENABLE_BASE_INDEX_ZERO = 45 | SPVC_COMPILER_OPTION_MSL_BIT,
+
+	/* Obsolete. Use MSL_FRAMEBUFFER_FETCH_SUBPASS instead. */
 	SPVC_COMPILER_OPTION_MSL_IOS_FRAMEBUFFER_FETCH_SUBPASS = 46 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_FRAMEBUFFER_FETCH_SUBPASS = 46 | SPVC_COMPILER_OPTION_MSL_BIT,
+
 	SPVC_COMPILER_OPTION_MSL_INVARIANT_FP_MATH = 47 | SPVC_COMPILER_OPTION_MSL_BIT,
 	SPVC_COMPILER_OPTION_MSL_EMULATE_CUBEMAP_ARRAY = 48 | SPVC_COMPILER_OPTION_MSL_BIT,
 	SPVC_COMPILER_OPTION_MSL_ENABLE_DECORATION_BINDING = 49 | SPVC_COMPILER_OPTION_MSL_BIT,
@@ -616,6 +704,45 @@ typedef enum spvc_compiler_option
 	SPVC_COMPILER_OPTION_MSL_ENABLE_CLIP_DISTANCE_USER_VARYING = 59 | SPVC_COMPILER_OPTION_MSL_BIT,
 
 	SPVC_COMPILER_OPTION_HLSL_ENABLE_16BIT_TYPES = 60 | SPVC_COMPILER_OPTION_HLSL_BIT,
+
+	SPVC_COMPILER_OPTION_MSL_MULTI_PATCH_WORKGROUP = 61 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_SHADER_INPUT_BUFFER_INDEX = 62 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_SHADER_INDEX_BUFFER_INDEX = 63 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_VERTEX_FOR_TESSELLATION = 64 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_VERTEX_INDEX_TYPE = 65 | SPVC_COMPILER_OPTION_MSL_BIT,
+
+	SPVC_COMPILER_OPTION_GLSL_FORCE_FLATTENED_IO_BLOCKS = 66 | SPVC_COMPILER_OPTION_GLSL_BIT,
+
+	SPVC_COMPILER_OPTION_MSL_MULTIVIEW_LAYERED_RENDERING = 67 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_ARRAYED_SUBPASS_INPUT = 68 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_R32UI_LINEAR_TEXTURE_ALIGNMENT = 69 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_R32UI_ALIGNMENT_CONSTANT_ID = 70 | SPVC_COMPILER_OPTION_MSL_BIT,
+
+	SPVC_COMPILER_OPTION_HLSL_FLATTEN_MATRIX_VERTEX_INPUT_SEMANTICS = 71 | SPVC_COMPILER_OPTION_HLSL_BIT,
+
+	SPVC_COMPILER_OPTION_MSL_IOS_USE_SIMDGROUP_FUNCTIONS = 72 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_EMULATE_SUBGROUPS = 73 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_FIXED_SUBGROUP_SIZE = 74 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_FORCE_SAMPLE_RATE_SHADING = 75 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_IOS_SUPPORT_BASE_VERTEX_INSTANCE = 76 | SPVC_COMPILER_OPTION_MSL_BIT,
+
+	SPVC_COMPILER_OPTION_GLSL_OVR_MULTIVIEW_VIEW_COUNT = 77 | SPVC_COMPILER_OPTION_GLSL_BIT,
+
+	SPVC_COMPILER_OPTION_RELAX_NAN_CHECKS = 78 | SPVC_COMPILER_OPTION_COMMON_BIT,
+
+	SPVC_COMPILER_OPTION_MSL_RAW_BUFFER_TESE_INPUT = 79 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_SHADER_PATCH_INPUT_BUFFER_INDEX = 80 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_MANUAL_HELPER_INVOCATION_UPDATES = 81 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_CHECK_DISCARDED_FRAG_STORES = 82 | SPVC_COMPILER_OPTION_MSL_BIT,
+
+	SPVC_COMPILER_OPTION_GLSL_ENABLE_ROW_MAJOR_LOAD_WORKAROUND = 83 | SPVC_COMPILER_OPTION_GLSL_BIT,
+
+	SPVC_COMPILER_OPTION_MSL_ARGUMENT_BUFFERS_TIER = 84 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_SAMPLE_DREF_LOD_ARRAY_AS_GRAD = 85 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_READWRITE_TEXTURE_FENCES = 86 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_REPLACE_RECURSIVE_INPUTS = 87 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_AGX_MANUAL_CUBE_GRAD_FIXUP = 88 | SPVC_COMPILER_OPTION_MSL_BIT,
+	SPVC_COMPILER_OPTION_MSL_FORCE_FRAGMENT_WITH_SIDE_EFFECTS_EXECUTION = 89 | SPVC_COMPILER_OPTION_MSL_BIT,
 
 	SPVC_COMPILER_OPTION_INT_MAX = 0x7fffffff
 } spvc_compiler_option;
@@ -675,9 +802,15 @@ SPVC_PUBLIC_API spvc_result spvc_compiler_compile(spvc_compiler compiler, const 
 /* Maps to C++ API. */
 SPVC_PUBLIC_API spvc_result spvc_compiler_add_header_line(spvc_compiler compiler, const char *line);
 SPVC_PUBLIC_API spvc_result spvc_compiler_require_extension(spvc_compiler compiler, const char *ext);
+SPVC_PUBLIC_API size_t spvc_compiler_get_num_required_extensions(spvc_compiler compiler);
+SPVC_PUBLIC_API const char *spvc_compiler_get_required_extension(spvc_compiler compiler, size_t index);
 SPVC_PUBLIC_API spvc_result spvc_compiler_flatten_buffer_block(spvc_compiler compiler, spvc_variable_id id);
 
 SPVC_PUBLIC_API spvc_bool spvc_compiler_variable_is_depth_or_compare(spvc_compiler compiler, spvc_variable_id id);
+
+SPVC_PUBLIC_API spvc_result spvc_compiler_mask_stage_output_by_location(spvc_compiler compiler,
+                                                                        unsigned location, unsigned component);
+SPVC_PUBLIC_API spvc_result spvc_compiler_mask_stage_output_by_builtin(spvc_compiler compiler, SpvBuiltIn builtin);
 
 /*
  * HLSL specifics.
@@ -717,16 +850,28 @@ SPVC_PUBLIC_API spvc_bool spvc_compiler_msl_needs_patch_output_buffer(spvc_compi
 SPVC_PUBLIC_API spvc_bool spvc_compiler_msl_needs_input_threadgroup_mem(spvc_compiler compiler);
 SPVC_PUBLIC_API spvc_result spvc_compiler_msl_add_vertex_attribute(spvc_compiler compiler,
                                                                    const spvc_msl_vertex_attribute *attrs);
+/* Deprecated; use spvc_compiler_msl_add_resource_binding_2(). */
 SPVC_PUBLIC_API spvc_result spvc_compiler_msl_add_resource_binding(spvc_compiler compiler,
                                                                    const spvc_msl_resource_binding *binding);
+SPVC_PUBLIC_API spvc_result spvc_compiler_msl_add_resource_binding_2(spvc_compiler compiler,
+                                                                     const spvc_msl_resource_binding_2 *binding);
+/* Deprecated; use spvc_compiler_msl_add_shader_input_2(). */
 SPVC_PUBLIC_API spvc_result spvc_compiler_msl_add_shader_input(spvc_compiler compiler,
-                                                               const spvc_msl_shader_input *input);
+                                                               const spvc_msl_shader_interface_var *input);
+SPVC_PUBLIC_API spvc_result spvc_compiler_msl_add_shader_input_2(spvc_compiler compiler,
+                                                                 const spvc_msl_shader_interface_var_2 *input);
+/* Deprecated; use spvc_compiler_msl_add_shader_output_2(). */
+SPVC_PUBLIC_API spvc_result spvc_compiler_msl_add_shader_output(spvc_compiler compiler,
+                                                                const spvc_msl_shader_interface_var *output);
+SPVC_PUBLIC_API spvc_result spvc_compiler_msl_add_shader_output_2(spvc_compiler compiler,
+                                                                  const spvc_msl_shader_interface_var_2 *output);
 SPVC_PUBLIC_API spvc_result spvc_compiler_msl_add_discrete_descriptor_set(spvc_compiler compiler, unsigned desc_set);
 SPVC_PUBLIC_API spvc_result spvc_compiler_msl_set_argument_buffer_device_address_space(spvc_compiler compiler, unsigned desc_set, spvc_bool device_address);
 
 /* Obsolete, use is_shader_input_used. */
 SPVC_PUBLIC_API spvc_bool spvc_compiler_msl_is_vertex_attribute_used(spvc_compiler compiler, unsigned location);
 SPVC_PUBLIC_API spvc_bool spvc_compiler_msl_is_shader_input_used(spvc_compiler compiler, unsigned location);
+SPVC_PUBLIC_API spvc_bool spvc_compiler_msl_is_shader_output_used(spvc_compiler compiler, unsigned location);
 
 SPVC_PUBLIC_API spvc_bool spvc_compiler_msl_is_resource_used(spvc_compiler compiler,
                                                              SpvExecutionModel model,
@@ -745,6 +890,9 @@ SPVC_PUBLIC_API spvc_result spvc_compiler_msl_add_dynamic_buffer(spvc_compiler c
 
 SPVC_PUBLIC_API spvc_result spvc_compiler_msl_add_inline_uniform_block(spvc_compiler compiler, unsigned desc_set, unsigned binding);
 
+SPVC_PUBLIC_API spvc_result spvc_compiler_msl_set_combined_sampler_suffix(spvc_compiler compiler, const char *suffix);
+SPVC_PUBLIC_API const char *spvc_compiler_msl_get_combined_sampler_suffix(spvc_compiler compiler);
+
 /*
  * Reflect resources.
  * Maps almost 1:1 to C++ API.
@@ -758,6 +906,11 @@ SPVC_PUBLIC_API spvc_result spvc_compiler_create_shader_resources_for_active_var
 SPVC_PUBLIC_API spvc_result spvc_resources_get_resource_list_for_type(spvc_resources resources, spvc_resource_type type,
                                                                       const spvc_reflected_resource **resource_list,
                                                                       size_t *resource_size);
+
+SPVC_PUBLIC_API spvc_result spvc_resources_get_builtin_resource_list_for_type(
+		spvc_resources resources, spvc_builtin_resource_type type,
+		const spvc_reflected_builtin_resource **resource_list,
+		size_t *resource_size);
 
 /*
  * Decorations.
@@ -815,6 +968,8 @@ SPVC_PUBLIC_API unsigned spvc_compiler_get_execution_mode_argument(spvc_compiler
 SPVC_PUBLIC_API unsigned spvc_compiler_get_execution_mode_argument_by_index(spvc_compiler compiler,
                                                                             SpvExecutionMode mode, unsigned index);
 SPVC_PUBLIC_API SpvExecutionModel spvc_compiler_get_execution_model(spvc_compiler compiler);
+SPVC_PUBLIC_API void spvc_compiler_update_active_builtins(spvc_compiler compiler);
+SPVC_PUBLIC_API spvc_bool spvc_compiler_has_active_builtin(spvc_compiler compiler, SpvBuiltIn builtin, SpvStorageClass storage);
 
 /*
  * Type query interface.
@@ -915,7 +1070,24 @@ SPVC_PUBLIC_API int spvc_constant_get_scalar_i16(spvc_constant constant, unsigne
 SPVC_PUBLIC_API unsigned spvc_constant_get_scalar_u8(spvc_constant constant, unsigned column, unsigned row);
 SPVC_PUBLIC_API int spvc_constant_get_scalar_i8(spvc_constant constant, unsigned column, unsigned row);
 SPVC_PUBLIC_API void spvc_constant_get_subconstants(spvc_constant constant, const spvc_constant_id **constituents, size_t *count);
+SPVC_PUBLIC_API unsigned long long spvc_constant_get_scalar_u64(spvc_constant constant, unsigned column, unsigned row);
+SPVC_PUBLIC_API long long spvc_constant_get_scalar_i64(spvc_constant constant, unsigned column, unsigned row);
 SPVC_PUBLIC_API spvc_type_id spvc_constant_get_type(spvc_constant constant);
+
+/*
+ * C implementation of the C++ api.
+ */
+SPVC_PUBLIC_API void spvc_constant_set_scalar_fp16(spvc_constant constant, unsigned column, unsigned row, unsigned short value);
+SPVC_PUBLIC_API void spvc_constant_set_scalar_fp32(spvc_constant constant, unsigned column, unsigned row, float value);
+SPVC_PUBLIC_API void spvc_constant_set_scalar_fp64(spvc_constant constant, unsigned column, unsigned row, double value);
+SPVC_PUBLIC_API void spvc_constant_set_scalar_u32(spvc_constant constant, unsigned column, unsigned row, unsigned value);
+SPVC_PUBLIC_API void spvc_constant_set_scalar_i32(spvc_constant constant, unsigned column, unsigned row, int value);
+SPVC_PUBLIC_API void spvc_constant_set_scalar_u64(spvc_constant constant, unsigned column, unsigned row, unsigned long long value);
+SPVC_PUBLIC_API void spvc_constant_set_scalar_i64(spvc_constant constant, unsigned column, unsigned row, long long value);
+SPVC_PUBLIC_API void spvc_constant_set_scalar_u16(spvc_constant constant, unsigned column, unsigned row, unsigned short value);
+SPVC_PUBLIC_API void spvc_constant_set_scalar_i16(spvc_constant constant, unsigned column, unsigned row, signed short value);
+SPVC_PUBLIC_API void spvc_constant_set_scalar_u8(spvc_constant constant, unsigned column, unsigned row, unsigned char value);
+SPVC_PUBLIC_API void spvc_constant_set_scalar_i8(spvc_constant constant, unsigned column, unsigned row, signed char value);
 
 /*
  * Misc reflection
