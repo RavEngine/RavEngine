@@ -85,10 +85,20 @@ namespace RavEngine {
 		MeshParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {});
 	};
 
+	// Subclass to create custom mesh particle selection 
 	struct MeshParticleMeshSelectionMaterial {
+		friend class RenderEngine;
 		MeshParticleMeshSelectionMaterial(const std::string_view name);
 	private:
-		RGLRenderPipelinePtr userSelectionPipeline;
+		RGLComputePipelinePtr userSelectionPipeline;
+	};
+
+	// subclass this in tandem with the SelectionMaterial
+	struct MeshParticleMeshSelectionMaterialInstance {
+		friend class RenderEngine;
+		MeshParticleMeshSelectionMaterialInstance(Ref<MeshParticleMeshSelectionMaterial> mat) : material(mat) {}
+	private:
+		Ref<MeshParticleMeshSelectionMaterial> material = nullptr;
 	};
 
 	struct ParticleRenderMaterialInstance {
@@ -122,10 +132,19 @@ namespace RavEngine {
 	// subclass to define your own particle material instances
 	struct MeshParticleRenderMaterialInstance : ParticleRenderMaterialInstance {
 		friend class RenderEngine;
+
+		// use this constructor if you want to use the default mesh selection behavior (all particles go to mesh 0)
 		MeshParticleRenderMaterialInstance(Ref<MeshParticleRenderMaterial> mat, Ref<MeshCollectionStatic> meshes) : ParticleRenderMaterialInstance(mat), meshes(meshes) {}
+
+		// use this constructor if you have custom mesh selection logic to apply
+		MeshParticleRenderMaterialInstance(Ref<MeshParticleRenderMaterial> mat, Ref<MeshCollectionStatic> meshes, Ref<MeshParticleMeshSelectionMaterialInstance> customSelection) : ParticleRenderMaterialInstance(mat), meshes(meshes), customSelectionFunction(customSelection) {}
+
+		void SetMeshSelectionFunction(const Ref<MeshParticleMeshSelectionMaterialInstance> selfn) {
+			customSelectionFunction = selfn;
+		}
 	private:
 		Ref<MeshCollectionStatic> meshes;
-		RGLComputePipelinePtr meshSelFn = nullptr;
+		Ref<MeshParticleMeshSelectionMaterialInstance> customSelectionFunction = nullptr;
 	};
 
 	// subclass to define your own particle material instances

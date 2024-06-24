@@ -59,7 +59,7 @@ namespace RavEngine {
 	void RavEngine::ParticleEmitter::Destroy()
 	{
 		auto& gcBuffers = GetApp()->GetRenderEngine().gcBuffers;
-		for (const auto buffer : { particleDataBuffer, particleReuseFreelist, spawnedThisFrameList, activeParticleIndexBuffer, indirectComputeBuffer, indirectDrawBuffer, emitterStateBuffer, particleLifeBuffer }) {
+		for (const auto buffer : { particleDataBuffer, particleReuseFreelist, spawnedThisFrameList, activeParticleIndexBuffer, indirectComputeBuffer, indirectDrawBuffer, emitterStateBuffer, particleLifeBuffer, indirectDrawBufferStaging, meshAliveParticleIndexBuffer }) {
 			gcBuffers.enqueue(buffer);
 		}
 	}

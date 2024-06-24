@@ -201,7 +201,7 @@ struct LightingType{
 				Ref<ParticleRenderMaterialInstance> renderMat;
 				auto updateMat = emitter.GetUpdateMaterial();
 
-				RGLComputePipelinePtr meshSelFn = nullptr;
+				Ref<MeshParticleMeshSelectionMaterialInstance> meshSelFn = nullptr;
 				bool isMeshPipeline = false;
 				uint32_t numMeshes = 0;
 				
@@ -211,7 +211,7 @@ struct LightingType{
                         },
                         [&renderMat, &meshSelFn, &isMeshPipeline](const Ref <MeshParticleRenderMaterialInstance> &meshMat) {
                             renderMat = meshMat;
-							meshSelFn = meshMat->meshSelFn;
+							meshSelFn = meshMat->customSelectionFunction;
 							isMeshPipeline = true;
                         }
                 }, emitter.GetRenderMaterial());
@@ -399,7 +399,45 @@ struct LightingType{
 				mainCommandBuffer->EndComputeDebugMarker();
 
 				if (isMeshPipeline && meshSelFn) {
-					//TODO: mesh selection 
+					//custom mesh selection 
+
+					// if the buffer doesn't exist yet, create it
+					if (emitter.meshAliveParticleIndexBuffer == nullptr) {
+						emitter.meshAliveParticleIndexBuffer = device->CreateBuffer({
+							numMeshes * emitter.GetMaxParticles(), {.StorageBuffer = true}, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Alive particle index buffer (for meshes)"}
+						});
+					}
+
+					struct {
+						uint32_t numMeshes;
+						uint32_t maxTotalParticles;
+					} engineData{
+						.numMeshes = numMeshes,
+						.maxTotalParticles = emitter.GetMaxParticles()
+					};
+
+					auto transientOffset = WriteTransient(engineData);
+
+					// setup rendering
+					auto selMat = meshSelFn->material;
+					mainCommandBuffer->BeginComputeDebugMarker("Select meshes");
+					mainCommandBuffer->BeginCompute(selMat->userSelectionPipeline);
+
+					mainCommandBuffer->BindComputeBuffer(emitter.meshAliveParticleIndexBuffer, 10);
+					mainCommandBuffer->BindComputeBuffer(emitter.indirectDrawBuffer, 11);
+					mainCommandBuffer->BindComputeBuffer(transientBuffer, 12, transientOffset);
+					mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 13);
+					mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 14);
+					mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 15);
+
+					mainCommandBuffer->DispatchIndirect({
+						.indirectBuffer = emitter.indirectComputeBuffer,
+						.offsetIntoBuffer = sizeof(RGL::ComputeIndirectCommand),
+						.blocksizeX = 64, .blocksizeY = 1, .blocksizeZ = 1
+					});
+					mainCommandBuffer->EndCompute();
+
+					mainCommandBuffer->EndComputeDebugMarker();
 				}
 				
 			});

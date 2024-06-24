@@ -245,6 +245,7 @@ namespace RavEngine {
 			.pushConstantSize = sizeof(PBRUBO)
 		}
 	) {}
+
 	BillboardRenderParticleMaterial::BillboardRenderParticleMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config) : ParticleRenderMaterial(particleFS, particleVS, {
 			.vertexConfig = quadVertexConfig
 		}, config) {}
@@ -255,7 +256,56 @@ namespace RavEngine {
 
 	MeshParticleMeshSelectionMaterial::MeshParticleMeshSelectionMaterial(const std::string_view name)
 	{
+		auto device = GetApp()->GetDevice();
 
+		auto layout = device->CreatePipelineLayout({
+			.bindings = {
+				{
+					.binding = 10,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
+					.writable = true
+				},
+				{
+					.binding = 11,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
+					.writable = true
+				},
+				{
+					.binding = 12,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
+					.writable = false
+				},
+				{
+					.binding = 13,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
+					.writable = false
+				},
+				{
+					.binding = 14,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
+					.writable = false
+				},
+				{
+					.binding = 15,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
+					.writable = false
+				}
+			}
+		});
+
+		userSelectionPipeline = device->CreateComputePipeline({
+			.stage = {
+				.type = RGL::ShaderStageDesc::Type::Compute,
+				.shaderModule = LoadShaderByFilename(Format("{}", name), device),
+			},
+			.pipelineLayout = layout
+		});
 	}
 
 	uint8_t PBRMeshParticleRenderMaterialInstance::SetPushConstantData(std::span<std::byte, 128> data) const
