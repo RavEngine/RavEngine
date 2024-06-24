@@ -6,4 +6,5 @@ layout(push_constant, std430) uniform UniformBufferObject{
     uint bytesPerParticle;
     uint positionOffset;
     uint scaleOffset;
+    uint rotationOffset;
 } ubo;

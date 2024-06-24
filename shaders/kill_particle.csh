@@ -51,8 +51,8 @@ void main(){
     // add the particle to the freelist
     const int freelistIdx = atomicAdd(particleState[0].freeListCount,1);
     if (freelistIdx >= ubo.maxTotalParticles || freelistIdx < 0){
-        //return;         // safety mesaure that shouldn't ever trigger
-        debugPrintfEXT("Kill error: freelistIdx = %d", freelistIdx);
+        //debugPrintfEXT("Kill error: freelistIdx = %d", freelistIdx);
+        return;         // safety mesaure that shouldn't ever trigger
     }
     particleFreelist[freelistIdx] = particleID;
 

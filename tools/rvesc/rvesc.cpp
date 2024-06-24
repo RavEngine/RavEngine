@@ -223,6 +223,8 @@ int main(int argc, char** argv) {
 	std::filesystem::path this_source_file = __FILE__;
 	includepaths.push_back(this_source_file.parent_path()); 	// enable #include for items next to this .cpp file
 
+	includepaths.push_back(this_source_file.parent_path() / "include");	 // shader libraries go here
+
 	// get the target API
 	librglc::API api;
 	const char* entryPoint = nullptr;
