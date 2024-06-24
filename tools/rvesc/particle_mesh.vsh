@@ -31,7 +31,9 @@ void main(){
 // if we are in multi-mesh mode, then the particle ID can be found at (gl_BaseInstance * config.maxPossibleParticles) + gl_InstanceID
     // we only need to do the second line because if in single-mesh mode, gl_BaseInstance will always be 0
 
-    uint particle = aliveParticleIndexBuffer[gl_BaseInstance * config[0].maxPossibleParticles + gl_InstanceID];
+    const uint realBaseInstance = gl_InstanceID - gl_BaseInstance;
+
+    uint particle = aliveParticleIndexBuffer[gl_BaseInstance * config[0].maxPossibleParticles + realBaseInstance];
 
 #if CUSTOM_INDEXING
     ParticleVertexOut user_out = vert(particle, matrixData[0]);

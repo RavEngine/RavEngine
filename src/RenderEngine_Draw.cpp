@@ -243,10 +243,10 @@ struct LightingType{
 							auto mesh = meshCollection->GetMeshForLOD(i);
 							auto allocation = mesh->GetAllocation();
 							*(ptr + i) = {
-								.indexCount = allocation.indexRange->count,
+								.indexCount = uint32_t(mesh->GetNumIndices()),
 								.instanceCount = 0,
-								.indexStart = allocation.indexRange->start,
-								.baseVertex = allocation.vertRange->start,
+								.indexStart = uint32_t(allocation.indexRange->start / sizeof(uint32_t)),
+								.baseVertex = uint32_t(allocation.vertRange->start / sizeof(VertexNormalUV)),
 								.baseInstance = i
 							};
 						}
@@ -792,12 +792,12 @@ struct LightingType{
 				if (includeParticles) {
 
 					worldOwning->Filter([this, &viewproj, &particleBillboardMatrices](const ParticleEmitter& emitter, const Transform& t) {
-						auto sharedParticleImpl = [this, &particleBillboardMatrices](const ParticleEmitter& emitter, Ref<ParticleRenderMaterialInstance> materialInstance) {
+						auto sharedParticleImpl = [this, &particleBillboardMatrices](const ParticleEmitter& emitter, Ref<ParticleRenderMaterialInstance> materialInstance, RGLBufferPtr activeParticleIndexBuffer) {
 							auto material = materialInstance->GetMaterial();
 
 							mainCommandBuffer->BindRenderPipeline(material->userRenderPipeline);
 							mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, material->particleDataBufferBinding);
-							mainCommandBuffer->BindBuffer(emitter.activeParticleIndexBuffer, material->particleAliveIndexBufferBinding);
+							mainCommandBuffer->BindBuffer(activeParticleIndexBuffer, material->particleAliveIndexBufferBinding);
 							mainCommandBuffer->BindBuffer(transientBuffer, material->particleMatrixBufferBinding, particleBillboardMatrices);
 
 							std::byte pushConstants[128]{  };
@@ -827,7 +827,7 @@ struct LightingType{
 
 						std::visit(CaseAnalysis{
 								[this, &emitter, &viewproj,&particleBillboardMatrices,&sharedParticleImpl](const Ref <BillboardParticleRenderMaterialInstance>& billboardMat) {
-									sharedParticleImpl(emitter,billboardMat);
+									sharedParticleImpl(emitter,billboardMat, emitter.activeParticleIndexBuffer);
 
 									mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
 
@@ -839,7 +839,14 @@ struct LightingType{
 										});
                                 },
                                 [this,&emitter,&sharedParticleImpl](const Ref <MeshParticleRenderMaterialInstance> &meshMat) {
-								   sharedParticleImpl(emitter,meshMat);
+								RGLBufferPtr activeIndexBuffer;
+									if (meshMat->customSelectionFunction) {
+										activeIndexBuffer = emitter.meshAliveParticleIndexBuffer;
+									}
+									else {
+										activeIndexBuffer = emitter.activeParticleIndexBuffer;
+									}
+								   sharedParticleImpl(emitter,meshMat, activeIndexBuffer);
 
 								   mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
 								   mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
@@ -849,7 +856,7 @@ struct LightingType{
 									   {
 											.indirectBuffer = emitter.indirectDrawBuffer,
 											.offsetIntoBuffer = 0,
-											.nDraws = meshMat->meshes->GetNumLods(),
+											.nDraws = meshMat->customSelectionFunction ? meshMat->meshes->GetNumLods() : 1,
 									   }
 									);
                                 }
