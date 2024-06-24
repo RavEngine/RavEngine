@@ -188,7 +188,7 @@ namespace RavEngine {
 	};
 
 	struct PBRMeshParticleRenderMaterialInstance : public MeshParticleRenderMaterialInstance {
-		PBRMeshParticleRenderMaterialInstance(Ref<PBRMeshParticleRenderMaterial> mat, Ref<MeshCollectionStatic> meshes, uint32_t bytesPerParticle, uint32_t positionOffsetBytes);
+		PBRMeshParticleRenderMaterialInstance(Ref<PBRMeshParticleRenderMaterial> mat, Ref<MeshCollectionStatic> meshes, uint32_t bytesPerParticle, uint32_t positionOffsetBytes, uint32_t scaleOffsetBytes);
 		virtual uint8_t SetPushConstantData(std::span<std::byte, 128> data) const;
 
 		constexpr static uint8_t
@@ -203,5 +203,6 @@ namespace RavEngine {
 	private:
 		const uint32_t bytesPerParticle;
 		const uint32_t positionOffsetBytes;
+		const uint32_t scaleOffsetBytes;
 	};
 }

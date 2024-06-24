@@ -239,6 +239,7 @@ namespace RavEngine {
 		float specularTint = 0;
 		uint32_t bytesPerParticle;
 		uint32_t positionOffset;
+		uint32_t scaleOffset;
 	};
 
 	PBRMeshParticleRenderMaterial::PBRMeshParticleRenderMaterial() : MeshParticleRenderMaterial("pbr_particle", "pbr_particle",
@@ -353,7 +354,7 @@ namespace RavEngine {
 		});
 	}
 
-	PBRMeshParticleRenderMaterialInstance::PBRMeshParticleRenderMaterialInstance(Ref<PBRMeshParticleRenderMaterial> mat, Ref<MeshCollectionStatic> meshes, uint32_t bytesPerParticle, uint32_t positionOffsetBytes) : MeshParticleRenderMaterialInstance(mat, meshes), bytesPerParticle(bytesPerParticle), positionOffsetBytes(positionOffsetBytes)
+	PBRMeshParticleRenderMaterialInstance::PBRMeshParticleRenderMaterialInstance(Ref<PBRMeshParticleRenderMaterial> mat, Ref<MeshCollectionStatic> meshes, uint32_t bytesPerParticle, uint32_t positionOffsetBytes, uint32_t scaleOffsetBytes) : MeshParticleRenderMaterialInstance(mat, meshes), bytesPerParticle(bytesPerParticle), positionOffsetBytes(positionOffsetBytes), scaleOffsetBytes(scaleOffsetBytes)
 	{
 		samplerBindings[kSamplerBinding] = true;
 		textureBindings[kDiffuseBinding] = Texture::Manager::defaultTexture;
@@ -368,7 +369,8 @@ namespace RavEngine {
 	{
 		PBRUBO ubo{
 			.bytesPerParticle = bytesPerParticle,
-			.positionOffset = positionOffsetBytes
+			.positionOffset = positionOffsetBytes,
+			.scaleOffset = scaleOffsetBytes
 		};
 
 		std::memcpy(data.data(), &ubo, sizeof(ubo));

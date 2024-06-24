@@ -1,3 +1,4 @@
+
 layout(push_constant, std430) uniform UniformBufferObject{
 	vec4 colorTint;
 	float metallicTint;
@@ -5,6 +6,7 @@ layout(push_constant, std430) uniform UniformBufferObject{
 	float specularTint;
     uint bytesPerParticle;
     uint positionOffset;
+    uint scaleOffset;
 } ubo;
 
 layout(location = 0) out vec2 outUV;
@@ -20,8 +22,22 @@ ParticleVertexOut vert(uint particleID, ParticleMatrices matrices){
         uintBitsToFloat(particleDataBytes[posOffset+2])
     );
 
-    mat4 inModel = mat4(1);
-    inModel[3] = vec4(data_pos, 1);
+    const uint scaleOffset =  particleDataOffset + ubo.scaleOffset / 4;
+    vec3 scale_pos = vec3(
+        uintBitsToFloat(particleDataBytes[scaleOffset]),
+        uintBitsToFloat(particleDataBytes[scaleOffset+1]),
+        uintBitsToFloat(particleDataBytes[scaleOffset+2])
+    );
+
+    mat4 translateMat = mat4(1);
+    translateMat[3] = vec4(data_pos, 1);
+
+    mat4 scaleMat = mat4(1);
+    scaleMat[0][0] = scale_pos.x;
+    scaleMat[1][1] = scale_pos.y;
+    scaleMat[2][2] = scale_pos.z;
+
+    mat4 inModel = translateMat * scaleMat;
 
     vec3 T = normalize(vec3(inModel * vec4(inTangent,   0.0)));
    	vec3 B = normalize(vec3(inModel * vec4(inBitangent, 0.0)));
