@@ -9,8 +9,8 @@ layout(binding = 1) uniform texture2D t_spritesheet;
 
 layout(location = 0) in vec2 inUV; 
 
-LitParticleOutput frag(){
-    LitParticleOutput fs_out;
+LitOutput frag(){
+    LitOutput fs_out;
 
     fs_out.color = texture(sampler2D(t_spritesheet, g_sampler), inUV);
 
@@ -19,6 +19,11 @@ LitParticleOutput frag(){
     }
 
     fs_out.normal = vec3(0,0,1);
+
+    fs_out.roughness = 1;
+    fs_out.specular = 0;
+    fs_out.metallic = 0;
+    fs_out.ao = 1;
 
     return fs_out;
 }

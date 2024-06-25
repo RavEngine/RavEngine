@@ -87,7 +87,7 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 			shaderTemplateName = "particle_quad.vsh";
 		}
 		else {
-			shaderTemplateName = "lit_particle_quad.fsh";
+			shaderTemplateName = "lit_mesh.fsh";
 		}
 	}
 	else if (mat_type == "lit-particle-mesh") {
