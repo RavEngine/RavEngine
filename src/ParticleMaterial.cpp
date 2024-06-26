@@ -79,7 +79,7 @@ namespace RavEngine {
 				},
 				.vertexConfig = internalConfig.vertexConfig,
 				.inputAssembly = {
-					.topology = RGL::PrimitiveTopology::TriangleStrip,
+					.topology = internalConfig.topology,
 				},
 				.rasterizerConfig = {
 					.windingOrder = RGL::WindingOrder::Counterclockwise,
@@ -298,10 +298,12 @@ namespace RavEngine {
 	) {}
 
 	BillboardRenderParticleMaterial::BillboardRenderParticleMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config) : ParticleRenderMaterial(particleFS, particleVS, {
-			.vertexConfig = quadVertexConfig
+			.vertexConfig = quadVertexConfig,
+			.topology = RGL::PrimitiveTopology::TriangleStrip
 		}, config) {}
 	MeshParticleRenderMaterial::MeshParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config) : ParticleRenderMaterial(particleVS, particleFS, {
-		.vertexConfig = defaultVertexConfig
+		.vertexConfig = defaultVertexConfig,
+		.topology = RGL::PrimitiveTopology::TriangleList
 	}, config) {}
 
 

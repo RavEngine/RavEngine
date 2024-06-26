@@ -63,7 +63,8 @@ namespace RavEngine {
 			;
 	protected:
 		struct InternalConfig {
-			RGL::RenderPipelineDescriptor::VertexConfig vertexConfig;
+			const RGL::RenderPipelineDescriptor::VertexConfig vertexConfig;
+			const RGL::PrimitiveTopology topology;
 		};
 		ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const InternalConfig& internalConfig, const ParticleRenderMaterialConfig& config);
 
