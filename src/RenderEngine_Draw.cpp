@@ -275,11 +275,11 @@ struct LightingType{
 					mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 0);
 					mainCommandBuffer->BindComputeBuffer(emitter.indirectComputeBuffer, 1);
 					if (isMeshPipeline) {
-						mainCommandBuffer->DispatchCompute(1, 1, 1);
+						mainCommandBuffer->DispatchCompute(1, 1, 1, 1, 1, 1);
 					}
 					else {
 						mainCommandBuffer->BindComputeBuffer(emitter.indirectDrawBuffer, 2);
-						mainCommandBuffer->DispatchCompute(1, 1, 1);	// this is kinda terrible...
+						mainCommandBuffer->DispatchCompute(1, 1, 1, 1, 1, 1);	// this is kinda terrible...
 					}
 					mainCommandBuffer->EndCompute();
 
@@ -319,7 +319,7 @@ struct LightingType{
 					mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 2);
 					mainCommandBuffer->BindComputeBuffer(emitter.spawnedThisFrameList, 3);
 
-					mainCommandBuffer->DispatchCompute(std::ceil(spawnCount / 64.0f), 1, 1);
+					mainCommandBuffer->DispatchCompute(std::ceil(spawnCount / 64.0f), 1, 1, 64, 1, 1);
 					mainCommandBuffer->EndCompute();
 
 					dispatchSizeUpdate();
