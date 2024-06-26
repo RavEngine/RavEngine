@@ -50,7 +50,7 @@ namespace librglc {
             opt.preambleContent = "#define RGL_SL_VK 1";
 		}
 		else if (toAPI == API::Direct3D12) {
-			opt.version = 64;
+			opt.version = 68;
             opt.preambleContent = "#define RGL_SL_DX 1";
 		}
 		else if (toAPI == API::Metal) {

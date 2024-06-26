@@ -99,7 +99,7 @@ macro(rvesc_compile descfile shader_target)
 		set_source_files_properties(${outname} PROPERTIES 
 			GENERATED TRUE
 			HEADER_FILE_ONLY ON
-			VS_SHADER_MODEL "6.4"
+			VS_SHADER_MODEL "6.8"
 		)
 		set_source_files_properties(dx_final_name PROPERTIES GENERATED TRUE)
 		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${dx_final_name})
@@ -108,7 +108,7 @@ macro(rvesc_compile descfile shader_target)
 			PRE_BUILD 
 			OUTPUT "${dx_final_name}"
 			DEPENDS "${outname}"
-			COMMAND dxc.exe $<$<CONFIG:Debug>:-Qembed_debug> $<$<CONFIG:Debug>:-Zi> $<$<CONFIG:Debug>:-Od> -Fo \"${dx_final_name}\" -T ${dxc_profile}s_6_4 \"${outname}\"
+			COMMAND ${ST_DXC_EXE_PATH} $<$<CONFIG:Debug>:-Qembed_debug> $<$<CONFIG:Debug>:-Zi> $<$<CONFIG:Debug>:-Od> -Fo \"${dx_final_name}\" -T ${dxc_profile}s_6_8 \"${outname}\"
 		)
 	endif()
 	
@@ -197,7 +197,7 @@ function(declare_shader infile shader_target)
 			PRE_BUILD 
 			OUTPUT "${dx_final_name}"
 			DEPENDS "${outname}"
-			COMMAND dxc.exe $<$<CONFIG:Debug>:-Qembed_debug> $<$<CONFIG:Debug>:-Zi> $<$<CONFIG:Debug>:-Od> -Fo \"${dx_final_name}\" -T ${dxc_profile}s_6_4 \"${outname}\"
+			COMMAND ${ST_DXC_EXE_PATH} $<$<CONFIG:Debug>:-Qembed_debug> $<$<CONFIG:Debug>:-Zi> $<$<CONFIG:Debug>:-Od> -Fo \"${dx_final_name}\" -T ${dxc_profile}s_6_8 \"${outname}\"
 		)
 	endif()
 	if(RGL_MTL_AVAILABLE)
