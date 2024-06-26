@@ -20,8 +20,17 @@ mat3 quatToMat3(vec4 q) {
 }
 
 // Sum the rotations of two quaternions
-vec4 quatAdd(vec4 a, vec4 b){
-    return a * b;
+vec4 quatAdd(vec4 q1, vec4 q2){
+    vec3 u = q1.xyz;
+    float s = q1.w;
+    
+    vec3 v = q2.xyz;
+    float t = q2.w;
+    
+    float w = s * t - dot(u, v);
+    vec3 xyz = cross(u, v) + s * v + t * u;
+
+    return vec4(xyz, w);
 }
 
 // the vec must contain angles in radians
