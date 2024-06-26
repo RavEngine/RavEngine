@@ -66,7 +66,7 @@ namespace RavEngine {
 
 			auto layout = device->CreatePipelineLayout(rpl);
 
-			userRenderPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
+			RGL::RenderPipelineDescriptor rpd{
 				.stages = {
 					{
 						.type = RGL::ShaderStageDesc::Type::Vertex,
@@ -92,7 +92,11 @@ namespace RavEngine {
 					.depthFunction = RGL::DepthCompareFunction::Greater,
 				},
 				.pipelineLayout = layout
-			});
+			};
+
+			userRenderPipeline = device->CreateRenderPipeline(rpd);
+			rpd.colorBlendConfig.attachments.clear();					// no color attachments for shadow mode
+			shadowRenderPipeline = device->CreateRenderPipeline(rpd);
 		}
 	}
 	ParticleUpdateMaterial::ParticleUpdateMaterial(const std::string_view initShaderName, const std::string_view updateShaderName)

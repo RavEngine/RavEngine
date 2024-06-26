@@ -67,10 +67,17 @@ namespace RavEngine {
 		};
 		ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const InternalConfig& internalConfig, const ParticleRenderMaterialConfig& config);
 
+		RGLRenderPipelinePtr GetMainRenderPipeline() const {
+			return userRenderPipeline;
+		}
+
+		RGLRenderPipelinePtr GetShadowRenderPipeline() const {
+			return shadowRenderPipeline;
+		}
 
 	private:
 	
-		RGLRenderPipelinePtr userRenderPipeline;
+		RGLRenderPipelinePtr userRenderPipeline, shadowRenderPipeline;
 	};
 
 	// Subclass this to make custom particle materials

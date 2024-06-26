@@ -456,24 +456,24 @@ struct LightingType{
 			prepareSkeletalCullingBuffer();
 		}
 
-		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult](const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, bool includeParticles){
+		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult](const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid){
             
             uint32_t particleBillboardMatrices = 0;
-            if (includeParticles){
-                struct QuadParticleData {
-                    glm::mat4 viewProj;
-                    glm::mat3 billboard;
-                };
+
+            struct QuadParticleData {
+                glm::mat4 viewProj;
+                glm::mat3 billboard;
+            };
                 
-                glm::mat3 rotComp = viewonly;
+            glm::mat3 rotComp = viewonly;
                 
-                QuadParticleData quadData{
-                    .viewProj = viewproj,
-                    .billboard = glm::inverse(rotComp),
-                };
+            QuadParticleData quadData{
+                .viewProj = viewproj,
+                .billboard = glm::inverse(rotComp),
+            };
                 
-                particleBillboardMatrices = WriteTransient(quadData);
-            }
+            particleBillboardMatrices = WriteTransient(quadData);
+
 
 			auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
 				if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
@@ -701,7 +701,7 @@ struct LightingType{
 					mainCommandBuffer->EndCompute();
 				}
 				};
-			auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, includeParticles, particleBillboardMatrices](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
+			auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, particleBillboardMatrices](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
 				// do static meshes
 				mainCommandBuffer->SetViewport({
 					.x = float(viewportScissor.offset[0]),
@@ -789,80 +789,83 @@ struct LightingType{
 				}
 
 				// render particles
-				if (includeParticles) {
+				worldOwning->Filter([this, &viewproj, &particleBillboardMatrices,&currentLightingType,&pipelineSelectorFunction](const ParticleEmitter& emitter, const Transform& t) {
+					auto sharedParticleImpl = [this, &particleBillboardMatrices, &pipelineSelectorFunction](const ParticleEmitter& emitter, Ref<ParticleRenderMaterialInstance> materialInstance, RGLBufferPtr activeParticleIndexBuffer) {
+						auto material = materialInstance->GetMaterial();
 
-					worldOwning->Filter([this, &viewproj, &particleBillboardMatrices](const ParticleEmitter& emitter, const Transform& t) {
-						auto sharedParticleImpl = [this, &particleBillboardMatrices](const ParticleEmitter& emitter, Ref<ParticleRenderMaterialInstance> materialInstance, RGLBufferPtr activeParticleIndexBuffer) {
-							auto material = materialInstance->GetMaterial();
+						auto pipeline = pipelineSelectorFunction(material);
 
-							mainCommandBuffer->BindRenderPipeline(material->userRenderPipeline);
-							mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, material->particleDataBufferBinding);
-							mainCommandBuffer->BindBuffer(activeParticleIndexBuffer, material->particleAliveIndexBufferBinding);
-							mainCommandBuffer->BindBuffer(transientBuffer, material->particleMatrixBufferBinding, particleBillboardMatrices);
+						mainCommandBuffer->BindRenderPipeline(pipeline);
+						mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, material->particleDataBufferBinding);
+						mainCommandBuffer->BindBuffer(activeParticleIndexBuffer, material->particleAliveIndexBufferBinding);
+						mainCommandBuffer->BindBuffer(transientBuffer, material->particleMatrixBufferBinding, particleBillboardMatrices);
 
-							std::byte pushConstants[128]{  };
+						std::byte pushConstants[128]{  };
 
-							auto nbytes = materialInstance->SetPushConstantData(pushConstants);
+						auto nbytes = materialInstance->SetPushConstantData(pushConstants);
 
-							if (nbytes > 0) {
-								mainCommandBuffer->SetVertexBytes({ pushConstants, nbytes }, 0);
-								mainCommandBuffer->SetFragmentBytes({ pushConstants, nbytes }, 0);
+						if (nbytes > 0) {
+							mainCommandBuffer->SetVertexBytes({ pushConstants, nbytes }, 0);
+							mainCommandBuffer->SetFragmentBytes({ pushConstants, nbytes }, 0);
+						}
+
+						// set samplers (currently sampler is not configurable)
+						for (uint32_t i = 0; i < materialInstance->samplerBindings.size(); i++) {
+							if (materialInstance->samplerBindings[i]) {
+								mainCommandBuffer->SetFragmentSampler(textureSampler, i);
 							}
+						}
 
-							// set samplers (currently sampler is not configurable)
-							for (uint32_t i = 0; i < materialInstance->samplerBindings.size(); i++) {
-								if (materialInstance->samplerBindings[i]) {
-									mainCommandBuffer->SetFragmentSampler(textureSampler, i);
-								}
+						// bind textures
+						for (uint32_t i = 0; i < materialInstance->textureBindings.size(); i++) {
+							if (materialInstance->textureBindings[i] != nullptr) {
+								mainCommandBuffer->SetFragmentTexture(
+									materialInstance->textureBindings[i]->GetRHITexturePointer()->GetDefaultView(), i);
 							}
+						}
+					};
 
-							// bind textures
-							for (uint32_t i = 0; i < materialInstance->textureBindings.size(); i++) {
-								if (materialInstance->textureBindings[i] != nullptr) {
-									mainCommandBuffer->SetFragmentTexture(
-										materialInstance->textureBindings[i]->GetRHITexturePointer()->GetDefaultView(), i);
-								}
-							}
-						};
-
-						std::visit(CaseAnalysis{
-								[this, &emitter, &viewproj,&particleBillboardMatrices,&sharedParticleImpl](const Ref <BillboardParticleRenderMaterialInstance>& billboardMat) {
+					std::visit(CaseAnalysis{
+							[this, &emitter, &viewproj,&particleBillboardMatrices,&sharedParticleImpl,&currentLightingType](const Ref <BillboardParticleRenderMaterialInstance>& billboardMat) {
+								if (currentLightingType.Lit) {
 									sharedParticleImpl(emitter,billboardMat, emitter.activeParticleIndexBuffer);
 
 									mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
 
-                                    mainCommandBuffer->ExecuteIndirect(
+									mainCommandBuffer->ExecuteIndirect(
 										{
 											.indirectBuffer = emitter.indirectDrawBuffer,
 											.offsetIntoBuffer = 0,
-											.nDraws = 1,                   
+											.nDraws = 1,
 										});
-                                },
-                                [this,&emitter,&sharedParticleImpl](const Ref <MeshParticleRenderMaterialInstance> &meshMat) {
-								RGLBufferPtr activeIndexBuffer;
+								}
+                            },
+                            [this,&emitter,&sharedParticleImpl, &currentLightingType](const Ref <MeshParticleRenderMaterialInstance> &meshMat) {
+							RGLBufferPtr activeIndexBuffer;
+								if (currentLightingType.Lit) {
 									if (meshMat->customSelectionFunction) {
 										activeIndexBuffer = emitter.meshAliveParticleIndexBuffer;
 									}
 									else {
 										activeIndexBuffer = emitter.activeParticleIndexBuffer;
 									}
-								   sharedParticleImpl(emitter,meshMat, activeIndexBuffer);
+									sharedParticleImpl(emitter, meshMat, activeIndexBuffer);
 
-								   mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
-								   mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
-								   mainCommandBuffer->BindBuffer(transientBuffer, 11, emitter.renderState.maxTotalParticlesOffset);
+									mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
+									mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
+									mainCommandBuffer->BindBuffer(transientBuffer, 11, emitter.renderState.maxTotalParticlesOffset);
 
-								   mainCommandBuffer->ExecuteIndirectIndexed(
-									   {
+									mainCommandBuffer->ExecuteIndirectIndexed(
+										{
 											.indirectBuffer = emitter.indirectDrawBuffer,
 											.offsetIntoBuffer = 0,
 											.nDraws = meshMat->customSelectionFunction ? meshMat->meshes->GetNumLods() : 1,
-									   }
+										}
 									);
-                                }
-                        }, emitter.GetRenderMaterial());
-					});
-				}
+								}
+                            }
+                    }, emitter.GetRenderMaterial());
+				});
 			};
 
 			// do culling operations
@@ -929,9 +932,9 @@ struct LightingType{
 
 					shadowRenderPass->SetDepthAttachmentTexture(shadowTexture->GetDefaultView());
 					auto shadowMapSize = shadowTexture->GetSize().width;
-					renderFromPerspective(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, shadowRenderPass, [](Ref<Material>&& mat) {
+					renderFromPerspective(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, shadowRenderPass, [](auto&& mat) {
 						return mat->GetShadowRenderPipeline();
-						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true }, lightMats.depthPyramid, false);
+						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true }, lightMats.depthPyramid);
 
 				}
 				postshadowmapFunction(owner);
@@ -1044,9 +1047,9 @@ struct LightingType{
 			auto renderDeferredPass = [this,&target, &renderFromPerspective](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// render all the static meshes
 
-				renderFromPerspective(viewproj, viewonly, projOnly, camPos, deferredRenderPass, [](Ref<Material>&& mat) {
+				renderFromPerspective(viewproj, viewonly, projOnly, camPos, deferredRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-                }, renderArea, {.Lit = true}, target.depthPyramid, true);
+                }, renderArea, {.Lit = true}, target.depthPyramid);
 
 				
 			};
@@ -1269,9 +1272,9 @@ struct LightingType{
                 //render unlits
                 unlitRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
                 unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
-                renderFromPerspective(viewproj, viewonly, projOnly, camPos, unlitRenderPass, [](Ref<Material>&& mat) {
+                renderFromPerspective(viewproj, viewonly, projOnly, camPos, unlitRenderPass, [](auto&& mat) {
                     return mat->GetMainRenderPipeline();
-                }, renderArea, {.Unlit = true}, target.depthPyramid, false);
+                }, renderArea, {.Unlit = true}, target.depthPyramid);
                 
                 // then do the skybox, if one is defined.
                 mainCommandBuffer->BeginRendering(unlitRenderPass);
