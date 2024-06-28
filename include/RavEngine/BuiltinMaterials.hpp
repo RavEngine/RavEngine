@@ -46,17 +46,13 @@ namespace RavEngine {
 	extern const decltype(MaterialConfig::colorBlendConfig) defaultColorBlendConfig;
     extern const decltype(MaterialConfig::colorBlendConfig) defaultUnlitColorBlendConfig;
 
-	struct LitMaterialInstance : public MaterialInstance {
-		LitMaterialInstance(Ref<LitMaterial> m) : MaterialInstance(m) {};
-	};
-
     /**
      Allows attaching a PBR material to an object.
      Don't subclass this if you have a custom material. Instead,
 	 subclass LitMaterialInstance
      */
 
-	class PBRMaterialInstance : public LitMaterialInstance {
+	class PBRMaterialInstance : public MaterialInstance {
 	public:
 		
 		PBRMaterialInstance(Ref<PBRMaterial> m);
@@ -98,10 +94,6 @@ namespace RavEngine {
 	private:
 		PBRPushConstantData pushConstantData;
 	};
-
-    struct UnlitMaterialInstance : public MaterialInstance {
-        UnlitMaterialInstance(Ref<UnlitMaterial> mat) : MaterialInstance(mat){}
-    };
 
     struct LitMeshMaterialInstance{
         Ref<MaterialInstance> material;

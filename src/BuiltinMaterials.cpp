@@ -123,7 +123,7 @@ RavEngine::LitMaterial::LitMaterial(const std::string_view vsh_name, const std::
 {
 }
 
-RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : LitMaterialInstance(m) {
+RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : MaterialInstance(m) {
     textureBindings[1] = Texture::Manager::defaultTexture;
     textureBindings[2] = Texture::Manager::defaultNormalTexture;
     textureBindings[3] = Texture::Manager::defaultTexture;
