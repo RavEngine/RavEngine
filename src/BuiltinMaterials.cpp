@@ -75,7 +75,7 @@ STATIC(RavEngine::defaultUnlitColorBlendConfig) {
     }
 };
 
-RavEngine::PBRMaterial::PBRMaterial(const std::string_view vsh_name, const std::string_view fsh_name, PBRMaterialOptions options) : Material(vsh_name,fsh_name,MaterialConfig
+RavEngine::LitMaterial::LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, LitMaterialOptions options) : Material(vsh_name,fsh_name,MaterialConfig
     {
         .vertConfig = defaultVertexConfig,
         .colorBlendConfig = defaultColorBlendConfig,
@@ -123,7 +123,7 @@ RavEngine::PBRMaterial::PBRMaterial(const std::string_view vsh_name, const std::
 {
 }
 
-RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : MaterialInstance(m) {
+RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : LitMaterialInstance(m) {
     textureBindings[1] = Texture::Manager::defaultTexture;
     textureBindings[2] = Texture::Manager::defaultNormalTexture;
     textureBindings[3] = Texture::Manager::defaultTexture;

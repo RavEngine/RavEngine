@@ -10,7 +10,7 @@ namespace RavEngine {
      Subclass this material to make custom surface shaders
      */
 
-	struct PBRMaterialOptions {
+	struct LitMaterialOptions {
 		RGL::CullMode cullMode = RGL::CullMode::Back;
 	};
 
@@ -20,10 +20,14 @@ namespace RavEngine {
 		float roughnessTint = 0.4;
 		float specularTint = 0.5;
 	};
-	struct PBRMaterial : public Material {
-		PBRMaterial(const std::string_view vsh_name, const std::string_view fsh_name, PBRMaterialOptions options = {});
-		PBRMaterial(const std::string_view name, PBRMaterialOptions options = {}) : PBRMaterial(name, name, options) {}
-		PBRMaterial(PBRMaterialOptions options = {}) : PBRMaterial("pbr", options) {}
+	struct LitMaterial : public Material {
+		LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, LitMaterialOptions options = {});
+		LitMaterial(const std::string_view name, LitMaterialOptions options = {}) : LitMaterial(name, name, options) {}
+	};
+
+	
+	struct PBRMaterial : public LitMaterial {
+		PBRMaterial(LitMaterialOptions options = {}) : LitMaterial("pbr", options) {}
 	};
 
     struct UnlitMaterialOptions {
@@ -42,13 +46,17 @@ namespace RavEngine {
 	extern const decltype(MaterialConfig::colorBlendConfig) defaultColorBlendConfig;
     extern const decltype(MaterialConfig::colorBlendConfig) defaultUnlitColorBlendConfig;
 
+	struct LitMaterialInstance : public MaterialInstance {
+		LitMaterialInstance(Ref<LitMaterial> m) : MaterialInstance(m) {};
+	};
+
     /**
      Allows attaching a PBR material to an object.
      Don't subclass this if you have a custom material. Instead,
-	 subclass MaterialInstance<YourMaterialType>
+	 subclass LitMaterialInstance
      */
 
-	class PBRMaterialInstance : public MaterialInstance {
+	class PBRMaterialInstance : public LitMaterialInstance {
 	public:
 		
 		PBRMaterialInstance(Ref<PBRMaterial> m);
