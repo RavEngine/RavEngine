@@ -35,6 +35,7 @@ namespace RavEngine {
 struct LightingType{
     bool Lit: 1 = false;
     bool Unlit: 1 = false;
+	bool FilterLightBlockers : 1 = false;
 };
 
 #ifndef NDEBUG
@@ -790,6 +791,11 @@ struct LightingType{
 
 				// render particles
 				worldOwning->Filter([this, &viewproj, &particleBillboardMatrices,&currentLightingType,&pipelineSelectorFunction](const ParticleEmitter& emitter, const Transform& t) {
+					// check if shadow casting is enabled
+					if (!emitter.GetCastsShadows() && currentLightingType.FilterLightBlockers) {
+						return;
+					}
+
 					auto sharedParticleImpl = [this, &particleBillboardMatrices, &pipelineSelectorFunction](const ParticleEmitter& emitter, Ref<ParticleRenderMaterialInstance> materialInstance, RGLBufferPtr activeParticleIndexBuffer) {
 						auto material = materialInstance->GetMaterial();
 
@@ -934,7 +940,7 @@ struct LightingType{
 					auto shadowMapSize = shadowTexture->GetSize().width;
 					renderFromPerspective(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, shadowRenderPass, [](auto&& mat) {
 						return mat->GetShadowRenderPipeline();
-						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true }, lightMats.depthPyramid);
+						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true }, lightMats.depthPyramid);
 
 				}
 				postshadowmapFunction(owner);

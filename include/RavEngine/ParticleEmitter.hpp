@@ -69,6 +69,14 @@ namespace RavEngine {
 		// for internal use only
 		uint32_t GetNextParticleSpawnCount();
 
+		void SetCastsShadows(bool value) {
+			castsShadows = value;
+		}
+
+		bool GetCastsShadows() const{
+			return castsShadows;
+		}
+
 	private:
 		RGLBufferPtr
 			particleDataBuffer = nullptr,
@@ -96,6 +104,8 @@ namespace RavEngine {
 		struct RenderState {
 			uint32_t maxTotalParticlesOffset = 0;
 		} renderState;
+
+		bool castsShadows = true;
 	};
 
 }
