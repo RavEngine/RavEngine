@@ -77,6 +77,25 @@ namespace RavEngine {
 			return castsShadows;
 		}
 
+		// when a particle systen is frozen, it does not tick. 
+		// If a particle system is set to invisible, it also becomes frozen
+		void SetFrozen(bool frozen) {
+			isFrozen = frozen;
+		}
+
+		void SetVisibility(bool visible) {
+			isVisible = visible;
+			SetFrozen(!isVisible);
+		}
+
+		bool GetFrozen() const {
+			return isFrozen;
+		}
+
+		bool GetVisible() const {
+			return isVisible;
+		}
+
 	private:
 		RGLBufferPtr
 			particleDataBuffer = nullptr,
@@ -93,19 +112,22 @@ namespace RavEngine {
 		ParticleRenderMaterialVariant renderMaterial;
 		Ref<ParticleUpdateMaterialInstance> updateMaterial;
 
-		bool emittingThisFrame = false;
+		double lastSpawnTime = 0;
+
 		uint32_t maxParticleCount;
 
 		uint32_t spawnRate = 10;
 
-		double lastSpawnTime = 0;
 
 		// this is icky and nasty, we need a better solution than this
 		struct RenderState {
 			uint32_t maxTotalParticlesOffset = 0;
 		} renderState;
 
-		bool castsShadows = true;
+		bool castsShadows : 1 = true;
+		bool emittingThisFrame : 1 = false;
+		bool isVisible : 1 = true;
+		bool isFrozen : 1 = false;
 	};
 
 }

@@ -199,6 +199,11 @@ struct LightingType{
 			mainCommandBuffer->BeginComputeDebugMarker("Particle Update");
 
 			worldOwning->Filter([this, worldOwning](ParticleEmitter& emitter, const Transform& transform) {
+				// frozen particle systems are not ticked
+				if (emitter.GetFrozen()) {
+					return;
+				}
+
 				Ref<ParticleRenderMaterialInstance> renderMat;
 				auto updateMat = emitter.GetUpdateMaterial();
 
@@ -793,6 +798,9 @@ struct LightingType{
 				worldOwning->Filter([this, &viewproj, &particleBillboardMatrices,&currentLightingType,&pipelineSelectorFunction](const ParticleEmitter& emitter, const Transform& t) {
 					// check if shadow casting is enabled
 					if (!emitter.GetCastsShadows() && currentLightingType.FilterLightBlockers) {
+						return;
+					}
+					if (!emitter.GetVisible()) {
 						return;
 					}
 
