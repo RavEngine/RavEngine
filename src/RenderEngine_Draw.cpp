@@ -296,18 +296,27 @@ struct LightingType{
 						mainCommandBuffer->CopyBufferToBuffer(
 							{
 								.buffer = emitter.emitterStateBuffer,
-								.offset = offsetof(ParticleState,aliveParticleCount)
+								.offset = offsetof(EmitterState,fields) + offsetof(EmitterStateNumericFields,aliveParticleCount)
 							},
 							{
 								.buffer = emitter.indirectDrawBuffer,
 								.offset = offsetof(RGL::IndirectIndexedCommand,instanceCount),
 							},
-							sizeof(ParticleState::aliveParticleCount)
+							sizeof(EmitterStateNumericFields::aliveParticleCount)
 						);
 					}
 				};
 
 				bool hasCalculatedSizes = false;
+
+				if (emitter.resetRequested) {
+					
+					EmitterStateNumericFields resetState{};
+
+					emitter.emitterStateBuffer->SetBufferData(resetState);	// this will leave the emitter ID value untouched
+
+					emitter.ClearReset();
+				}
 
 				// spawning particles?
 				auto spawnCount = emitter.GetNextParticleSpawnCount();

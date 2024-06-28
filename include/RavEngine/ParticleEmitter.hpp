@@ -11,12 +11,20 @@ namespace RavEngine {
 	struct MeshParticleRenderMaterialInstance;
 	struct ParticleUpdateMaterialInstance;
 
-	struct ParticleState {
+	struct EmitterStateNumericFields {
 		uint32_t aliveParticleCount = 0;
 		uint32_t freeListCount = 0;
 		uint32_t particlesCreatedThisFrame = 0;
+	};
+
+	struct EmitterState {
+		EmitterStateNumericFields fields;
 		entity_t emitterOwnerID;
 	};
+
+	// to ensure the buffer copies for Reset work correctly
+	static_assert(offsetof(EmitterState, emitterOwnerID) == sizeof(EmitterStateNumericFields), "EmitterState is not correctly aligned!");
+
 
 	using ParticleRenderMaterialVariant = std::variant<Ref<BillboardParticleRenderMaterialInstance>, Ref<MeshParticleRenderMaterialInstance>>;
 
@@ -53,7 +61,9 @@ namespace RavEngine {
 		/**
 		Set active particles to 0, and kill all existing active particles
 		*/
-		void Reset();
+		void Reset() {
+			resetRequested = true;
+		}
 
 		bool IsEmitting() const {
 			return emittingThisFrame;
@@ -118,6 +128,9 @@ namespace RavEngine {
 
 		uint32_t spawnRate = 10;
 
+		void ClearReset() {
+			resetRequested = false;
+		}
 
 		// this is icky and nasty, we need a better solution than this
 		struct RenderState {
@@ -128,6 +141,7 @@ namespace RavEngine {
 		bool emittingThisFrame : 1 = false;
 		bool isVisible : 1 = true;
 		bool isFrozen : 1 = false;
+		bool resetRequested : 1 = false;
 	};
 
 }
