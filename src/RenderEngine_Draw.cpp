@@ -607,19 +607,19 @@ struct LightingType{
 			auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos, &pyramid, &lightingFilter, &reallocBuffer](auto&& renderData) {
 				for (auto& [materialInstance, drawcommand] : renderData) {
 					bool shouldCull = false;
-					std::visit([lightingFilter, &shouldCull](const auto& var) {
-						if constexpr (std::is_same_v<std::decay_t<decltype(var)>, LitMeshMaterialInstance>) {
+
+					std::visit(CaseAnalysis(
+						[lightingFilter, &shouldCull](const Ref<LitMaterial>& mat) {
 							if (lightingFilter.Lit) {
 								shouldCull = true;
 							}
-						}
-						else if constexpr (std::is_same_v<std::decay_t<decltype(var)>, UnlitMeshMaterialInstance>) {
+						}, 
+						[lightingFilter, &shouldCull](const Ref<UnlitMaterial>& mat) {
 							if (lightingFilter.Unlit) {
 								shouldCull = true;
 							}
-						}
-						// materialInstance will be unset (== nullptr) if the match is invalid
-						}, materialInstance);
+						})
+					, materialInstance->GetMat()->variant);
 
 					// is this the correct material type? if not, skip
 					if (!shouldCull) {
@@ -727,26 +727,26 @@ struct LightingType{
 				mainCommandBuffer->SetScissor(viewportScissor);
 				mainCommandBuffer->SetVertexBuffer(vertexBuffer);
 				mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
-				for (auto& [materialInstanceVariant, drawcommand] : renderData) {
+				for (auto& [materialInstance, drawcommand] : renderData) {
 
 					// get the material instance out
-					Ref<MaterialInstance> materialInstance;
-					std::visit([&materialInstance, currentLightingType](const auto& var) {
-						if constexpr (std::is_same_v<std::decay_t<decltype(var)>, LitMeshMaterialInstance>) {
+					bool shouldCull = true;
+
+					std::visit(CaseAnalysis(
+						[&shouldCull, currentLightingType](const Ref<LitMaterial>&) {
 							if (currentLightingType.Lit) {
-								materialInstance = var.material;
+								shouldCull = false;
 							}
-						}
-						else if constexpr (std::is_same_v<std::decay_t<decltype(var)>, UnlitMeshMaterialInstance>) {
+						}, 
+						[&shouldCull, currentLightingType](const Ref<UnlitMaterial>&) {
 							if (currentLightingType.Unlit) {
-								materialInstance = var.material;
+								shouldCull = false;
 							}
 						}
-						// materialInstance will be unset (== nullptr) if the match is invalid
-						}, materialInstanceVariant);
+					),materialInstance->GetMat()->variant);
 
 					// is this the correct material type? if not, skip
-					if (materialInstance == nullptr) {
+					if (shouldCull) {
 						continue;
 					}
 

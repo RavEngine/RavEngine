@@ -15,6 +15,7 @@
 #include <RGL/Device.hpp>
 #include <RGL/Pipeline.hpp>
 #include <ravengine_shader_defs.h>
+#include "CaseAnalysis.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -123,4 +124,91 @@ Material::~Material() {
         renderer.gcRenderPipeline.enqueue(shadowRenderPipeline);
     }
 }
+
+RavEngine::LitMaterial::LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, LitMaterialOptions options) : Material(vsh_name, fsh_name, MaterialConfig
+    {
+        .vertConfig = defaultVertexConfig,
+        .colorBlendConfig = defaultColorBlendConfig,
+        .bindings = {
+            {
+                .binding = 0,
+                .type = RGL::BindingType::Sampler,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+             {
+                .binding = 1,
+                .type = RGL::BindingType::SampledImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+             {
+                .binding = 2,
+                .type = RGL::BindingType::SampledImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+            {
+                .binding = 3,
+                .type = RGL::BindingType::SampledImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+            {
+                .binding = 4,
+                .type = RGL::BindingType::SampledImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+            {
+                .binding = 5,
+                .type = RGL::BindingType::SampledImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+            {
+                .binding = 6,
+                .type = RGL::BindingType::SampledImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+        },
+        .pushConstantSize = options.pushConstantSize,
+        .cullMode = options.cullMode
+    }
+)
+{
+}
+
+UnlitMaterial::UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, UnlitMaterialOptions options)
+    : Material(vsh_name, fsh_name, MaterialConfig{
+        .vertConfig = defaultVertexConfig,
+        .colorBlendConfig = defaultUnlitColorBlendConfig,
+        .pushConstantSize = options.pushConstantSize,
+        .cullMode = options.cullMode
+        }) {}
+
 #endif
+
+RGLRenderPipelinePtr RavEngine::MaterialVariant::GetShadowRenderPipeline() const
+{
+    RGLRenderPipelinePtr pipeline;
+
+    std::visit(CaseAnalysis(
+        [&pipeline](const Ref<LitMaterial>& m) {
+            pipeline = m->GetShadowRenderPipeline();
+        },
+        [&pipeline](const Ref<UnlitMaterial>& m) {
+            pipeline = m->GetShadowRenderPipeline();
+        }), variant);
+
+    return pipeline;
+}
+
+RGLRenderPipelinePtr RavEngine::MaterialVariant::GetMainRenderPipeline() const
+{
+    RGLRenderPipelinePtr pipeline;
+
+    std::visit(CaseAnalysis(
+        [&pipeline](const Ref<LitMaterial>& m) {
+            pipeline = m->GetMainRenderPipeline();
+        },
+        [&pipeline](const Ref<UnlitMaterial>& m) {
+            pipeline = m->GetMainRenderPipeline();
+        }), variant);
+
+    return pipeline;
+}

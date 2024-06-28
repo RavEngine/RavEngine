@@ -11,8 +11,15 @@ namespace RavEngine {
 	};
 
 	// subclass
-	struct ISkyMaterialInstance : public MaterialInstance {
-		ISkyMaterialInstance(const Ref<ISkyMaterial> sm) : MaterialInstance(sm) {}
+	struct ISkyMaterialInstance {
+		ISkyMaterialInstance(const Ref<ISkyMaterial> sm) : sm(sm) {}
+
+		Ref<ISkyMaterial> GetMat() const {
+			return sm;
+		}
+
+	private:
+		Ref<ISkyMaterial> sm;
 	};
 
 	// default implementation, sublcass or implement your own

@@ -5,14 +5,6 @@
 #include <variant>
 
 namespace RavEngine {
-    /**
-     PBR material surface shader.
-     Subclass this material to make custom surface shaders
-     */
-
-	struct LitMaterialOptions {
-		RGL::CullMode cullMode = RGL::CullMode::Back;
-	};
 
 	struct PBRPushConstantData {
 		ColorRGBA color{ 1,1,1,1 };
@@ -20,25 +12,10 @@ namespace RavEngine {
 		float roughnessTint = 0.4;
 		float specularTint = 0.5;
 	};
-	struct LitMaterial : public Material {
-		LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, LitMaterialOptions options = {});
-		LitMaterial(const std::string_view name, LitMaterialOptions options = {}) : LitMaterial(name, name, options) {}
-	};
-
 	
 	struct PBRMaterial : public LitMaterial {
-		PBRMaterial(LitMaterialOptions options = {}) : LitMaterial("pbr", options) {}
+		PBRMaterial(LitMaterialOptions options = {.pushConstantSize = sizeof(PBRPushConstantData)}) : LitMaterial("pbr", options) {}
 	};
-
-    struct UnlitMaterialOptions {
-        RGL::CullMode cullMode = RGL::CullMode::Back;
-    };
-
-    // a material that reads no data
-    struct UnlitMaterial : public Material{
-        UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, UnlitMaterialOptions options = {});
-        UnlitMaterial(const std::string_view name, UnlitMaterialOptions options = {}) : UnlitMaterial(name, name, options) {}
-    };
 
 	// the default layout and blend information.
 	// you probably want these when defining custom materials.
@@ -95,38 +72,7 @@ namespace RavEngine {
 		PBRPushConstantData pushConstantData;
 	};
 
-    struct LitMeshMaterialInstance{
-        Ref<MaterialInstance> material;
-        LitMeshMaterialInstance() {}
-        LitMeshMaterialInstance(const decltype(material)& material) : material(material){}
-        inline bool operator==(const LitMeshMaterialInstance& other) const{
-            return material == other.material;
-        }
-    };
-    struct UnlitMeshMaterialInstance{
-        Ref<MaterialInstance> material;
-        UnlitMeshMaterialInstance() {}
-        UnlitMeshMaterialInstance(const decltype(material)& material) : material(material){}
-        inline bool operator==(const UnlitMeshMaterialInstance& other) const{
-            return material == other.material;
-        }
-    };
-    using MeshMaterial = std::variant<LitMeshMaterialInstance, UnlitMeshMaterialInstance>;
+   
 }
 
-namespace std {
-    template<>
-    struct hash<RavEngine::LitMeshMaterialInstance> {
-        size_t operator()(const RavEngine::LitMeshMaterialInstance& other) const {
-            return std::hash<Ref<RavEngine::MaterialInstance>>()(other.material);
-        }
-    };
-
-    template<>
-    struct hash<RavEngine::UnlitMeshMaterialInstance> {
-        size_t operator()(const RavEngine::UnlitMeshMaterialInstance& other) const {
-            return std::hash<Ref<RavEngine::MaterialInstance>>()(other.material);
-        }
-    };
-}
 #endif
