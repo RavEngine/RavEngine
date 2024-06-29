@@ -1,0 +1,5 @@
+{
+  "shader": "default_billboard_particle_unlit.fsh",
+  "stage": "fragment",
+  "type": "unlit-particle-quad"
+}

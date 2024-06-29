@@ -90,12 +90,28 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 			shaderTemplateName = "lit_mesh.fsh";
 		}
 	}
+	else if (mat_type == "unlit-particle-quad") {
+		if (inputStage == librglc::ShaderStage::Vertex) {
+			shaderTemplateName = "particle_quad.vsh";
+		}
+		else {
+			shaderTemplateName = "unlit_mesh.fsh";
+		}
+	}
 	else if (mat_type == "lit-particle-mesh") {
 		if (inputStage == librglc::ShaderStage::Vertex) {
 			shaderTemplateName = "particle_mesh.vsh";
 		}
 		else {
 			shaderTemplateName = "lit_mesh.fsh";
+		}
+	}
+	else if (mat_type == "unlit-particle-mesh") {
+		if (inputStage == librglc::ShaderStage::Vertex) {
+			shaderTemplateName = "particle_mesh.vsh";
+		}
+		else {
+			shaderTemplateName = "unlit_mesh.fsh";
 		}
 	}
 	else if (mat_type == "particle-update") {

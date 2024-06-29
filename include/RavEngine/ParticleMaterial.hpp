@@ -94,7 +94,7 @@ namespace RavEngine {
 	template<LightingMode mode>
 	struct BillboardRenderParticleMaterial : public ParticleRenderMaterial {
 	protected:
-		BillboardRenderParticleMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {}) : ParticleRenderMaterial(particleFS, particleVS, {
+		BillboardRenderParticleMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {}) : ParticleRenderMaterial(particleVS, particleFS, {
 			.vertexConfig = quadVertexConfig,
 			.topology = RGL::PrimitiveTopology::TriangleStrip,
 			.mode = mode
@@ -195,7 +195,10 @@ namespace RavEngine {
 	struct SpritesheetParticleRenderMaterial : public RavEngine::BillboardRenderParticleMaterial<mode> {
 		constexpr static uint16_t SpritesheetBindingSlot = 1;
 		constexpr static uint16_t SamplerBindingSlot = 0;
-		SpritesheetParticleRenderMaterial() : BillboardRenderParticleMaterial<mode>("default_billboard_particle", "default_billboard_particle", {
+
+		constexpr static std::string_view fs_particle_name = mode == LightingMode::Lit ? "default_billboard_particle" : "default_billboard_particle_unlit";
+
+		SpritesheetParticleRenderMaterial() : BillboardRenderParticleMaterial<mode>("default_billboard_particle", fs_particle_name, {
 			.bindings = {
 				{
 					.binding = SamplerBindingSlot,
