@@ -146,7 +146,6 @@ UnlitMaterial::UnlitMaterial(const std::string_view vsh_name, const std::string_
         .cullMode = options.cullMode
         }) {}
 
-#endif
 
 RGLRenderPipelinePtr RavEngine::MaterialVariant::GetShadowRenderPipeline() const
 {
@@ -177,3 +176,6 @@ RGLRenderPipelinePtr RavEngine::MaterialVariant::GetMainRenderPipeline() const
 
     return pipeline;
 }
+
+#endif
+
