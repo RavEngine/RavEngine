@@ -125,59 +125,24 @@ Material::~Material() {
     }
 }
 
-RavEngine::LitMaterial::LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, LitMaterialOptions options) : Material(vsh_name, fsh_name, MaterialConfig
+RavEngine::LitMaterial::LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions, const LitMaterialOptions& options) : Material(vsh_name, fsh_name, MaterialConfig
     {
         .vertConfig = defaultVertexConfig,
         .colorBlendConfig = defaultColorBlendConfig,
-        .bindings = {
-            {
-                .binding = 0,
-                .type = RGL::BindingType::Sampler,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-             {
-                .binding = 1,
-                .type = RGL::BindingType::SampledImage,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-             {
-                .binding = 2,
-                .type = RGL::BindingType::SampledImage,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-            {
-                .binding = 3,
-                .type = RGL::BindingType::SampledImage,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-            {
-                .binding = 4,
-                .type = RGL::BindingType::SampledImage,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-            {
-                .binding = 5,
-                .type = RGL::BindingType::SampledImage,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-            {
-                .binding = 6,
-                .type = RGL::BindingType::SampledImage,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-        },
-        .pushConstantSize = options.pushConstantSize,
+        .bindings = pipeOptions.bindings,
+        .pushConstantSize = pipeOptions.pushConstantSize,
         .cullMode = options.cullMode
     }
 )
 {
 }
 
-UnlitMaterial::UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, UnlitMaterialOptions options)
+UnlitMaterial::UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions, const UnlitMaterialOptions& options)
     : Material(vsh_name, fsh_name, MaterialConfig{
         .vertConfig = defaultVertexConfig,
         .colorBlendConfig = defaultUnlitColorBlendConfig,
-        .pushConstantSize = options.pushConstantSize,
+        .bindings = pipeOptions.bindings,
+        .pushConstantSize = pipeOptions.pushConstantSize,
         .cullMode = options.cullMode
         }) {}
 

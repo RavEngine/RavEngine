@@ -91,24 +91,27 @@ namespace RavEngine {
 
 	struct LitMaterialOptions  {
 		RGL::CullMode cullMode = RGL::CullMode::Back;
+	};
+
+	struct PipelineOptions {
+		std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> bindings;
 		uint32_t pushConstantSize = 0;
 	};
 
 	struct LitMaterial : public Material {
-		LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, LitMaterialOptions options = {});
-		LitMaterial(const std::string_view name, LitMaterialOptions options = {}) : LitMaterial(name, name, options) {}
+		LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions,  const LitMaterialOptions& options = {});
+		LitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const LitMaterialOptions& options = {}) : LitMaterial(name, name, pipeOptions, options) {}
 	};
 
 
 	struct UnlitMaterialOptions {
 		RGL::CullMode cullMode = RGL::CullMode::Back;
-		uint32_t pushConstantSize = 0;
 	};
 
 	// a material that reads no data
 	struct UnlitMaterial : public Material {
-		UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, UnlitMaterialOptions options = {});
-		UnlitMaterial(const std::string_view name, UnlitMaterialOptions options = {}) : UnlitMaterial(name, name, options) {}
+		UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions, const UnlitMaterialOptions& options = {});
+		UnlitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const UnlitMaterialOptions& options = {}) : UnlitMaterial(name, name, pipeOptions, options) {}
 	};
 
 	struct MaterialVariant  {

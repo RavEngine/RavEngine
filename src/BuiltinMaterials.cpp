@@ -84,4 +84,48 @@ RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : Materi
 }
 
 
+RavEngine::PBRMaterial::PBRMaterial(LitMaterialOptions options) : LitMaterial("pbr", { 
+    .bindings = {
+        {
+            .binding = 0,
+                .type = RGL::BindingType::Sampler,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+        {
+            .binding = 1,
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+        {
+            .binding = 2,
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+        {
+            .binding = 3,
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+        {
+            .binding = 4,
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+        {
+            .binding = 5,
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+        {
+            .binding = 6,
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+    },
+    .pushConstantSize = sizeof(PBRPushConstantData) 
+    }, options) {}
+
+
 #endif
+
+

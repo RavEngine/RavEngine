@@ -14,7 +14,7 @@ namespace RavEngine {
 	};
 	
 	struct PBRMaterial : public LitMaterial {
-		PBRMaterial(LitMaterialOptions options = {.pushConstantSize = sizeof(PBRPushConstantData)}) : LitMaterial("pbr", options) {}
+		PBRMaterial(LitMaterialOptions options = { });
 	};
 
 	// the default layout and blend information.
