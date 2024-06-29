@@ -5,7 +5,7 @@
 #include <RGL/Texture.hpp>
 
 namespace RavEngine {
-	static const RGL::RenderPipelineDescriptor::VertexConfig quadVertexConfig{
+	const RGL::RenderPipelineDescriptor::VertexConfig quadVertexConfig{
 		.vertexBindings = {
 			{
 				.binding = 0,
@@ -84,7 +84,7 @@ namespace RavEngine {
 				.rasterizerConfig = {
 					.windingOrder = RGL::WindingOrder::Counterclockwise,
 				},
-				.colorBlendConfig = RavEngine::defaultColorBlendConfig,
+				.colorBlendConfig = internalConfig.mode == LightingMode::Lit ? RavEngine::defaultColorBlendConfig : RavEngine::defaultUnlitColorBlendConfig,
 				.depthStencilConfig = {
 					.depthFormat = RGL::TextureFormat::D32SFloat,
 					.depthTestEnabled = true,
@@ -204,7 +204,7 @@ namespace RavEngine {
 			.particleFrameOffset = particleFrameOffset
 		};
 
-		auto dim = textureBindings[SpritesheetBindingSlot]->GetRHITexturePointer()->GetSize();
+		auto dim = textureBindings[SpritesheetParticleRenderMaterial<LightingMode::Lit>::SpritesheetBindingSlot]->GetRHITexturePointer()->GetSize();
 		str.spritesheetDim = {
 				dim.width,
 				dim.height,
@@ -217,24 +217,6 @@ namespace RavEngine {
 		std::memcpy(data.data(), &str, sizeof(str));
 		return sizeof(str);
 	}
-
-	SpritesheetParticleRenderMaterial::SpritesheetParticleRenderMaterial() : BillboardRenderParticleMaterial("default_billboard_particle", "default_billboard_particle", {
-			.bindings = {
-				{
-					.binding = SpritesheetParticleRenderMaterialInstance::SamplerBindingSlot,
-					.type = RGL::BindingType::Sampler,
-					.stageFlags = RGL::BindingVisibility::Fragment,
-					.writable = false,
-				},
-				{
-					.binding = SpritesheetParticleRenderMaterialInstance::SpritesheetBindingSlot,
-					.type = RGL::BindingType::SampledImage,
-					.stageFlags = RGL::BindingVisibility::Fragment,
-					.writable = false,
-				}
-			},
-			.pushConstantSize = sizeof(ParticleBillboardUBO)
-		}) {}
 
 	struct PBRUBO {
 		glm::vec4 colorTint = {1.0f,1,1,1};
@@ -296,15 +278,6 @@ namespace RavEngine {
 			.pushConstantSize = sizeof(PBRUBO)
 		}
 	) {}
-
-	BillboardRenderParticleMaterial::BillboardRenderParticleMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config) : ParticleRenderMaterial(particleFS, particleVS, {
-			.vertexConfig = quadVertexConfig,
-			.topology = RGL::PrimitiveTopology::TriangleStrip
-		}, config) {}
-	MeshParticleRenderMaterial::MeshParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config) : ParticleRenderMaterial(particleVS, particleFS, {
-		.vertexConfig = defaultVertexConfig,
-		.topology = RGL::PrimitiveTopology::TriangleList
-	}, config) {}
 
 
 	MeshParticleMeshSelectionMaterial::MeshParticleMeshSelectionMaterial(const std::string_view name)

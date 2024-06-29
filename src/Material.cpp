@@ -151,13 +151,13 @@ RGLRenderPipelinePtr RavEngine::MaterialVariant::GetShadowRenderPipeline() const
 {
     RGLRenderPipelinePtr pipeline;
 
-    std::visit(CaseAnalysis(
+    std::visit(CaseAnalysis{
         [&pipeline](const Ref<LitMaterial>& m) {
             pipeline = m->GetShadowRenderPipeline();
         },
         [&pipeline](const Ref<UnlitMaterial>& m) {
             pipeline = m->GetShadowRenderPipeline();
-        }), variant);
+        }}, variant);
 
     return pipeline;
 }
@@ -166,13 +166,13 @@ RGLRenderPipelinePtr RavEngine::MaterialVariant::GetMainRenderPipeline() const
 {
     RGLRenderPipelinePtr pipeline;
 
-    std::visit(CaseAnalysis(
+    std::visit(CaseAnalysis{
         [&pipeline](const Ref<LitMaterial>& m) {
             pipeline = m->GetMainRenderPipeline();
         },
         [&pipeline](const Ref<UnlitMaterial>& m) {
             pipeline = m->GetMainRenderPipeline();
-        }), variant);
+        }}, variant);
 
     return pipeline;
 }

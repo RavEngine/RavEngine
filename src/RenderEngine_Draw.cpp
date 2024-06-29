@@ -608,17 +608,17 @@ struct LightingType{
 				for (auto& [materialInstance, drawcommand] : renderData) {
 					bool shouldCull = false;
 
-					std::visit(CaseAnalysis(
+					std::visit(CaseAnalysis{
 						[lightingFilter, &shouldCull](const Ref<LitMaterial>& mat) {
 							if (lightingFilter.Lit) {
 								shouldCull = true;
 							}
-						}, 
+						},
 						[lightingFilter, &shouldCull](const Ref<UnlitMaterial>& mat) {
 							if (lightingFilter.Unlit) {
 								shouldCull = true;
 							}
-						})
+						}}
 					, materialInstance->GetMat()->variant);
 
 					// is this the correct material type? if not, skip
@@ -732,18 +732,18 @@ struct LightingType{
 					// get the material instance out
 					bool shouldCull = true;
 
-					std::visit(CaseAnalysis(
+					std::visit(CaseAnalysis{
 						[&shouldCull, currentLightingType](const Ref<LitMaterial>&) {
 							if (currentLightingType.Lit) {
 								shouldCull = false;
 							}
-						}, 
+						},
 						[&shouldCull, currentLightingType](const Ref<UnlitMaterial>&) {
 							if (currentLightingType.Unlit) {
 								shouldCull = false;
 							}
 						}
-					),materialInstance->GetMat()->variant);
+					}, materialInstance->GetMat()->variant);
 
 					// is this the correct material type? if not, skip
 					if (shouldCull) {
@@ -813,10 +813,9 @@ struct LightingType{
 						return;
 					}
 
-					auto sharedParticleImpl = [this, &particleBillboardMatrices, &pipelineSelectorFunction](const ParticleEmitter& emitter, Ref<ParticleRenderMaterialInstance> materialInstance, RGLBufferPtr activeParticleIndexBuffer) {
-						auto material = materialInstance->GetMaterial();
-
+					auto sharedParticleImpl = [this, &particleBillboardMatrices, &pipelineSelectorFunction](const ParticleEmitter& emitter, auto&& materialInstance, Ref<ParticleRenderMaterial> material, RGLBufferPtr activeParticleIndexBuffer) {
 						auto pipeline = pipelineSelectorFunction(material);
+
 
 						mainCommandBuffer->BindRenderPipeline(pipeline);
 						mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, material->particleDataBufferBinding);
@@ -850,42 +849,81 @@ struct LightingType{
 
 					std::visit(CaseAnalysis{
 							[this, &emitter, &viewproj,&particleBillboardMatrices,&sharedParticleImpl,&currentLightingType](const Ref <BillboardParticleRenderMaterialInstance>& billboardMat) {
-								if (currentLightingType.Lit) {
-									sharedParticleImpl(emitter,billboardMat, emitter.activeParticleIndexBuffer);
 
-									mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
-
-									mainCommandBuffer->ExecuteIndirect(
-										{
-											.indirectBuffer = emitter.indirectDrawBuffer,
-											.offsetIntoBuffer = 0,
-											.nDraws = 1,
-										});
-								}
-                            },
-                            [this,&emitter,&sharedParticleImpl, &currentLightingType](const Ref <MeshParticleRenderMaterialInstance> &meshMat) {
-							RGLBufferPtr activeIndexBuffer;
-								if (currentLightingType.Lit) {
-									if (meshMat->customSelectionFunction) {
-										activeIndexBuffer = emitter.meshAliveParticleIndexBuffer;
-									}
-									else {
-										activeIndexBuffer = emitter.activeParticleIndexBuffer;
-									}
-									sharedParticleImpl(emitter, meshMat, activeIndexBuffer);
-
-									mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
-									mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
-									mainCommandBuffer->BindBuffer(transientBuffer, 11, emitter.renderState.maxTotalParticlesOffset);
-
-									mainCommandBuffer->ExecuteIndirectIndexed(
-										{
-											.indirectBuffer = emitter.indirectDrawBuffer,
-											.offsetIntoBuffer = 0,
-											.nDraws = meshMat->customSelectionFunction ? meshMat->meshes->GetNumLods() : 1,
+								Ref<ParticleRenderMaterial> material;
+								std::visit(CaseAnalysis{
+									[&currentLightingType, &material](const Ref<BillboardRenderParticleMaterial<LightingMode::Lit>>& mat) {
+										if (currentLightingType.Lit) {
+											material = mat;
 										}
-									);
+									},
+									[&currentLightingType, &material](const Ref<BillboardRenderParticleMaterial<LightingMode::Unlit>>& mat) {
+										if (currentLightingType.Unlit) {
+											material = mat;
+										}
+									}
+								}, billboardMat->GetMaterial());
+								// material will be nullptr if we should not render right now
+
+								if (!material) {
+									return;
 								}
+
+								sharedParticleImpl(emitter,billboardMat, material, emitter.activeParticleIndexBuffer);
+
+								mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
+
+								mainCommandBuffer->ExecuteIndirect(
+									{
+										.indirectBuffer = emitter.indirectDrawBuffer,
+										.offsetIntoBuffer = 0,
+										.nDraws = 1,
+									});
+								
+                            },
+							[this,&emitter,&sharedParticleImpl, &currentLightingType](const Ref <MeshParticleRenderMaterialInstance>& meshMat) {
+							RGLBufferPtr activeIndexBuffer;
+
+								Ref<ParticleRenderMaterial> material;
+								std::visit(CaseAnalysis{
+									[&currentLightingType, &material](const Ref<MeshParticleRenderMaterial<LightingMode::Lit>>& mat) {
+										if (currentLightingType.Lit) {
+											material = mat;
+										}
+									},
+									[&currentLightingType, &material](const Ref<MeshParticleRenderMaterial<LightingMode::Unlit>>& mat) {
+										if (currentLightingType.Unlit) {
+											material = mat;
+										}
+									}
+								}, meshMat->GetMaterial());
+								// material will be nullptr if we should not render right now
+
+								if (meshMat->customSelectionFunction) {
+									activeIndexBuffer = emitter.meshAliveParticleIndexBuffer;
+								}
+								else {
+									activeIndexBuffer = emitter.activeParticleIndexBuffer;
+								}
+
+								if (!material) {
+									return;
+								}
+
+								sharedParticleImpl(emitter, meshMat, material, activeIndexBuffer);
+
+								mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
+								mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
+								mainCommandBuffer->BindBuffer(transientBuffer, 11, emitter.renderState.maxTotalParticlesOffset);
+
+								mainCommandBuffer->ExecuteIndirectIndexed(
+									{
+										.indirectBuffer = emitter.indirectDrawBuffer,
+										.offsetIntoBuffer = 0,
+										.nDraws = meshMat->customSelectionFunction ? meshMat->meshes->GetNumLods() : 1,
+									}
+								);
+								
                             }
                     }, emitter.GetRenderMaterial());
 				});
