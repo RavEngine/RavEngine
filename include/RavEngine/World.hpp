@@ -1131,9 +1131,9 @@ namespace RavEngine {
             }
             dispatched_func(){}
         };
-        UnorderedContiguousSet<std::shared_ptr<dispatched_func>> async_tasks;
+        UnorderedSet<std::shared_ptr<dispatched_func>> async_tasks;
         decltype(async_tasks)::iterator async_begin, async_end;
-        RavEngine::Vector<size_t> ranFunctions;
+        RavEngine::Vector<std::shared_ptr<dispatched_func>> ranFunctions;
 	protected:
         
 		//physics system

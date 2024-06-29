@@ -166,14 +166,14 @@ void World::SetupTaskGraph(){
     auto doAsync = ECSTasks.for_each(std::ref(async_begin), std::ref(async_end), [&](const shared_ptr<dispatched_func>& item){
         if (GetApp()->GetCurrentTime() >= item->runAtTime){
             item->func();
-            ranFunctions.push_back(async_tasks.hash_for(item));
+            ranFunctions.push_back(item);
         }
     }).name("Exec Async");
     updateAsyncIterators.precede(doAsync);
     auto cleanupRanAsync = ECSTasks.emplace([&]{
         // remove functions that have been run
-        for(const auto hash : ranFunctions){
-            async_tasks.erase_by_hash(hash);
+        for(const auto item : ranFunctions){
+            async_tasks.erase(item);
         }
         ranFunctions.clear();
     }).name("Async cleanup");
