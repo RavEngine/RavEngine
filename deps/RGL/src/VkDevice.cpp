@@ -245,6 +245,7 @@ namespace RGL {
 
         // load extra functions
         loadVulkanFunction(device, vkCmdPushDescriptorSetKHR, "vkCmdPushDescriptorSetKHR");
+
 #ifndef NDEBUG
         loadVulkanFunction(device, rgl_vkDebugMarkerSetObjectNameEXT, "vkDebugMarkerSetObjectNameEXT");
         loadVulkanFunction(device, rgl_vkCmdBeginDebugUtilsLabelEXT, "vkCmdBeginDebugUtilsLabelEXT");
@@ -262,7 +263,7 @@ namespace RGL {
         VK_CHECK(vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool));
 
         VmaAllocatorCreateInfo allocInfo{
-            .flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT,
+            .flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT | VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
             .physicalDevice = physicalDevice,
             .device = device,
             .preferredLargeHeapBlockSize = 0,   // default
@@ -276,6 +277,64 @@ namespace RGL {
         };
 
         VK_CHECK(vmaCreateAllocator(&allocInfo,&vkallocator));
+
+        VkDescriptorBindingFlags bindingFlags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+
+        VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsCreate{
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+            .pNext = nullptr,
+            .bindingCount = 1,
+            .pBindingFlags = &bindingFlags,
+        };
+
+        VkDescriptorSetLayoutBinding set_layout_binding{
+            .binding = 0,
+            .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+            .descriptorCount = nDescriptors,
+            .stageFlags = VK_SHADER_STAGE_ALL,
+            .pImmutableSamplers = VK_NULL_HANDLE,
+        };
+        VkDescriptorSetLayoutCreateInfo descriptor_layout_create_info{
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .pNext = &bindingFlagsCreate,
+            .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
+            .bindingCount = 1,
+            .pBindings = &set_layout_binding
+        }; 
+        
+        VK_CHECK(vkCreateDescriptorSetLayout(device, &descriptor_layout_create_info, nullptr, &globalDescriptorSetLayout));
+
+        // --- descriptor pool and set
+
+        VkDescriptorPoolSize poolSizes[] = {
+            {
+                .type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                .descriptorCount = nDescriptors
+            }
+        };
+
+        VkDescriptorPoolCreateInfo poolCreate{
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT,
+            .maxSets = 1000,        // overkill
+            .poolSizeCount = std::size(poolSizes),
+            .pPoolSizes = poolSizes,
+        };
+        VK_CHECK(vkCreateDescriptorPool(device, &poolCreate, nullptr, &globalDescriptorPool));
+#if !__ANDROID__
+        SetDebugNameForResource(globalDescriptorPool, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT, "Bindless descriptor pool");
+#endif
+
+        VkDescriptorSetAllocateInfo setAllocInfo{
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .pNext = nullptr,
+            .descriptorPool = globalDescriptorPool,
+            .descriptorSetCount = 1,
+            .pSetLayouts = &globalDescriptorSetLayout
+        };
+
+        VK_CHECK(vkAllocateDescriptorSets(device, &setAllocInfo, &globalDescriptorSet));// we don't need to manually destroy the descriptor set
     }
 
     void DeviceVk::SetDebugNameForResource(void* resource, VkDebugReportObjectTypeEXT type, const char* debugName)
@@ -295,6 +354,8 @@ namespace RGL {
 
     RGL::DeviceVk::~DeviceVk() {
 
+        vkDestroyDescriptorPool(device, globalDescriptorPool, VK_NULL_HANDLE);
+        vkDestroyDescriptorSetLayout(device, globalDescriptorSetLayout, VK_NULL_HANDLE);
         vmaDestroyAllocator(vkallocator);
         vkDestroyCommandPool(device, commandPool, nullptr);
         vkDestroyDevice(device, nullptr);
@@ -385,6 +446,13 @@ namespace RGL {
                 .queueFamilyIndex = indices.graphicsFamily.value(),
                 .queueIndex = 0
             }
+        };
+    }
+
+    TextureView DeviceVk::GetGlobalBindlessTextureHeap() const
+    {
+        return {
+            {.bindlessSet = globalDescriptorSet}
         };
     }
 

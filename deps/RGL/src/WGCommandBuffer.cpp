@@ -81,6 +81,10 @@ namespace RGL{
 
     }
 
+    void CommandBufferWG::UseResource(const TextureView& view){
+    }
+
+
     void CommandBufferWG::Commit(const CommitConfig& config) { 
         wgpuQueueSubmit(owningQueue->queue, commandBuffers.size(), commandBuffers.data());
     }

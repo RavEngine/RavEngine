@@ -4,6 +4,7 @@
 #include <RGL/Types.hpp>
 #include <RGL/Device.hpp>
 #include "MTLObjCCompatLayer.hpp"
+#include "FreeList.hpp"
 #include <memory>
 
 namespace RGL{
@@ -12,6 +13,8 @@ namespace RGL{
 		OBJC_ID(MTLDevice) device = nullptr;
         OBJC_ID(MTLLibrary) defaultLibrary = nullptr;
         OBJC_ID(MTLCommandQueue) uploadQueue = nullptr;
+        OBJC_ID(MTLArgumentEncoder) globalTextureEncoder = nullptr;
+        OBJC_ID(MTLBuffer) globalTextureBuffer = nullptr;
 	
         DeviceMTL(decltype(device) device);
 		std::string GetBrandString() final;
@@ -35,6 +38,8 @@ namespace RGL{
 
         RGLCommandQueuePtr CreateCommandQueue(QueueType type) final;
         
+        TextureView GetGlobalBindlessTextureHeap() const final;
+        
         DeviceData GetDeviceData() final;
 
         RGLFencePtr CreateFence(bool preSignaled) final;
@@ -42,6 +47,8 @@ namespace RGL{
         
         size_t GetTotalVRAM() const final;
         size_t GetCurrentVRAMInUse() const final;
+        
+        FreeList<uint32_t, 2048> textureFreelist;
         
         virtual ~DeviceMTL(){}
 	};

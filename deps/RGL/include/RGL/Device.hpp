@@ -29,6 +29,8 @@ namespace RGL {
         } mtlData;
 	};
 
+	struct TextureView;
+
 	struct IDevice {
 		virtual ~IDevice() {}
 		static RGLDevicePtr CreateSystemDefaultDevice();
@@ -52,6 +54,8 @@ namespace RGL {
         virtual RGLSamplerPtr CreateSampler(const SamplerConfig&) = 0;
 
 		virtual RGLCommandQueuePtr CreateCommandQueue(QueueType type) = 0;
+
+		virtual TextureView GetGlobalBindlessTextureHeap() const = 0;
 
 		virtual RGLComputePipelinePtr CreateComputePipeline(const struct ComputePipelineDescriptor&) = 0;
 

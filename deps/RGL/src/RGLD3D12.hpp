@@ -35,7 +35,4 @@ namespace RGL {
 
 	typedef void(*PIXBeginEvent_t)(void*, UINT64, _In_ PCSTR, ...);
 	typedef void(*PIXEndEvent_t)(void*);
-
-	PIXBeginEvent_t GetBeginEvent();
-	PIXEndEvent_t GetEndEvent();
 }

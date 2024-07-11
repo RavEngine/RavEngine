@@ -204,6 +204,11 @@ RGLFencePtr DeviceWG::CreateFence(bool preSignaled) {
     return std::make_shared<FenceWG>();
 }
 
+TextureView DeviceWG::GetGlobalBindlessTextureHeap() const{
+    return {};
+}
+
+
 RGLTexturePtr DeviceWG::CreateTextureWithData(const TextureConfig& config, untyped_span data){
 }
 

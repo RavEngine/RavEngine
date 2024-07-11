@@ -32,9 +32,6 @@ namespace RGL {
 
 		Microsoft::WRL::ComPtr<ID3D12CommandSignature> multidrawSignature, multidrawIndexedSignature, dispatchIndirectSignature;
 
-		//TODO: make these vectors of descriptorpiles
-		// where new ones are created when they fill up 
-
 		std::optional<D3D12DynamicDescriptorHeap> RTVHeap, DSVHeap, CBV_SRV_UAVHeap, SamplerHeap;
 
 		DeviceD3D12(decltype(adapter) adapter);
@@ -62,6 +59,8 @@ namespace RGL {
 		RGLSamplerPtr CreateSampler(const SamplerConfig&) final;
 
 		DeviceData GetDeviceData() final;
+
+		TextureView GetGlobalBindlessTextureHeap() const final;
 
 		RGLCommandQueuePtr CreateCommandQueue(QueueType type) final;
 		RGLFencePtr CreateFence(bool preSignaled) final;

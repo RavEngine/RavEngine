@@ -117,6 +117,8 @@ namespace RGL {
 
 		void EndRenderDebugMarker() final;
 		void EndComputeDebugMarker() final;
+        
+        void UseResource(const TextureView& tx) final;
 
 		void BlockUntilCompleted() final;
 

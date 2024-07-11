@@ -32,8 +32,6 @@ using namespace Microsoft::WRL;
 
 CComPtr<IDxcUtils> dxcUtilsPtr;
 
-HMODULE mod_WinPixEventRuntime;
-
 PIXBeginEvent_t PIXBeginEvent_fn = nullptr;
 PIXEndEvent_t PIXEndEvent_fn = nullptr;
 
@@ -270,16 +268,6 @@ namespace RGL {
         FatalError("Device removal triggered!");
     }
 
-    PIXBeginEvent_t GetBeginEvent()
-    {
-        return PIXBeginEvent_fn;
-    }
-
-    PIXEndEvent_t GetEndEvent()
-    {
-        return PIXEndEvent_fn;
-    }
-
     void EnableDebugLayer()
     {
 #if defined(_DEBUG)
@@ -298,6 +286,7 @@ namespace RGL {
             "WinPixEventRuntime.dll";
 #endif
 
+#if 0
         // load WinPixEventRuntime manually so we don't have to use the NuGet (because it doesn't work with cmake projects)
         mod_WinPixEventRuntime = LoadLibraryA(pixlibname);
         if (mod_WinPixEventRuntime != nullptr) {
@@ -313,6 +302,7 @@ namespace RGL {
                 FatalError(std::format("Failed to load PIXEndEventOnCommandList : {}", err));
             }
         }
+#endif
 
         // GPU-based validation
 #if GPU_BASED_VALIDATION
@@ -343,10 +333,6 @@ namespace RGL {
     void RGL::DeintD3D12()
     {
         DeinitAftermath();
-        if (mod_WinPixEventRuntime != nullptr) {
-            FreeLibrary(mod_WinPixEventRuntime);
-            mod_WinPixEventRuntime = nullptr;
-        }
     }
 
     ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(ComPtr<ID3D12Device2> device,

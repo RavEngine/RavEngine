@@ -216,6 +216,16 @@ namespace RGL {
 
 		auto vktexture = static_cast<const TextureVk*>(texture.parent);
 
+		if (vktexture == nullptr) {
+
+			EncodeCommand(CmdBindlessSetTexture{
+				.set = texture.texture.vk.bindlessInfo.bindlessSet,
+				.binding = index
+			});
+
+			return;
+		}
+
 		auto nextLayout = vktexture->createdConfig.usage.DepthStencilAttachment ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 		auto activeLayout = currentRenderPipeline ? currentRenderPipeline->pipelineLayout : currentComputePipeline->pipelineLayout;
@@ -234,6 +244,7 @@ namespace RGL {
 	{
 		SetFragmentTexture(texture, index);
 	}
+
 	void CommandBufferVk::Draw(uint32_t nVertices, const DrawInstancedConfig& config)
 	{
 		EncodeCommand(CmdDraw{ nVertices, config });
@@ -304,6 +315,12 @@ namespace RGL {
 	{
 		EncodeCommand(CmdSetScissor{ scissorin });
 	}
+
+    void CommandBufferVk::UseResource(const TextureView& view){
+        
+    }
+
+
 	void CommandBufferVk::Commit(const CommitConfig& config)
 	{
 		owningQueue->Submit(this, config, internalFence);
@@ -680,6 +697,20 @@ namespace RGL {
 					swapchainsToSignal.insert(key.texture->owningSwapchain);
 					swapchainImages.insert(key.texture);
 				}
+			},
+			[this](const CmdBindlessSetTexture& arg) {
+				bool isCompute = currentRenderPipeline ? false : true;
+				auto activeLayout = isCompute ? currentComputePipeline->pipelineLayout : currentRenderPipeline->pipelineLayout;
+
+				vkCmdBindDescriptorSets(commandBuffer,
+					isCompute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
+					activeLayout->layout,
+					1,
+					1,
+					& arg.set,
+					0,
+					nullptr
+				);
 			},
 			[this](const CmdDraw& arg) {
 				vkCmdDraw(commandBuffer, arg.nVertices, arg.config.nInstances, arg.config.startVertex, arg.config.firstInstance);

@@ -293,6 +293,21 @@ namespace RGL {
         };
     }
 
+    TextureView DeviceD3D12::GetGlobalBindlessTextureHeap() const
+    {
+
+        return TextureView{ {
+            .dsvIDX = 0,
+            .rtvIDX = 0,
+            .srvIDX = 0,
+            .uavIDX = 0,
+            .representsBindless = true,
+            .parentResource = nullptr,      // bindless must set barriers elsewhere
+            .coveredMips = ALL_MIPS,
+            .coveredLayers = ALL_LAYERS
+        } };
+    }
+
     RGLCommandQueuePtr RGL::DeviceD3D12::CreateCommandQueue(QueueType type)
     {
         return std::make_shared<CommandQueueD3D12>(this, type);

@@ -269,9 +269,15 @@ namespace RGL {
         std::vector<VkDescriptorSetLayoutBinding> layoutbindings;
         layoutbindings.reserve(desc.bindings.size());        
 
+        bool bindlessNeeded = false;
+
         for (const auto& binding : desc.bindings) {
             const auto type = static_cast<VkDescriptorType>(binding.type);
             const auto stageFlags = static_cast<VkShaderStageFlags>(binding.stageFlags);
+            if (binding.isBindless) {
+                bindlessNeeded = true;
+                continue;
+            }
             layoutbindings.push_back(
                 VkDescriptorSetLayoutBinding {
                   .binding = binding.binding,   // see vertex shader
@@ -306,12 +312,19 @@ namespace RGL {
             pushconstants[i].stageFlags = flags;
         }
 
+        uint32_t nLayouts = bindlessNeeded ? 2 : 1;
+        stackarray(setLayouts, VkDescriptorSetLayout, nLayouts);
+        setLayouts[0] = descriptorSetLayout;
+        if (bindlessNeeded) {
+            setLayouts[1] = owningDevice->globalDescriptorSetLayout;
+        }
+
 
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .flags = 0,
-            .setLayoutCount = 1,    // the rest are optional
-            .pSetLayouts = &descriptorSetLayout,
+            .setLayoutCount = nLayouts,   
+            .pSetLayouts = setLayouts,
             .pushConstantRangeCount = static_cast<uint32_t>(nconstants),
             .pPushConstantRanges = pushconstants
         };
