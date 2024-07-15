@@ -1294,6 +1294,26 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	im3dTriangleRenderPipeline = createDebugRenderPipeline(RGL::PolygonOverride::Fill, RGL::PrimitiveTopology::TriangleList);
 #endif
 
+	// cluster grid build
+	auto gridBuildLayout = device->CreatePipelineLayout({
+		.bindings = {
+			{
+				.binding = 0,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = true
+			}
+		},
+		.constants = {{ sizeof(GridBuildUBO), 0, RGL::StageVisibility::Compute}}
+	});
+	clusterBuildGridPipeline = device->CreateComputePipeline(RGL::ComputePipelineDescriptor{
+		.stage = {
+			.type = RGL::ShaderStageDesc::Type::Compute,
+			.shaderModule = LoadShaderByFilename("cluster_build_grid.csh",device)
+		},
+		.pipelineLayout = gridBuildLayout
+	});
+
 	// skinned mesh compute pipeline
 	auto skinnedCSH = LoadShaderByFilename("skinning_cs.csh", device);
 	auto skinnedPipelineLayout = device->CreatePipelineLayout({

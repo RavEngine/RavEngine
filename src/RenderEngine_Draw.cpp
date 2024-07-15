@@ -473,7 +473,7 @@ struct LightingType{
 			prepareSkeletalCullingBuffer();
 		}
 
-		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult](const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid){
+		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult]<bool includeLighting = true>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid){
             
             uint32_t particleBillboardMatrices = 0;
 
@@ -490,6 +490,26 @@ struct LightingType{
             };
                 
             particleBillboardMatrices = WriteTransient(quadData);
+
+			if constexpr (includeLighting) {
+				// dispatch the lighting binning shaders
+				mainCommandBuffer->BeginComputeDebugMarker("Light Binning");
+
+				GridBuildUBO ubo{
+					.invProj = glm::inverse(projOnly),
+					.gridSize = {Clustered::gridSizeX, Clustered::gridSizeY, Clustered::gridSizeZ},
+					.zNear = zNearFar.x,
+					.screenDim = {viewportScissor.extent[0],viewportScissor.extent[1]},
+					.zFar = zNearFar.y
+				};
+
+				mainCommandBuffer->BeginCompute(clusterBuildGridPipeline);
+				mainCommandBuffer->BindComputeBuffer(lightClusterBuffer,0);
+
+				mainCommandBuffer->DispatchCompute(Clustered::gridSizeX, Clustered::gridSizeY, Clustered::gridSizeZ, 1, 1, 1);
+				mainCommandBuffer->EndCompute();
+				mainCommandBuffer->EndComputeDebugMarker();
+			}
 
 
 			auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
@@ -510,6 +530,8 @@ struct LightingType{
 					}
 				}
 				};
+
+			
 
 			auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning, &reallocBuffer](matrix4 viewproj, const DepthPyramid pyramid) {
 			// first reset the indirect buffers
@@ -995,7 +1017,7 @@ struct LightingType{
 
 					shadowRenderPass->SetDepthAttachmentTexture(shadowTexture->GetDefaultView());
 					auto shadowMapSize = shadowTexture->GetSize().width;
-					renderFromPerspective(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, shadowRenderPass, [](auto&& mat) {
+					renderFromPerspective.template operator()<false>(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, {}, shadowRenderPass, [](auto&& mat) {
 						return mat->GetShadowRenderPipeline();
 						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true }, lightMats.depthPyramid);
 
@@ -1110,7 +1132,7 @@ struct LightingType{
 			auto renderDeferredPass = [this,&target, &renderFromPerspective](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// render all the static meshes
 
-				renderFromPerspective(viewproj, viewonly, projOnly, camPos, deferredRenderPass, [](auto&& mat) {
+				renderFromPerspective(viewproj, viewonly, projOnly, camPos.pos, camPos.zNearFar, deferredRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
                 }, renderArea, {.Lit = true}, target.depthPyramid);
 
@@ -1252,7 +1274,7 @@ struct LightingType{
 
 					auto lightProj = RMath::orthoProjection<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
 					auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
-					const vector3 reposVec{ std::round(-camPos.x), std::round(camPos.y), std::round(-camPos.z) };
+					const vector3 reposVec{ std::round(-camPos.pos.x), std::round(camPos.pos.y), std::round(-camPos.pos.z) };
 					lightView = glm::translate(lightView, reposVec);
 
 					auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
@@ -1260,7 +1282,7 @@ struct LightingType{
 					return lightViewProjResult{
 						.lightProj = lightProj,
 						.lightView = lightView,
-						.camPos = camPos,
+						.camPos = camPos.pos,
 						.depthPyramid = origLight.shadowData.pyramid,
 						.shadowmapTexture = origLight.shadowData.shadowMap,
 						.spillData = lightProj * lightView
@@ -1335,7 +1357,7 @@ struct LightingType{
                 //render unlits
                 unlitRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
                 unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
-                renderFromPerspective(viewproj, viewonly, projOnly, camPos, unlitRenderPass, [](auto&& mat) {
+				renderFromPerspective.template operator() < false > (viewproj, viewonly, projOnly, camPos.pos, {}, unlitRenderPass, [](auto&& mat) {
                     return mat->GetMainRenderPipeline();
                 }, renderArea, {.Unlit = true}, target.depthPyramid);
                 
@@ -1517,6 +1539,12 @@ struct LightingType{
 			auto doPassWithCamData = [this,&target,&nextImgSize](auto&& camdata, auto&& function) {
 				const auto viewproj = camdata.viewProj;
 				const auto invviewproj = glm::inverse(viewproj);
+
+				struct {
+					glm::vec3 pos;
+					glm::vec2 zNearFar;
+				} camData{camdata.camPos , };
+
 				const auto camPos = camdata.camPos;
 				const auto viewportOverride = camdata.viewportOverride;
 
@@ -1537,7 +1565,7 @@ struct LightingType{
 						.extent = { uint32_t(nextImgSize.width), uint32_t(nextImgSize.height) }
 				};
 
-				function(viewproj, camdata.viewOnly, camdata.projOnly, camPos, fullSizeViewport, fullSizeScissor, renderArea);
+				function(viewproj, camdata.viewOnly, camdata.projOnly, camData, fullSizeViewport, fullSizeScissor, renderArea);
 			};
             
 			auto generatePyramid = [this](const DepthPyramid& depthPyramid, RGLTexturePtr depthStencil) {

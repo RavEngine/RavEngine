@@ -354,8 +354,9 @@ int App::run(int argc, char** argv) {
 			auto viewOnly = camera.GenerateViewMatrix();
 			auto viewProj = projOnly * viewOnly;
 			auto camPos = camera.GetOwner().GetTransform().GetWorldPosition();
+			
 			auto viewportOverride = camera.viewportOverride;
-            mainWindowView.camDatas.push_back(RenderViewCollection::camData{viewProj, projOnly, viewOnly, camPos, viewportOverride});
+			mainWindowView.camDatas.push_back(RenderViewCollection::camData{ viewProj, projOnly, viewOnly, camPos,{camera.nearClip, camera.farClip} ,viewportOverride });
 		}
 
 		mainWindowView.pixelDimensions = window->GetSizeInPixels();

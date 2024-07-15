@@ -23,6 +23,7 @@ namespace RavEngine{
 			glm::mat4 projOnly;
 			glm::mat4 viewOnly;
 			glm::vec3 camPos;
+			glm::vec2 zNearFar;
 
 			ViewportOverride viewportOverride;
 		};

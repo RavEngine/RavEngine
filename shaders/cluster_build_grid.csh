@@ -9,7 +9,7 @@ struct Cluster
     uint lightIndices[100];
 };
 
-layout(scalar, binding = 1) restrict buffer clusterSSBO {
+layout(scalar, binding = 0) restrict buffer clusterSSBO {
     Cluster clusters[];
 };
 
