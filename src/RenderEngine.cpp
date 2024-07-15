@@ -1212,6 +1212,14 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	spotLightIndexBuffer->SetBufferData({coneMesh.indices.data(), coneMesh.indices.size() * sizeof(coneMesh.indices[0])});
 	nSpotLightIndices = coneMesh.indices.size();
 
+	lightClusterBuffer = device->CreateBuffer({
+		Clustered::numClusters,
+		{.StorageBuffer = true},
+		sizeof(Clustered::Cluster),
+		RGL::BufferAccess::Private,
+		{.Writable = true, .debugName = "Light cluster buffer"}
+	});
+
 	// debug render pipelines
 #ifndef NDEBUG
 	auto debugVSH = LoadShaderByFilename("debug.vsh", device);
@@ -1839,6 +1847,8 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		},
 		.pipelineLayout = particleKillLayout
 	});
+
+
 }
 
 RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim size, bool createDepth)

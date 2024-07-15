@@ -40,6 +40,22 @@ namespace RavEngine {
 	struct MeshAsset;
 	struct GUIComponent;
 
+	namespace Clustered {
+		constexpr static uint32_t gridSizeX = 12;
+		constexpr static uint32_t gridSizeY = 12;
+		constexpr static uint32_t gridSizeZ = 24;
+		constexpr static uint32_t numClusters = gridSizeX * gridSizeY * gridSizeZ;
+
+		constexpr static uint32_t maxLights = 100;
+
+		struct Cluster {
+			glm::vec3 minPoint;
+			glm::vec3 maxPoint;
+			uint32_t count;
+			uint32_t lightIndices[maxLights];
+		};
+	}
+
     class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterface, public duDebugDraw {
         friend class App;
 	private:
@@ -58,7 +74,7 @@ namespace RavEngine {
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, ssaoPipeline;
 		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline;
 		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer, spotLightVertexBuffer, spotLightIndexBuffer,
-			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, ssaoSamplesBuffer, quadVertBuffer;
+			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, ssaoSamplesBuffer, quadVertBuffer, lightClusterBuffer;
 		uint32_t nPointLightIndices = 0, nSpotLightIndices = 0;
 
 		constexpr static uint32_t initialVerts = 1024, initialIndices = 1536;

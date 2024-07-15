@@ -32,6 +32,8 @@
 
 namespace RavEngine {
 
+	
+
 struct LightingType{
     bool Lit: 1 = false;
     bool Unlit: 1 = false;
