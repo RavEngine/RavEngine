@@ -1145,7 +1145,40 @@ struct LightingType{
 			auto nextImgSize = view.pixelDimensions;
 			auto& target = view.collection;
 
-			auto renderLitPass = [this,&target, &renderFromPerspective](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+			auto renderLitPass = [this,&target, &renderFromPerspective,&renderLightShadowmap,&worldOwning](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+				// directional light shadowmaps
+				mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
+				const auto dirlightShadowmapDataFunction = [&camPos](uint8_t index, const RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
+					auto dirvec = light.direction;
+
+					auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
+
+					auto lightArea = auxdata->shadowDistance;
+
+					auto lightProj = RMath::orthoProjection<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
+					auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
+					const vector3 reposVec{ std::round(-camPos.pos.x), std::round(camPos.pos.y), std::round(-camPos.pos.z) };
+					lightView = glm::translate(lightView, reposVec);
+
+					auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
+
+					return lightViewProjResult{
+						.lightProj = lightProj,
+						.lightView = lightView,
+						.camPos = camPos.pos,
+						.depthPyramid = origLight.shadowData.pyramid,
+						.shadowmapTexture = origLight.shadowData.shadowMap,
+						.spillData = lightProj * lightView
+					};
+				};
+
+
+				renderLightShadowmap(worldOwning->renderData->directionalLightData, 1,
+					dirlightShadowmapDataFunction,
+					[](entity_t unused) {}
+				);
+				mainCommandBuffer->EndRenderDebugMarker();
+
 				// render all the static meshes
 
 				renderFromPerspective(viewproj, viewonly, projOnly, camPos.pos, camPos.zNearFar, litRenderPass, [](auto&& mat) {
