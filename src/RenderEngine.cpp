@@ -576,42 +576,12 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		}
 	);
 
-	ambientLightRenderPass = RGL::CreateRenderPass({
-		.attachments = {
-			{
-				.format = colorTexFormat,
-				.loadOp = RGL::LoadAccessOperation::Load,
-				.storeOp = RGL::StoreAccessOperation::Store,
-			}
-		},
-		.depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
-			.format = RGL::TextureFormat::D32SFloat,
-			.loadOp = RGL::LoadAccessOperation::Load,
-			.storeOp = RGL::StoreAccessOperation::Store,
-		}
-	});
-
 	// dummy pass that clears framebuffers
 	lightingClearRenderPass = RGL::CreateRenderPass({
 		.attachments = {
 			{
 				.format = colorTexFormat,
 				.loadOp = RGL::LoadAccessOperation::Clear,
-				.storeOp = RGL::StoreAccessOperation::Store,
-			}
-		},
-		.depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
-			.format = RGL::TextureFormat::D32SFloat,
-			.loadOp = RGL::LoadAccessOperation::Load,
-			.storeOp = RGL::StoreAccessOperation::Store,
-		}
-	});
-
-	lightingRenderPass = RGL::CreateRenderPass({
-		.attachments = {
-			{
-				.format = colorTexFormat,
-				.loadOp = RGL::LoadAccessOperation::Load,
 				.storeOp = RGL::StoreAccessOperation::Store,
 			}
 		},
@@ -788,157 +758,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	struct Vertex2D {
 		glm::vec2 pos;
 	};
-
-	auto ambientLightFSH = LoadShaderByFilename("ambientlight.fsh", device);
-	auto ambientLightVSH = LoadShaderByFilename("ambientlight.vsh", device);
-	ambientLightRenderPipeline = createLightingPipeline(ambientLightVSH, ambientLightFSH, sizeof(Vertex2D), sizeof(glm::vec4), {
-				{
-					.location = 0,
-					.binding = 0,
-					.offset = 0,
-					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
-				},
-				{
-					.location = 1,
-					.binding = 1,
-					.offset = 0,
-					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-				}
-		}, ambientLightRenderPipelineLayout);
-
-	auto dirLightFSH = LoadShaderByFilename("directionallight.fsh", device);
-	auto dirLightVSH = LoadShaderByFilename("directionallight.vsh", device);
-	dirLightRenderPipeline = createLightingPipeline(dirLightVSH, dirLightFSH, sizeof(Vertex2D), sizeof(World::DirLightUploadData), {
-				{
-					.location = 0,
-					.binding = 0,
-					.offset = 0,
-					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
-				},
-				{
-					.location = 1,
-					.binding = 1,
-					.offset = 0,
-					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-				},
-				{
-					.location = 2,
-					.binding = 1,
-					.offset = offsetof(World::DirLightUploadData, direction),
-					.format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
-				},
-				{
-					.location = 3,
-					.binding = 1,
-					.offset = offsetof(World::DirLightUploadData, castsShadows),
-					.format = RGL::VertexAttributeFormat::R32_Uint,
-				}
-		}, lightRenderPipelineLayout);
-
-	auto pointLightFSH = LoadShaderByFilename("pointlight.fsh", device);
-	auto pointLightVSH = LoadShaderByFilename("pointlight.vsh", device);
-
-	pointLightRenderPipeline = createLightingPipeline(pointLightVSH, pointLightFSH, sizeof(glm::vec3), sizeof(World::PointLightUploadData), {
-				{
-					.location = 0,
-					.binding = 0,
-					.offset = 0,
-					.format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
-				},
-				{
-					.location = 1,
-					.binding = 1,
-					.offset = 0,
-					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-				},
-				{
-					.location = 2,
-					.binding = 1,
-					.offset = sizeof(glm::vec4),
-					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-				},
-				{
-					.location = 3,
-					.binding = 1,
-					.offset = sizeof(glm::vec4) * 2,
-					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-				},
-				{
-					.location = 4,
-					.binding = 1,
-					.offset = sizeof(glm::vec4) * 3,
-					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-				},
-				{
-					.location = 5,
-					.binding = 1,
-					.offset = sizeof(glm::vec4) * 4,
-					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-				},
-				{
-					.location = 6,
-					.binding = 1,
-					.offset = offsetof(World::PointLightUploadData, castsShadows),
-					.format = RGL::VertexAttributeFormat::R32_Uint,
-				}
-		}, pointLightRenderPipelineLayout, RGL::WindingOrder::Clockwise);
-
-	auto spotLightFSH = LoadShaderByFilename("spotlight.fsh", device);
-	auto spotLightVSH = LoadShaderByFilename("spotlight.vsh", device);
-
-	spotLightRenderPipeline = createLightingPipeline(spotLightVSH, spotLightFSH, sizeof(glm::vec3), sizeof(World::SpotLightDataUpload), {
-				{
-					.location = 0,
-					.binding = 0,
-					.offset = 0,
-					.format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
-				},
-				// per-instance attrs - matrix
-				{
-					.location = 1,
-					.binding = 1,
-					.offset = 0,
-					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-				},
-				{
-					.location = 2,
-					.binding = 1,
-					.offset = sizeof(glm::vec4),
-					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-				},
-				{
-					.location = 3,
-					.binding = 1,
-					.offset = sizeof(glm::vec4) * 2,
-					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-				},
-				{
-					.location = 4,
-					.binding = 1,
-					.offset = sizeof(glm::vec4) * 3,
-					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-				},
-				// colorintensity
-				{
-					.location = 5,
-					.binding = 1,
-					.offset = sizeof(glm::vec4) * 4,
-					.format = RGL::VertexAttributeFormat::R32G32B32A32_SignedFloat,
-				},
-				// penumbra angle
-				{
-					.location = 6,
-					.binding = 1,
-					.offset = sizeof(glm::vec4) * 5,
-					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
-				},
-				{
-					.location = 7,
-					.binding = 1,
-					.offset = offsetof(World::SpotLightDataUpload, castsShadows),
-					.format = RGL::VertexAttributeFormat::R32_Uint,
-				}
-		}, pointLightRenderPipelineLayout, RGL::WindingOrder::Clockwise);
 
 	// copy shader
 	auto lightToFbFSH = LoadShaderByFilename("light_to_fb.fsh",device);
@@ -1191,26 +1010,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	pointLightVertexBuffer->SetBufferData({ pointLightMeshData.Positions.data(), pointLightMeshData.Positions.size() * sizeof(pointLightMeshData.Positions[0]) });
 	pointLightIndexBuffer->SetBufferData({ pointLightMeshData.TriangleIndices.data(), pointLightMeshData.TriangleIndices.size() * sizeof(pointLightMeshData.TriangleIndices[0]) });
 	nPointLightIndices = pointLightMeshData.TriangleIndices.size();
-
-	auto coneMesh = generateCone(1, 1, 16);
-
-	spotLightVertexBuffer = device->CreateBuffer({
-		uint32_t(coneMesh.verts.size()),
-		{.VertexBuffer = true},
-		sizeof(float) * 3,
-		RGL::BufferAccess::Private
-	});
-
-	spotLightIndexBuffer = device->CreateBuffer({
-		uint32_t(coneMesh.indices.size()),
-		{.IndexBuffer = true},
-		sizeof(uint16_t),
-		RGL::BufferAccess::Private
-	});
-
-	spotLightVertexBuffer->SetBufferData({coneMesh.verts.data(), coneMesh.verts.size() * sizeof(coneMesh.verts[0])});
-	spotLightIndexBuffer->SetBufferData({coneMesh.indices.data(), coneMesh.indices.size() * sizeof(coneMesh.indices[0])});
-	nSpotLightIndices = coneMesh.indices.size();
 
 	lightClusterBuffer = device->CreateBuffer({
 		Clustered::numClusters,
