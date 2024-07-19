@@ -794,6 +794,11 @@ struct LightingType{
 						mainCommandBuffer->BindBuffer(worldOwning->renderData->directionalLightData.uploadData.GetDense().get_underlying().buffer,13);
 						mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 0);
+
+						// make textures resident and put them in the right format
+						worldOwning->Filter([this](const DirectionalLight& light, const Transform& t) {
+							mainCommandBuffer->UseResource(light.shadowData.shadowMap->GetDefaultView());
+						});
 					}
 
 					// set push constant data
@@ -1012,7 +1017,7 @@ struct LightingType{
 			}
 			mainCommandBuffer->BeginRenderDebugMarker("Render shadowmap");
 			for (uint32_t i = 0; i < lightStore.uploadData.DenseSize(); i++) {
-				const auto& light = lightStore.uploadData.GetDense()[i];
+				auto& light = lightStore.uploadData.GetDense()[i];
 				if (!light.castsShadows) {
 					continue;	// don't do anything if the light doesn't cast
 				}
@@ -1150,7 +1155,7 @@ struct LightingType{
 			auto renderLitPass = [this,&target, &renderFromPerspective,&renderLightShadowmap,&worldOwning](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// directional light shadowmaps
 				mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
-				const auto dirlightShadowmapDataFunction = [&camPos](uint8_t index, const RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
+				const auto dirlightShadowmapDataFunction = [&camPos](uint8_t index, RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
 					auto dirvec = light.direction;
 
 					auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
@@ -1164,13 +1169,15 @@ struct LightingType{
 
 					auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
 
+					light.lightViewProj = lightProj * lightView;	// remember this because the rendering also needs it
+
 					return lightViewProjResult{
 						.lightProj = lightProj,
 						.lightView = lightView,
 						.camPos = camPos.pos,
 						.depthPyramid = origLight.shadowData.pyramid,
 						.shadowmapTexture = origLight.shadowData.shadowMap,
-						.spillData = lightProj * lightView
+						.spillData = light.lightViewProj
 					};
 				};
 

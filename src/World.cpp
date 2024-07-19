@@ -387,17 +387,19 @@ void World::setupRenderTasks(){
                     auto rot = owner.GetTransform().WorldUp();
 
                     // use local ID here, no need for local-to-global translation
-                    renderData->directionalLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).direction = rot;
+                    auto& uploadData = renderData->directionalLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i));
+                    uploadData.direction = rot;
                 }
-                if (ptr->Get(i).isInvalidated()){
+                auto& lightdata = ptr->Get(i);
+                if (lightdata.isInvalidated()) {
                     // update color data if it has changed
-                    auto& lightdata = ptr->Get(i);
                     auto& color = lightdata.GetColorRGBA();
                     auto owner = ptr->GetOwner(i);
                     auto& dirLightUploadData = renderData->directionalLightData.uploadData.GetForSparseIndex(owner);
                     auto& dirLightAuxData = renderData->directionalLightData.auxData.GetForSparseIndex(owner);
                     dirLightUploadData.colorIntensity = {color.R, color.G, color.B, lightdata.GetIntensity()};
                     dirLightUploadData.castsShadows = lightdata.CastsShadows();
+                    dirLightUploadData.shadowmapBindlessIndex = lightdata.shadowData.shadowMap->GetDefaultView().GetReadonlyBindlessTextureHandle();
                     lightdata.clearInvalidate();
                     
                     dirLightAuxData.shadowDistance = lightdata.GetShadowDistance();

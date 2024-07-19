@@ -255,13 +255,14 @@ namespace RGL {
 	{
 		SetFragmentTexture(texture, index);
 	}
+
+	constexpr static auto depthReadState = D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
+	constexpr static auto colorReadState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
 	void CommandBufferD3D12::SetFragmentTexture(const TextureView& texture, uint32_t index)
 	{
 		auto& thisTexture = texture.texture.dx;
-
-		constexpr static auto depthReadState = D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-
-		constexpr static auto colorReadState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 
 		auto neededState = thisTexture.dsvAllocated() ? depthReadState : colorReadState;
 
@@ -299,6 +300,11 @@ namespace RGL {
 	}
 
     void CommandBufferD3D12::UseResource(const TextureView& view){
+		auto& thisTexture = view.texture.dx;
+
+		auto neededState = thisTexture.dsvAllocated() ? depthReadState : colorReadState;
+
+		SyncIfNeeded(thisTexture, neededState, false);
     }
 
 
