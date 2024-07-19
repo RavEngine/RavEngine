@@ -73,9 +73,11 @@ INSTALL(CODE
 )
 endif()
 ```
-RavEngine is sensitive to file extensions with shaders. `vsh`, `fsh`, and `csh` determine if the shader is compiled as vertex, fragment, or compute.
-
-Then build with CMake as normal. On Windows, you will need to run your initial configure twice before building (known bug). Example scripts are provided. 
+Then build with CMake as normal.
+Other notes:
+   - Windows: 
+     - you will need to run your initial configure twice before building (known bug).
+     - If on an older OS (Windows 10), you'll need to clone recursive to get an updated version of DXC.
 
 ## Supported platforms
 | Platform | Architecture | Compiler | CMake Generator | Rendering API |
@@ -110,14 +112,14 @@ Software
    - Xcode 15.3+
    - CMake
 - Windows, UWP, Xbox
-   - Visual Studio 2022 or later with Desktop Development in C++ module
+   - Visual Studio 2022 or later with the "Desktop Development in C++" and "Game Development in C++" modules
    - CMake (included with Visual Studio)
    - LunarG Vulkan SDK (optional unless Vulkan support is desired)
 - Android
    - Android Studio 4.2 or later with NDK 25 or later
    - Host requirements:
       - macOS host: Xcode 15.3+
-	  - Windows Host: Visual Studio 2022 with Desktop Development in C++ module
+	  - Windows Host: Visual Studio 2022 with the "Desktop Development in C++" and "Game Development in C++" modules
       - Linux host: clang 16 or later (recommended) or gcc 13 or later
    - The [SDL Android Builder](https://github.com/Ravbug/sdl-android-builder/) wrapper project
 - Web Browsers
@@ -125,7 +127,7 @@ Software
    - CMake
    - Host requirements:
       - macOS: Xcode 15.3+
-      - Windows: Visual Studio 2022 with Desktop Development in C++ module
+      - Windows: Visual Studio 2022 with the "Desktop Development in C++" and "Game Development in C++" modules
       - Linux: clang 16 or later (recommended) or gcc 13 or later 
 - Linux
    - ninja (recommended) or make
