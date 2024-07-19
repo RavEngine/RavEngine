@@ -11,6 +11,9 @@
 
 namespace RavEngine {
 
+	extern const RGL::RenderPipelineDescriptor::VertexConfig quadVertexConfig;
+	extern const RGL::RenderPipelineDescriptor::VertexConfig defaultVertexConfig;
+
 	struct Texture;
 	struct MeshCollectionStatic;
 
@@ -54,6 +57,11 @@ namespace RavEngine {
 		size_t pushConstantSize = 0;
 	}; 
 
+	enum class LightingMode : uint8_t {
+		Unlit,
+		Lit
+	};
+
 	struct ParticleRenderMaterial {
 		friend class RenderEngine;
 		constexpr static uint8_t
@@ -65,6 +73,7 @@ namespace RavEngine {
 		struct InternalConfig {
 			const RGL::RenderPipelineDescriptor::VertexConfig vertexConfig;
 			const RGL::PrimitiveTopology topology;
+			const LightingMode mode;
 		};
 		ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const InternalConfig& internalConfig, const ParticleRenderMaterialConfig& config);
 
@@ -82,15 +91,25 @@ namespace RavEngine {
 	};
 
 	// Subclass this to make custom particle materials
+	template<LightingMode mode>
 	struct BillboardRenderParticleMaterial : public ParticleRenderMaterial {
 	protected:
-		BillboardRenderParticleMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {});
+		BillboardRenderParticleMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {}) : ParticleRenderMaterial(particleVS, particleFS, {
+			.vertexConfig = quadVertexConfig,
+			.topology = RGL::PrimitiveTopology::TriangleStrip,
+			.mode = mode
+			}, config) {}
 	};
 
 	// Subclass this to make custom particle materials
+	template<LightingMode mode>
 	struct MeshParticleRenderMaterial : public ParticleRenderMaterial {
 	protected:
-		MeshParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {});
+		MeshParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {}) : ParticleRenderMaterial(particleVS, particleFS, {
+		.vertexConfig = defaultVertexConfig,
+		.topology = RGL::PrimitiveTopology::TriangleList,
+		.mode = mode
+			}, config) {}
 	};
 
 	// Subclass to create custom mesh particle selection 
@@ -112,16 +131,11 @@ namespace RavEngine {
 	struct ParticleRenderMaterialInstance {
 		friend class RenderEngine;
 	protected:
-		Ref<ParticleRenderMaterial> material;
 		std::array<Ref<Texture>, 16> textureBindings;
 		std::bitset<16> samplerBindings;
 	public:
-		ParticleRenderMaterialInstance(decltype(material) m) : material(m) {};
 
-		auto GetMaterial() const {
-			return material;
-		}
-
+		
 		/**
 		Provide data to be uploaded to shader push constants.
 		@return Number of bytes written, 0 if there is no data to upload.
@@ -133,22 +147,37 @@ namespace RavEngine {
 
 	// subclass to define your own particle material instances
 	struct BillboardParticleRenderMaterialInstance : ParticleRenderMaterialInstance {
-		BillboardParticleRenderMaterialInstance(Ref<BillboardRenderParticleMaterial> mat) : ParticleRenderMaterialInstance(mat) {}
+		using MaterialVariant = std::variant<Ref<BillboardRenderParticleMaterial<LightingMode::Lit>>, Ref<BillboardRenderParticleMaterial<LightingMode::Unlit>> >;
+	protected:
+		MaterialVariant material;
+	public:
+
+		BillboardParticleRenderMaterialInstance(const decltype(material)& mat) : material(mat) {}
 		
+		auto GetMaterial() const {
+			return material;
+		}
 	};
 
 	// subclass to define your own particle material instances
 	struct MeshParticleRenderMaterialInstance : ParticleRenderMaterialInstance {
 		friend class RenderEngine;
-
+		using MaterialVariant = std::variant<Ref<MeshParticleRenderMaterial<LightingMode::Lit>>, Ref<MeshParticleRenderMaterial<LightingMode::Unlit>> >;
+	private:
+		MaterialVariant material;
+	public:
 		// use this constructor if you want to use the default mesh selection behavior (all particles go to mesh 0)
-		MeshParticleRenderMaterialInstance(Ref<MeshParticleRenderMaterial> mat, Ref<MeshCollectionStatic> meshes) : ParticleRenderMaterialInstance(mat), meshes(meshes) {}
+		MeshParticleRenderMaterialInstance(const decltype(material)& mat, Ref<MeshCollectionStatic> meshes) : material(mat), meshes(meshes) {}
 
 		// use this constructor if you have custom mesh selection logic to apply
-		MeshParticleRenderMaterialInstance(Ref<MeshParticleRenderMaterial> mat, Ref<MeshCollectionStatic> meshes, Ref<MeshParticleMeshSelectionMaterialInstance> customSelection) : ParticleRenderMaterialInstance(mat), meshes(meshes), customSelectionFunction(customSelection) {}
+		MeshParticleRenderMaterialInstance(const decltype(material)& mat, Ref<MeshCollectionStatic> meshes, Ref<MeshParticleMeshSelectionMaterialInstance> customSelection) : material(mat), meshes(meshes), customSelectionFunction(customSelection) {}
 
 		void SetMeshSelectionFunction(const Ref<MeshParticleMeshSelectionMaterialInstance> selfn) {
 			customSelectionFunction = selfn;
+		}
+
+		auto GetMaterial() const {
+			return material;
 		}
 	private:
 		Ref<MeshCollectionStatic> meshes;
@@ -162,17 +191,38 @@ namespace RavEngine {
 	};
 
 	// built-in billboard renderer that does spritesheets
-	struct SpritesheetParticleRenderMaterial : public RavEngine::BillboardRenderParticleMaterial {
-		SpritesheetParticleRenderMaterial();
+	template<LightingMode mode>
+	struct SpritesheetParticleRenderMaterial : public RavEngine::BillboardRenderParticleMaterial<mode> {
+		constexpr static uint16_t SpritesheetBindingSlot = 1;
+		constexpr static uint16_t SamplerBindingSlot = 0;
+
+		constexpr static std::string_view fs_particle_name = mode == LightingMode::Lit ? "default_billboard_particle" : "default_billboard_particle_unlit";
+
+		SpritesheetParticleRenderMaterial() : BillboardRenderParticleMaterial<mode>("default_billboard_particle", fs_particle_name, {
+			.bindings = {
+				{
+					.binding = SamplerBindingSlot,
+					.type = RGL::BindingType::Sampler,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+					.writable = false,
+				},
+				{
+					.binding = SpritesheetBindingSlot,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+					.writable = false,
+				}
+			},
+			.pushConstantSize = sizeof(ParticleBillboardUBO)
+			}) {}
 
 	};
 
 	struct SpritesheetParticleRenderMaterialInstance : BillboardParticleRenderMaterialInstance {
-		constexpr static uint16_t SpritesheetBindingSlot = 1;
-		constexpr static uint16_t SamplerBindingSlot = 0;
-
-		SpritesheetParticleRenderMaterialInstance(Ref<SpritesheetParticleRenderMaterial> mat, uint32_t bytesPerParticle, uint32_t particlePositionOffset, uint32_t particleScaleOffset, uint32_t particleFrameOffset) : BillboardParticleRenderMaterialInstance(mat), bytesPerParticle(bytesPerParticle), particlePositionOffset(particlePositionOffset), particleScaleOffset(particleScaleOffset), particleFrameOffset(particleFrameOffset){
-			samplerBindings[SamplerBindingSlot] = true;
+		
+		template<LightingMode mode>
+		SpritesheetParticleRenderMaterialInstance(Ref<SpritesheetParticleRenderMaterial<mode>> mat, uint32_t bytesPerParticle, uint32_t particlePositionOffset, uint32_t particleScaleOffset, uint32_t particleFrameOffset) : BillboardParticleRenderMaterialInstance(mat), bytesPerParticle(bytesPerParticle), particlePositionOffset(particlePositionOffset), particleScaleOffset(particleScaleOffset), particleFrameOffset(particleFrameOffset){
+			samplerBindings[SpritesheetParticleRenderMaterial<LightingMode::Lit>::SamplerBindingSlot] = true;
 		};
 		struct spriteCount {
 			uint16_t numSpritesWidth = 0;
@@ -180,7 +230,7 @@ namespace RavEngine {
 		} spriteDim;
 
 		void SetSpritesheet(Ref<Texture> spriteTex) {
-			textureBindings[SpritesheetBindingSlot] = spriteTex;
+			textureBindings[SpritesheetParticleRenderMaterial<LightingMode::Lit>::SpritesheetBindingSlot] = spriteTex;
 		}
 
 		virtual uint8_t SetPushConstantData(std::span<std::byte, 128> data) const;
@@ -191,7 +241,7 @@ namespace RavEngine {
 		const uint32_t particleFrameOffset;
 	};
 
-	struct PBRMeshParticleRenderMaterial : public MeshParticleRenderMaterial {
+	struct PBRMeshParticleRenderMaterial : public MeshParticleRenderMaterial<LightingMode::Lit> {
 		PBRMeshParticleRenderMaterial();
 	};
 

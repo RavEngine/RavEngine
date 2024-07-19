@@ -10,6 +10,7 @@
 #include <RGL/Pipeline.hpp>
 #include <RGL/Span.hpp>
 #include <span>
+#include <variant>
 
 namespace RavEngine {
 	struct Texture;
@@ -68,11 +69,11 @@ namespace RavEngine {
             }
 		};
 
-		auto GetMainRenderPipeline() {
+		auto GetMainRenderPipeline() const{
 			return renderPipeline;
 		}
 
-		auto GetShadowRenderPipeline() {
+		auto GetShadowRenderPipeline() const{
 			return shadowRenderPipeline;
 		}
 
@@ -85,6 +86,50 @@ namespace RavEngine {
 		
 		friend class RenderEngine;
 	};
+
+
+
+	struct LitMaterialOptions  {
+		RGL::CullMode cullMode = RGL::CullMode::Back;
+	};
+
+	struct PipelineOptions {
+		std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> bindings;
+		uint32_t pushConstantSize = 0;
+	};
+
+	struct LitMaterial : public Material {
+		LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions,  const LitMaterialOptions& options = {});
+		LitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const LitMaterialOptions& options = {}) : LitMaterial(name, name, pipeOptions, options) {}
+	};
+
+
+	struct UnlitMaterialOptions {
+		RGL::CullMode cullMode = RGL::CullMode::Back;
+	};
+
+	// a material that reads no data
+	struct UnlitMaterial : public Material {
+		UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions, const UnlitMaterialOptions& options = {});
+		UnlitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const UnlitMaterialOptions& options = {}) : UnlitMaterial(name, name, pipeOptions, options) {}
+	};
+
+	struct MaterialVariant  {
+	friend class RenderEngine;
+		template<typename T>
+		MaterialVariant(const T& value) : variant(value) {}
+
+		RGLRenderPipelinePtr GetShadowRenderPipeline() const;
+		RGLRenderPipelinePtr GetMainRenderPipeline()const;
+
+		const MaterialVariant* operator->() const {
+			return this;
+		}
+
+	private:
+		std::variant<Ref<LitMaterial>, Ref<UnlitMaterial>> variant;
+	};
+
 
 	/**
 	* Represents the settings of a material. Subclass to expose more properties.
@@ -118,8 +163,8 @@ namespace RavEngine {
 		}
 
 	protected:
-		MaterialInstance(Ref<Material> m) : mat(m) {}
-		Ref<Material> mat;
+		MaterialVariant mat;
+		MaterialInstance(const decltype(mat)& m) : mat(m) {}
 	};
 }
 #endif

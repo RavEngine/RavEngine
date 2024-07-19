@@ -10,8 +10,6 @@
 
 using namespace RavEngine;
 
-constexpr static uint32_t width = 640, height = 480;
-
 STATIC(RavEngine::defaultVertexConfig) {
     .vertexBindings = {
                 {
@@ -75,53 +73,6 @@ STATIC(RavEngine::defaultUnlitColorBlendConfig) {
     }
 };
 
-RavEngine::PBRMaterial::PBRMaterial(const std::string_view vsh_name, const std::string_view fsh_name, PBRMaterialOptions options) : Material(vsh_name,fsh_name,MaterialConfig
-    {
-        .vertConfig = defaultVertexConfig,
-        .colorBlendConfig = defaultColorBlendConfig,
-        .bindings = {
-            {
-                .binding = 0,
-                .type = RGL::BindingType::Sampler,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-             {
-                .binding = 1,
-                .type = RGL::BindingType::SampledImage,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-             {
-                .binding = 2,
-                .type = RGL::BindingType::SampledImage,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-            {
-                .binding = 3,
-                .type = RGL::BindingType::SampledImage,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-            {
-                .binding = 4,
-                .type = RGL::BindingType::SampledImage,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-            {
-                .binding = 5,
-                .type = RGL::BindingType::SampledImage,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-            {
-                .binding = 6,
-                .type = RGL::BindingType::SampledImage,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-        },
-        .pushConstantSize = sizeof(PBRPushConstantData),
-        .cullMode = options.cullMode
-	}
-	) 
-{
-}
 
 RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : MaterialInstance(m) {
     textureBindings[1] = Texture::Manager::defaultTexture;
@@ -132,12 +83,49 @@ RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : Materi
     textureBindings[6] = Texture::Manager::defaultTexture;
 }
 
-UnlitMaterial::UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, UnlitMaterialOptions options)
-: Material(vsh_name, fsh_name, MaterialConfig{
-    .vertConfig = defaultVertexConfig,
-    .colorBlendConfig = defaultUnlitColorBlendConfig,
-    .pushConstantSize = 0,
-    .cullMode = options.cullMode
-}){}
+
+RavEngine::PBRMaterial::PBRMaterial(LitMaterialOptions options) : LitMaterial("pbr", { 
+    .bindings = {
+        {
+            .binding = 0,
+                .type = RGL::BindingType::Sampler,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+        {
+            .binding = 1,
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+        {
+            .binding = 2,
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+        {
+            .binding = 3,
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+        {
+            .binding = 4,
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+        {
+            .binding = 5,
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+        {
+            .binding = 6,
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+    },
+    .pushConstantSize = sizeof(PBRPushConstantData) 
+    }, options) {}
+
 
 #endif
+
+

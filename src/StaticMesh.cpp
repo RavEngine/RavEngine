@@ -4,7 +4,7 @@
 #include "World.hpp"
 #include "SkinnedMeshComponent.hpp"
 
-void RavEngine::StaticMesh::updateMaterialInWorldRenderData(MeshMaterial to)
+void RavEngine::StaticMesh::updateMaterialInWorldRenderData(decltype(material) to)
 {
 	// if mesh is not enabled, it does not have render data in the world
 	if (GetEnabled()){
@@ -17,7 +17,7 @@ void RavEngine::StaticMesh::updateMaterialInWorldRenderData(MeshMaterial to)
 	
 }
 
-void RavEngine::SkinnedMeshComponent::updateMaterialInWorldRenderData(MeshMaterial to)
+void RavEngine::SkinnedMeshComponent::updateMaterialInWorldRenderData(decltype(mat) to)
 {
 	// if mesh is not enabled, it does not have render data in the world
 	if (GetEnabled()){

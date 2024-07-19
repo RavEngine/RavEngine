@@ -45,9 +45,9 @@ namespace RavEngine {
 		indirectDrawBuffer->SetBufferData(initData);
 
 		emitterStateBuffer = device->CreateBuffer({
-			1, {.StorageBuffer = true}, sizeof(ParticleState), RGL::BufferAccess::Private, {.Transfersource = true, .Writable = true, .debugName = "Particle state buffer"}
+			1, {.StorageBuffer = true}, sizeof(EmitterState), RGL::BufferAccess::Private, {.Transfersource = true, .Writable = true, .debugName = "Particle state buffer"}
 		});
-		emitterStateBuffer->SetBufferData(ParticleState{
+		emitterStateBuffer->SetBufferData(EmitterState{
 			.emitterOwnerID = GetOwner().GetIdInWorld()
 		});
 
@@ -71,10 +71,6 @@ namespace RavEngine {
 	void ParticleEmitter::Stop()
 	{
 		emittingThisFrame = false;
-	}
-	void ParticleEmitter::Reset()
-	{
-
 	}
 	void ParticleEmitter::SetEmissionRate(uint32_t rate)
 	{

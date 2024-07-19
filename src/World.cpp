@@ -166,14 +166,14 @@ void World::SetupTaskGraph(){
     auto doAsync = ECSTasks.for_each(std::ref(async_begin), std::ref(async_end), [&](const shared_ptr<dispatched_func>& item){
         if (GetApp()->GetCurrentTime() >= item->runAtTime){
             item->func();
-            ranFunctions.push_back(async_tasks.hash_for(item));
+            ranFunctions.push_back(item);
         }
     }).name("Exec Async");
     updateAsyncIterators.precede(doAsync);
     auto cleanupRanAsync = ECSTasks.emplace([&]{
         // remove functions that have been run
-        for(const auto hash : ranFunctions){
-            async_tasks.erase_by_hash(hash);
+        for(const auto item : ranFunctions){
+            async_tasks.erase(item);
         }
         ranFunctions.clear();
     }).name("Async cleanup");
@@ -532,7 +532,7 @@ void updateMeshMaterialGeneric(auto&& renderData, entity_t localID, auto oldMat,
     
 }
 
-void RavEngine::World::updateStaticMeshMaterial(entity_t localId, MeshMaterial oldMat, MeshMaterial newMat, Ref<MeshCollectionStatic> mesh)
+void RavEngine::World::updateStaticMeshMaterial(entity_t localId, Ref<MaterialInstance> oldMat, Ref<MaterialInstance> newMat, Ref<MeshCollectionStatic> mesh)
 {
     // do nothing if renderer is not online
     if (!renderData) {
@@ -554,7 +554,7 @@ void RavEngine::World::updateStaticMeshMaterial(entity_t localId, MeshMaterial o
     );
 }
 
-void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, MeshMaterial oldMat, MeshMaterial newMat, Ref<MeshCollectionSkinned> mesh, Ref<SkeletonAsset> skeleton)
+void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, Ref<MaterialInstance> oldMat, Ref<MaterialInstance> newMat, Ref<MeshCollectionSkinned> mesh, Ref<SkeletonAsset> skeleton)
 {
     // if render engine is not online, do nothing
     if (!renderData) {

@@ -13,17 +13,17 @@ class SkinnedMeshComponent : public ComponentWithOwner, public Queryable<Skinned
 private:
     Ref<MeshCollectionSkinned> mesh;
 #if !RVE_SERVER
-    MeshMaterial mat;
+	Ref<MaterialInstance> mat;
 #endif
     Ref<SkeletonAsset> skeleton;
 #if !RVE_SERVER
-	void updateMaterialInWorldRenderData(MeshMaterial newMat);
+	void updateMaterialInWorldRenderData(decltype(mat) newMat);
 #endif
 public:
 	
 	SkinnedMeshComponent(entity_t owner, Ref<SkeletonAsset> sk, Ref<MeshCollectionSkinned> mesh) : ComponentWithOwner(owner), skeleton(sk), mesh(mesh){}
 #if !RVE_SERVER
-	inline void SetMaterial(MeshMaterial newMat){
+	inline void SetMaterial(decltype(mat) newMat){
 		updateMaterialInWorldRenderData(newMat);
 		mat = newMat;
 	}

@@ -11,12 +11,20 @@ namespace RavEngine {
 	struct MeshParticleRenderMaterialInstance;
 	struct ParticleUpdateMaterialInstance;
 
-	struct ParticleState {
+	struct EmitterStateNumericFields {
 		uint32_t aliveParticleCount = 0;
 		uint32_t freeListCount = 0;
 		uint32_t particlesCreatedThisFrame = 0;
+	};
+
+	struct EmitterState {
+		EmitterStateNumericFields fields;
 		entity_t emitterOwnerID;
 	};
+
+	// to ensure the buffer copies for Reset work correctly
+	static_assert(offsetof(EmitterState, emitterOwnerID) == sizeof(EmitterStateNumericFields), "EmitterState is not correctly aligned!");
+
 
 	using ParticleRenderMaterialVariant = std::variant<Ref<BillboardParticleRenderMaterialInstance>, Ref<MeshParticleRenderMaterialInstance>>;
 
@@ -53,7 +61,9 @@ namespace RavEngine {
 		/**
 		Set active particles to 0, and kill all existing active particles
 		*/
-		void Reset();
+		void Reset() {
+			resetRequested = true;
+		}
 
 		bool IsEmitting() const {
 			return emittingThisFrame;
@@ -68,6 +78,33 @@ namespace RavEngine {
 		// this function modifies internal state.
 		// for internal use only
 		uint32_t GetNextParticleSpawnCount();
+
+		void SetCastsShadows(bool value) {
+			castsShadows = value;
+		}
+
+		bool GetCastsShadows() const{
+			return castsShadows;
+		}
+
+		// when a particle systen is frozen, it does not tick. 
+		// If a particle system is set to invisible, it also becomes frozen
+		void SetFrozen(bool frozen) {
+			isFrozen = frozen;
+		}
+
+		void SetVisibility(bool visible) {
+			isVisible = visible;
+			SetFrozen(!isVisible);
+		}
+
+		bool GetFrozen() const {
+			return isFrozen;
+		}
+
+		bool GetVisible() const {
+			return isVisible;
+		}
 
 	private:
 		RGLBufferPtr
@@ -85,17 +122,26 @@ namespace RavEngine {
 		ParticleRenderMaterialVariant renderMaterial;
 		Ref<ParticleUpdateMaterialInstance> updateMaterial;
 
-		bool emittingThisFrame = false;
+		double lastSpawnTime = 0;
+
 		uint32_t maxParticleCount;
 
 		uint32_t spawnRate = 10;
 
-		double lastSpawnTime = 0;
+		void ClearReset() {
+			resetRequested = false;
+		}
 
 		// this is icky and nasty, we need a better solution than this
 		struct RenderState {
 			uint32_t maxTotalParticlesOffset = 0;
 		} renderState;
+
+		bool castsShadows : 1 = true;
+		bool emittingThisFrame : 1 = false;
+		bool isVisible : 1 = true;
+		bool isFrozen : 1 = false;
+		bool resetRequested : 1 = false;
 	};
 
 }

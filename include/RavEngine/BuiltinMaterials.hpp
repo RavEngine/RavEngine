@@ -5,14 +5,6 @@
 #include <variant>
 
 namespace RavEngine {
-    /**
-     PBR material surface shader.
-     Subclass this material to make custom surface shaders
-     */
-
-	struct PBRMaterialOptions {
-		RGL::CullMode cullMode = RGL::CullMode::Back;
-	};
 
 	struct PBRPushConstantData {
 		ColorRGBA color{ 1,1,1,1 };
@@ -20,21 +12,10 @@ namespace RavEngine {
 		float roughnessTint = 0.4;
 		float specularTint = 0.5;
 	};
-	struct PBRMaterial : public Material {
-		PBRMaterial(const std::string_view vsh_name, const std::string_view fsh_name, PBRMaterialOptions options = {});
-		PBRMaterial(const std::string_view name, PBRMaterialOptions options = {}) : PBRMaterial(name, name, options) {}
-		PBRMaterial(PBRMaterialOptions options = {}) : PBRMaterial("pbr", options) {}
+	
+	struct PBRMaterial : public LitMaterial {
+		PBRMaterial(LitMaterialOptions options = { });
 	};
-
-    struct UnlitMaterialOptions {
-        RGL::CullMode cullMode = RGL::CullMode::Back;
-    };
-
-    // a material that reads no data
-    struct UnlitMaterial : public Material{
-        UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, UnlitMaterialOptions options = {});
-        UnlitMaterial(const std::string_view name, UnlitMaterialOptions options = {}) : UnlitMaterial(name, name, options) {}
-    };
 
 	// the default layout and blend information.
 	// you probably want these when defining custom materials.
@@ -45,7 +26,7 @@ namespace RavEngine {
     /**
      Allows attaching a PBR material to an object.
      Don't subclass this if you have a custom material. Instead,
-	 subclass MaterialInstance<YourMaterialType>
+	 subclass LitMaterialInstance
      */
 
 	class PBRMaterialInstance : public MaterialInstance {
@@ -91,42 +72,7 @@ namespace RavEngine {
 		PBRPushConstantData pushConstantData;
 	};
 
-    struct UnlitMaterialInstance : public MaterialInstance {
-        UnlitMaterialInstance(Ref<UnlitMaterial> mat) : MaterialInstance(mat){}
-    };
-
-    struct LitMeshMaterialInstance{
-        Ref<MaterialInstance> material;
-        LitMeshMaterialInstance() {}
-        LitMeshMaterialInstance(const decltype(material)& material) : material(material){}
-        inline bool operator==(const LitMeshMaterialInstance& other) const{
-            return material == other.material;
-        }
-    };
-    struct UnlitMeshMaterialInstance{
-        Ref<MaterialInstance> material;
-        UnlitMeshMaterialInstance() {}
-        UnlitMeshMaterialInstance(const decltype(material)& material) : material(material){}
-        inline bool operator==(const UnlitMeshMaterialInstance& other) const{
-            return material == other.material;
-        }
-    };
-    using MeshMaterial = std::variant<LitMeshMaterialInstance, UnlitMeshMaterialInstance>;
+   
 }
 
-namespace std {
-    template<>
-    struct hash<RavEngine::LitMeshMaterialInstance> {
-        size_t operator()(const RavEngine::LitMeshMaterialInstance& other) const {
-            return std::hash<Ref<RavEngine::MaterialInstance>>()(other.material);
-        }
-    };
-
-    template<>
-    struct hash<RavEngine::UnlitMeshMaterialInstance> {
-        size_t operator()(const RavEngine::UnlitMeshMaterialInstance& other) const {
-            return std::hash<Ref<RavEngine::MaterialInstance>>()(other.material);
-        }
-    };
-}
 #endif

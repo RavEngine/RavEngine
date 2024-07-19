@@ -35,6 +35,7 @@ namespace RavEngine {
 struct LightingType{
     bool Lit: 1 = false;
     bool Unlit: 1 = false;
+	bool FilterLightBlockers : 1 = false;
 };
 
 #ifndef NDEBUG
@@ -198,6 +199,11 @@ struct LightingType{
 			mainCommandBuffer->BeginComputeDebugMarker("Particle Update");
 
 			worldOwning->Filter([this, worldOwning](ParticleEmitter& emitter, const Transform& transform) {
+				// frozen particle systems are not ticked
+				if (emitter.GetFrozen()) {
+					return;
+				}
+
 				Ref<ParticleRenderMaterialInstance> renderMat;
 				auto updateMat = emitter.GetUpdateMaterial();
 
@@ -290,18 +296,27 @@ struct LightingType{
 						mainCommandBuffer->CopyBufferToBuffer(
 							{
 								.buffer = emitter.emitterStateBuffer,
-								.offset = offsetof(ParticleState,aliveParticleCount)
+								.offset = offsetof(EmitterState,fields) + offsetof(EmitterStateNumericFields,aliveParticleCount)
 							},
 							{
 								.buffer = emitter.indirectDrawBuffer,
 								.offset = offsetof(RGL::IndirectIndexedCommand,instanceCount),
 							},
-							sizeof(ParticleState::aliveParticleCount)
+							sizeof(EmitterStateNumericFields::aliveParticleCount)
 						);
 					}
 				};
 
 				bool hasCalculatedSizes = false;
+
+				if (emitter.resetRequested) {
+					
+					EmitterStateNumericFields resetState{};
+
+					emitter.emitterStateBuffer->SetBufferData(resetState);	// this will leave the emitter ID value untouched
+
+					emitter.ClearReset();
+				}
 
 				// spawning particles?
 				auto spawnCount = emitter.GetNextParticleSpawnCount();
@@ -592,19 +607,19 @@ struct LightingType{
 			auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos, &pyramid, &lightingFilter, &reallocBuffer](auto&& renderData) {
 				for (auto& [materialInstance, drawcommand] : renderData) {
 					bool shouldCull = false;
-					std::visit([lightingFilter, &shouldCull](const auto& var) {
-						if constexpr (std::is_same_v<std::decay_t<decltype(var)>, LitMeshMaterialInstance>) {
+
+					std::visit(CaseAnalysis{
+						[lightingFilter, &shouldCull](const Ref<LitMaterial>& mat) {
 							if (lightingFilter.Lit) {
 								shouldCull = true;
 							}
-						}
-						else if constexpr (std::is_same_v<std::decay_t<decltype(var)>, UnlitMeshMaterialInstance>) {
+						},
+						[lightingFilter, &shouldCull](const Ref<UnlitMaterial>& mat) {
 							if (lightingFilter.Unlit) {
 								shouldCull = true;
 							}
-						}
-						// materialInstance will be unset (== nullptr) if the match is invalid
-						}, materialInstance);
+						}}
+					, materialInstance->GetMat()->variant);
 
 					// is this the correct material type? if not, skip
 					if (!shouldCull) {
@@ -712,26 +727,26 @@ struct LightingType{
 				mainCommandBuffer->SetScissor(viewportScissor);
 				mainCommandBuffer->SetVertexBuffer(vertexBuffer);
 				mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
-				for (auto& [materialInstanceVariant, drawcommand] : renderData) {
+				for (auto& [materialInstance, drawcommand] : renderData) {
 
 					// get the material instance out
-					Ref<MaterialInstance> materialInstance;
-					std::visit([&materialInstance, currentLightingType](const auto& var) {
-						if constexpr (std::is_same_v<std::decay_t<decltype(var)>, LitMeshMaterialInstance>) {
+					bool shouldCull = true;
+
+					std::visit(CaseAnalysis{
+						[&shouldCull, currentLightingType](const Ref<LitMaterial>&) {
 							if (currentLightingType.Lit) {
-								materialInstance = var.material;
+								shouldCull = false;
 							}
-						}
-						else if constexpr (std::is_same_v<std::decay_t<decltype(var)>, UnlitMeshMaterialInstance>) {
+						},
+						[&shouldCull, currentLightingType](const Ref<UnlitMaterial>&) {
 							if (currentLightingType.Unlit) {
-								materialInstance = var.material;
+								shouldCull = false;
 							}
 						}
-						// materialInstance will be unset (== nullptr) if the match is invalid
-						}, materialInstanceVariant);
+					}, materialInstance->GetMat()->variant);
 
 					// is this the correct material type? if not, skip
-					if (materialInstance == nullptr) {
+					if (shouldCull) {
 						continue;
 					}
 
@@ -790,10 +805,17 @@ struct LightingType{
 
 				// render particles
 				worldOwning->Filter([this, &viewproj, &particleBillboardMatrices,&currentLightingType,&pipelineSelectorFunction](const ParticleEmitter& emitter, const Transform& t) {
-					auto sharedParticleImpl = [this, &particleBillboardMatrices, &pipelineSelectorFunction](const ParticleEmitter& emitter, Ref<ParticleRenderMaterialInstance> materialInstance, RGLBufferPtr activeParticleIndexBuffer) {
-						auto material = materialInstance->GetMaterial();
+					// check if shadow casting is enabled
+					if (!emitter.GetCastsShadows() && currentLightingType.FilterLightBlockers) {
+						return;
+					}
+					if (!emitter.GetVisible()) {
+						return;
+					}
 
+					auto sharedParticleImpl = [this, &particleBillboardMatrices, &pipelineSelectorFunction](const ParticleEmitter& emitter, auto&& materialInstance, Ref<ParticleRenderMaterial> material, RGLBufferPtr activeParticleIndexBuffer) {
 						auto pipeline = pipelineSelectorFunction(material);
+
 
 						mainCommandBuffer->BindRenderPipeline(pipeline);
 						mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, material->particleDataBufferBinding);
@@ -827,42 +849,81 @@ struct LightingType{
 
 					std::visit(CaseAnalysis{
 							[this, &emitter, &viewproj,&particleBillboardMatrices,&sharedParticleImpl,&currentLightingType](const Ref <BillboardParticleRenderMaterialInstance>& billboardMat) {
-								if (currentLightingType.Lit) {
-									sharedParticleImpl(emitter,billboardMat, emitter.activeParticleIndexBuffer);
 
-									mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
-
-									mainCommandBuffer->ExecuteIndirect(
-										{
-											.indirectBuffer = emitter.indirectDrawBuffer,
-											.offsetIntoBuffer = 0,
-											.nDraws = 1,
-										});
-								}
-                            },
-                            [this,&emitter,&sharedParticleImpl, &currentLightingType](const Ref <MeshParticleRenderMaterialInstance> &meshMat) {
-							RGLBufferPtr activeIndexBuffer;
-								if (currentLightingType.Lit) {
-									if (meshMat->customSelectionFunction) {
-										activeIndexBuffer = emitter.meshAliveParticleIndexBuffer;
-									}
-									else {
-										activeIndexBuffer = emitter.activeParticleIndexBuffer;
-									}
-									sharedParticleImpl(emitter, meshMat, activeIndexBuffer);
-
-									mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
-									mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
-									mainCommandBuffer->BindBuffer(transientBuffer, 11, emitter.renderState.maxTotalParticlesOffset);
-
-									mainCommandBuffer->ExecuteIndirectIndexed(
-										{
-											.indirectBuffer = emitter.indirectDrawBuffer,
-											.offsetIntoBuffer = 0,
-											.nDraws = meshMat->customSelectionFunction ? meshMat->meshes->GetNumLods() : 1,
+								Ref<ParticleRenderMaterial> material;
+								std::visit(CaseAnalysis{
+									[&currentLightingType, &material](const Ref<BillboardRenderParticleMaterial<LightingMode::Lit>>& mat) {
+										if (currentLightingType.Lit) {
+											material = mat;
 										}
-									);
+									},
+									[&currentLightingType, &material](const Ref<BillboardRenderParticleMaterial<LightingMode::Unlit>>& mat) {
+										if (currentLightingType.Unlit) {
+											material = mat;
+										}
+									}
+								}, billboardMat->GetMaterial());
+								// material will be nullptr if we should not render right now
+
+								if (!material) {
+									return;
 								}
+
+								sharedParticleImpl(emitter,billboardMat, material, emitter.activeParticleIndexBuffer);
+
+								mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
+
+								mainCommandBuffer->ExecuteIndirect(
+									{
+										.indirectBuffer = emitter.indirectDrawBuffer,
+										.offsetIntoBuffer = 0,
+										.nDraws = 1,
+									});
+								
+                            },
+							[this,&emitter,&sharedParticleImpl, &currentLightingType](const Ref <MeshParticleRenderMaterialInstance>& meshMat) {
+							RGLBufferPtr activeIndexBuffer;
+
+								Ref<ParticleRenderMaterial> material;
+								std::visit(CaseAnalysis{
+									[&currentLightingType, &material](const Ref<MeshParticleRenderMaterial<LightingMode::Lit>>& mat) {
+										if (currentLightingType.Lit) {
+											material = mat;
+										}
+									},
+									[&currentLightingType, &material](const Ref<MeshParticleRenderMaterial<LightingMode::Unlit>>& mat) {
+										if (currentLightingType.Unlit) {
+											material = mat;
+										}
+									}
+								}, meshMat->GetMaterial());
+								// material will be nullptr if we should not render right now
+
+								if (meshMat->customSelectionFunction) {
+									activeIndexBuffer = emitter.meshAliveParticleIndexBuffer;
+								}
+								else {
+									activeIndexBuffer = emitter.activeParticleIndexBuffer;
+								}
+
+								if (!material) {
+									return;
+								}
+
+								sharedParticleImpl(emitter, meshMat, material, activeIndexBuffer);
+
+								mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
+								mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
+								mainCommandBuffer->BindBuffer(transientBuffer, 11, emitter.renderState.maxTotalParticlesOffset);
+
+								mainCommandBuffer->ExecuteIndirectIndexed(
+									{
+										.indirectBuffer = emitter.indirectDrawBuffer,
+										.offsetIntoBuffer = 0,
+										.nDraws = meshMat->customSelectionFunction ? meshMat->meshes->GetNumLods() : 1,
+									}
+								);
+								
                             }
                     }, emitter.GetRenderMaterial());
 				});
@@ -934,7 +995,7 @@ struct LightingType{
 					auto shadowMapSize = shadowTexture->GetSize().width;
 					renderFromPerspective(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, shadowRenderPass, [](auto&& mat) {
 						return mat->GetShadowRenderPipeline();
-						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true }, lightMats.depthPyramid);
+						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true }, lightMats.depthPyramid);
 
 				}
 				postshadowmapFunction(owner);

@@ -377,14 +377,14 @@ namespace RavEngine {
             // uses world-local ID
             VRAMVector<matrix4> worldTransforms;
 
-            locked_node_hashmap<MeshMaterial, MDIICommand, phmap::NullMutex> staticMeshRenderData;
-            locked_node_hashmap<MeshMaterial, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;
+            locked_node_hashmap<Ref<MaterialInstance>, MDIICommand, phmap::NullMutex> staticMeshRenderData;
+            locked_node_hashmap<Ref<MaterialInstance>, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;
         };
 
         std::optional<RenderData> renderData;
 
-        void updateStaticMeshMaterial(entity_t localId, MeshMaterial oldMat, MeshMaterial newMat, Ref<MeshCollectionStatic> mesh);
-        void updateSkinnedMeshMaterial(entity_t localId, MeshMaterial oldMat, MeshMaterial newMat, Ref<MeshCollectionSkinned> mesh, Ref<SkeletonAsset> skeleton);
+        void updateStaticMeshMaterial(entity_t localId, Ref<MaterialInstance> oldMat, Ref<MaterialInstance> newMat, Ref<MeshCollectionStatic> mesh);
+        void updateSkinnedMeshMaterial(entity_t localId, Ref<MaterialInstance> oldMat, Ref<MaterialInstance> newMat, Ref<MeshCollectionSkinned> mesh, Ref<SkeletonAsset> skeleton);
         void StaticMeshChangedVisibility(const StaticMesh*);
         void SkinnedMeshChangedVisibility(const SkinnedMeshComponent*);
 #endif
@@ -1131,9 +1131,9 @@ namespace RavEngine {
             }
             dispatched_func(){}
         };
-        UnorderedContiguousSet<std::shared_ptr<dispatched_func>> async_tasks;
+        UnorderedSet<std::shared_ptr<dispatched_func>> async_tasks;
         decltype(async_tasks)::iterator async_begin, async_end;
-        RavEngine::Vector<size_t> ranFunctions;
+        RavEngine::Vector<std::shared_ptr<dispatched_func>> ranFunctions;
 	protected:
         
 		//physics system
