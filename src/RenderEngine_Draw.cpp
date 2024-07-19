@@ -511,6 +511,14 @@ struct LightingType{
 				mainCommandBuffer->EndComputeDebugMarker();
 			}
 
+			struct LightData {
+				uint32_t ambientLightCount;
+				uint32_t directionalLightCount;
+			} lightData{
+				.ambientLightCount = worldOwning->renderData->ambientLightData.uploadData.DenseSize(),
+				.directionalLightCount = worldOwning->renderData->directionalLightData.uploadData.DenseSize(),
+			};
+			const auto lightDataOffset = WriteTransient(lightData);
 
 			auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
 				if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
@@ -740,7 +748,7 @@ struct LightingType{
 					mainCommandBuffer->EndCompute();
 				}
 				};
-			auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, particleBillboardMatrices](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
+			auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, particleBillboardMatrices, &lightDataOffset](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
 				// do static meshes
 				mainCommandBuffer->SetViewport({
 					.x = float(viewportScissor.offset[0]),
@@ -777,6 +785,11 @@ struct LightingType{
 					// bind the pipeline
 					auto pipeline = pipelineSelectorFunction(materialInstance->GetMat());
 					mainCommandBuffer->BindRenderPipeline(pipeline);
+
+					if constexpr (includeLighting) {
+						mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer,12);
+					}
 
 					// set push constant data
 					auto pushConstantData = materialInstance->GetPushConstantData();
@@ -1129,10 +1142,10 @@ struct LightingType{
 			auto nextImgSize = view.pixelDimensions;
 			auto& target = view.collection;
 
-			auto renderDeferredPass = [this,&target, &renderFromPerspective](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+			auto renderLitPass = [this,&target, &renderFromPerspective](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// render all the static meshes
 
-				renderFromPerspective(viewproj, viewonly, projOnly, camPos.pos, camPos.zNearFar, deferredRenderPass, [](auto&& mat) {
+				renderFromPerspective(viewproj, viewonly, projOnly, camPos.pos, camPos.zNearFar, litRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
                 }, renderArea, {.Lit = true}, target.depthPyramid);
 
@@ -1442,23 +1455,21 @@ struct LightingType{
 		
 
 			// deferred pass
-			deferredRenderPass->SetAttachmentTexture(0, target.diffuseTexture->GetDefaultView());
-			deferredRenderPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
-			deferredRenderPass->SetAttachmentTexture(2, target.roughnessSpecularMetallicAOTexture->GetDefaultView());;
-			deferredRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+			litRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
+			litRenderPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
+			litRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
-			deferredClearRenderPass->SetAttachmentTexture(0, target.diffuseTexture->GetDefaultView());
-			deferredClearRenderPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
-			deferredClearRenderPass->SetAttachmentTexture(2, target.roughnessSpecularMetallicAOTexture->GetDefaultView());
-			deferredClearRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+			litClearRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
+			litClearRenderPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
+			litClearRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
-			mainCommandBuffer->BeginRenderDebugMarker("Deferred Pass");
+			mainCommandBuffer->BeginRenderDebugMarker("Lit Pass");
 
-			mainCommandBuffer->BeginRendering(deferredClearRenderPass);
+			mainCommandBuffer->BeginRendering(litClearRenderPass);
 			mainCommandBuffer->EndRendering();
 			Profile::BeginFrame(Profile::RenderEncodeDeferredPass);
 			for (const auto& camdata : view.camDatas) {
-				doPassWithCamData(camdata, renderDeferredPass);
+				doPassWithCamData(camdata, renderLitPass);
 			}
 			Profile::EndFrame(Profile::RenderEncodeDeferredPass);
 			mainCommandBuffer->EndRenderDebugMarker();

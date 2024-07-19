@@ -343,194 +343,13 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.reductionMode = RGL::SamplerReductionMode::Minimum,
     });
     
-	// create built-in pipeline layouts
-	auto ambientLightRenderPipelineLayout = device->CreatePipelineLayout({
-		.bindings = {
-			{
-				.binding = 0,
-				.type = RGL::BindingType::Sampler,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 1,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 2,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-		},
-		.constants = {
-			{
-				sizeof(AmbientLightUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
-			}
-		}
-	});
-
-	auto lightRenderPipelineLayout = device->CreatePipelineLayout({
-		.bindings = {
-				{
-					.binding = 0,
-					.type = RGL::BindingType::Sampler,
-					.stageFlags = RGL::BindingVisibility::Fragment,
-				},
-				{
-					.binding = 1,
-					.type = RGL::BindingType::Sampler,
-					.stageFlags = RGL::BindingVisibility::Fragment,
-				},
-				{
-					.binding = 2,
-					.type = RGL::BindingType::SampledImage,
-					.stageFlags = RGL::BindingVisibility::Fragment,
-				},
-				{
-					.binding = 3,
-					.type = RGL::BindingType::SampledImage,
-					.stageFlags = RGL::BindingVisibility::Fragment,
-				},
-				{
-					.binding = 4,
-					.type = RGL::BindingType::SampledImage,
-					.stageFlags = RGL::BindingVisibility::Fragment,
-				},
-				{
-					.binding = 5,
-					.type = RGL::BindingType::SampledImage,
-					.stageFlags = RGL::BindingVisibility::Fragment,
-				},
-				{
-				.binding = 6,
-					.type = RGL::BindingType::SampledImage,
-					.stageFlags = RGL::BindingVisibility::Fragment,
-				},
-				{
-					.binding = 8,
-					.type = RGL::BindingType::StorageBuffer,
-					.stageFlags = RGL::BindingVisibility::Fragment,
-				}
-
-		},
-		.constants = {
-			{
-				sizeof(LightingUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
-			}
-		}
-	});
-
-	auto spotLightRenderPipelineLayout = device->CreatePipelineLayout({
-		.bindings = {
-				{
-				.binding = 0,
-				.type = RGL::BindingType::Sampler,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-				{
-				.binding = 1,
-				.type = RGL::BindingType::Sampler,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 2,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 3,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 4,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 5,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 6,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 8,
-				.type = RGL::BindingType::StorageBuffer,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			}
-		},
-		.constants = {
-			{
-				sizeof(LightingUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
-			}
-		}
-	});
-
-	auto pointLightRenderPipelineLayout = device->CreatePipelineLayout({
-		.bindings = {
-				{
-				.binding = 0,
-				.type = RGL::BindingType::Sampler,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-				{
-				.binding = 1,
-				.type = RGL::BindingType::Sampler,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 2,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 3,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 4,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 5,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 6,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 8,
-				.type = RGL::BindingType::StorageBuffer,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			}
-		},
-		.constants = {
-			{
-				sizeof(LightingUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
-			}
-		}
-	});
 
     std::array<float, 4> depthClearColor = {0,0,0,1};
 	// create render passes
-	deferredRenderPass = RGL::CreateRenderPass({
+	litRenderPass = RGL::CreateRenderPass({
 		   .attachments = {
 			   {
 				   .format = colorTexFormat,
-				   .loadOp = RGL::LoadAccessOperation::Load,
-				   .storeOp = RGL::StoreAccessOperation::Store,
-			   },
-			   {
-				   .format = normalTexFormat,
 				   .loadOp = RGL::LoadAccessOperation::Load,
 				   .storeOp = RGL::StoreAccessOperation::Store,
 			   },
@@ -548,16 +367,11 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		   }
 		});
 
-	deferredClearRenderPass = RGL::CreateRenderPass(
+	litClearRenderPass = RGL::CreateRenderPass(
 		{
 		   .attachments = {
 			   {
 				   .format = colorTexFormat,
-				   .loadOp = RGL::LoadAccessOperation::Clear,
-				   .storeOp = RGL::StoreAccessOperation::Store,
-			   },
-			   {
-				   .format = normalTexFormat,
 				   .loadOp = RGL::LoadAccessOperation::Clear,
 				   .storeOp = RGL::StoreAccessOperation::Store,
 			   },
@@ -1720,16 +1534,7 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 		collection.depthPyramid = {dim};
 
 	}
-	collection.diffuseTexture = device->CreateTexture({
-		.usage = {.Sampled = true, .ColorAttachment = true },
-		.aspect = {.HasColor = true },
-		.width = width,
-		.height = height,
-		.format = colorTexFormat,
-		.initialLayout = RGL::ResourceLayout::Undefined,
-		.debugName = "Color gbuffer"
-		}
-	);
+
 	collection.normalTexture = device->CreateTexture({
 		.usage = {.Sampled = true, .ColorAttachment = true },
 		.aspect = {.HasColor = true },
@@ -1740,16 +1545,7 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 		.debugName = "Normal gbuffer"
 		}
 	);
-	collection.roughnessSpecularMetallicAOTexture = device->CreateTexture({
-		.usage = {.Sampled = true, .ColorAttachment = true },
-		.aspect = {.HasColor = true },
-		.width = width,
-		.height = height,
-		.format = normalTexFormat,
-		.initialLayout = RGL::ResourceLayout::Undefined,
-		.debugName = "Roughness, Specular, Metallic, AO gbuffer"
-		}
-	);
+
     
     collection.ssaoTexture = device->CreateTexture({
         .usage = {.Sampled = true, .ColorAttachment = true },
@@ -1782,7 +1578,6 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 void RavEngine::RenderEngine::ResizeRenderTargetCollection(RenderTargetCollection& collection, dim size)
 {
 	gcTextures.enqueue(collection.depthStencil);
-	gcTextures.enqueue(collection.diffuseTexture);
 	gcTextures.enqueue(collection.normalTexture);
 	gcTextures.enqueue(collection.lightingTexture);
     gcTextures.enqueue(collection.depthPyramid.pyramidTexture);

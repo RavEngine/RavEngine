@@ -48,8 +48,22 @@ RavEngine::Material::Material(const std::string_view vsh_name, const std::string
                                          .binding = MODEL_MATRIX_BINDING,
                                          .type = RGL::BindingType::StorageBuffer,
                                          .stageFlags = RGL::BindingVisibility::Vertex
-                                     }
+                                        }
                                      );
+        configBindingsCopy.push_back(
+            {
+                .binding = 11,
+                .type = RGL::BindingType::StorageBuffer,
+                .stageFlags = RGL::BindingVisibility::Fragment
+            }
+        );
+        configBindingsCopy.push_back(
+            {
+                .binding = 12,
+                .type = RGL::BindingType::StorageBuffer,
+                .stageFlags = RGL::BindingVisibility::Fragment
+            }
+        );
     }
 
     pipelineLayout = device->CreatePipelineLayout({

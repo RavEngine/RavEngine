@@ -11,13 +11,43 @@ struct LitOutput{
 
 layout(location = 0) out vec4 outcolor;
 layout(location = 1) out vec4 outnormal;
-layout(location = 2) out vec4 outRoughnessSpecularMetalicAO;
+
+struct LightData{
+    uint ambientLightCount;
+    uint directionalLightCount;
+};
+
+layout(scalar, binding = 11) readonly buffer lightAuxDataSSBO{
+    LightData lightConstants[];
+};
+
+struct AmbientLightData{
+    vec3 color;
+    float intensity;
+};
+
+layout(scalar, binding = 12) readonly buffer ambientLightSSBO{
+    AmbientLightData ambientLights[];
+};
+
+
 
 void main(){
 
     LitOutput user_out = frag();
 
-    outcolor = user_out.color;
+    // compute lighting based on the results of the user's function
+
+
+    // ambient lights
+    for(uint i = 0; i < lightConstants[0].ambientLightCount; i++){
+        AmbientLightData light = ambientLights[i];
+        outcolor += user_out.color * vec4(light.color,1) * light.intensity;
+        //TODO: also factor in SSAO
+    }
+
+
+    // directional lights
+
     outnormal = vec4(user_out.normal,1);
-    outRoughnessSpecularMetalicAO = vec4(user_out.roughness, user_out.specular, user_out.metallic, user_out.ao);
 }
