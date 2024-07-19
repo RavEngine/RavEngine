@@ -47,6 +47,10 @@ layout(scalar, binding = 13) readonly buffer dirLightSSBO{
     DirectionalLightData dirLights[];
 };
 
+layout(binding = 14) uniform sampler shadowSampler;
+
+layout(set = 1, binding = 0) uniform texture2D textures[];      // the bindless heap must be in set 1 binding 0
+
 void main(){
 
     LitOutput user_out = frag();

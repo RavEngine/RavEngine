@@ -71,6 +71,21 @@ RavEngine::Material::Material(const std::string_view vsh_name, const std::string
                 .stageFlags = RGL::BindingVisibility::Fragment
             }
         );
+        configBindingsCopy.push_back(
+            {
+                .binding = 14,
+                .type = RGL::BindingType::Sampler,
+                .stageFlags = RGL::BindingVisibility::Fragment
+            }
+        );
+        configBindingsCopy.push_back(
+            {
+                .count = 2048,
+                .isBindless = true,     // binding 0 set 1
+                .type = RGL::BindingType::SampledImage,
+                .stageFlags = RGL::BindingVisibility::Fragment
+            }
+        );
     }
 
     pipelineLayout = device->CreatePipelineLayout({

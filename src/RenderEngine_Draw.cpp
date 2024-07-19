@@ -792,6 +792,8 @@ struct LightingType{
 						mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer,12);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData->directionalLightData.uploadData.GetDense().get_underlying().buffer,13);
+						mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
+						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 0);
 					}
 
 					// set push constant data
