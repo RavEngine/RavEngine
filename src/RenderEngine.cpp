@@ -1314,6 +1314,32 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.pipelineLayout = gridBuildLayout
 	});
 
+	auto clusterPopulateLayout = device->CreatePipelineLayout({
+		.bindings = {
+			{
+				.binding = 0,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = true
+			},
+			{
+				.binding = 1,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = false
+			}
+		},
+		.constants = {{ sizeof(GridAssignUBO), 0, RGL::StageVisibility::Compute}}
+	});
+
+	clusterPopulatePipeline = device->CreateComputePipeline(RGL::ComputePipelineDescriptor{
+		.stage = {
+			.type = RGL::ShaderStageDesc::Type::Compute,
+			.shaderModule = LoadShaderByFilename("cluster_assign_lights.csh",device)
+		},
+		.pipelineLayout = clusterPopulateLayout
+	});
+
 	// skinned mesh compute pipeline
 	auto skinnedCSH = LoadShaderByFilename("skinning_cs.csh", device);
 	auto skinnedPipelineLayout = device->CreatePipelineLayout({
