@@ -512,9 +512,11 @@ struct LightingType{
 			}
 
 			struct LightData {
+				glm::vec3 camPos;
 				uint32_t ambientLightCount;
 				uint32_t directionalLightCount;
 			} lightData{
+				.camPos = camPos,
 				.ambientLightCount = worldOwning->renderData->ambientLightData.uploadData.DenseSize(),
 				.directionalLightCount = worldOwning->renderData->directionalLightData.uploadData.DenseSize(),
 			};
@@ -789,6 +791,7 @@ struct LightingType{
 					if constexpr (includeLighting) {
 						mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer,12);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData->directionalLightData.uploadData.GetDense().get_underlying().buffer,13);
 					}
 
 					// set push constant data

@@ -64,6 +64,13 @@ RavEngine::Material::Material(const std::string_view vsh_name, const std::string
                 .stageFlags = RGL::BindingVisibility::Fragment
             }
         );
+        configBindingsCopy.push_back(
+            {
+                .binding = 13,
+                .type = RGL::BindingType::StorageBuffer,
+                .stageFlags = RGL::BindingVisibility::Fragment
+            }
+        );
     }
 
     pipelineLayout = device->CreatePipelineLayout({

@@ -5,6 +5,9 @@
 #include "lit_mesh_bindings.glsl"
 
 layout(location = ENTITY_INPUT_LOCATION) in uint inEntityID;
+
+layout(location = 11) out vec3 worldPosition;
+
 layout(std430, binding = MODEL_MATRIX_BINDING) readonly buffer modelMatrixBuffer{mat4 model[];};
 
 struct LitVertexOut{
@@ -26,4 +29,5 @@ void main(){
     LitVertexOut user_out = vert(entity);
 
     gl_Position = user_out.position;
+    worldPosition = user_out.position.xyz;
 }
