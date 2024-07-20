@@ -342,19 +342,14 @@ namespace RGL {
 #endif
 
 #if PIX_ENABLED && TDR_PIX_CAPTURE
-        auto lib = PIXLoadLatestWinPixTimingCapturerLibrary();
+        auto lib = PIXLoadLatestWinPixGpuCapturerLibrary();
         Assert(lib != nullptr, "Failed to load PIX library");
         PIXCaptureParameters params{
-            .TimingCaptureParameters = {
-                .CaptureStorage = PIXCaptureParameters::PIXCaptureStorage::FileCircular,
-                .CaptureGpuTiming = false,
-                .CaptureCallstacks = true,
-                .CaptureCpuSamples = false,
-                .CpuSamplesPerSecond = 0,
-                .CaptureFileIO = false,
+            .GpuCaptureParameters = {
+                .FileName = L"TDRCap.pix",
             }
         };
-        DX_CHECK(PIXBeginCapture(PIX_CAPTURE_TIMING, &params));
+        DX_CHECK(PIXBeginCapture(PIX_CAPTURE_GPU, &params));
 #endif
     }
 

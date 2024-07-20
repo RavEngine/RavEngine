@@ -17,6 +17,7 @@ struct LitOutput{
 layout(location = 0) out vec4 outcolor;
 layout(location = 1) out vec4 outnormal;
 layout(location = 11) in vec3 worldPosition;
+layout(location = 12) in vec3 viewPosition;
 
 #include "lit_mesh_shared.glsl"
 
@@ -82,7 +83,6 @@ void main(){
     }
 
     // point lights
-    const vec3 viewPosition = (engineConstants[0].viewOnly * vec4(worldPosition,1)).xyz;  //TODO: compute this in the vertex stage
 
     // Locating which cluster this fragment is part of
     const uint zTile = uint((log(abs(viewPosition.z) / engineConstants[0].zNear) * engineConstants[0].gridSize.z) / log(engineConstants[0].zFar / engineConstants[0].zNear));

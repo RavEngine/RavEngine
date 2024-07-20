@@ -829,13 +829,15 @@ struct LightingType{
 					auto pipeline = pipelineSelectorFunction(materialInstance->GetMat());
 					mainCommandBuffer->BindRenderPipeline(pipeline);
 
+					// this is always needed
+					mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
+
 					if constexpr (includeLighting) {
 						// make textures resident and put them in the right format
 						worldOwning->Filter([this](const DirectionalLight& light, const Transform& t) {
 							mainCommandBuffer->UseResource(light.shadowData.shadowMap->GetDefaultView());
 						});
 
-						mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer,12);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData->directionalLightData.uploadData.GetDense().get_underlying().buffer,13);
 						mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
