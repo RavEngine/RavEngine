@@ -505,6 +505,7 @@ struct LightingType{
 
 				mainCommandBuffer->BeginCompute(clusterBuildGridPipeline);
 				mainCommandBuffer->BindComputeBuffer(lightClusterBuffer,0);
+                mainCommandBuffer->SetComputeBytes(ubo,0);
 
 				mainCommandBuffer->DispatchCompute(Clustered::gridSizeX, Clustered::gridSizeY, Clustered::gridSizeZ, 1, 1, 1);
 				mainCommandBuffer->EndCompute();
