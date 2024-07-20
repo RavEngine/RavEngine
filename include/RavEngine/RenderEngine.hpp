@@ -95,6 +95,7 @@ namespace RavEngine {
 
 		struct GridAssignUBO {
 			glm::mat4 viewMat;
+			uint32_t lightCount;
 		};
         
         RGLShaderLibraryPtr defaultPostEffectVSH;

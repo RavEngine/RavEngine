@@ -26,6 +26,7 @@ layout(scalar, binding = 1) restrict readonly buffer lightSSBO
 
 layout(push_constant, scalar) uniform UniformBufferObject{
     mat4 viewMatrix;
+    uint lightCount;
 } ubo;
 
 bool sphereAABBIntersection(vec3 center, float radius, vec3 aabbMin, vec3 aabbMax)
@@ -52,7 +53,7 @@ bool testSphereAABB(uint i, Cluster cluster)
 // each invocation of main() is a thread processing a cluster
 void main()
 {
-    uint lightCount = pointLight.length();
+    uint lightCount = ubo.lightCount;
     uint index = gl_WorkGroupID.x * LOCAL_SIZE + gl_LocalInvocationID.x;
     Cluster cluster = clusters[index];
 

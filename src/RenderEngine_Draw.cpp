@@ -517,7 +517,8 @@ struct LightingType{
 					// next assign lights to clusters
 					if (nPointLights > 0){
 						GridAssignUBO ubo{
-							.viewMat = viewonly
+							.viewMat = viewonly,
+							.lightCount = nPointLights
 						};
 						mainCommandBuffer->BeginCompute(clusterPopulatePipeline);
 						mainCommandBuffer->SetComputeBytes(ubo, 0);
