@@ -789,16 +789,18 @@ struct LightingType{
 					mainCommandBuffer->BindRenderPipeline(pipeline);
 
 					if constexpr (includeLighting) {
+						// make textures resident and put them in the right format
+						worldOwning->Filter([this](const DirectionalLight& light, const Transform& t) {
+							mainCommandBuffer->UseResource(light.shadowData.shadowMap->GetDefaultView());
+						});
+
 						mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer,12);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData->directionalLightData.uploadData.GetDense().get_underlying().buffer,13);
 						mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 0);
 
-						// make textures resident and put them in the right format
-						worldOwning->Filter([this](const DirectionalLight& light, const Transform& t) {
-							mainCommandBuffer->UseResource(light.shadowData.shadowMap->GetDefaultView());
-						});
+						
 					}
 
 					// set push constant data

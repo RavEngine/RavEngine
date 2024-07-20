@@ -16,6 +16,11 @@
 #include <DescriptorHeap.h>
 #include <WinBase.h>
 
+#if __has_include(<pix3.h>)
+#include <pix3.h>
+#define PIX_ENABLED 1
+#endif
+
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
@@ -82,9 +87,11 @@ namespace RGL {
         ComPtr<ID3D12InfoQueue> pInfoQueue;
         if (SUCCEEDED(d3d12Device2.As(&pInfoQueue)))
         {
-            pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
-            pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
-            pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
+            if (!PIXIsAttachedForGpuCapture()) {        // these can screw with PIX captures
+                pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+                pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
+                pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
+            }
             // Suppress whole categories of messages
             // uncomment to provide some
             //D3D12_MESSAGE_CATEGORY Categories[] = {};

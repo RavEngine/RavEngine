@@ -12,6 +12,7 @@ layout(std430, binding = MODEL_MATRIX_BINDING) readonly buffer modelMatrixBuffer
 
 struct LitVertexOut{
     vec4 position;
+    vec3 worldPosition;
 };
 
 struct EntityIn{
@@ -29,5 +30,5 @@ void main(){
     LitVertexOut user_out = vert(entity);
 
     gl_Position = user_out.position;
-    worldPosition = user_out.position.xyz;
+    worldPosition = user_out.worldPosition;
 }

@@ -397,7 +397,8 @@ void World::setupRenderTasks(){
                     auto owner = ptr->GetOwner(i);
                     auto& dirLightUploadData = renderData->directionalLightData.uploadData.GetForSparseIndex(owner);
                     auto& dirLightAuxData = renderData->directionalLightData.auxData.GetForSparseIndex(owner);
-                    dirLightUploadData.colorIntensity = {color.R, color.G, color.B, lightdata.GetIntensity()};
+                    dirLightUploadData.color = {color.R, color.G, color.B};
+                    dirLightUploadData.intensity = lightdata.GetIntensity();
                     dirLightUploadData.castsShadows = lightdata.CastsShadows();
                     dirLightUploadData.shadowmapBindlessIndex = lightdata.shadowData.shadowMap->GetDefaultView().GetReadonlyBindlessTextureHandle();
                     lightdata.clearInvalidate();
