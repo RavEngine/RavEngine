@@ -535,14 +535,31 @@ struct LightingType{
 				mainCommandBuffer->EndComputeDebugMarker();
 			}
 
+#pragma pack(push, 1)
 			struct LightData {
+				glm::mat4 viewProj;
+				glm::mat4 viewOnly;
+				glm::mat4 projOnly;
 				glm::vec3 camPos;
+				glm::uvec3 gridSize;
+				glm::uvec2 screenDimension;
 				uint32_t ambientLightCount;
 				uint32_t directionalLightCount;
-			} lightData{
+				float zNear;
+				float zFar;
+			}
+#pragma pack(pop)
+			lightData{
+				.viewProj = viewproj,
+				.viewOnly = viewonly,
+				.projOnly = projOnly,
 				.camPos = camPos,
+				.gridSize = { Clustered::gridSizeX, Clustered::gridSizeY, Clustered::gridSizeZ },
+				.screenDimension = { viewportScissor.extent[0],viewportScissor.extent[1] },
 				.ambientLightCount = worldOwning->renderData->ambientLightData.uploadData.DenseSize(),
 				.directionalLightCount = worldOwning->renderData->directionalLightData.uploadData.DenseSize(),
+				.zNear = zNearFar.x,
+				.zFar = zNearFar.y
 			};
 			const auto lightDataOffset = WriteTransient(lightData);
 
@@ -822,6 +839,8 @@ struct LightingType{
 						mainCommandBuffer->BindBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer,12);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData->directionalLightData.uploadData.GetDense().get_underlying().buffer,13);
 						mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData->pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
+						mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 0);
 
 						

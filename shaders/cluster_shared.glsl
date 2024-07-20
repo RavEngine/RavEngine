@@ -5,3 +5,13 @@ struct Cluster
     uint count;
     uint lightIndices[100];
 };
+
+
+struct PointLight
+{
+    vec3 position;
+    vec3 color;
+    float intensity;
+    float radius;
+    int castsShadows;
+};

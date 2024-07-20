@@ -153,14 +153,6 @@ namespace RavEngine {
 			glm::mat4 viewProj;
 		};
 
-		struct LightingUBO {
-			glm::mat4 viewProj;
-			glm::ivec4 viewRect;
-			glm::ivec4 viewRegion;
-			glm::vec3 camPos;
-			uint32_t isRenderingShadows = uint32_t(false);
-		};
-
 		struct SkinningUBO {
 			uint32_t numObjects = 0;
 			uint32_t numVertices = 0;

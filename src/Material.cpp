@@ -54,7 +54,7 @@ RavEngine::Material::Material(const std::string_view vsh_name, const std::string
             {
                 .binding = 11,
                 .type = RGL::BindingType::StorageBuffer,
-                .stageFlags = RGL::BindingVisibility::Fragment
+                .stageFlags = RGL::BindingVisibility::VertexFragment
             }
         );
         configBindingsCopy.push_back(
@@ -75,6 +75,20 @@ RavEngine::Material::Material(const std::string_view vsh_name, const std::string
             {
                 .binding = 14,
                 .type = RGL::BindingType::Sampler,
+                .stageFlags = RGL::BindingVisibility::Fragment
+            }
+        );
+        configBindingsCopy.push_back(
+            {
+                .binding = 15,
+                .type = RGL::BindingType::StorageBuffer,
+                .stageFlags = RGL::BindingVisibility::Fragment
+            }
+        );
+        configBindingsCopy.push_back(
+            {
+                .binding = 16,
+                .type = RGL::BindingType::StorageBuffer,
                 .stageFlags = RGL::BindingVisibility::Fragment
             }
         );

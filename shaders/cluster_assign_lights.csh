@@ -4,16 +4,6 @@ layout(local_size_x = LOCAL_SIZE, local_size_y = 1, local_size_z = 1) in;
 
 #include "cluster_shared.glsl"
 
-struct PointLight
-{
-    vec3 position;
-    vec3 color;
-    float intensity;
-    float radius;
-    int castsShadows;
-};
-
-
 layout(scalar, binding = 0) restrict buffer clusterSSBO
 {
     Cluster clusters[];

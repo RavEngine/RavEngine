@@ -11,7 +11,14 @@
 #include <atlbase.h>
 #include <dxcapi.h>
 
+#if __has_include(<pix3.h>)
+#include <pix3.h>
+#define PIX_ENABLED 1
+#endif
+
 #define DX12_USE_AGILITY 1
+
+#define TDR_PIX_CAPTURE 0
 
 // Exports for the Agility SDK. For Windows 10 users, Go here: https://www.nuget.org/packages/Microsoft.Direct3D.D3D12/1.614.0 then unzip it, and place 
 // D3D12Core.dll and d3d12SDKLayers.dll in a folder named D3D12 next to the executable.
@@ -210,13 +217,18 @@ void debugLog(const std::string_view str) {
 namespace RGL {
     void RGLDeviceRemovedHandler(PVOID context, BOOLEAN)
     {
-#if defined(_DEBUG)
         ID3D12Device* pDevice = (ID3D12Device*)context;
 
         auto reason = pDevice->GetDeviceRemovedReason();
         if (reason == S_OK) {
             return; // proper shutdown, no need to go further
         }
+
+#if PIX_ENABLED && TDR_PIX_CAPTURE
+        PIXEndCapture(FALSE);
+#endif
+#if defined(_DEBUG)
+       
 #if _UWP
         OutputDebugStringW(_com_error(reason, nullptr).ErrorMessage());
 #else
@@ -327,6 +339,22 @@ namespace RGL {
         InitializeAftermath();
 #ifdef REFL_ENABLED
         DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtilsPtr));
+#endif
+
+#if PIX_ENABLED && TDR_PIX_CAPTURE
+        auto lib = PIXLoadLatestWinPixTimingCapturerLibrary();
+        Assert(lib != nullptr, "Failed to load PIX library");
+        PIXCaptureParameters params{
+            .TimingCaptureParameters = {
+                .CaptureStorage = PIXCaptureParameters::PIXCaptureStorage::FileCircular,
+                .CaptureGpuTiming = false,
+                .CaptureCallstacks = true,
+                .CaptureCpuSamples = false,
+                .CpuSamplesPerSecond = 0,
+                .CaptureFileIO = false,
+            }
+        };
+        DX_CHECK(PIXBeginCapture(PIX_CAPTURE_TIMING, &params));
 #endif
     }
 
