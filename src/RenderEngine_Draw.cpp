@@ -494,21 +494,43 @@ struct LightingType{
 			if constexpr (includeLighting) {
 				// dispatch the lighting binning shaders
 				mainCommandBuffer->BeginComputeDebugMarker("Light Binning");
+				const auto nPointLights = worldOwning->renderData->pointLightData.uploadData.DenseSize();
+				const auto nSpotLights = worldOwning->renderData->spotLightData.uploadData.DenseSize();
+				if (nPointLights > 0 || nSpotLights > 0) {
+					{
+						GridBuildUBO ubo{
+							.invProj = glm::inverse(projOnly),
+							.gridSize = {Clustered::gridSizeX, Clustered::gridSizeY, Clustered::gridSizeZ},
+							.zNear = zNearFar.x,
+							.screenDim = {viewportScissor.extent[0],viewportScissor.extent[1]},
+							.zFar = zNearFar.y
+						};
 
-				GridBuildUBO ubo{
-					.invProj = glm::inverse(projOnly),
-					.gridSize = {Clustered::gridSizeX, Clustered::gridSizeY, Clustered::gridSizeZ},
-					.zNear = zNearFar.x,
-					.screenDim = {viewportScissor.extent[0],viewportScissor.extent[1]},
-					.zFar = zNearFar.y
-				};
+						mainCommandBuffer->BeginCompute(clusterBuildGridPipeline);
+						mainCommandBuffer->BindComputeBuffer(lightClusterBuffer, 0);
+						mainCommandBuffer->SetComputeBytes(ubo, 0);
 
-				mainCommandBuffer->BeginCompute(clusterBuildGridPipeline);
-				mainCommandBuffer->BindComputeBuffer(lightClusterBuffer,0);
-                mainCommandBuffer->SetComputeBytes(ubo,0);
+						mainCommandBuffer->DispatchCompute(Clustered::gridSizeX, Clustered::gridSizeY, Clustered::gridSizeZ, 1, 1, 1);
+						mainCommandBuffer->EndCompute();
+					}
 
-				mainCommandBuffer->DispatchCompute(Clustered::gridSizeX, Clustered::gridSizeY, Clustered::gridSizeZ, 1, 1, 1);
-				mainCommandBuffer->EndCompute();
+					// next assign lights to clusters
+					if (nPointLights > 0){
+						GridAssignUBO ubo{
+							.viewMat = viewonly
+						};
+						mainCommandBuffer->BeginCompute(clusterPopulatePipeline);
+						mainCommandBuffer->SetComputeBytes(ubo, 0);
+						mainCommandBuffer->BindComputeBuffer(lightClusterBuffer, 0);
+						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->pointLightData.uploadData.GetDense().get_underlying().buffer, 1);
+
+						constexpr static auto threadGroupSize = 128;
+
+						mainCommandBuffer->DispatchCompute(Clustered::numClusters / threadGroupSize, 1, 1, threadGroupSize, 1, 1);
+
+						mainCommandBuffer->EndCompute();
+					}
+				}
 				mainCommandBuffer->EndComputeDebugMarker();
 			}
 
@@ -1089,7 +1111,7 @@ struct LightingType{
 			auto lightProj = RMath::perspectiveProjection<float>(90, 1, 0.1, 100);
 
 			glm::mat4 viewMat;
-            auto lightPos = glm::vec3(light.worldTransform * glm::vec4(0,0,0,1));
+            auto lightPos = light.position;
 
 			// rotate view space to each cubemap direction based on the index
 			switch (index) {
@@ -1113,7 +1135,7 @@ struct LightingType{
 				} break;
 			}
 
-			auto camPos = light.worldTransform * glm::vec4(0, 0, 0, 1);
+			auto camPos = light.position;
 
 			auto& origLight = Entity(owner).GetComponent<PointLight>();
 
@@ -1391,7 +1413,7 @@ struct LightingType{
 				struct {
 					glm::vec3 pos;
 					glm::vec2 zNearFar;
-				} camData{camdata.camPos , };
+				} camData{camdata.camPos , camdata.zNearFar};
 
 				const auto camPos = camdata.camPos;
 				const auto viewportOverride = camdata.viewportOverride;

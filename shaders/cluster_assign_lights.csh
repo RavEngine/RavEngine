@@ -2,28 +2,24 @@
 #define LOCAL_SIZE 128
 layout(local_size_x = LOCAL_SIZE, local_size_y = 1, local_size_z = 1) in;
 
+#include "cluster_shared.glsl"
+
 struct PointLight
 {
-    vec4 position;
-    vec4 color;
+    vec3 position;
+    vec3 color;
     float intensity;
     float radius;
+    int castsShadows;
 };
 
-struct Cluster
-{
-    vec4 minPoint;
-    vec4 maxPoint;
-    uint count;
-    uint lightIndices[100];
-};
 
-layout(std430, binding = 0) restrict buffer clusterSSBO
+layout(scalar, binding = 0) restrict buffer clusterSSBO
 {
     Cluster clusters[];
 };
 
-layout(std430, binding = 1) restrict readonly buffer lightSSBO
+layout(scalar, binding = 1) restrict readonly buffer lightSSBO
 {
     PointLight pointLight[];
 };
@@ -44,7 +40,7 @@ bool sphereAABBIntersection(vec3 center, float radius, vec3 aabbMin, vec3 aabbMa
 // this just unpacks data for sphereAABBIntersection
 bool testSphereAABB(uint i, Cluster cluster)
 {
-    vec3 center = vec3(ubo.viewMatrix * pointLight[i].position);
+    vec3 center = vec3(ubo.viewMatrix * vec4(pointLight[i].position,1));
     float radius = pointLight[i].radius;
 
     vec3 aabbMin = cluster.minPoint.xyz;

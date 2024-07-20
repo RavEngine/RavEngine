@@ -1,13 +1,7 @@
 
 // adapted from: https://github.com/DaveH355/clustered-shading
 
-struct Cluster
-{
-    vec3 minPoint;
-    vec3 maxPoint;
-    uint count;
-    uint lightIndices[100];
-};
+#include "cluster_shared.glsl"
 
 layout(scalar, binding = 0) restrict buffer clusterSSBO {
     Cluster clusters[];

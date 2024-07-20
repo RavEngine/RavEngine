@@ -328,8 +328,10 @@ namespace RavEngine {
         };
 
         struct PointLightUploadData {
-            glm::mat4 worldTransform;
-            glm::vec4 colorIntensity;
+            glm::vec3 position;
+            glm::vec3 color;
+            float intensity;
+            float radius;
             int castsShadows;
         };
 

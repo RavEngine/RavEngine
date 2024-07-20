@@ -441,14 +441,15 @@ void World::setupRenderTasks(){
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
-                    renderData->pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.GetWorldMatrix();
+                    renderData->pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).position = transform.GetWorldPosition();
                 }
                 if (ptr->Get(i).isInvalidated()){
                     // update color data if it has changed
                     auto& lightData = ptr->Get(i);
                     auto& colorData = lightData.GetColorRGBA();
                     auto& denseData = renderData->pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i));
-                    denseData.colorIntensity = { colorData.R,colorData.G,colorData.B,lightData.GetIntensity()};
+                    denseData.color = { colorData.R,colorData.G,colorData.B};
+                    denseData.intensity = lightData.GetIntensity();
                     denseData.castsShadows = lightData.CastsShadows();
                     ptr->Get(i).clearInvalidate();
                 }

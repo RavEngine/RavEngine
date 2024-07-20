@@ -83,6 +83,7 @@ namespace RavEngine {
 			uint32_t size;
 		};
 
+#pragma pack(push, 1)
 		struct GridBuildUBO {
 			glm::mat4 invProj{ 0 };
 			glm::uvec3 gridSize{ 0 };
@@ -90,6 +91,7 @@ namespace RavEngine {
 			glm::uvec2 screenDim{ 0 };
 			float zFar = 0;
 		};
+#pragma pack(pop)
 
 		struct GridAssignUBO {
 			glm::mat4 viewMat;
