@@ -69,13 +69,15 @@ void main()
     for(uint i = 0; i < ubo.spotLightCount; i++){
         // create a sphere to approximate the cone
         SpotLight light = spotLight[i];
-        vec3 center = (light.worldTransform * vec4(0,0,0,1)).xyz;
+        vec3 center = (light.worldTransform * vec4(0,0,0,1)).xyz;   // get world pos
+        center = (ubo.viewMatrix * vec4(center,1)).xyz;             // transform to view space
+
         float radius = light.intensity * light.intensity;
 
         vec3 aabbMin = cluster.minPoint.xyz;
         vec3 aabbMax = cluster.maxPoint.xyz;
 
-        if (sphereAABBIntersection(center, radius, aabbMax, aabbMax)){
+        if (sphereAABBIntersection(center, radius, aabbMin, aabbMax)){
             cluster.spotLightIndices[cluster.spotLightCount] = i;
             cluster.spotLightCount++;
         }
