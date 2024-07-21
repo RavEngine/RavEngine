@@ -550,7 +550,6 @@ struct LightingType{
 				float zNear;
 				float zFar;
 			}
-#pragma pack(pop)
 			lightData{
 				.viewProj = viewproj,
 				.viewOnly = viewonly,
@@ -563,6 +562,8 @@ struct LightingType{
 				.zNear = zNearFar.x,
 				.zFar = zNearFar.y
 			};
+
+#pragma pack(pop)
 			const auto lightDataOffset = WriteTransient(lightData);
 
 			auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
