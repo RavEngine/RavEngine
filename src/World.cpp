@@ -429,6 +429,7 @@ void World::setupRenderTasks(){
                     denseData.color = { colorData.R,colorData.G,colorData.B};
                     denseData.intensity = lightData.GetIntensity();
                     denseData.castsShadows = lightData.CastsShadows();
+                    denseData.shadowmapBindlessIndex = lightData.shadowData.shadowMap->GetDefaultView().GetReadonlyBindlessTextureHandle();
                     lightData.clearInvalidate();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this
@@ -459,7 +460,7 @@ void World::setupRenderTasks(){
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this
             }
         }
-    }).name("Update Invalidated SpotLights").precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
+    }).name("Update Invalidated PointLights").precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
     
     auto updateInvalidatedAmbients = renderTasks.emplace([this]{
         if(auto ptr = GetAllComponentsOfType<AmbientLight>()){

@@ -840,6 +840,9 @@ struct LightingType{
 						worldOwning->Filter([this](const DirectionalLight& light, const Transform& t) {
 							mainCommandBuffer->UseResource(light.shadowData.shadowMap->GetDefaultView());
 						});
+						worldOwning->Filter([this](const SpotLight& light, const Transform& t) {
+							mainCommandBuffer->UseResource(light.shadowData.shadowMap->GetDefaultView());
+						});
 
 						mainCommandBuffer->BindBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer,12);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData->directionalLightData.uploadData.GetDense().get_underlying().buffer,13);

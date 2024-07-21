@@ -343,6 +343,7 @@ namespace RavEngine {
             float coneAngle;
             float penumbraAngle;
             int castsShadows;
+            uint32_t shadowmapBindlessIndex;
         };
 
         // data for the render engine

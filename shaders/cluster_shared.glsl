@@ -28,4 +28,5 @@ struct SpotLight{
     float coneAngle;
     float penumbraAngle;
     int castsShadows;
+    uint shadowmapBindlessIndex;
 };

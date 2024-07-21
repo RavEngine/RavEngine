@@ -135,7 +135,7 @@ void main(){
 
         float pcfFactor = 1;
         if (bool(light.castsShadows)){
-            //TODO: shadows
+            pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);
         }
 
         pcfFactor = pcfFactor * (int(pixelAngle > coneDotFactor));
