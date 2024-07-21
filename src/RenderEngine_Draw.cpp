@@ -844,6 +844,7 @@ struct LightingType{
 						mainCommandBuffer->BindBuffer(worldOwning->renderData->directionalLightData.uploadData.GetDense().get_underlying().buffer,13);
 						mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData->pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData->spotLightData.uploadData.GetDense().get_underlying().buffer, 17);
 						mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 0);
 

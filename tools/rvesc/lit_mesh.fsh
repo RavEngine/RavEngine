@@ -53,6 +53,10 @@ layout(scalar, binding = 16) readonly buffer clusterSSBO{
     Cluster clusters[];
 };
 
+layout(scalar, binding = 17) readonly buffer spotLightSSBO{
+    SpotLight spotLights[];
+};
+
 layout(set = 1, binding = 0) uniform texture2D shadowMaps[];      // the bindless heap must be in set 1 binding 0
 
 void main(){
@@ -102,12 +106,46 @@ void main(){
         vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, 1.0 / (dist * dist),  light.color * light.intensity);
         float pcfFactor = 1;
 
-        //TODO: shadows
+        if (bool(light.castsShadows)){
+            //TODO: shadows
+        }
 
         outcolor += vec4(result * user_out.ao * pcfFactor,1);
     }
 
     // spot lights
+    for(uint i = 0; i < clusters[tileIndex].spotLightCount; i++){
+        uint lightIndex = clusters[tileIndex].spotLightIndices[i];
+        SpotLight light = spotLights[lightIndex];
+
+        vec4 position = light.worldTransform * vec4(0,0,0,1);
+
+        vec3 toLight = normalize(position.xyz - worldPosition);
+
+	    float dist = distance(worldPosition, position.xyz);
+
+        // is the pixel inside the light area?
+        float coneDotFactor = cos(radians(light.coneAngle));
+        mat3 rotScaleOnly = mat3(light.worldTransform);
+        vec3 forward = normalize(rotScaleOnly * vec3(0, -1, 0));    // spot lights point down by default
+
+	    float pixelAngle = dot(-forward,toLight);   
+
+        if (pixelAngle > 0){
+            vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, 1.0 / (dist * dist),  light.color * light.intensity);
+
+            float pcfFactor = 1;
+            if (bool(light.castsShadows)){
+                //TODO: shadows
+            }
+
+            pcfFactor = pcfFactor * (int(pixelAngle > coneDotFactor));
+
+            outcolor += vec4(result * user_out.ao * pcfFactor, 1);
+        }
+
+        
+    }
 
     outnormal = vec4(user_out.normal,1);
 }

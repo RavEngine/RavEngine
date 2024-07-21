@@ -94,6 +94,13 @@ RavEngine::Material::Material(const std::string_view vsh_name, const std::string
         );
         configBindingsCopy.push_back(
             {
+                .binding = 17,
+                .type = RGL::BindingType::StorageBuffer,
+                .stageFlags = RGL::BindingVisibility::Fragment
+            }
+        );
+        configBindingsCopy.push_back(
+            {
                 .count = 2048,
                 .isBindless = true,     // binding 0 set 1
                 .type = RGL::BindingType::SampledImage,
