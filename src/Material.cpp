@@ -50,63 +50,6 @@ RavEngine::Material::Material(const std::string_view vsh_name, const std::string
                                          .stageFlags = RGL::BindingVisibility::Vertex
                                         }
                                      );
-        configBindingsCopy.push_back(
-            {
-                .binding = 11,
-                .type = RGL::BindingType::StorageBuffer,
-                .stageFlags = RGL::BindingVisibility::VertexFragment
-            }
-        );
-        configBindingsCopy.push_back(
-            {
-                .binding = 12,
-                .type = RGL::BindingType::StorageBuffer,
-                .stageFlags = RGL::BindingVisibility::Fragment
-            }
-        );
-        configBindingsCopy.push_back(
-            {
-                .binding = 13,
-                .type = RGL::BindingType::StorageBuffer,
-                .stageFlags = RGL::BindingVisibility::Fragment
-            }
-        );
-        configBindingsCopy.push_back(
-            {
-                .binding = 14,
-                .type = RGL::BindingType::Sampler,
-                .stageFlags = RGL::BindingVisibility::Fragment
-            }
-        );
-        configBindingsCopy.push_back(
-            {
-                .binding = 15,
-                .type = RGL::BindingType::StorageBuffer,
-                .stageFlags = RGL::BindingVisibility::Fragment
-            }
-        );
-        configBindingsCopy.push_back(
-            {
-                .binding = 16,
-                .type = RGL::BindingType::StorageBuffer,
-                .stageFlags = RGL::BindingVisibility::Fragment
-            }
-        );
-        configBindingsCopy.push_back(
-            {
-                .binding = 17,
-                .type = RGL::BindingType::StorageBuffer,
-                .stageFlags = RGL::BindingVisibility::Fragment
-            }
-        );
-        configBindingsCopy.push_back(
-            {
-                .count = 2048,
-                .isBindless = true,     // binding 0 set 1
-                .type = RGL::BindingType::SampledImage,
-                .stageFlags = RGL::BindingVisibility::Fragment
-            }
-        );
     }
 
     pipelineLayout = device->CreatePipelineLayout({
@@ -182,11 +125,73 @@ Material::~Material() {
     }
 }
 
+static std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterialBindings(const std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc>& bindings) {
+    auto configBindingsCopy = bindings;
+    configBindingsCopy.push_back(
+        {
+            .binding = 11,
+            .type = RGL::BindingType::StorageBuffer,
+            .stageFlags = RGL::BindingVisibility::VertexFragment
+        }
+    );
+    configBindingsCopy.push_back(
+        {
+            .binding = 12,
+            .type = RGL::BindingType::StorageBuffer,
+            .stageFlags = RGL::BindingVisibility::Fragment
+        }
+    );
+    configBindingsCopy.push_back(
+        {
+            .binding = 13,
+            .type = RGL::BindingType::StorageBuffer,
+            .stageFlags = RGL::BindingVisibility::Fragment
+        }
+    );
+    configBindingsCopy.push_back(
+        {
+            .binding = 14,
+            .type = RGL::BindingType::Sampler,
+            .stageFlags = RGL::BindingVisibility::Fragment
+        }
+    );
+    configBindingsCopy.push_back(
+        {
+            .binding = 15,
+            .type = RGL::BindingType::StorageBuffer,
+            .stageFlags = RGL::BindingVisibility::Fragment
+        }
+    );
+    configBindingsCopy.push_back(
+        {
+            .binding = 16,
+            .type = RGL::BindingType::StorageBuffer,
+            .stageFlags = RGL::BindingVisibility::Fragment
+        }
+    );
+    configBindingsCopy.push_back(
+        {
+            .binding = 17,
+            .type = RGL::BindingType::StorageBuffer,
+            .stageFlags = RGL::BindingVisibility::Fragment
+        }
+    );
+    configBindingsCopy.push_back(
+        {
+            .count = 2048,
+            .isBindless = true,     // binding 0 set 1
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment
+        }
+    );
+    return configBindingsCopy;
+}
+
 RavEngine::LitMaterial::LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions, const LitMaterialOptions& options) : Material(vsh_name, fsh_name, MaterialConfig
     {
         .vertConfig = defaultVertexConfig,
         .colorBlendConfig = defaultColorBlendConfig,
-        .bindings = pipeOptions.bindings,
+        .bindings = augmentLitMaterialBindings(pipeOptions.bindings),
         .pushConstantSize = pipeOptions.pushConstantSize,
         .cullMode = options.cullMode
     }
