@@ -1,6 +1,4 @@
-
 // adapted from: https://github.com/DaveH355/clustered-shading
-
 #include "cluster_shared.glsl"
 
 layout(scalar, binding = 0) restrict buffer clusterSSBO {

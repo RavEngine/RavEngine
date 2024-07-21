@@ -82,7 +82,6 @@ void main(){
         outcolor += vec4(lightResult * user_out.ao * pcfFactor,1);
     }
 
-    // point lights
 
     // Locating which cluster this fragment is part of
     const uint zTile = uint((log(abs(viewPosition.z) / engineConstants[0].zNear) * engineConstants[0].gridSize.z) / log(engineConstants[0].zFar / engineConstants[0].zNear));
@@ -90,11 +89,10 @@ void main(){
     const uvec3 tile = uvec3(gl_FragCoord.xy / tileSize, zTile);
     const uint tileIndex =
         tile.x + (tile.y * engineConstants[0].gridSize.x) + (tile.z * engineConstants[0].gridSize.x * engineConstants[0].gridSize.y);
-
-    const uint lightCount = clusters[tileIndex].count;
     
-    for(uint i = 0; i < lightCount; i++){
-        uint lightIndex = clusters[tileIndex].lightIndices[i];
+    // point lights
+    for(uint i = 0; i < clusters[tileIndex].pointLightCount; i++){
+        uint lightIndex = clusters[tileIndex].pointLightIndices[i];
         PointLight light = pointLights[lightIndex];
 
         vec3 toLight = normalize(light.position - worldPosition);
@@ -103,8 +101,13 @@ void main(){
 
         vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, 1.0 / (dist * dist),  light.color * light.intensity);
         float pcfFactor = 1;
+
+        //TODO: shadows
+
         outcolor += vec4(result * user_out.ao * pcfFactor,1);
     }
+
+    // spot lights
 
     outnormal = vec4(user_out.normal,1);
 }

@@ -424,8 +424,10 @@ void World::setupRenderTasks(){
                     auto& lightData = ptr->Get(i);
                     auto& colorData = lightData.GetColorRGBA();
                     auto& denseData = renderData->spotLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i));
-                    denseData.coneAndPenumbra = { lightData.GetConeAngle(), lightData.GetPenumbraAngle() };
-                    denseData.colorIntensity = { colorData.R,colorData.G,colorData.B,lightData.GetIntensity()};
+                    denseData.coneAngle = lightData.GetConeAngle();
+                    denseData.penumbraAngle = lightData.GetPenumbraAngle();
+                    denseData.color = { colorData.R,colorData.G,colorData.B};
+                    denseData.intensity = lightData.GetIntensity();
                     denseData.castsShadows = lightData.CastsShadows();
                     lightData.clearInvalidate();
                 }

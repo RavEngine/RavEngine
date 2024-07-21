@@ -14,9 +14,15 @@ layout(scalar, binding = 1) restrict readonly buffer lightSSBO
     PointLight pointLight[];
 };
 
+layout(scalar, binding = 2) restrict readonly buffer spotLightSSBO
+{
+    SpotLight spotLight[];
+};
+
 layout(push_constant, scalar) uniform UniformBufferObject{
     mat4 viewMatrix;
-    uint lightCount;
+    uint pointLightCount;
+    uint spotLightCount;
 } ubo;
 
 bool sphereAABBIntersection(vec3 center, float radius, vec3 aabbMin, vec3 aabbMax)
@@ -43,22 +49,27 @@ bool testSphereAABB(uint i, Cluster cluster)
 // each invocation of main() is a thread processing a cluster
 void main()
 {
-    uint lightCount = ubo.lightCount;
     uint index = gl_WorkGroupID.x * LOCAL_SIZE + gl_LocalInvocationID.x;
     Cluster cluster = clusters[index];
 
     // we need to reset count because culling runs every frame.
     // otherwise it would accumulate.
-    cluster.count = 0;
+    cluster.pointLightCount = 0;
+    cluster.spotLightCount = 0;
 
-    for (uint i = 0; i < lightCount; ++i)
+    for (uint i = 0; i < ubo.pointLightCount; ++i)
     {
-        if (testSphereAABB(i, cluster) && cluster.count < 100)
+        if (testSphereAABB(i, cluster) && cluster.pointLightCount < CLUSTER_MAX_POINTS)
         {
-            cluster.lightIndices[cluster.count] = i;
-            cluster.count++;
+            cluster.pointLightIndices[cluster.pointLightCount] = i;
+            cluster.pointLightCount++;
         }
     }
+
+    for(uint i = 0; i < ubo.spotLightCount; i++){
+
+    }
+
     clusters[index] = cluster;
 }
 

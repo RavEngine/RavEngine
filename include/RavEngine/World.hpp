@@ -336,9 +336,12 @@ namespace RavEngine {
         };
 
         struct SpotLightDataUpload {
+            glm::mat4 lightViewProj;
             glm::mat4 worldTransform;
-            glm::vec4 colorIntensity;
-            glm::vec2 coneAndPenumbra;
+            glm::vec3 color;
+            float intensity;
+            float coneAngle;
+            float penumbraAngle;
             int castsShadows;
         };
 

@@ -22,6 +22,7 @@
 #include "RenderTargetCollection.hpp"
 #include "PostProcess.hpp"
 #include <unordered_set>
+#include "cluster_defs.h"
 
 struct SDL_Window;
 
@@ -46,13 +47,13 @@ namespace RavEngine {
 		constexpr static uint32_t gridSizeZ = 24;
 		constexpr static uint32_t numClusters = gridSizeX * gridSizeY * gridSizeZ;
 
-		constexpr static uint32_t maxLights = 100;
-
 		struct Cluster {
 			glm::vec3 minPoint;
 			glm::vec3 maxPoint;
-			uint32_t count;
-			uint32_t lightIndices[maxLights];
+			uint32_t pointLightCount;
+			uint32_t spotLightCount;
+			uint32_t pointLightIndices[CLUSTER_MAX_POINTS];
+			uint32_t spotLightIndices[CLUSTER_MAX_SPOTS];
 		};
 	}
 
@@ -95,7 +96,7 @@ namespace RavEngine {
 
 		struct GridAssignUBO {
 			glm::mat4 viewMat;
-			uint32_t lightCount;
+			uint32_t pointLightCount, spotLightCount;
 		};
         
         RGLShaderLibraryPtr defaultPostEffectVSH;

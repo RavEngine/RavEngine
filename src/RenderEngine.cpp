@@ -940,6 +940,12 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				.type = RGL::BindingType::StorageBuffer,
 				.stageFlags = RGL::BindingVisibility::Compute,
 				.writable = false
+			},
+			{
+				.binding = 2,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Compute,
+				.writable = false
 			}
 		},
 		.constants = {{ sizeof(GridAssignUBO), 0, RGL::StageVisibility::Compute}}

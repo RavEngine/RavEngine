@@ -515,15 +515,17 @@ struct LightingType{
 					}
 
 					// next assign lights to clusters
-					if (nPointLights > 0){
+					{
 						GridAssignUBO ubo{
 							.viewMat = viewonly,
-							.lightCount = nPointLights
+							.pointLightCount = nPointLights,
+							.spotLightCount = nSpotLights
 						};
 						mainCommandBuffer->BeginCompute(clusterPopulatePipeline);
 						mainCommandBuffer->SetComputeBytes(ubo, 0);
 						mainCommandBuffer->BindComputeBuffer(lightClusterBuffer, 0);
 						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->pointLightData.uploadData.GetDense().get_underlying().buffer, 1);
+						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->spotLightData.uploadData.GetDense().get_underlying().buffer, 2);
 
 						constexpr static auto threadGroupSize = 128;
 
@@ -1098,9 +1100,9 @@ struct LightingType{
 		};
 
 		Profile::BeginFrame(Profile::RenderEncodeSpotShadows);
-		const auto spotlightShadowMapFunction = [](uint8_t index, const RavEngine::World::SpotLightDataUpload& light, auto unusedAux, entity_t owner) {
+		const auto spotlightShadowMapFunction = [](uint8_t index, RavEngine::World::SpotLightDataUpload& light, auto unusedAux, entity_t owner) {
 
-			auto lightProj = RMath::perspectiveProjection<float>(light.coneAndPenumbra.x * 2, 1, 0.1, 100);
+			auto lightProj = RMath::perspectiveProjection<float>(light.coneAngle * 2, 1, 0.1, 100);
 
 			// -y is forward for spot lights, so we need to rotate to compensate
 			auto rotmat = glm::toMat4(quaternion(vector3(-3.14159265358 / 2, 0, 0)));
@@ -1112,13 +1114,15 @@ struct LightingType{
 
 			auto& origLight = Entity(owner).GetComponent<SpotLight>();
 
+			light.lightViewProj = lightProj * viewMat;	// save this because the shader needs it
+
 			return lightViewProjResult{
 				.lightProj = lightProj,
 				.lightView = viewMat,
 				.camPos = camPos,
 				.depthPyramid = origLight.shadowData.pyramid,
 				.shadowmapTexture = origLight.shadowData.shadowMap,
-				.spillData = lightProj * viewMat
+				.spillData = light.lightViewProj
 			};
 			};
 
