@@ -90,26 +90,34 @@ namespace RavEngine {
 		RGLRenderPipelinePtr userRenderPipeline, shadowRenderPipeline;
 	};
 
+	struct BillboardRenderParticleMaterial_impl {
+		ParticleRenderMaterialConfig augmentBillboardConfig(const ParticleRenderMaterialConfig& in, LightingMode mode);
+	};
+
 	// Subclass this to make custom particle materials
 	template<LightingMode mode>
-	struct BillboardRenderParticleMaterial : public ParticleRenderMaterial {
+	struct BillboardRenderParticleMaterial : public ParticleRenderMaterial, private BillboardRenderParticleMaterial_impl {
 	protected:
 		BillboardRenderParticleMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {}) : ParticleRenderMaterial(particleVS, particleFS, {
 			.vertexConfig = quadVertexConfig,
 			.topology = RGL::PrimitiveTopology::TriangleStrip,
 			.mode = mode
-			}, config) {}
+			}, augmentBillboardConfig(config,mode)) {}
+	};
+
+	struct MeshParticleRenderMaterial_Impl {
+		ParticleRenderMaterialConfig augmentMeshConfig(const ParticleRenderMaterialConfig& in, LightingMode mode);
 	};
 
 	// Subclass this to make custom particle materials
 	template<LightingMode mode>
-	struct MeshParticleRenderMaterial : public ParticleRenderMaterial {
+	struct MeshParticleRenderMaterial : public ParticleRenderMaterial, private MeshParticleRenderMaterial_Impl {
 	protected:
 		MeshParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const ParticleRenderMaterialConfig& config = {}) : ParticleRenderMaterial(particleVS, particleFS, {
 		.vertexConfig = defaultVertexConfig,
 		.topology = RGL::PrimitiveTopology::TriangleList,
 		.mode = mode
-			}, config) {}
+			}, augmentMeshConfig(config, mode)) {}
 	};
 
 	// Subclass to create custom mesh particle selection 

@@ -17,6 +17,9 @@ struct ParticleMatrices{
 
 layout(location = 0) in vec2 in_position;
 
+layout(location = 11) out vec3 worldPosition;
+layout(location = 12) out vec3 viewPosition;
+
 void main(){
     
     vec2 quadPositions[] =

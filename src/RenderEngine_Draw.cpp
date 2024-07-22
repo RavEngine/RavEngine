@@ -905,7 +905,7 @@ struct LightingType{
 				}
 
 				// render particles
-				worldOwning->Filter([this, &viewproj, &particleBillboardMatrices,&currentLightingType,&pipelineSelectorFunction](const ParticleEmitter& emitter, const Transform& t) {
+				worldOwning->Filter([this, &viewproj, &particleBillboardMatrices,&currentLightingType,&pipelineSelectorFunction,&lightDataOffset, &worldOwning](const ParticleEmitter& emitter, const Transform& t) {
 					// check if shadow casting is enabled
 					if (!emitter.GetCastsShadows() && currentLightingType.FilterLightBlockers) {
 						return;
@@ -914,7 +914,7 @@ struct LightingType{
 						return;
 					}
 
-					auto sharedParticleImpl = [this, &particleBillboardMatrices, &pipelineSelectorFunction](const ParticleEmitter& emitter, auto&& materialInstance, Ref<ParticleRenderMaterial> material, RGLBufferPtr activeParticleIndexBuffer) {
+					auto sharedParticleImpl = [this, &particleBillboardMatrices, &pipelineSelectorFunction,&worldOwning,&lightDataOffset](const ParticleEmitter& emitter, auto&& materialInstance, Ref<ParticleRenderMaterial> material, RGLBufferPtr activeParticleIndexBuffer, bool isLit) {
 						auto pipeline = pipelineSelectorFunction(material);
 
 
@@ -922,6 +922,17 @@ struct LightingType{
 						mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, material->particleDataBufferBinding);
 						mainCommandBuffer->BindBuffer(activeParticleIndexBuffer, material->particleAliveIndexBufferBinding);
 						mainCommandBuffer->BindBuffer(transientBuffer, material->particleMatrixBufferBinding, particleBillboardMatrices);
+
+						if (isLit) {
+							mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer, 12);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData->directionalLightData.uploadData.GetDense().get_underlying().buffer, 13);
+							mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData->pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData->spotLightData.uploadData.GetDense().get_underlying().buffer, 17);
+							mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
+							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 0);
+						}
 
 						std::byte pushConstants[128]{  };
 
@@ -952,10 +963,12 @@ struct LightingType{
 							[this, &emitter, &viewproj,&particleBillboardMatrices,&sharedParticleImpl,&currentLightingType](const Ref <BillboardParticleRenderMaterialInstance>& billboardMat) {
 
 								Ref<ParticleRenderMaterial> material;
+								bool isLit = false;
 								std::visit(CaseAnalysis{
-									[&currentLightingType, &material](const Ref<BillboardRenderParticleMaterial<LightingMode::Lit>>& mat) {
+									[&currentLightingType, &material,&isLit](const Ref<BillboardRenderParticleMaterial<LightingMode::Lit>>& mat) {
 										if (currentLightingType.Lit) {
 											material = mat;
+											isLit = true;
 										}
 									},
 									[&currentLightingType, &material](const Ref<BillboardRenderParticleMaterial<LightingMode::Unlit>>& mat) {
@@ -970,7 +983,7 @@ struct LightingType{
 									return;
 								}
 
-								sharedParticleImpl(emitter,billboardMat, material, emitter.activeParticleIndexBuffer);
+								sharedParticleImpl(emitter,billboardMat, material, emitter.activeParticleIndexBuffer,isLit);
 
 								mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
 
@@ -982,14 +995,16 @@ struct LightingType{
 									});
 								
                             },
-							[this,&emitter,&sharedParticleImpl, &currentLightingType](const Ref <MeshParticleRenderMaterialInstance>& meshMat) {
+							[this,&emitter,&sharedParticleImpl, &currentLightingType,&lightDataOffset](const Ref <MeshParticleRenderMaterialInstance>& meshMat) {
 							RGLBufferPtr activeIndexBuffer;
 
 								Ref<ParticleRenderMaterial> material;
+								bool isLit = false;
 								std::visit(CaseAnalysis{
-									[&currentLightingType, &material](const Ref<MeshParticleRenderMaterial<LightingMode::Lit>>& mat) {
+									[&currentLightingType, &material,&isLit](const Ref<MeshParticleRenderMaterial<LightingMode::Lit>>& mat) {
 										if (currentLightingType.Lit) {
 											material = mat;
+											isLit = true;
 										}
 									},
 									[&currentLightingType, &material](const Ref<MeshParticleRenderMaterial<LightingMode::Unlit>>& mat) {
@@ -1011,7 +1026,7 @@ struct LightingType{
 									return;
 								}
 
-								sharedParticleImpl(emitter, meshMat, material, activeIndexBuffer);
+								sharedParticleImpl(emitter, meshMat, material, activeIndexBuffer,isLit);
 
 								mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
 								mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
