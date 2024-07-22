@@ -65,12 +65,19 @@ void main(){
 
     // compute lighting based on the results of the user's function
 
-
     // ambient lights
     for(uint i = 0; i < engineConstants[0].ambientLightCount; i++){
         AmbientLightData light = ambientLights[i];
-        outcolor += user_out.color * vec4(light.color,1) * light.intensity;
-        //TODO: also factor in SSAO
+
+        float ao = 1;
+        #if 0
+        if (ubo.ssao_enabled > 0){
+		    ao = texture(sampler2D(t_ssao, g_sampler), texcoord).r;
+	    }
+        #endif
+
+        outcolor += user_out.color * vec4(light.color,1) * light.intensity * ao;
+        
     }
 
     // directional lights
@@ -107,7 +114,20 @@ void main(){
         float pcfFactor = 1;
 
         if (bool(light.castsShadows)){
-            //TODO: shadows
+            // adapted from: https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/Mesh.hlsl#L233
+            vec3 shadowPos = worldPosition - light.position;
+            float shadowDistance = length(shadowPos);
+            vec3 shadowDir = normalize(shadowPos);
+
+            float projectedDistance  = max(max(abs(shadowPos.x), abs(shadowPos.y)), abs(shadowPos.z));
+
+            float nearClip = engineConstants[0].zNear;
+            float a = 0.0;
+            float b = nearClip;
+            float z = projectedDistance * a + b;
+            float dbDistance = z / projectedDistance;
+
+            //pcfFactor = texture(samplerCubeShadow(shadowMaps[light.shadowmapBindlessIndex], shadowSampler), vec4(shadowDir, dbDistance)).r;
         }
 
         outcolor += vec4(result * user_out.ao * pcfFactor,1);

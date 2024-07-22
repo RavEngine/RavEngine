@@ -137,8 +137,7 @@ constexpr std::string_view D3D12AutoBreadcrumbOpToString(D3D12_AUTO_BREADCRUMB_O
     case D3D12_AUTO_BREADCRUMB_OP_RESOLVEENCODEROUTPUTMETADATA:
         return "RESOLVEENCODEROUTPUTMETADATA";
     default:
-        FatalError("Invalid D3D12_AUTO_BREADCRUMB_OP");
-        return "";
+        return "Unknown D3D12_AUTO_BREADCRUMB_OP";
     }
 }
 
@@ -204,8 +203,7 @@ constexpr std::string_view D3D12_DRED_ALLOCATION_TYPE_to_string(D3D12_DRED_ALLOC
     case D3D12_DRED_ALLOCATION_TYPE_INVALID:
         return "INVALID";
     default:
-        FatalError("Invalid D3D12_DRED_ALLOCATION_TYPE");
-        return "";
+        return "Unknown D3D12_DRED_ALLOCATION_TYPE";
     }
 }
 
