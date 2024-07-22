@@ -199,11 +199,23 @@ RavEngine::LitMaterial::LitMaterial(const std::string_view vsh_name, const std::
 {
 }
 
+static std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentUnlitMaterialBindings(const std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc>& bindings) {
+    auto configBindingsCopy = bindings;
+    configBindingsCopy.push_back(
+        {
+            .binding = 11,
+            .type = RGL::BindingType::StorageBuffer,
+            .stageFlags = RGL::BindingVisibility::VertexFragment
+        }
+    );
+    return configBindingsCopy;
+}
+
 UnlitMaterial::UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions, const UnlitMaterialOptions& options)
     : Material(vsh_name, fsh_name, MaterialConfig{
         .vertConfig = defaultVertexConfig,
         .colorBlendConfig = defaultUnlitColorBlendConfig,
-        .bindings = pipeOptions.bindings,
+        .bindings = augmentUnlitMaterialBindings(pipeOptions.bindings),
         .pushConstantSize = pipeOptions.pushConstantSize,
         .cullMode = options.cullMode
         }) {}

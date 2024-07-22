@@ -65,9 +65,9 @@ namespace RavEngine {
 	struct ParticleRenderMaterial {
 		friend class RenderEngine;
 		constexpr static uint8_t
-			particleDataBufferBinding = 12,
-			particleAliveIndexBufferBinding = 13,
-			particleMatrixBufferBinding = 14
+			particleDataBufferBinding = 18,
+			particleAliveIndexBufferBinding = 19,
+			particleMatrixBufferBinding = 20
 			;
 	protected:
 		struct InternalConfig {
@@ -162,6 +162,7 @@ namespace RavEngine {
 	// subclass to define your own particle material instances
 	struct MeshParticleRenderMaterialInstance : ParticleRenderMaterialInstance {
 		friend class RenderEngine;
+		static constexpr uint32_t kEngineDataBinding = 21;
 		using MaterialVariant = std::variant<Ref<MeshParticleRenderMaterial<LightingMode::Lit>>, Ref<MeshParticleRenderMaterial<LightingMode::Unlit>> >;
 	private:
 		MaterialVariant material;

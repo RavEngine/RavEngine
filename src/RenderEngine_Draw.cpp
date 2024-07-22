@@ -1015,7 +1015,7 @@ struct LightingType{
 
 								mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
 								mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
-								mainCommandBuffer->BindBuffer(transientBuffer, 11, emitter.renderState.maxTotalParticlesOffset);
+								mainCommandBuffer->BindBuffer(transientBuffer, MeshParticleRenderMaterialInstance::kEngineDataBinding, emitter.renderState.maxTotalParticlesOffset);
 
 								mainCommandBuffer->ExecuteIndirectIndexed(
 									{

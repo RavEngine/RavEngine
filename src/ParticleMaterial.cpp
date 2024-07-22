@@ -269,7 +269,7 @@ namespace RavEngine {
 				},
 
 				{
-					.binding = 11,									// engine-required binding
+					.binding = 21,									// engine-required binding
 					.type = RGL::BindingType::StorageBuffer,
 					.stageFlags = RGL::BindingVisibility::Vertex,
 					.writable = false

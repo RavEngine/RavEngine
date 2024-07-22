@@ -14,6 +14,7 @@ struct ParticleMatrices{
 
 #include "particle_bindings_sub.glsl"
 
+
 layout(location = 0) in vec2 in_position;
 
 void main(){

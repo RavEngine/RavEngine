@@ -1,17 +1,17 @@
 
 #if !CUSTOM_INDEXING
-layout(scalar, binding = 12) readonly buffer ParticleDataSSBO
+layout(scalar, binding = 18) readonly buffer ParticleDataSSBO
 {
     ParticleData particleData[];
 };
 #endif
 
-layout(std430, binding = 13) readonly buffer aliveSSBO
+layout(std430, binding = 19) readonly buffer aliveSSBO
 {
     uint aliveParticleIndexBuffer[];
 };
 
-layout(scalar, binding = 14) readonly buffer matrixSSBO
+layout(scalar, binding = 20) readonly buffer matrixSSBO
 {
     ParticleMatrices matrixData[];
 };

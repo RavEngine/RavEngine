@@ -238,11 +238,11 @@ namespace RGL {
             case decltype(item.type)::UniformBuffer:
                 if (item.writable){
                     bufferBindingToRootSlot[item.binding] = { static_cast<uint32_t>(rootParameters.size()), true };
-                    rootParameters.emplace_back().InitAsUnorderedAccessView(item.binding, 0);
+                    rootParameters.emplace_back().InitAsUnorderedAccessView(item.binding, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE);
                 }
                 else {
                     bufferBindingToRootSlot[item.binding] = { static_cast<uint32_t>(rootParameters.size()), false };
-                    rootParameters.emplace_back().InitAsShaderResourceView(item.binding, 0);
+                    rootParameters.emplace_back().InitAsShaderResourceView(item.binding, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE);
                 }
                 break;
 
