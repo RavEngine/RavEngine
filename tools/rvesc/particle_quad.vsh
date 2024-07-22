@@ -1,7 +1,4 @@
-struct ParticleVertexOut{
-    vec4 position;
-};
-
+#include "particle_shared.glsl"
 
 struct ParticleMatrices{
     mat4 viewProj;
@@ -14,6 +11,7 @@ struct ParticleMatrices{
 
 #include "particle_bindings_sub.glsl"
 
+#include "lit_mesh_shared.glsl"
 
 layout(location = 0) in vec2 in_position;
 
@@ -41,4 +39,7 @@ void main(){
 #endif
 
     gl_Position = user_out.position;
+
+    worldPosition = user_out.worldPosition;
+    viewPosition = (engineConstants[0].viewOnly * vec4(worldPosition,1)).xyz;
 }

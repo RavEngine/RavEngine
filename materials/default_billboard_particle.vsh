@@ -61,6 +61,7 @@ ParticleVertexOut vert(uint particleID, ParticleMatrices matrices, vec2 inVertex
     uv += (vec2(col,row));
 
     v_out.position = vert;
+    v_out.worldPosition = data_pos + rotated_quad;
     out_uv = uv;
 
     return v_out;

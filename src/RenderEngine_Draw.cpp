@@ -923,8 +923,8 @@ struct LightingType{
 						mainCommandBuffer->BindBuffer(activeParticleIndexBuffer, material->particleAliveIndexBufferBinding);
 						mainCommandBuffer->BindBuffer(transientBuffer, material->particleMatrixBufferBinding, particleBillboardMatrices);
 
+						mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
 						if (isLit) {
-							mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
 							mainCommandBuffer->BindBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer, 12);
 							mainCommandBuffer->BindBuffer(worldOwning->renderData->directionalLightData.uploadData.GetDense().get_underlying().buffer, 13);
 							mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
