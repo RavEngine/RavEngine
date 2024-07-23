@@ -93,16 +93,14 @@ void main(){
         outcolor += vec4(lightResult * user_out.ao * pcfFactor,1);
     }
 
-
     // Locating which cluster this fragment is part of
     const uint zTile = uint((log(abs(viewPosition.z) / engineConstants[0].zNear) * engineConstants[0].gridSize.z) / log(engineConstants[0].zFar / engineConstants[0].zNear));
     const vec2 tileSize = engineConstants[0].screenDimensions / engineConstants[0].gridSize.xy;
     const uvec3 tile = uvec3(gl_FragCoord.xy / tileSize, zTile);
-    const uint tileIndex =
-        tile.x + (tile.y * engineConstants[0].gridSize.x) + (tile.z * engineConstants[0].gridSize.x * engineConstants[0].gridSize.y);
+    const uint tileIndex = tile.x + (tile.y * engineConstants[0].gridSize.x) + (tile.z * engineConstants[0].gridSize.x * engineConstants[0].gridSize.y);
     
     // point lights
-    for(uint i = 0; i < clusters[tileIndex].pointLightCount; i++){
+    for(uint i = 0; i < clusters[tileIndex].pointLightCount && i < CLUSTER_MAX_POINTS; i++){
         uint lightIndex = clusters[tileIndex].pointLightIndices[i];
         PointLight light = pointLights[lightIndex];
 
@@ -134,7 +132,7 @@ void main(){
     }
 
     // spot lights
-    for(uint i = 0; i < clusters[tileIndex].spotLightCount; i++){
+    for(uint i = 0; i < clusters[tileIndex].spotLightCount && i < CLUSTER_MAX_SPOTS; i++){
         uint lightIndex = clusters[tileIndex].spotLightIndices[i];
         SpotLight light = spotLights[lightIndex];
 
@@ -161,9 +159,6 @@ void main(){
         pcfFactor = pcfFactor * (int(pixelAngle > coneDotFactor));
 
         outcolor += vec4(result * user_out.ao * pcfFactor, 1);
-        
-
-        
     }
 
     outnormal = vec4(user_out.normal,1);
