@@ -136,8 +136,15 @@ void CommandBufferMTL::Reset(){
     indexBuffer = nullptr;
 }
 
+// avoid allocating this every frame
+static MTLCommandBufferDescriptor* desc = [MTLCommandBufferDescriptor new];
+
+
 void CommandBufferMTL::Begin(){
-    currentCommandBuffer = [owningQueue->commandQueue commandBuffer];
+#ifndef NDEBUG
+desc.errorOptions = MTLCommandBufferErrorOptionEncoderExecutionStatus;
+#endif
+    currentCommandBuffer = [owningQueue->commandQueue commandBufferWithDescriptor:desc];
 }
 
 void CommandBufferMTL::End(){
@@ -427,6 +434,13 @@ void CommandBufferMTL::ExecuteIndirect(const RGL::IndirectConfig & config) {
 void CommandBufferMTL::BlockUntilCompleted()
 {
     [currentCommandBuffer waitUntilCompleted];
+    if (auto err = currentCommandBuffer.error){
+        if (NSArray<MTLCommandBufferEncoderInfo>* encoderInfos = err.userInfo[MTLCommandBufferEncoderInfoErrorKey]){
+            for(auto info in encoderInfos){
+                
+            }
+        }
+    }
 }
 
 }

@@ -128,9 +128,8 @@ struct LightingType{
 			// each skinned mesh gets its own 1-instance draw in the buffer. The instance count starts at 0.
 			mainCommandBuffer->BeginComputeDebugMarker("Prepare Skinned Indirect Draw buffer");
 			mainCommandBuffer->BeginCompute(skinningDrawCallPreparePipeline);
-			SkinningPrepareUBO ubo;
-			uint32_t baseInstance = 0;
 			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+                SkinningPrepareUBO ubo;
 				mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 0, 0);
 				for (auto& command : drawcommand.commands) {
 					const auto objectCount = command.entities.DenseSize();
