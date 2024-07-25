@@ -62,6 +62,7 @@ layout(set = 1, binding = 0) uniform texture2D shadowMaps[];      // the bindles
 void main(){
 
     LitOutput user_out = frag();
+    outcolor = vec4(0); // NV: these don't default-init to 0
 
     // compute lighting based on the results of the user's function
 
@@ -98,7 +99,7 @@ void main(){
     const vec2 tileSize = engineConstants[0].screenDimensions / engineConstants[0].gridSize.xy;
     const uvec3 tile = uvec3(gl_FragCoord.xy / tileSize, zTile);
     const uint tileIndex = tile.x + (tile.y * engineConstants[0].gridSize.x) + (tile.z * engineConstants[0].gridSize.x * engineConstants[0].gridSize.y);
-    
+
     // point lights
     for(uint i = 0; i < clusters[tileIndex].pointLightCount && i < CLUSTER_MAX_POINTS; i++){
         uint lightIndex = clusters[tileIndex].pointLightIndices[i];
