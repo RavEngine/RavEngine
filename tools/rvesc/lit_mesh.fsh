@@ -98,9 +98,9 @@ void main(){
     // Locating which cluster this fragment is part of
     // adpated from: https://github.com/DaveH355/clustered-shading
     const uint zTile = uint((log(abs(viewPosition.z) / engineConstants[0].zFar) * engineConstants[0].gridSize.z) / log(engineConstants[0].zNear / engineConstants[0].zFar));
-    const vec2 tileSize = engineConstants[0].screenDimensions.xy / engineConstants[0].gridSize.xy;
+    const vec2 tileSize = engineConstants[0].screenDimensions.zw / engineConstants[0].gridSize.xy;
 
-    vec2 virtualScreenCoord = (gl_FragCoord.xy - engineConstants[0].screenDimensions.xy) / engineConstants[0].screenDimensions.zw;
+    vec2 virtualScreenCoord = (gl_FragCoord.xy - engineConstants[0].screenDimensions.xy);
 
     const uvec3 tile = uvec3(virtualScreenCoord / tileSize, zTile);
     uint tileIndex = tile.x + (tile.y * engineConstants[0].gridSize.x) + (tile.z * engineConstants[0].gridSize.x * engineConstants[0].gridSize.y);
