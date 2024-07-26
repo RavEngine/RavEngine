@@ -95,13 +95,20 @@ void main(){
     }
 
     // Locating which cluster this fragment is part of
-    const uint zTile = uint((log(abs(viewPosition.z) / engineConstants[0].zNear) * engineConstants[0].gridSize.z) / log(engineConstants[0].zFar / engineConstants[0].zNear));
+    // adpated from: https://github.com/DaveH355/clustered-shading
+    const uint zTile = uint((log(abs(viewPosition.z) / engineConstants[0].zFar) * engineConstants[0].gridSize.z) / log(engineConstants[0].zNear / engineConstants[0].zFar));
     const vec2 tileSize = engineConstants[0].screenDimensions / engineConstants[0].gridSize.xy;
     const uvec3 tile = uvec3(gl_FragCoord.xy / tileSize, zTile);
-    const uint tileIndex = tile.x + (tile.y * engineConstants[0].gridSize.x) + (tile.z * engineConstants[0].gridSize.x * engineConstants[0].gridSize.y);
+    uint tileIndex = tile.x + (tile.y * engineConstants[0].gridSize.x) + (tile.z * engineConstants[0].gridSize.x * engineConstants[0].gridSize.y);
 
+    if (tileIndex > 3456){
+        tileIndex = 3455;
+    }
+    
+    const uint nPointLights = clusters[tileIndex].pointLightCount;
+    
     // point lights
-    for(uint i = 0; i < clusters[tileIndex].pointLightCount && i < CLUSTER_MAX_POINTS; i++){
+    for(uint i = 0; i < nPointLights && i < CLUSTER_MAX_POINTS; i++){
         uint lightIndex = clusters[tileIndex].pointLightIndices[i];
         PointLight light = pointLights[lightIndex];
 
@@ -133,7 +140,8 @@ void main(){
     }
 
     // spot lights
-    for(uint i = 0; i < clusters[tileIndex].spotLightCount && i < CLUSTER_MAX_SPOTS; i++){
+    const uint nSpotLights = clusters[tileIndex].spotLightCount;
+    for(uint i = 0; i < nSpotLights && i < CLUSTER_MAX_SPOTS; i++){
         uint lightIndex = clusters[tileIndex].spotLightIndices[i];
         SpotLight light = spotLights[lightIndex];
 
