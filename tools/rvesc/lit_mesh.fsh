@@ -63,6 +63,7 @@ void main(){
 
     LitOutput user_out = frag();
     outcolor = vec4(0); // NV: these don't default-init to 0
+    outnormal = vec4(user_out.normal,1);
 
     // compute lighting based on the results of the user's function
 
@@ -97,14 +98,17 @@ void main(){
     // Locating which cluster this fragment is part of
     // adpated from: https://github.com/DaveH355/clustered-shading
     const uint zTile = uint((log(abs(viewPosition.z) / engineConstants[0].zFar) * engineConstants[0].gridSize.z) / log(engineConstants[0].zNear / engineConstants[0].zFar));
-    const vec2 tileSize = engineConstants[0].screenDimensions / engineConstants[0].gridSize.xy;
-    const uvec3 tile = uvec3(gl_FragCoord.xy / tileSize, zTile);
+    const vec2 tileSize = engineConstants[0].screenDimensions.xy / engineConstants[0].gridSize.xy;
+
+    vec2 virtualScreenCoord = (gl_FragCoord.xy - engineConstants[0].screenDimensions.xy) / engineConstants[0].screenDimensions.zw;
+
+    const uvec3 tile = uvec3(virtualScreenCoord / tileSize, zTile);
     uint tileIndex = tile.x + (tile.y * engineConstants[0].gridSize.x) + (tile.z * engineConstants[0].gridSize.x * engineConstants[0].gridSize.y);
 
-    if (tileIndex > 3456){
-        tileIndex = 3455;
-    }
-    
+
+    outcolor = vec4(tile, 1);
+    return;
+
     const uint nPointLights = clusters[tileIndex].pointLightCount;
     
     // point lights
@@ -170,5 +174,4 @@ void main(){
         outcolor += vec4(result * user_out.ao * pcfFactor, 1);
     }
 
-    outnormal = vec4(user_out.normal,1);
 }

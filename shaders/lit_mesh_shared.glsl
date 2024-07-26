@@ -2,9 +2,9 @@ struct EngineData{
     mat4 viewProj;
     mat4 viewOnly;
     mat4 projOnly;
+    uvec4 screenDimensions;
     vec3 camPos;
     uvec3 gridSize;
-    uvec2 screenDimensions;
     uint ambientLightCount;
     uint directionalLightCount;
     float zNear;

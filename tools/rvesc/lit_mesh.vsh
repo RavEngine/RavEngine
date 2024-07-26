@@ -35,5 +35,4 @@ void main(){
     gl_Position = user_out.position;
     worldPosition = user_out.worldPosition;
     viewPosition = (engineConstants[0].viewOnly * vec4(worldPosition,1)).xyz;
-    //viewPosition = vec3(0,0,0);
 }

@@ -541,9 +541,9 @@ struct LightingType{
 				glm::mat4 viewProj;
 				glm::mat4 viewOnly;
 				glm::mat4 projOnly;
+				glm::uvec4 screenDimension;
 				glm::vec3 camPos;
 				glm::uvec3 gridSize;
-				glm::uvec2 screenDimension;
 				uint32_t ambientLightCount;
 				uint32_t directionalLightCount;
 				float zNear;
@@ -553,9 +553,9 @@ struct LightingType{
 				.viewProj = viewproj,
 				.viewOnly = viewonly,
 				.projOnly = projOnly,
+				.screenDimension = { viewportScissor.offset[0],viewportScissor.offset[1], viewportScissor.extent[0],viewportScissor.extent[1] },
 				.camPos = camPos,
 				.gridSize = { Clustered::gridSizeX, Clustered::gridSizeY, Clustered::gridSizeZ },
-				.screenDimension = { viewportScissor.extent[0],viewportScissor.extent[1] },
 				.ambientLightCount = worldOwning->renderData->ambientLightData.uploadData.DenseSize(),
 				.directionalLightCount = worldOwning->renderData->directionalLightData.uploadData.DenseSize(),
 				.zNear = zNearFar.x,
