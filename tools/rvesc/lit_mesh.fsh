@@ -89,7 +89,7 @@ void main(){
         float pcfFactor = 1;
         
         if (bool(light.castsShadows)){
-             pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);
+             //pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);
         }
 
         outcolor += vec4(lightResult * user_out.ao * pcfFactor,1);
@@ -105,9 +105,7 @@ void main(){
     const uvec3 tile = uvec3(virtualScreenCoord / tileSize, zTile);
     uint tileIndex = tile.x + (tile.y * engineConstants[0].gridSize.x) + (tile.z * engineConstants[0].gridSize.x * engineConstants[0].gridSize.y);
 
-
-    outcolor = vec4(tile, 1);
-    return;
+    //outcolor = vec4(tile, 1);
 
     const uint nPointLights = clusters[tileIndex].pointLightCount;
     
@@ -166,7 +164,7 @@ void main(){
 
         float pcfFactor = 1;
         if (bool(light.castsShadows)){
-            pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);
+            //pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);
         }
 
         pcfFactor = pcfFactor * (int(pixelAngle > coneDotFactor));

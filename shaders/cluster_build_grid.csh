@@ -15,15 +15,15 @@ layout(push_constant, scalar) uniform UniformBufferObject{
 
 vec3 screenToView(vec2 screenCoord)
 {
-    // normalize screenCoord to [-1, 1] and
-    // set the NDC depth of the coordinate to be on the near plane. 
-    vec4 ndc = vec4(screenCoord / ubo.screenDimensions, 0, 1.0);
+    // normalize screenCoord to [-1, 1] 
+    // z = 0.0 (near plane in reverse z)
+    // w = 1.0
+    vec4 ndc = vec4(screenCoord / ubo.screenDimensions * 2.0 - 1.0, 0.0, 1.0);
 
     vec4 viewCoord = ubo.inverseProjection * ndc;
     viewCoord /= viewCoord.w;
     return viewCoord.xyz;
 }
-
 // Returns the intersection point of an infinite line and a
 // plane perpendicular to the Z-axis
 vec3 lineIntersectionWithZPlane(vec3 startPoint, vec3 endPoint, float zDistance)
