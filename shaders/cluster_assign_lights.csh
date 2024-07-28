@@ -38,7 +38,7 @@ bool sphereAABBIntersection(vec3 center, float radius, vec3 aabbMin, vec3 aabbMa
 bool testSphereAABB(uint i, Cluster cluster)
 {
     vec3 center = vec3(ubo.viewMatrix * vec4(pointLight[i].position,1));
-    float radius = pointLight[i].radius;
+    float radius = getPointLightRadius(pointLight[i].intensity);
 
     vec3 aabbMin = cluster.minPoint.xyz;
     vec3 aabbMax = cluster.maxPoint.xyz;
@@ -72,7 +72,7 @@ void main()
         vec3 center = (light.worldTransform * vec4(0,0,0,1)).xyz;   // get world pos
         center = (ubo.viewMatrix * vec4(center,1)).xyz;             // transform to view space
 
-        float radius = light.intensity * light.intensity;
+        float radius = getPointLightRadius(light.intensity);
 
         vec3 aabbMin = cluster.minPoint.xyz;
         vec3 aabbMax = cluster.maxPoint.xyz;

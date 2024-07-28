@@ -453,7 +453,6 @@ void World::setupRenderTasks(){
                     auto& denseData = renderData->pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i));
                     denseData.color = { colorData.R,colorData.G,colorData.B};
                     denseData.intensity = lightData.GetIntensity();
-                    denseData.radius = denseData.intensity * denseData.intensity;
                     denseData.castsShadows = lightData.CastsShadows();
                     ptr->Get(i).clearInvalidate();
                 }

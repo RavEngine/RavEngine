@@ -118,7 +118,7 @@ void main(){
 
         float dist = distance(worldPosition, light.position);
 
-        vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, 1.0 / (dist * dist),  light.color * light.intensity);
+        vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, getLightAttenuation(dist),  light.color * light.intensity);
         float pcfFactor = 1;
 
         if (bool(light.castsShadows)){
@@ -160,7 +160,7 @@ void main(){
 
 	    float pixelAngle = dot(-forward,toLight);   
 
-        vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, 1.0 / (dist * dist),  light.color * light.intensity);
+        vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, getLightAttenuation(dist),  light.color * light.intensity);
 
         float pcfFactor = 1;
         if (bool(light.castsShadows)){

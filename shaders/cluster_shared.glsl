@@ -16,7 +16,6 @@ struct PointLight
     vec3 position;
     vec3 color;
     float intensity;
-    float radius;
     int castsShadows;
 };
 
@@ -30,3 +29,14 @@ struct SpotLight{
     int castsShadows;
     uint shadowmapBindlessIndex;
 };
+
+#define LIGHT_MIN_INFLUENCE 0.01
+
+float getPointLightRadius(float intensity){
+    // for quadratic falloff (influence = intensity / dist^2 ), the radius is equal to sqrt(intensity / min_influence)
+    return sqrt(intensity / LIGHT_MIN_INFLUENCE);
+}
+
+float getLightAttenuation(float dist){
+    return 1 / (dist * dist);
+}
