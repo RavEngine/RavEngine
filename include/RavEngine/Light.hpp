@@ -2,6 +2,7 @@
 #include "Queryable.hpp"
 #include "Common3D.hpp"
 #include "IDebugRenderable.hpp"
+#include "cluster_defs.h"
 #if !RVE_SERVER
 #include "DepthPyramid.hpp"
 #endif
@@ -75,13 +76,6 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 	using light_t = AmbientLight;
 	using QueryableDelta<Light,AmbientLight>::GetQueryTypes;
 	
-	/**
-	 Ambient lights are always in the frustum
-	 */
-	inline bool IsInFrustum(Ref<CameraComponent> cam) const{
-		return true;
-	}
-
 	// does not cast shadows
 	constexpr bool CastsShadows() const { return false;  }
 	
@@ -104,13 +98,6 @@ public:
     auto GetShadowDistance() const{
         return shadowDistance;
     }
-	
-	/**
-	 Directional lights are always in the frustum
-	 */
-	inline bool IsInFrustum(Ref<CameraComponent> cam) const{
-		return true;
-	}
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
 
@@ -138,8 +125,7 @@ private:
 	 @return the radius
 	 */
     constexpr inline float CalculateRadius() const{
-        auto intensity = GetIntensity();
-		return intensity*intensity;
+        return sqrt( GetIntensity() / LIGHT_MIN_INFLUENCE);
 	}
 };
 

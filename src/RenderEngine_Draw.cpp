@@ -1434,6 +1434,8 @@ struct LightingType{
 				Im3d::AppData& data = Im3d::GetAppData();
 				data.m_appData = (void*)&viewproj;
 
+                mainCommandBuffer->SetViewport(fullSizeViewport);
+                mainCommandBuffer->SetScissor(fullSizeScissor);
 				Im3d::GetContext().draw();
 				mainCommandBuffer->EndRenderDebugMarker();
 

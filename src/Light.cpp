@@ -22,7 +22,8 @@ void AmbientLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) c
 
 
 void PointLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
-	dbg.DrawSphere(tr.GetWorldMatrix(), debug_color, CalculateRadius() * 2);
+    auto radius = CalculateRadius();
+	dbg.DrawSphere(tr.GetWorldMatrix(), debug_color, radius);
 }
 
 

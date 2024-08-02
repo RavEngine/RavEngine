@@ -30,7 +30,6 @@ struct SpotLight{
     uint shadowmapBindlessIndex;
 };
 
-#define LIGHT_MIN_INFLUENCE 0.01
 
 float getPointLightRadius(float intensity){
     // for quadratic falloff (influence = intensity / dist^2 ), the radius is equal to sqrt(intensity / min_influence)
