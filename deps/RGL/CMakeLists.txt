@@ -224,7 +224,7 @@ set_target_properties("libtint" "tint_diagnostic_utils" PROPERTIES
 )
 endif()
 
-set_target_properties("GenericCodeGen" "glslang" "MachineIndependent" "OGLCompiler" "OSDependent" "SPIRV" "SPVRemapper" "glslang-default-resource-limits" PROPERTIES 
+set_target_properties("GenericCodeGen" "glslang" "MachineIndependent" "OSDependent" "SPIRV" "SPVRemapper" "glslang-default-resource-limits" PROPERTIES 
 	FOLDER "${RGL_IDE_ROOT}/Libraries/glslang"
 )
 
@@ -237,7 +237,7 @@ set_target_properties(
 
 set_target_properties(
 	"spirv-cross-core"
-	"spirv-cross-glsl" "spirv-cross-hlsl" "spirv-cross-msl" "spirv-cross-reflect" "spirv-cross-cpp" "spirv-cross-util" "HLSL"
+	"spirv-cross-glsl" "spirv-cross-hlsl" "spirv-cross-msl" "spirv-cross-reflect" "spirv-cross-cpp" "spirv-cross-util"
 	PROPERTIES 
 	FOLDER "${RGL_IDE_ROOT}/Libraries/SPIRV-Cross"
 )

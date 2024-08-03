@@ -46,6 +46,7 @@
 #include "DirStackFileIncluder.h"
 #include "./../glslang/Include/ShHandle.h"
 #include "./../glslang/Public/ShaderLang.h"
+#include "../glslang/MachineIndependent/localintermediate.h"
 #include "../SPIRV/GlslangToSpv.h"
 #include "../SPIRV/GLSL.std.450.h"
 #include "../SPIRV/doc.h"
@@ -181,6 +182,7 @@ bool HlslEnable16BitTypes = false;
 bool HlslDX9compatible = false;
 bool HlslDxPositionW = false;
 bool EnhancedMsgs = false;
+bool AbsolutePath = false;
 bool DumpBuiltinSymbols = false;
 std::vector<std::string> IncludeDirectoryList;
 
@@ -516,7 +518,7 @@ void ProcessGlobalBlockSettings(int& argc, char**& argv, std::string* name, unsi
 
     if (set) {
         errno = 0;
-        int setVal = ::strtol(argv[curArg], nullptr, 10);
+        int setVal = static_cast<int>(::strtol(argv[curArg], nullptr, 10));
         if (errno || setVal < 0) {
             printf("%s: invalid set\n", argv[curArg]);
             usage();
@@ -528,7 +530,7 @@ void ProcessGlobalBlockSettings(int& argc, char**& argv, std::string* name, unsi
 
     if (binding) {
         errno = 0;
-        int bindingVal = ::strtol(argv[curArg], nullptr, 10);
+        int bindingVal = static_cast<int>(::strtol(argv[curArg], nullptr, 10));
         if (errno || bindingVal < 0) {
             printf("%s: invalid binding\n", argv[curArg]);
             usage();
@@ -611,7 +613,7 @@ void ProcessArguments(std::vector<std::unique_ptr<glslang::TWorkItem>>& workItem
             exit(EFailUsage);
         }
         errno = 0;
-        int location = ::strtol(split + 1, nullptr, 10);
+        int location = static_cast<int>(::strtol(split + 1, nullptr, 10));
         if (errno) {
             printf("%s: invalid location\n", arg);
             exit(EFailUsage);
@@ -638,7 +640,7 @@ void ProcessArguments(std::vector<std::unique_ptr<glslang::TWorkItem>>& workItem
                     } else if (lowerword == "uniform-base") {
                         if (argc <= 1)
                             Error("no <base> provided", lowerword.c_str());
-                        uniformBase = ::strtol(argv[1], nullptr, 10);
+                        uniformBase = static_cast<int>(::strtol(argv[1], nullptr, 10));
                         bumpArg();
                         break;
                     } else if (lowerword == "client") {
@@ -726,6 +728,8 @@ void ProcessArguments(std::vector<std::unique_ptr<glslang::TWorkItem>>& workItem
                         HlslDxPositionW = true;
                     } else if (lowerword == "enhanced-msgs") {
                         EnhancedMsgs = true;
+                    } else if (lowerword == "absolute-path") {
+                        AbsolutePath = true;
                     } else if (lowerword == "auto-sampled-textures") {
                         autoSampledTextures = true;
                     } else if (lowerword == "invert-y" ||  // synonyms
@@ -1158,6 +1162,8 @@ void SetMessageOptions(EShMessages& messages)
         messages = (EShMessages)(messages | EShMsgBuiltinSymbolTable);
     if (EnhancedMsgs)
         messages = (EShMessages)(messages | EShMsgEnhanced);
+    if (AbsolutePath)
+        messages = (EShMessages)(messages | EShMsgAbsolutePath);
 }
 
 //
@@ -1172,7 +1178,7 @@ void CompileShaders(glslang::TWorklist& worklist)
     glslang::TWorkItem* workItem;
     if (Options & EOptionStdin) {
         if (worklist.remove(workItem)) {
-            ShHandle compiler = ShConstructCompiler(FindLanguage("stdin"), Options);
+            ShHandle compiler = ShConstructCompiler(FindLanguage("stdin"), 0);
             if (compiler == nullptr)
                 return;
 
@@ -1185,9 +1191,10 @@ void CompileShaders(glslang::TWorklist& worklist)
         }
     } else {
         while (worklist.remove(workItem)) {
-            ShHandle compiler = ShConstructCompiler(FindLanguage(workItem->name), Options);
+            ShHandle compiler = ShConstructCompiler(FindLanguage(workItem->name), 0);
             if (compiler == nullptr)
                 return;
+
 
             CompileFile(workItem->name.c_str(), compiler);
 
@@ -1876,7 +1883,8 @@ void CompileFile(const char* fileName, ShHandle compiler)
     for (int i = 0; i < ((Options & EOptionMemoryLeakMode) ? 100 : 1); ++i) {
         for (int j = 0; j < ((Options & EOptionMemoryLeakMode) ? 100 : 1); ++j) {
             // ret = ShCompile(compiler, shaderStrings, NumShaderStrings, lengths, EShOptNone, &Resources, Options, (Options & EOptionDefaultDesktop) ? 110 : 100, false, messages);
-            ret = ShCompile(compiler, &shaderString, 1, nullptr, EShOptNone, GetResources(), Options, (Options & EOptionDefaultDesktop) ? 110 : 100, false, messages);
+            ret = ShCompile(compiler, &shaderString, 1, nullptr, EShOptNone, GetResources(), 0,
+                            (Options & EOptionDefaultDesktop) ? 110 : 100, false, messages, fileName);
             // const char* multi[12] = { "# ve", "rsion", " 300 e", "s", "\n#err",
             //                         "or should be l", "ine 1", "string 5\n", "float glo", "bal",
             //                         ";\n#error should be line 2\n void main() {", "global = 2.3;}" };
@@ -1991,6 +1999,7 @@ void usage()
            "                                    without explicit bindings\n"
            "  --auto-map-locations | --aml      automatically locate input/output lacking\n"
            "                                    'location' (fragile, not cross stage)\n"
+           "  --absolute-path                   Prints absolute path for messages\n"
            "  --auto-sampled-textures           Removes sampler variables and converts\n"
            "                                    existing textures to sampled textures\n"
            "  --client {vulkan<ver>|opengl<ver>} see -V and -G\n"
@@ -2157,6 +2166,20 @@ char* ReadFileData(const char* fileName)
         count++;
 
     fseek(in, 0, SEEK_SET);
+
+    if (count > 3) {
+        unsigned char head[3];
+        if (fread(head, 1, 3, in) == 3) {
+            if (head[0] == 0xef && head[1] == 0xbb && head[2] == 0xbf) {
+                // skip BOM
+                count -= 3;
+            } else {
+                fseek(in, 0, SEEK_SET);
+            }
+        } else {
+            Error("can't read input file");
+        }
+    }
 
     char* return_data = (char*)malloc(count + 1);  // freed in FreeFileData()
     if ((int)fread(return_data, 1, count, in) != count) {
