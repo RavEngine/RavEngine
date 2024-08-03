@@ -56,9 +56,9 @@ void main()
     vec3 maxPoint_viewSpace = screenToView(maxPoint_screenSpace);
 
     float tileNear =
-        ubo.zNear * pow(ubo.zFar / ubo.zNear, gl_WorkGroupID.z / float(ubo.gridSize.z));
+        ubo.zNear * pow(ubo.zNear / ubo.zFar, gl_WorkGroupID.z / float(ubo.gridSize.z));
     float tileFar =
-        ubo.zNear * pow(ubo.zFar / ubo.zNear, (gl_WorkGroupID.z + 1) / float(ubo.gridSize.z));
+        ubo.zNear * pow(ubo.zNear / ubo.zFar, (gl_WorkGroupID.z + 1) / float(ubo.gridSize.z));
 
     // Find the 4 intersection points from a tile's min/max points to this cluster's
     // near and far planes
