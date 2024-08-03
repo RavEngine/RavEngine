@@ -124,7 +124,7 @@ private:
 	 Caclulate the radius of the light using its current intensity
 	 @return the radius
 	 */
-    constexpr inline float CalculateRadius() const{
+    float CalculateRadius() const{
         return sqrt( GetIntensity() / LIGHT_MIN_INFLUENCE);
 	}
 };
