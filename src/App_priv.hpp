@@ -124,6 +124,8 @@ int App::run(int argc, char** argv) {
 		Debug::Fatal("Unable to initialize SDL: {}", SDL_GetError());
 	}
 	{
+		window = std::make_unique<Window>(960, 540, "RavEngine");
+
 		auto config = OnConfigure(argc, argv);
 
 		// initialize RGL and the global Device
@@ -172,7 +174,8 @@ int App::run(int argc, char** argv) {
 
 		Renderer = std::make_unique<RenderEngine>(config, device);
 
-		window = std::make_unique<Window>(960, 540, "RavEngine", device, Renderer->mainCommandQueue);
+		window->InitSwapchain(device, Renderer->mainCommandQueue);
+
 		auto size = window->GetSizeInPixels();
 		mainWindowView = { Renderer->CreateRenderTargetCollection({ static_cast<unsigned int>(size.width), static_cast<unsigned int>(size.height) }) };
 

@@ -20,7 +20,7 @@ using namespace winrt;
 #endif
 
 namespace RavEngine {
-	Window::Window(int width, int height, const std::string_view title, RGLDevicePtr device, RGLCommandQueuePtr mainCommandQueue)
+	Window::Window(int width, int height, const std::string_view title)
 	{
 		window = SDL_CreateWindow(title.data(), width, height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
 
@@ -28,48 +28,12 @@ namespace RavEngine {
 			Debug::Fatal("Unable to create window: {}", SDL_GetError());
 		}
 
-
-        RGL::CreateSurfaceConfig surfaceConfig{nullptr, 0};
-        
-#if _UWP
-        surfaceConfig.pointer = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WINRT_WINDOW_POINTER, NULL);
-#elif _WIN32
-        HWND hwnd = (HWND)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
-        surfaceConfig.pointer = &hwnd;
-#elif TARGET_OS_IPHONE
-        surfaceConfig.pointer = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER, NULL);
-#elif __APPLE__
-        surfaceConfig.pointer = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
-#elif __linux__ && !__ANDROID__
-        if (SDL_strcmp(SDL_GetCurrentVideoDriver(), "x11") == 0) {
-            auto xdisplay = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
-            auto xwindow = SDL_GetNumberProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
-            surfaceConfig.pointer = xdisplay;
-            surfaceConfig.pointer2 = xwindow;
-        } else if (SDL_strcmp(SDL_GetCurrentVideoDriver(), "wayland") == 0) {
-           auto display = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, NULL);
-            auto surface = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, NULL);
-            surfaceConfig.pointer = display;
-            surfaceConfig.pointer2 = reinterpret_cast<uintptr_t>(surface);
-        }
-#elif __ANDROID__
-        surfaceConfig.pointer = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, NULL);
-#elif __EMSCRIPTEN__
-			// noop
-#else
-#error Unknown platform
-#endif
-        surface = RGL::CreateSurfaceFromPlatformHandle(surfaceConfig, true);
-        
         // re-query the window size because some platforms (like iOS) ignore the passed window size
         SDL_GetWindowSize(window, &width, &height);
-        
-        windowdims = {width, height};
-        currentScaleFactor = QueryScaleFactor();
-        auto size = GetSizeInPixels();
-		swapchain = device->CreateSwapchain(surface, mainCommandQueue, size.width, size.height);
-        NotifySizeChanged(width, height);
-		swapchainFence = device->CreateFence(true);
+
+        windowdims = { width, height };
+
+
 	}
 	void Window::NotifySizeChanged(int width, int height)
 {
@@ -92,6 +56,48 @@ namespace RavEngine {
 
     dim_t<int> Window::GetSizeInPixels() const{
         return {static_cast<int>(windowdims.width), static_cast<int>(windowdims.height)};
+    }
+
+    void Window::InitSwapchain(RGLDevicePtr device, RGLCommandQueuePtr mainCommandQueue)
+    {
+        RGL::CreateSurfaceConfig surfaceConfig{ nullptr, 0 };
+
+#if _UWP
+        surfaceConfig.pointer = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WINRT_WINDOW_POINTER, NULL);
+#elif _WIN32
+        HWND hwnd = (HWND)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+        surfaceConfig.pointer = &hwnd;
+#elif TARGET_OS_IPHONE
+        surfaceConfig.pointer = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER, NULL);
+#elif __APPLE__
+        surfaceConfig.pointer = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
+#elif __linux__ && !__ANDROID__
+        if (SDL_strcmp(SDL_GetCurrentVideoDriver(), "x11") == 0) {
+            auto xdisplay = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
+            auto xwindow = SDL_GetNumberProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
+            surfaceConfig.pointer = xdisplay;
+            surfaceConfig.pointer2 = xwindow;
+        }
+        else if (SDL_strcmp(SDL_GetCurrentVideoDriver(), "wayland") == 0) {
+            auto display = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, NULL);
+            auto surface = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, NULL);
+            surfaceConfig.pointer = display;
+            surfaceConfig.pointer2 = reinterpret_cast<uintptr_t>(surface);
+        }
+#elif __ANDROID__
+        surfaceConfig.pointer = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, NULL);
+#elif __EMSCRIPTEN__
+        // noop
+#else
+#error Unknown platform
+#endif
+        surface = RGL::CreateSurfaceFromPlatformHandle(surfaceConfig, true);
+
+        currentScaleFactor = QueryScaleFactor();
+        auto size = GetSizeInPixels();
+        swapchain = device->CreateSwapchain(surface, mainCommandQueue, size.width, size.height);
+        NotifySizeChanged(windowdims.width, windowdims.height);
+        swapchainFence = device->CreateFence(true);
     }
 
     float Window::QueryScaleFactor() const{
