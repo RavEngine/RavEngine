@@ -873,8 +873,10 @@ struct LightingType{
 						std::memcpy(totalPushConstantBytes, pushConstantData.data(), pushConstantData.size());
 					}
 
-					mainCommandBuffer->SetVertexBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
-					mainCommandBuffer->SetFragmentBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
+					if (pushConstantTotalSize > 0) {
+						mainCommandBuffer->SetVertexBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
+						mainCommandBuffer->SetFragmentBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
+					}
 
 					// bind textures and buffers
 					auto& bufferBindings = materialInstance->GetBufferBindings();
