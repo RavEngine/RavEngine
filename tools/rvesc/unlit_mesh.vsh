@@ -21,14 +21,20 @@ struct EntityIn
     uint entityID;
 };
 
+#include "enginedata.glsl"
+
 #include "%s"
+
+#include "make_engine_data.glsl"
 
 void main(){
     EntityIn entity;
     entity.entityID = inEntityID;
     entity.modelMtx = model[inEntityID];
 
-    UnlitVertexOut user_out = vert(entity);
+    EngineData data = make_engine_data(engineConstants[0]);
+
+    UnlitVertexOut user_out = vert(entity,data);
 
     gl_Position = user_out.position;
 }

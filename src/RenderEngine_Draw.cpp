@@ -860,18 +860,17 @@ struct LightingType{
 					// Metal requires 16-byte alignment, so we bake that into the required size
 					size_t pushConstantTotalSize =
 #if __APPLE__
-						closest_multiple_of<ssize_t>(sizeof(viewproj) + pushConstantData.size(), 16);
+						closest_multiple_of<ssize_t>(pushConstantData.size(), 16);
 #else
-						sizeof(viewproj) + pushConstantData.size();
+						pushConstantData.size();
 #endif
 
 					// AMD on vulkan cannot accept push constants > 128 bytes so we cap it there for all platforms
 					std::byte totalPushConstantBytes[128]{};
 					Debug::Assert(pushConstantTotalSize < std::size(totalPushConstantBytes), "Cannot write push constants, total size ({}) > {}", pushConstantTotalSize, std::size(totalPushConstantBytes));
 
-					std::memcpy(totalPushConstantBytes, &viewproj, sizeof(viewproj));
 					if (pushConstantData.size() > 0 && pushConstantData.data() != nullptr) {
-						std::memcpy(totalPushConstantBytes + sizeof(viewproj), pushConstantData.data(), pushConstantData.size());
+						std::memcpy(totalPushConstantBytes, pushConstantData.data(), pushConstantData.size());
 					}
 
 					mainCommandBuffer->SetVertexBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);

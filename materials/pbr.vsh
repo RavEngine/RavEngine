@@ -1,6 +1,5 @@
 
 layout(push_constant, std430) uniform UniformBufferObject{
-    mat4 viewProj;
 	vec4 colorTint;
 	float metallicTint;
 	float roughnessTint;
@@ -10,7 +9,7 @@ layout(push_constant, std430) uniform UniformBufferObject{
 layout(location = 0) out vec2 outUV;
 layout(location = 1) out vec3[3] outTBN;
 
-LitVertexOut vert(EntityIn entity)
+LitVertexOut vert(EntityIn entity, EngineData data)
 {
     mat4 inModel = entity.modelMtx;
 	LitVertexOut v_out;
@@ -21,7 +20,7 @@ LitVertexOut vert(EntityIn entity)
 
 	outUV = inUV;
 
-	v_out.position = ubo.viewProj * worldPos;
+	v_out.position = data.viewProj * worldPos;
 
 	vec3 T = normalize(vec3(inModel * vec4(inTangent,   0.0)));
    	vec3 B = normalize(vec3(inModel * vec4(inBitangent, 0.0)));

@@ -117,12 +117,6 @@ namespace RavEngine {
 			ssaoFormat = RGL::TextureFormat::R32_Float,
 			depthFormat = RGL::TextureFormat::D32SFloat;
 
-		// the items made available to 
-		// user-defined materials
-		struct DeferredUBO {
-			glm::mat4 viewProj;
-		};
-
         struct ssaoUBO{
             glm::mat4 viewProj;
 			glm::ivec4 viewRect;		// for the whole screen

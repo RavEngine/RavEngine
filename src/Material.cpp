@@ -56,7 +56,7 @@ namespace RavEngine {
             .bindings = configBindingsCopy,
             .constants = {
                 {
-                   sizeof(RenderEngine::DeferredUBO) + config.pushConstantSize, 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
+                   size_t(config.pushConstantSize), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
                 }
             },
             });

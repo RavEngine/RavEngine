@@ -1,4 +1,4 @@
-struct EngineData{
+struct EngineData_Internal{
     mat4 viewProj;
     mat4 viewOnly;
     mat4 projOnly;
@@ -12,5 +12,5 @@ struct EngineData{
 };
 
 layout(scalar, binding = 11) readonly buffer lightAuxDataSSBO{
-    EngineData engineConstants[];
+    EngineData_Internal engineConstants[];
 };

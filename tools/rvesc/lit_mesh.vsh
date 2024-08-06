@@ -14,6 +14,8 @@ struct EntityIn{
     uint entityID;
 };
 
+#include "enginedata.glsl"
+
 #include "%s"
 
 layout(location = ENTITY_INPUT_LOCATION) in uint inEntityID;
@@ -24,13 +26,16 @@ layout(location = 12) out vec3 viewPosition;
 layout(std430, binding = MODEL_MATRIX_BINDING) readonly buffer modelMatrixBuffer{mat4 model[];};
 
 #include "lit_mesh_shared.glsl"
+#include "make_engine_data.glsl"
 
 void main(){
     EntityIn entity;
     entity.entityID = inEntityID;
     entity.modelMtx = model[inEntityID];
 
-    LitVertexOut user_out = vert(entity);
+    EngineData data = make_engine_data(engineConstants[0]);
+
+    LitVertexOut user_out = vert(entity, data);
 
     gl_Position = user_out.position;
     worldPosition = user_out.worldPosition;

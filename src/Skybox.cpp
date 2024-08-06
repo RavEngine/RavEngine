@@ -39,7 +39,8 @@ RavEngine::ISkyMaterial::ISkyMaterial(const std::string& shaderpath) : Material(
         },
         .depthWriteEnabled = false,
         .depthCompareFunction = RGL::DepthCompareFunction::Equal,
-        .verbatimConfig = true
+        .pushConstantSize = sizeof(glm::mat4),
+        .verbatimConfig = true,
     }
     )
 {
