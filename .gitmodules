@@ -1,0 +1,3 @@
+[submodule "deps/RGL/deps/ShaderTranspiler/deps/DirectXShaderCompiler"]
+	path = deps/RGL/deps/ShaderTranspiler/deps/DirectXShaderCompiler
+	url = https://github.com/microsoft/DirectXShaderCompiler
