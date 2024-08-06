@@ -89,7 +89,7 @@ void main(){
         float pcfFactor = 1;
         
         if (bool(light.castsShadows)){
-             //pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);
+             pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);
         }
 
         outcolor += vec4(lightResult * user_out.ao * pcfFactor,1);
@@ -164,7 +164,7 @@ void main(){
 
         float pcfFactor = 1;
         if (bool(light.castsShadows)){
-            //pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);
+            pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);
         }
 
         pcfFactor = pcfFactor * (int(pixelAngle > coneDotFactor));

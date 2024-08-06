@@ -103,53 +103,31 @@ public:
         stringIds[file_c_str] = strId;
         return strId;
     }
-
-    spv::Id getMainFileId() const { return mainFileId; }
-
-    // Initialize the main source file name
-    void setDebugSourceFile(const std::string& file)
+    spv::Id getSourceFile() const
     {
-        if (trackDebugInfo) {
-            dirtyLineTracker = true;
-            mainFileId = getStringId(file);
-            currentFileId = mainFileId;
-        }
+        return sourceFileStringId;
     }
-
-    // Set the debug source location tracker in the builder.
-    // The upcoming instructions in basic blocks will be associated to this location.
-    void setDebugSourceLocation(int line, const char* filename)
+    void setSourceFile(const std::string& file)
     {
-        if (trackDebugInfo) {
-            dirtyLineTracker = true;
-            if (line != 0) {
-                // TODO: This is special handling of some AST nodes having (untracked) line 0. 
-                //       But they should have a valid line number.
-                currentLine = line;
-                if (filename) {
-                    currentFileId = getStringId(filename);
-                }
-            }
-        }
+        sourceFileStringId = getStringId(file);
+        currentFileId = sourceFileStringId;
     }
-
     void setSourceText(const std::string& text) { sourceText = text; }
     void addSourceExtension(const char* ext) { sourceExtensions.push_back(ext); }
     void addModuleProcessed(const std::string& p) { moduleProcesses.push_back(p.c_str()); }
-    void setEmitSpirvDebugInfo()
+    void setEmitOpLines() { emitOpLines = true; }
+    void setEmitNonSemanticShaderDebugInfo(bool const emit)
     {
-        trackDebugInfo = true;
-        emitSpirvDebugInfo = true;
-    }
-    void setEmitNonSemanticShaderDebugInfo(bool emitSourceText)
-    {
-        trackDebugInfo = true;
-        emitNonSemanticShaderDebugInfo = true;
-        importNonSemanticShaderDebugInfoInstructions();
+        emitNonSemanticShaderDebugInfo = emit;
 
-        if (emitSourceText) {
-            emitNonSemanticShaderDebugSource = emitSourceText;
+        if(emit)
+        {
+            importNonSemanticShaderDebugInfoInstructions();
         }
+    }
+    void setEmitNonSemanticShaderDebugSource(bool const src)
+    {
+        emitNonSemanticShaderDebugSource = src;
     }
     void addExtension(const char* ext) { extensions.insert(ext); }
     void removeExtension(const char* ext)
@@ -191,9 +169,23 @@ public:
         return id;
     }
 
+    // Generate OpLine for non-filename-based #line directives (ie no filename
+    // seen yet): Log the current line, and if different than the last one,
+    // issue a new OpLine using the new line and current source file name.
+    void setLine(int line);
+
+    // If filename null, generate OpLine for non-filename-based line directives,
+    // else do filename-based: Log the current line and file, and if different
+    // than the last one, issue a new OpLine using the new line and file
+    // name.
+    void setLine(int line, const char* filename);
+    // Low-level OpLine. See setLine() for a layered helper.
+    void addLine(Id fileName, int line, int column);
+    void addDebugScopeAndLine(Id fileName, int line, int column);
+
     // For creating new types (will return old type if the requested one was already made).
     Id makeVoidType();
-    Id makeBoolType();
+    Id makeBoolType(bool const compilerGenerated = true);
     Id makePointer(StorageClass, Id pointee);
     Id makeForwardPointer(StorageClass);
     Id makePointerFromForwardPointer(StorageClass, Id forwardPointerType, Id pointee);
@@ -234,22 +226,17 @@ public:
     Id makeMemberDebugType(Id const memberType, DebugTypeLoc const& debugTypeLoc);
     Id makeCompositeDebugType(std::vector<Id> const& memberTypes, char const*const name,
         NonSemanticShaderDebugInfo100DebugCompositeType const tag, bool const isOpaqueType = false);
-    Id makePointerDebugType(StorageClass storageClass, Id const baseType);
-    Id makeForwardPointerDebugType(StorageClass storageClass);
     Id makeDebugSource(const Id fileName);
     Id makeDebugCompilationUnit();
     Id createDebugGlobalVariable(Id const type, char const*const name, Id const variable);
     Id createDebugLocalVariable(Id type, char const*const name, size_t const argNumber = 0);
     Id makeDebugExpression();
-    Id makeDebugDeclare(Id const debugLocalVariable, Id const pointer);
+    Id makeDebugDeclare(Id const debugLocalVariable, Id const localVariable);
     Id makeDebugValue(Id const debugLocalVariable, Id const value);
     Id makeDebugFunctionType(Id returnType, const std::vector<Id>& paramTypes);
     Id makeDebugFunction(Function* function, Id nameId, Id funcTypeId);
     Id makeDebugLexicalBlock(uint32_t line);
     std::string unmangleFunctionName(std::string const& name) const;
-    void setupDebugFunctionEntry(Function* function, const char* name, int line, 
-                                 const std::vector<Id>& paramTypes,
-                                 const std::vector<char const*>& paramNames);
 
     // accelerationStructureNV type
     Id makeAccelerationStructureType();
@@ -264,9 +251,9 @@ public:
     Op getOpCode(Id id) const { return module.getInstruction(id)->getOpCode(); }
     Op getTypeClass(Id typeId) const { return getOpCode(typeId); }
     Op getMostBasicTypeClass(Id typeId) const;
-    unsigned int getNumComponents(Id resultId) const { return getNumTypeComponents(getTypeId(resultId)); }
-    unsigned int getNumTypeConstituents(Id typeId) const;
-    unsigned int getNumTypeComponents(Id typeId) const { return getNumTypeConstituents(typeId); }
+    int getNumComponents(Id resultId) const { return getNumTypeComponents(getTypeId(resultId)); }
+    int getNumTypeConstituents(Id typeId) const;
+    int getNumTypeComponents(Id typeId) const { return getNumTypeConstituents(typeId); }
     Id getScalarTypeId(Id typeId) const;
     Id getContainedTypeId(Id typeId) const;
     Id getContainedTypeId(Id typeId, int) const;
@@ -327,6 +314,8 @@ public:
     // See if a resultId is valid for use as an initializer.
     bool isValidInitializer(Id resultId) const { return isConstant(resultId) || isGlobalVariable(resultId); }
 
+    bool isRayTracingOpCode(Op opcode) const;
+
     int getScalarTypeWidth(Id typeId) const
     {
         Id scalarTypeId = getScalarTypeId(typeId);
@@ -334,18 +323,18 @@ public:
         return module.getInstruction(scalarTypeId)->getImmediateOperand(0);
     }
 
-    unsigned int getTypeNumColumns(Id typeId) const
+    int getTypeNumColumns(Id typeId) const
     {
         assert(isMatrixType(typeId));
         return getNumTypeConstituents(typeId);
     }
-    unsigned int getNumColumns(Id resultId) const { return getTypeNumColumns(getTypeId(resultId)); }
-    unsigned int getTypeNumRows(Id typeId) const
+    int getNumColumns(Id resultId) const { return getTypeNumColumns(getTypeId(resultId)); }
+    int getTypeNumRows(Id typeId) const
     {
         assert(isMatrixType(typeId));
         return getNumTypeComponents(getContainedTypeId(typeId));
     }
-    unsigned int getNumRows(Id resultId) const { return getTypeNumRows(getTypeId(resultId)); }
+    int getNumRows(Id resultId) const { return getTypeNumRows(getTypeId(resultId)); }
 
     Dim getTypeDimensionality(Id typeId) const
     {
@@ -416,15 +405,10 @@ public:
     // Also reset current last DebugScope and current source line to unknown
     void setBuildPoint(Block* bp) {
         buildPoint = bp;
-        // TODO: Technically, change of build point should set line tracker dirty. But we'll have bad line info for
-        //       branch instructions. Commenting this for now because at least this matches the old behavior.
-        dirtyScopeTracker = true;
+        lastDebugScopeId = NoResult;
+        currentLine = 0;
     }
     Block* getBuildPoint() const { return buildPoint; }
-
-    // Append an instruction to the end of the current build point.
-    // Optionally, additional debug info instructions may also be prepended.
-    void addInstruction(std::unique_ptr<Instruction> inst);
 
     // Make the entry-point function. The returned pointer is only valid
     // for the lifetime of this builder.
@@ -433,19 +417,20 @@ public:
     // Make a shader-style function, and create its entry block if entry is non-zero.
     // Return the function, pass back the entry.
     // The returned pointer is only valid for the lifetime of this builder.
-    Function* makeFunctionEntry(Decoration precision, Id returnType, const char* name, LinkageType linkType,
-                                const std::vector<Id>& paramTypes,
-                                const std::vector<std::vector<Decoration>>& precisions, Block** entry = nullptr);
+    Function* makeFunctionEntry(Decoration precision, Id returnType, const char* name,
+        LinkageType linkType, const std::vector<Id>& paramTypes,
+        const std::vector<char const*>& paramNames,
+        const std::vector<std::vector<Decoration>>& precisions, Block **entry = nullptr);
 
     // Create a return. An 'implicit' return is one not appearing in the source
     // code.  In the case of an implicit return, no post-return block is inserted.
     void makeReturn(bool implicit, Id retVal = 0);
 
     // Initialize state and generate instructions for new lexical scope
-    void enterLexicalBlock(uint32_t line);
+    void enterScope(uint32_t line);
 
     // Set state and generate instructions to exit current lexical scope
-    void leaveLexicalBlock();
+    void leaveScope();
 
     // Prepare builder for generation of instructions for a function.
     void enterFunction(Function const* function);
@@ -856,8 +841,6 @@ public:
     void postProcess(Instruction&);
     // Hook to visit each non-32-bit sized float/int operation in a block.
     void postProcessType(const Instruction&, spv::Id typeId);
-    // move OpSampledImage instructions to be next to their users.
-    void postProcessSamplers();
 
     void dump(std::vector<unsigned int>&) const;
 
@@ -872,8 +855,6 @@ public:
     void setToNormalCodeGenMode() { generatingOpCodeForSpecConst = false; }
     // Check if the builder is generating code for spec constants.
     bool isInSpecConstCodeGenMode() { return generatingOpCodeForSpecConst; }
-
-    void setUseReplicatedComposites(bool use) { useReplicatedComposites = use; }
 
  protected:
     Id makeIntConstant(Id typeId, unsigned value, bool specConstant);
@@ -898,37 +879,21 @@ public:
     unsigned int spvVersion;     // the version of SPIR-V to emit in the header
     SourceLanguage sourceLang;
     int sourceVersion;
+    spv::Id sourceFileStringId;
     spv::Id nonSemanticShaderCompilationUnitId {0};
     spv::Id nonSemanticShaderDebugInfo {0};
     spv::Id debugInfoNone {0};
     spv::Id debugExpression {0}; // Debug expression with zero operations.
     std::string sourceText;
-
-    // True if an new OpLine/OpDebugLine may need to be inserted. Either:
-    // 1. The current debug location changed
-    // 2. The current build point changed
-    bool dirtyLineTracker;
-    int currentLine = 0;
-    // OpString id of the current file name. Always 0 if debug info is off.
-    spv::Id currentFileId = 0;
-    // OpString id of the main file name. Always 0 if debug info is off.
-    spv::Id mainFileId = 0;
-
-    // True if an new OpDebugScope may need to be inserted. Either:
-    // 1. A new lexical block is pushed
-    // 2. The current build point changed
-    bool dirtyScopeTracker;
+    int currentLine;
+    const char* currentFile;
+    spv::Id currentFileId;
     std::stack<spv::Id> currentDebugScopeId;
-
-    // This flag toggles tracking of debug info while building the SPIR-V.
-    bool trackDebugInfo = false;
-    // This flag toggles emission of SPIR-V debug instructions, like OpLine and OpSource.
-    bool emitSpirvDebugInfo = false;
-    // This flag toggles emission of Non-Semantic Debug extension debug instructions.
-    bool emitNonSemanticShaderDebugInfo = false;
-    bool restoreNonSemanticShaderDebugInfo = false;
-    bool emitNonSemanticShaderDebugSource = false;
-
+    spv::Id lastDebugScopeId;
+    bool emitOpLines;
+    bool emitNonSemanticShaderDebugInfo;
+    bool restoreNonSemanticShaderDebugInfo;
+    bool emitNonSemanticShaderDebugSource;
     std::set<std::string> extensions;
     std::vector<const char*> sourceExtensions;
     std::vector<const char*> moduleProcesses;
@@ -941,7 +906,6 @@ public:
     Id uniqueId;
     Function* entryPointFunction;
     bool generatingOpCodeForSpecConst;
-    bool useReplicatedComposites { false };
     AccessChain accessChain;
 
     // special blocks of instructions for output

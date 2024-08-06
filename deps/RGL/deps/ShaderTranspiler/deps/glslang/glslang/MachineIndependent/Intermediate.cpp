@@ -376,7 +376,6 @@ TIntermTyped* TIntermediate::addUnaryMath(TOperator op, TIntermTyped* child,
     case EOpNegative:
         if (child->getType().getBasicType() == EbtStruct || child->getType().isArray())
             return nullptr;
-        break;
     default: break; // some compilers want this
     }
 
@@ -1278,7 +1277,6 @@ void TIntermediate::addBiShapeConversion(TOperator op, TIntermTyped*& lhsNode, T
         // matrix multiply does not change shapes
         if (lhsNode->isMatrix() && rhsNode->isMatrix())
             return;
-        [[fallthrough]];
     case EOpAdd:
     case EOpSub:
     case EOpDiv:
@@ -2319,40 +2317,6 @@ TIntermAggregate* TIntermediate::growAggregate(TIntermNode* left, TIntermNode* r
     return aggNode;
 }
 
-TIntermAggregate* TIntermediate::mergeAggregate(TIntermNode* left, TIntermNode* right)
-{
-    if (left == nullptr && right == nullptr)
-        return nullptr;
-
-    TIntermAggregate* aggNode = nullptr;
-    if (left != nullptr)
-        aggNode = left->getAsAggregate();
-    if (aggNode == nullptr || aggNode->getOp() != EOpNull) {
-        aggNode = new TIntermAggregate;
-        if (left != nullptr)
-            aggNode->getSequence().push_back(left);
-    }
-
-    TIntermAggregate* rhsagg = right->getAsAggregate();
-    if (rhsagg == nullptr || rhsagg->getOp() != EOpNull)
-        aggNode->getSequence().push_back(right);
-    else
-        aggNode->getSequence().insert(aggNode->getSequence().end(),
-                                      rhsagg->getSequence().begin(),
-                                      rhsagg->getSequence().end());
-
-    return aggNode;
-}
-
-TIntermAggregate* TIntermediate::mergeAggregate(TIntermNode* left, TIntermNode* right, const TSourceLoc& loc)
-{
-    TIntermAggregate* aggNode = mergeAggregate(left, right);
-    if (aggNode)
-        aggNode->setLoc(loc);
-
-    return aggNode;
-}
-
 //
 // Turn an existing node into an aggregate.
 //
@@ -2626,18 +2590,6 @@ TIntermConstantUnion* TIntermediate::addConstantUnion(double d, TBasicType baseT
 {
     assert(baseType == EbtFloat || baseType == EbtDouble || baseType == EbtFloat16);
 
-    if (isEsProfile() && (baseType == EbtFloat || baseType == EbtFloat16)) {
-        int exponent = 0;
-        frexp(d, &exponent);
-        int minExp = baseType == EbtFloat ? -126 : -14;
-        int maxExp = baseType == EbtFloat ? 127 : 15;
-        if (exponent > maxExp) { //overflow, d = inf
-            d = std::numeric_limits<double>::infinity();
-        } else if (exponent < minExp) { //underflow, d = 0.0;
-            d = 0.0;
-        }
-    }
-
     TConstUnionArray unionArray(1);
     unionArray[0].setDConst(d);
 
@@ -2695,42 +2647,28 @@ TIntermTyped* TIntermediate::addSwizzle(TSwizzleSelectors<selectorType>& selecto
 // 'swizzleOkay' says whether or not it is okay to consider a swizzle
 // a valid part of the dereference chain.
 //
-// 'bufferReferenceOk' says if type is buffer_reference, the routine will stop to find the most left node.
+// 'BufferReferenceOk' says if type is buffer_reference, the routine stop to find the most left node.
 //
-// 'proc' is an optional function to run on each node that is processed during the traversal. 'proc' must
-// return true to continue the traversal, or false to end the traversal early.
 //
 
-const TIntermTyped* TIntermediate::traverseLValueBase(const TIntermTyped* node, bool swizzleOkay,
-                                                      bool bufferReferenceOk,
-                                                      std::function<bool(const TIntermNode&)> proc)
+const TIntermTyped* TIntermediate::findLValueBase(const TIntermTyped* node, bool swizzleOkay , bool bufferReferenceOk)
 {
     do {
         const TIntermBinary* binary = node->getAsBinaryNode();
-        if (binary == nullptr) {
-            if (proc) {
-                proc(*node);
-            }
+        if (binary == nullptr)
             return node;
-        }
         TOperator op = binary->getOp();
-        if (op != EOpIndexDirect && op != EOpIndexIndirect && op != EOpIndexDirectStruct && op != EOpVectorSwizzle &&
-            op != EOpMatrixSwizzle)
+        if (op != EOpIndexDirect && op != EOpIndexIndirect && op != EOpIndexDirectStruct && op != EOpVectorSwizzle && op != EOpMatrixSwizzle)
             return nullptr;
-        if (!swizzleOkay) {
+        if (! swizzleOkay) {
             if (op == EOpVectorSwizzle || op == EOpMatrixSwizzle)
                 return nullptr;
             if ((op == EOpIndexDirect || op == EOpIndexIndirect) &&
                 (binary->getLeft()->getType().isVector() || binary->getLeft()->getType().isScalar()) &&
-                !binary->getLeft()->getType().isArray())
+                ! binary->getLeft()->getType().isArray())
                 return nullptr;
         }
-        if (proc) {
-            if (!proc(*node)) {
-                return node;
-            }
-        }
-        node = binary->getLeft();
+        node = node->getAsBinaryNode()->getLeft();
         if (bufferReferenceOk && node->isReference())
             return node;
     } while (true);
@@ -2857,9 +2795,10 @@ void TIntermediate::addSymbolLinkageNodes(TIntermAggregate*& linkage, EShLanguag
     //}
 
     if (language == EShLangVertex) {
+        // the names won't be found in the symbol table unless the versions are right,
+        // so version logic does not need to be repeated here
         addSymbolLinkageNode(linkage, symbolTable, "gl_VertexID");
-        if ((version < 140 && requestedExtensions.find(E_GL_EXT_draw_instanced) != requestedExtensions.end()) || version >= 140)
-            addSymbolLinkageNode(linkage, symbolTable, "gl_InstanceID");
+        addSymbolLinkageNode(linkage, symbolTable, "gl_InstanceID");
     }
 
     // Add a child to the root node for the linker objects
@@ -3491,7 +3430,6 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
         // check for non-Boolean operands
         if (left->getBasicType() == EbtBool || right->getBasicType() == EbtBool)
             return false;
-        break;
 
     default:
         break;
@@ -3535,14 +3473,13 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
         if (left->getType() == right->getType())
             return true;
 
-        [[fallthrough]];
+        // Fall through
 
     case EOpMul:
     case EOpMulAssign:
         // At least the basic type has to match
         if (left->getBasicType() != right->getBasicType())
             return false;
-        break;
 
     default:
         break;
@@ -3685,7 +3622,7 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
     case EOpAssign:
         if (left->getVectorSize() != right->getVectorSize() || left->getMatrixCols() != right->getMatrixCols() || left->getMatrixRows() != right->getMatrixRows())
             return false;
-        [[fallthrough]];
+        // fall through
 
     case EOpAdd:
     case EOpSub:
