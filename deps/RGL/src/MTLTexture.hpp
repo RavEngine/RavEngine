@@ -31,6 +31,11 @@ struct TextureMTL : public ITexture{
     RGLCustomTextureViewPtr MakeCustomTextureView(const CustomTextureViewConfig& config) const;
     
     std::vector<OBJC_ID(MTLTexture)> mipTextures;
+    
+    uint32_t globalIndex = 0;
+    
+private:
+    std::shared_ptr<DeviceMTL> owningDevice;
 };
 
 struct CustomTextureViewMTL : public ICustomTextureView {

@@ -187,7 +187,7 @@ namespace RGL {
                     {
                         auto& range = ranges.emplace_back(D3D12_DESCRIPTOR_RANGE1{
                             .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
-                            .NumDescriptors = 1,
+                            .NumDescriptors = item.count,
                             .BaseShaderRegister = item.binding,
                             .RegisterSpace = 0,
                             .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
@@ -202,12 +202,13 @@ namespace RGL {
                     {
                         auto& range = ranges.emplace_back(D3D12_DESCRIPTOR_RANGE1{
                             .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-                            .NumDescriptors = 1,
+                            .NumDescriptors = item.count,
                             .BaseShaderRegister = item.binding,
-                            .RegisterSpace = 0,
+                            .RegisterSpace = item.isBindless ? 1u : 0u,
+                            .Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE,
                             .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
                             });
-                        textureBindingToRootSlot[item.binding] = { uint32_t(rootParameters.size()), false };
+                        textureBindingToRootSlot[{item.binding, item.isBindless ? 1u : 0u}] = { uint32_t(rootParameters.size()), false };
                         rootParameters.emplace_back().InitAsDescriptorTable(1, &range);
                     }
                 break;
@@ -216,9 +217,10 @@ namespace RGL {
                     // UAV
                     auto& range = ranges.emplace_back(D3D12_DESCRIPTOR_RANGE1{
                         .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
-                        .NumDescriptors = 1,
+                        .NumDescriptors = item.count,
                         .BaseShaderRegister = item.binding,
                         .RegisterSpace = 0,
+                        .Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE,
                         .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
                     });
                     textureBindingToRootSlot[item.binding] = { uint32_t(rootParameters.size()), true };
@@ -236,11 +238,11 @@ namespace RGL {
             case decltype(item.type)::UniformBuffer:
                 if (item.writable){
                     bufferBindingToRootSlot[item.binding] = { static_cast<uint32_t>(rootParameters.size()), true };
-                    rootParameters.emplace_back().InitAsUnorderedAccessView(item.binding, 0);
+                    rootParameters.emplace_back().InitAsUnorderedAccessView(item.binding, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE);
                 }
                 else {
                     bufferBindingToRootSlot[item.binding] = { static_cast<uint32_t>(rootParameters.size()), false };
-                    rootParameters.emplace_back().InitAsShaderResourceView(item.binding, 0);
+                    rootParameters.emplace_back().InitAsShaderResourceView(item.binding, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE);
                 }
                 break;
 

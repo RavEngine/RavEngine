@@ -11,7 +11,14 @@
 #include <atlbase.h>
 #include <dxcapi.h>
 
+#if __has_include(<pix3.h>)
+#include <pix3.h>
+#define PIX_ENABLED 1
+#endif
+
 #define DX12_USE_AGILITY 1
+
+#define TDR_PIX_CAPTURE 0
 
 // Exports for the Agility SDK. For Windows 10 users, Go here: https://www.nuget.org/packages/Microsoft.Direct3D.D3D12/1.614.0 then unzip it, and place 
 // D3D12Core.dll and d3d12SDKLayers.dll in a folder named D3D12 next to the executable.
@@ -31,8 +38,6 @@ using namespace RGL;
 using namespace Microsoft::WRL;
 
 CComPtr<IDxcUtils> dxcUtilsPtr;
-
-HMODULE mod_WinPixEventRuntime;
 
 PIXBeginEvent_t PIXBeginEvent_fn = nullptr;
 PIXEndEvent_t PIXEndEvent_fn = nullptr;
@@ -132,8 +137,7 @@ constexpr std::string_view D3D12AutoBreadcrumbOpToString(D3D12_AUTO_BREADCRUMB_O
     case D3D12_AUTO_BREADCRUMB_OP_RESOLVEENCODEROUTPUTMETADATA:
         return "RESOLVEENCODEROUTPUTMETADATA";
     default:
-        FatalError("Invalid D3D12_AUTO_BREADCRUMB_OP");
-        return "";
+        return "Unknown D3D12_AUTO_BREADCRUMB_OP";
     }
 }
 
@@ -199,8 +203,7 @@ constexpr std::string_view D3D12_DRED_ALLOCATION_TYPE_to_string(D3D12_DRED_ALLOC
     case D3D12_DRED_ALLOCATION_TYPE_INVALID:
         return "INVALID";
     default:
-        FatalError("Invalid D3D12_DRED_ALLOCATION_TYPE");
-        return "";
+        return "Unknown D3D12_DRED_ALLOCATION_TYPE";
     }
 }
 
@@ -212,13 +215,18 @@ void debugLog(const std::string_view str) {
 namespace RGL {
     void RGLDeviceRemovedHandler(PVOID context, BOOLEAN)
     {
-#if defined(_DEBUG)
         ID3D12Device* pDevice = (ID3D12Device*)context;
 
         auto reason = pDevice->GetDeviceRemovedReason();
         if (reason == S_OK) {
             return; // proper shutdown, no need to go further
         }
+
+#if PIX_ENABLED && TDR_PIX_CAPTURE
+        PIXEndCapture(FALSE);
+#endif
+#if defined(_DEBUG)
+       
 #if _UWP
         OutputDebugStringW(_com_error(reason, nullptr).ErrorMessage());
 #else
@@ -270,16 +278,6 @@ namespace RGL {
         FatalError("Device removal triggered!");
     }
 
-    PIXBeginEvent_t GetBeginEvent()
-    {
-        return PIXBeginEvent_fn;
-    }
-
-    PIXEndEvent_t GetEndEvent()
-    {
-        return PIXEndEvent_fn;
-    }
-
     void EnableDebugLayer()
     {
 #if defined(_DEBUG)
@@ -298,6 +296,7 @@ namespace RGL {
             "WinPixEventRuntime.dll";
 #endif
 
+#if 0
         // load WinPixEventRuntime manually so we don't have to use the NuGet (because it doesn't work with cmake projects)
         mod_WinPixEventRuntime = LoadLibraryA(pixlibname);
         if (mod_WinPixEventRuntime != nullptr) {
@@ -313,6 +312,7 @@ namespace RGL {
                 FatalError(std::format("Failed to load PIXEndEventOnCommandList : {}", err));
             }
         }
+#endif
 
         // GPU-based validation
 #if GPU_BASED_VALIDATION
@@ -338,15 +338,22 @@ namespace RGL {
 #ifdef REFL_ENABLED
         DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtilsPtr));
 #endif
+
+#if PIX_ENABLED && TDR_PIX_CAPTURE
+        auto lib = PIXLoadLatestWinPixGpuCapturerLibrary();
+        Assert(lib != nullptr, "Failed to load PIX library");
+        PIXCaptureParameters params{
+            .GpuCaptureParameters = {
+                .FileName = L"TDRCap.pix",
+            }
+        };
+        DX_CHECK(PIXBeginCapture(PIX_CAPTURE_GPU, &params));
+#endif
     }
 
     void RGL::DeintD3D12()
     {
         DeinitAftermath();
-        if (mod_WinPixEventRuntime != nullptr) {
-            FreeLibrary(mod_WinPixEventRuntime);
-            mod_WinPixEventRuntime = nullptr;
-        }
     }
 
     ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(ComPtr<ID3D12Device2> device,

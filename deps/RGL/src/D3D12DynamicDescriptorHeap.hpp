@@ -4,6 +4,7 @@
 #include <queue>
 #include <d3d12.h>
 #include <DescriptorHeap.h>
+#include "FreeList.hpp"
 
 
 namespace RGL {
@@ -12,8 +13,7 @@ namespace RGL {
 		using index_t = std::remove_const_t<std::make_unsigned_t<decltype(totalCount)>>;
 	private:
 		ID3D12Device* owningDevice;
-		std::queue<index_t> freeList{};
-		index_t nextFreeIndexNotInQueue = 0;	// __NOT__ one past the end
+		FreeList<index_t, totalCount> freeList;
 	public:
 
 		D3D12DynamicDescriptorHeap(decltype(owningDevice) device, D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_DESCRIPTOR_HEAP_FLAGS flags);

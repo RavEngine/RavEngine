@@ -82,7 +82,6 @@ namespace RGL {
             .apiVersion = VK_API_VERSION_1_3
         };
 
-
         VkInstanceCreateInfo instanceCreateInfo{
             .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pNext = nullptr,

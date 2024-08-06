@@ -24,6 +24,23 @@ RGLDevicePtr CreateDefaultDeviceMTL(){
 DeviceMTL::DeviceMTL(decltype(device) device)  : device(device){
     defaultLibrary = [device newDefaultLibrary];
     uploadQueue = [device newCommandQueue];
+    
+   
+    
+    // create the arugment encoder for bindless rendering
+    MTLArgumentDescriptor* desc = [MTLArgumentDescriptor new];
+    desc.index = 0;
+    desc.dataType = MTLDataTypeTexture;
+    desc.access = MTLBindingAccessReadWrite;
+    desc.arrayLength = 2048;
+
+    globalTextureEncoder = [device newArgumentEncoderWithArguments:@[desc]];
+    
+    // create backing memory for encoder
+    globalTextureBuffer = [device newBufferWithLength:[globalTextureEncoder encodedLength] options: MTLResourceStorageModeShared];
+    
+    // bind to encoder
+    [globalTextureEncoder setArgumentBuffer:globalTextureBuffer offset:0];
 }
 
 std::string DeviceMTL::GetBrandString() {
@@ -92,6 +109,10 @@ RGLTexturePtr DeviceMTL::CreateTexture(const TextureConfig& config){
 
 RGLSamplerPtr DeviceMTL::CreateSampler(const SamplerConfig& config){
     return std::make_shared<SamplerMTL>(shared_from_this(), config);
+}
+
+TextureView DeviceMTL::GetGlobalBindlessTextureHeap() const{
+    return TextureView::NativeHandles::mtl_t{.representsBindless = true};
 }
 
 void DeviceMTL::BlockUntilIdle() {

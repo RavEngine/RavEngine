@@ -16,7 +16,7 @@ struct IndirectCommand {
 	uint baseInstance;
 };
 
-layout(std430, binding = 0) buffer indirectDrawBuffer
+layout(scalar, binding = 0) buffer indirectDrawBuffer
 {
 	IndirectCommand commands[];
 };

@@ -387,17 +387,20 @@ void World::setupRenderTasks(){
                     auto rot = owner.GetTransform().WorldUp();
 
                     // use local ID here, no need for local-to-global translation
-                    renderData->directionalLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).direction = rot;
+                    auto& uploadData = renderData->directionalLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i));
+                    uploadData.direction = rot;
                 }
-                if (ptr->Get(i).isInvalidated()){
+                auto& lightdata = ptr->Get(i);
+                if (lightdata.isInvalidated()) {
                     // update color data if it has changed
-                    auto& lightdata = ptr->Get(i);
                     auto& color = lightdata.GetColorRGBA();
                     auto owner = ptr->GetOwner(i);
                     auto& dirLightUploadData = renderData->directionalLightData.uploadData.GetForSparseIndex(owner);
                     auto& dirLightAuxData = renderData->directionalLightData.auxData.GetForSparseIndex(owner);
-                    dirLightUploadData.colorIntensity = {color.R, color.G, color.B, lightdata.GetIntensity()};
+                    dirLightUploadData.color = {color.R, color.G, color.B};
+                    dirLightUploadData.intensity = lightdata.GetIntensity();
                     dirLightUploadData.castsShadows = lightdata.CastsShadows();
+                    dirLightUploadData.shadowmapBindlessIndex = lightdata.shadowData.shadowMap->GetDefaultView().GetReadonlyBindlessTextureHandle();
                     lightdata.clearInvalidate();
                     
                     dirLightAuxData.shadowDistance = lightdata.GetShadowDistance();
@@ -421,9 +424,12 @@ void World::setupRenderTasks(){
                     auto& lightData = ptr->Get(i);
                     auto& colorData = lightData.GetColorRGBA();
                     auto& denseData = renderData->spotLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i));
-                    denseData.coneAndPenumbra = { lightData.GetConeAngle(), lightData.GetPenumbraAngle() };
-                    denseData.colorIntensity = { colorData.R,colorData.G,colorData.B,lightData.GetIntensity()};
+                    denseData.coneAngle = lightData.GetConeAngle();
+                    denseData.penumbraAngle = lightData.GetPenumbraAngle();
+                    denseData.color = { colorData.R,colorData.G,colorData.B};
+                    denseData.intensity = lightData.GetIntensity();
                     denseData.castsShadows = lightData.CastsShadows();
+                    denseData.shadowmapBindlessIndex = lightData.shadowData.shadowMap->GetDefaultView().GetReadonlyBindlessTextureHandle();
                     lightData.clearInvalidate();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this
@@ -438,21 +444,22 @@ void World::setupRenderTasks(){
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
-                    renderData->pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.GetWorldMatrix();
+                    renderData->pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).position = transform.GetWorldPosition();
                 }
                 if (ptr->Get(i).isInvalidated()){
                     // update color data if it has changed
                     auto& lightData = ptr->Get(i);
                     auto& colorData = lightData.GetColorRGBA();
                     auto& denseData = renderData->pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i));
-                    denseData.colorIntensity = { colorData.R,colorData.G,colorData.B,lightData.GetIntensity()};
+                    denseData.color = { colorData.R,colorData.G,colorData.B};
+                    denseData.intensity = lightData.GetIntensity();
                     denseData.castsShadows = lightData.CastsShadows();
                     ptr->Get(i).clearInvalidate();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this
             }
         }
-    }).name("Update Invalidated SpotLights").precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
+    }).name("Update Invalidated PointLights").precede(updateRenderDataStaticMesh, updateRenderDataSkinnedMesh);
     
     auto updateInvalidatedAmbients = renderTasks.emplace([this]{
         if(auto ptr = GetAllComponentsOfType<AmbientLight>()){

@@ -255,6 +255,32 @@ namespace RGL {
 
 		transitionImageLayout(vkImage, format, VK_IMAGE_LAYOUT_UNDEFINED, nativeFormat, owningDevice->device, owningDevice->commandPool, owningDevice->presentQueue, createdAspectVk);
 
+
+		if (config.usage.Sampled) {
+			// make a descriptor for the global descriptor buffer and put it in the buffer
+			globalDescriptorIndex = owningDevice->globalDescriptorFreeList.Allocate();
+
+			VkDescriptorImageInfo imginfo{
+				.sampler = VK_NULL_HANDLE,
+				.imageView = vkImageView,
+				.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			};
+
+			VkWriteDescriptorSet bindlessDescriptorWrite{
+				.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+				.pNext = nullptr,
+				.dstSet = owningDevice->globalDescriptorSet,
+				.dstBinding = 0,							// bindless is always at binding 0 set N
+				.dstArrayElement = globalDescriptorIndex,
+				.descriptorCount = 1,
+				.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+				.pImageInfo = &imginfo,
+				.pBufferInfo = nullptr,
+				.pTexelBufferView = nullptr
+			};
+
+			vkUpdateDescriptorSets(owningDevice->device, 1, &bindlessDescriptorWrite, 0, nullptr);
+		}
 	}
 	Dimension TextureVk::GetSize() const
 	{
@@ -272,6 +298,8 @@ namespace RGL {
 			mipViews.clear();
 			vmaFreeMemory(owningDevice->vkallocator, alloc);
 			alloc = VK_NULL_HANDLE;
+
+			owningDevice->globalDescriptorFreeList.Deallocate(globalDescriptorIndex);
 		}
 	}
 	TextureView TextureVk::GetDefaultView() const

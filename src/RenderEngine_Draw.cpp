@@ -32,6 +32,8 @@
 
 namespace RavEngine {
 
+	
+
 struct LightingType{
     bool Lit: 1 = false;
     bool Unlit: 1 = false;
@@ -126,9 +128,8 @@ struct LightingType{
 			// each skinned mesh gets its own 1-instance draw in the buffer. The instance count starts at 0.
 			mainCommandBuffer->BeginComputeDebugMarker("Prepare Skinned Indirect Draw buffer");
 			mainCommandBuffer->BeginCompute(skinningDrawCallPreparePipeline);
-			SkinningPrepareUBO ubo;
-			uint32_t baseInstance = 0;
 			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+                SkinningPrepareUBO ubo;
 				mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 0, 0);
 				for (auto& command : drawcommand.commands) {
 					const auto objectCount = command.entities.DenseSize();
@@ -471,7 +472,7 @@ struct LightingType{
 			prepareSkeletalCullingBuffer();
 		}
 
-		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult](const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid){
+		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult]<bool includeLighting = true>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid){
             
             uint32_t particleBillboardMatrices = 0;
 
@@ -489,6 +490,80 @@ struct LightingType{
                 
             particleBillboardMatrices = WriteTransient(quadData);
 
+			if constexpr (includeLighting) {
+				// dispatch the lighting binning shaders
+				mainCommandBuffer->BeginComputeDebugMarker("Light Binning");
+				const auto nPointLights = worldOwning->renderData->pointLightData.uploadData.DenseSize();
+				const auto nSpotLights = worldOwning->renderData->spotLightData.uploadData.DenseSize();
+				if (nPointLights > 0 || nSpotLights > 0) {
+					{
+						GridBuildUBO ubo{
+							.invProj = glm::inverse(projOnly),
+							.gridSize = {Clustered::gridSizeX, Clustered::gridSizeY, Clustered::gridSizeZ},
+							.zNear = zNearFar.x,
+							.screenDim = {viewportScissor.extent[0],viewportScissor.extent[1]},
+							.zFar = zNearFar.y
+						};
+
+						mainCommandBuffer->BeginCompute(clusterBuildGridPipeline);
+						mainCommandBuffer->BindComputeBuffer(lightClusterBuffer, 0);
+						mainCommandBuffer->SetComputeBytes(ubo, 0);
+
+						mainCommandBuffer->DispatchCompute(Clustered::gridSizeX, Clustered::gridSizeY, Clustered::gridSizeZ, 1, 1, 1);
+						mainCommandBuffer->EndCompute();
+					}
+
+					// next assign lights to clusters
+					{
+						GridAssignUBO ubo{
+							.viewMat = viewonly,
+							.pointLightCount = nPointLights,
+							.spotLightCount = nSpotLights
+						};
+						mainCommandBuffer->BeginCompute(clusterPopulatePipeline);
+						mainCommandBuffer->SetComputeBytes(ubo, 0);
+						mainCommandBuffer->BindComputeBuffer(lightClusterBuffer, 0);
+						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->pointLightData.uploadData.GetDense().get_underlying().buffer, 1);
+						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->spotLightData.uploadData.GetDense().get_underlying().buffer, 2);
+
+						constexpr static auto threadGroupSize = 128;
+
+						mainCommandBuffer->DispatchCompute(Clustered::numClusters / threadGroupSize, 1, 1, threadGroupSize, 1, 1);
+
+						mainCommandBuffer->EndCompute();
+					}
+				}
+				mainCommandBuffer->EndComputeDebugMarker();
+			}
+
+#pragma pack(push, 1)
+			struct LightData {
+				glm::mat4 viewProj;
+				glm::mat4 viewOnly;
+				glm::mat4 projOnly;
+				glm::uvec4 screenDimension;
+				glm::vec3 camPos;
+				glm::uvec3 gridSize;
+				uint32_t ambientLightCount;
+				uint32_t directionalLightCount;
+				float zNear;
+				float zFar;
+			}
+			lightData{
+				.viewProj = viewproj,
+				.viewOnly = viewonly,
+				.projOnly = projOnly,
+				.screenDimension = { viewportScissor.offset[0],viewportScissor.offset[1], viewportScissor.extent[0],viewportScissor.extent[1] },
+				.camPos = camPos,
+				.gridSize = { Clustered::gridSizeX, Clustered::gridSizeY, Clustered::gridSizeZ },
+				.ambientLightCount = worldOwning->renderData->ambientLightData.uploadData.DenseSize(),
+				.directionalLightCount = worldOwning->renderData->directionalLightData.uploadData.DenseSize(),
+				.zNear = zNearFar.x,
+				.zFar = zNearFar.y
+			};
+
+#pragma pack(pop)
+			const auto lightDataOffset = WriteTransient(lightData);
 
 			auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
 				if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
@@ -508,6 +583,8 @@ struct LightingType{
 					}
 				}
 				};
+
+			
 
 			auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning, &reallocBuffer](matrix4 viewproj, const DepthPyramid pyramid) {
 			// first reset the indirect buffers
@@ -716,7 +793,7 @@ struct LightingType{
 					mainCommandBuffer->EndCompute();
 				}
 				};
-			auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, particleBillboardMatrices](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
+			auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, particleBillboardMatrices, &lightDataOffset](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
 				// do static meshes
 				mainCommandBuffer->SetViewport({
 					.x = float(viewportScissor.offset[0]),
@@ -753,6 +830,29 @@ struct LightingType{
 					// bind the pipeline
 					auto pipeline = pipelineSelectorFunction(materialInstance->GetMat());
 					mainCommandBuffer->BindRenderPipeline(pipeline);
+
+					// this is always needed
+					mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
+
+					if constexpr (includeLighting) {
+						// make textures resident and put them in the right format
+						worldOwning->Filter([this](const DirectionalLight& light, const Transform& t) {
+							mainCommandBuffer->UseResource(light.shadowData.shadowMap->GetDefaultView());
+						});
+						worldOwning->Filter([this](const SpotLight& light, const Transform& t) {
+							mainCommandBuffer->UseResource(light.shadowData.shadowMap->GetDefaultView());
+						});
+
+						mainCommandBuffer->BindBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer,12);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData->directionalLightData.uploadData.GetDense().get_underlying().buffer,13);
+						mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData->pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData->spotLightData.uploadData.GetDense().get_underlying().buffer, 17);
+						mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
+						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 0);
+
+						
+					}
 
 					// set push constant data
 					auto pushConstantData = materialInstance->GetPushConstantData();
@@ -804,7 +904,7 @@ struct LightingType{
 				}
 
 				// render particles
-				worldOwning->Filter([this, &viewproj, &particleBillboardMatrices,&currentLightingType,&pipelineSelectorFunction](const ParticleEmitter& emitter, const Transform& t) {
+				worldOwning->Filter([this, &viewproj, &particleBillboardMatrices,&currentLightingType,&pipelineSelectorFunction,&lightDataOffset, &worldOwning](const ParticleEmitter& emitter, const Transform& t) {
 					// check if shadow casting is enabled
 					if (!emitter.GetCastsShadows() && currentLightingType.FilterLightBlockers) {
 						return;
@@ -813,7 +913,7 @@ struct LightingType{
 						return;
 					}
 
-					auto sharedParticleImpl = [this, &particleBillboardMatrices, &pipelineSelectorFunction](const ParticleEmitter& emitter, auto&& materialInstance, Ref<ParticleRenderMaterial> material, RGLBufferPtr activeParticleIndexBuffer) {
+					auto sharedParticleImpl = [this, &particleBillboardMatrices, &pipelineSelectorFunction,&worldOwning,&lightDataOffset](const ParticleEmitter& emitter, auto&& materialInstance, Ref<ParticleRenderMaterial> material, RGLBufferPtr activeParticleIndexBuffer, bool isLit) {
 						auto pipeline = pipelineSelectorFunction(material);
 
 
@@ -821,6 +921,17 @@ struct LightingType{
 						mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, material->particleDataBufferBinding);
 						mainCommandBuffer->BindBuffer(activeParticleIndexBuffer, material->particleAliveIndexBufferBinding);
 						mainCommandBuffer->BindBuffer(transientBuffer, material->particleMatrixBufferBinding, particleBillboardMatrices);
+
+						mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
+						if (isLit) {
+							mainCommandBuffer->BindBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer, 12);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData->directionalLightData.uploadData.GetDense().get_underlying().buffer, 13);
+							mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData->pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData->spotLightData.uploadData.GetDense().get_underlying().buffer, 17);
+							mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
+							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 0);
+						}
 
 						std::byte pushConstants[128]{  };
 
@@ -851,10 +962,12 @@ struct LightingType{
 							[this, &emitter, &viewproj,&particleBillboardMatrices,&sharedParticleImpl,&currentLightingType](const Ref <BillboardParticleRenderMaterialInstance>& billboardMat) {
 
 								Ref<ParticleRenderMaterial> material;
+								bool isLit = false;
 								std::visit(CaseAnalysis{
-									[&currentLightingType, &material](const Ref<BillboardRenderParticleMaterial<LightingMode::Lit>>& mat) {
+									[&currentLightingType, &material,&isLit](const Ref<BillboardRenderParticleMaterial<LightingMode::Lit>>& mat) {
 										if (currentLightingType.Lit) {
 											material = mat;
+											isLit = true;
 										}
 									},
 									[&currentLightingType, &material](const Ref<BillboardRenderParticleMaterial<LightingMode::Unlit>>& mat) {
@@ -869,7 +982,7 @@ struct LightingType{
 									return;
 								}
 
-								sharedParticleImpl(emitter,billboardMat, material, emitter.activeParticleIndexBuffer);
+								sharedParticleImpl(emitter,billboardMat, material, emitter.activeParticleIndexBuffer,isLit);
 
 								mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
 
@@ -881,14 +994,16 @@ struct LightingType{
 									});
 								
                             },
-							[this,&emitter,&sharedParticleImpl, &currentLightingType](const Ref <MeshParticleRenderMaterialInstance>& meshMat) {
+							[this,&emitter,&sharedParticleImpl, &currentLightingType,&lightDataOffset](const Ref <MeshParticleRenderMaterialInstance>& meshMat) {
 							RGLBufferPtr activeIndexBuffer;
 
 								Ref<ParticleRenderMaterial> material;
+								bool isLit = false;
 								std::visit(CaseAnalysis{
-									[&currentLightingType, &material](const Ref<MeshParticleRenderMaterial<LightingMode::Lit>>& mat) {
+									[&currentLightingType, &material,&isLit](const Ref<MeshParticleRenderMaterial<LightingMode::Lit>>& mat) {
 										if (currentLightingType.Lit) {
 											material = mat;
+											isLit = true;
 										}
 									},
 									[&currentLightingType, &material](const Ref<MeshParticleRenderMaterial<LightingMode::Unlit>>& mat) {
@@ -910,11 +1025,11 @@ struct LightingType{
 									return;
 								}
 
-								sharedParticleImpl(emitter, meshMat, material, activeIndexBuffer);
+								sharedParticleImpl(emitter, meshMat, material, activeIndexBuffer,isLit);
 
 								mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
 								mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
-								mainCommandBuffer->BindBuffer(transientBuffer, 11, emitter.renderState.maxTotalParticlesOffset);
+								mainCommandBuffer->BindBuffer(transientBuffer, MeshParticleRenderMaterialInstance::kEngineDataBinding, emitter.renderState.maxTotalParticlesOffset);
 
 								mainCommandBuffer->ExecuteIndirectIndexed(
 									{
@@ -970,7 +1085,7 @@ struct LightingType{
 			}
 			mainCommandBuffer->BeginRenderDebugMarker("Render shadowmap");
 			for (uint32_t i = 0; i < lightStore.uploadData.DenseSize(); i++) {
-				const auto& light = lightStore.uploadData.GetDense()[i];
+				auto& light = lightStore.uploadData.GetDense()[i];
 				if (!light.castsShadows) {
 					continue;	// don't do anything if the light doesn't cast
 				}
@@ -993,7 +1108,7 @@ struct LightingType{
 
 					shadowRenderPass->SetDepthAttachmentTexture(shadowTexture->GetDefaultView());
 					auto shadowMapSize = shadowTexture->GetSize().width;
-					renderFromPerspective(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, shadowRenderPass, [](auto&& mat) {
+					renderFromPerspective.template operator()<false>(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, {}, shadowRenderPass, [](auto&& mat) {
 						return mat->GetShadowRenderPipeline();
 						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true }, lightMats.depthPyramid);
 
@@ -1004,9 +1119,9 @@ struct LightingType{
 		};
 
 		Profile::BeginFrame(Profile::RenderEncodeSpotShadows);
-		const auto spotlightShadowMapFunction = [](uint8_t index, const RavEngine::World::SpotLightDataUpload& light, auto unusedAux, entity_t owner) {
+		const auto spotlightShadowMapFunction = [](uint8_t index, RavEngine::World::SpotLightDataUpload& light, auto unusedAux, entity_t owner) {
 
-			auto lightProj = RMath::perspectiveProjection<float>(light.coneAndPenumbra.x * 2, 1, 0.1, 100);
+			auto lightProj = RMath::perspectiveProjection<float>(light.coneAngle * 2, 1, 0.1, 100);
 
 			// -y is forward for spot lights, so we need to rotate to compensate
 			auto rotmat = glm::toMat4(quaternion(vector3(-3.14159265358 / 2, 0, 0)));
@@ -1018,13 +1133,15 @@ struct LightingType{
 
 			auto& origLight = Entity(owner).GetComponent<SpotLight>();
 
+			light.lightViewProj = lightProj * viewMat;	// save this because the shader needs it
+
 			return lightViewProjResult{
 				.lightProj = lightProj,
 				.lightView = viewMat,
 				.camPos = camPos,
 				.depthPyramid = origLight.shadowData.pyramid,
 				.shadowmapTexture = origLight.shadowData.shadowMap,
-				.spillData = lightProj * viewMat
+				.spillData = light.lightViewProj
 			};
 			};
 
@@ -1039,7 +1156,7 @@ struct LightingType{
 			auto lightProj = RMath::perspectiveProjection<float>(90, 1, 0.1, 100);
 
 			glm::mat4 viewMat;
-            auto lightPos = glm::vec3(light.worldTransform * glm::vec4(0,0,0,1));
+            auto lightPos = light.position;
 
 			// rotate view space to each cubemap direction based on the index
 			switch (index) {
@@ -1063,7 +1180,7 @@ struct LightingType{
 				} break;
 			}
 
-			auto camPos = light.worldTransform * glm::vec4(0, 0, 0, 1);
+			auto camPos = light.position;
 
 			auto& origLight = Entity(owner).GetComponent<PointLight>();
 
@@ -1105,143 +1222,10 @@ struct LightingType{
 			auto nextImgSize = view.pixelDimensions;
 			auto& target = view.collection;
 
-			auto renderDeferredPass = [this,&target, &renderFromPerspective](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
-				// render all the static meshes
-
-				renderFromPerspective(viewproj, viewonly, projOnly, camPos, deferredRenderPass, [](auto&& mat) {
-					return mat->GetMainRenderPipeline();
-                }, renderArea, {.Lit = true}, target.depthPyramid);
-
-				
-			};
-			
-			auto renderLightingPass = [this, &target, &renderFromPerspective, &nextImgSize, &worldOwning, &spotlightShadowMapFunction, &pointLightShadowmapFunction, &renderLightShadowmap](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
-				// do lighting pass
-				// these run in window coordinates, even if in split screen
-				// but are confined by the scissor rect
-				glm::ivec4 viewRect {0, 0, nextImgSize.width, nextImgSize.height};
-
-				AmbientLightUBO ambientUBO{
-					.viewRect = viewRect,
-					.ssaoEnabled = VideoSettings.ssao
-				};
-
-				auto invviewproj = glm::inverse(viewproj);
-
-				// ambient lights
-				if (worldOwning->renderData->ambientLightData.uploadData.DenseSize() > 0) {
-					mainCommandBuffer->BeginRendering(ambientLightRenderPass);
-					mainCommandBuffer->BeginRenderDebugMarker("Render Ambient Lights");
-					mainCommandBuffer->BindRenderPipeline(ambientLightRenderPipeline);
-					mainCommandBuffer->SetViewport(fullSizeViewport);
-					mainCommandBuffer->SetScissor(fullSizeScissor);
-					mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-					mainCommandBuffer->SetFragmentTexture(target.diffuseTexture->GetDefaultView(), 1);
-					mainCommandBuffer->SetFragmentTexture(target.ssaoTexture->GetDefaultView(), 2);
-
-					mainCommandBuffer->SetVertexBuffer(screenTriVerts);
-					mainCommandBuffer->SetVertexBytes(ambientUBO, 0);
-					mainCommandBuffer->SetFragmentBytes(ambientUBO, 0);
-					mainCommandBuffer->SetVertexBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer, {
-						.bindingPosition = 1
-						});
-					mainCommandBuffer->Draw(3, {
-						.nInstances = worldOwning->renderData->ambientLightData.uploadData.DenseSize()
-						});
-					mainCommandBuffer->EndRenderDebugMarker();
-					mainCommandBuffer->EndRendering();
-				}
-
-				auto renderLight = [this, &renderFromPerspective, &viewproj, &viewRect, target, &fullSizeScissor, &fullSizeViewport, &renderArea, &worldOwning](auto&& lightStore, RGLRenderPipelinePtr lightPipeline, uint32_t dataBufferStride, uint8_t numShadowmaps, auto&& bindpolygonBuffers, auto&& drawCall, auto&& shadowmapDataFunction, auto&& getLightShadowmapRootview) {
-					if (lightStore.uploadData.DenseSize() > 0) {
-						LightingUBO lightUBO{
-							.viewProj = viewproj,
-							.viewRect = viewRect,
-							.viewRegion = {renderArea.offset[0],renderArea.offset[1],renderArea.extent[0],renderArea.extent[1]}
-						};
-
-						lightUBO.isRenderingShadows = true;
-						for (uint32_t i = 0; i < lightStore.uploadData.DenseSize(); i++) {
-							const auto& light = lightStore.uploadData.GetDense()[i];
-							auto sparseIdx = lightStore.uploadData.GetSparseIndexForDense(i);
-							auto owner = worldOwning->GetLocalToGlobal()[sparseIdx];
-                           
-                            
-							if (!light.castsShadows) {
-								continue;
-							}
-
-							using lightadt_t = std::remove_reference_t<decltype(lightStore)>;
-							void* aux_data = nullptr;
-							if constexpr (lightadt_t::hasAuxData) {
-								aux_data = &lightStore.auxData.GetDense()[i];
-							}
-
-							auto lightMats = shadowmapDataFunction(i, light, aux_data, owner);
-
-							auto lightSpaceMatrix = lightMats.lightProj * lightMats.lightView;
-							lightUBO.camPos = lightMats.camPos;
-
-							auto transientOffset = WriteTransient(lightMats.spillData);
-
-							auto shadowTextureView = getLightShadowmapRootview(owner);
-
-							mainCommandBuffer->BeginRendering(lightingRenderPass);
-							//reset viewport and scissor
-							mainCommandBuffer->SetViewport(fullSizeViewport);
-							mainCommandBuffer->SetScissor(fullSizeScissor);
-							mainCommandBuffer->BindRenderPipeline(lightPipeline);
-							mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-							mainCommandBuffer->SetFragmentSampler(shadowSampler, 1);
-
-							mainCommandBuffer->SetFragmentTexture(target.diffuseTexture->GetDefaultView(), 2);
-							mainCommandBuffer->SetFragmentTexture(target.normalTexture->GetDefaultView(), 3);
-							mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 4);
-							mainCommandBuffer->SetFragmentTexture(shadowTextureView, 5);
-							mainCommandBuffer->SetFragmentTexture(target.roughnessSpecularMetallicAOTexture->GetDefaultView(), 6);
-
-							mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
-
-							bindpolygonBuffers(mainCommandBuffer);
-							mainCommandBuffer->SetVertexBytes(lightUBO, 0);
-							mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
-							mainCommandBuffer->SetVertexBuffer(lightStore.uploadData.GetDense().get_underlying().buffer, {
-								.bindingPosition = 1,
-								.offsetIntoBuffer = uint32_t(dataBufferStride * i)
-								});
-							drawCall(mainCommandBuffer, 1);
-							mainCommandBuffer->EndRendering();
-						}
-
-						lightUBO.isRenderingShadows = false;
-						mainCommandBuffer->BeginRendering(lightingRenderPass);
-						mainCommandBuffer->BindRenderPipeline(lightPipeline);
-
-						mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-						mainCommandBuffer->SetFragmentSampler(shadowSampler, 1);
-
-						mainCommandBuffer->SetFragmentTexture(target.diffuseTexture->GetDefaultView(), 2);
-						mainCommandBuffer->SetFragmentTexture(target.normalTexture->GetDefaultView(), 3);
-						mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 4);
-						mainCommandBuffer->SetFragmentTexture(target.roughnessSpecularMetallicAOTexture->GetDefaultView(), 6);
-						mainCommandBuffer->SetFragmentTexture(numShadowmaps == 6 ? dummyCubemap->GetDefaultView() : dummyShadowmap->GetDefaultView(), 5);
-
-						mainCommandBuffer->BindBuffer(transientBuffer, 8, transientOffset);
-
-						bindpolygonBuffers(mainCommandBuffer);
-						mainCommandBuffer->SetVertexBytes(lightUBO, 0);
-						mainCommandBuffer->SetFragmentBytes(lightUBO, 0);
-						mainCommandBuffer->SetVertexBuffer(lightStore.uploadData.GetDense().get_underlying().buffer, {
-							.bindingPosition = 1
-							});
-						drawCall(mainCommandBuffer, lightStore.uploadData.DenseSize());
-						mainCommandBuffer->EndRendering();
-					}
-				};
-
-				// directional lights
+			auto renderLitPass = [this,&target, &renderFromPerspective,&renderLightShadowmap,&worldOwning](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+				// directional light shadowmaps
 				mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
-				const auto dirlightShadowmapDataFunction = [&camPos](uint8_t index, const RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
+				const auto dirlightShadowmapDataFunction = [&camPos](uint8_t index, RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
 					auto dirvec = light.direction;
 
 					auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
@@ -1250,82 +1234,37 @@ struct LightingType{
 
 					auto lightProj = RMath::orthoProjection<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
 					auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
-					const vector3 reposVec{ std::round(-camPos.x), std::round(camPos.y), std::round(-camPos.z) };
+					const vector3 reposVec{ std::round(-camPos.pos.x), std::round(camPos.pos.y), std::round(-camPos.pos.z) };
 					lightView = glm::translate(lightView, reposVec);
 
 					auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
 
+					light.lightViewProj = lightProj * lightView;	// remember this because the rendering also needs it
+
 					return lightViewProjResult{
 						.lightProj = lightProj,
 						.lightView = lightView,
-						.camPos = camPos,
+						.camPos = camPos.pos,
 						.depthPyramid = origLight.shadowData.pyramid,
 						.shadowmapTexture = origLight.shadowData.shadowMap,
-						.spillData = lightProj * lightView
+						.spillData = light.lightViewProj
 					};
-					};
+				};
+
 
 				renderLightShadowmap(worldOwning->renderData->directionalLightData, 1,
 					dirlightShadowmapDataFunction,
 					[](entity_t unused) {}
 				);
-
-				renderLight(worldOwning->renderData->directionalLightData, dirLightRenderPipeline, sizeof(World::DirLightUploadData), 1,
-					[this](RGLCommandBufferPtr mainCommandBuffer) {
-						mainCommandBuffer->SetVertexBuffer(screenTriVerts);
-					},
-					[](RGLCommandBufferPtr mainCommandBuffer, uint32_t nInstances) {
-						mainCommandBuffer->Draw(3, {
-							.nInstances = nInstances
-							});
-					},
-					dirlightShadowmapDataFunction,
-					[](entity_t owner) {
-						auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
-						return origLight.shadowData.shadowMap->GetDefaultView();
-					}
-				);
 				mainCommandBuffer->EndRenderDebugMarker();
 
-				// spot lights
-				mainCommandBuffer->BeginRenderDebugMarker("Render Spot Lights");
-				renderLight(worldOwning->renderData->spotLightData, spotLightRenderPipeline, sizeof(World::SpotLightDataUpload), 1,
-					[this](RGLCommandBufferPtr mainCommandBuffer) {
-						mainCommandBuffer->SetVertexBuffer(spotLightVertexBuffer);
-						mainCommandBuffer->SetIndexBuffer(spotLightIndexBuffer);
-					},
-					[this](RGLCommandBufferPtr mainCommandBuffer, uint32_t nInstances) {
-						mainCommandBuffer->DrawIndexed(nSpotLightIndices, {
-							.nInstances = nInstances
-						});
-					},
-					spotlightShadowMapFunction,
-					[](entity_t owner) {
-						auto& origLight = Entity(owner).GetComponent<SpotLight>();
-						return origLight.shadowData.shadowMap->GetDefaultView();
-					}
-				);
-				mainCommandBuffer->EndRenderDebugMarker();
+				// render all the static meshes
 
-				mainCommandBuffer->BeginRenderDebugMarker("Render Point Lights");
-				renderLight(worldOwning->renderData->pointLightData, pointLightRenderPipeline, sizeof(World::PointLightUploadData),6,
-					[this](RGLCommandBufferPtr mainCommandBuffer){
-						mainCommandBuffer->SetVertexBuffer(pointLightVertexBuffer);
-						mainCommandBuffer->SetIndexBuffer(pointLightIndexBuffer);
-					},
-					[this](RGLCommandBufferPtr mainCommandBuffer, uint32_t nInstances) {
-						mainCommandBuffer->DrawIndexed(nPointLightIndices, {
-							.nInstances = nInstances
-						});
-					},
-					pointLightShadowmapFunction,
-					[](entity_t owner) {
-						auto& origLight = Entity(owner).GetComponent<PointLight>();
-						return origLight.shadowData.mapCube->GetDefaultView();
-					}
-					);
-				mainCommandBuffer->EndRenderDebugMarker();
+				renderFromPerspective(viewproj, viewonly, projOnly, camPos.pos, camPos.zNearFar, litRenderPass, [](auto&& mat) {
+					return mat->GetMainRenderPipeline();
+                }, renderArea, {.Lit = true}, target.depthPyramid);
 
+				
 			};
 
             auto renderFinalPass = [this, &target, &worldOwning, &view, &guiScaleFactor, &nextImgSize, &renderFromPerspective](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
@@ -1333,7 +1272,7 @@ struct LightingType{
                 //render unlits
                 unlitRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
                 unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
-                renderFromPerspective(viewproj, viewonly, projOnly, camPos, unlitRenderPass, [](auto&& mat) {
+				renderFromPerspective.template operator() < false > (viewproj, viewonly, projOnly, camPos.pos, {}, unlitRenderPass, [](auto&& mat) {
                     return mat->GetMainRenderPipeline();
                 }, renderArea, {.Unlit = true}, target.depthPyramid);
                 
@@ -1495,6 +1434,8 @@ struct LightingType{
 				Im3d::AppData& data = Im3d::GetAppData();
 				data.m_appData = (void*)&viewproj;
 
+                mainCommandBuffer->SetViewport(fullSizeViewport);
+                mainCommandBuffer->SetScissor(fullSizeScissor);
 				Im3d::GetContext().draw();
 				mainCommandBuffer->EndRenderDebugMarker();
 
@@ -1515,6 +1456,12 @@ struct LightingType{
 			auto doPassWithCamData = [this,&target,&nextImgSize](auto&& camdata, auto&& function) {
 				const auto viewproj = camdata.viewProj;
 				const auto invviewproj = glm::inverse(viewproj);
+
+				struct {
+					glm::vec3 pos;
+					glm::vec2 zNearFar;
+				} camData{camdata.camPos , camdata.zNearFar};
+
 				const auto camPos = camdata.camPos;
 				const auto viewportOverride = camdata.viewportOverride;
 
@@ -1535,7 +1482,7 @@ struct LightingType{
 						.extent = { uint32_t(nextImgSize.width), uint32_t(nextImgSize.height) }
 				};
 
-				function(viewproj, camdata.viewOnly, camdata.projOnly, camPos, fullSizeViewport, fullSizeScissor, renderArea);
+				function(viewproj, camdata.viewOnly, camdata.projOnly, camData, fullSizeViewport, fullSizeScissor, renderArea);
 			};
             
 			auto generatePyramid = [this](const DepthPyramid& depthPyramid, RGLTexturePtr depthStencil) {
@@ -1625,23 +1572,21 @@ struct LightingType{
 		
 
 			// deferred pass
-			deferredRenderPass->SetAttachmentTexture(0, target.diffuseTexture->GetDefaultView());
-			deferredRenderPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
-			deferredRenderPass->SetAttachmentTexture(2, target.roughnessSpecularMetallicAOTexture->GetDefaultView());;
-			deferredRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+			litRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
+			litRenderPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
+			litRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
-			deferredClearRenderPass->SetAttachmentTexture(0, target.diffuseTexture->GetDefaultView());
-			deferredClearRenderPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
-			deferredClearRenderPass->SetAttachmentTexture(2, target.roughnessSpecularMetallicAOTexture->GetDefaultView());
-			deferredClearRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+			litClearRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
+			litClearRenderPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
+			litClearRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
-			mainCommandBuffer->BeginRenderDebugMarker("Deferred Pass");
+			mainCommandBuffer->BeginRenderDebugMarker("Lit Pass");
 
-			mainCommandBuffer->BeginRendering(deferredClearRenderPass);
+			mainCommandBuffer->BeginRendering(litClearRenderPass);
 			mainCommandBuffer->EndRendering();
 			Profile::BeginFrame(Profile::RenderEncodeDeferredPass);
 			for (const auto& camdata : view.camDatas) {
-				doPassWithCamData(camdata, renderDeferredPass);
+				doPassWithCamData(camdata, renderLitPass);
 			}
 			Profile::EndFrame(Profile::RenderEncodeDeferredPass);
 			mainCommandBuffer->EndRenderDebugMarker();
@@ -1706,25 +1651,7 @@ struct LightingType{
 				mainCommandBuffer->EndRenderDebugMarker();
             }
 
-			// lighting pass
-			Profile::BeginFrame(Profile::RenderEncodeLightingPass);
-
-			mainCommandBuffer->BeginRenderDebugMarker("Lighting Pass");
-			lightingRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
-			lightingRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
-			ambientLightRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
-			ambientLightRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
-
-			lightingClearRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
-			lightingClearRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
-			mainCommandBuffer->BeginRendering(lightingClearRenderPass);	// clears the framebuffer
-			mainCommandBuffer->EndRendering();
-			for (const auto& camdata : view.camDatas) {
-				doPassWithCamData(camdata, renderLightingPass);
-			}
-			mainCommandBuffer->EndRenderDebugMarker();
-			Profile::EndFrame(Profile::RenderEncodeLightingPass);
-
+			
 			// final render pass
 			Profile::BeginFrame(Profile::RenderEncodeForwardPass);
 			finalRenderPass->SetAttachmentTexture(0, target.finalFramebuffer->GetDefaultView());

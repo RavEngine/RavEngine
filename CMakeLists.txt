@@ -426,7 +426,11 @@ endif()
 file(GLOB SOURCES "src/*.cpp" "src/*.hpp")
 file(GLOB_RECURSE NATVIS "deps/*.natvis")
 file(GLOB HEADERS "include/${PROJECT_NAME}/*.h" "include/${PROJECT_NAME}/*.hpp" )
-file(GLOB SHADERS "shaders/*.glsl" "shaders/*.csh" "shaders/*.vsh" "shaders/*.fsh" "shaders/*.sc" "shaders/*.glsl" "shaders/*.hlsl")
+file(GLOB SHADERS
+    "shaders/*.glsl" "shaders/*.csh" "shaders/*.vsh" "shaders/*.fsh"
+    "materials/*.glsl" "materials/*.vsh" "materials/*.fsh" "materials/*.csh"
+    "tools/rvesc/*.glsl" "tools/rvesc/*.vsh" "tools/rvesc/*.fsh" "tools/rvesc/*.csh"
+)
 set_source_files_properties(${SHADERS} PROPERTIES HEADER_FILE_ONLY TRUE)	# prevent VS from compiling these
 
 # register the library

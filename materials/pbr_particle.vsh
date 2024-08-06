@@ -70,6 +70,7 @@ ParticleVertexOut vert(uint particleID, ParticleMatrices matrices){
     vec4 finalPos = matrices.viewProj * vert;
 
     vs_out.position = finalPos;
+    vs_out.worldPosition = data_pos;
 
     return vs_out;
 

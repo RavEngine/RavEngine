@@ -650,7 +650,10 @@ IMResult SPIRVtoMSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMod
 	options.set_msl_version(major,minor);
 	options.platform = opt.mobile ? spirv_cross::CompilerMSL::Options::Platform::iOS : spirv_cross::CompilerMSL::Options::Platform::macOS;
 	options.enable_decoration_binding = true;	// order textures / samplers by binding order, not by order of first use
+    //options.argument_buffers = true;          // don't enable this. It will set everything to be an argument buffer.
+    options.argument_buffers_tier = spirv_cross::CompilerMSL::Options::ArgumentBuffersTier::Tier2;
 	msl.set_msl_options(options);
+    msl.set_argument_buffer_device_address_space(opt.mtlDeviceAddressSettings.descSet, opt.mtlDeviceAddressSettings.deviceStorage);
     
 	auto refldata = getReflectData(msl,bin);
     

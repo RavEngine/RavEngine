@@ -315,9 +315,12 @@ namespace RavEngine {
         };
     
         struct DirLightUploadData {
-            glm::vec4 colorIntensity;
+            glm::mat4 lightViewProj;
+            glm::vec3 color;
             glm::vec3 direction;
+            float intensity;
             int castsShadows;
+            int shadowmapBindlessIndex;
         };
 
         struct DirLightAuxData {
@@ -325,16 +328,21 @@ namespace RavEngine {
         };
 
         struct PointLightUploadData {
-            glm::mat4 worldTransform;
-            glm::vec4 colorIntensity;
+            glm::vec3 position;
+            glm::vec3 color;
+            float intensity;
             int castsShadows;
         };
 
         struct SpotLightDataUpload {
+            glm::mat4 lightViewProj;
             glm::mat4 worldTransform;
-            glm::vec4 colorIntensity;
-            glm::vec2 coneAndPenumbra;
+            glm::vec3 color;
+            float intensity;
+            float coneAngle;
+            float penumbraAngle;
             int castsShadows;
+            uint32_t shadowmapBindlessIndex;
         };
 
         // data for the render engine

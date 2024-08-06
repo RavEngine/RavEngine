@@ -124,6 +124,8 @@ int App::run(int argc, char** argv) {
 		Debug::Fatal("Unable to initialize SDL: {}", SDL_GetError());
 	}
 	{
+		window = std::make_unique<Window>(960, 540, "RavEngine");
+
 		auto config = OnConfigure(argc, argv);
 
 		// initialize RGL and the global Device
@@ -172,7 +174,8 @@ int App::run(int argc, char** argv) {
 
 		Renderer = std::make_unique<RenderEngine>(config, device);
 
-		window = std::make_unique<Window>(960, 540, "RavEngine", device, Renderer->mainCommandQueue);
+		window->InitSwapchain(device, Renderer->mainCommandQueue);
+
 		auto size = window->GetSizeInPixels();
 		mainWindowView = { Renderer->CreateRenderTargetCollection({ static_cast<unsigned int>(size.width), static_cast<unsigned int>(size.height) }) };
 
@@ -354,8 +357,9 @@ int App::run(int argc, char** argv) {
 			auto viewOnly = camera.GenerateViewMatrix();
 			auto viewProj = projOnly * viewOnly;
 			auto camPos = camera.GetOwner().GetTransform().GetWorldPosition();
+			
 			auto viewportOverride = camera.viewportOverride;
-            mainWindowView.camDatas.push_back(RenderViewCollection::camData{viewProj, projOnly, viewOnly, camPos, viewportOverride});
+			mainWindowView.camDatas.push_back(RenderViewCollection::camData{ viewProj, projOnly, viewOnly, camPos,{camera.nearClip, camera.farClip} ,viewportOverride });
 		}
 
 		mainWindowView.pixelDimensions = window->GetSizeInPixels();

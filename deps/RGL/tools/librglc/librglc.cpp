@@ -45,6 +45,10 @@ namespace librglc {
 		opt.mobile = false;
 		opt.debug = config.enableDebug;
 		opt.entryPoint = config.entrypointOutputName;
+        opt.mtlDeviceAddressSettings = {
+            .descSet = 1,
+            .deviceStorage = true
+        };
 		if (toAPI == API::Vulkan) {
 			opt.version = 15;
             opt.preambleContent = "#define RGL_SL_VK 1";
@@ -67,6 +71,7 @@ namespace librglc {
 		for (const auto& define : config.defines) {
 			opt.preambleContent += "\n#define " + define + "\n";
 		}
+
         
 		ShaderTranspiler s;
 		auto result = s.CompileTo(task, config.outputBinary ? rgl2shadert_binary(toAPI) : rgl2shadert_source(toAPI), opt);

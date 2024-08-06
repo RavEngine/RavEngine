@@ -117,6 +117,11 @@ struct Options{
 		bool renameBuffer = false;
 	} uniformBufferSettings;
     
+    struct {
+        uint32_t descSet = 0;
+        bool deviceStorage = false;
+    } mtlDeviceAddressSettings;
+    
     struct PushConstantSettings{
         uint8_t firstIndex = 0;
         

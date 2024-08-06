@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <limits>
 #include <string_view>
+#include <array>
 #include "TextureFormat.hpp"
 #include "SubresourceRange.hpp"
 
@@ -50,9 +51,10 @@ namespace RGL {
 			NativeHandles {
 #if RGL_MTL_AVAILABLE
             struct mtl_t {
-                const TextureMTL* texture;
+                const TextureMTL* texture = nullptr;
                 uint32_t mip = 0;
                 constexpr static decltype(mip) ALL_MIPS = std::numeric_limits<decltype(mip)>::max();
+                bool representsBindless = false;
             } mtl;
 #endif
 #if RGL_WEBGPU_AVAILABLE
@@ -67,6 +69,8 @@ namespace RGL {
 					rtvIDX = unallocated,
 					srvIDX = unallocated,
 					uavIDX = unallocated;
+				
+				bool representsBindless = false;
 
 				bool dsvAllocated() const {
 					return dsvIDX != unallocated;
@@ -88,13 +92,19 @@ namespace RGL {
 #endif
 #if RGL_VK_AVAILABLE
 			struct vk {
-				VkImageView view;
+				VkImageView view = VK_NULL_HANDLE;
 				covered_mips_t coveredMips = 0;
 				covered_layers_t coveredLayers = 0;
+				struct bindlessInfo {
+					VkDescriptorSet bindlessSet = NULL;
+
+				} bindlessInfo;
 			}
 			vk;
 			NativeHandles(decltype(vk.view) view, decltype(vk.coveredMips) mips, decltype(vk.coveredLayers) layers) : vk{ view, mips, layers } {}
+			NativeHandles(decltype(vk.bindlessInfo) set) : vk{ .bindlessInfo = set } {}
 #endif
+
 			NativeHandles() {}
 
 		} texture;
@@ -102,6 +112,7 @@ namespace RGL {
 #if RGL_VK_AVAILABLE
 		const RGL::ITexture* parent = nullptr;
 		TextureView(decltype(parent) parent, VkImageView in_img, covered_mips_t mips, covered_layers_t layers, Dimension dim) : parent(parent), viewSize(dim), texture(in_img, mips, layers) {}
+		TextureView(decltype(texture.vk.bindlessInfo) bindless) : texture(bindless) {}
 #endif
 
 #if RGL_DX12_AVAILABLE
@@ -118,6 +129,8 @@ namespace RGL {
 		}
 #endif
 		TextureView() {}
+
+		uint32_t GetReadonlyBindlessTextureHandle();
 	};
 
 
@@ -125,6 +138,7 @@ namespace RGL {
 		TextureUsage usage;
 		TextureAspect aspect;
 		uint32_t width = 0, height = 0, depth = 1, mipLevels = 1, arrayLayers = 1;
+		std::array<float, 4> optimizedClearValue{ 0,0,0,0 };
 		TextureType imageType = decltype(imageType)::T2D;
 		TextureFormat format;
 		TilingMode mode = decltype(mode)::Optimal;

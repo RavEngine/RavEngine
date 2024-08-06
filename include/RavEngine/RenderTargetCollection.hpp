@@ -11,7 +11,7 @@ namespace RavEngine{
 	};
 
 	struct RenderTargetCollection {
-		RGLTexturePtr diffuseTexture, normalTexture, roughnessSpecularMetallicAOTexture, depthStencil, lightingTexture, lightingScratchTexture, ssaoTexture;
+		RGLTexturePtr normalTexture, depthStencil, lightingTexture, lightingScratchTexture, ssaoTexture;
 		RGL::ITexture* finalFramebuffer;
 		DepthPyramid depthPyramid;
 	};
@@ -23,6 +23,7 @@ namespace RavEngine{
 			glm::mat4 projOnly;
 			glm::mat4 viewOnly;
 			glm::vec3 camPos;
+			glm::vec2 zNearFar;
 
 			ViewportOverride viewportOverride;
 		};

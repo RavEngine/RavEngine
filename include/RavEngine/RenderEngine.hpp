@@ -22,6 +22,7 @@
 #include "RenderTargetCollection.hpp"
 #include "PostProcess.hpp"
 #include <unordered_set>
+#include "cluster_defs.h"
 
 struct SDL_Window;
 
@@ -40,6 +41,22 @@ namespace RavEngine {
 	struct MeshAsset;
 	struct GUIComponent;
 
+	namespace Clustered {
+		constexpr static uint32_t gridSizeX = 12;
+		constexpr static uint32_t gridSizeY = 12;
+		constexpr static uint32_t gridSizeZ = 24;
+		constexpr static uint32_t numClusters = gridSizeX * gridSizeY * gridSizeZ;
+
+		struct Cluster {
+			glm::vec3 minPoint;
+			glm::vec3 maxPoint;
+			uint32_t pointLightCount;
+			uint32_t spotLightCount;
+			uint32_t pointLightIndices[CLUSTER_MAX_POINTS];
+			uint32_t spotLightIndices[CLUSTER_MAX_SPOTS];
+		};
+	}
+
     class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterface, public duDebugDraw {
         friend class App;
 	private:
@@ -52,19 +69,34 @@ namespace RavEngine {
 
 		RGLTexturePtr dummyShadowmap, dummyCubemap;
 		RGLSamplerPtr textureSampler, shadowSampler, depthPyramidSampler;
-		RGLRenderPassPtr deferredRenderPass, unlitRenderPass, lightingRenderPass, ambientLightRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, shadowRenderPass, lightingClearRenderPass, deferredClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, ssaoPass;
+		RGLRenderPassPtr litRenderPass, unlitRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, ssaoPass;
 
-		RGLRenderPipelinePtr ambientLightRenderPipeline, dirLightRenderPipeline, pointLightRenderPipeline, spotLightRenderPipeline, lightToFBRenderPipeline, depthPyramidCopyPipeline,
+		RGLRenderPipelinePtr lightToFBRenderPipeline, depthPyramidCopyPipeline,
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, ssaoPipeline;
-		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline;
-		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer, spotLightVertexBuffer, spotLightIndexBuffer,
-			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, ssaoSamplesBuffer, quadVertBuffer;
-		uint32_t nPointLightIndices = 0, nSpotLightIndices = 0;
+		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline, clusterBuildGridPipeline, clusterPopulatePipeline;
+		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer,
+			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, ssaoSamplesBuffer, quadVertBuffer, lightClusterBuffer;
+		uint32_t nPointLightIndices = 0;
 
 		constexpr static uint32_t initialVerts = 1024, initialIndices = 1536;
 
 		struct PyramidCopyUBO {
 			uint32_t size;
+		};
+
+#pragma pack(push, 1)
+		struct GridBuildUBO {
+			glm::mat4 invProj{ 0 };
+			glm::uvec3 gridSize{ 0 };
+			float zNear = 0;
+			glm::uvec2 screenDim{ 0 };
+			float zFar = 0;
+		};
+#pragma pack(pop)
+
+		struct GridAssignUBO {
+			glm::mat4 viewMat;
+			uint32_t pointLightCount, spotLightCount;
 		};
         
         RGLShaderLibraryPtr defaultPostEffectVSH;
@@ -120,14 +152,6 @@ namespace RavEngine {
 
 		struct DebugUBO {
 			glm::mat4 viewProj;
-		};
-
-		struct LightingUBO {
-			glm::mat4 viewProj;
-			glm::ivec4 viewRect;
-			glm::ivec4 viewRegion;
-			glm::vec3 camPos;
-			uint32_t isRenderingShadows = uint32_t(false);
 		};
 
 		struct SkinningUBO {

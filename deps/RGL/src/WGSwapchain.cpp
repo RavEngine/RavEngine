@@ -49,7 +49,7 @@ namespace RGL{
     void SwapchainWG::Present(const SwapchainPresentConfig&){
         #if __EMSCRIPTEN__
             emscripten_request_animation_frame([](double time, void* userData){
-                return 0;
+                return false;
             },nullptr);
         #else
             wgpuSwapChainPresent(swapchain);

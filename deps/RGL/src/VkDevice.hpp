@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.h>
 #include <RGL/Pipeline.hpp>
 #include <vk_mem_alloc.h>
+#include "FreeList.hpp"
 
 #undef CreateSemaphore
 
@@ -57,6 +58,8 @@ namespace RGL {
 
 		DeviceData GetDeviceData() final;
 
+		TextureView GetGlobalBindlessTextureHeap() const final;
+
 		RGLCommandQueuePtr CreateCommandQueue(QueueType type) final;
 		RGLFencePtr CreateFence(bool preSignaled) final;
 		void BlockUntilIdle() final;
@@ -65,6 +68,19 @@ namespace RGL {
 		size_t GetCurrentVRAMInUse() const final;
 
 		uint32_t frameIndex = 0;
+
+		VkDescriptorSetLayout globalDescriptorSetLayout = VK_NULL_HANDLE;
+
+		constexpr static uint32_t nDescriptors = 2048;		       // made-up number (matches the DX backend)
+		FreeList<uint32_t, nDescriptors> globalDescriptorFreeList;
+
+		VkDescriptorSet globalDescriptorSet = VK_NULL_HANDLE;
+
+	private:
+		VkDeviceSize globalDescriptorSetOffset = 0;
+		void* globalDescriptorMappedMemory = nullptr;
+
+		VkDescriptorPool globalDescriptorPool = VK_NULL_HANDLE;
 	};
 
 	RGLDevicePtr CreateDefaultDeviceVk();

@@ -38,6 +38,8 @@ namespace RGL {
 		std::vector<TextureView> mipViews;
 
 		std::string debugName;
+
+		uint32_t globalDescriptorIndex = 0;
 	};
 
 	struct CustomTextureViewVk : public ICustomTextureView {

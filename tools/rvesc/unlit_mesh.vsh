@@ -9,6 +9,8 @@ layout(location = 4) in vec2 inUV;
 layout(location = ENTITY_INPUT_LOCATION) in uint inEntityID;
 layout(std430, binding = MODEL_MATRIX_BINDING) readonly buffer modelMatrixBuffer{mat4 model[];};
 
+#include "lit_mesh_shared.glsl"
+
 struct UnlitVertexOut{
     vec4 position;
 };

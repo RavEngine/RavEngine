@@ -1,6 +1,4 @@
-struct ParticleVertexOut{
-    vec4 position;
-};
+#include "particle_shared.glsl"
 
 struct ParticleMatrices{
     mat4 viewProj;
@@ -14,16 +12,20 @@ struct ParticleMatrices{
 
 #include "particle_bindings_sub.glsl"
 
-struct EngineData{
+#include "lit_mesh_shared.glsl"
+
+struct EngineData2{
     uint numMeshes;
     uint maxPossibleParticles;
 };
 
-layout(scalar, binding = 11) readonly buffer engineDataSSBO
+layout(scalar, binding = 21) readonly buffer engineDataSSBO
 {
-    EngineData config[];
+    EngineData2 config[];
 };
 
+layout(location = 11) out vec3 worldPosition;
+layout(location = 12) out vec3 viewPosition;
 
 void main(){
 
@@ -42,5 +44,6 @@ void main(){
 #endif
 
     gl_Position = user_out.position;
-
+    worldPosition = user_out.worldPosition;
+    viewPosition = (engineConstants[0].viewOnly * vec4(worldPosition,1)).xyz;
 }

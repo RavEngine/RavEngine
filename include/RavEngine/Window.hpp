@@ -14,7 +14,7 @@ namespace RavEngine {
 		RGLSurfacePtr surface;
 		RGLFencePtr swapchainFence;
 		void* metalLayer;
-		Window(int width, int height, const std::string_view title, RGLDevicePtr device, RGLCommandQueuePtr mainCommandQueue);
+		Window(int width, int height, const std::string_view title);
 
 		void NotifySizeChanged(int width, int height);
 
@@ -39,6 +39,8 @@ namespace RavEngine {
         float GetDPIScale() const{
             return currentScaleFactor;
         }
+
+		void InitSwapchain(RGLDevicePtr device, RGLCommandQueuePtr mainCommandQueue);
 
 
 		enum class WindowMode {

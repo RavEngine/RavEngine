@@ -14,10 +14,15 @@ TextureMTL::TextureMTL(decltype(drawable) texture, const Dimension& size) : draw
 TextureMTL::~TextureMTL(){
 //    [drawable release];
 //    [texture release];
+    if (owningDevice){
+        owningDevice->textureFreelist.Deallocate(globalIndex);
+    }
 }
 
 TextureMTL::TextureMTL(const std::shared_ptr<DeviceMTL> owningDevice, const TextureConfig& config) : TextureMTL(nullptr, {config.width,config.height})
 {
+    this->owningDevice = owningDevice;
+    
     MTLPixelFormat format = rgl2mtlformat(config.format);
     
     MTLTextureDescriptor* desc;
@@ -48,6 +53,10 @@ TextureMTL::TextureMTL(const std::shared_ptr<DeviceMTL> owningDevice, const Text
         auto tex = [texture newTextureViewWithPixelFormat:format textureType:MTLTextureType2D levels:NSMakeRange(i, 1) slices:NSMakeRange(0, 1)];
         mipTextures.push_back(tex);
     }
+    
+    // add to the bindless heap
+    globalIndex = owningDevice->textureFreelist.Allocate();
+    [owningDevice->globalTextureEncoder setTexture:texture atIndex:globalIndex];
 }
 
 Dimension TextureMTL::GetSize() const{

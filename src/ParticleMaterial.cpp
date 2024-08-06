@@ -269,7 +269,7 @@ namespace RavEngine {
 				},
 
 				{
-					.binding = 11,									// engine-required binding
+					.binding = 21,									// engine-required binding
 					.type = RGL::BindingType::StorageBuffer,
 					.stageFlags = RGL::BindingVisibility::Vertex,
 					.writable = false
@@ -356,6 +356,25 @@ namespace RavEngine {
 
 		std::memcpy(data.data(), &ubo, sizeof(ubo));
 		return sizeof(ubo);
+	}
+
+	extern std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterialBindings(const std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc>& bindings);
+
+	ParticleRenderMaterialConfig MeshParticleRenderMaterial_Impl::augmentMeshConfig(const ParticleRenderMaterialConfig& in, LightingMode mode)
+	{
+		auto cpy = in;
+
+		cpy.bindings = augmentLitMaterialBindings(cpy.bindings);
+
+		return cpy;
+	}
+	ParticleRenderMaterialConfig BillboardRenderParticleMaterial_impl::augmentBillboardConfig(const ParticleRenderMaterialConfig& in, LightingMode mode)
+	{
+		auto cpy = in;
+
+		cpy.bindings = augmentLitMaterialBindings(cpy.bindings);
+
+		return cpy;
 	}
 }
 

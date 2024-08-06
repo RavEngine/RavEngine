@@ -17,6 +17,8 @@ LitVertexOut vert(EntityIn entity)
 
 	vec4 worldPos = inModel * vec4(inPosition,1);
 
+	v_out.worldPosition = worldPos.xyz;
+
 	outUV = inUV;
 
 	v_out.position = ubo.viewProj * worldPos;
