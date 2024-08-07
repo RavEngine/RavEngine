@@ -13,7 +13,7 @@ static std::vector<uint8_t> readFile(const std::filesystem::path& filename) {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
 	if (!file.is_open()) {
-		throw std::runtime_error(std::string("failed to open {}") + filename.string());
+		RGL::FatalError(std::string("failed to open {}") + filename.string());
 	}
 
 	size_t fileSize = (size_t)file.tellg();
@@ -37,7 +37,7 @@ namespace RGL {
 		SpvReflectShaderModule spvModule;
 		SpvReflectResult result = spvReflectCreateShaderModule(code.size_bytes(), code.data(), &spvModule);
 		if (result != SPV_REFLECT_RESULT_SUCCESS) {
-			throw std::runtime_error("SPIRV reflection capture failed");
+			FatalError("SPIRV reflection capture failed");
 		}
 
 		

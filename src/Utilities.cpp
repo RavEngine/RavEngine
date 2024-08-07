@@ -23,7 +23,7 @@ auto GetShader(const std::string& name) {
             extension = ".cso";
             break;
         default:
-            throw std::runtime_error("Shader loading not implemented");
+            Debug::Fatal("Shader loading not implemented");
         }
         return Format("shaders/{}/{}", backendPath, (name + extension));
 

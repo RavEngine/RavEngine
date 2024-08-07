@@ -7,6 +7,7 @@
 #include "MTLTexture.hpp"
 #endif
 #include <stdexcept>
+#include "RGLCommon.hpp"
 
 namespace RGL {
 	uint32_t TextureView::GetReadonlyBindlessTextureHandle() {
@@ -25,7 +26,7 @@ namespace RGL {
             return static_cast<const TextureMTL*>(texture.mtl.texture)->globalIndex;
 #endif
 		default:
-			throw std::runtime_error("Current backend does not support bindless texturing.");
+			FatalError("Current backend does not support bindless texturing.");
 		}
 		return 0;
 	}

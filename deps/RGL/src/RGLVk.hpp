@@ -21,7 +21,7 @@
 #define VK_VALID(a) {assert(a != VK_NULL_HANDLE);}
 
 constexpr bool enableValidationLayers =
-#ifdef NDEBUG
+#if defined(NDEBUG) || defined(ANDROID)		// we don't use the built-in validation layers on Android. Use the external layers: https://developer.android.com/ndk/guides/graphics/validation-layer
 false;
 #else
 true;

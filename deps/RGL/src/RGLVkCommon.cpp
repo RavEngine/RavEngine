@@ -104,7 +104,7 @@ namespace RGL {
                     return strcmp(layerName, layerProperties.layerName) == 0;
                     }
                 ) == availableLayers.end()) {
-                    throw std::runtime_error(std::string("required validation layer not found: ") + layerName);
+                    FatalError(std::string("required validation layer not found: ") + layerName);
                 }
             }
             instanceCreateInfo.enabledLayerCount = std::size(validationLayers);
@@ -210,7 +210,7 @@ namespace RGL {
             }
         }
 
-        throw std::runtime_error("failed to find suitable memory type!");
+       FatalError("findMemoryType(): failed to find suitable memory type!");
     }
 
     VmaAllocation createBuffer(DeviceVk* rgldevice, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer) {
