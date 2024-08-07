@@ -52,11 +52,11 @@ using namespace std::chrono;
 static App* currentApp = nullptr;
 
 #if !RVE_SERVER
-static auto RGLFatalCallback = [](const std::string& msg) {
+void RGLFatalCallback(const std::string& msg, void* userData) {
 	Debug::Fatal(msg);
 };
 
-static auto RGLmsgCallback = [](RGL::MessageSeverity severity, const std::string& msg) {
+void RGLmsgCallback(RGL::MessageSeverity severity, const std::string& msg, void* userData) {
 	switch (severity) {
 	case RGL::MessageSeverity::Info:
 		Debug::Log(msg);

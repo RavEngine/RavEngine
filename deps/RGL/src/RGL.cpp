@@ -38,7 +38,9 @@ STATIC(RGL::currentAPI) = API::Uninitialized;
 
 namespace RGL {
 
-    static callback_t callbackFn = [](MessageSeverity severity, const std::string& message) {
+    static void* callbackUserData = nullptr;
+
+    static void defaultCallbackFn(MessageSeverity severity, const std::string& message, void* userData) {
         constexpr auto severityToStr = [](MessageSeverity severity) {
             switch (severity) {
             case MessageSeverity::Info:
@@ -51,17 +53,20 @@ namespace RGL {
                 return "Fatal";
             }
         };
-
         std::cout << "RGL [" << severityToStr(severity) << "] - " << message << "\n";
 #if _WIN32
         std::string str = std::format("RGL [{}] - {}\n", severityToStr(severity), message);
         OutputDebugStringA(str.c_str());
 #endif
-    };
+    }
 
-    static fatal_callback_t fatalCallbackFn = [](const std::string& message) {
+    static callback_t callbackFn = defaultCallbackFn;
+
+    static void defaultFatalCallbackFn(const std::string& message, void* userData) {
         throw std::runtime_error(message);
-    };
+    }
+
+    static fatal_callback_t fatalCallbackFn = defaultFatalCallbackFn;
 
     RGLDevicePtr RGL::IDevice::CreateSystemDefaultDevice()
     {
@@ -95,6 +100,8 @@ namespace RGL {
 
     void Init(const InitOptions& options)
     {
+        callbackUserData = options.callbackUserData;
+
         if (options.callback) {
             callbackFn = options.callback;
         }
@@ -204,12 +211,12 @@ namespace RGL {
     }
 
     void LogMessage(MessageSeverity severity, const std::string& str) {
-        callbackFn(severity, str);
+        callbackFn(severity, str, callbackUserData);
 
         // crash the program 
         // the user should not try to catch this, UB lies beyond
         if (severity == MessageSeverity::Fatal) {
-            fatalCallbackFn(str);
+            fatalCallbackFn(str, callbackUserData);
         }
     }
     void FatalError(const std::string& str) {
