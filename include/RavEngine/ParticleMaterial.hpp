@@ -8,6 +8,7 @@
 #include <RGL/Pipeline.hpp>
 #include <bitset>
 #include <span>
+#include "MaterialShared.hpp"
 
 namespace RavEngine {
 
@@ -55,6 +56,7 @@ namespace RavEngine {
 	struct ParticleRenderMaterialConfig {
 		std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> bindings;
 		size_t pushConstantSize = 0;
+		OpacityMode opacityMode = OpacityMode::Opaque;
 	}; 
 
 	enum class LightingMode : uint8_t {

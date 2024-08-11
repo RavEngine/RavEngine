@@ -14,8 +14,40 @@ struct LitOutput{
 #include "BRDF.glsl"
 #include "cluster_shared.glsl"
 
-layout(location = 0) out vec4 outcolor;
-layout(location = 1) out vec4 outnormal;
+    layout(location = 0) out vec4 outcolor;     // accumulation if in transparent mode
+    layout(location = 1) out vec4 outnormal;
+#if RVE_TRANSPARENT
+    layout(location = 2) out float revealage;
+
+    // adapted from: https://casual-effects.blogspot.com/2015/03/implemented-weighted-blended-order.html
+    void writePixel(vec4 premultipliedReflect, vec3 transmit, float csZ) { 
+    /* Modulate the net coverage for composition by the transmission. This does not affect the color channels of the
+       transparent surface because the caller's BSDF model should have already taken into account if transmission modulates
+       reflection. This model doesn't handled colored transmission, so it averages the color channels. See 
+
+          McGuire and Enderton, Colored Stochastic Shadow Maps, ACM I3D, February 2011
+          http://graphics.cs.williams.edu/papers/CSSM/
+
+       for a full explanation and derivation.*/
+
+    premultipliedReflect.a *= 1.0 - clamp((transmit.r + transmit.g + transmit.b) * (1.0 / 3.0), 0, 1);
+
+    /* You may need to adjust the w function if you have a very large or very small view volume; see the paper and
+       presentation slides at http://jcgt.org/published/0002/02/09/ */
+    // Intermediate terms to be cubed
+    float a = min(1.0, premultipliedReflect.a) * 8.0 + 0.01;
+    float b = -gl_FragCoord.z * 0.95 + 1.0;
+
+    /* If your scene has a lot of content very close to the far plane,
+       then include this line (one rsqrt instruction):
+       b /= sqrt(1e4 * abs(csZ)); */
+    float w    = clamp(a * a * a * 1e8 * b * b * b, 1e-2, 3e2);
+    outcolor     = premultipliedReflect * w;
+    revealage = premultipliedReflect.a;
+}
+#else
+   
+#endif
 layout(location = 11) in vec3 worldPosition;
 layout(location = 12) in vec3 viewPosition;
 
@@ -92,7 +124,7 @@ void main(){
              pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);
         }
 
-        outcolor += vec4(lightResult * user_out.ao * pcfFactor,1);
+        outcolor += vec4(lightResult * user_out.ao * pcfFactor,0);
     }
 
     // Locating which cluster this fragment is part of
@@ -138,7 +170,7 @@ void main(){
             //pcfFactor = texture(samplerCubeShadow(shadowMaps[light.shadowmapBindlessIndex], shadowSampler), vec4(shadowDir, dbDistance)).r;
         }
 
-        outcolor += vec4(result * user_out.ao * pcfFactor,1);
+        outcolor += vec4(result * user_out.ao * pcfFactor,0);
     }
 
     // spot lights
@@ -169,7 +201,11 @@ void main(){
 
         pcfFactor = pcfFactor * (int(pixelAngle > coneDotFactor));
 
-        outcolor += vec4(result * user_out.ao * pcfFactor, 1);
+        outcolor += vec4(result * user_out.ao * pcfFactor, 0);
     }
+
+    #if RVE_TRANSPARENT
+        writePixel(outcolor, vec3(0,0,0),1.0);  //TODO: fix parameters
+    #endif
 
 }

@@ -160,6 +160,20 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 	}
 
 
+	{
+		std::string_view opacity;
+		auto err = doc["opacity"].get(opacity);
+		if (!err) {
+
+			if (opacity == "transparent") {
+				defines.push_back("RVE_TRANSPARENT 1");
+			}
+		}
+	}
+
+
+
+
 	try {
 		auto result = librglc::CompileString(full_shader, targetAPI, inputStage, {
 			.include_paths = includeDirs, 

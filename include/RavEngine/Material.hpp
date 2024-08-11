@@ -11,14 +11,12 @@
 #include <RGL/Span.hpp>
 #include <span>
 #include <variant>
+#include "MaterialShared.hpp"
 
 namespace RavEngine {
 	struct Texture;
 
-	enum class OpacityMode : uint8_t {
-		Opaque,
-		Transparent
-	};
+
 
 	struct MaterialConfig {
 		RGL::RenderPipelineDescriptor::VertexConfig vertConfig;
