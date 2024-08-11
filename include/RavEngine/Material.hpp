@@ -15,6 +15,11 @@
 namespace RavEngine {
 	struct Texture;
 
+	enum class OpacityMode : uint8_t {
+		Opaque,
+		Transparent
+	};
+
 	struct MaterialConfig {
 		RGL::RenderPipelineDescriptor::VertexConfig vertConfig;
 		RGL::RenderPipelineDescriptor::ColorBlendConfig colorBlendConfig;
@@ -26,7 +31,10 @@ namespace RavEngine {
 		uint32_t pushConstantSize = 0;
 		RGL::CullMode cullMode = RGL::CullMode::Back;
         bool verbatimConfig = false;    // used for Skybox
+		OpacityMode opacityMode = OpacityMode::Opaque;
 	};
+
+
 
 	/**
 	Represents the interface to a shader. Subclass to create more types of material and expose more abilities.
@@ -80,6 +88,7 @@ namespace RavEngine {
 	protected:
 		RGLRenderPipelinePtr renderPipeline, shadowRenderPipeline;
 		RGLPipelineLayoutPtr pipelineLayout;
+		OpacityMode opacityMode;
 
 		Material(const std::string_view name, const MaterialConfig& config);
 		Material(const std::string_view vsh_name, const std::string_view fsh_name, const MaterialConfig& config);
@@ -88,9 +97,9 @@ namespace RavEngine {
 	};
 
 
-
-	struct LitMaterialOptions  {
+	struct MaterialRenderOptions  {
 		RGL::CullMode cullMode = RGL::CullMode::Back;
+		OpacityMode opacityMode = OpacityMode::Opaque;
 	};
 
 	struct PipelineOptions {
@@ -99,19 +108,15 @@ namespace RavEngine {
 	};
 
 	struct LitMaterial : public Material {
-		LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions,  const LitMaterialOptions& options = {});
-		LitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const LitMaterialOptions& options = {}) : LitMaterial(name, name, pipeOptions, options) {}
+		LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions,  const MaterialRenderOptions& options = {});
+		LitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options = {}) : LitMaterial(name, name, pipeOptions, options) {}
 	};
 
-
-	struct UnlitMaterialOptions {
-		RGL::CullMode cullMode = RGL::CullMode::Back;
-	};
 
 	// a material that reads no data
 	struct UnlitMaterial : public Material {
-		UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions, const UnlitMaterialOptions& options = {});
-		UnlitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const UnlitMaterialOptions& options = {}) : UnlitMaterial(name, name, pipeOptions, options) {}
+		UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options = {});
+		UnlitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options = {}) : UnlitMaterial(name, name, pipeOptions, options) {}
 	};
 
 	struct MaterialVariant  {

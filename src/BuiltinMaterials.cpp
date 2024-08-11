@@ -81,7 +81,7 @@ RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : Materi
 }
 
 
-RavEngine::PBRMaterial::PBRMaterial(LitMaterialOptions options) : LitMaterial("pbr", { 
+RavEngine::PBRMaterial::PBRMaterial(MaterialRenderOptions options) : LitMaterial("pbr", { 
     .bindings = {
         {
             .binding = 0,

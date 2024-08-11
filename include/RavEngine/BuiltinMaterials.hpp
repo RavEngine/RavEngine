@@ -14,7 +14,7 @@ namespace RavEngine {
 	};
 	
 	struct PBRMaterial : public LitMaterial {
-		PBRMaterial(LitMaterialOptions options = { });
+		PBRMaterial(MaterialRenderOptions options = { });
 	};
 
 	// the default layout and blend information.
