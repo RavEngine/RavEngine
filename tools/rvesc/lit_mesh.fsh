@@ -11,6 +11,7 @@ struct LitOutput{
     float ao;
 };
 
+
 #include "%s"
 
 #include "ravengine_shader.glsl"

@@ -12,3 +12,8 @@ float rand(in vec2 ip) {
     uint n = (p.x*s+p.y)+((p.x ^ p.y) << ~p.x ^ s) + ((p.x ^ p.y) << ~p.y ^ s);
     return float(n*50323U) / float(0xFFFFFFFFU);
 }
+
+// linear value remap
+float remap(float value, float low1, float high1, float low2, float high2){
+    return low2 + (value - low1) * (high2 - low2) / (high1 - low1);
+}
