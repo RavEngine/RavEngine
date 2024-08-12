@@ -25,9 +25,9 @@ namespace RGL {
     };
 
 
-	enum class TextureFormat {
-		Undefined,
-		BGRA8_Unorm,
+    enum class TextureFormat {
+        Undefined,
+        BGRA8_Unorm,
         RGBA8_Uint,
         RGBA8_Unorm,
         RGBA16_Unorm,
@@ -35,6 +35,7 @@ namespace RGL {
         RGBA16_Sfloat,
         RGBA32_Sfloat,
 
+        R8_Uint,
         R32_Uint,
         R32_Float,
 

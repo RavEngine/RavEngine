@@ -1552,6 +1552,28 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 		}
 	);
 
+	collection.transparencyAccumulation = device->CreateTexture({
+		.usage = {.Sampled = true, .ColorAttachment = true },
+		.aspect = {.HasColor = true },
+		.width = width,
+		.height = height,
+		.format = accumFormat,
+		.initialLayout = RGL::ResourceLayout::Undefined,
+		.debugName = "Transparency Accumulation"
+		}
+	);
+
+	collection.transparencyRevealage = device->CreateTexture({
+		.usage = {.Sampled = true, .ColorAttachment = true },
+		.aspect = {.HasColor = true },
+		.width = width,
+		.height = height,
+		.format = revealageFormat,
+		.initialLayout = RGL::ResourceLayout::Undefined,
+		.debugName = "Transparency Revealage"
+		}
+	);
+
     
     collection.ssaoTexture = device->CreateTexture({
         .usage = {.Sampled = true, .ColorAttachment = true },

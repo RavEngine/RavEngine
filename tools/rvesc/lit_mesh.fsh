@@ -2,6 +2,9 @@
 struct LitOutput{
     vec4 color;
     vec3 normal;
+#if RVE_TRANSPARENT
+    vec3 transmittance;
+#endif
     float roughness;
     float specular;
     float metallic;
@@ -50,6 +53,7 @@ struct LitOutput{
 #endif
 layout(location = 11) in vec3 worldPosition;
 layout(location = 12) in vec3 viewPosition;
+layout(location = 13) in float clipSpaceZ;
 
 #include "lit_mesh_shared.glsl"
 
@@ -205,7 +209,7 @@ void main(){
     }
 
     #if RVE_TRANSPARENT
-        writePixel(outcolor, vec3(0,0,0),1.0);  //TODO: fix parameters
+        writePixel(outcolor, user_out.transmittance,clipSpaceZ);  //TODO: fix parameters
     #endif
 
 }
