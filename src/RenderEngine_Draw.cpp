@@ -1232,49 +1232,60 @@ struct LightingType{
 			auto nextImgSize = view.pixelDimensions;
 			auto& target = view.collection;
 
-			auto renderLitPass = [this,&target, &renderFromPerspective,&renderLightShadowmap,&worldOwning](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+			auto renderLitPass_Impl = [this,&target, &renderFromPerspective,&renderLightShadowmap,&worldOwning]<bool transparentMode = false>(auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// directional light shadowmaps
-				mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
-				const auto dirlightShadowmapDataFunction = [&camPos](uint8_t index, RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
-					auto dirvec = light.direction;
 
-					auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
+				if constexpr (!transparentMode) {
+					mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
+					const auto dirlightShadowmapDataFunction = [&camPos](uint8_t index, RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
+						auto dirvec = light.direction;
 
-					auto lightArea = auxdata->shadowDistance;
+						auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
 
-					auto lightProj = RMath::orthoProjection<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
-					auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
-					const vector3 reposVec{ std::round(-camPos.pos.x), std::round(camPos.pos.y), std::round(-camPos.pos.z) };
-					lightView = glm::translate(lightView, reposVec);
+						auto lightArea = auxdata->shadowDistance;
 
-					auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
+						auto lightProj = RMath::orthoProjection<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
+						auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
+						const vector3 reposVec{ std::round(-camPos.pos.x), std::round(camPos.pos.y), std::round(-camPos.pos.z) };
+						lightView = glm::translate(lightView, reposVec);
 
-					light.lightViewProj = lightProj * lightView;	// remember this because the rendering also needs it
+						auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
 
-					return lightViewProjResult{
-						.lightProj = lightProj,
-						.lightView = lightView,
-						.camPos = camPos.pos,
-						.depthPyramid = origLight.shadowData.pyramid,
-						.shadowmapTexture = origLight.shadowData.shadowMap,
-						.spillData = light.lightViewProj
-					};
-				};
+						light.lightViewProj = lightProj * lightView;	// remember this because the rendering also needs it
+
+						return lightViewProjResult{
+							.lightProj = lightProj,
+							.lightView = lightView,
+							.camPos = camPos.pos,
+							.depthPyramid = origLight.shadowData.pyramid,
+							.shadowmapTexture = origLight.shadowData.shadowMap,
+							.spillData = light.lightViewProj
+						};
+						};
 
 
-				renderLightShadowmap(worldOwning->renderData->directionalLightData, 1,
-					dirlightShadowmapDataFunction,
-					[](entity_t unused) {}
-				);
-				mainCommandBuffer->EndRenderDebugMarker();
+					renderLightShadowmap(worldOwning->renderData->directionalLightData, 1,
+						dirlightShadowmapDataFunction,
+						[](entity_t unused) {}
+					);
+					mainCommandBuffer->EndRenderDebugMarker();
+				}
 
 				// render all the static meshes
 
-				renderFromPerspective(viewproj, viewonly, projOnly, camPos.pos, camPos.zNearFar, litRenderPass, [](auto&& mat) {
+				renderFromPerspective.template operator()<true, transparentMode>(viewproj, viewonly, projOnly, camPos.pos, camPos.zNearFar, litRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-                }, renderArea, {.Lit = true,  .Opaque = true }, target.depthPyramid);
+                }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid);
 
 				
+			};
+
+			auto renderLitPass = [&renderLitPass_Impl](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+				renderLitPass_Impl(viewproj, viewonly, projOnly, camPos, fullSizeViewport, fullSizeScissor, renderArea);
+			};
+
+			auto renderLitPassTransparent = [&renderLitPass_Impl](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+				renderLitPass_Impl.template operator()<true>(viewproj, viewonly, projOnly, camPos, fullSizeViewport, fullSizeScissor, renderArea);
 			};
 
             auto renderFinalPass = [this, &target, &worldOwning, &view, &guiScaleFactor, &nextImgSize, &renderFromPerspective](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
@@ -1581,7 +1592,7 @@ struct LightingType{
 			mainCommandBuffer->EndRenderDebugMarker();
 		
 
-			// deferred pass
+			// lit pass
 			litRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
 			litRenderPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
 			litRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
@@ -1590,13 +1601,30 @@ struct LightingType{
 			litClearRenderPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
 			litClearRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
-			mainCommandBuffer->BeginRenderDebugMarker("Lit Pass");
+			mainCommandBuffer->BeginRenderDebugMarker("Lit Pass Opaque");
 
 			mainCommandBuffer->BeginRendering(litClearRenderPass);
 			mainCommandBuffer->EndRendering();
 			Profile::BeginFrame(Profile::RenderEncodeDeferredPass);
 			for (const auto& camdata : view.camDatas) {
 				doPassWithCamData(camdata, renderLitPass);
+			}
+			Profile::EndFrame(Profile::RenderEncodeDeferredPass);
+			mainCommandBuffer->EndRenderDebugMarker();
+
+			transparentClearPass->SetAttachmentTexture(0, target.transparencyAccumulation->GetDefaultView());
+			transparentClearPass->SetAttachmentTexture(1, target.transparencyRevealage->GetDefaultView());
+
+			mainCommandBuffer->BeginRenderDebugMarker("Lit Pass Transparent");
+			mainCommandBuffer->BeginRendering(transparentClearPass);
+			mainCommandBuffer->EndRendering();
+
+			litTransparentPass->SetAttachmentTexture(0, target.transparencyAccumulation->GetDefaultView());
+			litTransparentPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
+			litTransparentPass->SetAttachmentTexture(2, target.transparencyRevealage->GetDefaultView());
+			Profile::BeginFrame(Profile::RenderEncodeDeferredPass);
+			for (const auto& camdata : view.camDatas) {
+				doPassWithCamData(camdata, renderLitPassTransparent);
 			}
 			Profile::EndFrame(Profile::RenderEncodeDeferredPass);
 			mainCommandBuffer->EndRenderDebugMarker();

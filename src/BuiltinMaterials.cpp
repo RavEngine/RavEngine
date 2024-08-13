@@ -81,7 +81,7 @@ RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : Materi
 }
 
 
-RavEngine::PBRMaterial::PBRMaterial(MaterialRenderOptions options) : LitMaterial(options.opacityMode == OpacityMode::Transparent ? "pbr_transparent" : "pbr", {
+RavEngine::PBRMaterial::PBRMaterial(MaterialRenderOptions options) : LitMaterial("pbr", options.opacityMode == OpacityMode::Transparent ? "pbr_transparent" : "pbr", {
     .bindings = {
         {
             .binding = 0,

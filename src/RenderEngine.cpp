@@ -420,6 +420,58 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
             .storeOp = RGL::StoreAccessOperation::Store,
         }
     });
+
+	litTransparentPass = RGL::CreateRenderPass({
+		.attachments = {
+			{
+				.format = accumFormat,
+				.loadOp = RGL::LoadAccessOperation::Load,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			},
+			{
+				.format = normalTexFormat,
+				.loadOp = RGL::LoadAccessOperation::Load,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			},
+			{
+				.format = revealageFormat,
+				.loadOp = RGL::LoadAccessOperation::Load,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			},
+		}
+	});
+
+	unlitTransparentPass = RGL::CreateRenderPass({
+		.attachments = {
+			{
+				.format = accumFormat,
+				.loadOp = RGL::LoadAccessOperation::Load,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			},
+			{
+				.format = revealageFormat,
+				.loadOp = RGL::LoadAccessOperation::Load,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			},
+		}
+	});
+
+	// make sure to bind revealage to slot 1
+	transparentClearPass = RGL::CreateRenderPass({
+		.attachments = {
+			{
+				.format = accumFormat,
+				.loadOp = RGL::LoadAccessOperation::Clear,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			},
+			{
+				.format = revealageFormat,
+				.loadOp = RGL::LoadAccessOperation::Clear,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			},
+		}
+	});
+
     
     postProcessRenderPass = RGL::CreateRenderPass({
         .attachments = {
