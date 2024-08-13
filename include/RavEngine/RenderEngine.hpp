@@ -69,10 +69,10 @@ namespace RavEngine {
 
 		RGLTexturePtr dummyShadowmap, dummyCubemap;
 		RGLSamplerPtr textureSampler, shadowSampler, depthPyramidSampler;
-		RGLRenderPassPtr litRenderPass, unlitRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, ssaoPass, litTransparentPass, unlitTransparentPass, transparentClearPass;
+		RGLRenderPassPtr litRenderPass, unlitRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, ssaoPass, litTransparentPass, unlitTransparentPass, transparentClearPass, transparencyApplyPass;
 
 		RGLRenderPipelinePtr lightToFBRenderPipeline, depthPyramidCopyPipeline,
-			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, ssaoPipeline;
+			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, ssaoPipeline, transparencyApplyPipeline;
 		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline, clusterBuildGridPipeline, clusterPopulatePipeline;
 		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer,
 			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, ssaoSamplesBuffer, quadVertBuffer, lightClusterBuffer;
@@ -115,7 +115,7 @@ namespace RavEngine {
 			normalTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
 			colorTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
 			accumFormat = RGL::TextureFormat::RGBA16_Sfloat,
-			revealageFormat = RGL::TextureFormat::R8_Uint,
+			revealageFormat = RGL::TextureFormat::R16_Float,
 			ssaoFormat = RGL::TextureFormat::R32_Float,
 			depthFormat = RGL::TextureFormat::D32SFloat;
 

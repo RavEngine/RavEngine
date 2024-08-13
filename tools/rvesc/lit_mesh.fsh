@@ -21,7 +21,7 @@ struct LitOutput{
     layout(location = 0) out vec4 outcolor;     // accumulation if in transparent mode
     layout(location = 1) out vec4 outnormal;
 #if RVE_TRANSPARENT
-    layout(location = 2) out float revealage;
+    layout(location = 2) out uint revealage;
 
     // adapted from: https://casual-effects.blogspot.com/2015/03/implemented-weighted-blended-order.html
     void writePixel(vec4 premultipliedReflect, vec3 transmit, float csZ) { 
@@ -47,7 +47,7 @@ struct LitOutput{
        b /= sqrt(1e4 * abs(csZ)); */
     float w    = clamp(a * a * a * 1e8 * b * b * b, 1e-2, 3e2);
     outcolor     = premultipliedReflect * w;
-    revealage = premultipliedReflect.a;
+    revealage = uint(premultipliedReflect.a);
 }
 #else
    

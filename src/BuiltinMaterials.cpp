@@ -65,13 +65,18 @@ STATIC(RavEngine::defaultColorBlendConfig) {
 STATIC(RavEngine::defaultTransparentColorBlendConfig) {
     .attachments = {
                 {
-                    .format = RenderEngine::accumFormat
+                    .format = RenderEngine::accumFormat,
+                    .destinationColorBlendFactor = RGL::BlendFactor::One,
+                    .blendEnabled = true
                 },
                 {
                     .format = RenderEngine::normalTexFormat
                 },
                 {
-                    .format = RenderEngine::revealageFormat
+                    .format = RenderEngine::revealageFormat,
+                    .sourceColorBlendFactor = RGL::BlendFactor::Zero,
+                    .destinationColorBlendFactor = RGL::BlendFactor::OneMinusSourceColor,
+                    .blendEnabled = true
                 },
     }
 };

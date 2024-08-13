@@ -1266,6 +1266,89 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
         },
 		.constants = {{sizeof(ssaoUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)}}
     });
+
+	auto transparencyApplyLayout = device->CreatePipelineLayout({
+		.bindings = {
+			{
+				.binding = 0,
+				.type = RGL::BindingType::Sampler,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 1,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 2,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+		},
+		.constants = {{sizeof(LightToFBUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)}}
+	});
+
+	transparencyApplyPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
+		.stages = {
+				{
+					.type = RGL::ShaderStageDesc::Type::Vertex,
+					.shaderModule = LoadShaderByFilename("transparency_apply.vsh", device),
+				},
+				{
+					.type = RGL::ShaderStageDesc::Type::Fragment,
+					.shaderModule = LoadShaderByFilename("transparency_apply.fsh", device),
+				}
+		},
+		.vertexConfig = {
+			.vertexBindings = {
+				{
+					.binding = 0,
+					.stride = sizeof(Vertex2D),
+				},
+			},
+			.attributeDescs = {
+				{
+					.location = 0,
+					.binding = 0,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+				},
+			}
+		},
+		.inputAssembly = {
+			.topology = RGL::PrimitiveTopology::TriangleList,
+		},
+		.rasterizerConfig = {
+			.windingOrder = RGL::WindingOrder::Counterclockwise,
+		},
+		.colorBlendConfig = {
+			.attachments = {
+				{
+					.format = colorTexFormat,
+					.sourceColorBlendFactor = RGL::BlendFactor::SourceAlpha,
+					.destinationColorBlendFactor = RGL::BlendFactor::OneMinusSourceAlpha,
+					.alphaBlendOperation = RGL::BlendOperation::Add,
+					.blendEnabled = true
+
+				},
+			}
+		},
+		.depthStencilConfig = {
+			.depthTestEnabled = false,
+			.depthWriteEnabled = false,
+		},
+		.pipelineLayout = transparencyApplyLayout,
+	});
+
+	transparencyApplyPass = RGL::CreateRenderPass({
+		.attachments = {
+			{
+				.format = colorTexFormat,
+				.loadOp = RGL::LoadAccessOperation::Load,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			},
+		},
+	});
     
     ssaoPass = RGL::CreateRenderPass({
         .attachments = {

@@ -1321,6 +1321,27 @@ struct LightingType{
                     mainCommandBuffer->EndRenderDebugMarker();
                 }
                 mainCommandBuffer->EndRendering();
+
+
+				// apply transparency
+				transparencyApplyPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
+
+				mainCommandBuffer->BeginRendering(transparencyApplyPass);
+
+				mainCommandBuffer->BindRenderPipeline(transparencyApplyPipeline);
+				mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+				mainCommandBuffer->SetFragmentTexture(target.transparencyAccumulation->GetDefaultView(), 1);
+				mainCommandBuffer->SetFragmentTexture(target.transparencyRevealage->GetDefaultView(), 2);
+				mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+
+				LightToFBUBO transparencyUBO{
+					.viewRect = {renderArea.offset[0], renderArea.offset[1], renderArea.extent[0], renderArea.extent[1]}
+				};
+				mainCommandBuffer->SetFragmentBytes(transparencyUBO, 0);
+				mainCommandBuffer->Draw(3);
+
+				mainCommandBuffer->EndRendering();
+
                 // afterwards render the post processing effects
                 uint32_t totalPostFXRendered = 0;
                 RGL::TextureView currentInput = target.lightingTexture->GetDefaultView();

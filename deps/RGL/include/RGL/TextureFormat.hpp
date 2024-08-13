@@ -36,6 +36,7 @@ namespace RGL {
         RGBA32_Sfloat,
 
         R8_Uint,
+        R16_Float,
         R32_Uint,
         R32_Float,
 
