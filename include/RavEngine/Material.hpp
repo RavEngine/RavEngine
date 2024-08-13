@@ -88,6 +88,10 @@ namespace RavEngine {
 		RGLPipelineLayoutPtr pipelineLayout;
 		OpacityMode opacityMode;
 
+		bool IsTransparent() const {
+			return opacityMode == OpacityMode::Transparent;
+		}
+
 		Material(const std::string_view name, const MaterialConfig& config);
 		Material(const std::string_view vsh_name, const std::string_view fsh_name, const MaterialConfig& config);
 		

@@ -38,6 +38,8 @@ struct LightingType{
     bool Lit: 1 = false;
     bool Unlit: 1 = false;
 	bool FilterLightBlockers : 1 = false;
+	bool Transparent : 1 = false;
+	bool Opaque : 1 = false;
 };
 
 #ifndef NDEBUG
@@ -472,7 +474,7 @@ struct LightingType{
 			prepareSkeletalCullingBuffer();
 		}
 
-		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult]<bool includeLighting = true>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid){
+		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult]<bool includeLighting = true, bool transparentMode = false>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid){
             
             uint32_t particleBillboardMatrices = 0;
 
@@ -680,26 +682,47 @@ struct LightingType{
 			mainCommandBuffer->EndCompute();
 			};
 
+			constexpr static auto filterRenderData = [](LightingType lightingFilter, auto& materialInstance) {
+				bool shouldKeep = false;
+
+				std::visit(CaseAnalysis{
+					[lightingFilter, &shouldKeep](const Ref<LitMaterial>& mat) {
+						if (lightingFilter.Lit) {
+							shouldKeep = true;
+						}
+					},
+					[lightingFilter, &shouldKeep](const Ref<UnlitMaterial>& mat) {
+						if (lightingFilter.Unlit) {
+							shouldKeep = true;
+						}
+					} }
+				, materialInstance->GetMat()->variant);
+
+				// transparency vs opaque 
+				std::visit([&shouldKeep, &lightingFilter](auto&& mat) {
+					if (
+						(mat->IsTransparent() && lightingFilter.Transparent)
+						|| (!mat->IsTransparent() && lightingFilter.Opaque)
+						) {
+						// if it was not set to true earlier, then do nothing
+					}
+					else {
+						shouldKeep = false;
+					}
+					}, materialInstance->GetMat()->variant);
+
+				return shouldKeep;
+			};
+
 
 			auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos, &pyramid, &lightingFilter, &reallocBuffer](auto&& renderData) {
 				for (auto& [materialInstance, drawcommand] : renderData) {
-					bool shouldCull = false;
+					
+					bool shouldKeep = filterRenderData(lightingFilter, materialInstance);
 
-					std::visit(CaseAnalysis{
-						[lightingFilter, &shouldCull](const Ref<LitMaterial>& mat) {
-							if (lightingFilter.Lit) {
-								shouldCull = true;
-							}
-						},
-						[lightingFilter, &shouldCull](const Ref<UnlitMaterial>& mat) {
-							if (lightingFilter.Unlit) {
-								shouldCull = true;
-							}
-						}}
-					, materialInstance->GetMat()->variant);
-
+					
 					// is this the correct material type? if not, skip
-					if (!shouldCull) {
+					if (!shouldKeep) {
 						continue;
 					}
 
@@ -806,24 +829,10 @@ struct LightingType{
 				mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
 				for (auto& [materialInstance, drawcommand] : renderData) {
 
-					// get the material instance out
-					bool shouldCull = true;
-
-					std::visit(CaseAnalysis{
-						[&shouldCull, currentLightingType](const Ref<LitMaterial>&) {
-							if (currentLightingType.Lit) {
-								shouldCull = false;
-							}
-						},
-						[&shouldCull, currentLightingType](const Ref<UnlitMaterial>&) {
-							if (currentLightingType.Unlit) {
-								shouldCull = false;
-							}
-						}
-					}, materialInstance->GetMat()->variant);
+					bool shouldKeep = filterRenderData(currentLightingType, materialInstance);
 
 					// is this the correct material type? if not, skip
-					if (shouldCull) {
+					if (!shouldKeep) {
 						continue;
 					}
 
@@ -1111,7 +1120,7 @@ struct LightingType{
 					auto shadowMapSize = shadowTexture->GetSize().width;
 					renderFromPerspective.template operator()<false>(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, {}, shadowRenderPass, [](auto&& mat) {
 						return mat->GetShadowRenderPipeline();
-						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true }, lightMats.depthPyramid);
+						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true, .Opaque = true }, lightMats.depthPyramid);
 
 				}
 				postshadowmapFunction(owner);
@@ -1263,7 +1272,7 @@ struct LightingType{
 
 				renderFromPerspective(viewproj, viewonly, projOnly, camPos.pos, camPos.zNearFar, litRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-                }, renderArea, {.Lit = true}, target.depthPyramid);
+                }, renderArea, {.Lit = true,  .Opaque = true }, target.depthPyramid);
 
 				
 			};
@@ -1275,7 +1284,7 @@ struct LightingType{
                 unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 				renderFromPerspective.template operator() < false > (viewproj, viewonly, projOnly, camPos.pos, {}, unlitRenderPass, [](auto&& mat) {
                     return mat->GetMainRenderPipeline();
-                }, renderArea, {.Unlit = true}, target.depthPyramid);
+                }, renderArea, {.Unlit = true, .Opaque = true }, target.depthPyramid);
                 
                 // then do the skybox, if one is defined.
                 mainCommandBuffer->BeginRendering(unlitRenderPass);
