@@ -190,7 +190,7 @@ namespace RavEngine {
     RavEngine::LitMaterial::LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options) : Material(vsh_name, fsh_name, MaterialConfig
         {
             .vertConfig = defaultVertexConfig,
-            .colorBlendConfig = defaultColorBlendConfig,
+            .colorBlendConfig = options.opacityMode == OpacityMode::Opaque ? defaultColorBlendConfig : defaultTransparentColorBlendConfig,
             .bindings = augmentLitMaterialBindings(pipeOptions.bindings),
             .pushConstantSize = pipeOptions.pushConstantSize,
             .cullMode = options.cullMode,
@@ -215,7 +215,7 @@ namespace RavEngine {
     UnlitMaterial::UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options)
         : Material(vsh_name, fsh_name, MaterialConfig{
             .vertConfig = defaultVertexConfig,
-            .colorBlendConfig = defaultUnlitColorBlendConfig,
+            .colorBlendConfig = options.opacityMode == OpacityMode::Opaque ? defaultUnlitColorBlendConfig : defaultTransparentUnlitColorBlendConfig,
             .bindings = augmentUnlitMaterialBindings(pipeOptions.bindings),
             .pushConstantSize = pipeOptions.pushConstantSize,
             .cullMode = options.cullMode,

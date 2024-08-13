@@ -62,10 +62,35 @@ STATIC(RavEngine::defaultColorBlendConfig) {
     }
 };
 
+STATIC(RavEngine::defaultTransparentColorBlendConfig) {
+    .attachments = {
+                {
+                    .format = RenderEngine::accumFormat
+                },
+                {
+                    .format = RenderEngine::normalTexFormat
+                },
+                {
+                    .format = RenderEngine::revealageFormat
+                },
+    }
+};
+
 STATIC(RavEngine::defaultUnlitColorBlendConfig) {
     .attachments = {
         {
             .format = RenderEngine::colorTexFormat
+        },
+    }
+};
+
+STATIC(RavEngine::defaultTransparentUnlitColorBlendConfig) {
+    .attachments = {
+        {
+            .format = RenderEngine::accumFormat
+        },
+        {
+            .format = RenderEngine::revealageFormat
         },
     }
 };

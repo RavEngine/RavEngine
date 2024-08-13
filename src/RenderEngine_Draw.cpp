@@ -914,144 +914,146 @@ struct LightingType{
 				}
 
 				// render particles
-				worldOwning->Filter([this, &viewproj, &particleBillboardMatrices,&currentLightingType,&pipelineSelectorFunction,&lightDataOffset, &worldOwning](const ParticleEmitter& emitter, const Transform& t) {
-					// check if shadow casting is enabled
-					if (!emitter.GetCastsShadows() && currentLightingType.FilterLightBlockers) {
-						return;
-					}
-					if (!emitter.GetVisible()) {
-						return;
-					}
-
-					auto sharedParticleImpl = [this, &particleBillboardMatrices, &pipelineSelectorFunction,&worldOwning,&lightDataOffset](const ParticleEmitter& emitter, auto&& materialInstance, Ref<ParticleRenderMaterial> material, RGLBufferPtr activeParticleIndexBuffer, bool isLit) {
-						auto pipeline = pipelineSelectorFunction(material);
-
-
-						mainCommandBuffer->BindRenderPipeline(pipeline);
-						mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, material->particleDataBufferBinding);
-						mainCommandBuffer->BindBuffer(activeParticleIndexBuffer, material->particleAliveIndexBufferBinding);
-						mainCommandBuffer->BindBuffer(transientBuffer, material->particleMatrixBufferBinding, particleBillboardMatrices);
-
-						mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
-						if (isLit) {
-							mainCommandBuffer->BindBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer, 12);
-							mainCommandBuffer->BindBuffer(worldOwning->renderData->directionalLightData.uploadData.GetDense().get_underlying().buffer, 13);
-							mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
-							mainCommandBuffer->BindBuffer(worldOwning->renderData->pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
-							mainCommandBuffer->BindBuffer(worldOwning->renderData->spotLightData.uploadData.GetDense().get_underlying().buffer, 17);
-							mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
-							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 0);
+				if constexpr (!transparentMode) {
+					worldOwning->Filter([this, &viewproj, &particleBillboardMatrices, &currentLightingType, &pipelineSelectorFunction, &lightDataOffset, &worldOwning](const ParticleEmitter& emitter, const Transform& t) {
+						// check if shadow casting is enabled
+						if (!emitter.GetCastsShadows() && currentLightingType.FilterLightBlockers) {
+							return;
+						}
+						if (!emitter.GetVisible()) {
+							return;
 						}
 
-						std::byte pushConstants[128]{  };
+						auto sharedParticleImpl = [this, &particleBillboardMatrices, &pipelineSelectorFunction, &worldOwning, &lightDataOffset](const ParticleEmitter& emitter, auto&& materialInstance, Ref<ParticleRenderMaterial> material, RGLBufferPtr activeParticleIndexBuffer, bool isLit) {
+							auto pipeline = pipelineSelectorFunction(material);
 
-						auto nbytes = materialInstance->SetPushConstantData(pushConstants);
 
-						if (nbytes > 0) {
-							mainCommandBuffer->SetVertexBytes({ pushConstants, nbytes }, 0);
-							mainCommandBuffer->SetFragmentBytes({ pushConstants, nbytes }, 0);
-						}
+							mainCommandBuffer->BindRenderPipeline(pipeline);
+							mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, material->particleDataBufferBinding);
+							mainCommandBuffer->BindBuffer(activeParticleIndexBuffer, material->particleAliveIndexBufferBinding);
+							mainCommandBuffer->BindBuffer(transientBuffer, material->particleMatrixBufferBinding, particleBillboardMatrices);
 
-						// set samplers (currently sampler is not configurable)
-						for (uint32_t i = 0; i < materialInstance->samplerBindings.size(); i++) {
-							if (materialInstance->samplerBindings[i]) {
-								mainCommandBuffer->SetFragmentSampler(textureSampler, i);
+							mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
+							if (isLit) {
+								mainCommandBuffer->BindBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer, 12);
+								mainCommandBuffer->BindBuffer(worldOwning->renderData->directionalLightData.uploadData.GetDense().get_underlying().buffer, 13);
+								mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
+								mainCommandBuffer->BindBuffer(worldOwning->renderData->pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
+								mainCommandBuffer->BindBuffer(worldOwning->renderData->spotLightData.uploadData.GetDense().get_underlying().buffer, 17);
+								mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
+								mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 0);
 							}
-						}
 
-						// bind textures
-						for (uint32_t i = 0; i < materialInstance->textureBindings.size(); i++) {
-							if (materialInstance->textureBindings[i] != nullptr) {
-								mainCommandBuffer->SetFragmentTexture(
-									materialInstance->textureBindings[i]->GetRHITexturePointer()->GetDefaultView(), i);
+							std::byte pushConstants[128]{  };
+
+							auto nbytes = materialInstance->SetPushConstantData(pushConstants);
+
+							if (nbytes > 0) {
+								mainCommandBuffer->SetVertexBytes({ pushConstants, nbytes }, 0);
+								mainCommandBuffer->SetFragmentBytes({ pushConstants, nbytes }, 0);
 							}
-						}
-					};
 
-					std::visit(CaseAnalysis{
-							[this, &emitter, &viewproj,&particleBillboardMatrices,&sharedParticleImpl,&currentLightingType](const Ref <BillboardParticleRenderMaterialInstance>& billboardMat) {
+							// set samplers (currently sampler is not configurable)
+							for (uint32_t i = 0; i < materialInstance->samplerBindings.size(); i++) {
+								if (materialInstance->samplerBindings[i]) {
+									mainCommandBuffer->SetFragmentSampler(textureSampler, i);
+								}
+							}
 
-								Ref<ParticleRenderMaterial> material;
-								bool isLit = false;
-								std::visit(CaseAnalysis{
-									[&currentLightingType, &material,&isLit](const Ref<BillboardRenderParticleMaterial<LightingMode::Lit>>& mat) {
-										if (currentLightingType.Lit) {
-											material = mat;
-											isLit = true;
+							// bind textures
+							for (uint32_t i = 0; i < materialInstance->textureBindings.size(); i++) {
+								if (materialInstance->textureBindings[i] != nullptr) {
+									mainCommandBuffer->SetFragmentTexture(
+										materialInstance->textureBindings[i]->GetRHITexturePointer()->GetDefaultView(), i);
+								}
+							}
+							};
+
+						std::visit(CaseAnalysis{
+								[this, &emitter, &viewproj,&particleBillboardMatrices,&sharedParticleImpl,&currentLightingType](const Ref <BillboardParticleRenderMaterialInstance>& billboardMat) {
+
+									Ref<ParticleRenderMaterial> material;
+									bool isLit = false;
+									std::visit(CaseAnalysis{
+										[&currentLightingType, &material,&isLit](const Ref<BillboardRenderParticleMaterial<LightingMode::Lit>>& mat) {
+											if (currentLightingType.Lit) {
+												material = mat;
+												isLit = true;
+											}
+										},
+										[&currentLightingType, &material](const Ref<BillboardRenderParticleMaterial<LightingMode::Unlit>>& mat) {
+											if (currentLightingType.Unlit) {
+												material = mat;
+											}
 										}
-									},
-									[&currentLightingType, &material](const Ref<BillboardRenderParticleMaterial<LightingMode::Unlit>>& mat) {
-										if (currentLightingType.Unlit) {
-											material = mat;
-										}
+									}, billboardMat->GetMaterial());
+									// material will be nullptr if we should not render right now
+
+									if (!material) {
+										return;
 									}
-								}, billboardMat->GetMaterial());
-								// material will be nullptr if we should not render right now
 
-								if (!material) {
-									return;
-								}
+									sharedParticleImpl(emitter,billboardMat, material, emitter.activeParticleIndexBuffer,isLit);
 
-								sharedParticleImpl(emitter,billboardMat, material, emitter.activeParticleIndexBuffer,isLit);
+									mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
 
-								mainCommandBuffer->SetVertexBuffer(quadVertBuffer);
+									mainCommandBuffer->ExecuteIndirect(
+										{
+											.indirectBuffer = emitter.indirectDrawBuffer,
+											.offsetIntoBuffer = 0,
+											.nDraws = 1,
+										});
 
-								mainCommandBuffer->ExecuteIndirect(
-									{
-										.indirectBuffer = emitter.indirectDrawBuffer,
-										.offsetIntoBuffer = 0,
-										.nDraws = 1,
-									});
-								
-                            },
-							[this,&emitter,&sharedParticleImpl, &currentLightingType,&lightDataOffset](const Ref <MeshParticleRenderMaterialInstance>& meshMat) {
-							RGLBufferPtr activeIndexBuffer;
+								},
+								[this,&emitter,&sharedParticleImpl, &currentLightingType,&lightDataOffset](const Ref <MeshParticleRenderMaterialInstance>& meshMat) {
+								RGLBufferPtr activeIndexBuffer;
 
-								Ref<ParticleRenderMaterial> material;
-								bool isLit = false;
-								std::visit(CaseAnalysis{
-									[&currentLightingType, &material,&isLit](const Ref<MeshParticleRenderMaterial<LightingMode::Lit>>& mat) {
-										if (currentLightingType.Lit) {
-											material = mat;
-											isLit = true;
+									Ref<ParticleRenderMaterial> material;
+									bool isLit = false;
+									std::visit(CaseAnalysis{
+										[&currentLightingType, &material,&isLit](const Ref<MeshParticleRenderMaterial<LightingMode::Lit>>& mat) {
+											if (currentLightingType.Lit) {
+												material = mat;
+												isLit = true;
+											}
+										},
+										[&currentLightingType, &material](const Ref<MeshParticleRenderMaterial<LightingMode::Unlit>>& mat) {
+											if (currentLightingType.Unlit) {
+												material = mat;
+											}
 										}
-									},
-									[&currentLightingType, &material](const Ref<MeshParticleRenderMaterial<LightingMode::Unlit>>& mat) {
-										if (currentLightingType.Unlit) {
-											material = mat;
+									}, meshMat->GetMaterial());
+									// material will be nullptr if we should not render right now
+
+									if (meshMat->customSelectionFunction) {
+										activeIndexBuffer = emitter.meshAliveParticleIndexBuffer;
+									}
+									else {
+										activeIndexBuffer = emitter.activeParticleIndexBuffer;
+									}
+
+									if (!material) {
+										return;
+									}
+
+									sharedParticleImpl(emitter, meshMat, material, activeIndexBuffer,isLit);
+
+									mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
+									mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
+									mainCommandBuffer->BindBuffer(transientBuffer, MeshParticleRenderMaterialInstance::kEngineDataBinding, emitter.renderState.maxTotalParticlesOffset);
+
+									mainCommandBuffer->ExecuteIndirectIndexed(
+										{
+											.indirectBuffer = emitter.indirectDrawBuffer,
+											.offsetIntoBuffer = 0,
+											.nDraws = meshMat->customSelectionFunction ? meshMat->meshes->GetNumLods() : 1,
 										}
-									}
-								}, meshMat->GetMaterial());
-								// material will be nullptr if we should not render right now
+									);
 
-								if (meshMat->customSelectionFunction) {
-									activeIndexBuffer = emitter.meshAliveParticleIndexBuffer;
 								}
-								else {
-									activeIndexBuffer = emitter.activeParticleIndexBuffer;
-								}
-
-								if (!material) {
-									return;
-								}
-
-								sharedParticleImpl(emitter, meshMat, material, activeIndexBuffer,isLit);
-
-								mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
-								mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
-								mainCommandBuffer->BindBuffer(transientBuffer, MeshParticleRenderMaterialInstance::kEngineDataBinding, emitter.renderState.maxTotalParticlesOffset);
-
-								mainCommandBuffer->ExecuteIndirectIndexed(
-									{
-										.indirectBuffer = emitter.indirectDrawBuffer,
-										.offsetIntoBuffer = 0,
-										.nDraws = meshMat->customSelectionFunction ? meshMat->meshes->GetNumLods() : 1,
-									}
-								);
-								
-                            }
-                    }, emitter.GetRenderMaterial());
-				});
+							}, emitter.GetRenderMaterial());
+						});
+				}
 			};
 
 			// do culling operations
@@ -1273,7 +1275,7 @@ struct LightingType{
 
 				// render all the static meshes
 
-				renderFromPerspective.template operator()<true, transparentMode>(viewproj, viewonly, projOnly, camPos.pos, camPos.zNearFar, litRenderPass, [](auto&& mat) {
+				renderFromPerspective.template operator()<true, transparentMode>(viewproj, viewonly, projOnly, camPos.pos, camPos.zNearFar, transparentMode ? litTransparentPass : litRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
                 }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid);
 

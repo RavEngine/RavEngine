@@ -84,7 +84,11 @@ namespace RavEngine {
 				.rasterizerConfig = {
 					.windingOrder = RGL::WindingOrder::Counterclockwise,
 				},
-				.colorBlendConfig = internalConfig.mode == LightingMode::Lit ? RavEngine::defaultColorBlendConfig : RavEngine::defaultUnlitColorBlendConfig,
+				.colorBlendConfig = internalConfig.mode == LightingMode::Lit ? (
+					config.opacityMode == OpacityMode::Opaque ? RavEngine::defaultColorBlendConfig : RavEngine::defaultTransparentColorBlendConfig
+					) : (
+						config.opacityMode == OpacityMode::Opaque ? RavEngine::defaultUnlitColorBlendConfig : RavEngine::defaultTransparentUnlitColorBlendConfig
+						),
 				.depthStencilConfig = {
 					.depthFormat = RGL::TextureFormat::D32SFloat,
 					.depthTestEnabled = true,

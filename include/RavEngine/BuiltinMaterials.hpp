@@ -20,8 +20,8 @@ namespace RavEngine {
 	// the default layout and blend information.
 	// you probably want these when defining custom materials.
 	extern const decltype(MaterialConfig::vertConfig) defaultVertexConfig;
-	extern const decltype(MaterialConfig::colorBlendConfig) defaultColorBlendConfig;
-    extern const decltype(MaterialConfig::colorBlendConfig) defaultUnlitColorBlendConfig;
+	extern const decltype(MaterialConfig::colorBlendConfig) defaultColorBlendConfig, defaultTransparentColorBlendConfig;
+    extern const decltype(MaterialConfig::colorBlendConfig) defaultUnlitColorBlendConfig, defaultTransparentUnlitColorBlendConfig;
 
     /**
      Allows attaching a PBR material to an object.
