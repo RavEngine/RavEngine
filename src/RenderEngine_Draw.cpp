@@ -1326,6 +1326,7 @@ struct LightingType{
 				// apply transparency
 				transparencyApplyPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
 
+				mainCommandBuffer->BeginRenderDebugMarker("Apply All Transparency");
 				mainCommandBuffer->BeginRendering(transparencyApplyPass);
 
 				mainCommandBuffer->BindRenderPipeline(transparencyApplyPipeline);
@@ -1341,6 +1342,7 @@ struct LightingType{
 				mainCommandBuffer->Draw(3);
 
 				mainCommandBuffer->EndRendering();
+				mainCommandBuffer->EndRenderDebugMarker();
 
                 // afterwards render the post processing effects
                 uint32_t totalPostFXRendered = 0;

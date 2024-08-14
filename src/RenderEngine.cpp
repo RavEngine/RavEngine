@@ -344,7 +344,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
     });
     
 
-    std::array<float, 4> depthClearColor = {0,0,0,1};
+    std::array<float, 4> depthClearColor = {0,0,0,0};
 	// create render passes
 	litRenderPass = RGL::CreateRenderPass({
 		   .attachments = {

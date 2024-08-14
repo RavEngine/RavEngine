@@ -19,7 +19,7 @@ struct RenderPassConfig {
         LoadAccessOperation stencilLoadOp = LoadAccessOperation::DontCare;
         StoreAccessOperation stencilStoreOp = StoreAccessOperation::DontCare;
 
-        std::array<float, 4> clearColor{ 0,0,0, 1 };
+        std::array<float, 4> clearColor{ 0,0,0,0};
     };
     std::vector<AttachmentDesc> attachments;
 
