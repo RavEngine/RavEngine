@@ -52,14 +52,17 @@ namespace RavEngine {
             );
         }
 
-        pipelineLayout = device->CreatePipelineLayout({
+        RGL::PipelineLayoutDescriptor pld{
             .bindings = configBindingsCopy,
-            .constants = {
-                {
-                   size_t(config.pushConstantSize), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
-                }
-            },
+        };
+
+        if (config.pushConstantSize > 0) {
+            pld.constants.push_back({
+                 size_t(config.pushConstantSize), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
             });
+        }
+
+        pipelineLayout = device->CreatePipelineLayout(pld);
 
         auto vertexConfigCopy = config.vertConfig;
         if (!config.verbatimConfig) {
