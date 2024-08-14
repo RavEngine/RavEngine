@@ -22,33 +22,6 @@ struct LitOutput{
     layout(location = 1) out vec4 outnormal;
 #if RVE_TRANSPARENT
     layout(location = 2) out float revealage;
-
-    // adapted from: https://casual-effects.blogspot.com/2015/03/implemented-weighted-blended-order.html
-    void writePixel(vec4 premultipliedReflect, vec3 transmit, float csZ) { 
-    /* Modulate the net coverage for composition by the transmission. This does not affect the color channels of the
-       transparent surface because the caller's BSDF model should have already taken into account if transmission modulates
-       reflection. This model doesn't handled colored transmission, so it averages the color channels. See 
-
-          McGuire and Enderton, Colored Stochastic Shadow Maps, ACM I3D, February 2011
-          http://graphics.cs.williams.edu/papers/CSSM/
-
-       for a full explanation and derivation.*/
-
-    premultipliedReflect.a *= 1.0 - clamp((transmit.r + transmit.g + transmit.b) * (1.0 / 3.0), 0, 1);
-
-    /* You may need to adjust the w function if you have a very large or very small view volume; see the paper and
-       presentation slides at http://jcgt.org/published/0002/02/09/ */
-    // Intermediate terms to be cubed
-    float a = min(1.0, premultipliedReflect.a) * 8.0 + 0.01;
-    float b = -gl_FragCoord.z * 0.95 + 1.0;
-
-    /* If your scene has a lot of content very close to the far plane,
-       then include this line (one rsqrt instruction):
-       b /= sqrt(1e4 * abs(csZ)); */
-    float w    = clamp(a * a * a * 1e8 * b * b * b, 1e-2, 3e2);
-    outcolor     = premultipliedReflect * w;
-    revealage = premultipliedReflect.a;
-}
 #else
    
 #endif
@@ -210,7 +183,12 @@ void main(){
     }
 
     #if RVE_TRANSPARENT
-        writePixel(outcolor, user_out.transmittance,clipSpaceZ);  //TODO: fix parameters
+        // adapted from: https://learnopengl.com/Guest-Articles/2020/OIT/Weighted-Blended
+        float weight = max(min(1.0, max(max(outcolor.r, outcolor.g), outcolor.b) * outcolor.a), outcolor.a) * clamp(0.03 / (1e-5 + pow(clipSpaceZ / 200, 4.0)), 1e-2, 3e3);
+
+        // pre-multiplied 
+        revealage = outcolor.a;
+        outcolor = vec4(outcolor.rgb * outcolor.a, outcolor.a) * weight;
     #endif
 
 }
