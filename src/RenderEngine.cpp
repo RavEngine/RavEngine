@@ -473,11 +473,13 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				.format = accumFormat,
 				.loadOp = RGL::LoadAccessOperation::Clear,
 				.storeOp = RGL::StoreAccessOperation::Store,
+				.clearColor = {0,0,0,0}
 			},
 			{
 				.format = revealageFormat,
 				.loadOp = RGL::LoadAccessOperation::Clear,
 				.storeOp = RGL::StoreAccessOperation::Store,
+				.clearColor = {1,1,1,1}
 			},
 		}
 	});
@@ -1337,7 +1339,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 					.format = colorTexFormat,
 					.sourceColorBlendFactor = RGL::BlendFactor::SourceAlpha,
 					.destinationColorBlendFactor = RGL::BlendFactor::OneMinusSourceAlpha,
-					.alphaBlendOperation = RGL::BlendOperation::Add,
 					.blendEnabled = true
 
 				},
