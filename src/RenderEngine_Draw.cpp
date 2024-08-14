@@ -1645,6 +1645,7 @@ struct LightingType{
 			litTransparentPass->SetAttachmentTexture(0, target.transparencyAccumulation->GetDefaultView());
 			litTransparentPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
 			litTransparentPass->SetAttachmentTexture(2, target.transparencyRevealage->GetDefaultView());
+            litTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 			Profile::BeginFrame(Profile::RenderEncodeDeferredPass);
 			for (const auto& camdata : view.camDatas) {
 				doPassWithCamData(camdata, renderLitPassTransparent);

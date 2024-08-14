@@ -100,7 +100,7 @@ namespace RavEngine {
             .depthStencilConfig = {
                 .depthFormat = RGL::TextureFormat::D32SFloat,
                 .depthTestEnabled = config.depthTestEnabled,
-                .depthWriteEnabled = config.depthWriteEnabled,
+                .depthWriteEnabled = IsTransparent() ? false : config.depthWriteEnabled,
                 .depthFunction = config.depthCompareFunction,
             },
             .pipelineLayout = pipelineLayout,

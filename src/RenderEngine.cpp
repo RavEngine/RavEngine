@@ -438,7 +438,12 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				.loadOp = RGL::LoadAccessOperation::Load,
 				.storeOp = RGL::StoreAccessOperation::Store,
 			},
-		}
+		},
+        .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+            .format = RGL::TextureFormat::D32SFloat,
+            .loadOp = RGL::LoadAccessOperation::Load,
+            .storeOp = RGL::StoreAccessOperation::Store,
+        }
 	});
 
 	unlitTransparentPass = RGL::CreateRenderPass({
@@ -453,7 +458,12 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				.loadOp = RGL::LoadAccessOperation::Load,
 				.storeOp = RGL::StoreAccessOperation::Store,
 			},
-		}
+		},
+        .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+            .format = RGL::TextureFormat::D32SFloat,
+            .loadOp = RGL::LoadAccessOperation::Load,
+            .storeOp = RGL::StoreAccessOperation::Store,
+        }
 	});
 
 	// make sure to bind revealage to slot 1
