@@ -47,7 +47,7 @@ struct LitOutput{
        b /= sqrt(1e4 * abs(csZ)); */
     float w    = clamp(a * a * a * 1e8 * b * b * b, 1e-2, 3e2);
     outcolor     = premultipliedReflect * w;
-    revealage = uint(premultipliedReflect.a);
+    revealage = premultipliedReflect.a;
 }
 #else
    
