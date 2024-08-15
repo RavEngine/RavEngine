@@ -2,7 +2,7 @@
 #define NOMINMAX
 #include <RGL/Pipeline.hpp>
 #include <RGL/Types.hpp>
-#include <d3d12.h>
+#include <directx/d3d12.h>
 #include <directx/d3dx12.h>
 #include "RGLD3D12.hpp"
 #include "D3D12PipelineShared.hpp"

@@ -2,7 +2,7 @@
 #include "D3D12Swapchain.hpp"
 #include "D3D12Surface.hpp"
 #include <dxgi1_5.h>
-#include <d3d12.h>
+#include <directx/d3d12.h>
 #include "D3D12Device.hpp"
 #include "D3D12CommandQueue.hpp"
 #include <directx/d3dx12.h>

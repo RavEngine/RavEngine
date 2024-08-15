@@ -4,7 +4,7 @@
 #include <RGL/Device.hpp>
 #include <RGL/Pipeline.hpp>
 #include "D3D12DynamicDescriptorHeap.hpp"
-#include <d3d12.h>
+#include <directx/d3d12.h>
 #include <dxgi1_6.h>
 #include <wrl.h>
 

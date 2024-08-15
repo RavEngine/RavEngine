@@ -9,7 +9,7 @@
 #include <comdef.h>
 #include <wrl.h>
 #include <format>
-#include <d3d12.h>
+#include <directx/d3d12.h>
 
 //#define REFL_ENABLED
 

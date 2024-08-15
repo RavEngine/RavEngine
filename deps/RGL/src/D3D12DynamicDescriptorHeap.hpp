@@ -2,7 +2,7 @@
 #define NOMINMAX
 #include <memory>
 #include <queue>
-#include <d3d12.h>
+#include <directx/d3d12.h>
 #include <DescriptorHeap.h>
 #include "FreeList.hpp"
 

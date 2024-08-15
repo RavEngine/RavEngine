@@ -4,7 +4,7 @@
 #include <RGL/Swapchain.hpp>
 #include "D3D12DynamicDescriptorHeap.hpp"
 #include "RGLD3D12.hpp"
-#include <d3d12.h>
+#include <directx/d3d12.h>
 #include <dxgi1_5.h>
 
 namespace RGL {

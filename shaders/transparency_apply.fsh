@@ -1,36 +1,50 @@
 
-// adapted from: https://casual-effects.blogspot.com/2015/03/implemented-weighted-blended-order.html
+// adapted from: https://learnopengl.com/Guest-Articles/2020/OIT/Weighted-Blended
 
 layout(binding = 0) uniform sampler g_sampler; 
-/* sum(rgb * a, a) */
-layout(binding = 1) uniform texture2D accumTexture;
 
-/* prod(1 - a) */
+layout(binding = 1) uniform texture2D accumTexture;
 layout(binding = 2) uniform texture2D revealageTexture;
 
 layout(location = 0) out vec4 outcolor;
 
-float max4 (vec4 v) {
-  return max(max (max (v.x, v.y), v.z), v.w);
+// epsilon number
+const float EPSILON = 0.00001f;
+
+// calculate floating point numbers equality accurately
+bool isApproximatelyEqual(float a, float b)
+{
+    return abs(a - b) <= (abs(a) < abs(b) ? abs(b) : abs(a)) * EPSILON;
 }
 
-void main() {
-    ivec2 C = ivec2(gl_FragCoord.xy);
-    float revealage = texelFetch(sampler2D(revealageTexture,g_sampler), C, 0).r;
-    if (revealage == 1.0) {
-        // Save the blending and color texture fetch cost
-        discard; 
-    }
+// get the max value between three values
+float max3(vec3 v)
+{
+    return max(max(v.x, v.y), v.z);
+}
 
-    vec4 accum = texelFetch(sampler2D(accumTexture,g_sampler), C, 0);
-    // Suppress overflow
-    if (isinf(max4(abs(accum)))) {
-        accum.rgb = vec3(accum.a);
-    }
+void main()
+{
+    // fragment coordination
+    ivec2 coords = ivec2(gl_FragCoord.xy);
 
-    vec3 averageColor = accum.rgb / max(accum.a, 0.00001);
+    // fragment revealage
+    float revealage = texelFetch(sampler2D(revealageTexture, g_sampler), coords, 0).r;
 
+    // save the blending and color texture fetch cost if there is not a transparent fragment
+    if (isApproximatelyEqual(revealage, 1.0f))
+        discard;
 
-    // dst' =  (accum.rgb / accum.a) * (1 - revealage) + dst * revealage
-    outcolor = vec4(averageColor, 1.0 - revealage);
+    // fragment color
+    vec4 accumulation = texelFetch(sampler2D(accumTexture,g_sampler), coords, 0);
+
+    // suppress overflow
+    if (isinf(max3(abs(accumulation.rgb))))
+        accumulation.rgb = vec3(accumulation.a);
+
+    // prevent floating point precision bug
+    vec3 average_color = accumulation.rgb / max(accumulation.a, EPSILON);
+
+    // blend pixels
+    outcolor = vec4(average_color, 1.0f - revealage);
 }

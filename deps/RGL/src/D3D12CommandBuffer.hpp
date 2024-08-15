@@ -4,7 +4,7 @@
 #include <RGL/CommandBuffer.hpp>
 #include "RGLD3D12.hpp"
 #include "D3D12TrackedResource.hpp"
-#include <d3d12.h>
+#include <directx/d3d12.h>
 #include <memory>
 #include <unordered_map>
 
