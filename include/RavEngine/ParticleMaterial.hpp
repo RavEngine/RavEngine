@@ -215,9 +215,9 @@ namespace RavEngine {
 		constexpr static uint16_t SpritesheetBindingSlot = 1;
 		constexpr static uint16_t SamplerBindingSlot = 0;
 
-		constexpr static std::string_view fs_particle_name = mode == LightingMode::Lit ? "default_billboard_particle" : "default_billboard_particle_unlit";
 
-		SpritesheetParticleRenderMaterial() : BillboardRenderParticleMaterial<mode>("default_billboard_particle", fs_particle_name, {
+
+		SpritesheetParticleRenderMaterial(const std::string_view vs_name, const std::string_view fs_name, OpacityMode opacityMode, size_t pushConstantSize) : BillboardRenderParticleMaterial<mode>(vs_name, fs_name, {
 			.bindings = {
 				{
 					.binding = SamplerBindingSlot,
@@ -232,9 +232,12 @@ namespace RavEngine {
 					.writable = false,
 				}
 			},
-			.pushConstantSize = sizeof(ParticleBillboardUBO)
+			.pushConstantSize = pushConstantSize,
+			.opacityMode = opacityMode
 			}) {}
 
+		constexpr static std::string_view fs_particle_name = mode == LightingMode::Lit ? "default_billboard_particle" : "default_billboard_particle_unlit";
+		SpritesheetParticleRenderMaterial() : SpritesheetParticleRenderMaterial("default_billboard_particle", fs_particle_name, OpacityMode::Opaque, sizeof(ParticleBillboardUBO)) {}
 	};
 
 	struct SpritesheetParticleRenderMaterialInstance : BillboardParticleRenderMaterialInstance {

@@ -1,8 +1,4 @@
 
-layout(push_constant, std430) uniform UniformBufferObject{
-    ivec2 spritesheetDim;
-    ivec2 spritesheetFrameDim;
-} ubo;
 
 layout(binding = 0) uniform sampler g_sampler; 
 layout(binding = 1) uniform texture2D t_spritesheet;
