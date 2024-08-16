@@ -23,7 +23,7 @@ namespace RavEngine {
 	};
 
 
-	ParticleRenderMaterial::ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const InternalConfig& internalConfig, const ParticleRenderMaterialConfig& config)
+	ParticleRenderMaterial::ParticleRenderMaterial(const std::string_view particleVS, const std::string_view particleFS, const InternalConfig& internalConfig, const ParticleRenderMaterialConfig& config) : opacityMode(config.opacityMode)
 	{
 		auto device = GetApp()->GetDevice();
 		// render pipeline
@@ -91,8 +91,8 @@ namespace RavEngine {
 						),
 				.depthStencilConfig = {
 					.depthFormat = RGL::TextureFormat::D32SFloat,
-					.depthTestEnabled = true,
-					.depthWriteEnabled = true,
+					.depthTestEnabled = config.zTestEnabled,
+					.depthWriteEnabled = IsTransparent() ? false : config.zWriteEnabled,
 					.depthFunction = RGL::DepthCompareFunction::Greater,
 				},
 				.pipelineLayout = layout

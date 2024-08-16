@@ -57,6 +57,8 @@ namespace RavEngine {
 		std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> bindings;
 		size_t pushConstantSize = 0;
 		OpacityMode opacityMode = OpacityMode::Opaque;
+		bool zTestEnabled = true;
+		bool zWriteEnabled = true;
 	}; 
 
 	enum class LightingMode : uint8_t {
@@ -71,6 +73,10 @@ namespace RavEngine {
 			particleAliveIndexBufferBinding = 19,
 			particleMatrixBufferBinding = 20
 			;
+
+		bool IsTransparent() const {
+			return opacityMode == OpacityMode::Transparent;
+		}
 	protected:
 		struct InternalConfig {
 			const RGL::RenderPipelineDescriptor::VertexConfig vertexConfig;
@@ -88,8 +94,10 @@ namespace RavEngine {
 		}
 
 	private:
-	
+		OpacityMode opacityMode = OpacityMode::Opaque;
 		RGLRenderPipelinePtr userRenderPipeline, shadowRenderPipeline;
+
+		
 	};
 
 	struct BillboardRenderParticleMaterial_impl {
