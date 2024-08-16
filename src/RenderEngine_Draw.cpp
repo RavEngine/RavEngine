@@ -51,7 +51,7 @@ struct LightingType{
 		bool isLit;
 	};
 
-	template <template<auto> typename T>
+	template <template<LightingMode> typename T>
 	constexpr static ParticleRenderFilterResult particleRenderFilter(LightingType currentLightingType, auto&& inMat) {
 
 		Ref<ParticleRenderMaterial> material;
