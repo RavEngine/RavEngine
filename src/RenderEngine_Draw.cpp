@@ -1298,6 +1298,14 @@ struct LightingType{
 				renderFromPerspective.template operator() < false > (viewproj, viewonly, projOnly, camPos.pos, {}, unlitRenderPass, [](auto&& mat) {
                     return mat->GetMainRenderPipeline();
                 }, renderArea, {.Unlit = true, .Opaque = true }, target.depthPyramid);
+
+				// render unlits with transparency
+				unlitTransparentPass->SetAttachmentTexture(0, target.transparencyAccumulation->GetDefaultView());
+				unlitTransparentPass->SetAttachmentTexture(1, target.transparencyRevealage->GetDefaultView());
+				unlitTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+				renderFromPerspective.template operator() < false, true > (viewproj, viewonly, projOnly, camPos.pos, {}, unlitTransparentPass, [](auto&& mat) {
+					return mat->GetMainRenderPipeline();
+				}, renderArea, { .Unlit = true, .Transparent = true }, target.depthPyramid);
                 
                 // then do the skybox, if one is defined.
                 mainCommandBuffer->BeginRendering(unlitRenderPass);

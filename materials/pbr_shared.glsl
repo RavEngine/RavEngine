@@ -28,9 +28,6 @@ LitOutput frag()
 	mat_out.roughness = roughness * ubo.roughnessTint;
 	mat_out.specular = specular * ubo.specularTint;
 	mat_out.metallic = metallic * ubo.metallicTint;
-	#if RVE_TRANSPARENT
-	mat_out.transmittance = vec3(0.7,0.7,0.7);
-	#endif
 
 	return mat_out;
 }
