@@ -10,6 +10,9 @@ CMRC_DECLARE(rvesc_resources);
 
 using namespace std;
 
+void immediatewindow_print(const std::string& str) {
+	std::cout << str << std::endl;
+}
 
 #define FATAL(reason) {std::cerr << "rvesc error: " << reason << std::endl; return 1;}
 

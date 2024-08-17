@@ -271,13 +271,6 @@ namespace RavEngine {
 					.type = RGL::BindingType::SampledImage,
 					.stageFlags = RGL::BindingVisibility::Fragment,
 				},
-
-				{
-					.binding = 21,									// engine-required binding
-					.type = RGL::BindingType::StorageBuffer,
-					.stageFlags = RGL::BindingVisibility::Vertex,
-					.writable = false
-				}
 			},
 			.pushConstantSize = sizeof(PBRUBO)
 		}
@@ -369,6 +362,12 @@ namespace RavEngine {
 		auto cpy = in;
 
 		cpy.bindings = augmentLitMaterialBindings(cpy.bindings);
+		cpy.bindings.push_back({
+					.binding = 21,									// engine-required binding
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Vertex,
+					.writable = false
+			});
 
 		return cpy;
 	}
