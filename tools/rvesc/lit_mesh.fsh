@@ -2,6 +2,7 @@
 struct LitOutput{
     vec4 color;
     vec3 normal;
+    vec3 emissiveColor;
     float roughness;
     float specular;
     float metallic;
@@ -179,6 +180,9 @@ void main(){
 
         outcolor += vec4(result * user_out.ao * pcfFactor, 0);
     }
+
+    // add the emissive component
+    outcolor += vec4(user_out.emissiveColor,0);  // don't want to add emissivity to the alpha channel
 
     #if RVE_TRANSPARENT
         writeTransparency(outcolor);

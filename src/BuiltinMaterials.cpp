@@ -114,6 +114,7 @@ RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : Materi
     textureBindings[4] = Texture::Manager::defaultTexture;
     textureBindings[5] = Texture::Manager::defaultTexture;
     textureBindings[6] = Texture::Manager::defaultTexture;
+    textureBindings[7] = Texture::Manager::zeroTexture;
 }
 
 
@@ -151,6 +152,11 @@ RavEngine::PBRMaterial::PBRMaterial(MaterialRenderOptions options) : LitMaterial
         },
         {
             .binding = 6,
+            .type = RGL::BindingType::SampledImage,
+            .stageFlags = RGL::BindingVisibility::Fragment,
+        },
+        {
+            .binding = 7,
             .type = RGL::BindingType::SampledImage,
             .stageFlags = RGL::BindingVisibility::Fragment,
         },

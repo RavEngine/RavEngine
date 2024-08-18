@@ -271,6 +271,11 @@ namespace RavEngine {
 					.type = RGL::BindingType::SampledImage,
 					.stageFlags = RGL::BindingVisibility::Fragment,
 				},
+				{
+					.binding = 7,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+				},
 			},
 			.pushConstantSize = sizeof(PBRUBO)
 		}
@@ -340,6 +345,7 @@ namespace RavEngine {
 		textureBindings[kMetallicBinding] = Texture::Manager::defaultTexture;
 		textureBindings[kRoughnessBinding] = Texture::Manager::defaultTexture;
 		textureBindings[kAOBinding] = Texture::Manager::defaultTexture;
+		textureBindings[kEmissiveBinding] = Texture::Manager::zeroTexture;
 	}
 
 	uint8_t PBRMeshParticleRenderMaterialInstance::SetPushConstantData(std::span<std::byte, 128> data) const

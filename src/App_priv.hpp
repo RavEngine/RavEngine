@@ -250,6 +250,13 @@ int App::run(int argc, char** argv) {
 			.numLayers = 1,
 			.initialData = normalData
 		});
+
+		uint8_t zeroData[] = { 0,0,0,0 };
+		Texture::Manager::zeroTexture = New<RuntimeTexture>(1, 1, Texture::Config{
+			.mipLevels = 1,
+			.numLayers = 1,
+			.initialData = zeroData
+		});
 	}
 #endif
 
@@ -528,6 +535,8 @@ App::~App(){
 #if !RVE_SERVER
 
 	Texture::Manager::defaultTexture.reset();
+	Texture::Manager::defaultNormalTexture.reset();
+	Texture::Manager::zeroTexture.reset();
     Texture::Manager::Clear();
 	if (GetAudioActive()) {
 		player->Shutdown();

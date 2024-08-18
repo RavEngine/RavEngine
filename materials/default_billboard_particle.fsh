@@ -24,6 +24,7 @@ LitOutput frag(){
     fs_out.specular = 0;
     fs_out.metallic = 0;
     fs_out.ao = 1;
+    fs_out.emissiveColor = vec3(0,0,0);
 
     return fs_out;
 }

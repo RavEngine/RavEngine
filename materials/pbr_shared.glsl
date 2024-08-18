@@ -5,6 +5,7 @@ layout(binding = 3) uniform texture2D t_specular;
 layout(binding = 4) uniform texture2D t_metallic; 
 layout(binding = 5) uniform texture2D t_roughness; 
 layout(binding = 6) uniform texture2D t_ao;
+layout(binding = 7) uniform texture2D t_emissive;
 
 layout(location = 0) in vec2 inUV;
 layout(location = 1) in vec3[3] inTBN;
@@ -28,6 +29,7 @@ LitOutput frag()
 	mat_out.roughness = roughness * ubo.roughnessTint;
 	mat_out.specular = specular * ubo.specularTint;
 	mat_out.metallic = metallic * ubo.metallicTint;
+	mat_out.emissiveColor = texture(sampler2D(t_emissive, g_sampler), inUV).rgb;
 
 	return mat_out;
 }

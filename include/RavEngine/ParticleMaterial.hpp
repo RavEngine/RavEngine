@@ -278,7 +278,8 @@ namespace RavEngine {
 			kSpecularBinding = 3,
 			kMetallicBinding = 4,
 			kRoughnessBinding = 5,
-			kAOBinding = 6;
+			kAOBinding = 6,
+			kEmissiveBinding = 7;
 
 	private:
 		const uint32_t bytesPerParticle;

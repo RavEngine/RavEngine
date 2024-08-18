@@ -34,34 +34,37 @@ namespace RavEngine {
 		
 		PBRMaterialInstance(Ref<PBRMaterial> m);
 
-		inline void SetAlbedoTexture(Ref<Texture> texture) {
+		void SetAlbedoTexture(Ref<Texture> texture) {
 			textureBindings[1] = texture;
 		}
-		inline void SetNormalTexture(Ref<Texture> texture) {
+		void SetNormalTexture(Ref<Texture> texture) {
 			textureBindings[2] = texture;
 		}
-		inline void SetSpecularTexture(Ref<Texture> texture) {
+		void SetSpecularTexture(Ref<Texture> texture) {
 			textureBindings[3] = texture;
 		}
-		inline void SetMetallicTexture(Ref<Texture> texture) {
+		void SetMetallicTexture(Ref<Texture> texture) {
 			textureBindings[4] = texture;
 		}
-		inline void SetRoughnessTexture(Ref<Texture> texture) {
+		void SetRoughnessTexture(Ref<Texture> texture) {
 			textureBindings[5] = texture;
 		}
-		inline void SetAOTexture(Ref<Texture> texture) {
+		void SetAOTexture(Ref<Texture> texture) {
 			textureBindings[6] = texture;
 		}
-        constexpr inline void SetAlbedoColor(const ColorRGBA& c){
+		void SetEmissiveTexture(Ref<Texture> texture) {
+			textureBindings[7] = texture;
+		}
+        void SetAlbedoColor(const ColorRGBA& c){
             pushConstantData.color = c;
         }
-		constexpr inline void SetMetallicTint(float c) {
+		void SetMetallicTint(float c) {
 			pushConstantData.metallicTint = c;
 		}
-		constexpr inline void SetSpecularTint(float c) {
+		void SetSpecularTint(float c) {
 			pushConstantData.specularTint = c;
 		}
-		constexpr inline void SetRoughnessTint(float c) {
+		void SetRoughnessTint(float c) {
 			pushConstantData.roughnessTint = c;
 		}
 
