@@ -1,4 +1,13 @@
 #if RGL_VK_AVAILABLE
+#if _WIN32
+#define VK_USE_PLATFORM_WIN32_KHR
+#elif __ANDROID__
+#define VK_USE_PLATFORM_ANDROID_KHR
+#elif __linux__ 
+#define VK_USE_PLATFORM_XLIB_KHR
+#define VK_USE_PLATFORM_WAYLAND_KHR
+#endif
+
 #include "VkSurface.hpp"
 #include "RGLVk.hpp"
 
