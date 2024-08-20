@@ -1,7 +1,7 @@
 #pragma once
 #include <RGL/Types.hpp>
 #include <RGL/Sampler.hpp>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <memory>
 namespace RGL {
 	struct DeviceVk;

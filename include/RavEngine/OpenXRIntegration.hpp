@@ -6,7 +6,7 @@
 
 #if RGL_VK_AVAILABLE
 #define XR_USE_GRAPHICS_API_VULKAN
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <RGL/../../src/VkTexture.hpp>
 #endif
 #if _WIN32

@@ -1,7 +1,7 @@
 #pragma once
 #include <RGL/Types.hpp>
 #include <RGL/CommandBuffer.hpp>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include "RGLVk.hpp"
 #include <unordered_set>
 #include <unordered_map>

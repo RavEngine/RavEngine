@@ -567,6 +567,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"GameNetworkingSockets_s"
 	"r8brain"
 	$<$<CONFIG:profile>:TracyClient>
+	volk
 	PUBLIC
 	"dr_wav"
 	"fmt"

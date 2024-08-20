@@ -72,6 +72,9 @@ namespace RGL {
         Assert(CanInitAPI(RGL::API::Vulkan), "Vulkan cannot be initialized on this platform.");
         RGL::currentAPI = API::Vulkan;
 
+        // load Volk
+        VK_CHECK(volkInitialize());
+
         // create the vulkan instance
         VkApplicationInfo appInfo{
             .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -137,6 +140,8 @@ namespace RGL {
 
         // init vulkan
         VK_CHECK(vkCreateInstance(&instanceCreateInfo, nullptr, &instance));
+
+        volkLoadInstance(instance);
 
         // setup the debug messenger
         if constexpr (enableValidationLayers) {

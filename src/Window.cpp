@@ -123,6 +123,7 @@ namespace RavEngine {
 	// linux lets use 1.0f as the default here until we figure out a better way to query that
         return 1.0f; 
 #endif
+        return 1;
     }
 
 	Window::SwapchainResult Window::GetNextSwapchainImage()

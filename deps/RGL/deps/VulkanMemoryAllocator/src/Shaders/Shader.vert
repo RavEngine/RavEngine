@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2017-2024 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2017-2022 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,11 +20,23 @@
 // THE SOFTWARE.
 //
 
-/*
-In exactly one CPP file define macro VMA_IMPLEMENTATION and then include
-vk_mem_alloc.h to include definitions of its internal implementation
-*/
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
 
-#define VMA_IMPLEMENTATION
+layout(push_constant) uniform UniformBufferObject
+{
+    mat4 ModelViewProj;
+} ubo;
 
-#include "VmaUsage.h"
+layout(location = 0) in vec3 inPosition;
+layout(location = 1) in vec3 inColor;
+layout(location = 2) in vec2 inTexCoord;
+
+layout(location = 0) out vec3 outColor;
+layout(location = 1) out vec2 outTexCoord;
+
+void main() {
+    gl_Position = ubo.ModelViewProj * vec4(inPosition, 1.0);
+    outColor = inColor;
+    outTexCoord = inTexCoord;
+}

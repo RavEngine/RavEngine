@@ -2,7 +2,7 @@
 #include <RGL/Types.hpp>
 #include <RGL/ShaderLibrary.hpp>
 #include "VkDevice.hpp"
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <span>
 #include <filesystem>
 #include "VkPipelineLibraryShared.hpp"

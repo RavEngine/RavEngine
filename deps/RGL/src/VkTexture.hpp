@@ -2,11 +2,12 @@
 #include <RGL/Types.hpp>
 #include <RGL/Texture.hpp>
 #include <RGL/Span.hpp>
-#include <vulkan/vulkan.h>
-#include <vk_mem_alloc.h>
+#include <volk.h>
 #include <memory>
 #include <vector>
 #include <string>
+
+struct VmaAllocation_T;
 
 namespace RGL {
 	struct DeviceVk;
@@ -28,7 +29,7 @@ namespace RGL {
 
 		VkImageLayout nativeFormat = VK_IMAGE_LAYOUT_UNDEFINED;
 
-		VmaAllocation alloc = VK_NULL_HANDLE;
+		VmaAllocation_T* alloc = VK_NULL_HANDLE;
 
 		TextureView GetDefaultView() const final;
 		TextureView GetViewForMip(uint32_t mip) const final;

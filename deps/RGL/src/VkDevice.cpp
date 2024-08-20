@@ -14,7 +14,7 @@
 #include <vector>
 #include <stdexcept>
 #include <set>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 namespace RGL {
 
@@ -30,7 +30,9 @@ namespace RGL {
            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
            VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
            VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
+#if !__ANDROID__    // only 5% of android devices have this extension so we have to go without it
            VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
+#endif
     };
 
     auto getMissingDeviceExtensions(const VkPhysicalDevice device) {
@@ -243,6 +245,7 @@ namespace RGL {
         }
 #endif
 
+        //volkLoadDevice(device);
         // load extra functions
         loadVulkanFunction(device, vkCmdPushDescriptorSetKHR, "vkCmdPushDescriptorSetKHR");
 
@@ -262,6 +265,36 @@ namespace RGL {
         };
         VK_CHECK(vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool));
 
+        // otherwise it doesn't know about volk
+        VmaVulkanFunctions volk_functions{
+            vkGetInstanceProcAddr,
+            vkGetDeviceProcAddr,
+            vkGetPhysicalDeviceProperties,
+            vkGetPhysicalDeviceMemoryProperties,
+            vkAllocateMemory,
+            vkFreeMemory,
+            vkMapMemory,
+            vkUnmapMemory,
+            vkFlushMappedMemoryRanges,
+            vkInvalidateMappedMemoryRanges,
+            vkBindBufferMemory,
+            vkBindImageMemory,
+            vkGetBufferMemoryRequirements,
+            vkGetImageMemoryRequirements,
+            vkCreateBuffer,
+            vkDestroyBuffer,
+            vkCreateImage,
+            vkDestroyImage,
+            vkCmdCopyBuffer,
+            vkGetBufferMemoryRequirements2,
+            vkGetImageMemoryRequirements2,
+            vkBindBufferMemory2,
+            vkBindImageMemory2,
+            vkGetPhysicalDeviceMemoryProperties2,
+            vkGetDeviceBufferMemoryRequirements,
+            vkGetDeviceImageMemoryRequirements
+        };
+        
         VmaAllocatorCreateInfo allocInfo{
             .flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT | VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
             .physicalDevice = physicalDevice,
@@ -270,7 +303,7 @@ namespace RGL {
             .pAllocationCallbacks = nullptr,
             .pDeviceMemoryCallbacks = nullptr,
             .pHeapSizeLimit = nullptr,
-            .pVulkanFunctions = nullptr,
+            .pVulkanFunctions = &volk_functions,
             .instance = RGL::instance,
             .vulkanApiVersion = VK_API_VERSION_1_3,
             .pTypeExternalMemoryHandleTypes = nullptr,

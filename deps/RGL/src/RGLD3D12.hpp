@@ -1,5 +1,4 @@
 #pragma once
-#define NOMINMAX
 #include <RGL/Types.hpp>
 #include <RGL/Core.hpp>
 #include <RGL/TextureFormat.hpp>

@@ -20,11 +20,10 @@
 // THE SOFTWARE.
 //
 
-/*
-In exactly one CPP file define macro VMA_IMPLEMENTATION and then include
-vk_mem_alloc.h to include definitions of its internal implementation
-*/
+#pragma once
 
-#define VMA_IMPLEMENTATION
+#ifdef _WIN32
 
-#include "VmaUsage.h"
+void TestSparseBinding();
+
+#endif // #ifdef _WIN32

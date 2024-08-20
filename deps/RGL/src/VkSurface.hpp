@@ -1,7 +1,7 @@
 #pragma once
 #include <RGL/Types.hpp>
 #include <RGL/Surface.hpp>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 namespace RGL {
 

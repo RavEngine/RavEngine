@@ -19,6 +19,7 @@ static inline auto MessageBoxToSDLFlag(Dialog::MessageBoxType type){
             return SDL_MESSAGEBOX_ERROR;
         default:
             Debug::Fatal("Invalid MessageBoxType {}", uint8_t(type));
+            return SDL_MESSAGEBOX_ERROR;
     }
 }
 

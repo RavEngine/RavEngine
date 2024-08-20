@@ -36,10 +36,6 @@ if (RGL_ENABLE_WEBGPU)
 	set(RGL_WEBGPU_AVAILABLE ON CACHE INTERNAL "RGL WebGPU")
 endif()
 
-if (RGL_RUNTIME_COMPILATION)
-set(RGL_RUNTIME_COMPILER_LIB "librglc")
-endif()
-
 if (CMAKE_VS_PLATFORM_NAME STREQUAL "ARM64")
 	set(RGL_DISABLE_VK ON CACHE INTERNAL "")
 endif()
@@ -101,29 +97,46 @@ if (RGL_ENABLE_RGLC)
 	)
 endif()
 
-find_package(Vulkan)
-
-if(CMAKE_SYSTEM_NAME MATCHES "WindowsStore" OR RGL_DISABLE_VK OR APPLE OR CMAKE_SYSTEM_NAME MATCHES "Emscripten")
+if(WINDOWS_STORE OR RGL_DISABLE_VK OR APPLE OR CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 	set(VK_FORCE_DISABLED ON)
 else()
 	set(VK_FORCE_DISABLED OFF)
 endif()
 
-if (NOT VK_FORCE_DISABLED AND Vulkan_FOUND)
-
-	
-	set(VK_LIBS ${Vulkan_LIBRARIES} VulkanMemoryAllocator)
+if (NOT VK_FORCE_DISABLED)
+	set(VOLK_INCLUDES ON)
+	if (WIN32 OR WINDOWS_STORE)
+		set(VOLK_STATIC_DEFINES "VK_USE_PLATFORM_WIN32_KHR")
+	elseif(LINUX) 
+		set(VOLK_STATIC_DEFINES "VK_USE_PLATFORM_XLIB_KHR" "VK_USE_PLATFORM_WAYLAND_KHR")
+	elseif(ANDROID)
+		set(VOLK_STATIC_DEFINES "VK_USE_PLATFORM_ANDROID_KHR")
+	endif()
+	add_subdirectory(deps/volk EXCLUDE_FROM_ALL)
+	target_compile_definitions(volk PUBLIC NOMINMAX=1)
 		
 	# Get our vendored headers 
-	set(VK_INCLUDE deps/VulkanMemoryAllocator/include deps/Vulkan-Headers/include deps/Vulkan-Utility-Libraries/include)
+	set(VK_INCLUDE deps/Vulkan-Headers/include deps/Vulkan-Utility-Libraries/include)
 
-	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_VK_AVAILABLE=1)
+	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_VK_AVAILABLE=1 )
 	set(RGL_VK_AVAILABLE ON CACHE INTERNAL "RGL Vulkan")
-	set(VMA_STATIC_VULKAN_FUNCTIONS ON)
 	add_subdirectory(deps/VulkanMemoryAllocator EXCLUDE_FROM_ALL)
-	target_include_directories(VulkanMemoryAllocator PUBLIC ${Vulkan_INCLUDE_DIRS})
-	target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS}) # so that library users get the vk paths if applicable
-    target_compile_features(VulkanMemoryAllocator PUBLIC cxx_std_20)
+	target_compile_definitions(VulkanMemoryAllocator INTERFACE VMA_STATIC_VULKAN_FUNCTIONS=0 VMA_DYNAMIC_VULKAN_FUNCTIONS=0)
+
+	target_link_libraries(${PROJECT_NAME} 
+	PUBLIC
+		volk
+	PRIVATE
+		GPUOpen::VulkanMemoryAllocator
+	)
+
+	set_target_properties(VulkanMemoryAllocator volk PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
+	if (TARGET loader-opt)
+		set_target_properties(loader-opt loader-unknown-chain PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
+	endif()
+	if(RGL_USE_MINIVKSDK)
+		set_target_properties(vulkan vvl VkLayer_utils loader_asm_gen_files PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
+	endif()
 else()
 	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_VK_AVAILABLE=0)
 	set(RGL_VK_AVAILABLE OFF CACHE INTERNAL "RGL Vulkan")
@@ -131,7 +144,6 @@ endif()
 
 if(MSVC AND NOT RGL_DISABLE_DX)
 	add_subdirectory(deps/DirectX-Headers EXCLUDE_FROM_ALL)
-	set(DX12_LIBRARIES "d3d12.lib" "DirectX-Headers" "DirectX-Guids" "dxgi.lib" "d3dcompiler.lib" "D3D12MemoryAllocator" "DirectXTK12")
 	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_DX12_AVAILABLE=1)
 
 	set(RGL_DX12_AVAILABLE ON CACHE INTERNAL "RGL DX12")
@@ -145,13 +157,23 @@ if(MSVC AND NOT RGL_DISABLE_DX)
 	target_include_directories(${PROJECT_NAME} PUBLIC "deps/DirectXTK12/Inc")
 
 	# PIX stuff
-
 	add_subdirectory(deps/PixEvents-cmake)
-	set(PIXLIB $<$<NOT:$<CONFIG:release>>:WinPixEventRuntime>)
 
-	set_target_properties("WinPixEventRuntime" "WinPixEventRuntime_ETW" "PixDecoder" PROPERTIES 
-	FOLDER "${RGL_IDE_ROOT}/Libraries/"
-)
+	set_target_properties("WinPixEventRuntime" "WinPixEventRuntime_ETW" "PixDecoder" PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries/")
+
+	target_link_libraries(${PROJECT_NAME} 
+	PRIVATE
+		d3d12.lib 
+		DirectX-Headers
+		DirectX-Guids
+		dxgi.lib
+		d3dcompiler.lib
+		D3D12MemoryAllocator 
+		DirectXTK12
+		$<$<NOT:$<CONFIG:release>>:WinPixEventRuntime>
+	)
+
+	set_target_properties(D3D12MemoryAllocator PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
 else()
 	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_DX12_AVAILABLE=0)
 	set(RGL_DX12_AVAILABLE OFF CACHE INTERNAL "RGL DX12")
@@ -164,6 +186,13 @@ if(APPLE)
     find_library(METAL_LIB Metal REQUIRED)
     find_library(QZC_LIB QuartzCore REQUIRED)
 	set(RGL_MTL_AVAILABLE ON CACHE INTERNAL "RGL Metal")
+
+	target_link_libraries(${PROJECT_NAME} 
+		PRIVATE
+		${FOUNDATION_LIB}
+		${METAL_LIB}
+		${QZC_LIB}
+	)
 else()
 	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_MTL_AVAILABLE=0)
 	set(RGL_MTL_AVAILABLE OFF CACHE INTERNAL "RGL Metal")
@@ -175,23 +204,17 @@ else()
 	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_WEBGPU_AVAILABLE=0)
 endif()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE 
-	${VK_LIBS}
-	${DX12_LIBRARIES}
-	${FOUNDATION_LIB}
-	${METAL_LIB}
-	${QZC_LIB}
-	${X11_LIBRARIES}
-    ${RGL_RUNTIME_COMPILER_LIB}
-	${PIXLIB}
-	SPIRV-Reflect
-)
+if (RGL_RUNTIME_COMPILATION)
+	target_link_libraries(${PROJECT_NAME} PRIVATE librglc)
+endif()
+
+target_link_libraries(${PROJECT_NAME} PRIVATE SPIRV-Reflect ${X11_LIBRARIES})
 
 if (APPLE)
-target_include_directories(${PROJECT_NAME} PRIVATE "tools/librglc/include/")
-if (RGL_RUNTIME_COMPILATION)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE "RGL_CAN_RUNTIME_COMPILE")
-endif()
+	target_include_directories(${PROJECT_NAME} PRIVATE "tools/librglc/include/")
+	if (RGL_RUNTIME_COMPILATION)
+		target_compile_definitions(${PROJECT_NAME} PRIVATE "RGL_CAN_RUNTIME_COMPILE")
+	endif()
 endif()
 
 set(AFTERMATH_DIR "AftermathSDK")
@@ -264,20 +287,6 @@ if(ST_BUNDLED_DXC)
 	endfunction()
 	dxc_set_for_dir("${CMAKE_CURRENT_LIST_DIR}/deps/ShaderTranspiler/deps/DirectXShaderCompiler")
 endif()
-
-if (RGL_VK_AVAILABLE)
-	set_target_properties(VulkanMemoryAllocator PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
-	if (TARGET loader-opt)
-		set_target_properties(loader-opt loader-unknown-chain PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
-	endif()
-	if(RGL_USE_MINIVKSDK)
-		set_target_properties(vulkan vvl VkLayer_utils loader_asm_gen_files PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
-	endif()
-endif()
-if (RGL_DX12_AVAILABLE)
-	set_target_properties(D3D12MemoryAllocator PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
-endif()
-
 
 if (NOT RGL_SKIP_BACKEND_CHECK)
 	if (RGL_VK_AVAILABLE OR RGL_DX12_AVAILABLE OR RGL_MTL_AVAILABLE OR RGL_WEBGPU_AVAILABLE)

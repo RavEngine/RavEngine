@@ -1288,6 +1288,7 @@ struct LightingType{
 						[](entity_t unused) {}
 					);
 					mainCommandBuffer->EndRenderDebugMarker();
+
 				}
 
 				// render all the static meshes

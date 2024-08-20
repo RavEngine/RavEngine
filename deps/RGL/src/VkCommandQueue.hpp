@@ -2,7 +2,7 @@
 #include <RGL/Types.hpp>
 #include <RGL/CommandQueue.hpp>
 #include "VkSynchronization.hpp"
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <span>
 
 namespace RGL {

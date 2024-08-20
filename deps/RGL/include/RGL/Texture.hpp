@@ -8,7 +8,7 @@
 #include "SubresourceRange.hpp"
 
 #if RGL_VK_AVAILABLE
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #endif
 
 #if RGL_WEBGPU_AVAILABLE

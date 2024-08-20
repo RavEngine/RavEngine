@@ -7,7 +7,7 @@
 #include "RGLCommon.hpp"
 #include <RGL/TextureFormat.hpp>
 #include <RGL/Pipeline.hpp>
-#include <vulkan/vulkan.h>
+#include <volk.h>
 #include <vk_mem_alloc.h>
 #if __has_include(<vk_enum_string_helper.h>)
 #include <vk_enum_string_helper.h> 
