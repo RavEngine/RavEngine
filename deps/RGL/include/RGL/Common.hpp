@@ -9,6 +9,7 @@
 #undef NotEqual
 #undef GreaterOrEqual
 #undef Always
+#undef None
 
 namespace RGL {
 	enum class DepthCompareFunction : uint8_t {

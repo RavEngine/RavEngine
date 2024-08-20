@@ -117,6 +117,7 @@ if (NOT VK_FORCE_DISABLED)
 		
 	# Get our vendored headers 
 	set(VK_INCLUDE deps/Vulkan-Headers/include deps/Vulkan-Utility-Libraries/include)
+	target_include_directories(volk PUBLIC ${VK_INCLUDE})
 
 	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_VK_AVAILABLE=1 )
 	set(RGL_VK_AVAILABLE ON CACHE INTERNAL "RGL Vulkan")
