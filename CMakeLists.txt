@@ -453,7 +453,7 @@ endif()
 # endif()
 
 # disable the dllimport stuff in RMLUI
-target_compile_definitions(${PROJECT_NAME} PUBLIC -DRMLUI_STATIC_LIB=1)
+target_compile_definitions(${PROJECT_NAME} PUBLIC -DRMLUI_STATIC_LIB=1 NOMINMAX=1)
 	
 set_target_properties(${PROJECT_NAME} PROPERTIES
 	XCODE_GENERATE_SCHEME ON
