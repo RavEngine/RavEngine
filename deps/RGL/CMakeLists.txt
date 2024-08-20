@@ -62,10 +62,11 @@ else()
 	set(ST_ENABLE_WGSL OFF CACHE INTERNAL "")
 endif()
 set(ST_ENABLE_TEST OFF CACHE INTERNAL "")
-if((WINDOWS_STORE OR WIN32) AND EXISTS "${CMAKE_CURRENT_LIST_DIR}/deps/ShaderTranspiler/deps/DirectXShaderCompiler/CMakeLists.txt")
+if((WIN32 AND NOT WINDOWS_STORE) AND EXISTS "${CMAKE_CURRENT_LIST_DIR}/deps/ShaderTranspiler/deps/DirectXShaderCompiler/CMakeLists.txt")
 	message("Building DXC from source")
 	set(ST_BUNDLED_DXC ON)
 else()
+	message("Not building DXC from source")
 	set(ST_BUNDLED_DXC OFF)
 endif()
 add_subdirectory(deps/ShaderTranspiler EXCLUDE_FROM_ALL)
@@ -230,6 +231,8 @@ target_include_directories(${PROJECT_NAME}
 		"include"
 )
 
+target_compile_definitions(${PROJECT_NAME} PUBLIC NOMINMAX=1)
+
 set_target_properties("RGL" ${rglc_exe} "librglc" PROPERTIES 
 	FOLDER "${RGL_IDE_ROOT}"
 	XCODE_GENERATE_SCHEME ON
@@ -243,7 +246,7 @@ set_target_properties("libtint" "tint_diagnostic_utils" PROPERTIES
 )
 endif()
 
-set_target_properties("GenericCodeGen" "glslang" "MachineIndependent" "OSDependent" "SPIRV" "SPVRemapper" "glslang-default-resource-limits" PROPERTIES 
+set_target_properties("GenericCodeGen" "glslang" "OGLCompiler" "MachineIndependent" "OSDependent" "SPIRV" "SPVRemapper" "glslang-default-resource-limits" PROPERTIES 
 	FOLDER "${RGL_IDE_ROOT}/Libraries/glslang"
 )
 
@@ -261,7 +264,7 @@ set_target_properties(
 	FOLDER "${RGL_IDE_ROOT}/Libraries/SPIRV-Cross"
 )
 
-if(ST_BUNDLED_DXC)
+if(ST_BUNDLED_DXC AND NOT WINDOWS_STORE)
 	function(dxc_set_for_dir DIR)
 		get_property(TGTS DIRECTORY "${DIR}" PROPERTY BUILDSYSTEM_TARGETS)
 		set_target_properties(

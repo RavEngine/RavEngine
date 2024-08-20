@@ -97,7 +97,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
       - name: Configure
         run: mkdir build && cd build; cmake -DCMAKE_SYSTEM_NAME=${{ matrix.target }} -DCMAKE_SYSTEM_VERSION="10.0" -Wno-dev -A${{ matrix.arch }} .. ; cmake ..
       - name: Build
@@ -192,7 +192,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
       - name: Build and Test
         run: cd test && .\test-win.bat
       - name: Output test logs

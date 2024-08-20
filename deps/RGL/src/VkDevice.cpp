@@ -503,17 +503,34 @@ namespace RGL {
     }
     size_t DeviceVk::GetTotalVRAM() const
     {
-        VmaBudget budgets;
-        vmaGetHeapBudgets(vkallocator, &budgets);
+        VkPhysicalDeviceMemoryProperties memprop{};
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memprop);
 
-        return budgets.budget;
+        stackarray(budgets, VmaBudget, memprop.memoryHeapCount);
+
+        vmaGetHeapBudgets(vkallocator, budgets);
+
+        size_t budget = 0;
+        for (int i = 0; i < memprop.memoryHeapCount; i++) {
+            budget += budgets[i].budget;
+        }
+
+        return budget;
     }
     size_t DeviceVk::GetCurrentVRAMInUse() const
     {
-        VmaBudget budgets;
-        vmaGetHeapBudgets(vkallocator, &budgets);
+        VkPhysicalDeviceMemoryProperties memprop{};
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memprop);
+        stackarray(budgets, VmaBudget, memprop.memoryHeapCount);
 
-        return budgets.usage;
+        vmaGetHeapBudgets(vkallocator, budgets);
+
+        size_t budget = 0;
+        for (int i = 0; i < memprop.memoryHeapCount; i++) {
+            budget += budgets[i].usage;
+        }
+
+        return budget;
     }
 }
 
