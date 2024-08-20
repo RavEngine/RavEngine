@@ -14,7 +14,7 @@
 #include <vector>
 #include <stdexcept>
 #include <set>
-#include <volk.h>
+#include <vk_mem_alloc.h>
 
 namespace RGL {
 

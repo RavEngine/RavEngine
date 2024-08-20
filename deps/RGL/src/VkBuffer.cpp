@@ -2,6 +2,7 @@
 #include "VkBuffer.hpp"
 #include "VkDevice.hpp"
 #include "RGLVk.hpp"
+#include <vk_mem_alloc.h>
 #include <cstring>
 
 namespace RGL {

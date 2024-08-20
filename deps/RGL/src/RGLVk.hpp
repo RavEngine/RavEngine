@@ -8,7 +8,6 @@
 #include <RGL/TextureFormat.hpp>
 #include <RGL/Pipeline.hpp>
 #include <volk.h>
-#include <vk_mem_alloc.h>
 #if __has_include(<vk_enum_string_helper.h>)
 #include <vk_enum_string_helper.h> 
 #endif
@@ -16,6 +15,8 @@
 #include <vulkan/vk_enum_string_helper.h> 
 #endif
 #include <cassert>
+
+struct VmaAllocation_T;
 
 #define VK_CHECK(a) {auto VK_CHECK_RESULT = a; Assert(VK_CHECK_RESULT == VK_SUCCESS, std::string("Vulkan assertion failed: ") + # a + " -> " + string_VkResult(VK_CHECK_RESULT));}
 #define VK_VALID(a) {assert(a != VK_NULL_HANDLE);}
@@ -60,7 +61,7 @@ namespace RGL {
 
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, VkPhysicalDevice physicalDevice);
 
-	VmaAllocation createBuffer(DeviceVk*, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer);
+    VmaAllocation_T* createBuffer(DeviceVk*, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer);
 
 	VkCommandBuffer beginSingleTimeCommands(VkDevice device, VkCommandPool commandPool);
 	void endSingleTimeCommands(VkCommandBuffer commandBuffer, VkQueue graphicsQueue, VkDevice device, VkCommandPool commandPool);

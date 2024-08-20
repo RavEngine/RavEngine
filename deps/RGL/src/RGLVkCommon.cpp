@@ -6,6 +6,7 @@
 #include "VkDevice.hpp"
 #include <stdexcept>
 #include <cstring>
+#include <vk_mem_alloc.h>
 
 STATIC(RGL::instance) = VK_NULL_HANDLE;
 

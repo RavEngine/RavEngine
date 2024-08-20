@@ -3,6 +3,7 @@
 #include "VkDevice.hpp"
 #include "RGLVk.hpp"
 #include <cstring>
+#include <vk_mem_alloc.h>
 
 namespace RGL {
 

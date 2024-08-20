@@ -12,6 +12,7 @@
 #include <cstring>
 #include <iostream>
 #include <utility>
+#include <vk_mem_alloc.h>
 
 namespace RGL {
 	VkAttachmentLoadOp RGL2LoadOp(LoadAccessOperation op) {
