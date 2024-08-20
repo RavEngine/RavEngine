@@ -151,15 +151,12 @@ if(MSVC AND NOT RGL_DISABLE_DX)
 	set(BUILD_XAUDIO_WIN10 OFF CACHE INTERNAL "")
 	add_subdirectory("deps/DirectXTK12" EXCLUDE_FROM_ALL)
 
-	set_target_properties("DirectX-Guids"  "DirectXTK12"  PROPERTIES 
-		FOLDER "${RGL_IDE_ROOT}/Libraries"
-	)
 	target_include_directories(${PROJECT_NAME} PUBLIC "deps/DirectXTK12/Inc")
 
 	# PIX stuff
 	add_subdirectory(deps/PixEvents-cmake)
 
-	set_target_properties("WinPixEventRuntime" "WinPixEventRuntime_ETW" "PixDecoder" PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries/")
+	set_target_properties("WinPixEventRuntime" "WinPixEventRuntime_ETW" "PixDecoder" "DirectX-Guids"  "DirectXTK12" DirectX-Headers PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries/")
 
 	target_link_libraries(${PROJECT_NAME} 
 	PRIVATE
