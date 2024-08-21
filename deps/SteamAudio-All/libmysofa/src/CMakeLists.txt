@@ -13,44 +13,17 @@ use_c99()
 configure_file(config.h.in config.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-if(NOT MSVC)
-  if(NOT WIN32 AND NOT (CMAKE_SYSTEM_NAME MATCHES "Emscripten"))
-    find_library(MATH m)
-  else()
-    set(MATH "")
-  endif()
-  include(FindZLIB)
-else()
-  set(MATH "")
-  find_program(NUGET nuget)
-  if(NUGET)
-    execute_process(COMMAND ${NUGET} install zlib)
-  endif()
+if(MSVC)
   include_directories(
     ${PROJECT_SOURCE_DIR}/windows/third-party/zlib-1.2.11/include/)
 endif()
 
 if(NOT MSVC)
-  if(NOT WIN32 AND NOT (CMAKE_SYSTEM_NAME MATCHES "Emscripten"))
-    find_library(MATH m)
-  else()
-    set(MATH "")
-  endif()
   include(FindZLIB)
   include_directories(${ZLIB_INCLUDE_DIRS})
   set(PKG_CONFIG_PRIVATELIBS "-lm ${PKG_CONFIG_PRIVATELIBS}")
   set(PKG_CONFIG_PRIVATELIBS "-lz ${PKG_CONFIG_PRIVATELIBS}")
 else()
-  set(MATH "")
-  find_program(NUGET nuget)
-  if(NOT NUGET)
-    message(
-      FATAL
-      "Cannot find nuget command line tool.\nInstall it with e.g. choco install nuget.commandline"
-    )
-  else()
-    execute_process(COMMAND ${NUGET} install zlib)
-  endif()
   include_directories(
     ${PROJECT_SOURCE_DIR}/windows/third-party/zlib-1.2.11/include/)
 endif()
@@ -88,7 +61,7 @@ target_include_directories(mysofa-static
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/hrtf>"
   $<INSTALL_INTERFACE:include/>
 )
-target_link_libraries(mysofa-static LINK_PRIVATE ${MATH} ${ZLIB_LIBRARIES})
+target_link_libraries(mysofa-static LINK_PRIVATE ${ZLIB_LIBRARIES})
 set_target_properties(
   mysofa-static
   PROPERTIES OUTPUT_NAME mysofa CLEAN_DIRECT_OUTPUT 1 POSITION_INDEPENDENT_CODE
@@ -120,7 +93,7 @@ if(BUILD_SHARED_LIBS)
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/hrtf>"
     $<INSTALL_INTERFACE:include/>
   )
-  target_link_libraries(mysofa-shared PRIVATE ${MATH} ${ZLIB_LIBRARIES})
+  target_link_libraries(mysofa-shared PRIVATE ${ZLIB_LIBRARIES})
   set_target_properties(mysofa-shared
                         PROPERTIES OUTPUT_NAME mysofa CLEAN_DIRECT_OUTPUT 1)
   # Rename the Windows import library (stub) of the DLL to prevent a name clash
