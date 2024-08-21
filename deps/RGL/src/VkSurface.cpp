@@ -17,10 +17,8 @@
 #include <vulkan/vulkan_win32.h>
 #elif __linux__ && !__ANDROID__
 #include <X11/Xlib.h>
-#include <vulkan/vulkan_xlib.h>
 #include <wayland-client-core.h>
 #include <wayland-util.h>
-#include <vulkan/vulkan_wayland.h>
 #elif __ANDROID__
 #include <vulkan/vulkan_android.h>
 #endif
