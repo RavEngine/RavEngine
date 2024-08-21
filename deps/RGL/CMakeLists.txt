@@ -113,6 +113,8 @@ if (NOT VK_FORCE_DISABLED)
 	target_include_directories(volk PUBLIC ${VK_INCLUDE})
 	if (LINUX)
 		target_compile_definitions(volk PRIVATE VK_USE_PLATFORM_XLIB_KHR VK_USE_PLATFORM_WAYLAND_KHR)
+	elseif(ANDROID)
+		target_compile_definitions(volk PRIVATE VK_USE_PLATFORM_ANDROID_KHR)
 	endif()
 
 	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_VK_AVAILABLE=1 )
