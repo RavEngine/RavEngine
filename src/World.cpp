@@ -454,6 +454,7 @@ void World::setupRenderTasks(){
                     denseData.color = { colorData.R,colorData.G,colorData.B};
                     denseData.intensity = lightData.GetIntensity();
                     denseData.castsShadows = lightData.CastsShadows();
+                    denseData.shadowmapBindlessIndex = lightData.shadowData.mapCube->GetDefaultView().GetReadonlyBindlessTextureHandle();
                     ptr->Get(i).clearInvalidate();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this

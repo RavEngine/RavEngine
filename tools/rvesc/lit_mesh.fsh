@@ -67,6 +67,7 @@ layout(scalar, binding = 17) readonly buffer spotLightSSBO{
 };
 
 layout(set = 1, binding = 0) uniform texture2D shadowMaps[];      // the bindless heap must be in set 1 binding 0
+layout(set = 1, binding = 0) uniform textureCube pointShadowMaps[];    // we alias these because everything goes into the one heap
 
 void main(){
 
@@ -144,7 +145,7 @@ void main(){
             float z = projectedDistance * a + b;
             float dbDistance = z / projectedDistance;
 
-            //pcfFactor = texture(samplerCubeShadow(shadowMaps[light.shadowmapBindlessIndex], shadowSampler), vec4(shadowDir, dbDistance)).r;
+            pcfFactor = texture(samplerCubeShadow(pointShadowMaps[light.shadowmapBindlessIndex], shadowSampler), vec4(shadowDir, dbDistance)).r;
         }
 
         outcolor += vec4(result * user_out.ao * pcfFactor,0);

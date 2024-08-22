@@ -331,6 +331,7 @@ namespace RavEngine {
             glm::vec3 color;
             float intensity;
             int castsShadows;
+            int shadowmapBindlessIndex;
         };
 
         struct SpotLightDataUpload {
