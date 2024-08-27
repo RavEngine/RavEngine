@@ -67,7 +67,7 @@ layout(scalar, binding = 17) readonly buffer spotLightSSBO{
 };
 
 layout(set = 1, binding = 0) uniform texture2D shadowMaps[];      // the bindless heap must be in set 1 binding 0
-layout(set = 1, binding = 0) uniform textureCube pointShadowMaps[];    // we alias these because everything goes into the one heap
+layout(set = 2, binding = 0) uniform textureCube pointShadowMaps[];    // we alias these because everything goes into the one heap
 
 void main(){
 

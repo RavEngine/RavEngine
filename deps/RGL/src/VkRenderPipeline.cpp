@@ -270,12 +270,14 @@ namespace RGL {
         layoutbindings.reserve(desc.bindings.size());        
 
         bool bindlessNeeded = false;
+        uint32_t nBindless = 0;
 
         for (const auto& binding : desc.bindings) {
             const auto type = static_cast<VkDescriptorType>(binding.type);
             const auto stageFlags = static_cast<VkShaderStageFlags>(binding.stageFlags);
             if (binding.isBindless) {
                 bindlessNeeded = true;
+                nBindless++;
                 continue;
             }
             layoutbindings.push_back(
@@ -312,11 +314,13 @@ namespace RGL {
             pushconstants[i].stageFlags = flags;
         }
 
-        uint32_t nLayouts = bindlessNeeded ? 2 : 1;
+        uint32_t nLayouts = bindlessNeeded ? nBindless + 1 : 1;
         stackarray(setLayouts, VkDescriptorSetLayout, nLayouts);
         setLayouts[0] = descriptorSetLayout;
         if (bindlessNeeded) {
-            setLayouts[1] = owningDevice->globalDescriptorSetLayout;
+            for (uint32_t i = 1; i < nBindless + 1; i++) {
+                setLayouts[i] = owningDevice->globalDescriptorSetLayout;
+            }
         }
 
 
