@@ -66,7 +66,7 @@ namespace RGL {
 		}
 
 		auto slotForTextureIdx(uint32_t bindingPos, bool isBindless) {
-			return textureBindingToRootSlot.at({ bindingPos, isBindless? 1u : 0u });
+			return textureBindingToRootSlot.at({ bindingPos, isBindless? bindingPos : 0u });
 		}
 
 		bool bufferIdxIsUAV(uint32_t bindingPos) {

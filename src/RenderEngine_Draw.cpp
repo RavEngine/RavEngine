@@ -900,8 +900,8 @@ struct LightingType{
 						mainCommandBuffer->BindBuffer(worldOwning->renderData->pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData->spotLightData.uploadData.GetDense().get_underlying().buffer, 17);
 						mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
-						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 0);
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);
+						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);
 					}
 
 					// set push constant data
@@ -981,8 +981,8 @@ struct LightingType{
 							mainCommandBuffer->BindBuffer(worldOwning->renderData->pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
 							mainCommandBuffer->BindBuffer(worldOwning->renderData->spotLightData.uploadData.GetDense().get_underlying().buffer, 17);
 							mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
-							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 0);
-							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);	// redundant on some backends, needed for DX
+							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);
+							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);	// redundant on some backends, needed for DX
 						}
 
 						std::byte pushConstants[128]{  };
