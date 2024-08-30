@@ -41,6 +41,7 @@ DeviceMTL::DeviceMTL(decltype(device) device)  : device(device){
     
     // bind to encoder
     [globalTextureEncoder setArgumentBuffer:globalTextureBuffer offset:0];
+    [globalTextureEncoder setArgumentBuffer:globalTextureBuffer offset:1];
 }
 
 std::string DeviceMTL::GetBrandString() {

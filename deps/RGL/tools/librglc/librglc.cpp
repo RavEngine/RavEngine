@@ -46,8 +46,14 @@ namespace librglc {
 		opt.debug = config.enableDebug;
 		opt.entryPoint = config.entrypointOutputName;
         opt.mtlDeviceAddressSettings = {
-            .descSet = 1,
-            .deviceStorage = true
+            {
+                .descSet = 1,
+                .deviceStorage = true
+            },
+            {
+                .descSet = 2,
+                .deviceStorage = true
+            },
         };
 		if (toAPI == API::Vulkan) {
 			opt.version = 15;
@@ -58,7 +64,7 @@ namespace librglc {
             opt.preambleContent = "#define RGL_SL_DX 1";
 		}
 		else if (toAPI == API::Metal) {
-			opt.version = 30;
+			opt.version = 31;
             opt.pushConstantSettings.firstIndex = MTL_FIRST_BUFFER;    // the [[stage_input]] consumes slot 0, extra vertex buffers consume the next slots
             opt.preambleContent = "#define RGL_SL_MTL 1";
 		}

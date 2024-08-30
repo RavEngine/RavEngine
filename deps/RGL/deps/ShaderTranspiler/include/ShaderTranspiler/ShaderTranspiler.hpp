@@ -117,10 +117,11 @@ struct Options{
 		bool renameBuffer = false;
 	} uniformBufferSettings;
     
-    struct {
+    struct BindlessSettings {
         uint32_t descSet = 0;
         bool deviceStorage = false;
-    } mtlDeviceAddressSettings;
+    };
+    std::vector<BindlessSettings> mtlDeviceAddressSettings;
     
     struct PushConstantSettings{
         uint8_t firstIndex = 0;

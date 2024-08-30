@@ -319,8 +319,8 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLan
 	const int DefaultVersion = 460;
 
 	int ClientInputSemanticsVersion = DefaultVersion;
-	glslang::EShTargetClientVersion VulkanClientVersion = glslang::EShTargetVulkan_1_2;
-	glslang::EShTargetLanguageVersion TargetVersion = glslang::EShTargetSpv_1_3;
+	glslang::EShTargetClientVersion VulkanClientVersion = glslang::EShTargetVulkan_1_3;
+	glslang::EShTargetLanguageVersion TargetVersion = glslang::EShTargetSpv_1_6;
 
 	shader.setEnvInput(glslang::EShSourceGlsl, ShaderType, glslang::EShClientVulkan, ClientInputSemanticsVersion);
 	shader.setEnvClient(glslang::EShClientVulkan, VulkanClientVersion);
@@ -350,6 +350,7 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLan
 
 	// update the stored strings (is the original set necessary?)
 	const char* PreprocessedCStr = PreprocessedGLSL.c_str();
+    
 	shader.setStrings(&PreprocessedCStr, 1);
 
 	// ================ now parse the shader ================
@@ -385,7 +386,14 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLan
     auto& intermediate = *program.getIntermediate(ShaderType);
     
 	glslang::GlslangToSpv(intermediate, result.spirvdata, &logger, &spvOptions);
+    
+#if 0
+    spv_text text = nullptr;
 
+    spvBinaryToText(spvContextCreate(SPV_ENV_VULKAN_1_3), result.spirvdata.data(), result.spirvdata.size(), SPV_BINARY_TO_TEXT_OPTION_PRINT | SPV_BINARY_TO_TEXT_OPTION_INDENT | SPV_BINARY_TO_TEXT_OPTION_FRIENDLY_NAMES | SPV_BINARY_TO_TEXT_OPTION_COMMENT, &text, nullptr);
+    
+#endif
+    
 	// get uniform information
 	program.buildReflection();
 	auto nUniforms = program.getNumLiveUniformVariables();
@@ -653,7 +661,13 @@ IMResult SPIRVtoMSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMod
     //options.argument_buffers = true;          // don't enable this. It will set everything to be an argument buffer.
     options.argument_buffers_tier = spirv_cross::CompilerMSL::Options::ArgumentBuffersTier::Tier2;
 	msl.set_msl_options(options);
-    msl.set_argument_buffer_device_address_space(opt.mtlDeviceAddressSettings.descSet, opt.mtlDeviceAddressSettings.deviceStorage);
+    
+    // bindless stuff
+    {
+        for(const auto& setting : opt.mtlDeviceAddressSettings){
+            msl.set_argument_buffer_device_address_space(setting.descSet, setting.deviceStorage);
+        }
+    }
     
 	auto refldata = getReflectData(msl,bin);
     
