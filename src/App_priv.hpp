@@ -103,8 +103,8 @@ App::App()
 	//initialize virtual file system library
 #if __ANDROID__
     PHYSFS_AndroidInit androidInit{
-        .jnienv = SDL_AndroidGetJNIEnv(),
-        .context = SDL_AndroidGetActivity()
+        .jnienv = SDL_GetAndroidJNIEnv(),
+        .context = SDL_GetAndroidActivity()
     };
 	if (PHYSFS_init(reinterpret_cast<const char*>(&androidInit)) == 0){
         Debug::Fatal("PhysFS failed to init: {}", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode()));
