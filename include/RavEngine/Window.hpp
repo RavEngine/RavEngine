@@ -53,6 +53,17 @@ namespace RavEngine {
 		 @param mode the new mode to use
 		 */
 		void SetWindowMode(WindowMode mode);
+        
+        /**
+         * Set the state of relative mouse mode. If true, the mouse will send events even if outside the application window. If false, the mouse will only send events if inside the application window.
+         * @param mode the new state
+         */
+        void SetRelativeMouseMode(bool mode);
+        
+        /**
+         * @returns the current relative mouse mode
+         */
+        bool GetRelativeMouseMode();
     private:
         float QueryScaleFactor() const;
 	};

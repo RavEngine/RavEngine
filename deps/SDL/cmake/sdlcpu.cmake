@@ -1,6 +1,6 @@
 function(SDL_DetectTargetCPUArchitectures DETECTED_ARCHS)
 
-  set(known_archs EMSCRIPTEN ARM32 ARM64 LOONGARCH64 POWERPC32 POWERPC64 X86 X64)
+  set(known_archs EMSCRIPTEN ARM32 ARM64 ARM64EC LOONGARCH64 POWERPC32 POWERPC64 X86 X64)
 
   if(APPLE AND CMAKE_OSX_ARCHITECTURES)
     foreach(known_arch IN LISTS known_archs)
@@ -34,12 +34,13 @@ function(SDL_DetectTargetCPUArchitectures DETECTED_ARCHS)
 
   set(arch_check_ARM32 "defined(__arm__) || defined(_M_ARM)")
   set(arch_check_ARM64 "defined(__aarch64__) || defined(_M_ARM64)")
+  set(arch_check_ARM64EC "defined(_M_ARM64EC)")
   set(arch_check_EMSCRIPTEN "defined(__EMSCRIPTEN__)")
   set(arch_check_LOONGARCH64 "defined(__loongarch64)")
   set(arch_check_POWERPC32 "(defined(__PPC__) || defined(__powerpc__)) && !defined(__powerpc64__)")
   set(arch_check_POWERPC64 "defined(__PPC64__) || defined(__powerpc64__)")
   set(arch_check_X86 "defined(__i386__) || defined(__i486__) || defined(__i586__) || defined(__i686__) ||defined( __i386) || defined(_M_IX86)")
-  set(arch_check_X64 "defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64)")
+  set(arch_check_X64 "(defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64)) && !defined(_M_ARM64EC)")
 
   set(src_vars "")
   set(src_main "")
@@ -77,6 +78,8 @@ ${src_main}
   message(STATUS "${msg}")
 
   include(CMakePushCheckState)
+
+  set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
 
   cmake_push_check_state(RESET)
   try_compile(SDL_CPU_CHECK_ALL

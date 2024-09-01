@@ -22,7 +22,7 @@
 
 #include "SDL_xinput.h"
 
-/* Set up for C function definitions, even when using C++ */
+// Set up for C function definitions, even when using C++
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -39,7 +39,7 @@ static int s_XInputDLLRefCount = 0;
 
 #if defined(SDL_PLATFORM_WINRT) || defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES)
 
-int WIN_LoadXInputDLL(void)
+bool WIN_LoadXInputDLL(void)
 {
     /* Getting handles to system dlls (via LoadLibrary and its variants) is not
      * supported on WinRT, thus, pointers to XInput's functions can't be
@@ -58,26 +58,26 @@ int WIN_LoadXInputDLL(void)
     SDL_XInputGetCapabilities = (XInputGetCapabilities_t)XInputGetCapabilities;
     SDL_XInputGetBatteryInformation = (XInputGetBatteryInformation_t)XInputGetBatteryInformation;
 
-    /* XInput 1.4 ships with Windows 8 and 8.1: */
+    // XInput 1.4 ships with Windows 8 and 8.1:
     SDL_XInputVersion = (1 << 16) | 4;
 
-    return 0;
+    return true;
 }
 
 void WIN_UnloadXInputDLL(void)
 {
 }
 
-#else /* !(defined(SDL_PLATFORM_WINRT) || defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES)) */
+#else // !(defined(SDL_PLATFORM_WINRT) || defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES))
 
-int WIN_LoadXInputDLL(void)
+bool WIN_LoadXInputDLL(void)
 {
     DWORD version = 0;
 
     if (s_pXInputDLL) {
         SDL_assert(s_XInputDLLRefCount > 0);
         s_XInputDLLRefCount++;
-        return 0; /* already loaded */
+        return true; // already loaded
     }
 
     /* NOTE: Don't load XinputUap.dll
@@ -85,42 +85,42 @@ int WIN_LoadXInputDLL(void)
      * limitations of that API (no devices at startup, no background input, etc.)
      */
     version = (1 << 16) | 4;
-    s_pXInputDLL = LoadLibrary(TEXT("XInput1_4.dll")); /* 1.4 Ships with Windows 8. */
+    s_pXInputDLL = LoadLibrary(TEXT("XInput1_4.dll")); // 1.4 Ships with Windows 8.
     if (!s_pXInputDLL) {
         version = (1 << 16) | 3;
-        s_pXInputDLL = LoadLibrary(TEXT("XInput1_3.dll")); /* 1.3 can be installed as a redistributable component. */
+        s_pXInputDLL = LoadLibrary(TEXT("XInput1_3.dll")); // 1.3 can be installed as a redistributable component.
     }
     if (!s_pXInputDLL) {
         s_pXInputDLL = LoadLibrary(TEXT("bin\\XInput1_3.dll"));
     }
     if (!s_pXInputDLL) {
-        /* "9.1.0" Ships with Vista and Win7, and is more limited than 1.3+ (e.g. XInputGetStateEx is not available.)  */
+        // "9.1.0" Ships with Vista and Win7, and is more limited than 1.3+ (e.g. XInputGetStateEx is not available.)
         s_pXInputDLL = LoadLibrary(TEXT("XInput9_1_0.dll"));
     }
     if (!s_pXInputDLL) {
-        return -1;
+        return false;
     }
 
     SDL_assert(s_XInputDLLRefCount == 0);
     SDL_XInputVersion = version;
     s_XInputDLLRefCount = 1;
 
-    /* 100 is the ordinal for _XInputGetStateEx, which returns the same struct as XinputGetState, but with extra data in wButtons for the guide button, we think... */
+    // 100 is the ordinal for _XInputGetStateEx, which returns the same struct as XinputGetState, but with extra data in wButtons for the guide button, we think...
     SDL_XInputGetState = (XInputGetState_t)GetProcAddress(s_pXInputDLL, (LPCSTR)100);
     if (!SDL_XInputGetState) {
         SDL_XInputGetState = (XInputGetState_t)GetProcAddress(s_pXInputDLL, "XInputGetState");
     }
     SDL_XInputSetState = (XInputSetState_t)GetProcAddress(s_pXInputDLL, "XInputSetState");
     SDL_XInputGetCapabilities = (XInputGetCapabilities_t)GetProcAddress(s_pXInputDLL, "XInputGetCapabilities");
-    /* 108 is the ordinal for _XInputGetCapabilitiesEx, which additionally returns VID/PID of the controller. */
+    // 108 is the ordinal for _XInputGetCapabilitiesEx, which additionally returns VID/PID of the controller.
     SDL_XInputGetCapabilitiesEx = (XInputGetCapabilitiesEx_t)GetProcAddress(s_pXInputDLL, (LPCSTR)108);
     SDL_XInputGetBatteryInformation = (XInputGetBatteryInformation_t)GetProcAddress(s_pXInputDLL, "XInputGetBatteryInformation");
     if (!SDL_XInputGetState || !SDL_XInputSetState || !SDL_XInputGetCapabilities) {
         WIN_UnloadXInputDLL();
-        return -1;
+        return false;
     }
 
-    return 0;
+    return true;
 }
 
 void WIN_UnloadXInputDLL(void)
@@ -136,9 +136,9 @@ void WIN_UnloadXInputDLL(void)
     }
 }
 
-#endif /* SDL_PLATFORM_WINRT */
+#endif // SDL_PLATFORM_WINRT
 
-/* Ends C function definitions when using C++ */
+// Ends C function definitions when using C++
 #ifdef __cplusplus
 }
 #endif

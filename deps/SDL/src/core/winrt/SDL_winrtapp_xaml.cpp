@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-/* Windows includes */
+// Windows includes
 #include <agile.h>
 #include <Windows.h>
 
@@ -28,14 +28,14 @@
 #include <windows.ui.xaml.media.dxinterop.h>
 #endif
 
-/* SDL includes */
+// SDL includes
 #include "../../video/winrt/SDL_winrtevents_c.h"
 #include "../../video/winrt/SDL_winrtvideo_cpp.h"
 #include "SDL_winrtapp_common.h"
 #include "SDL_winrtapp_xaml.h"
 
-/* SDL-internal globals: */
-SDL_bool WINRT_XAMLWasEnabled = SDL_FALSE;
+// SDL-internal globals:
+bool WINRT_XAMLWasEnabled = false;
 
 #if WINAPI_FAMILY == WINAPI_FAMILY_APP
 extern "C" ISwapChainBackgroundPanelNative *WINRT_GlobalSwapChainBackgroundPanelNative = NULL;
@@ -85,7 +85,7 @@ static void WINRT_OnRenderViaXAML(_In_ Platform::Object ^ sender, _In_ Platform:
  * SDL + XAML Initialization
  */
 
-int SDL_WinRTInitXAMLApp(int (*mainFunction)(int, char **), void *backgroundPanelAsIInspectable)
+bool SDL_WinRTInitXAMLApp(int (*mainFunction)(int, char **), void *backgroundPanelAsIInspectable)
 {
 #if SDL_WINAPI_FAMILY_PHONE
     return SDL_SetError("XAML support is not yet available in Windows Phone.");
@@ -127,20 +127,20 @@ int SDL_WinRTInitXAMLApp(int (*mainFunction)(int, char **), void *backgroundPane
     SDL_SetMainReady();
 
     // Make sure video-init knows that we're initializing XAML:
-    SDL_bool oldXAMLWasEnabledValue = WINRT_XAMLWasEnabled;
-    WINRT_XAMLWasEnabled = SDL_TRUE;
+    bool oldXAMLWasEnabledValue = WINRT_XAMLWasEnabled;
+    WINRT_XAMLWasEnabled = true;
 
     // Make sure video modes are detected now, while we still have access to the WinRT
     // CoreWindow.  WinRT will not allow the app's CoreWindow to be accessed via the
     // SDL/WinRT thread.
-    if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) {
+    if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) {
         // SDL_InitSubSystem will, on error, set the SDL error.  Let that propagate to
         // the caller to here:
         WINRT_XAMLWasEnabled = oldXAMLWasEnabledValue;
-        return -1;
+        return false;
     }
 
     // All done, for now.
-    return 0;
+    return true;
 #endif // SDL_WINAPI_FAMILY_PHONE
 }

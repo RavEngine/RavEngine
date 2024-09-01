@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-/* Windows includes */
+// Windows includes
 #include "ppltasks.h"
 using namespace concurrency;
 using namespace Windows::ApplicationModel;
@@ -37,7 +37,7 @@ using namespace Windows::UI::Input;
 using namespace Windows::Phone::UI::Input;
 #endif
 
-/* SDL includes */
+// SDL includes
 extern "C" {
 #include "../../video/SDL_sysvideo.h"
 #include "../../events/SDL_events_c.h"
@@ -94,12 +94,12 @@ IFrameworkView ^ SDLApplicationSource::CreateView()
     return app;
 }
 
-int SDL_WinRTInitNonXAMLApp(int (*mainFunction)(int, char **))
+bool SDL_WinRTInitNonXAMLApp(int (*mainFunction)(int, char **))
 {
     WINRT_SDLAppEntryPoint = mainFunction;
     auto direct3DApplicationSource = ref new SDLApplicationSource();
     CoreApplication::Run(direct3DApplicationSource);
-    return 0;
+    return true;
 }
 
 static void WINRT_ProcessWindowSizeChange() // TODO: Pass an SDL_Window-identifying thing into WINRT_ProcessWindowSizeChange()
@@ -108,7 +108,7 @@ static void WINRT_ProcessWindowSizeChange() // TODO: Pass an SDL_Window-identify
     if (coreWindow) {
         if (WINRT_GlobalSDLWindow) {
             SDL_Window *window = WINRT_GlobalSDLWindow;
-            SDL_WindowData *data = window->driverdata;
+            SDL_WindowData *data = window->internal;
 
             int x = (int)SDL_lroundf(data->coreWindow->Bounds.Left);
             int y = (int)SDL_lroundf(data->coreWindow->Bounds.Top);
@@ -228,7 +228,7 @@ void SDL_WinRTApp::OnOrientationChanged(Object ^ sender)
     // TODO, WinRT: do more extensive research into why orientation changes on Win 8.x don't need D3D changes, or if they might, in some cases
     SDL_Window *window = WINRT_GlobalSDLWindow;
     if (window) {
-        SDL_WindowData *data = window->driverdata;
+        SDL_WindowData *data = window->internal;
         int w = (int)SDL_floorf(data->coreWindow->Bounds.Width);
         int h = (int)SDL_floorf(data->coreWindow->Bounds.Height);
         SDL_SendWindowEvent(WINRT_GlobalSDLWindow, SDL_EVENT_WINDOW_RESIZED, w, h);
@@ -354,7 +354,7 @@ static bool IsSDLWindowEventPending(SDL_EventType windowEventID)
 
 bool SDL_WinRTApp::ShouldWaitForAppResumeEvents()
 {
-    /* Don't wait if the app is visible: */
+    // Don't wait if the app is visible:
     if (m_windowVisible) {
         return false;
     }
@@ -478,7 +478,7 @@ void SDL_WinRTApp::OnVisibilityChanged(CoreWindow ^ sender, VisibilityChangedEve
 
     m_windowVisible = args->Visible;
     if (WINRT_GlobalSDLWindow) {
-        SDL_bool wasSDLWindowSurfaceValid = WINRT_GlobalSDLWindow->surface_valid;
+        bool wasSDLWindowSurfaceValid = WINRT_GlobalSDLWindow->surface_valid;
         SDL_WindowFlags latestWindowFlags = WINRT_DetectWindowFlags(WINRT_GlobalSDLWindow);
         if (args->Visible) {
             SDL_SendWindowEvent(WINRT_GlobalSDLWindow, SDL_EVENT_WINDOW_SHOWN, 0, 0);
@@ -538,13 +538,13 @@ void SDL_WinRTApp::OnWindowActivated(CoreWindow ^ sender, WindowActivatedEventAr
              */
 #if !SDL_WINAPI_FAMILY_PHONE || NTDDI_VERSION >= NTDDI_WINBLUE
             Point cursorPos = WINRT_TransformCursorPosition(window, sender->PointerPosition, TransformToSDLWindowSize);
-            SDL_SendMouseMotion(0, window, SDL_GLOBAL_MOUSE_ID, SDL_FALSE, cursorPos.X, cursorPos.Y);
+            SDL_SendMouseMotion(0, window, SDL_GLOBAL_MOUSE_ID, false, cursorPos.X, cursorPos.Y);
 #endif
 
-            /* TODO, WinRT: see if the Win32 bugfix from https://hg.libsdl.org/SDL/rev/d278747da408 needs to be applied (on window activation) */
+            // TODO, WinRT: see if the Win32 bugfix from https://hg.libsdl.org/SDL/rev/d278747da408 needs to be applied (on window activation)
             // WIN_CheckAsyncMouseRelease(data);
 
-            /* TODO, WinRT: implement clipboard support, if possible */
+            // TODO, WinRT: implement clipboard support, if possible
             ///*
             // * FIXME: Update keyboard state
             // */
@@ -724,10 +724,10 @@ void SDL_WinRTApp::OnCharacterReceived(Windows::UI::Core::CoreWindow ^ sender, W
 template <typename BackButtonEventArgs>
 static void WINRT_OnBackButtonPressed(BackButtonEventArgs ^ args)
 {
-    SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, SDL_PRESSED, SDL_SCANCODE_AC_BACK);
-    SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, SDL_RELEASED, SDL_SCANCODE_AC_BACK);
+    SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, 0, SDL_SCANCODE_AC_BACK, SDL_PRESSED);
+    SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, 0, SDL_SCANCODE_AC_BACK, SDL_RELEASED);
 
-    if (SDL_GetHintBoolean(SDL_HINT_WINRT_HANDLE_BACK_BUTTON, SDL_FALSE)) {
+    if (SDL_GetHintBoolean(SDL_HINT_WINRT_HANDLE_BACK_BUTTON, false)) {
         args->Handled = true;
     }
 }

@@ -664,8 +664,15 @@ IMResult SPIRVtoMSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMod
     
     // bindless stuff
     {
+        uint32_t i = 0;
         for(const auto& setting : opt.mtlDeviceAddressSettings){
-            msl.set_argument_buffer_device_address_space(setting.descSet, setting.deviceStorage);
+            //msl.set_argument_buffer_device_address_space(setting.descSet, setting.deviceStorage);
+            spirv_cross::MSLResourceBinding newBinding;
+            newBinding.stage = model;
+            newBinding.desc_set = setting.descSet;
+            newBinding.binding = i;
+            newBinding.msl_buffer = i++;
+            msl.add_msl_resource_binding( newBinding );
         }
     }
     

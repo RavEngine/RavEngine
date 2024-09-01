@@ -36,6 +36,8 @@
 #ifndef SDL_test_h_arness_h
 #define SDL_test_h_arness_h
 
+#include <SDL3/SDL_stdinc.h>
+
 #include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
@@ -117,10 +119,11 @@ char *SDLTest_GenerateRunSeed(const int length);
  * \param userExecKey Custom execution key provided by user, or 0 to autogenerate one.
  * \param filter Filter specification. NULL disables. Case sensitive.
  * \param testIterations Number of iterations to run each test case.
+ * \param randomOrder allow to run suites and tests in random order when there is no filter
  *
  * \returns the test run result: 0 when all tests passed, 1 if any tests failed.
  */
-int SDLTest_RunSuites(SDLTest_TestSuiteReference *testSuites[], const char *userRunSeed, Uint64 userExecKey, const char *filter, int testIterations);
+int SDLTest_RunSuites(SDLTest_TestSuiteReference *testSuites[], const char *userRunSeed, Uint64 userExecKey, const char *filter, int testIterations, SDL_bool randomOrder);
 
 
 /* Ends C function definitions when using C++ */

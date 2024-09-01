@@ -25,8 +25,12 @@
 
 #ifdef SDL_PLATFORM_WINRT
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+// System dependent filesystem routines
+
 extern "C" {
 #include "../../core/windows/SDL_windows.h"
+#include "../SDL_sysfilesystem.h"
 }
 
 #include <string>
@@ -35,15 +39,15 @@ extern "C" {
 using namespace std;
 using namespace Windows::Storage;
 
-static const wchar_t *SDL_WinRTGetFSPathUNICODE(SDL_WinRT_Path pathType)
+static const wchar_t *SDL_GetWinRTFSPathUNICODE(SDL_WinRT_Path pathType)
 {
     switch (pathType) {
     case SDL_WINRT_PATH_INSTALLED_LOCATION:
     {
         static wstring path;
         if (path.empty()) {
-#if defined(NTDDI_WIN10_19H1) && (NTDDI_VERSION >= NTDDI_WIN10_19H1) && (WINAPI_FAMILY == WINAPI_FAMILY_PC_APP) /* Only PC supports mods */
-            /* Windows 1903 supports mods, via the EffectiveLocation API */
+#if defined(NTDDI_WIN10_19H1) && (NTDDI_VERSION >= NTDDI_WIN10_19H1) && (WINAPI_FAMILY == WINAPI_FAMILY_PC_APP) // Only PC supports mods
+            // Windows 1903 supports mods, via the EffectiveLocation API
             if (Windows::Foundation::Metadata::ApiInformation::IsApiContractPresent("Windows.Foundation.UniversalApiContract", 8, 0)) {
                 path = Windows::ApplicationModel::Package::Current->EffectiveLocation->Path->Data();
             } else {
@@ -93,8 +97,7 @@ static const wchar_t *SDL_WinRTGetFSPathUNICODE(SDL_WinRT_Path pathType)
     return NULL;
 }
 
-// this caches a string until the process ends, so there's no need to use SDL_FreeLater.
-extern "C" const char *SDL_WinRTGetFSPath(SDL_WinRT_Path pathType)
+extern "C" const char *SDL_GetWinRTFSPath(SDL_WinRT_Path pathType)
 {
     typedef unordered_map<SDL_WinRT_Path, string> UTF8PathMap;
     static UTF8PathMap utf8Paths;
@@ -104,20 +107,20 @@ extern "C" const char *SDL_WinRTGetFSPath(SDL_WinRT_Path pathType)
         return searchResult->second.c_str();
     }
 
-    const wchar_t *ucs2Path = SDL_WinRTGetFSPathUNICODE(pathType);
+    const wchar_t *ucs2Path = SDL_GetWinRTFSPathUNICODE(pathType);
     if (!ucs2Path) {
         return NULL;
     }
 
-    char *utf8Path = WIN_StringToUTF8(ucs2Path);
+    char *utf8Path = WIN_StringToUTF8W(ucs2Path);
     utf8Paths[pathType] = utf8Path;
     SDL_free(utf8Path);
-    return utf8Paths[pathType].c_str();
+    return SDL_GetPersistentString(utf8Paths[pathType].c_str());
 }
 
-extern "C" char *SDL_GetBasePath(void)
+extern "C" char *SDL_SYS_GetBasePath(void)
 {
-    const char *srcPath = SDL_WinRTGetFSPath(SDL_WINRT_PATH_INSTALLED_LOCATION);
+    const char *srcPath = SDL_GetWinRTFSPath(SDL_WINRT_PATH_INSTALLED_LOCATION);
     size_t destPathLen;
     char *destPath = NULL;
 
@@ -136,7 +139,7 @@ extern "C" char *SDL_GetBasePath(void)
     return destPath;
 }
 
-extern "C" char *SDL_GetPrefPath(const char *org, const char *app)
+extern "C" char *SDL_SYS_GetPrefPath(const char *org, const char *app)
 {
     /* WinRT note: The 'SHGetFolderPath' API that is used in Windows 7 and
      * earlier is not available on WinRT or Windows Phone.  WinRT provides
@@ -146,7 +149,7 @@ extern "C" char *SDL_GetPrefPath(const char *org, const char *app)
 
     const WCHAR *srcPath = NULL;
     WCHAR path[MAX_PATH];
-    char *retval = NULL;
+    char *result = NULL;
     WCHAR *worg = NULL;
     WCHAR *wapp = NULL;
     size_t new_wpath_len = 0;
@@ -160,7 +163,7 @@ extern "C" char *SDL_GetPrefPath(const char *org, const char *app)
         org = "";
     }
 
-    srcPath = SDL_WinRTGetFSPathUNICODE(SDL_WINRT_PATH_LOCAL_FOLDER);
+    srcPath = SDL_GetWinRTFSPathUNICODE(SDL_WINRT_PATH_LOCAL_FOLDER);
     if (!srcPath) {
         SDL_SetError("Unable to find a source path");
         return NULL;
@@ -172,12 +175,12 @@ extern "C" char *SDL_GetPrefPath(const char *org, const char *app)
     }
     SDL_wcslcpy(path, srcPath, SDL_arraysize(path));
 
-    worg = WIN_UTF8ToString(org);
+    worg = WIN_UTF8ToStringW(org);
     if (!worg) {
         return NULL;
     }
 
-    wapp = WIN_UTF8ToString(app);
+    wapp = WIN_UTF8ToStringW(app);
     if (!wapp) {
         SDL_free(worg);
         return NULL;
@@ -221,12 +224,12 @@ extern "C" char *SDL_GetPrefPath(const char *org, const char *app)
 
     SDL_wcslcat(path, L"\\", new_wpath_len + 1);
 
-    retval = WIN_StringToUTF8(path);
+    result = WIN_StringToUTF8W(path);
 
-    return retval;
+    return result;
 }
 
-char *SDL_GetUserFolder(SDL_Folder folder)
+char *SDL_SYS_GetUserFolder(SDL_Folder folder)
 {
     wstring wpath;
 
@@ -253,7 +256,7 @@ char *SDL_GetUserFolder(SDL_Folder folder)
 
     wpath += L"\\";
 
-    return WIN_StringToUTF8(wpath.c_str());
+    return WIN_StringToUTF8W(wpath.c_str());
 }
 
-#endif /* SDL_PLATFORM_WINRT */
+#endif // SDL_PLATFORM_WINRT

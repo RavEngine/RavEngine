@@ -43,18 +43,18 @@ bool StringEndsWith(const std::string& str, const std::string& end)
 
 std::vector<std::string> StringSplit(const std::string& str, const std::string& split)
 {
-    std::vector<std::string> retval;
+    std::vector<std::string> result;
     std::string s = str;
     size_t pos = 0;
 
     while ((pos = s.find(split)) != std::string::npos) {
-        retval.push_back(s.substr(0, pos));
+        result.push_back(s.substr(0, pos));
         s = s.substr(pos + split.size());
     }
 
-    retval.push_back(s);
+    result.push_back(s);
 
-    return retval;
+    return result;
 }
 
 class SDLBRefFilter : public BRefFilter
@@ -192,7 +192,7 @@ private:
 
 void ShowDialog(bool save, SDL_DialogFileCallback callback, void *userdata, bool many, bool modal, const SDL_DialogFileFilter *filters, int nfilters, bool folder, const char *location)
 {
-    if (SDL_InitBeApp()) {
+    if (!SDL_InitBeApp()) {
         char* err = SDL_strdup(SDL_GetError());
         SDL_SetError("Couldn't init Be app: %s", err);
         SDL_free(err);
@@ -245,7 +245,7 @@ void ShowDialog(bool save, SDL_DialogFileCallback callback, void *userdata, bool
 
 void SDL_ShowOpenFileDialog(SDL_DialogFileCallback callback, void *userdata, SDL_Window *window, const SDL_DialogFileFilter *filters, int nfilters, const char *default_location, SDL_bool allow_many)
 {
-    ShowDialog(false, callback, userdata, allow_many == SDL_TRUE, !!window, filters, nfilters, false, default_location);
+    ShowDialog(false, callback, userdata, allow_many == true, !!window, filters, nfilters, false, default_location);
 }
 
 void SDL_ShowSaveFileDialog(SDL_DialogFileCallback callback, void *userdata, SDL_Window *window, const SDL_DialogFileFilter *filters, int nfilters, const char *default_location)
@@ -255,5 +255,5 @@ void SDL_ShowSaveFileDialog(SDL_DialogFileCallback callback, void *userdata, SDL
 
 void SDL_ShowOpenFolderDialog(SDL_DialogFileCallback callback, void *userdata, SDL_Window *window, const char* default_location, SDL_bool allow_many)
 {
-    ShowDialog(false, callback, userdata, allow_many == SDL_TRUE, !!window, NULL, 0, true, default_location);
+    ShowDialog(false, callback, userdata, allow_many == true, !!window, NULL, 0, true, default_location);
 }

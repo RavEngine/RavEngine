@@ -63,7 +63,7 @@ static Uint32 SDLTest_TestCaseTimeout = 3600;
 char *SDLTest_GenerateRunSeed(const int length)
 {
     char *seed = NULL;
-    SDLTest_RandomContext randomContext;
+    Uint64 randomContext = SDL_GetPerformanceCounter();
     int counter;
 
     /* Sanity check input */
@@ -80,12 +80,13 @@ char *SDLTest_GenerateRunSeed(const int length)
     }
 
     /* Generate a random string of alphanumeric characters */
-    SDLTest_RandomInitTime(&randomContext);
     for (counter = 0; counter < length; counter++) {
-        unsigned int number = SDLTest_Random(&randomContext);
-        char ch = (char)(number % (91 - 48)) + 48;
-        if (ch >= 58 && ch <= 64) {
-            ch = 65;
+        char ch;
+        int v = SDL_rand_r(&randomContext, 10 + 26);
+        if (v < 10) {
+            ch = (char)('0' + v);
+        } else {
+            ch = (char)('A' + v - 10);
         }
         seed[counter] = ch;
     }
@@ -190,8 +191,8 @@ static SDL_TimerID SDLTest_SetTestTimeout(int timeout, void(SDLCALL *callback)(v
     }
 
     /* Init SDL timer if not initialized before */
-    if (SDL_WasInit(SDL_INIT_TIMER) == 0) {
-        if (SDL_InitSubSystem(SDL_INIT_TIMER)) {
+    if (!SDL_WasInit(SDL_INIT_TIMER)) {
+        if (!SDL_InitSubSystem(SDL_INIT_TIMER)) {
             SDLTest_LogError("Failed to init timer subsystem: %s", SDL_GetError());
             return 0;
         }
@@ -364,10 +365,11 @@ static float GetClock(void)
  * \param userExecKey Custom execution key provided by user, or 0 to autogenerate one.
  * \param filter Filter specification. NULL disables. Case sensitive.
  * \param testIterations Number of iterations to run each test case.
+ * \param randomOrder allow to run suites and tests in random order when there is no filter
  *
  * \returns Test run result; 0 when all tests passed, 1 if any tests failed.
  */
-int SDLTest_RunSuites(SDLTest_TestSuiteReference *testSuites[], const char *userRunSeed, Uint64 userExecKey, const char *filter, int testIterations)
+int SDLTest_RunSuites(SDLTest_TestSuiteReference *testSuites[], const char *userRunSeed, Uint64 userExecKey, const char *filter, int testIterations, SDL_bool randomOrder)
 {
     int totalNumberOfTests = 0;
     int failedNumberOfTests = 0;
@@ -403,6 +405,9 @@ int SDLTest_RunSuites(SDLTest_TestSuiteReference *testSuites[], const char *user
     int countSum = 0;
     const SDLTest_TestCaseReference **failedTests;
     char generatedSeed[16 + 1];
+    int nbSuites = 0;
+    int i = 0;
+    int *arraySuites = NULL;
 
     /* Sanitize test iterations */
     if (testIterations < 1) {
@@ -508,11 +513,66 @@ int SDLTest_RunSuites(SDLTest_TestSuiteReference *testSuites[], const char *user
             SDL_free((void *)failedTests);
             return 2;
         }
+
+        randomOrder = SDL_FALSE;
+    }
+
+    /* Number of test suites */
+    while (testSuites[nbSuites]) {
+        nbSuites++;
+    }
+
+    arraySuites = SDL_malloc(nbSuites * sizeof(int));
+    if (!arraySuites) {
+        return SDL_OutOfMemory();
+    }
+    for (i = 0; i < nbSuites; i++) {
+        arraySuites[i] = i;
+    }
+
+    /* Mix the list of suites to run them in random order */
+    {
+        /* Exclude last test "subsystemsTestSuite" which is said to interfer with other tests */
+        nbSuites--;
+
+        if (userExecKey != 0) {
+            execKey = userExecKey;
+        } else {
+            /* dummy values to have random numbers working */
+            execKey = SDLTest_GenerateExecKey(runSeed, "random testSuites", "initialisation", 1);
+        }
+
+        /* Initialize fuzzer */
+        SDLTest_FuzzerInit(execKey);
+
+        i = 100;
+        while (i--) {
+            int a, b;
+            int tmp;
+            a = SDLTest_RandomIntegerInRange(0, nbSuites - 1);
+            b = SDLTest_RandomIntegerInRange(0, nbSuites - 1);
+            /*
+             * NB: prevent swapping here to make sure the tests start with the same
+             * random seed (whether they are run in order or not).
+             * So we consume same number of SDLTest_RandomIntegerInRange() in all cases.
+             *
+             * If some random value were used at initialization before the tests start, the --seed wouldn't do the same with or without randomOrder.
+             */
+            /* Swap */
+            if (randomOrder) {
+                tmp = arraySuites[b];
+                arraySuites[b] = arraySuites[a];
+                arraySuites[a] = tmp;
+            }
+        }
+
+        /* re-add last lest */
+        nbSuites++;
     }
 
     /* Loop over all suites */
-    suiteCounter = 0;
-    while (testSuites[suiteCounter]) {
+    for (i = 0; i < nbSuites; i++) {
+        suiteCounter = arraySuites[i];
         testSuite = testSuites[suiteCounter];
         currentSuiteName = (testSuite->name ? testSuite->name : SDLTEST_INVALID_NAME_FORMAT);
         suiteCounter++;
@@ -525,6 +585,37 @@ int SDLTest_RunSuites(SDLTest_TestSuiteReference *testSuites[], const char *user
                         suiteCounter,
                         currentSuiteName);
         } else {
+
+            int nbTestCases = 0;
+            int *arrayTestCases;
+            int j;
+            while (testSuite->testCases[nbTestCases]) {
+                nbTestCases++;
+            }
+
+            arrayTestCases = SDL_malloc(nbTestCases * sizeof(int));
+            if (!arrayTestCases) {
+                return SDL_OutOfMemory();
+            }
+            for (j = 0; j < nbTestCases; j++) {
+                arrayTestCases[j] = j;
+            }
+
+            /* Mix the list of testCases to run them in random order */
+            j = 100;
+            while (j--) {
+                int a, b;
+                int tmp;
+                a = SDLTest_RandomIntegerInRange(0, nbTestCases - 1);
+                b = SDLTest_RandomIntegerInRange(0, nbTestCases - 1);
+                /* Swap */
+                /* See previous note */
+                if (randomOrder) {
+                    tmp = arrayTestCases[b];
+                    arrayTestCases[b] = arrayTestCases[a];
+                    arrayTestCases[a] = tmp;
+                }
+            }
 
             /* Reset per-suite counters */
             testFailedCount = 0;
@@ -540,8 +631,8 @@ int SDLTest_RunSuites(SDLTest_TestSuiteReference *testSuites[], const char *user
                         currentSuiteName);
 
             /* Loop over all test cases */
-            testCounter = 0;
-            while (testSuite->testCases[testCounter]) {
+            for (j = 0; j < nbTestCases; j++) {
+                testCounter = arrayTestCases[j];
                 testCase = testSuite->testCases[testCounter];
                 currentTestName = (testCase->name ? testCase->name : SDLTEST_INVALID_NAME_FORMAT);
                 testCounter++;
@@ -656,8 +747,12 @@ int SDLTest_RunSuites(SDLTest_TestSuiteReference *testSuites[], const char *user
                 SDLTest_LogError(SDLTEST_LOG_SUMMARY_FORMAT, "Suite", countSum, testPassedCount, testFailedCount, testSkippedCount);
                 SDLTest_LogError(SDLTEST_FINAL_RESULT_FORMAT, "Suite", currentSuiteName, COLOR_RED "Failed" COLOR_END);
             }
+
+            SDL_free(arrayTestCases);
         }
     }
+
+    SDL_free(arraySuites);
 
     /* Take time - run end */
     runEndSeconds = GetClock();

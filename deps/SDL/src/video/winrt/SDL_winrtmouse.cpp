@@ -43,7 +43,7 @@ extern "C" {
 #include "SDL_winrtvideo_cpp.h"
 #include "SDL_winrtmouse_c.h"
 
-extern "C" SDL_bool WINRT_UsingRelativeMouseMode = SDL_FALSE;
+extern "C" bool WINRT_UsingRelativeMouseMode = false;
 
 static SDL_Cursor *WINRT_CreateSystemCursor(SDL_SystemCursor id)
 {
@@ -120,12 +120,12 @@ static SDL_Cursor *WINRT_CreateSystemCursor(SDL_SystemCursor id)
     if (cursor) {
         /* Create a pointer to a COM reference to a cursor.  The extra
            pointer is used (on top of the COM reference) to allow the cursor
-           to be referenced by the SDL_cursor's driverdata field, which is
+           to be referenced by the SDL_cursor's internal field, which is
            a void pointer.
         */
         CoreCursor ^ *theCursor = new CoreCursor ^ (nullptr);
         *theCursor = ref new CoreCursor(cursorType, 0);
-        cursor->driverdata = (void *)theCursor;
+        cursor->internal = (SDL_CursorData *)theCursor;
     }
 
     return cursor;
@@ -138,24 +138,24 @@ static SDL_Cursor *WINRT_CreateDefaultCursor()
 
 static void WINRT_FreeCursor(SDL_Cursor *cursor)
 {
-    if (cursor->driverdata) {
-        CoreCursor ^ *theCursor = (CoreCursor ^ *)cursor->driverdata;
+    if (cursor->internal) {
+        CoreCursor ^ *theCursor = (CoreCursor ^ *)cursor->internal;
         *theCursor = nullptr; // Release the COM reference to the CoreCursor
         delete theCursor;     // Delete the pointer to the COM reference
     }
     SDL_free(cursor);
 }
 
-static int WINRT_ShowCursor(SDL_Cursor *cursor)
+static bool WINRT_ShowCursor(SDL_Cursor *cursor)
 {
     // TODO, WinRT, XAML: make WINRT_ShowCursor work when XAML support is enabled.
     if (!CoreWindow::GetForCurrentThread()) {
-        return 0;
+        return true;
     }
 
     CoreWindow ^ coreWindow = CoreWindow::GetForCurrentThread();
     if (cursor) {
-        CoreCursor ^ *theCursor = (CoreCursor ^ *)cursor->driverdata;
+        CoreCursor ^ *theCursor = (CoreCursor ^ *)cursor->internal;
         coreWindow->PointerCursor = *theCursor;
     } else {
         // HACK ALERT: TL;DR - Hiding the cursor in WinRT/UWP apps is weird, and
@@ -217,13 +217,13 @@ static int WINRT_ShowCursor(SDL_Cursor *cursor)
             coreWindow->PointerCursor = nullptr;
         }
     }
-    return 0;
+    return true;
 }
 
-static int WINRT_SetRelativeMouseMode(SDL_bool enabled)
+static bool WINRT_SetRelativeMouseMode(bool enabled)
 {
     WINRT_UsingRelativeMouseMode = enabled;
-    return 0;
+    return true;
 }
 
 void WINRT_InitMouse(SDL_VideoDevice *_this)
@@ -252,4 +252,4 @@ void WINRT_QuitMouse(SDL_VideoDevice *_this)
 {
 }
 
-#endif /* SDL_VIDEO_DRIVER_WINRT */
+#endif // SDL_VIDEO_DRIVER_WINRT

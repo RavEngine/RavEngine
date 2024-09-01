@@ -27,7 +27,7 @@
 #include <psp2/rtc.h>
 #include <psp2/system_param.h>
 
-/* Sony seems to use 0001-01-01T00:00:00 as an epoch. */
+// Sony seems to use 0001-01-01T00:00:00 as an epoch.
 #define DELTA_EPOCH_0001_OFFSET 62135596800ULL
 
 void SDL_GetSystemTimeLocalePreferences(SDL_DateFormat *df, SDL_TimeFormat *tf)
@@ -71,7 +71,7 @@ void SDL_GetSystemTimeLocalePreferences(SDL_DateFormat *df, SDL_TimeFormat *tf)
     sceAppUtilShutdown();
 }
 
-int SDL_GetCurrentTime(SDL_Time *ticks)
+SDL_bool SDL_GetCurrentTime(SDL_Time *ticks)
 {
     SceRtcTick sceTicks;
 
@@ -88,17 +88,17 @@ int SDL_GetCurrentTime(SDL_Time *ticks)
         const Uint64 scetime_min = (Uint64)((SDL_MIN_TIME / div) + epoch_offset);
         const Uint64 scetime_max = (Uint64)((SDL_MAX_TIME / div) + epoch_offset);
 
-        /* Clamp to the valid SDL_Time range. */
+        // Clamp to the valid SDL_Time range.
         sceTicks.tick = SDL_clamp(sceTicks.tick, scetime_min, scetime_max);
         *ticks = (SDL_Time)(sceTicks.tick - epoch_offset) * div;
 
-        return 0;
+        return true;
     }
 
     return SDL_SetError("Failed to retrieve system time (%i)", ret);
 }
 
-int SDL_TimeToDateTime(SDL_Time ticks, SDL_DateTime *dt, SDL_bool localTime)
+SDL_bool SDL_TimeToDateTime(SDL_Time ticks, SDL_DateTime *dt, SDL_bool localTime)
 {
     SceDateTime t;
     SceRtcTick sceTicks, sceLocalTicks;
@@ -132,11 +132,11 @@ int SDL_TimeToDateTime(SDL_Time ticks, SDL_DateTime *dt, SDL_bool localTime)
 
             SDL_CivilToDays(dt->year, dt->month, dt->day, &dt->day_of_week, NULL);
 
-            return 0;
+            return true;
         }
     }
 
     return SDL_SetError("Local time conversion failed (%i)", ret);
 }
 
-#endif /* SDL_TIME_VITA */
+#endif // SDL_TIME_VITA

@@ -34,6 +34,7 @@
 #define HAVE_MATH_H 1
 #define HAVE_SIGNAL_H 1
 #define HAVE_STDARG_H 1
+#define HAVE_STDBOOL_H 1
 #define HAVE_STDDEF_H 1
 #define HAVE_STDINT_H 1
 #define HAVE_STDIO_H 1
@@ -50,7 +51,6 @@
 #define HAVE_REALLOC    1
 #define HAVE_FREE   1
 #define HAVE_GETENV 1
-#define HAVE_SETENV 1
 #define HAVE_PUTENV 1
 #define HAVE_SETENV 1
 #define HAVE_UNSETENV   1
@@ -101,6 +101,10 @@
 #define HAVE_FLOORF 1
 #define HAVE_FMOD   1
 #define HAVE_FMODF  1
+#define HAVE_ISINF  1
+#define HAVE_ISINF_FLOAT_MACRO 1
+#define HAVE_ISNAN  1
+#define HAVE_ISNAN_FLOAT_MACRO 1
 #define HAVE_LOG    1
 #define HAVE_LOGF   1
 #define HAVE_LOG10  1

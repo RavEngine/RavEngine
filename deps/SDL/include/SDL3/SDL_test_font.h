@@ -30,6 +30,10 @@
 #ifndef SDL_test_font_h_
 #define SDL_test_font_h_
 
+#include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_rect.h>
+#include <SDL3/SDL_render.h>
+
 #include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
@@ -50,9 +54,9 @@ extern int FONT_CHARACTER_SIZE;
  *  \param y The Y coordinate of the upper left corner of the character.
  *  \param c The character to draw.
  *
- *  \returns 0 on success, -1 on failure.
+ *  \returns SDL_TRUE on success, SDL_FALSE on failure.
  */
-int SDLTest_DrawCharacter(SDL_Renderer *renderer, float x, float y, Uint32 c);
+SDL_bool SDLTest_DrawCharacter(SDL_Renderer *renderer, float x, float y, Uint32 c);
 
 /*
  *  Draw a UTF-8 string in the currently set font.
@@ -64,9 +68,9 @@ int SDLTest_DrawCharacter(SDL_Renderer *renderer, float x, float y, Uint32 c);
  *  \param y The Y coordinate of the upper left corner of the string.
  *  \param s The string to draw.
  *
- *  \returns 0 on success, -1 on failure.
+ *  \returns SDL_TRUE on success, SDL_FALSE on failure.
  */
-int SDLTest_DrawString(SDL_Renderer *renderer, float x, float y, const char *s);
+SDL_bool SDLTest_DrawString(SDL_Renderer *renderer, float x, float y, const char *s);
 
 /*
  *  Data used for multi-line text output

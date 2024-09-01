@@ -93,11 +93,6 @@ typedef unsigned int uintptr_t;
 #define HAVE_D3D11_H 1
 #define HAVE_ROAPI_H 1
 #endif
-#if defined(__has_include)
-#if __has_include(<d3d12.h>) && __has_include(<d3d12sdklayers.h>)
-#define HAVE_D3D12_H 1
-#endif
-#endif
 #if defined(_WIN32_MAXVER) && _WIN32_MAXVER >= 0x0603  /* Windows 8.1 SDK */
 #define HAVE_SHELLSCALINGAPI_H 1
 #endif
@@ -105,6 +100,9 @@ typedef unsigned int uintptr_t;
 #define HAVE_AUDIOCLIENT_H 1
 #define HAVE_TPCSHRD_H 1
 #define HAVE_SENSORSAPI_H 1
+#if defined(__has_include) && __has_include(<gameinput.h>)
+#define HAVE_GAMEINPUT_H 1
+#endif
 #if (defined(_M_IX86) || defined(_M_X64) || defined(_M_AMD64)) && (defined(_MSC_VER) && _MSC_VER >= 1600)
 #elif defined(__has_include) && (defined(__i386__) || defined(__x86_64))
 # if !__has_include(<immintrin.h>)
@@ -126,6 +124,7 @@ typedef unsigned int uintptr_t;
 #define HAVE_MATH_H 1
 #define HAVE_SIGNAL_H 1
 #define HAVE_STDARG_H 1
+#define HAVE_STDBOOL_H 1
 #define HAVE_STDDEF_H 1
 #define HAVE_STDIO_H 1
 #define HAVE_STDLIB_H 1
@@ -175,6 +174,10 @@ typedef unsigned int uintptr_t;
 #define HAVE_FABS   1
 #define HAVE_FLOOR  1
 #define HAVE_FMOD   1
+#define HAVE_ISINF  1
+#define HAVE_ISINF_FLOAT_MACRO 1
+#define HAVE_ISNAN  1
+#define HAVE_ISNAN_FLOAT_MACRO 1
 #define HAVE_LOG    1
 #define HAVE_LOG10  1
 #define HAVE_POW    1
@@ -234,7 +237,9 @@ typedef unsigned int uintptr_t;
 
 /* Enable various input drivers */
 #define SDL_JOYSTICK_DINPUT 1
-/*#define SDL_JOYSTICK_GAMEINPUT 1*/
+#ifdef HAVE_GAMEINPUT_H
+#define SDL_JOYSTICK_GAMEINPUT 1
+#endif
 #define SDL_JOYSTICK_HIDAPI 1
 #ifndef SDL_PLATFORM_WINRT
 #define SDL_JOYSTICK_RAWINPUT   1
@@ -278,7 +283,7 @@ typedef unsigned int uintptr_t;
 #if !defined(SDL_VIDEO_RENDER_D3D11) && defined(HAVE_D3D11_H)
 #define SDL_VIDEO_RENDER_D3D11  1
 #endif
-#if !defined(SDL_VIDEO_RENDER_D3D12) && defined(HAVE_D3D12_H)
+#if !defined(SDL_VIDEO_RENDER_D3D12)
 #define SDL_VIDEO_RENDER_D3D12  1
 #endif
 
@@ -304,6 +309,16 @@ typedef unsigned int uintptr_t;
 
 /* Enable Vulkan support */
 #define SDL_VIDEO_VULKAN 1
+
+#if !defined(SDL_GPU_D3D11) && defined(HAVE_D3D11_H)
+#define SDL_GPU_D3D11 1
+#endif
+#if !defined(SDL_GPU_D3D12)
+#define SDL_GPU_D3D12 1
+#endif
+#if !defined(SDL_GPU_VULKAN) && defined(SDL_VIDEO_VULKAN)
+#define SDL_GPU_VULKAN 1
+#endif
 
 #ifndef SDL_VIDEO_RENDER_VULKAN
 #define SDL_VIDEO_RENDER_VULKAN    1

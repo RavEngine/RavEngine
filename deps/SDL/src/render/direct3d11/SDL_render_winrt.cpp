@@ -44,7 +44,7 @@ using namespace Windows::Graphics::Display;
 extern "C" void *
 D3D11_GetCoreWindowFromSDLRenderer(SDL_Renderer *renderer)
 {
-    IInspectable *window = (IInspectable *)SDL_GetProperty(SDL_GetWindowProperties(renderer->window), SDL_PROP_WINDOW_WINRT_WINDOW_POINTER, NULL);
+    IInspectable *window = (IInspectable *)SDL_GetPointerProperty(SDL_GetWindowProperties(renderer->window), SDL_PROP_WINDOW_WINRT_WINDOW_POINTER, NULL);
     ABI::Windows::UI::Core::ICoreWindow *coreWindow = NULL;
     if (!window || FAILED(window->QueryInterface(&coreWindow))) {
         return NULL;
@@ -65,7 +65,7 @@ D3D11_GetCurrentRotation()
     switch (currentOrientation) {
 
 #if SDL_WINAPI_FAMILY_PHONE
-    /* Windows Phone rotations */
+    // Windows Phone rotations
     case DisplayOrientations::Landscape:
         return DXGI_MODE_ROTATION_ROTATE90;
     case DisplayOrientations::Portrait:
@@ -75,7 +75,7 @@ D3D11_GetCurrentRotation()
     case DisplayOrientations::PortraitFlipped:
         return DXGI_MODE_ROTATION_ROTATE180;
 #else
-    /* Non-Windows-Phone rotations (ex: Windows 8, Windows RT) */
+    // Non-Windows-Phone rotations (ex: Windows 8, Windows RT)
     case DisplayOrientations::Landscape:
         return DXGI_MODE_ROTATION_IDENTITY;
     case DisplayOrientations::Portrait:
@@ -84,10 +84,10 @@ D3D11_GetCurrentRotation()
         return DXGI_MODE_ROTATION_ROTATE180;
     case DisplayOrientations::PortraitFlipped:
         return DXGI_MODE_ROTATION_ROTATE90;
-#endif /* SDL_WINAPI_FAMILY_PHONE */
+#endif // SDL_WINAPI_FAMILY_PHONE
     }
 
     return DXGI_MODE_ROTATION_IDENTITY;
 }
 
-#endif /* SDL_VIDEO_RENDER_D3D11 */
+#endif // SDL_VIDEO_RENDER_D3D11

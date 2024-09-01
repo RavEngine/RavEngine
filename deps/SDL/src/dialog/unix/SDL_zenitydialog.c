@@ -73,7 +73,7 @@ char *zenity_clean_name(const char *name)
        there aren't others. TODO: find something better. */
     for (char *c = newname; *c; c++) {
         if (*c == '|') {
-            /* Zenity doesn't support escaping with \ */
+            // Zenity doesn't support escaping with '\'
             *c = '/';
         }
     }
@@ -93,7 +93,7 @@ static char** generate_args(const zenityArgs* info)
     int nextarg = 0;
     char **argv = NULL;
 
-    /* ARGC PASS */
+    // ARGC PASS
     if (info->flags & ZENITY_MULTIPLE) {
         argc++;
     }
@@ -128,7 +128,7 @@ static char** generate_args(const zenityArgs* info)
     argv[nextarg++] = SDL_strdup("--separator=\n");
     CHECK_OOM()
 
-    /* ARGV PASS */
+    // ARGV PASS
     if (info->flags & ZENITY_MULTIPLE) {
         argv[nextarg++] = SDL_strdup("--multiple");
         CHECK_OOM()
@@ -185,7 +185,7 @@ void free_args(char **argv)
     SDL_free(argv);
 }
 
-/* TODO: Zenity survives termination of the parent */
+// TODO: Zenity survives termination of the parent
 
 static void run_zenity(zenityArgs* arg_struct)
 {
@@ -207,7 +207,7 @@ static void run_zenity(zenityArgs* arg_struct)
     char **args = generate_args(arg_struct);
 
     if (!args) {
-        /* SDL_SetError will have been called already */
+        // SDL_SetError will have been called already
         callback(userdata, NULL, -1);
         return;
     }
@@ -223,7 +223,7 @@ static void run_zenity(zenityArgs* arg_struct)
         return;
     } else if (process == 0){
         dup2(out[1], STDOUT_FILENO);
-        close(STDERR_FILENO); /* Hide errors from Zenity to stderr */
+        close(STDERR_FILENO); // Hide errors from Zenity to stderr
         close(out[0]);
         close(out[1]);
 
@@ -286,7 +286,7 @@ static void run_zenity(zenityArgs* arg_struct)
         for (int i = 0; i < bytes_read; i++) {
             if (container[i] == '\n') {
                 container[i] = '\0';
-                /* Reading from a process often leaves a trailing \n, so ignore the last one */
+                // Reading from a process often leaves a trailing \n, so ignore the last one
                 if (i < bytes_read - 1) {
                     array[narray] = container + i + 1;
                     narray++;
@@ -303,7 +303,7 @@ static void run_zenity(zenityArgs* arg_struct)
             }
         }
 
-        /* 0 = the user chose one or more files, 1 = the user canceled the dialog */
+        // 0 = the user chose one or more files, 1 = the user canceled the dialog
         if (status == 0 || status == 1) {
             callback(userdata, (const char * const*) array, -1);
         } else {
@@ -323,7 +323,7 @@ static int run_zenity_thread(void* ptr)
     return 0;
 }
 
-void SDL_Zenity_ShowOpenFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window, const SDL_DialogFileFilter *filters, int nfilters, const char* default_location, SDL_bool allow_many)
+void SDL_Zenity_ShowOpenFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window, const SDL_DialogFileFilter *filters, int nfilters, const char* default_location, bool allow_many)
 {
     zenityArgs *args;
     SDL_Thread *thread;
@@ -339,7 +339,7 @@ void SDL_Zenity_ShowOpenFileDialog(SDL_DialogFileCallback callback, void* userda
     args->filename = default_location;
     args->filters = filters;
     args->nfilters = nfilters;
-    args->flags = (allow_many == SDL_TRUE) ? ZENITY_MULTIPLE : 0;
+    args->flags = (allow_many == true) ? ZENITY_MULTIPLE : 0;
 
     thread = SDL_CreateThread(run_zenity_thread, "SDL_ShowOpenFileDialog", (void *) args);
 
@@ -379,7 +379,7 @@ void SDL_Zenity_ShowSaveFileDialog(SDL_DialogFileCallback callback, void* userda
     SDL_DetachThread(thread);
 }
 
-void SDL_Zenity_ShowOpenFolderDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window, const char* default_location, SDL_bool allow_many)
+void SDL_Zenity_ShowOpenFolderDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window, const char* default_location, bool allow_many)
 {
     zenityArgs *args;
     SDL_Thread *thread;
@@ -395,7 +395,7 @@ void SDL_Zenity_ShowOpenFolderDialog(SDL_DialogFileCallback callback, void* user
     args->filename = default_location;
     args->filters = NULL;
     args->nfilters = 0;
-    args->flags = ((allow_many == SDL_TRUE) ? ZENITY_MULTIPLE : 0) | ZENITY_DIRECTORY;
+    args->flags = ((allow_many == true) ? ZENITY_MULTIPLE : 0) | ZENITY_DIRECTORY;
 
     thread = SDL_CreateThread(run_zenity_thread, "SDL_ShowOpenFolderDialog", (void *) args);
 
@@ -407,7 +407,7 @@ void SDL_Zenity_ShowOpenFolderDialog(SDL_DialogFileCallback callback, void* user
     SDL_DetachThread(thread);
 }
 
-int SDL_Zenity_detect(void)
+bool SDL_Zenity_detect(void)
 {
     pid_t process;
     int status = -1;
@@ -416,9 +416,9 @@ int SDL_Zenity_detect(void)
 
     if (process < 0) {
         SDL_SetError("Could not fork process: %s", strerror(errno));
-        return 0;
+        return false;
     } else if (process == 0){
-        /* Disable output */
+        // Disable output
         close(STDERR_FILENO);
         close(STDOUT_FILENO);
         execl("/usr/bin/env", "/usr/bin/env", "zenity", "--version", NULL);
@@ -426,13 +426,13 @@ int SDL_Zenity_detect(void)
     } else {
         if (waitpid(process, &status, 0) == -1) {
             SDL_SetError("waitpid failed");
-            return 0;
+            return false;
         }
 
         if (WIFEXITED(status)) {
             status = WEXITSTATUS(status);
         }
 
-        return !status;
+        return (status == 0);
     }
 }

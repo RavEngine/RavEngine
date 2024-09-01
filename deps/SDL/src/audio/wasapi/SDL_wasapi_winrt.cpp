@@ -53,7 +53,7 @@ using namespace Microsoft::WRL;
 static Platform::String ^ SDL_PKEY_AudioEngine_DeviceFormat = L"{f19f064d-082c-4e27-bc73-6882a1bb8e4c} 0";
 
 
-static SDL_bool FindWinRTAudioDeviceCallback(SDL_AudioDevice *device, void *userdata)
+static bool FindWinRTAudioDeviceCallback(SDL_AudioDevice *device, void *userdata)
 {
     return (SDL_wcscmp((LPCWSTR) device->handle, (LPCWSTR) userdata) == 0);
 }
@@ -66,7 +66,7 @@ static SDL_AudioDevice *FindWinRTAudioDevice(LPCWSTR devid)
 class SDL_WasapiDeviceEventHandler
 {
   public:
-    SDL_WasapiDeviceEventHandler(const SDL_bool _iscapture);
+    SDL_WasapiDeviceEventHandler(const bool _recording);
     ~SDL_WasapiDeviceEventHandler();
     void OnDeviceAdded(DeviceWatcher ^ sender, DeviceInformation ^ args);
     void OnDeviceRemoved(DeviceWatcher ^ sender, DeviceInformationUpdate ^ args);
@@ -78,7 +78,7 @@ class SDL_WasapiDeviceEventHandler
 
   private:
     SDL_Semaphore *completed_semaphore;
-    const SDL_bool iscapture;
+    const bool recording;
     DeviceWatcher ^ watcher;
     Windows::Foundation::EventRegistrationToken added_handler;
     Windows::Foundation::EventRegistrationToken removed_handler;
@@ -87,14 +87,14 @@ class SDL_WasapiDeviceEventHandler
     Windows::Foundation::EventRegistrationToken default_changed_handler;
 };
 
-SDL_WasapiDeviceEventHandler::SDL_WasapiDeviceEventHandler(const SDL_bool _iscapture)
-    : iscapture(_iscapture), completed_semaphore(SDL_CreateSemaphore(0))
+SDL_WasapiDeviceEventHandler::SDL_WasapiDeviceEventHandler(const bool _recording)
+    : recording(_recording), completed_semaphore(SDL_CreateSemaphore(0))
 {
     if (!completed_semaphore) {
         return; // uhoh.
     }
 
-    Platform::String ^ selector = _iscapture ? MediaDevice::GetAudioCaptureSelector() : MediaDevice::GetAudioRenderSelector();
+    Platform::String ^ selector = _recording ? MediaDevice::GetAudioCaptureSelector() : MediaDevice::GetAudioRenderSelector();
     Platform::Collections::Vector<Platform::String ^> properties;
     properties.Append(SDL_PKEY_AudioEngine_DeviceFormat);
     watcher = DeviceInformation::CreateWatcher(selector, properties.GetView());
@@ -106,7 +106,7 @@ SDL_WasapiDeviceEventHandler::SDL_WasapiDeviceEventHandler(const SDL_bool _iscap
     removed_handler = watcher->Removed += ref new TypedEventHandler<DeviceWatcher ^, DeviceInformationUpdate ^>([this](DeviceWatcher ^ sender, DeviceInformationUpdate ^ args) { OnDeviceRemoved(sender, args); });
     updated_handler = watcher->Updated += ref new TypedEventHandler<DeviceWatcher ^, DeviceInformationUpdate ^>([this](DeviceWatcher ^ sender, DeviceInformationUpdate ^ args) { OnDeviceUpdated(sender, args); });
     completed_handler = watcher->EnumerationCompleted += ref new TypedEventHandler<DeviceWatcher ^, Platform::Object ^>([this](DeviceWatcher ^ sender, Platform::Object ^ args) { OnEnumerationCompleted(sender, args); });
-    if (iscapture) {
+    if (recording) {
         default_changed_handler = MediaDevice::DefaultAudioCaptureDeviceChanged += ref new TypedEventHandler<Platform::Object ^, DefaultAudioCaptureDeviceChangedEventArgs ^>([this](Platform::Object ^ sender, DefaultAudioCaptureDeviceChangedEventArgs ^ args) { OnDefaultCaptureDeviceChanged(sender, args); });
     } else {
         default_changed_handler = MediaDevice::DefaultAudioRenderDeviceChanged += ref new TypedEventHandler<Platform::Object ^, DefaultAudioRenderDeviceChangedEventArgs ^>([this](Platform::Object ^ sender, DefaultAudioRenderDeviceChangedEventArgs ^ args) { OnDefaultRenderDeviceChanged(sender, args); });
@@ -130,7 +130,7 @@ SDL_WasapiDeviceEventHandler::~SDL_WasapiDeviceEventHandler()
         completed_semaphore = nullptr;
     }
 
-    if (iscapture) {
+    if (recording) {
         MediaDevice::DefaultAudioCaptureDeviceChanged -= default_changed_handler;
     } else {
         MediaDevice::DefaultAudioRenderDeviceChanged -= default_changed_handler;
@@ -145,7 +145,7 @@ void SDL_WasapiDeviceEventHandler::OnDeviceAdded(DeviceWatcher ^ sender, DeviceI
        available and switch automatically. (!!! FIXME...?) */
 
     SDL_assert(sender == this->watcher);
-    char *utf8dev = WIN_StringToUTF8(info->Name->Data());
+    char *utf8dev = WIN_StringToUTF8W(info->Name->Data());
     if (utf8dev) {
         SDL_AudioSpec spec;
         SDL_zero(spec);
@@ -165,7 +165,7 @@ void SDL_WasapiDeviceEventHandler::OnDeviceAdded(DeviceWatcher ^ sender, DeviceI
 
         LPWSTR devid = SDL_wcsdup(info->Id->Data());
         if (devid) {
-            SDL_AddAudioDevice(this->iscapture, utf8dev, spec.channels ? &spec : NULL, devid);
+            SDL_AddAudioDevice(this->recording, utf8dev, spec.channels ? &spec : NULL, devid);
         }
         SDL_free(utf8dev);
     }
@@ -186,19 +186,19 @@ void SDL_WasapiDeviceEventHandler::OnEnumerationCompleted(DeviceWatcher ^ sender
 {
     SDL_assert(sender == this->watcher);
     if (this->completed_semaphore) {
-        SDL_PostSemaphore(this->completed_semaphore);
+        SDL_SignalSemaphore(this->completed_semaphore);
     }
 }
 
 void SDL_WasapiDeviceEventHandler::OnDefaultRenderDeviceChanged(Platform::Object ^ sender, DefaultAudioRenderDeviceChangedEventArgs ^ args)
 {
-    SDL_assert(!this->iscapture);
+    SDL_assert(!this->recording);
     SDL_DefaultAudioDeviceChanged(FindWinRTAudioDevice(args->Id->Data()));
 }
 
 void SDL_WasapiDeviceEventHandler::OnDefaultCaptureDeviceChanged(Platform::Object ^ sender, DefaultAudioCaptureDeviceChangedEventArgs ^ args)
 {
-    SDL_assert(this->iscapture);
+    SDL_assert(this->recording);
     SDL_DefaultAudioDeviceChanged(FindWinRTAudioDevice(args->Id->Data()));
 }
 
@@ -212,19 +212,19 @@ void SDL_WasapiDeviceEventHandler::WaitForCompletion()
 }
 
 static SDL_WasapiDeviceEventHandler *playback_device_event_handler;
-static SDL_WasapiDeviceEventHandler *capture_device_event_handler;
+static SDL_WasapiDeviceEventHandler *recording_device_event_handler;
 
-int WASAPI_PlatformInit(void)
+bool WASAPI_PlatformInit(void)
 {
-    return 0;
+    return true;
 }
 
 static void StopWasapiHotplug(void)
 {
     delete playback_device_event_handler;
     playback_device_event_handler = nullptr;
-    delete capture_device_event_handler;
-    capture_device_event_handler = nullptr;
+    delete recording_device_event_handler;
+    recording_device_event_handler = nullptr;
 }
 
 void WASAPI_PlatformDeinit(void)
@@ -238,25 +238,25 @@ void WASAPI_PlatformDeinitializeStart(void)
 }
 
 
-void WASAPI_EnumerateEndpoints(SDL_AudioDevice **default_output, SDL_AudioDevice **default_capture)
+void WASAPI_EnumerateEndpoints(SDL_AudioDevice **default_playback, SDL_AudioDevice **default_recording)
 {
     Platform::String ^ defdevid;
 
     // DeviceWatchers will fire an Added event for each existing device at
     //  startup, so we don't need to enumerate them separately before
     //  listening for updates.
-    playback_device_event_handler = new SDL_WasapiDeviceEventHandler(SDL_FALSE);
+    playback_device_event_handler = new SDL_WasapiDeviceEventHandler(false);
     playback_device_event_handler->WaitForCompletion();
     defdevid = MediaDevice::GetDefaultAudioRenderId(AudioDeviceRole::Default);
     if (defdevid) {
-        *default_output = FindWinRTAudioDevice(defdevid->Data());
+        *default_playback = FindWinRTAudioDevice(defdevid->Data());
     }
 
-    capture_device_event_handler = new SDL_WasapiDeviceEventHandler(SDL_TRUE);
-    capture_device_event_handler->WaitForCompletion();
+    recording_device_event_handler = new SDL_WasapiDeviceEventHandler(true);
+    recording_device_event_handler->WaitForCompletion();
     defdevid = MediaDevice::GetDefaultAudioCaptureId(AudioDeviceRole::Default);
     if (defdevid) {
-        *default_capture = FindWinRTAudioDevice(defdevid->Data());
+        *default_recording = FindWinRTAudioDevice(defdevid->Data());
     }
 }
 
@@ -283,7 +283,7 @@ HRESULT
 SDL_WasapiActivationHandler::ActivateCompleted(IActivateAudioInterfaceAsyncOperation *async)
 {
     // Just set a flag, since we're probably in a different thread. We'll pick it up and init everything on our own thread to prevent races.
-    SDL_PostSemaphore(completion_semaphore);
+    SDL_SignalSemaphore(completion_semaphore);
     return S_OK;
 }
 
@@ -292,7 +292,7 @@ void WASAPI_PlatformDeleteActivationHandler(void *handler)
     ((SDL_WasapiActivationHandler *)handler)->Release();
 }
 
-int WASAPI_ActivateDevice(SDL_AudioDevice *device)
+bool WASAPI_ActivateDevice(SDL_AudioDevice *device)
 {
     LPCWSTR devid = (LPCWSTR) device->handle;
     SDL_assert(devid != NULL);
@@ -334,17 +334,17 @@ int WASAPI_ActivateDevice(SDL_AudioDevice *device)
         return SDL_SetError("Failed to query WASAPI client interface");
     }
 
-    if (WASAPI_PrepDevice(device) == -1) {
-        return -1;
+    if (!WASAPI_PrepDevice(device)) {
+        return false;
     }
 
-    return 0;
+    return true;
 }
 
 void WASAPI_PlatformThreadInit(SDL_AudioDevice *device)
 {
     // !!! FIXME: set this thread to "Pro Audio" priority.
-    SDL_SetThreadPriority(device->iscapture ? SDL_THREAD_PRIORITY_HIGH : SDL_THREAD_PRIORITY_TIME_CRITICAL);
+    SDL_SetThreadPriority(device->recording ? SDL_THREAD_PRIORITY_HIGH : SDL_THREAD_PRIORITY_TIME_CRITICAL);
 }
 
 void WASAPI_PlatformThreadDeinit(SDL_AudioDevice *device)

@@ -48,13 +48,13 @@ void resizeMetalLayer(void* ptr, int width, int height){
 }
 float GetWindowScaleFactor(void* window){
 #if TARGET_OS_OSX
-    NSWindow *nswin = (__bridge NSWindow *)SDL_GetProperty(SDL_GetWindowProperties((SDL_Window*)window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
+    NSWindow *nswin = (__bridge NSWindow *)SDL_GetPointerProperty(SDL_GetWindowProperties((SDL_Window*)window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
 	return [nswin backingScaleFactor];
 #elif TARGET_OS_NONOSX
 #if TARGET_OS_VISION
     return 1;   // visionOS does not have DPI scale
 #else
-    UIWindow* uiwin = (__bridge UIWindow*)SDL_GetProperty(SDL_GetWindowProperties((SDL_Window*)window), SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER, NULL);
+    UIWindow* uiwin = (__bridge UIWindow*)SDL_GetPointerProperty(SDL_GetWindowProperties((SDL_Window*)window), SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER, NULL);
 	return uiwin.screen.scale;
 #endif
 #endif

@@ -122,11 +122,11 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
 	switch (event.type) {
 		case SDL_EVENT_KEY_DOWN:
 		case SDL_EVENT_KEY_UP:
-			ProcessActionID(event.key.keysym.scancode, static_cast<ActionState>(event.key.state), Make_CID(0));
-			ProcessAxisID(event.key.keysym.scancode, event.key.state, Make_CID(0));
+			ProcessActionID(event.key.scancode, static_cast<ActionState>(event.key.state), Make_CID(0));
+			ProcessAxisID(event.key.scancode, event.key.state, Make_CID(0));
 			break;
         case SDL_EVENT_MOUSE_MOTION:
-            if (windowflags & SDL_EVENT_WINDOW_TAKE_FOCUS) {
+            if (windowflags & SDL_EVENT_WINDOW_FOCUS_GAINED) {
 				int width = windowWidth, height = windowHeight;
 				
 				float velscale = 1 / scale;
@@ -145,7 +145,7 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
 			break;
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
         case SDL_EVENT_MOUSE_BUTTON_UP:
-            if (windowflags & SDL_EVENT_WINDOW_TAKE_FOCUS) {
+            if (windowflags & SDL_EVENT_WINDOW_FOCUS_GAINED) {
 				ProcessActionID(event.button.button, static_cast<ActionState>(event.button.state), CID::C0);
 			}
 			break;
@@ -170,13 +170,5 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
 			Debug::Log("Controller removed");
 			break;
 	}
-}
-
-void RavEngine::InputManager::SetRelativeMouseMode(bool mode){
-	SDL_SetRelativeMouseMode(mode ? SDL_TRUE : SDL_FALSE);
-}
-
-bool InputManager::GetRelativeMouseMode(){
-	return SDL_GetRelativeMouseMode();
 }
 #endif

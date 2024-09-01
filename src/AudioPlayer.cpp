@@ -411,7 +411,7 @@ void AudioPlayer::SetupAudioTaskGraph(){
 
 
 void AudioPlayer::Init(){
-	if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0){
+	if (not SDL_InitSubSystem(SDL_INIT_AUDIO)){
 		Debug::Fatal("Could not init Audio subsystem: {}",SDL_GetError());
 	}
 	
@@ -422,7 +422,7 @@ void AudioPlayer::Init(){
 	want.format = SDL_AUDIO_F32;
 	want.channels = config_nchannels;
 	
-    stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_OUTPUT, &want, NULL, this);
+    stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &want, NULL, this);
 	
 	if (stream == NULL){
 		Debug::Fatal("could not open audio device: {}",SDL_GetError());

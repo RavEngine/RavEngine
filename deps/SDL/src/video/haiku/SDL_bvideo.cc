@@ -44,32 +44,22 @@ extern "C" {
 #include "../../events/SDL_mouse_c.h"
 
 static SDL_INLINE SDL_BWin *_ToBeWin(SDL_Window *window) {
-    return (SDL_BWin *)(window->driverdata);
+    return (SDL_BWin *)(window->internal);
 }
-
-/* FIXME: Undefined functions */
-//    #define HAIKU_PumpEvents NULL
-    #define HAIKU_StartTextInput NULL
-    #define HAIKU_StopTextInput NULL
-    #define HAIKU_SetTextInputRect NULL
-
-//    #define HAIKU_DeleteDevice NULL
-
-/* End undefined functions */
 
 static SDL_VideoDevice * HAIKU_CreateDevice(void)
 {
     SDL_VideoDevice *device;
 
-    /* Initialize all variables that we clean on shutdown */
+    // Initialize all variables that we clean on shutdown
     device = (SDL_VideoDevice *) SDL_calloc(1, sizeof(SDL_VideoDevice));
 
-    device->driverdata = NULL; /* FIXME: Is this the cause of some of the
+    device->internal = NULL; /* FIXME: Is this the cause of some of the
                                   SDL_Quit() errors? */
 
-/* TODO: Figure out if any initialization needs to go here */
+// TODO: Figure out if any initialization needs to go here
 
-    /* Set the function pointers */
+    // Set the function pointers
     device->VideoInit = HAIKU_VideoInit;
     device->VideoQuit = HAIKU_VideoQuit;
     device->GetDisplayBounds = HAIKU_GetDisplayBounds;
@@ -106,12 +96,8 @@ static SDL_VideoDevice * HAIKU_CreateDevice(void)
     device->GL_SetSwapInterval = HAIKU_GL_SetSwapInterval;
     device->GL_GetSwapInterval = HAIKU_GL_GetSwapInterval;
     device->GL_SwapWindow = HAIKU_GL_SwapWindow;
-    device->GL_DeleteContext = HAIKU_GL_DeleteContext;
+    device->GL_DestroyContext = HAIKU_GL_DestroyContext;
 #endif
-
-    device->StartTextInput = HAIKU_StartTextInput;
-    device->StopTextInput = HAIKU_StopTextInput;
-    device->SetTextInputRect = HAIKU_SetTextInputRect;
 
     device->SetClipboardText = HAIKU_SetClipboardText;
     device->GetClipboardText = HAIKU_GetClipboardText;
@@ -130,8 +116,28 @@ VideoBootStrap HAIKU_bootstrap = {
 
 void HAIKU_DeleteDevice(SDL_VideoDevice * device)
 {
-    SDL_free(device->driverdata);
+    SDL_free(device->internal);
     SDL_free(device);
+}
+
+struct SDL_CursorData
+{
+    BCursor *cursor;
+};
+
+static SDL_Cursor *HAIKU_CreateCursorAndData(BCursor *bcursor)
+{
+    SDL_Cursor *cursor = (SDL_Cursor *)SDL_calloc(1, sizeof(*cursor));
+    if (cursor) {
+        SDL_CursorData *data = (SDL_CursorData *)SDL_calloc(1, sizeof(*data));
+        if (!data) {
+            SDL_free(cursor);
+            return NULL;
+        }
+        data->cursor = bcursor;
+        cursor->internal = data;
+    }
+    return cursor;
 }
 
 static SDL_Cursor * HAIKU_CreateSystemCursor(SDL_SystemCursor id)
@@ -167,12 +173,7 @@ static SDL_Cursor * HAIKU_CreateSystemCursor(SDL_SystemCursor id)
             return NULL;
     }
 
-    SDL_Cursor *cursor = (SDL_Cursor *) SDL_calloc(1, sizeof(*cursor));
-    if (cursor) {
-        cursor->driverdata = (void *)new BCursor(cursorId);
-    }
-
-    return cursor;
+    return HAIKU_CreateCursorAndData(new BCursor(cursorId));
 }
 
 static SDL_Cursor * HAIKU_CreateDefaultCursor()
@@ -182,18 +183,20 @@ static SDL_Cursor * HAIKU_CreateDefaultCursor()
 
 static void HAIKU_FreeCursor(SDL_Cursor * cursor)
 {
-    if (cursor->driverdata) {
-        delete (BCursor*) cursor->driverdata;
+    SDL_CursorData *data = cursor->internal;
+
+    if (data) {
+        delete data->cursor;
     }
+    SDL_free(data);
     SDL_free(cursor);
 }
 
 static SDL_Cursor * HAIKU_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
 {
-    SDL_Cursor *cursor;
     SDL_Surface *converted;
 
-    converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ARGB8888);
+    converted = SDL_ConvertSurface(surface, SDL_PIXELFORMAT_ARGB8888);
     if (!converted) {
         return NULL;
     }
@@ -202,26 +205,19 @@ static SDL_Cursor * HAIKU_CreateCursor(SDL_Surface * surface, int hot_x, int hot
 	cursorBitmap->SetBits(converted->pixels, converted->h * converted->pitch, 0, B_RGBA32);
     SDL_DestroySurface(converted);
 
-    cursor = (SDL_Cursor *) SDL_calloc(1, sizeof(*cursor));
-    if (cursor) {
-        cursor->driverdata = (void *)new BCursor(cursorBitmap, BPoint(hot_x, hot_y));
-    } else {
-        return NULL;
-    }
-
-    return cursor;
+    return HAIKU_CreateCursorAndData(new BCursor(cursorBitmap, BPoint(hot_x, hot_y)));
 }
 
-static int HAIKU_ShowCursor(SDL_Cursor *cursor)
+static bool HAIKU_ShowCursor(SDL_Cursor *cursor)
 {
 	SDL_Mouse *mouse = SDL_GetMouse();
 
 	if (!mouse) {
-		return 0;
+		return true;
 	}
 
 	if (cursor) {
-		BCursor *hCursor = (BCursor*)cursor->driverdata;
+		BCursor *hCursor = cursor->internal->cursor;
 		be_app->SetCursor(hCursor);
 	} else {
 		BCursor *hCursor = new BCursor(B_CURSOR_ID_NO_CURSOR);
@@ -229,14 +225,14 @@ static int HAIKU_ShowCursor(SDL_Cursor *cursor)
 		delete hCursor;
 	}
 
-	return 0;
+	return true;
 }
 
-static int HAIKU_SetRelativeMouseMode(SDL_bool enabled)
+static bool HAIKU_SetRelativeMouseMode(bool enabled)
 {
     SDL_Window *window = SDL_GetMouseFocus();
     if (!window) {
-      return 0;
+      return true;
     }
 
 	SDL_BWin *bewin = _ToBeWin(window);
@@ -249,7 +245,7 @@ static int HAIKU_SetRelativeMouseMode(SDL_bool enabled)
 		_SDL_GLView->SetEventMask(0, 0);
 	bewin->Unlock();
 
-    return 0;
+    return true;
 }
 
 static void HAIKU_MouseInit(SDL_VideoDevice *_this)
@@ -267,33 +263,33 @@ static void HAIKU_MouseInit(SDL_VideoDevice *_this)
 	SDL_SetDefaultCursor(HAIKU_CreateDefaultCursor());
 }
 
-int HAIKU_VideoInit(SDL_VideoDevice *_this)
+bool HAIKU_VideoInit(SDL_VideoDevice *_this)
 {
-    /* Initialize the Be Application for appserver interaction */
-    if (SDL_InitBeApp() < 0) {
-        return -1;
+    // Initialize the Be Application for appserver interaction
+    if (!SDL_InitBeApp()) {
+        return false;
     }
 
-    /* Initialize video modes */
+    // Initialize video modes
     HAIKU_InitModes(_this);
 
-    /* Init the keymap */
+    // Init the keymap
     HAIKU_InitOSKeymap();
 
     HAIKU_MouseInit(_this);
 
-    /* Assume we have a mouse and keyboard */
-    SDL_AddKeyboard(SDL_DEFAULT_KEYBOARD_ID, NULL, SDL_FALSE);
-    SDL_AddMouse(SDL_DEFAULT_MOUSE_ID, NULL, SDL_FALSE);
+    // Assume we have a mouse and keyboard
+    SDL_AddKeyboard(SDL_DEFAULT_KEYBOARD_ID, NULL, false);
+    SDL_AddMouse(SDL_DEFAULT_MOUSE_ID, NULL, false);
 
 #ifdef SDL_VIDEO_OPENGL
-        /* testgl application doesn't load library, just tries to load symbols */
-        /* is it correct? if so we have to load library here */
+        // testgl application doesn't load library, just tries to load symbols
+        // is it correct? if so we have to load library here
     HAIKU_GL_LoadLibrary(_this, NULL);
 #endif
 
-    /* We're done! */
-    return 0;
+    // We're done!
+    return true;
 }
 
 void HAIKU_VideoQuit(SDL_VideoDevice *_this)
@@ -305,16 +301,19 @@ void HAIKU_VideoQuit(SDL_VideoDevice *_this)
 }
 
 // just sticking this function in here so it's in a C++ source file.
-extern "C" { int HAIKU_OpenURL(const char *url); }
-int HAIKU_OpenURL(const char *url)
+extern "C"
+bool HAIKU_OpenURL(const char *url)
 {
     BUrl burl(url);
     const status_t rc = burl.OpenWithPreferredApplication(false);
-    return (rc == B_NO_ERROR) ? 0 : SDL_SetError("URL open failed (err=%d)", (int)rc);
+    if (rc != B_NO_ERROR) {
+        return SDL_SetError("URL open failed (err=%d)", (int)rc);
+    }
+    return true;
 }
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* SDL_VIDEO_DRIVER_HAIKU */
+#endif // SDL_VIDEO_DRIVER_HAIKU

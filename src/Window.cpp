@@ -63,29 +63,29 @@ namespace RavEngine {
         RGL::CreateSurfaceConfig surfaceConfig{ nullptr, 0 };
 
 #if _UWP
-        surfaceConfig.pointer = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WINRT_WINDOW_POINTER, NULL);
+        surfaceConfig.pointer = SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WINRT_WINDOW_POINTER, NULL);
 #elif _WIN32
-        HWND hwnd = (HWND)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+        HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
         surfaceConfig.pointer = &hwnd;
 #elif TARGET_OS_IPHONE
-        surfaceConfig.pointer = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER, NULL);
+        surfaceConfig.pointer = SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER, NULL);
 #elif __APPLE__
-        surfaceConfig.pointer = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
+        surfaceConfig.pointer = SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
 #elif __linux__ && !__ANDROID__
         if (SDL_strcmp(SDL_GetCurrentVideoDriver(), "x11") == 0) {
-            auto xdisplay = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
+            auto xdisplay = SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
             auto xwindow = SDL_GetNumberProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
             surfaceConfig.pointer = xdisplay;
             surfaceConfig.pointer2 = xwindow;
         }
         else if (SDL_strcmp(SDL_GetCurrentVideoDriver(), "wayland") == 0) {
-            auto display = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, NULL);
-            auto surface = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, NULL);
+            auto display = SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, NULL);
+            auto surface = SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, NULL);
             surfaceConfig.pointer = display;
             surfaceConfig.pointer2 = reinterpret_cast<uintptr_t>(surface);
         }
 #elif __ANDROID__
-        surfaceConfig.pointer = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, NULL);
+        surfaceConfig.pointer = SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, NULL);
 #elif __EMSCRIPTEN__
         // noop
 #else
@@ -103,7 +103,7 @@ namespace RavEngine {
     float Window::QueryScaleFactor() const{
 # if _WIN32 && !_UWP
 
-        HWND hwnd = (HWND)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+        HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
         auto monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
         DEVICE_SCALE_FACTOR fac;
         if (GetScaleFactorForMonitor(monitor, &fac) == S_OK) {
@@ -160,5 +160,13 @@ namespace RavEngine {
 		SDL_SetWindowFullscreen(window, flag);
 		
 	}
+
+    void Window::SetRelativeMouseMode(bool mode){
+        SDL_SetWindowRelativeMouseMode(window, mode);
+    }
+
+    bool Window::GetRelativeMouseMode(){
+        return SDL_GetWindowRelativeMouseMode(window);
+    }
 }
 #endif

@@ -39,6 +39,7 @@
 #define HAVE_MATH_H 1
 #define HAVE_SIGNAL_H 1
 #define HAVE_STDARG_H 1
+#define HAVE_STDBOOL_H 1
 #define HAVE_STDDEF_H 1
 #define HAVE_STDINT_H 1
 #define HAVE_STDIO_H 1
@@ -105,6 +106,10 @@
 #define HAVE_FLOORF 1
 #define HAVE_FMOD   1
 #define HAVE_FMODF  1
+#define HAVE_ISINF  1
+#define HAVE_ISINF_FLOAT_MACRO 1
+#define HAVE_ISNAN  1
+#define HAVE_ISNAN_FLOAT_MACRO 1
 #define HAVE_LOG    1
 #define HAVE_LOGF   1
 #define HAVE_LOG10  1
@@ -194,7 +199,7 @@
 #define SDL_VIDEO_DRIVER_X11_XRANDR 1
 #define SDL_VIDEO_DRIVER_X11_XSCRNSAVER 1
 #define SDL_VIDEO_DRIVER_X11_XSHAPE 1
-#define SDL_VIDEO_DRIVER_X11_HAS_XKBKEYCODETOKEYSYM 1
+#define SDL_VIDEO_DRIVER_X11_HAS_XKBLOOKUPKEYSYM 1
 
 #ifdef MAC_OS_X_VERSION_10_8
 /*
@@ -255,6 +260,8 @@
 #endif
 #endif
 
+#define SDL_GPU_VULKAN SDL_VIDEO_VULKAN
+
 #ifndef SDL_VIDEO_METAL
 #if SDL_PLATFORM_SUPPORTS_METAL
 #define SDL_VIDEO_METAL 1
@@ -262,6 +269,8 @@
 #define SDL_VIDEO_METAL 0
 #endif
 #endif
+
+#define SDL_GPU_METAL SDL_VIDEO_METAL
 
 /* Enable system power support */
 #define SDL_POWER_MACOSX 1

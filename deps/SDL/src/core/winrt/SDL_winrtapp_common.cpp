@@ -20,30 +20,14 @@
 */
 #include "SDL_internal.h"
 
-#include "SDL_winrtapp_direct3d.h"
-#include "SDL_winrtapp_xaml.h"
-
 #include <wrl.h>
 
 int (*WINRT_SDLAppEntryPoint)(int, char **) = NULL;
 
 extern "C"
-int SDL_RunApp(int, char**, SDL_main_func mainFunction, void * xamlBackgroundPanel)
+SDL_WinRT_DeviceFamily SDL_GetWinRTDeviceFamily()
 {
-    if (xamlBackgroundPanel) {
-        return SDL_WinRTInitXAMLApp(mainFunction, xamlBackgroundPanel);
-    } else {
-        if (FAILED(Windows::Foundation::Initialize(RO_INIT_MULTITHREADED))) {
-            return 1;
-        }
-        return SDL_WinRTInitNonXAMLApp(mainFunction);
-    }
-}
-
-extern "C"
-SDL_WinRT_DeviceFamily SDL_WinRTGetDeviceFamily()
-{
-#if NTDDI_VERSION >= NTDDI_WIN10 /* !!! FIXME: I have no idea if this is the right test. This is a UWP API, I think. Older windows should...just return "mobile"? I don't know. --ryan. */
+#if NTDDI_VERSION >= NTDDI_WIN10 // !!! FIXME: I have no idea if this is the right test. This is a UWP API, I think. Older windows should...just return "mobile"? I don't know. --ryan.
     Platform::String ^ deviceFamily = Windows::System::Profile::AnalyticsInfo::VersionInfo->DeviceFamily;
 
     if (deviceFamily->Equals("Windows.Desktop")) {

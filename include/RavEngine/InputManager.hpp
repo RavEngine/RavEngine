@@ -327,17 +327,6 @@ namespace RavEngine {
 		}
 		
 		/**
-		 * Set the state of relative mouse mode. If true, the mouse will send events even if outside the application window. If false, the mouse will only send events if inside the application window.
-		 * @param mode the new state
-		 */
-		static void SetRelativeMouseMode(bool mode);
-		
-		/**
-		 * @returns the current relative mouse mode
-		 */
-		static bool GetRelativeMouseMode();
-
-		/**
 		 * Bind an action map to a member function
 		 * @param name the name of the action map to bind to
 		 * @param thisptr the object to bind to. Use `this` if within the class you want to bind to

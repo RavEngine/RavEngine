@@ -28,18 +28,18 @@
 #include "../SDL_sysvideo.h"
 #include "../SDL_egl_c.h"
 
-/* OpenGLES functions */
+// OpenGLES functions
 #define WINRT_GLES_GetAttribute    SDL_EGL_GetAttribute
 #define WINRT_GLES_GetProcAddress  SDL_EGL_GetProcAddressInternal
 #define WINRT_GLES_SetSwapInterval SDL_EGL_SetSwapInterval
 #define WINRT_GLES_GetSwapInterval SDL_EGL_GetSwapInterval
-#define WINRT_GLES_DeleteContext   SDL_EGL_DeleteContext
+#define WINRT_GLES_DestroyContext   SDL_EGL_DestroyContext
 
-extern int WINRT_GLES_LoadLibrary(SDL_VideoDevice *_this, const char *path);
+extern bool WINRT_GLES_LoadLibrary(SDL_VideoDevice *_this, const char *path);
 extern void WINRT_GLES_UnloadLibrary(SDL_VideoDevice *_this);
 extern SDL_GLContext WINRT_GLES_CreateContext(SDL_VideoDevice *_this, SDL_Window *window);
-extern int WINRT_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window);
-extern int WINRT_GLES_MakeCurrent(SDL_VideoDevice *_this, SDL_Window *window, SDL_GLContext context);
+extern bool WINRT_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window);
+extern bool WINRT_GLES_MakeCurrent(SDL_VideoDevice *_this, SDL_Window *window, SDL_GLContext context);
 
 #ifdef __cplusplus
 
@@ -55,13 +55,13 @@ typedef EGLDisplay(EGLAPIENTRY *eglGetDisplay_Old_Function)(WINRT_EGLNativeWindo
 typedef EGLSurface(EGLAPIENTRY *eglCreateWindowSurface_Old_Function)(EGLDisplay, EGLConfig, WINRT_EGLNativeWindowType_Old, const EGLint *);
 typedef HRESULT(EGLAPIENTRY *CreateWinrtEglWindow_Old_Function)(Microsoft::WRL::ComPtr<IUnknown>, int, IUnknown **result);
 
-#endif /* __cplusplus */
+#endif // __cplusplus
 
 /* Function pointer typedefs for 'new' ANGLE/WinRT functions, which, unlike
  * the old functions, do not require C++ support and work with plain C.
  */
 typedef EGLDisplay(EGLAPIENTRY *eglGetPlatformDisplayEXT_Function)(EGLenum, void *, const EGLint *);
 
-#endif /* SDL_VIDEO_DRIVER_WINRT && SDL_VIDEO_OPENGL_EGL */
+#endif // SDL_VIDEO_DRIVER_WINRT && SDL_VIDEO_OPENGL_EGL
 
-#endif /* SDL_winrtopengles_h_ */
+#endif // SDL_winrtopengles_h_

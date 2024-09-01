@@ -105,7 +105,7 @@ extern SDL_DECLSPEC Uint64 SDLCALL SDL_GetPerformanceFrequency(void);
  * waits at least the specified time, but possibly longer due to OS
  * scheduling.
  *
- * \param ms the number of milliseconds to delay
+ * \param ms the number of milliseconds to delay.
  *
  * \since This function is available since SDL 3.0.0.
  */
@@ -115,10 +115,10 @@ extern SDL_DECLSPEC void SDLCALL SDL_Delay(Uint32 ms);
  * Wait a specified number of nanoseconds before returning.
  *
  * This function waits a specified number of nanoseconds before returning. It
- * waits at least the specified time, but possibly longer due to OS
- * scheduling.
+ * will attempt to wait as close to the requested time as possible, busy
+ * waiting if necessary, but could return later due to OS scheduling.
  *
- * \param ns the number of nanoseconds to delay
+ * \param ns the number of nanoseconds to delay.
  *
  * \since This function is available since SDL 3.0.0.
  */
@@ -137,11 +137,12 @@ typedef Uint32 SDL_TimerID;
  * The callback function is passed the current timer interval and returns the
  * next timer interval, in milliseconds. If the returned value is the same as
  * the one passed in, the periodic alarm continues, otherwise a new alarm is
- * scheduled. If the callback returns 0, the periodic alarm is cancelled.
+ * scheduled. If the callback returns 0, the periodic alarm is canceled and
+ * will be removed.
  *
  * \param userdata an arbitrary pointer provided by the app through
  *                 SDL_AddTimer, for its own use.
- * \param timerID the current timer being processed
+ * \param timerID the current timer being processed.
  * \param interval the current callback time interval.
  * \returns the new callback time interval, or 0 to disable further runs of
  *          the callback.
@@ -164,7 +165,7 @@ typedef Uint32 (SDLCALL *SDL_TimerCallback)(void *userdata, SDL_TimerID timerID,
  * The callback function is passed the current timer interval and the user
  * supplied parameter from the SDL_AddTimer() call and should return the next
  * timer interval. If the value returned from the callback is 0, the timer is
- * canceled.
+ * canceled and will be removed.
  *
  * The callback is run on a separate thread, and for short timeouts can
  * potentially be called before this function returns.
@@ -178,11 +179,11 @@ typedef Uint32 (SDLCALL *SDL_TimerCallback)(void *userdata, SDL_TimerID timerID,
  * time with SDL_GetTicksNS() or SDL_GetPerformanceCounter() in case your
  * callback needs to adjust for variances.
  *
- * \param interval the timer delay, in milliseconds, passed to `callback`
+ * \param interval the timer delay, in milliseconds, passed to `callback`.
  * \param callback the SDL_TimerCallback function to call when the specified
- *                 `interval` elapses
- * \param userdata a pointer that is passed to `callback`
- * \returns a timer ID or 0 if an error occurs; call SDL_GetError() for more
+ *                 `interval` elapses.
+ * \param userdata a pointer that is passed to `callback`.
+ * \returns a timer ID or 0 on failure; call SDL_GetError() for more
  *          information.
  *
  * \threadsafety It is safe to call this function from any thread.
@@ -200,11 +201,12 @@ extern SDL_DECLSPEC SDL_TimerID SDLCALL SDL_AddTimer(Uint32 interval, SDL_TimerC
  * The callback function is passed the current timer interval and returns the
  * next timer interval, in nanoseconds. If the returned value is the same as
  * the one passed in, the periodic alarm continues, otherwise a new alarm is
- * scheduled. If the callback returns 0, the periodic alarm is cancelled.
+ * scheduled. If the callback returns 0, the periodic alarm is canceled and
+ * will be removed.
  *
  * \param userdata an arbitrary pointer provided by the app through
  *                 SDL_AddTimer, for its own use.
- * \param timerID the current timer being processed
+ * \param timerID the current timer being processed.
  * \param interval the current callback time interval.
  * \returns the new callback time interval, or 0 to disable further runs of
  *          the callback.
@@ -227,7 +229,7 @@ typedef Uint64 (SDLCALL *SDL_NSTimerCallback)(void *userdata, SDL_TimerID timerI
  * The callback function is passed the current timer interval and the user
  * supplied parameter from the SDL_AddTimerNS() call and should return the
  * next timer interval. If the value returned from the callback is 0, the
- * timer is canceled.
+ * timer is canceled and will be removed.
  *
  * The callback is run on a separate thread, and for short timeouts can
  * potentially be called before this function returns.
@@ -241,11 +243,11 @@ typedef Uint64 (SDLCALL *SDL_NSTimerCallback)(void *userdata, SDL_TimerID timerI
  * time with SDL_GetTicksNS() or SDL_GetPerformanceCounter() in case your
  * callback needs to adjust for variances.
  *
- * \param interval the timer delay, in nanoseconds, passed to `callback`
+ * \param interval the timer delay, in nanoseconds, passed to `callback`.
  * \param callback the SDL_TimerCallback function to call when the specified
- *                 `interval` elapses
- * \param userdata a pointer that is passed to `callback`
- * \returns a timer ID or 0 if an error occurs; call SDL_GetError() for more
+ *                 `interval` elapses.
+ * \param userdata a pointer that is passed to `callback`.
+ * \returns a timer ID or 0 on failure; call SDL_GetError() for more
  *          information.
  *
  * \threadsafety It is safe to call this function from any thread.
@@ -260,15 +262,15 @@ extern SDL_DECLSPEC SDL_TimerID SDLCALL SDL_AddTimerNS(Uint64 interval, SDL_NSTi
 /**
  * Remove a timer created with SDL_AddTimer().
  *
- * \param id the ID of the timer to remove
- * \returns 0 on success or a negative error code on failure; call
- *          SDL_GetError() for more information.
+ * \param id the ID of the timer to remove.
+ * \returns SDL_TRUE on success or SDL_FALSE on failure; call SDL_GetError()
+ *          for more information.
  *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_AddTimer
  */
-extern SDL_DECLSPEC int SDLCALL SDL_RemoveTimer(SDL_TimerID id);
+extern SDL_DECLSPEC SDL_bool SDLCALL SDL_RemoveTimer(SDL_TimerID id);
 
 
 /* Ends C function definitions when using C++ */

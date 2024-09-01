@@ -60,7 +60,8 @@ static inline char TypeCharacter(SDL_Keycode key, uint32_t modifiers){
 		case SDL_SCANCODE_DELETE:
 			break;
 		default:
-			code = static_cast<char>(SDL_GetKeyFromScancode(static_cast<SDL_Scancode>(key)));
+            //TODO: can the 'true' flag help with symbol typing?
+			code = static_cast<char>(SDL_GetKeyFromScancode(static_cast<SDL_Scancode>(key),SDL_KMOD_NONE,false));
 			if (modifiers & Rml::Input::KeyModifier::KM_SHIFT || modifiers & Rml::Input::KeyModifier::KM_CAPSLOCK){
 				code = std::toupper(code);
 			}
