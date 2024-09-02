@@ -40,7 +40,7 @@ layout(std430, binding = 3) readonly buffer weightsBuffer
 };
 
 
-layout(push_constant) uniform UniformBufferObject{
+layout(push_constant, scalar) uniform UniformBufferObject{
 	uint numObjects;
 	uint numVertices;
 	uint numBones;
