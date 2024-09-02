@@ -293,7 +293,7 @@ constexpr static uint32_t bindlessOffset = 0;
 
 void CommandBufferMTL::SetVertexTexture(const TextureView& view, uint32_t index){
     if (view.texture.mtl.representsBindless){
-        [currentCommandEncoder setVertexBuffer:owningQueue->owningDevice->globalTextureBuffer offset:0 atIndex:bindlessOffset];
+        [currentCommandEncoder setVertexBuffer:owningQueue->owningDevice->globalTextureBuffer offset:0 atIndex:index];
         return;
     }
     
@@ -302,7 +302,7 @@ void CommandBufferMTL::SetVertexTexture(const TextureView& view, uint32_t index)
 }
 void CommandBufferMTL::SetFragmentTexture(const TextureView& view, uint32_t index){
     if (view.texture.mtl.representsBindless){
-        [currentCommandEncoder setFragmentBuffer:owningQueue->owningDevice->globalTextureBuffer offset:0 atIndex:bindlessOffset];
+        [currentCommandEncoder setFragmentBuffer:owningQueue->owningDevice->globalTextureBuffer offset:0 atIndex:index];
         return;
     }
     
@@ -311,7 +311,7 @@ void CommandBufferMTL::SetFragmentTexture(const TextureView& view, uint32_t inde
 }
 void CommandBufferMTL::SetComputeTexture(const TextureView& view, uint32_t index){
     if (view.texture.mtl.representsBindless){
-        [currentComputeCommandEncoder setBuffer:owningQueue->owningDevice->globalTextureBuffer offset:0 atIndex:bindlessOffset];
+        [currentComputeCommandEncoder setBuffer:owningQueue->owningDevice->globalTextureBuffer offset:0 atIndex:index];
         return;
     }
     
