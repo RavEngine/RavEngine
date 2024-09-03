@@ -7,7 +7,7 @@
 #define _UWP 0
 #endif
 
-#define STATIC(a) decltype(a) a
+#define RGL_STATIC(a) decltype(a) a
 
 namespace RGL {
 	extern API currentAPI;

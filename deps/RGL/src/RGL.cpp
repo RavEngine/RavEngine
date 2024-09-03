@@ -34,7 +34,7 @@
 
 using namespace RGL;
 
-STATIC(RGL::currentAPI) = API::Uninitialized;
+RGL_STATIC(RGL::currentAPI) = API::Uninitialized;
 
 namespace RGL {
 

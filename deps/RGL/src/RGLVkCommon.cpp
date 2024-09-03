@@ -8,7 +8,7 @@
 #include <cstring>
 #include <vk_mem_alloc.h>
 
-STATIC(RGL::instance) = VK_NULL_HANDLE;
+RGL_STATIC(RGL::instance) = VK_NULL_HANDLE;
 
 namespace RGL {
 
