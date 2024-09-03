@@ -1190,25 +1190,28 @@ struct LightingType{
 			// rotate view space to each cubemap direction based on the index
 			switch (index) {
 				case 0: {			// +x
-					viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 1.0, 0.0, 0.0), glm::vec3(0.0,-1.0, 0.0));
+                    viewMat = glm::toMat4(glm::quat(glm::vec3{0,deg_to_rad(90),0}));
 				} break;
 				case 1: {			// -x
-					viewMat = glm::lookAt(lightPos, lightPos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0,-1.0, 0.0));
+                    viewMat = glm::toMat4(glm::quat(glm::vec3{0,deg_to_rad(-90),0}));
 				} break;
 				case 2: {			// +y
-					viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0));
+                    viewMat = glm::toMat4(glm::quat(glm::vec3{deg_to_rad(-90),0,0}));
 				} break;
 				case 3: {			// -y
-					viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,-1.0, 0.0), glm::vec3(0.0, 0.0,-1.0));
+                    viewMat = glm::toMat4(glm::quat(glm::vec3{deg_to_rad(90),0,0}));
 				} break;
 				case 4: {			// +z
-					viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 0.0, 1.0), glm::vec3(0.0,-1.0, 0.0));
+                    viewMat = glm::mat4(1);
 				} break;
 				case 5: {			// -z
-					viewMat = glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 0.0,-1.0), glm::vec3(0.0,-1.0, 0.0));
+                    viewMat = glm::toMat4(glm::quat(glm::vec3{0,deg_to_rad(180),0}));
 				} break;
 			}
-
+            
+            // center around light
+            viewMat = glm::translate(viewMat, -lightPos);
+            
 			auto camPos = light.position;
 
 			auto& origLight = Entity(owner).GetComponent<PointLight>();
