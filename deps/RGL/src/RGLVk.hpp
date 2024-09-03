@@ -8,9 +8,7 @@
 #include <RGL/TextureFormat.hpp>
 #include <RGL/Pipeline.hpp>
 #include <volk.h>
-#if __has_include(<vk_enum_string_helper.h>)
-#include <vk_enum_string_helper.h> 
-#endif
+
 #if __has_include(<vulkan/vk_enum_string_helper.h>)
 #include <vulkan/vk_enum_string_helper.h> 
 #endif
