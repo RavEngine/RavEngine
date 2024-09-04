@@ -1496,7 +1496,7 @@ struct LightingType{
 				worldOwning->Filter([](GUIComponent& gui) {
 					gui.Render();	// kicks off commands for rendering UI
 				});
-
+#ifndef NDEBUG
 				if (debuggerContext) {
 					auto& dbg = *debuggerContext;
 					dbg.SetDimensions(view.pixelDimensions.width, view.pixelDimensions.height);
@@ -1505,6 +1505,7 @@ struct LightingType{
 					dbg.Render();
 				}
 				mainCommandBuffer->EndRenderDebugMarker();
+#endif
 				RVE_PROFILE_SECTION_END(gui);
 #ifndef NDEBUG
 				// process debug shapes
