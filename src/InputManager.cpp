@@ -6,6 +6,7 @@
 #include "Debug.hpp"
 #include "App.hpp"
 #include <phmap.h>
+#include "Profile.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -27,6 +28,7 @@ vector2 RavEngine::InputManager::GetMousePosPixels(float scaleFactor)
 }
 
 void InputManager::ProcessActionID(int id, ActionState state_in, CID controller){
+	RVE_PROFILE_FN;
 	if (CodeToAction.contains(id)){
 		//get the actions that need to be run
 		for(const auto& actionName : CodeToAction[id]){
@@ -52,6 +54,7 @@ void InputManager::ProcessActionID(int id, ActionState state_in, CID controller)
 }
 
 void InputManager::ProcessAxisID(int ID, float value, CID controller){
+	RVE_PROFILE_FN;
 	if (CodeToAxis.contains(ID)){
 		//buffer the input
 		for(const auto& axisName : CodeToAxis[ID]){
@@ -62,7 +65,7 @@ void InputManager::ProcessAxisID(int ID, float value, CID controller){
 }
 
 void InputManager::TickAxes(){
-	
+	RVE_PROFILE_FN;
 	for(auto& binding : AxisBindings){
 		//get each binding
 		for(const auto& axis : binding.second.bindings){
@@ -94,7 +97,7 @@ void InputManager::TickAxes(){
 }
 
 void InputManager::CleanupBindings(){
-	
+	RVE_PROFILE_FN;
 	//clean up invalid action bindings
 	for(auto& binding : ActionBindings){
 		binding.second.remove_if([](const ActionBinding& b) -> bool{

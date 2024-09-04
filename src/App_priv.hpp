@@ -274,14 +274,15 @@ int App::run(int argc, char** argv) {
 		@autoreleasepool{
 #endif
 
-			//setup framerate scaling for next frame
-			auto now = clocktype::now();
+		//setup framerate scaling for next frame
+		auto now = clocktype::now();
 		//will cause engine to run in slow motion if the frame rate is <= 1fps
 		deltaTimeMicroseconds = std::min(duration_cast<timeDiff>(now - lastFrameTime), maxTimeStep);
 		float deltaSeconds = std::chrono::duration<decltype(deltaSeconds)>(deltaTimeMicroseconds).count();
 		time += deltaSeconds;
 		currentScale = deltaSeconds * evalNormal;
 
+		RVE_PROFILE_SECTION(events, "Process all Events");
 		auto windowflags = SDL_GetWindowFlags(window->window);
 		while (SDL_PollEvent(&event)) {
             switch (event.type) {
@@ -317,10 +318,11 @@ int App::run(int argc, char** argv) {
 		if (inputManager) {
 			inputManager->TickAxes();
 		}
+		RVE_PROFILE_SECTION_END(events);
 
 		auto windowSize = window->GetSizeInPixels();
 		auto scale = window->GetDPIScale();
-		Profile::BeginFrame(Profile::TickWorld);
+		RVE_PROFILE_SECTION(tickallworlds, "Tick All Worlds");
 #endif
 		//tick all worlds
 		for (const auto world : loadedWorlds) {
@@ -343,7 +345,7 @@ int App::run(int argc, char** argv) {
 				front();
 			}
 		}
-		Profile::EndFrame(Profile::TickWorld);
+		RVE_PROFILE_SECTION_END(tickallworlds);
 #if !RVE_SERVER
 		auto nextTexture = window->GetNextSwapchainImage();
 		mainWindowView.collection.finalFramebuffer = nextTexture.texture;

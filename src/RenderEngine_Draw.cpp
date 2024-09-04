@@ -1523,7 +1523,7 @@ struct LightingType{
 				mainCommandBuffer->EndRenderDebugMarker();
 				RVE_PROFILE_SECTION_END(debugShapes);
 
-				RVE_PROFILE_SECTION(wireframes, "Enode Debug Wireframes");
+				RVE_PROFILE_SECTION(wireframes, "Encode Debug Wireframes");
 				mainCommandBuffer->BeginRenderDebugMarker("Debug Wireframes");
 				Im3d::AppData& data = Im3d::GetAppData();
 
