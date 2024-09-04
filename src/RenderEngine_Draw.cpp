@@ -1532,33 +1532,29 @@ struct LightingType{
 					uint32_t nverts = 0;
 				} im3dMeta;
 
-				data.m_appData = &im3dMeta;
-				 
-				// calculate the size of things
-				data.drawCallback = [](const Im3d::DrawList& list) {
-					auto& data = Im3d::GetAppData();
-					auto metaData = static_cast<DrawListMetadata*>(data.m_appData);
-					metaData->nverts += list.m_vertexCount;
-				};
-				Im3d::GetContext().draw();
+                const auto& im3dcontext = Im3d::GetContext();
+                Im3d::EndFrame();
+                for(int i = 0; i < im3dcontext.getDrawListCount(); i++){
+                    im3dMeta.nverts += im3dcontext.getDrawLists()[i].m_vertexCount;
+                }
+
+                // resize buffer
+                if (im3dMeta.nverts > debugRenderBufferSize) {
+                    debugRenderBufferUpload = device->CreateBuffer({
+                        im3dMeta.nverts,
+                        {.VertexBuffer = true},
+                        sizeof(Im3d::VertexData),
+                        RGL::BufferAccess::Shared,
+                    });
+                    debugRenderBufferSize = im3dMeta.nverts;
+                }
 
 				data.m_appData = (void*)&viewproj;
 				debugRenderBufferOffset = 0;
 				data.drawCallback = [](const Im3d::DrawList& list) {
 					GetApp()->GetRenderEngine().DebugRender(list);
 				};
-
-				// resize buffer
-				if (im3dMeta.nverts > debugRenderBufferSize) {
-					debugRenderBufferUpload = device->CreateBuffer({
-						im3dMeta.nverts,
-						{.VertexBuffer = true},
-						sizeof(Im3d::VertexData),
-						RGL::BufferAccess::Shared,
-					});
-					debugRenderBufferSize = im3dMeta.nverts;
-				}
-
+                
                 mainCommandBuffer->SetViewport(fullSizeViewport);
                 mainCommandBuffer->SetScissor(fullSizeScissor);
 				Im3d::GetContext().draw();

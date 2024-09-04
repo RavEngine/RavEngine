@@ -228,6 +228,9 @@ struct AudioPlayer;
 #endif
 
 	private:
+        
+        void Tick();
+        
         float currentScale = 0.01f;
         
 		Ref<World> renderWorld;

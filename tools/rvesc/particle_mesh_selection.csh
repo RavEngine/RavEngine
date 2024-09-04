@@ -67,6 +67,8 @@ void main(){
 
     // get the mesh for this particle from the user
     uint meshID = choose_mesh(particleData, particleID);
+    
+    meshID = min(meshID, config[0].numMeshes - 1);  // sanity check
 
     // increment the count for the mesh
     uint localOffset = atomicAdd(drawCommands[meshID].instanceCount, 1);

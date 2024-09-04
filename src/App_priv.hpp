@@ -311,119 +311,9 @@ int App::run(int argc, char** argv) {
 #endif
 			}
 		}
-
-#ifndef NDEBUG
-		RenderEngine::debuggerInput->TickAxes();
-#endif
-		if (inputManager) {
-			inputManager->TickAxes();
-		}
-		RVE_PROFILE_SECTION_END(events);
-
-		auto windowSize = window->GetSizeInPixels();
-		auto scale = window->GetDPIScale();
-		RVE_PROFILE_SECTION(tickallworlds, "Tick All Worlds");
-#endif
-		//tick all worlds
-		for (const auto world : loadedWorlds) {
-			world->Tick(currentScale);
-#if !RVE_SERVER
-			world->Filter([=](GUIComponent& gui) {
-				if (gui.Mode == GUIComponent::RenderMode::Screenspace) {
-					gui.SetDimensions(windowSize.width, windowSize.height);
-					gui.SetDPIScale(scale);
-				}
-				gui.Update();
-			});
-#endif
-		}
-
-		//process main thread tasks
-		{
-			Function<void(void)> front;
-			while (main_tasks.try_dequeue(front)) {
-				front();
-			}
-		}
-		RVE_PROFILE_SECTION_END(tickallworlds);
-#if !RVE_SERVER
-		auto nextTexture = window->GetNextSwapchainImage();
-		mainWindowView.collection.finalFramebuffer = nextTexture.texture;
-
-		// get the cameras to render
-		auto allCameras = renderWorld->GetAllComponentsOfType<CameraComponent>();
-
-		if (!allCameras)
-		{
-			Debug::Fatal("Cannot render: World does not have a camera!");
-		}
-		mainWindowView.camDatas.clear();
-		for (const auto& camera : *allCameras) {
-			if (!camera.IsActive()) {
-				continue;
-			}
-			auto projOnly = camera.GenerateProjectionMatrix(windowSize.width, windowSize.height);
-			auto viewOnly = camera.GenerateViewMatrix();
-			auto viewProj = projOnly * viewOnly;
-			auto camPos = camera.GetOwner().GetTransform().GetWorldPosition();
-			
-			auto viewportOverride = camera.viewportOverride;
-			mainWindowView.camDatas.push_back(RenderViewCollection::camData{ viewProj, projOnly, viewOnly, camPos,{camera.nearClip, camera.farClip} ,viewportOverride });
-		}
-
-		mainWindowView.pixelDimensions = window->GetSizeInPixels();
-
-		std::vector<RenderViewCollection> allViews;
-		allViews.push_back(mainWindowView);
-
-#ifdef RVE_XR_AVAILABLE
-		// update OpenXR data if it is requested
-		std::pair<std::vector<XrView>, XrFrameState> xrBeginData;
-		if (wantsXR) {
-			xrBeginData = OpenXRIntegration::BeginXRFrame();
-			OpenXRIntegration::UpdateXRTargetCollections(xrRenderViewCollections, xrBeginData.first);
-			allViews.insert(allViews.end(), xrRenderViewCollections.begin(), xrRenderViewCollections.end());
-		}
-#endif
-
-		auto mainCommandBuffer = Renderer->Draw(renderWorld, allViews,scale);
-
-
-		// show the results to the user
-		RGL::CommitConfig commitconfig{
-			.signalFence = window->swapchainFence,
-		};
-		Profile::BeginFrame(Profile::RenderExecuteCommandlist);
-		mainCommandBuffer->Commit(commitconfig);
-		mainCommandBuffer->BlockUntilCompleted();
-		Profile::EndFrame(Profile::RenderExecuteCommandlist);
-
-		window->swapchain->Present(nextTexture.presentConfig);
-		Profile::EndTick();
-
-#ifdef RVE_XR_AVAILABLE
-		if (wantsXR) {
-			OpenXRIntegration::EndXRFrame(xrBeginData.second);
-		}
-#endif
-		if (GetAudioActive()) {
-			player->SetWorld(renderWorld);
-		}
-		//make up the difference
-		//can't use sleep because sleep is not very accurate
-		/*clocktype::duration work_time;
-		do{
-			auto workEnd = clocktype::now();
-			work_time = workEnd - now;
-			auto delta = min_tick_time - work_time;
-			if (delta > std::chrono::duration<double, std::milli>(3)) {
-				auto dc = std::chrono::duration_cast<std::chrono::milliseconds>(delta);
-				std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(dc.count()-1));
-			}
-		}while (work_time < min_tick_time);*/
-	skip_xr_frame:
-
-		lastFrameTime = now;
+            
+        Tick();
+            lastFrameTime = now;
 #if __APPLE__
 		}	// end of @autoreleasepool
 #endif
@@ -431,6 +321,129 @@ int App::run(int argc, char** argv) {
 #endif  // !RVE_SERVER
 	
     return OnShutdown();
+}
+
+void App::Tick(){
+#if __APPLE__
+    @autoreleasepool{
+#endif
+        
+#ifndef NDEBUG
+        RenderEngine::debuggerInput->TickAxes();
+#endif
+        if (inputManager) {
+            inputManager->TickAxes();
+        }
+        RVE_PROFILE_SECTION_END(events);
+
+#if !RVE_SERVER
+        auto windowSize = window->GetSizeInPixels();
+        auto scale = window->GetDPIScale();
+#endif
+        RVE_PROFILE_SECTION(tickallworlds, "Tick All Worlds");
+        //tick all worlds
+        for (const auto world : loadedWorlds) {
+            world->Tick(currentScale);
+#if !RVE_SERVER
+            world->Filter([=](GUIComponent& gui) {
+                if (gui.Mode == GUIComponent::RenderMode::Screenspace) {
+                    gui.SetDimensions(windowSize.width, windowSize.height);
+                    gui.SetDPIScale(scale);
+                }
+                gui.Update();
+            });
+#endif
+        }
+
+        //process main thread tasks
+        {
+            Function<void(void)> front;
+            while (main_tasks.try_dequeue(front)) {
+                front();
+            }
+        }
+        RVE_PROFILE_SECTION_END(tickallworlds);
+#if !RVE_SERVER
+        auto nextTexture = window->GetNextSwapchainImage();
+        mainWindowView.collection.finalFramebuffer = nextTexture.texture;
+
+        // get the cameras to render
+        auto allCameras = renderWorld->GetAllComponentsOfType<CameraComponent>();
+
+        if (!allCameras)
+        {
+            Debug::Fatal("Cannot render: World does not have a camera!");
+        }
+        mainWindowView.camDatas.clear();
+        for (const auto& camera : *allCameras) {
+            if (!camera.IsActive()) {
+                continue;
+            }
+            auto projOnly = camera.GenerateProjectionMatrix(windowSize.width, windowSize.height);
+            auto viewOnly = camera.GenerateViewMatrix();
+            auto viewProj = projOnly * viewOnly;
+            auto camPos = camera.GetOwner().GetTransform().GetWorldPosition();
+            
+            auto viewportOverride = camera.viewportOverride;
+            mainWindowView.camDatas.push_back(RenderViewCollection::camData{ viewProj, projOnly, viewOnly, camPos,{camera.nearClip, camera.farClip} ,viewportOverride });
+        }
+
+        mainWindowView.pixelDimensions = window->GetSizeInPixels();
+
+        std::vector<RenderViewCollection> allViews;
+        allViews.push_back(mainWindowView);
+
+#ifdef RVE_XR_AVAILABLE
+        // update OpenXR data if it is requested
+        std::pair<std::vector<XrView>, XrFrameState> xrBeginData;
+        if (wantsXR) {
+            xrBeginData = OpenXRIntegration::BeginXRFrame();
+            OpenXRIntegration::UpdateXRTargetCollections(xrRenderViewCollections, xrBeginData.first);
+            allViews.insert(allViews.end(), xrRenderViewCollections.begin(), xrRenderViewCollections.end());
+        }
+#endif
+
+        auto mainCommandBuffer = Renderer->Draw(renderWorld, allViews,scale);
+
+
+        // show the results to the user
+        RGL::CommitConfig commitconfig{
+            .signalFence = window->swapchainFence,
+        };
+        Profile::BeginFrame(Profile::RenderExecuteCommandlist);
+        mainCommandBuffer->Commit(commitconfig);
+        mainCommandBuffer->BlockUntilCompleted();
+        Profile::EndFrame(Profile::RenderExecuteCommandlist);
+
+        window->swapchain->Present(nextTexture.presentConfig);
+        Profile::EndTick();
+
+#ifdef RVE_XR_AVAILABLE
+        if (wantsXR) {
+            OpenXRIntegration::EndXRFrame(xrBeginData.second);
+        }
+#endif
+        if (GetAudioActive()) {
+            player->SetWorld(renderWorld);
+        }
+        //make up the difference
+        //can't use sleep because sleep is not very accurate
+        /*clocktype::duration work_time;
+        do{
+            auto workEnd = clocktype::now();
+            work_time = workEnd - now;
+            auto delta = min_tick_time - work_time;
+            if (delta > std::chrono::duration<double, std::milli>(3)) {
+                auto dc = std::chrono::duration_cast<std::chrono::milliseconds>(delta);
+                std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(dc.count()-1));
+            }
+        }while (work_time < min_tick_time);*/
+    skip_xr_frame:
+#endif
+        
+#if __APPLE__
+    }   // end of autoreleasepool
+#endif
 }
 
 float App::CurrentTPS() {
