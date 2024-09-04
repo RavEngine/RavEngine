@@ -94,7 +94,7 @@ struct LightingType{
 	RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const std::vector<RenderViewCollection>& targets, float guiScaleFactor) {
 		transientOffset = 0;
 
-		
+		RVE_PROFILE_FN_N("RenderEngine::Draw");
 		DestroyUnusedResources();
 		mainCommandBuffer->Reset();
 		mainCommandBuffer->Begin();
@@ -1248,7 +1248,7 @@ struct LightingType{
 		Profile::EndFrame(Profile::RenderEncodePointShadows);
 		Profile::EndFrame(Profile::RenderEncodeShadowmaps);
 
-		Profile::BeginFrame(Profile::RenderEncodeAllViews);
+		RVE_PROFILE_SECTION(allViews, "Render Encode All Views");
 		for (const auto& view : targets) {
 			currentRenderSize = view.pixelDimensions;
 			auto nextImgSize = view.pixelDimensions;
@@ -1314,19 +1314,23 @@ struct LightingType{
             auto renderFinalPass = [this, &target, &worldOwning, &view, &guiScaleFactor, &nextImgSize, &renderFromPerspective](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
                 
                 //render unlits
+				RVE_PROFILE_SECTION(unlit,"Encode Unlit Opaques")
                 unlitRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
                 unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 				renderFromPerspective.template operator() < false > (viewproj, viewonly, projOnly, camPos.pos, {}, unlitRenderPass, [](auto&& mat) {
                     return mat->GetMainRenderPipeline();
                 }, renderArea, {.Unlit = true, .Opaque = true }, target.depthPyramid);
+				RVE_PROFILE_SECTION_END(unlit);
 
 				// render unlits with transparency
+				RVE_PROFILE_SECTION(unlittrans, "Encode Unlit Transparents");
 				unlitTransparentPass->SetAttachmentTexture(0, target.transparencyAccumulation->GetDefaultView());
 				unlitTransparentPass->SetAttachmentTexture(1, target.transparencyRevealage->GetDefaultView());
 				unlitTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 				renderFromPerspective.template operator() < false, true > (viewproj, viewonly, projOnly, camPos.pos, {}, unlitTransparentPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
 				}, renderArea, { .Unlit = true, .Transparent = true }, target.depthPyramid);
+				RVE_PROFILE_SECTION_END(unlittrans);
                 
                 // then do the skybox, if one is defined.
                 mainCommandBuffer->BeginRendering(unlitRenderPass);
@@ -1374,6 +1378,7 @@ struct LightingType{
 				mainCommandBuffer->EndRenderDebugMarker();
 
                 // afterwards render the post processing effects
+				RVE_PROFILE_SECTION(postfx, "Encode Post Processing Effects");
                 uint32_t totalPostFXRendered = 0;
                 RGL::TextureView currentInput = target.lightingTexture->GetDefaultView();
                 RGL::TextureView altInput = target.lightingScratchTexture->GetDefaultView();
@@ -1458,6 +1463,7 @@ struct LightingType{
                     }
                 }
                 
+				RVE_PROFILE_SECTION_END(postfx);
                 auto blitSource = totalPostFXRendered % 2 == 0 ? target.lightingTexture->GetDefaultView() : target.lightingScratchTexture->GetDefaultView();
                 
 				// the final on-screen render pass
@@ -1485,14 +1491,24 @@ struct LightingType{
 
                 mainCommandBuffer->BeginRendering(finalRenderPass);
 				
-
+				RVE_PROFILE_SECTION(gui, "Encode GUI");
 				mainCommandBuffer->BeginRenderDebugMarker("GUI");
 				worldOwning->Filter([](GUIComponent& gui) {
 					gui.Render();	// kicks off commands for rendering UI
 				});
+
+				if (debuggerContext) {
+					auto& dbg = *debuggerContext;
+					dbg.SetDimensions(view.pixelDimensions.width, view.pixelDimensions.height);
+					dbg.SetDPIScale(guiScaleFactor);
+					dbg.Update();
+					dbg.Render();
+				}
 				mainCommandBuffer->EndRenderDebugMarker();
+				RVE_PROFILE_SECTION_END(gui);
 #ifndef NDEBUG
 				// process debug shapes
+				RVE_PROFILE_SECTION(debugShapes, "Encode Debug Navigation");
 				mainCommandBuffer->BeginRenderDebugMarker("Debug Navigation Mesh");
 				currentNavState.viewProj = viewproj;
 				worldOwning->FilterPolymorphic([this](PolymorphicGetResult<IDebugRenderable, World::PolymorphicIndirection> dbg, const PolymorphicGetResult<Transform, World::PolymorphicIndirection> transform) {
@@ -1505,6 +1521,9 @@ struct LightingType{
 					}
 					});
 				mainCommandBuffer->EndRenderDebugMarker();
+				RVE_PROFILE_SECTION_END(debugShapes);
+
+				RVE_PROFILE_SECTION(wireframes, "Enode Debug Wireframes");
 				mainCommandBuffer->BeginRenderDebugMarker("Debug Wireframes");
 				Im3d::AppData& data = Im3d::GetAppData();
 				data.m_appData = (void*)&viewproj;
@@ -1513,14 +1532,7 @@ struct LightingType{
                 mainCommandBuffer->SetScissor(fullSizeScissor);
 				Im3d::GetContext().draw();
 				mainCommandBuffer->EndRenderDebugMarker();
-
-				if (debuggerContext) {
-					auto& dbg = *debuggerContext;
-					dbg.SetDimensions(view.pixelDimensions.width, view.pixelDimensions.height);
-					dbg.SetDPIScale(guiScaleFactor);
-					dbg.Update();
-					dbg.Render();
-				}
+				RVE_PROFILE_SECTION_END(wireframes);		
 
 				Im3d::NewFrame();
 				mainCommandBuffer->EndRenderDebugMarker();
@@ -1659,12 +1671,13 @@ struct LightingType{
 
 			mainCommandBuffer->BeginRendering(litClearRenderPass);
 			mainCommandBuffer->EndRendering();
-			Profile::BeginFrame(Profile::RenderEncodeDeferredPass);
+			
+			RVE_PROFILE_SECTION(lit, "Encode Lit Pass Opaque");
 			for (const auto& camdata : view.camDatas) {
 				doPassWithCamData(camdata, renderLitPass);
 			}
-			Profile::EndFrame(Profile::RenderEncodeDeferredPass);
 			mainCommandBuffer->EndRenderDebugMarker();
+			RVE_PROFILE_SECTION_END(lit);
 
 			transparentClearPass->SetAttachmentTexture(0, target.transparencyAccumulation->GetDefaultView());
 			transparentClearPass->SetAttachmentTexture(1, target.transparencyRevealage->GetDefaultView());
@@ -1677,12 +1690,12 @@ struct LightingType{
 			litTransparentPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
 			litTransparentPass->SetAttachmentTexture(2, target.transparencyRevealage->GetDefaultView());
             litTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
-			Profile::BeginFrame(Profile::RenderEncodeDeferredPass);
+			RVE_PROFILE_SECTION(littrans, "Encode Lit Pass Transparent");
 			for (const auto& camdata : view.camDatas) {
 				doPassWithCamData(camdata, renderLitPassTransparent);
 			}
-			Profile::EndFrame(Profile::RenderEncodeDeferredPass);
 			mainCommandBuffer->EndRenderDebugMarker();
+			RVE_PROFILE_SECTION_END(littrans);
             
             if (VideoSettings.ssao){
 
@@ -1746,7 +1759,7 @@ struct LightingType{
 
 			
 			// final render pass
-			Profile::BeginFrame(Profile::RenderEncodeForwardPass);
+			RVE_PROFILE_SECTION(forward, "Render Encode Forward Pass");
 			finalRenderPass->SetAttachmentTexture(0, target.finalFramebuffer->GetDefaultView());
 			finalRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
@@ -1762,10 +1775,10 @@ struct LightingType{
 				doPassWithCamData(camdata, renderFinalPass);
 			}
 			mainCommandBuffer->EndRenderDebugMarker();
-			Profile::EndFrame(Profile::RenderEncodeForwardPass);
+			RVE_PROFILE_SECTION_END(forward);
 
 		}
-		Profile::EndFrame(Profile::RenderEncodeAllViews);
+		RVE_PROFILE_SECTION_END(allViews);
 		mainCommandBuffer->End();
 
 		return mainCommandBuffer;

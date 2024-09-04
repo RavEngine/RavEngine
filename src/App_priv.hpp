@@ -384,9 +384,7 @@ int App::run(int argc, char** argv) {
 		}
 #endif
 
-		Profile::BeginFrame(Profile::RenderBuildCommandlist);
 		auto mainCommandBuffer = Renderer->Draw(renderWorld, allViews,scale);
-		Profile::EndFrame(Profile::RenderBuildCommandlist);
 
 
 		// show the results to the user
@@ -399,6 +397,7 @@ int App::run(int argc, char** argv) {
 		Profile::EndFrame(Profile::RenderExecuteCommandlist);
 
 		window->swapchain->Present(nextTexture.presentConfig);
+		Profile::EndTick();
 
 #ifdef RVE_XR_AVAILABLE
 		if (wantsXR) {

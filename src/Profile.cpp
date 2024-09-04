@@ -1,14 +1,10 @@
 #include "Profile.hpp"
-#if (__has_include(<tracy/Tracy.hpp>))
-	#include <tracy/Tracy.hpp>
-	#define PROFILE 1
-#endif
+
 
 namespace RavEngine {
 	namespace Profile {
-		PROF_STR(RenderBuildCommandlist) = "Render Build Commandlist";
 		PROF_STR(RenderExecuteCommandlist) = "Render Execute Commandlist";
-		PROF_STR(RenderEncodeDeferredPass) = "Render Encode Deferred Pass";
+		PROF_STR(RenderEncodeLitPass) = "Render Encode Deferred Pass";
 		PROF_STR(RenderEncodeLightingPass) = "Render Encode Lighting Pass";
 		PROF_STR(RenderEncodeForwardPass) = "Render Encode Forward Pass";
 		PROF_STR(RenderEncodeShadowmaps) = "Render Encode Shadowmaps";
@@ -19,14 +15,20 @@ namespace RavEngine {
 
 		void BeginFrame(const char* const name)
 		{
-#if PROFILE
+#if RVE_PROFILE
 			FrameMarkStart(name);
 #endif
 		}
 		void EndFrame(const char* const name)
 		{
-#if PROFILE
+#if RVE_PROFILE
 			FrameMarkEnd(name);
+#endif
+		}
+		void EndTick()
+		{
+#if RVE_PROFILE
+			FrameMark;
 #endif
 		}
 	}

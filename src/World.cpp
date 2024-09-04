@@ -27,6 +27,7 @@
 #include "RenderEngine.hpp"
 #include "Skybox.hpp"
 #include "PhysicsSolver.hpp"
+#include "Profile.hpp"
 #if !RVE_SERVER
     #include "VRAMSparseSet.hpp"
     #include "AudioMeshComponent.hpp"
@@ -50,7 +51,8 @@ static inline void SetEmpty(typename World::EntitySparseSet<T>::const_iterator& 
 }
 
 void RavEngine::World::Tick(float scale) {
-	
+    RVE_PROFILE_FN;
+
     PreTick(scale);
 	
 	//Tick the game code
