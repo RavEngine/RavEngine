@@ -439,7 +439,8 @@ void App::Tick(){
                 std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(dc.count()-1));
             }
         }while (work_time < min_tick_time);*/
-    skip_xr_frame:
+	skip_xr_frame:
+		;	// dummy statement for the label
 #endif
         
 #if __APPLE__
