@@ -311,7 +311,7 @@ int App::run(int argc, char** argv) {
 #endif
 			}
 		}
-            
+        RVE_PROFILE_SECTION_END(events);
         Tick();
             lastFrameTime = now;
 #if __APPLE__
@@ -328,13 +328,14 @@ void App::Tick(){
     @autoreleasepool{
 #endif
         
+#if !RVE_SERVER
 #ifndef NDEBUG
         RenderEngine::debuggerInput->TickAxes();
 #endif
         if (inputManager) {
             inputManager->TickAxes();
         }
-        RVE_PROFILE_SECTION_END(events);
+#endif
 
 #if !RVE_SERVER
         auto windowSize = window->GetSizeInPixels();
