@@ -291,28 +291,11 @@ auto generateCone(float radius, float height, int numberOfSides)
 	return cube;
 }
 
-void DebugRenderWrapper(const Im3d::DrawList& drawList){
-	GetApp()->GetRenderEngine().DebugRender(drawList);
-}
-
-/**
-Initialize static singletons. Invoked automatically if needed.
-*/
-void RenderEngine::Init(const AppConfig& config)
-{
-	// for debug wireframes
-	auto& data = Im3d::GetAppData();
-    data.drawCallback = &DebugRenderWrapper;	
-}
-
-
-
 /**
 Construct a render engine instance
 @param w the owning world for this engine instance
 */
 RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : device(device) {
-	Init(config);
     
 #if __APPLE__
     if (!AppleGPUMeetsMinSpec(device)) {
@@ -1794,8 +1777,6 @@ const string_view RenderEngine::GetCurrentBackendName(){
 #ifndef NDEBUG
 void RenderEngine::InitDebugger() const{
 	if (!debuggerContext){
-		Im3d::AppData& data = Im3d::GetAppData();
-		data.drawCallback = &DebugRenderWrapper;
 		
 		debuggerContext.emplace(10,10);
 		auto ctxd = (*debuggerContext).GetData();

@@ -1314,7 +1314,7 @@ struct LightingType{
             auto renderFinalPass = [this, &target, &worldOwning, &view, &guiScaleFactor, &nextImgSize, &renderFromPerspective](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
                 
                 //render unlits
-				RVE_PROFILE_SECTION(unlit,"Encode Unlit Opaques")
+				RVE_PROFILE_SECTION(unlit, "Encode Unlit Opaques");
                 unlitRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
                 unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 				renderFromPerspective.template operator() < false > (viewproj, viewonly, projOnly, camPos.pos, {}, unlitRenderPass, [](auto&& mat) {
@@ -1526,7 +1526,37 @@ struct LightingType{
 				RVE_PROFILE_SECTION(wireframes, "Enode Debug Wireframes");
 				mainCommandBuffer->BeginRenderDebugMarker("Debug Wireframes");
 				Im3d::AppData& data = Im3d::GetAppData();
+
+				struct DrawListMetadata {
+					uint32_t nverts = 0;
+				} im3dMeta;
+
+				data.m_appData = &im3dMeta;
+				 
+				// calculate the size of things
+				data.drawCallback = [](const Im3d::DrawList& list) {
+					auto& data = Im3d::GetAppData();
+					auto metaData = static_cast<DrawListMetadata*>(data.m_appData);
+					metaData->nverts += list.m_vertexCount;
+				};
+				Im3d::GetContext().draw();
+
 				data.m_appData = (void*)&viewproj;
+				debugRenderBufferOffset = 0;
+				data.drawCallback = [](const Im3d::DrawList& list) {
+					GetApp()->GetRenderEngine().DebugRender(list);
+				};
+
+				// resize buffer
+				if (im3dMeta.nverts > debugRenderBufferSize) {
+					debugRenderBufferUpload = device->CreateBuffer({
+						im3dMeta.nverts,
+						{.VertexBuffer = true},
+						sizeof(Im3d::VertexData),
+						RGL::BufferAccess::Shared,
+					});
+					debugRenderBufferSize = im3dMeta.nverts;
+				}
 
                 mainCommandBuffer->SetViewport(fullSizeViewport);
                 mainCommandBuffer->SetScissor(fullSizeScissor);
@@ -1806,13 +1836,9 @@ void RavEngine::RenderEngine::DebugRender(const Im3d::DrawList& drawList)
 	const Im3d::VertexData* vertexdata = drawList.m_vertexData;
 	const auto nverts = drawList.m_vertexCount;
 
-	auto vertBuffer = device->CreateBuffer({
-		uint32_t(nverts),
-		{.VertexBuffer = true},
-		sizeof(Im3d::VertexData),
-		RGL::BufferAccess::Private,
-	});
-	vertBuffer->SetBufferData({ vertexdata, nverts * sizeof(Im3d::VertexData) });
+	const auto dataSize = nverts * sizeof(Im3d::VertexData);
+	debugRenderBufferUpload->UpdateBufferData({ vertexdata,  dataSize}, debugRenderBufferOffset);
+
 
 	auto viewProj = *static_cast<glm::mat4*>(Im3d::GetAppData().m_appData);
     
@@ -1821,11 +1847,11 @@ void RavEngine::RenderEngine::DebugRender(const Im3d::DrawList& drawList)
     };
 
 	mainCommandBuffer->SetVertexBytes(ubo,0);
-	mainCommandBuffer->SetVertexBuffer(vertBuffer);
+	mainCommandBuffer->SetVertexBuffer(debugRenderBufferUpload, {.offsetIntoBuffer = debugRenderBufferOffset});
 	mainCommandBuffer->Draw(nverts);
 
-	// trash the buffer now that we're done with it
-	gcBuffers.enqueue(vertBuffer);
+	debugRenderBufferOffset += dataSize;
+
 
 #endif
 

@@ -37,7 +37,7 @@ namespace RavEngine {
 #define RVE_PROFILE_FN
 #define RVE_PROFILE_FN_NC(n,c)
 #define RVE_PROFILE_FN_N(n)
-#define #define RVE_PROFILE_SECTION(varName,zoneName)
+#define RVE_PROFILE_SECTION(varName,zoneName)
 #define RVE_PROFILE_SECTION_END(varName)
 #endif
 	}

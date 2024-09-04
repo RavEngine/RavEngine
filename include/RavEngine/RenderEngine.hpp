@@ -75,8 +75,8 @@ namespace RavEngine {
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, ssaoPipeline, transparencyApplyPipeline;
 		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline, clusterBuildGridPipeline, clusterPopulatePipeline;
 		RGLBufferPtr screenTriVerts, pointLightVertexBuffer, pointLightIndexBuffer,
-			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, ssaoSamplesBuffer, quadVertBuffer, lightClusterBuffer;
-		uint32_t nPointLightIndices = 0;
+			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, ssaoSamplesBuffer, quadVertBuffer, lightClusterBuffer, debugRenderBufferUpload;
+		uint32_t nPointLightIndices = 0, debugRenderBufferSize = 0, debugRenderBufferOffset = 0;
 
 		constexpr static uint32_t initialVerts = 1024, initialIndices = 1536;
 
@@ -308,7 +308,6 @@ namespace RavEngine {
         static RavEngine::Vector<VertexColorUV> navMeshPolygon;
         bool navDebugDepthEnabled = false; 
 
-        void Init(const AppConfig&);
     public:
 
     protected:
