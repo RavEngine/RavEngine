@@ -91,7 +91,8 @@ void MeshAsset::InitializeFromMeshPartFragments(const RavEngine::Vector<MeshPart
 	
 	uint32_t baseline_index = 0;
 	for(const auto& mesh : meshes){
-		for(const auto& vert : mesh.vertices){
+		for(auto vert : mesh.vertices){
+			vert.position *= options.scale;			// apply scale 
 			allMeshes.vertices.push_back(vert);
 		}
 		for (int i = 0; i < mesh.indices.size(); i++) {

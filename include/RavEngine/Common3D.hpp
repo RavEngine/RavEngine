@@ -19,11 +19,11 @@ struct UV
 };
 
 struct VertexNormalUV{
-	float position[3]{ 0 };
-	float normal[3]{ 0 };
-	float tangent[3]{ 0 };
-	float bitangent[3]{ 0 };
-	float uv[2]{ 0 };
+	glm::vec3 position{ 0 };
+	glm::vec3 normal{ 0 };
+	glm::vec3 tangent{ 0 };
+	glm::vec3 bitangent{ 0 };
+	glm::vec2 uv{ 0 };
 };
 
 struct VertexUV{
