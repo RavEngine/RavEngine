@@ -1534,32 +1534,34 @@ struct LightingType{
 
                 const auto& im3dcontext = Im3d::GetContext();
                 Im3d::EndFrame();
-                for(int i = 0; i < im3dcontext.getDrawListCount(); i++){
-                    im3dMeta.nverts += im3dcontext.getDrawLists()[i].m_vertexCount;
-                }
+				if (im3dcontext.getDrawListCount() > 0) {
+					for (int i = 0; i < im3dcontext.getDrawListCount(); i++) {
+						im3dMeta.nverts += im3dcontext.getDrawLists()[i].m_vertexCount;
+					}
 
-                // resize buffer
-                if (im3dMeta.nverts > debugRenderBufferSize) {
-                    debugRenderBufferUpload = device->CreateBuffer({
-                        im3dMeta.nverts,
-                        {.VertexBuffer = true},
-                        sizeof(Im3d::VertexData),
-                        RGL::BufferAccess::Shared,
-                    });
-                    debugRenderBufferSize = im3dMeta.nverts;
-                }
+					// resize buffer
+					if (im3dMeta.nverts > debugRenderBufferSize) {
+						debugRenderBufferUpload = device->CreateBuffer({
+							im3dMeta.nverts,
+							{.VertexBuffer = true},
+							sizeof(Im3d::VertexData),
+							RGL::BufferAccess::Shared,
+							});
+						debugRenderBufferSize = im3dMeta.nverts;
+					}
 
-				data.m_appData = (void*)&viewproj;
-				debugRenderBufferOffset = 0;
-				data.drawCallback = [](const Im3d::DrawList& list) {
-					GetApp()->GetRenderEngine().DebugRender(list);
-				};
-                
-                mainCommandBuffer->SetViewport(fullSizeViewport);
-                mainCommandBuffer->SetScissor(fullSizeScissor);
-				Im3d::GetContext().draw();
-				mainCommandBuffer->EndRenderDebugMarker();
-				RVE_PROFILE_SECTION_END(wireframes);		
+					data.m_appData = (void*)&viewproj;
+					debugRenderBufferOffset = 0;
+					data.drawCallback = [](const Im3d::DrawList& list) {
+						GetApp()->GetRenderEngine().DebugRender(list);
+						};
+
+					mainCommandBuffer->SetViewport(fullSizeViewport);
+					mainCommandBuffer->SetScissor(fullSizeScissor);
+					Im3d::GetContext().draw();
+					mainCommandBuffer->EndRenderDebugMarker();
+					RVE_PROFILE_SECTION_END(wireframes);
+				}
 
 				Im3d::NewFrame();
 				mainCommandBuffer->EndRenderDebugMarker();

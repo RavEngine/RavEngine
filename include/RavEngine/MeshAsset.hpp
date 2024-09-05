@@ -72,9 +72,9 @@ protected:
 	
 	// optionally stores a copy of the mesh in system memory
 	MeshPart systemRAMcopy;
-	
-	void InitAll(const aiScene* scene, const MeshAssetOptions& opt);
-	void InitPart(const aiScene* scene, const std::string& name, const std::string& fileName, const MeshAssetOptions& opt);
+
+	MeshPart DeserializeMesh(const std::istream& stream);
+	MeshPart DeserializeMeshFromMemory(const std::span<uint8_t> mem);
 
     friend class RenderEngine;
 	
@@ -99,18 +99,8 @@ public:
 	 */
 	MeshAsset(const std::string& path, const MeshAssetOptions& options = MeshAssetOptions());
 	
-	/**
-	 Create a MeshAsset from a specific mesh inside the scene file. To load all meshes into one mesh, use the other constructor.
-	 @param path the path to the asset in the embedded filesystem
-	 @param modelName the name of the mesh inside the scene file to load
-	 @param scale the scale factor when loading
-	 @param keepCopyInSystemMemory maintain a copy of the mesh data in system RAM, for use in features that need it like mesh colliders
-	 */
-	MeshAsset(const std::string& path, const std::string& modelName, const MeshAssetOptions& options = MeshAssetOptions());
-	
 	MeshAsset(const Filesystem::Path& pathOnDisk, const MeshAssetOptions& options = MeshAssetOptions());
 
-	MeshAsset(const Filesystem::Path& pathOnDisk, const std::string& modelName, const MeshAssetOptions& options = MeshAssetOptions());
 	/**
 	 Create a MeshAsset from multiple vertex and index lists
 	 @param rawMeshData the index and triangle data

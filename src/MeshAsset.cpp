@@ -1,10 +1,5 @@
 #include "MeshAsset.hpp"
 #include "Common3D.hpp"
-#include <assimp/cimport.h>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
-#include <assimp/material.h>
-#include <assimp/mesh.h>
 #include "App.hpp"
 #include <filesystem>
 #include "Debug.hpp"
@@ -20,130 +15,53 @@ using namespace RavEngine;
 // Vertex data structure
 using namespace std;
 
-static constexpr auto assimp_flags =  aiProcess_CalcTangentSpace |
-aiProcess_GenSmoothNormals              |
-aiProcess_FlipUVs |
-aiProcess_JoinIdenticalVertices         |
-aiProcess_ImproveCacheLocality          |
-aiProcess_LimitBoneWeights              |
-aiProcess_RemoveRedundantMaterials      |
-aiProcess_SplitLargeMeshes              |
-aiProcess_Triangulate                   |
-aiProcess_GenUVCoords                   |
-aiProcess_SortByPType                   |
-//aiProcess_FindDegenerates               |
-aiProcess_FindInstances                  |
-aiProcess_ValidateDataStructure          |
-aiProcess_OptimizeMeshes				|
-aiProcess_FindInvalidData     ;
-
-static const aiScene* LoadScene(const std::string& name){
-	string dir = Format("objects/{}", name);
-	
-	if (!GetApp()->GetResources().Exists(dir.c_str())) {
-		Debug::Fatal("Cannot open resource: {}", dir);
-	}
-	
-	auto str = GetApp()->GetResources().FileContentsAt(dir.c_str());
-	
-	auto file_ext = Filesystem::Path(dir).extension();
-	//uses a meta-flag to auto-triangulate the input file
-	const aiScene* scene = aiImportFileFromMemory(reinterpret_cast<char*>(str.data()), Debug::AssertSize<unsigned int>(str.size()),
-												  assimp_flags,
-												  file_ext.string().c_str());
-	
-	
-	if (!scene){
-		Debug::Fatal("Cannot load: {}", aiGetErrorString());
-	}
-	return scene;
+MeshPart RavEngine::MeshAsset::DeserializeMesh(const istream& stream)
+{
+	return {};
 }
 
-static const aiScene* LoadSceneFilesystem(const Filesystem::Path& path){
-	const aiScene* scene = aiImportFile(path.string().c_str(), assimp_flags);
-	
-	if (!scene){
-		Debug::Fatal("Cannot load from filesystem: {}", aiGetErrorString());
-	}
-	return scene;
-}
+MeshPart RavEngine::MeshAsset::DeserializeMeshFromMemory(const std::span<uint8_t> mem)
+{
+	uint8_t* fp = mem.data();
+	SerializedMeshDataHeader header = *reinterpret_cast<SerializedMeshDataHeader*>(fp);
+	fp += sizeof(SerializedMeshDataHeader);
 
-#if 0
-static MeshAsset::BitWidth GetRequiredBitwidth(const aiScene* scene, const aiNode* rootNode = nullptr) {
-	uint32_t totalVertCount = 0;
-	if (rootNode == nullptr) {
-		rootNode = scene->mRootNode;
-	}
-	for (int i = 0; i < rootNode->mNumMeshes; i++) {
-		aiMesh* mesh = scene->mMeshes[rootNode->mMeshes[i]];
-		totalVertCount += mesh->mNumVertices;
-	}
-	// can it fit in a 16 bit index buffer?
-	if (totalVertCount >= std::numeric_limits<uint16_t>::max()) {
-		return MeshAsset::BitWidth::uint32;
-	}
-	else {
-		return MeshAsset::BitWidth::uint16;
-	}
-}
-#endif
+	MeshPart mesh;
+	mesh.indices.reserve(header.numIndicies);
+	mesh.vertices.reserve(header.numVertices);
 
-void MeshAsset::InitAll(const aiScene* scene, const MeshAssetOptions& options){
-	matrix4 scalemat = glm::scale(matrix4(1), vector3(options.scale,options.scale,options.scale));
-	//indexBufferWidth = GetRequiredBitwidth(scene);
-	//generate the vertex and index lists
-	RavEngine::Vector<MeshPart> meshes;
-	meshes.reserve(scene->mNumMeshes);
-	for(int i = 0; i < scene->mNumMeshes; i++){
-		aiMesh* mesh = scene->mMeshes[i];
-		auto mp = AIMesh2MeshPart(mesh, scalemat);
-		meshes.push_back(std::move(mp));
-	}
-	
-	//free afterward
-	aiReleaseImport(scene);
-	
-	InitializeFromMeshPartFragments(meshes, options);
-}
+	// load vertices
+	for (int i = 0; i < header.numVertices; i++) {
+		VertexNormalUV vert = *reinterpret_cast<decltype(vert)*>(fp);
+		mesh.vertices.push_back(vert);
 
-void MeshAsset::InitPart(const aiScene* scene, const std::string& meshName, const std::string& fileName, const MeshAssetOptions& options){
-	matrix4 scalemat = glm::scale(matrix4(1), vector3(options.scale,options.scale,options.scale));
-	auto node = scene->mRootNode->FindNode(meshName.c_str());
-	if (node == nullptr){
-		Debug::Fatal("No mesh with name {} in scene {}",meshName, fileName);
+		fp += sizeof(VertexNormalUV);
 	}
-	else{
-		//indexBufferWidth = GetRequiredBitwidth(scene,node);
-		RavEngine::Vector<MeshPart> meshes;
-		meshes.reserve(node->mNumMeshes);
-		for(int i = 0; i < node->mNumMeshes; i++){
-			aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-			auto mp = AIMesh2MeshPart(mesh, scalemat);
-			meshes.push_back(std::move(mp));
-		}
-		//free afterward
-		aiReleaseImport(scene);
-		InitializeFromMeshPartFragments(meshes, options);
+
+	for (int i = 0; i < header.numIndicies; i++) {
+		uint32_t ind = *reinterpret_cast<decltype(ind)*>(fp);
+		mesh.indices.push_back(ind);
+
+		fp += sizeof(uint32_t);
 	}
+
+	return mesh;
 }
 
 MeshAsset::MeshAsset(const string& name, const MeshAssetOptions& options){
-	auto scene = LoadScene(name);
+	string dir = Format("meshes/{}.rvem", name);
+	auto str = GetApp()->GetResources().FileContentsAt(dir.c_str());
 
-	InitAll(scene, options);
+	auto mesh = DeserializeMeshFromMemory(str);
+	InitializeFromMeshPartFragments({ mesh }, options);
 }
 
 MeshAsset::MeshAsset(const Filesystem::Path& path, const MeshAssetOptions& opt){
-	auto scene = LoadSceneFilesystem(path);
 	
-	InitAll(scene,opt);
+	auto mesh = DeserializeMesh(ifstream(path, std::ios::binary));
+	InitializeFromMeshPartFragments({ mesh }, opt);
 }
 
-MeshAsset::MeshAsset(const Filesystem::Path& path, const std::string& name, const MeshAssetOptions& opt){
-	auto scene = LoadSceneFilesystem(path);
-	
-	InitPart(scene, name, path.string(), opt);
-}
 
 RavEngine::MeshAsset::~MeshAsset()
 {
@@ -155,63 +73,6 @@ RavEngine::MeshAsset::~MeshAsset()
 		app->GetRenderEngine().DeallocateMesh(meshAllocation);
 	}
 #endif
-}
-
-MeshAsset::MeshAsset(const string& name, const string& meshName, const MeshAssetOptions& options){
-	auto scene = LoadScene(name);
-	
-	InitPart(scene, meshName, name, options);
-}
-
-
-MeshPart RavEngine::MeshAsset::AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scalemat)
-{
-	MeshPart mp;
-	//mp.indices.mode = indexBufferWidth;
-
-	mp.indices.reserve(mesh->mNumFaces * 3);
-	mp.vertices.reserve(mesh->mNumVertices);
-	for (int vi = 0; vi < mesh->mNumVertices; vi++) {
-		auto vert = mesh->mVertices[vi];
-		vector4 scaled(vert.x, vert.y, vert.z, 1);
-
-		scaled = scalemat * scaled;
-
-		Debug::Assert(mesh->mTangents,"Mesh does not have tangents!");
-		Debug::Assert(mesh->mBitangents,"Mesh does not have bitangents!");
-
-		auto normal = mesh->mNormals[vi];
-		auto tangent = mesh->mTangents[vi];
-		auto bitangent = mesh->mBitangents[vi];
-
-		//does mesh have uvs?
-		float uvs[2] = { 0 };
-		if (mesh->mTextureCoords[0]) {
-			uvs[0] = mesh->mTextureCoords[0][vi].x;
-			uvs[1] = mesh->mTextureCoords[0][vi].y;
-		}
-
-		mp.vertices.push_back(VertexNormalUV{
-			.position = {static_cast<float>(scaled.x),static_cast<float>(scaled.y),static_cast<float>(scaled.z)},
-			.normal = {normal.x,normal.y,normal.z},
-			.tangent = {tangent.x, tangent.y, tangent.z},
-			.bitangent = {bitangent.x,bitangent.y,bitangent.z},
-			.uv = {uvs[0],uvs[1]}
-		});
-	}
-
-	for (int ii = 0; ii < mesh->mNumFaces; ii++) {
-		//alert if encounters a degenerate triangle
-		if (mesh->mFaces[ii].mNumIndices != 3) {
-			throw runtime_error("Cannot load model: Degenerate triangle (Num indices = " + to_string(mesh->mFaces[ii].mNumIndices) + ")");
-		}
-
-		mp.indices.push_back(mesh->mFaces[ii].mIndices[0]);
-		mp.indices.push_back(mesh->mFaces[ii].mIndices[1]);
-		mp.indices.push_back(mesh->mFaces[ii].mIndices[2]);
-
-	}
-	return mp;
 }
 
 void MeshAsset::InitializeFromMeshPartFragments(const RavEngine::Vector<MeshPart>& meshes, const MeshAssetOptions& options){
