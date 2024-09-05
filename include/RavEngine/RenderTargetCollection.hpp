@@ -3,6 +3,7 @@
 #include <RGL/Types.hpp>
 #include "mathtypes.hpp"
 #include "DepthPyramid.hpp"
+#include "Vector.hpp"
 
 namespace RavEngine{
 	struct ViewportOverride {
@@ -27,7 +28,7 @@ namespace RavEngine{
 
 			ViewportOverride viewportOverride;
 		};
-		std::vector<camData> camDatas;
+		Vector<camData> camDatas;
 		dim_t<int> pixelDimensions;
 	};
 }

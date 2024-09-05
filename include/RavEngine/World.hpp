@@ -7,6 +7,9 @@
 //
 
 #include "DataStructures.hpp"
+#include "Vector.hpp"
+#include "Queue.hpp"
+#include "Map.hpp"
 #include "SpinLock.hpp"
 #include <taskflow/taskflow.hpp>
 #include "Types.hpp"
