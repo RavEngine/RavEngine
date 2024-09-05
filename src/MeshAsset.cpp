@@ -26,6 +26,11 @@ MeshPart RavEngine::MeshAsset::DeserializeMeshFromMemory(const std::span<uint8_t
 	SerializedMeshDataHeader header = *reinterpret_cast<SerializedMeshDataHeader*>(fp);
 	fp += sizeof(SerializedMeshDataHeader);
 
+	// check header
+	if (strncmp(header.header.data(), "rvem", sizeof("rvem") - 1) != 0) {
+		Debug::Fatal("Header does not match, data is not a mesh!");
+	}
+
 	MeshPart mesh;
 	mesh.indices.reserve(header.numIndicies);
 	mesh.vertices.reserve(header.numVertices);
