@@ -121,7 +121,7 @@ function(pack_resources)
 		add_custom_command(PRE_BUILD 
 			OUTPUT "${outdir}/${outname}.rvem"
 			COMMAND ${RVEMC_PATH} -f "${MESHCONF}" -o "${outdir}"
-			DEPENDS "${MESHCONF}" "${indir}/${inmeshfile}"
+			DEPENDS "${MESHCONF}" "${indir}/${inmeshfile}" "${RVEMC_PATH}"
 			COMMENT "Importing ${MESHCONF}"
 		)
 		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS "${outdir}/${outname}.rvem")

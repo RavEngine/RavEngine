@@ -86,23 +86,29 @@ MeshPart AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scalemat)
     return mp;
 }
 
-MeshPart LoadMesh(const std::filesystem::path& path) {
+MeshPart LoadMesh(const std::filesystem::path& path, float scaleFactor) {
     const aiScene* scene = aiImportFile(path.string().c_str(), assimp_flags);
 
     if (!scene) {
         FATAL(fmt::format("Cannot load from filesystem: {}", aiGetErrorString()));
     }
 
-    if (scene->mNumMeshes != 1) {
-        FATAL(fmt::format("{} contains {} meshes but no mesh was specified",path.string(), scene->mNumMeshes));
-    }
+    MeshPart mesh;
+    uint32_t index_base = 0;
+    for (int i = 0; i < scene->mNumMeshes; i++) {
+        auto mp = AIMesh2MeshPart(scene->mMeshes[i], matrix4(scaleFactor));
+        for (auto& index : mp.indices) {
+            index += index_base;            // renumber indices
+        }
 
-    aiMesh* mesh = scene->mMeshes[0];
-    auto mp = AIMesh2MeshPart(mesh, matrix4(1));
+        mesh.vertices.insert(mesh.vertices.end(), mp.vertices.begin(), mp.vertices.end());
+        mesh.indices.insert(mesh.indices.end(), mp.indices.begin(), mp.indices.end());
+        index_base += mp.vertices.size();
+    }
 
     aiReleaseImport(scene);
 
-    return mp;
+    return mesh;
 }
 
 void SerializeMeshPart(const std::filesystem::path& outfile, const MeshPart& mesh) {
@@ -170,8 +176,14 @@ int main(int argc, char** argv){
     const auto json_dir = inputFile.parent_path();
 
     auto infile = json_dir / std::string_view(doc["file"]);
+
+    double scaleFactor;
+    auto err = doc["scale"].get(scaleFactor);
+    if (err) {
+        scaleFactor = 1;
+    }
     
-    auto mesh = LoadMesh(infile);
+    auto mesh = LoadMesh(infile,scaleFactor);
 
     const auto outfileName = infile.filename().string() + ".rvem";
 

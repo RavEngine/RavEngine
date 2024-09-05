@@ -27,7 +27,7 @@ RavEngine::MeshAssetSkinned::~MeshAssetSkinned()
 }
 
 //TODO: avoid opening the file twice -- this is a double copy and repeats work, therefore slow
-MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> skeleton, float scale) : MeshAsset(path,MeshAssetOptions{false,true,scale}){
+MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> skeleton, float scale) : MeshAsset(path,MeshAssetOptions{false,true}){
 	
 	auto fullpath = Format("objects/{}",path);
 	

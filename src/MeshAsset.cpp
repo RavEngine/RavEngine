@@ -58,13 +58,13 @@ MeshAsset::MeshAsset(const string& name, const MeshAssetOptions& options){
 	auto str = GetApp()->GetResources().FileContentsAt(dir.c_str());
 
 	auto mesh = DeserializeMeshFromMemory(str);
-	InitializeFromMeshPartFragments({ mesh }, options);
+	InitializeFromRawMesh(mesh, options);
 }
 
 MeshAsset::MeshAsset(const Filesystem::Path& path, const MeshAssetOptions& opt){
 	
 	auto mesh = DeserializeMesh(ifstream(path, std::ios::binary));
-	InitializeFromMeshPartFragments({ mesh }, opt);
+	InitializeFromRawMesh(mesh, opt);
 }
 
 
@@ -96,8 +96,7 @@ void MeshAsset::InitializeFromMeshPartFragments(const RavEngine::Vector<MeshPart
 	
 	uint32_t baseline_index = 0;
 	for(const auto& mesh : meshes){
-		for(auto vert : mesh.vertices){
-			vert.position *= options.scale;			// apply scale 
+		for(const auto& vert : mesh.vertices){
 			allMeshes.vertices.push_back(vert);
 		}
 		for (int i = 0; i < mesh.indices.size(); i++) {

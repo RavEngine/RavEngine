@@ -22,11 +22,6 @@ namespace RavEngine{
 struct MeshAssetOptions{
     bool keepInSystemRAM = false;
     bool uploadToGPU = true;
-    float scale = 1.0;
-    
-    inline bool operator==(const MeshAssetOptions& other) const{
-        return keepInSystemRAM == other.keepInSystemRAM && uploadToGPU == other.uploadToGPU && scale == other.scale;
-    }
 };
 
 class MeshAsset {
