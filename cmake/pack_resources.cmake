@@ -2,7 +2,7 @@
 function(pack_resources)
 	set(optional )
 	set(args TARGET OUTPUT_FILE STREAMING_INPUT_ROOT)
-	set(list_args SHADERS OBJECTS TEXTURES UIS FONTS SOUNDS STREAMING_ASSETS)
+	set(list_args SHADERS MESHES OBJECTS TEXTURES UIS FONTS SOUNDS STREAMING_ASSETS)
 	cmake_parse_arguments(
 		PARSE_ARGV 0
 		ARGS
@@ -27,7 +27,7 @@ function(pack_resources)
 	get_property(eng_dir GLOBAL PROPERTY ENG_DIR)
 
 	# add polygon primitives provided by engine
-	file(GLOB ENG_OBJECTS "${eng_dir}/objects/*")
+	file(GLOB ENG_MESHES "${eng_dir}/meshes/*.json")
 
 	# add engine-provided shaders
 	file(GLOB ENG_SHADERS "${eng_dir}/shaders/*.vsh" "${eng_dir}/shaders/*.fsh" "${eng_dir}/shaders/*.csh" "${eng_dir}/materials/*.json")
@@ -91,7 +91,6 @@ function(pack_resources)
 	endfunction()
 
 	copy_helper("${ARGS_OBJECTS}" "objects")
-	copy_helper("${ENG_OBJECTS}" "objects")
 	copy_helper("${ARGS_TEXTURES}" "textures")
 	copy_helper("${ARGS_UIS}" "uis")
 	copy_helper("${ENG_UIS}" "uis")
@@ -105,11 +104,27 @@ function(pack_resources)
 	set_source_files_properties(${ARGS_OBJECTS} ${ARGS_TEXTURES} ${ARGS_SOUNDS} PROPERTIES HEADER_FILE_ONLY ON)
 	
 	source_group("Objects" FILES ${ARGS_OBJECTS})
+	source_group("Meshes" FILES ${ARGS_MESHES})
 	source_group("Textures" FILES ${ARGS_TEXTURES})
 	source_group("Sounds" FILES ${ARGS_SOUNDS})
 	source_group("UI" FILES ${ARGS_UIS})
 	source_group("Streaming" FILES ${ARGS_STREAMING_ASSETS})
 
+	# import Meshes
+	foreach(MESHCONF ${ARGS_MESHES} ${ENG_MESHES})
+		file(READ "${MESHCONF}" desc_STR)
+		string(JSON inmeshfile GET "${desc_STR}" file)
+		
+		set(outdir "${CMAKE_CURRENT_BINARY_DIR}/${ARGS_TARGET}/meshes/")
+		get_filename_component(outname "${MESHCONF}" NAME_WE)
+		get_filename_component(indir "${MESHCONF}" DIRECTORY)
+		add_custom_command(PRE_BUILD 
+			OUTPUT "${outdir}/${outname}.rvem"
+			COMMAND ${RVEMC_PATH} -f "${MESHCONF}" -o "${outdir}"
+			DEPENDS "${MESHCONF}" "${indir}/${inmeshfile}"
+		)
+		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS "${outdir}/${outname}.rvem")
+	endforeach()
 
 	# get dependency outputs
 	get_property(copy_depends GLOBAL PROPERTY COPY_DEPENDS)
@@ -205,7 +220,7 @@ function(pack_resources)
 		XCODE_GENERATE_SCHEME ON	# create a scheme in Xcode
 	)
 
-	set(assets ${ARGS_OBJECTS} ${ENG_OBJECTS} ${ARGS_TEXTURES} ${copy_depends})
+	set(assets ${ARGS_OBJECTS} ${ARGS_TEXTURES} ${copy_depends})
 
 	# the command to pack into a zip
 	add_custom_command(
