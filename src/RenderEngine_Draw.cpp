@@ -1559,9 +1559,9 @@ struct LightingType{
 					mainCommandBuffer->SetViewport(fullSizeViewport);
 					mainCommandBuffer->SetScissor(fullSizeScissor);
 					Im3d::GetContext().draw();
-					mainCommandBuffer->EndRenderDebugMarker();
 					RVE_PROFILE_SECTION_END(wireframes);
 				}
+				mainCommandBuffer->EndRenderDebugMarker();
 
 				Im3d::NewFrame();
 				mainCommandBuffer->EndRenderDebugMarker();

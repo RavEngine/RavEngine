@@ -122,7 +122,7 @@ function(pack_resources)
 			OUTPUT "${outdir}/${outname}.rvem"
 			COMMAND ${RVEMC_PATH} -f "${MESHCONF}" -o "${outdir}"
 			DEPENDS "${MESHCONF}" "${indir}/${inmeshfile}"
-			MESSAGE "Importing ${MESHCONF}"
+			COMMENT "Importing ${MESHCONF}"
 		)
 		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS "${outdir}/${outname}.rvem")
 	endforeach()
