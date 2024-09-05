@@ -12,6 +12,7 @@
     #include <RGL/Types.hpp>
 #endif
 #include "MeshAllocation.hpp"
+#include "Mesh.hpp"
 
 struct aiMesh;
 struct aiScene;
@@ -30,29 +31,7 @@ struct MeshAssetOptions{
 
 class MeshAsset {
 public:
-	typedef VertexNormalUV vertex_t;
-    
-    template<template<typename...> class T>
-    struct MeshPartBase{
-        T<uint32_t> indices;
-        T<vertex_t> vertices;
-    };
-	struct MeshPart : public MeshPartBase<RavEngine::Vector>{};
-    
-    template<typename T>
-    struct basic_immutable_span : public std::span<const T,std::dynamic_extent>{
-        basic_immutable_span(){}
-        basic_immutable_span(const T* ptr, size_t count) : std::span<const T,std::dynamic_extent>(ptr,count){}
-    };
-    
-    struct MeshPartView : public MeshPartBase<basic_immutable_span>{
-        MeshPartView(){}
-        MeshPartView(const MeshPart& other){
-			vertices = { other.vertices.data(),other.vertices.size() };
-			indices = { other.indices.data(), other.indices.size() };
-        }
-    };
-    
+	
 	/**
 	Convert an assimp mesh to a MeshPart
 	@param mesh the assimp mesh to convert

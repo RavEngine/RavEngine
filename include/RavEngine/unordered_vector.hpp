@@ -1,6 +1,5 @@
 #pragma once
 #include <vector>
-#include <phmap.h>
 
 namespace RavEngine {
 
@@ -125,89 +124,6 @@ public:
     inline auto data() const{
         return underlying.data();
     }
-};
-
-/**
- The Unordered Contiguous Set provides:
- - O(1) erase by value
- - O(1) erase by iterator
- All other complexities are identical to a regular vector. Elements must be moveable and hashable. Hashes must not have collisions. An imperfect hash will result in unpredictable behavior.
- Note that the order of elements cannot be guareneed.
- */
-template<typename T,typename vec = std::vector<T>, typename _hash = std::hash<T>>
-class unordered_contiguous_set : public unordered_vector<T,vec>{
-protected:
-	phmap::flat_hash_map<size_t, typename unordered_vector<T,vec>::size_type> offsets;
-	
-public:
-    typedef typename unordered_vector<T,vec>::iterator_type iterator_type;
-    typedef typename unordered_vector<T,vec>::iterator_type iterator;
-    typedef typename unordered_vector<T,vec>::const_iterator_type const_iterator_type;
-    typedef typename unordered_vector<T,vec>::const_iterator_type const_iterator;       // for redundancy
-    typedef typename unordered_vector<T,vec>::size_type index_type;
-    typedef typename unordered_vector<T,vec>::size_type size_type;
-    
-    /**
-     @return the hash for an element. This container does not need to include the element
-     */
-    inline constexpr size_t hash_for(const T& value) const{
-        auto hasher = _hash();
-        return hasher(value);
-    }
-	
-    /**
-     Erase by iterator
-     @param it the iterator to remove
-     */
-    inline void erase(const typename unordered_vector<T,vec>::iterator_type& it){
-		// remove from the offset cache
-		auto hasher = _hash();
-		auto hash = hasher(*it);
-		if (offsets.contains(hash)) {	// only erase if the container has the value
-			offsets.erase(hash);
-
-			// pop from back
-            auto i = unordered_vector<T,vec>::erase(it);
-
-			// update offset cache
-			hash = hasher(*i);
-			offsets[hash] = std::distance(this->begin(), it);
-		}
-	}
-    
-    /**
-     Erase by element hash
-     @param size_t hash the hash of the element to remove
-     */
-    constexpr inline void erase_by_hash(size_t hash){
-        auto it = this->begin() + offsets[hash];
-        erase(it);
-    }
-	
-    /**
-     Erase by value
-     @param value item to remove
-     */
-	inline void erase(const T& value){
-		auto valuehash = _hash()(value);
-		if (offsets.contains(valuehash)) {
-			auto it = this->begin() + offsets[valuehash];
-			erase(it);
-		}
-	}
-	
-	inline void insert(const T& value){
-		auto hashcode = _hash()(value);
-        if (!this->offsets.contains(hashcode)){
-            offsets.emplace(hashcode,this->size());
-            unordered_vector<T,vec>::insert(value);
-        }
-	}
-	
-	inline void contains(const T& value){
-		auto valuehash = _hash()(value);
-		return offsets.contains(valuehash);
-	}
 };
 
 }

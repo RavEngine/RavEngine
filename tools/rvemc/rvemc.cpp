@@ -10,7 +10,7 @@
 #include <assimp/postprocess.h>
 #include <assimp/material.h>
 #include <assimp/mesh.h>
-#include "rve_mesh.hpp"
+#include "Mesh.hpp"
 
 using namespace std;
 using namespace RavEngine;

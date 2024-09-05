@@ -2,6 +2,7 @@
 #include "Types.hpp"
 #include "World.hpp"
 #include <cassert>
+#include "Queue.hpp"
 
 namespace RavEngine{
 struct World;

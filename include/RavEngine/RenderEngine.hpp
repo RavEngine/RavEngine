@@ -23,6 +23,7 @@
 #include "PostProcess.hpp"
 #include <unordered_set>
 #include "cluster_defs.h"
+#include "Queue.hpp"
 
 struct SDL_Window;
 

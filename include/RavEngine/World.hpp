@@ -25,6 +25,7 @@
 #include "Utilities.hpp"
 #include "CallableTraits.hpp"
 #include "Format.hpp"
+#include "Queue.hpp"
 
 namespace RavEngine {
 	struct Entity;

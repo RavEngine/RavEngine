@@ -2,7 +2,8 @@
 #if !RVE_SERVER
 #include <RmlUi/Core.h>
 #include "SpinLock.hpp"
-#include "DataStructures.hpp"
+#include "Queue.hpp"
+#include "Map.hpp"
 #include "Queryable.hpp"
 #include "IInputListener.hpp"
 #include "Function.hpp"

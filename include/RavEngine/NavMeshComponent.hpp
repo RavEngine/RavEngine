@@ -1,6 +1,7 @@
 #pragma once
 #include "Queryable.hpp"
 #include "IDebugRenderable.hpp"
+#include "Vector.hpp"
 
 class dtNavMesh;
 class dtNavMeshQuery;

@@ -3,7 +3,7 @@
 #include "glm/mat4x4.hpp"
 #include "glm/gtc/quaternion.hpp"
 #include "glm/gtx/quaternion.hpp"
-#include "DataStructures.hpp"
+#include "Array.hpp"
 #include "CTTI.hpp"
 #include <iostream>
 

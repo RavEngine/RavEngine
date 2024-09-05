@@ -164,7 +164,7 @@ MeshAsset::MeshAsset(const string& name, const string& meshName, const MeshAsset
 }
 
 
-MeshAsset::MeshPart RavEngine::MeshAsset::AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scalemat)
+MeshPart RavEngine::MeshAsset::AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scalemat)
 {
 	MeshPart mp;
 	//mp.indices.mode = indexBufferWidth;

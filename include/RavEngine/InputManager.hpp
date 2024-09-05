@@ -8,6 +8,7 @@
 #include "Function.hpp"
 #include "IInputListener.hpp"
 #include "SpinLock.hpp"
+#include "Map.hpp"
 #include "DataStructures.hpp"
 #include <RavEngine/mathtypes.hpp>
 #include "WeakRef.hpp"
