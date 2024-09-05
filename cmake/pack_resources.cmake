@@ -116,15 +116,16 @@ function(pack_resources)
 		string(JSON inmeshfile GET "${desc_STR}" file)
 		
 		set(outdir "${CMAKE_CURRENT_BINARY_DIR}/${ARGS_TARGET}/meshes/")
-		get_filename_component(outname "${inmeshfile}" NAME)
+		get_filename_component(outname "${MESHCONF}" NAME_WE)
 		get_filename_component(indir "${MESHCONF}" DIRECTORY)
+		set(outfilename "${outdir}/${outname}.rvem")
 		add_custom_command(PRE_BUILD 
-			OUTPUT "${outdir}/${outname}.rvem"
+			OUTPUT "${outfilename}"
 			COMMAND ${RVEMC_PATH} -f "${MESHCONF}" -o "${outdir}"
 			DEPENDS "${MESHCONF}" "${indir}/${inmeshfile}" "${RVEMC_PATH}"
 			COMMENT "Importing ${MESHCONF}"
 		)
-		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS "${outdir}/${outname}.rvem")
+		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS "${outfilename}")
 	endforeach()
 
 	# get dependency outputs

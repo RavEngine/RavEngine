@@ -185,7 +185,8 @@ int main(int argc, char** argv){
     
     auto mesh = LoadMesh(infile,scaleFactor);
 
-    const auto outfileName = infile.filename().string() + ".rvem";
+    inputFile.replace_extension("");
+    const auto outfileName = inputFile.filename().string() + ".rvem";
 
     SerializeMeshPart(outputDir / outfileName, mesh);
 }
