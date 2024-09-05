@@ -5,7 +5,7 @@
 #include <simdjson.h>
 #include <iostream>
 #include <fstream>
-
+#include <functional>
 #include <assimp/cimport.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -86,17 +86,30 @@ MeshPart AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scalemat)
     return mp;
 }
 
-MeshPart LoadMesh(const std::filesystem::path& path, float scaleFactor) {
+MeshPart LoadMesh(const std::filesystem::path& path, std::optional<std::string_view> meshName, float scaleFactor) {
     const aiScene* scene = aiImportFile(path.string().c_str(), assimp_flags);
 
     if (!scene) {
         FATAL(fmt::format("Cannot load from filesystem: {}", aiGetErrorString()));
     }
 
+    aiNode* meshNode = scene->mRootNode;
+    uint32_t meshCount = scene->mNumMeshes;
+    
+    if (meshName.has_value()) {
+        meshNode = scene->mRootNode->FindNode(aiString(std::string(meshName.value())));
+        if (meshNode == nullptr) {
+            FATAL(fmt::format("No mesh with name \"{}\" in scene {}", meshName.value(), path.string()));
+        }
+        meshCount = meshNode->mNumMeshes;
+    }
+
+
     MeshPart mesh;
     uint32_t index_base = 0;
-    for (int i = 0; i < scene->mNumMeshes; i++) {
-        auto mp = AIMesh2MeshPart(scene->mMeshes[i], matrix4(scaleFactor));
+    for (int i = 0; i < meshCount; i++) {
+
+        auto mp = AIMesh2MeshPart(meshName.has_value() ? scene->mMeshes[meshNode->mMeshes[i]] : scene->mMeshes[i], matrix4(scaleFactor));
         for (auto& index : mp.indices) {
             index += index_base;            // renumber indices
         }
@@ -182,8 +195,15 @@ int main(int argc, char** argv){
     if (err) {
         scaleFactor = 1;
     }
+
+    std::string_view filteredMeshName;
+    std::optional<string_view> fmn_opt;
+    err = doc["mesh"].get(filteredMeshName);
+    if (!err) {
+        fmn_opt.emplace(filteredMeshName);
+    }
     
-    auto mesh = LoadMesh(infile,scaleFactor);
+    auto mesh = LoadMesh(infile, fmn_opt, scaleFactor);
 
     inputFile.replace_extension("");
     const auto outfileName = inputFile.filename().string() + ".rvem";
