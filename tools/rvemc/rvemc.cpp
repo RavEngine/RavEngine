@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <simdjson.h>
 #include <iostream>
+#include <fstream>
 
 #include <assimp/cimport.h>
 #include <assimp/scene.h>
@@ -14,6 +15,122 @@
 
 using namespace std;
 using namespace RavEngine;
+
+#define FATAL(reason) {std::cerr << "rvemc error: " << reason << std::endl; std::exit(1);}
+#define ASSERT(cond, str) {if (!cond) FATAL(str)}
+
+static constexpr auto assimp_flags = aiProcess_CalcTangentSpace |
+aiProcess_GenSmoothNormals |
+aiProcess_FlipUVs |
+aiProcess_JoinIdenticalVertices |
+aiProcess_ImproveCacheLocality |
+aiProcess_LimitBoneWeights |
+aiProcess_RemoveRedundantMaterials |
+aiProcess_SplitLargeMeshes |
+aiProcess_Triangulate |
+aiProcess_GenUVCoords |
+aiProcess_SortByPType |
+//aiProcess_FindDegenerates               |
+aiProcess_FindInstances |
+aiProcess_ValidateDataStructure |
+aiProcess_OptimizeMeshes |
+aiProcess_FindInvalidData;
+
+MeshPart AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scalemat)
+{
+    MeshPart mp;
+    //mp.indices.mode = indexBufferWidth;
+
+    mp.indices.reserve(mesh->mNumFaces * 3);
+    mp.vertices.reserve(mesh->mNumVertices);
+    for (int vi = 0; vi < mesh->mNumVertices; vi++) {
+        auto vert = mesh->mVertices[vi];
+        vector4 scaled(vert.x, vert.y, vert.z, 1);
+
+        scaled = scalemat * scaled;
+
+        ASSERT(mesh->mTangents, "Mesh does not have tangents!");
+        ASSERT(mesh->mBitangents, "Mesh does not have bitangents!");
+
+        auto normal = mesh->mNormals[vi];
+        auto tangent = mesh->mTangents[vi];
+        auto bitangent = mesh->mBitangents[vi];
+
+        //does mesh have uvs?
+        float uvs[2] = { 0 };
+        if (mesh->mTextureCoords[0]) {
+            uvs[0] = mesh->mTextureCoords[0][vi].x;
+            uvs[1] = mesh->mTextureCoords[0][vi].y;
+        }
+
+        mp.vertices.push_back(VertexNormalUV{
+            .position = {static_cast<float>(scaled.x),static_cast<float>(scaled.y),static_cast<float>(scaled.z)},
+            .normal = {normal.x,normal.y,normal.z},
+            .tangent = {tangent.x, tangent.y, tangent.z},
+            .bitangent = {bitangent.x,bitangent.y,bitangent.z},
+            .uv = {uvs[0],uvs[1]}
+            });
+    }
+
+    for (int ii = 0; ii < mesh->mNumFaces; ii++) {
+        //alert if encounters a degenerate triangle
+        if (mesh->mFaces[ii].mNumIndices != 3) {
+            throw runtime_error("Cannot load model: Degenerate triangle (Num indices = " + to_string(mesh->mFaces[ii].mNumIndices) + ")");
+        }
+
+        mp.indices.push_back(mesh->mFaces[ii].mIndices[0]);
+        mp.indices.push_back(mesh->mFaces[ii].mIndices[1]);
+        mp.indices.push_back(mesh->mFaces[ii].mIndices[2]);
+
+    }
+    return mp;
+}
+
+MeshPart LoadMesh(const std::filesystem::path& path) {
+    const aiScene* scene = aiImportFile(path.string().c_str(), assimp_flags);
+
+    if (!scene) {
+        FATAL(fmt::format("Cannot load from filesystem: {}", aiGetErrorString()));
+    }
+
+    if (scene->mNumMeshes != 1) {
+        FATAL(fmt::format("{} contains {} meshes but no mesh was specified",path.string(), scene->mNumMeshes));
+    }
+
+    aiMesh* mesh = scene->mMeshes[0];
+    auto mp = AIMesh2MeshPart(mesh, matrix4(1));
+
+    aiReleaseImport(scene);
+
+    return mp;
+}
+
+void SerializeMeshPart(const std::filesystem::path& outfile, const MeshPart& mesh) {
+    std::filesystem::create_directories(outfile.parent_path());		// make all the folders necessary
+
+    SerializedMeshDataHeader header{
+        .numVertices = uint32_t(mesh.vertices.size()),
+        .numIndicies = uint32_t(mesh.indices.size())
+    };
+
+    ofstream out(outfile, std::ios::binary);
+    if (!out) {
+        FATAL(fmt::format("Could not open {} for writing",outfile.string()));
+    }
+
+    // write header
+    out.write(reinterpret_cast<const char*>(&header), sizeof(header));
+
+    // write vertices
+    for (const auto& vert : mesh.vertices) {
+        out.write(reinterpret_cast<const char*>(&vert), sizeof(vert));
+    }
+
+    // write indices
+    for (const auto& ind : mesh.indices) {
+        out.write(reinterpret_cast<const char*>(&ind), sizeof(ind));
+    }
+}
 
 int main(int argc, char** argv){
     cxxopts::Options options("rvemc", "RavEngine Mesh Compiler");
@@ -29,8 +146,36 @@ int main(int argc, char** argv){
         cout << options.help() << endl;
         return 0;
     }
+
+    std::filesystem::path inputFile;
+    try {
+        inputFile = args["file"].as<decltype(inputFile)>();
+    }
+    catch (exception& e) {
+        FATAL("no input file")
+    }
+    std::filesystem::path outputDir;
+    try {
+        outputDir = args["output"].as<decltype(outputDir)>();
+    }
+    catch (exception& e) {
+        FATAL("no output file")
+    }
     
+    simdjson::ondemand::parser parser;
+
+    auto json = simdjson::padded_string::load(inputFile.string());
+    simdjson::ondemand::document doc = parser.iterate(json);
+
+    const auto json_dir = inputFile.parent_path();
+
+    auto infile = json_dir / std::string_view(doc["file"]);
     
+    auto mesh = LoadMesh(infile);
+
+    const auto outfileName = infile.filename().string() + ".rvem";
+
+    SerializeMeshPart(outputDir / outfileName, mesh);
 }
 
 
