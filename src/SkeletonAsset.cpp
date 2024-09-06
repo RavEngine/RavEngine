@@ -69,7 +69,24 @@ SkeletonData DeserializeSkeleton(std::span<uint8_t> binaryData) {
 		}
 	}
 
+	auto deserializeBone = [&deserialized](SkeletonData::Bone& bone, uint32_t index, auto&& fn) -> void {
+		auto& boneData = deserialized.allBones[index];
+		auto& childData = deserialized.childrenMap[index];
+
+		bone.name = boneData.name;
+		bone.transform = boneData.transform;
+
+		bone.children.reserve(childData.size());
+		for (const auto childIdx : childData) {
+			auto& childbone = bone.children.emplace_back();
+			fn(childbone, childIdx, fn);
+		}
+	};
+
 	SkeletonData data;
+	// we know the root bone is the first one
+	deserializeBone(data.root,0, deserializeBone);
+
 	return data;
 }
 
@@ -86,6 +103,20 @@ SkeletonAsset::SkeletonAsset(const std::string& str){
 		ozz::animation::offline::RawSkeleton raw_skeleton;
 		raw_skeleton.roots.resize(1);
 		auto& root = raw_skeleton.roots[0];
+
+		auto convertBone = [](decltype(root) dest, const SkeletonData::Bone& source, auto&& fn) -> void {
+			dest.name = source.name;
+			dest.transform.translation = { source.transform.translation.x,source.transform.translation.y,source.transform.translation.z };
+			dest.transform.scale = { source.transform.scale.x,source.transform.scale.y,source.transform.scale.z };
+			dest.transform.rotation = { source.transform.rotation.x,source.transform.rotation.y,source.transform.rotation.z, source.transform.rotation.w };
+
+			dest.children.reserve(source.children.size());
+			for (const auto& child : source.children) {
+				auto& newDest = dest.children.emplace_back();
+				fn(newDest, child, fn);
+			}
+		};
+		convertBone(root, skeletonData.root, convertBone);
 
 		//convert into a runtime-optimized skeleton
 		Debug::Assert(raw_skeleton.Validate(), "Skeleton validation failed");
