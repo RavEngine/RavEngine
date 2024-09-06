@@ -120,14 +120,19 @@ void SerializeSkeleton(const std::filesystem::path& outfile, const SkeletonData&
     // flatten skeleton
     auto recurseSkeleton = [&serialized,&nameToOffset](const SkeletonData::Bone& bone, auto&& fn) -> void {
         serialized.allBones.emplace_back(bone.transform, bone.name);
-        auto myIdx = serialized.allBones.size() - 1;
+        const auto myIdx = serialized.allBones.size() - 1;
         nameToOffset[bone.name] = myIdx;
+
+        // populate children map
+        serialized.childrenMap.push_back({});
+        auto& childrenList = serialized.childrenMap.back();
+        for (const auto& child : bone.children) {
+            childrenList.push_back(nameToOffset[child.name]);
+        }
+
+        // recurse children
         for (const auto& child : bone.children) {
             fn(child, fn);
-        }
-        // populate children map
-        for (const auto& child : bone.children) {
-            serialized.childrenMap[myIdx].push_back(nameToOffset[child.name]);
         }
     };
     recurseSkeleton(skeleton.root, recurseSkeleton);
@@ -144,21 +149,22 @@ void SerializeSkeleton(const std::filesystem::path& outfile, const SkeletonData&
     // write header
     out.write(reinterpret_cast<const char*>(&header), sizeof(header));
 
-    // write bone headers
+    // write bone transform table
     for (const auto& bone : serialized.allBones) {
-        // sizes
-        struct {
-            uint16_t nameLength;
-            uint16_t numChildren;
-        } boneEntryHeader;
-
-
-
-        out.write(reinterpret_cast<const char*>(&boneEntryHeader), sizeof(boneEntryHeader));
+        out.write(reinterpret_cast<const char*>(& bone.transform), sizeof(bone.transform));
+    }
+    // write the bone name table
+    for (const auto& bone : serialized.allBones) {
         // bone name
-        for (const auto c : bone.name) {
-            out.write(&c, sizeof(c));
-        }
+        uint16_t len = bone.name.length();
+        out.write(reinterpret_cast<const char*>(&len), sizeof(len));
+        out.write(bone.name.data(), bone.name.size());
+    }
+    // write the bone children table
+    for (const auto& childrenList : serialized.childrenMap) {
+        uint16_t numChildren = childrenList.size();
+        out.write(reinterpret_cast<const char*>(&numChildren), sizeof(numChildren));
+        out.write(reinterpret_cast<const char*>(childrenList.data()), childrenList.size());
     }
 }
 

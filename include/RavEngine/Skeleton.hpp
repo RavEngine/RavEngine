@@ -21,7 +21,7 @@ namespace RavEngine {
 			std::string name;
 		};
 		Vector<Bone> allBones;
-		UnorderedMap<uint16_t, Vector<uint16_t>> childrenMap;
+		Vector<Vector<uint16_t>> childrenMap;
 	};
 
 	struct SkeletonData {
