@@ -208,6 +208,8 @@ int main(int argc, char** argv){
     const auto outfileName = inputFile.filename().string() + ".rvem";
 
     SerializeMeshPart(outputDir / outfileName, mesh);
+
+    return 0;
 }
 
 

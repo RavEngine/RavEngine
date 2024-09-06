@@ -2,7 +2,7 @@
 function(pack_resources)
 	set(optional )
 	set(args TARGET OUTPUT_FILE STREAMING_INPUT_ROOT)
-	set(list_args SHADERS MESHES OBJECTS TEXTURES UIS FONTS SOUNDS STREAMING_ASSETS)
+	set(list_args SHADERS MESHES OBJECTS SKELETONS TEXTURES UIS FONTS SOUNDS STREAMING_ASSETS)
 	cmake_parse_arguments(
 		PARSE_ARGV 0
 		ARGS
@@ -123,7 +123,25 @@ function(pack_resources)
 			OUTPUT "${outfilename}"
 			COMMAND ${RVEMC_PATH} -f "${MESHCONF}" -o "${outdir}"
 			DEPENDS "${MESHCONF}" "${indir}/${inmeshfile}" "${RVEMC_PATH}"
-			COMMENT "Importing ${MESHCONF}"
+			COMMENT "Importing Mesh ${MESHCONF}"
+		)
+		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS "${outfilename}")
+	endforeach()
+
+	# import Skeletons
+	foreach(SKELCONF ${ARGS_SKELETONS})
+		file(READ "${SKELCONF}" desc_STR)
+		string(JSON inmeshfile GET "${desc_STR}" file)
+		
+		set(outdir "${CMAKE_CURRENT_BINARY_DIR}/${ARGS_TARGET}/skeletons/")
+		get_filename_component(outname "${SKELCONF}" NAME_WE)
+		get_filename_component(indir "${SKELCONF}" DIRECTORY)
+		set(outfilename "${outdir}/${outname}.rves")
+		add_custom_command(PRE_BUILD 
+			OUTPUT "${outfilename}"
+			COMMAND ${RVESKC_PATH} -f "${SKELCONF}" -o "${outdir}"
+			DEPENDS "${SKELCONF}" "${indir}/${inmeshfile}" "${RVESKC_PATH}"
+			COMMENT "Importing Skeleton ${SKELCONF}"
 		)
 		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS "${outfilename}")
 	endforeach()

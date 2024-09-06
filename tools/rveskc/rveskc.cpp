@@ -118,16 +118,27 @@ void SerializeSkeleton(const std::filesystem::path& outfile, const SkeletonData&
     SerializedSkeleton serialized;
     UnorderedMap<std::string_view, uint16_t> nameToOffset;
     // flatten skeleton
+
     auto recurseSkeleton = [&serialized,&nameToOffset](const SkeletonData::Bone& bone, auto&& fn) -> void {
         serialized.allBones.emplace_back(bone.transform, bone.name);
         const auto myIdx = serialized.allBones.size() - 1;
         nameToOffset[bone.name] = myIdx;
 
+        // recurse children
+        for (const auto& child : bone.children) {
+            fn(child, fn);
+        }
+
+    };
+    recurseSkeleton(skeleton.root, recurseSkeleton);
+
+    auto recurseSkeletonForChildren = [&serialized, &nameToOffset](const SkeletonData::Bone& bone, auto&& fn) -> void {
         // populate children map
         serialized.childrenMap.push_back({});
         auto& childrenList = serialized.childrenMap.back();
         for (const auto& child : bone.children) {
-            childrenList.push_back(nameToOffset[child.name]);
+            auto idx = nameToOffset.at(child.name);
+            childrenList.push_back(idx);
         }
 
         // recurse children
@@ -135,7 +146,7 @@ void SerializeSkeleton(const std::filesystem::path& outfile, const SkeletonData&
             fn(child, fn);
         }
     };
-    recurseSkeleton(skeleton.root, recurseSkeleton);
+    recurseSkeletonForChildren(skeleton.root, recurseSkeletonForChildren);
 
     SerializedSkeletonDataHeader header{
         .numBones = uint32_t(serialized.allBones.size())
@@ -164,7 +175,7 @@ void SerializeSkeleton(const std::filesystem::path& outfile, const SkeletonData&
     for (const auto& childrenList : serialized.childrenMap) {
         uint16_t numChildren = childrenList.size();
         out.write(reinterpret_cast<const char*>(&numChildren), sizeof(numChildren));
-        out.write(reinterpret_cast<const char*>(childrenList.data()), childrenList.size());
+        out.write(reinterpret_cast<const char*>(childrenList.data()), childrenList.size() * sizeof(childrenList[0]));
     }
 }
 
@@ -213,4 +224,6 @@ int main(int argc, char** argv) {
     const auto outfileName = inputFile.filename().string() + ".rves";
 
     SerializeSkeleton(outputDir / outfileName, skeleton);
+
+    return 0;
 }

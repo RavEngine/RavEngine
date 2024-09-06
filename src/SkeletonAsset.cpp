@@ -15,6 +15,7 @@
 #include <ozz/animation/runtime/local_to_model_job.h>
 #include "VirtualFileSystem.hpp"
 #include <glm/gtc/type_ptr.hpp>
+#include "Skeleton.hpp"
 #if !RVE_SERVER
     #include "RenderEngine.hpp"
 #endif
@@ -22,133 +23,76 @@
 using namespace RavEngine;
 using namespace std;
 
+SkeletonData DeserializeSkeleton(std::span<uint8_t> binaryData) {
+	uint8_t* fp = binaryData.data();
+
+	SerializedSkeletonDataHeader header = *reinterpret_cast<decltype(header)*>(fp);
+	fp += sizeof(header);
+
+	// check header
+	if (strncmp(header.header.data(), "rves", sizeof("rves") - 1) != 0) {
+		Debug::Fatal("Header does not match, data is not a mesh!");
+	}
+
+	SerializedSkeleton deserialized;
+	deserialized.allBones.reserve(header.numBones);
+	deserialized.childrenMap.reserve(header.numBones);
+
+	// Get bone transforms
+	for (uint32_t i = 0; i < header.numBones; i++) {
+		BoneTransform transform = *reinterpret_cast<decltype(transform)*>(fp);
+		fp += sizeof(transform);
+		deserialized.allBones.emplace_back(transform);
+	}
+	// get bone names
+	for (uint32_t i = 0; i < header.numBones; i++) {
+		uint16_t length = *reinterpret_cast<decltype(length)*>(fp);
+		fp += sizeof(length);
+		auto& name = deserialized.allBones[i].name;
+		name.reserve(length);
+		for (int i = 0; i < length; i++) {
+			name += (char(*fp));
+			fp++;
+		}
+	}
+	// get bone children
+	for (uint32_t i = 0; i < header.numBones; i++) {
+		uint16_t numchildren = *reinterpret_cast<decltype(numchildren)*>(fp);
+		fp += sizeof(numchildren);
+
+		auto& vec = deserialized.childrenMap.emplace_back();
+		vec.reserve(numchildren);
+		for (int i = 0; i < numchildren; i++) {
+			uint16_t childIdx = *reinterpret_cast<decltype(childIdx)*>(fp);
+			fp += sizeof(childIdx);
+			vec.push_back(childIdx);
+		}
+	}
+
+	SkeletonData data;
+	return data;
+}
+
 SkeletonAsset::SkeletonAsset(const std::string& str){
-	auto path = Format("objects/{}",str);
+	auto path = Format("skeletons/{}.rves",str);
 	
 	if(GetApp()->GetResources().Exists(path.c_str())){
-		//is this in ozz format?
-		auto extension = Filesystem::Path(str).extension();
-		if (extension == ".ozz"){
-            RavEngine::Vector<uint8_t> data;
-			GetApp()->GetResources().FileContentsAt(path.c_str(),data);
-			
-			ozz::io::MemoryStream mstr;
-			mstr.Write(data.data(), data.size());
-			mstr.Seek(0, ozz::io::Stream::kSet);
-			
-			skeleton = ozz::make_unique<ozz::animation::Skeleton>();
-			
-			ozz::io::IArchive archive(&mstr);
-			if (archive.TestTag<ozz::animation::Skeleton>()){
-				archive >> *skeleton;
-			}
-			else{
-				Debug::Fatal("{} is not an animation",path);
-			}
-		}
-		else{
-			auto data = GetApp()->GetResources().FileContentsAt(path.c_str());
-			const aiScene* scene = aiImportFileFromMemory(reinterpret_cast<char*>(data.data()), Debug::AssertSize<unsigned int>(data.size()),
-														  aiProcess_ImproveCacheLocality          |
-														  aiProcess_ValidateDataStructure          |
-														  aiProcess_FindInvalidData     ,
-														  extension.string().c_str());
-			
-			if (!scene){
-				Debug::Fatal("Cannot load: {}", aiGetErrorString());
-			}
-			
-			// create hashset of the bones list to determine quickly if a scene node is a relevant bone
-            UnorderedMap<std::string_view,aiBone*> bones;
-						
-			for(int i = 0; i < scene->mNumMeshes; i++){
-				auto mesh = scene->mMeshes[i];	//assume the first mesh is the mesh to use
-				if (!mesh->HasBones()){
-					continue;
-				}
-			
-				for(int i = 0; i < mesh->mNumBones; i++){
-					bones.insert(make_pair(string_view(mesh->mBones[i]->mName.C_Str()),mesh->mBones[i]));
-				}
-			}
-            Debug::Assert(bones.size() > 0, "'{}' does not contain bones!", str);
+		
+		auto data = GetApp()->GetResources().FileContentsAt(path.c_str());
 
-			// we will now bone this mesh
-			
-			//recurse the root node and get all of the bones
-			ozz::animation::offline::RawSkeleton raw_skeleton;
-			raw_skeleton.roots.resize(1);
-			auto& root = raw_skeleton.roots[0];
-			
-			//find root bone
-            //pick a bone, and recurse up its parent hierarchy
-            //TODO: this is very inefficient, optimize
-			aiNode* rootBone = nullptr;;
-			for(const auto& name : bones){
-				auto node = scene->mRootNode->FindNode(aiString(name.first.data()));
-                
-                //if the node has all of the bones in its sub-hierarchy (findnode) then it is the root node for the skeleton
-                while (node->mParent != NULL){
-                    int found_bones = 0;
-                    for(const auto& bone : bones){
-                        if (node->FindNode(aiString(bone.first.data()))){
-                            found_bones++;
-                        }
-                    }
-                    if (found_bones == bones.size()){
-                        rootBone = node;
-                        goto found_bone;
-                    }
-                    else{
-                        node = node->mParent;
-                    }
-                }
-                
-			}
-			found_bone:
-			Debug::Assert(rootBone != nullptr, "Could not find root bone");
-			
-			//construct skeleton hierarchy
-			auto recurse_bone = [&bones](decltype(root)& ozzbone, aiNode* node) -> void{
-				auto recurse_impl = [&bones](decltype(root)& ozzbone, aiNode* node, auto& recursive_call) -> void{
-                    // create its transformation
-                    aiVector3t<float> scale, position;
-                    aiQuaterniont<float> rotation;
-                    node->mTransformation.Decompose(scale, rotation, position);
-                    ozzbone.transform.translation = ozz::math::Float3(position.x,position.y,position.z);
-                    ozzbone.transform.scale = ozz::math::Float3(scale.x,scale.y,scale.z);
-                    ozzbone.transform.rotation = ozz::math::Quaternion(rotation.x, rotation.y, rotation.z, rotation.w);
-                    
-                    ozzbone.name = string_view(node->mName.C_Str());
-                    
-					for(int i = 0; i < node->mNumChildren; i++){
-						//is this a relevant bone?
-						auto childnode = node->mChildren[i];
-						if (bones.contains(string_view(childnode->mName.C_Str()))){
-							
-							//create a new bone
-							auto& newbone = ozzbone.children.emplace_back();
-							
-							//construct all the child bones for this bone
-							recursive_call(newbone,childnode,recursive_call);
-						}
-					}
-				};
-				recurse_impl(ozzbone, node, recurse_impl);
-			};
-			
-			recurse_bone(root, rootBone);
-			
-			//free afterward
-			aiReleaseImport(scene);
-			
-			//convert into a runtime-optimized skeleton
-			Debug::Assert(raw_skeleton.Validate(), "Skeleton validation failed");
-			
-			ozz::animation::offline::SkeletonBuilder skbuilder;
-			ozz::unique_ptr<ozz::animation::Skeleton> sk = skbuilder(raw_skeleton);
-			skeleton = std::move(sk);
-		}
+		auto skeletonData = DeserializeSkeleton(data);
+
+		//recurse the root node and get all of the bones
+		ozz::animation::offline::RawSkeleton raw_skeleton;
+		raw_skeleton.roots.resize(1);
+		auto& root = raw_skeleton.roots[0];
+
+		//convert into a runtime-optimized skeleton
+		Debug::Assert(raw_skeleton.Validate(), "Skeleton validation failed");
+
+		ozz::animation::offline::SkeletonBuilder skbuilder;
+		ozz::unique_ptr<ozz::animation::Skeleton> sk = skbuilder(raw_skeleton);
+		skeleton = std::move(sk);
 	}
 	else{
 		Debug::Fatal("No skeleton at {}",path);
