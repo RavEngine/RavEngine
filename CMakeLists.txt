@@ -257,6 +257,15 @@ if (NOT CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/RVEMC"
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/RVEMC"
 	)
+
+	include(cmake/rveskc.cmake)
+	set(RVEMC_PATH rveskc CACHE INTERNAL "")
+	set_target_properties(rveskc
+		PROPERTIES
+		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/RVESKC"
+		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/RVESKC"
+		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/RVESKC"
+	)
 else()
 	#host tools configures it
 endif()
@@ -670,7 +679,7 @@ test_physfs;tweeny-dummy;zlib;zlibstatic;SDL3-static;json;physfs_uninstall;dist;
 sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt;simdjson;TracyClient;
 ")
 
-group_in("Tools" "rvesc;rvesc_resources;rvemc")
+group_in("Tools" "rvesc;rvesc_resources;rvemc;rveskc")
 
 group_in("Libraries/PhysX SDK" 
 "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\

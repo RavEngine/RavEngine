@@ -5,7 +5,6 @@
 #include <simdjson.h>
 #include <iostream>
 #include <fstream>
-#include <functional>
 #include <assimp/cimport.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
