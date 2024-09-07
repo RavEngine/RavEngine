@@ -26,58 +26,20 @@ SkeletonData LoadSkeleton(const std::filesystem::path& infile) {
         FATAL(fmt::format("Cannot load: {}", aiGetErrorString()));
     }
 
-    // create hashset of the bones list to determine quickly if a scene node is a relevant bone
-    UnorderedMap<std::string_view, aiBone*> bones;
+    auto unpackedSkeleton = NameToBone(scene);
+    auto& rootBone = unpackedSkeleton.rootBone;
+    auto& bones = unpackedSkeleton.bones;
 
-    for (int i = 0; i < scene->mNumMeshes; i++) {
-        auto mesh = scene->mMeshes[i];	//assume the first mesh is the mesh to use (TODO: filter the objects)
-        if (!mesh->HasBones()) {
-            continue;
-        }
-
-        for (int i = 0; i < mesh->mNumBones; i++) {
-            bones.insert(make_pair(string_view(mesh->mBones[i]->mName.C_Str()), mesh->mBones[i]));
-        }
-    }
-    ASSERT(bones.size() > 0, fmt::format("'{}' does not contain bones!", infile.string()));
+    ASSERT(rootBone != nullptr, "Could not find root bone");
 
     // we will now bone this mesh
     SkeletonData skeleton;
 
     //recurse the root node and get all of the bones
-    auto& root = skeleton.root;
-
-    //find root bone
-    //pick a bone, and recurse up its parent hierarchy
-    //TODO: this is very inefficient, optimize
-    aiNode* rootBone = nullptr;
-    for (const auto& name : bones) {
-        auto node = scene->mRootNode->FindNode(aiString(name.first.data()));
-
-        //if the node has all of the bones in its sub-hierarchy (findnode) then it is the root node for the skeleton
-        while (node->mParent != NULL) {
-            int found_bones = 0;
-            for (const auto& bone : bones) {
-                if (node->FindNode(aiString(bone.first.data()))) {
-                    found_bones++;
-                }
-            }
-            if (found_bones == bones.size()) {
-                rootBone = node;
-                goto found_bone;
-            }
-            else {
-                node = node->mParent;
-            }
-        }
-
-    }
-found_bone:
-    ASSERT(rootBone != nullptr, "Could not find root bone");
 
     //construct skeleton hierarchy
-    auto recurse_bone = [&bones](decltype(root)& ozzbone, aiNode* node) -> void {
-        auto recurse_impl = [&bones](decltype(root)& ozzbone, aiNode* node, auto& recursive_call) -> void {
+    auto recurse_bone = [&bones](SkeletonData::Bone& ozzbone, aiNode* node) -> void {
+        auto recurse_impl = [&bones](SkeletonData::Bone& ozzbone, aiNode* node, auto& recursive_call) -> void {
             // create its transformation
             aiVector3t<float> scale, position;
             aiQuaterniont<float> rotation;
@@ -104,7 +66,7 @@ found_bone:
         recurse_impl(ozzbone, node, recurse_impl);
         };
 
-    recurse_bone(root, rootBone);
+    recurse_bone(skeleton.root, rootBone);
 
     //free afterward
     aiReleaseImport(scene);

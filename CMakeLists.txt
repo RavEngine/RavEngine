@@ -239,6 +239,7 @@ if (NOT RAVENGINE_SERVER)
 	set(RGL_LIB "RGL")
 endif()
 
+include(cmake/importlib.cmake)
 if (NOT CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	include(cmake/rvesc.cmake)
 	set(RVESC_PATH rvesc CACHE INTERNAL "")
@@ -679,7 +680,7 @@ test_physfs;tweeny-dummy;zlib;zlibstatic;SDL3-static;json;physfs_uninstall;dist;
 sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt;simdjson;TracyClient;
 ")
 
-group_in("Tools" "rvesc;rvesc_resources;rvemc;rveskc")
+group_in("Tools" "rvesc;rvesc_resources;rvemc;rveskc;rve_importlib")
 
 group_in("Libraries/PhysX SDK" 
 "FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\

@@ -4,9 +4,13 @@
 #include "Map.hpp"
 #include "mathtypes.hpp"
 
+class aiNode;
+class aiBone;
+class aiScene;
+
 namespace RavEngine {
 	struct SerializedSkeletonDataHeader {
-		Array<char, 4> header = {'r','v','e','s'};
+		Array<char, 4> header = { 'r','v','e','s' };
 		uint32_t numBones = 0;
 	};
 
@@ -14,7 +18,7 @@ namespace RavEngine {
 		glm::quat rotation;
 		glm::vec3 translation, scale;
 	};
-	
+
 	struct SerializedSkeleton {
 		struct Bone {
 			BoneTransform transform;
@@ -32,4 +36,13 @@ namespace RavEngine {
 		};
 		Bone root;
 	};
+
+	// ImportLib
+	UnorderedMap<std::string, uint16_t> FlattenSkeleton(aiNode* rootBone);
+
+	struct NameToBoneResult { 
+		UnorderedMap<std::string_view, aiBone*> bones; 
+		aiNode* rootBone;
+	};
+	NameToBoneResult NameToBone(const aiScene* scene);
 }
