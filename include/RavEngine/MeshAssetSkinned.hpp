@@ -10,14 +10,7 @@ namespace RavEngine{
 	class SkeletonAsset;
 
 class MeshAssetSkinned : public MeshAsset{
-public:
-	struct vweights {
-		struct vw {
-			uint32_t joint_idx = 0;
-			float influence = 0;
-		};
-		Vector<vw> weights;
-	};
+
 private:
 #if !RVE_SERVER
 	RGLBufferPtr weightsBuffer;

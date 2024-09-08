@@ -13,6 +13,7 @@
     #include <RGL/Buffer.hpp>
 #endif
 #include "SkeletonAsset.hpp"
+#include "Skeleton.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -61,73 +62,17 @@ MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> s
 	if (!scene){
 		Debug::Fatal("Cannot load: {}", aiGetErrorString());
 	}
-	RavEngine::Vector<vweights> allweights;
-	{
-		uint32_t numverts = 0;
-		for(int i = 0; i < scene->mNumMeshes; i++){
-			numverts += scene->mMeshes[i]->mNumVertices;
-		}
-		
-		allweights.resize(numverts);
-	}
 	
-	uint16_t current_offset = 0;
-	auto sk = skeleton->GetSkeleton().get();
 	
-	auto calcMesh = [&](const aiMesh* mesh){
-		for(int i = 0; i < mesh->mNumBones; i++){
-			auto bone = mesh->mBones[i];
-			vweights weights;
-			//find this bone in the skeleton to determine joint index
-			auto it = std::find(sk->joint_names().begin(),sk->joint_names().end(),string(bone->mName.C_Str()));
-			if (it == sk->joint_names().end()){
-				continue;
-			}
-			uint32_t idx = std::distance(sk->joint_names().begin(), it);
-			
-			//copy (index + current_offset) and influence
-			for(int j = 0; j < bone->mNumWeights; j++){
-				auto weightval = bone->mWeights[j];
-				
-				allweights[weightval.mVertexId + current_offset].weights.push_back({vweights::vw{idx,weightval.mWeight}});
-			}
-			
-		}
-	};
-	
-	//go through mesh and pull out weights
-	for(int i = 0; i < scene->mNumMeshes; i++){
-		auto mesh = scene->mMeshes[i];
-		
-		calcMesh(mesh);
-		current_offset += mesh->mNumVertices;
-	}
-	struct wrapper{
-		vweights::vw w[4];
-	};
 #if !RVE_SERVER
 	//make gpu version
-    std::vector<wrapper> weightsgpu;
-	weightsgpu.reserve(allweights.size());
-	std::memset(weightsgpu.data(), 0, weightsgpu.size() * sizeof(weightsgpu[0]));
-	
-	for(const auto& weights : allweights){
-		wrapper w;
-		uint8_t i = 0;
-		for(const auto& weight : weights.weights){
-			w.w[i].influence = weight.influence;
-			w.w[i].joint_idx = weight.joint_idx;
-			
-			i++;
-		}
-		weightsgpu.push_back(w);
-	}
-	
+    std::vector<VertexWeights> weightsgpu; //TODO: read from file
+
 	//map to GPU
 	weightsBuffer = GetApp()->GetDevice()->CreateBuffer({
 		uint32_t(weightsgpu.size()),
 		{.StorageBuffer = true},
-		sizeof(wrapper),
+		sizeof(VertexWeights),
 		RGL::BufferAccess::Private,
 		{.Writable = false}
 	});

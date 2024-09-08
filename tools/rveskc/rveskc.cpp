@@ -32,41 +32,7 @@ SkeletonData LoadSkeleton(const std::filesystem::path& infile) {
 
     ASSERT(rootBone != nullptr, "Could not find root bone");
 
-    // we will now bone this mesh
-    SkeletonData skeleton;
-
-    //recurse the root node and get all of the bones
-
-    //construct skeleton hierarchy
-    auto recurse_bone = [&bones](SkeletonData::Bone& ozzbone, aiNode* node) -> void {
-        auto recurse_impl = [&bones](SkeletonData::Bone& ozzbone, aiNode* node, auto& recursive_call) -> void {
-            // create its transformation
-            aiVector3t<float> scale, position;
-            aiQuaterniont<float> rotation;
-            node->mTransformation.Decompose(scale, rotation, position);
-            ozzbone.transform.translation = { position.x, position.y, position.z };
-            ozzbone.transform.scale = { scale.x, scale.y, scale.z };
-            ozzbone.transform.rotation = { rotation.x, rotation.y, rotation.z, rotation.w };
-
-            ozzbone.name = string_view(node->mName.C_Str());
-
-            for (int i = 0; i < node->mNumChildren; i++) {
-                //is this a relevant bone?
-                auto childnode = node->mChildren[i];
-                if (bones.contains(string_view(childnode->mName.C_Str()))) {
-
-                    //create a new bone
-                    auto& newbone = ozzbone.children.emplace_back();
-
-                    //construct all the child bones for this bone
-                    recursive_call(newbone, childnode, recursive_call);
-                }
-            }
-            };
-        recurse_impl(ozzbone, node, recurse_impl);
-        };
-
-    recurse_bone(skeleton.root, rootBone);
+    auto skeleton = CreateSkeleton(unpackedSkeleton);
 
     //free afterward
     aiReleaseImport(scene);
@@ -77,38 +43,7 @@ SkeletonData LoadSkeleton(const std::filesystem::path& infile) {
 void SerializeSkeleton(const std::filesystem::path& outfile, const SkeletonData& skeleton) {
     std::filesystem::create_directories(outfile.parent_path());		// make all the folders necessary
 
-    SerializedSkeleton serialized;
-    UnorderedMap<std::string_view, uint16_t> nameToOffset;
-    // flatten skeleton
-
-    auto recurseSkeleton = [&serialized,&nameToOffset](const SkeletonData::Bone& bone, auto&& fn) -> void {
-        serialized.allBones.emplace_back(bone.transform, bone.name);
-        const auto myIdx = serialized.allBones.size() - 1;
-        nameToOffset[bone.name] = myIdx;
-
-        // recurse children
-        for (const auto& child : bone.children) {
-            fn(child, fn);
-        }
-
-    };
-    recurseSkeleton(skeleton.root, recurseSkeleton);
-
-    auto recurseSkeletonForChildren = [&serialized, &nameToOffset](const SkeletonData::Bone& bone, auto&& fn) -> void {
-        // populate children map
-        serialized.childrenMap.push_back({});
-        auto& childrenList = serialized.childrenMap.back();
-        for (const auto& child : bone.children) {
-            auto idx = nameToOffset.at(child.name);
-            childrenList.push_back(idx);
-        }
-
-        // recurse children
-        for (const auto& child : bone.children) {
-            fn(child, fn);
-        }
-    };
-    recurseSkeletonForChildren(skeleton.root, recurseSkeletonForChildren);
+    auto serialized = FlattenSkeleton(skeleton);
 
     SerializedSkeletonDataHeader header{
         .numBones = uint32_t(serialized.allBones.size())

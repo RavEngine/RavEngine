@@ -12,6 +12,9 @@ struct SerializedMeshDataHeader{
     const std::array<char, 4> header = {'r','v','e','m'};
     uint32_t numVertices = 0;
     uint32_t numIndicies = 0;
+    uint8_t attributes = 0;     // info about the file
+
+    constexpr static uint8_t SkinnedMeshBit = 1 << 0;
 };
 
 typedef VertexNormalUV vertex_t;
@@ -36,5 +39,6 @@ struct MeshPartView : public MeshPartBase<basic_immutable_span>{
         indices = { other.indices.data(), other.indices.size() };
     }
 };
+
 
 }

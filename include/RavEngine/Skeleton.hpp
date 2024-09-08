@@ -26,6 +26,7 @@ namespace RavEngine {
 		};
 		Vector<Bone> allBones;
 		Vector<Vector<uint16_t>> childrenMap;
+		uint16_t IndexForBoneName(const std::string_view name);
 	};
 
 	struct SkeletonData {
@@ -37,12 +38,24 @@ namespace RavEngine {
 		Bone root;
 	};
 
-	// ImportLib
-	UnorderedMap<std::string, uint16_t> FlattenSkeleton(aiNode* rootBone);
 
 	struct NameToBoneResult { 
 		UnorderedMap<std::string_view, aiBone*> bones; 
 		aiNode* rootBone;
 	};
 	NameToBoneResult NameToBone(const aiScene* scene);
+	SkeletonData CreateSkeleton(const NameToBoneResult& result);
+	SerializedSkeleton FlattenSkeleton(const SkeletonData& skeleton);
+
+	struct VertexWeights {
+		struct vweights {
+			struct vw {
+				uint32_t joint_idx = 0;
+				float influence = 0;
+			};
+			Vector<vw> weights;
+		};
+
+		vweights::vw w[4];
+	};
 }

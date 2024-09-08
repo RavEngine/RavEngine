@@ -11,6 +11,9 @@
 #include <assimp/material.h>
 #include <assimp/mesh.h>
 #include "Mesh.hpp"
+#include "Skeleton.hpp"
+#include <variant>
+#include "CaseAnalysis.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -85,7 +88,12 @@ MeshPart AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scalemat)
     return mp;
 }
 
-MeshPart LoadMesh(const std::filesystem::path& path, std::optional<std::string_view> meshName, float scaleFactor) {
+struct SkinnedMeshPart : public MeshPart {
+    std::vector<VertexWeights> vertexWeights;
+};
+
+template<bool isSkinned>
+std::variant<MeshPart, SkinnedMeshPart> LoadMesh(const std::filesystem::path& path, std::optional<std::string_view> meshName, float scaleFactor) {
     const aiScene* scene = aiImportFile(path.string().c_str(), assimp_flags);
 
     if (!scene) {
@@ -94,6 +102,8 @@ MeshPart LoadMesh(const std::filesystem::path& path, std::optional<std::string_v
 
     aiNode* meshNode = scene->mRootNode;
     uint32_t meshCount = scene->mNumMeshes;
+
+    using Mesh_t = std::conditional<isSkinned, SkinnedMeshPart, MeshPart>::type;
     
     if (meshName.has_value()) {
         meshNode = scene->mRootNode->FindNode(aiString(std::string(meshName.value())));
@@ -104,7 +114,7 @@ MeshPart LoadMesh(const std::filesystem::path& path, std::optional<std::string_v
     }
 
 
-    MeshPart mesh;
+    Mesh_t mesh;
     uint32_t index_base = 0;
     for (int i = 0; i < meshCount; i++) {
 
@@ -118,36 +128,120 @@ MeshPart LoadMesh(const std::filesystem::path& path, std::optional<std::string_v
         index_base += mp.vertices.size();
     }
 
+    decltype(SkinnedMeshPart::vertexWeights) weightsgpu;
+    if constexpr (isSkinned) {
+        // load skin data
+
+        RavEngine::Vector<VertexWeights::vweights> allweights;
+        {
+            uint32_t numverts = 0;
+            for (int i = 0; i < scene->mNumMeshes; i++) {
+                numverts += scene->mMeshes[i]->mNumVertices;
+            }
+
+            allweights.resize(numverts);
+        }
+
+        uint16_t current_offset = 0;
+
+        auto allbones = NameToBone(scene);
+        auto sk = CreateSkeleton(allbones);
+        auto serialized = FlattenSkeleton(sk);
+
+        auto calcMesh = [&](const aiMesh* mesh) {
+            for (int i = 0; i < mesh->mNumBones; i++) {
+                auto bone = mesh->mBones[i];
+                VertexWeights::vweights weights;
+                //find this bone in the skeleton to determine joint index
+                auto idx = serialized.IndexForBoneName({ bone->mName.C_Str(), bone->mName.length});
+
+                //copy (index + current_offset) and influence
+                for (int j = 0; j < bone->mNumWeights; j++) {
+                    auto weightval = bone->mWeights[j];
+
+                    allweights[weightval.mVertexId + current_offset].weights.push_back({ VertexWeights::vweights::vw{idx,weightval.mWeight} });
+                }
+
+            }
+            };
+
+        //go through mesh and pull out weights
+        for (int i = 0; i < scene->mNumMeshes; i++) {
+            auto mesh = scene->mMeshes[i];
+
+            calcMesh(mesh);
+            current_offset += mesh->mNumVertices;
+        }
+
+        //make gpu version
+        weightsgpu.reserve(allweights.size());
+        std::memset(weightsgpu.data(), 0, weightsgpu.size() * sizeof(weightsgpu[0]));
+
+        for (const auto& weights : allweights) {
+            VertexWeights w;
+            uint8_t i = 0;
+            for (const auto& weight : weights.weights) {
+                w.w[i].influence = weight.influence;
+                w.w[i].joint_idx = weight.joint_idx;
+
+                i++;
+            }
+            weightsgpu.push_back(w);
+        }
+        mesh.vertexWeights = std::move(weightsgpu);
+    }
+
     aiReleaseImport(scene);
 
     return mesh;
 }
 
-void SerializeMeshPart(const std::filesystem::path& outfile, const MeshPart& mesh) {
+void SerializeMeshPart(const std::filesystem::path& outfile, const std::variant<MeshPart,SkinnedMeshPart>& mesh) {
     std::filesystem::create_directories(outfile.parent_path());		// make all the folders necessary
 
-    SerializedMeshDataHeader header{
-        .numVertices = uint32_t(mesh.vertices.size()),
-        .numIndicies = uint32_t(mesh.indices.size())
-    };
+    bool isSkinned = false;
+    std::visit(CaseAnalysis(
+        [&isSkinned](const MeshPart& mesh) {
+            isSkinned = false;
+        }, 
+        [&isSkinned](const SkinnedMeshPart& mesh) {
+            isSkinned = true;
+        }), mesh);
 
+    // common code for skinned and non-skinned meshes
     ofstream out(outfile, std::ios::binary);
     if (!out) {
-        FATAL(fmt::format("Could not open {} for writing",outfile.string()));
+        FATAL(fmt::format("Could not open {} for writing", outfile.string()));
     }
 
-    // write header
-    out.write(reinterpret_cast<const char*>(&header), sizeof(header));
+    std::visit([&out,&isSkinned](const MeshPart& mesh) {
+        
+        SerializedMeshDataHeader header{
+           .numVertices = uint32_t(mesh.vertices.size()),
+           .numIndicies = uint32_t(mesh.indices.size()),
+           .attributes = uint8_t(isSkinned ? SerializedMeshDataHeader::SkinnedMeshBit : 0)
+        };
 
-    // write vertices
-    for (const auto& vert : mesh.vertices) {
-        out.write(reinterpret_cast<const char*>(&vert), sizeof(vert));
-    }
+        // write header
+        out.write(reinterpret_cast<const char*>(&header), sizeof(header));
 
-    // write indices
-    for (const auto& ind : mesh.indices) {
-        out.write(reinterpret_cast<const char*>(&ind), sizeof(ind));
-    }
+        // write vertices
+        for (const auto& vert : mesh.vertices) {
+            out.write(reinterpret_cast<const char*>(&vert), sizeof(vert));
+        }
+
+        // write indices
+        for (const auto& ind : mesh.indices) {
+            out.write(reinterpret_cast<const char*>(&ind), sizeof(ind));
+        }
+    }, mesh);
+   
+    // executed only for skinned meshes
+    std::visit(CaseAnalysis(
+        [](const MeshPart& mesh) {},        // no-op
+        [&out](const SkinnedMeshPart& mesh) {
+            out.write(reinterpret_cast<const char*>(mesh.vertexWeights.data()), mesh.vertexWeights.size() * sizeof(decltype(mesh.vertexWeights)::value_type));
+        }), mesh);
 }
 
 int main(int argc, char** argv){
@@ -201,8 +295,15 @@ int main(int argc, char** argv){
     if (!err) {
         fmn_opt.emplace(filteredMeshName);
     }
+
+    bool isSkinned = false;
+    std::string_view typeStr;
+    err = doc["type"].get(typeStr);
+    if (!err) {
+        isSkinned = (typeStr == "skinned");
+    }
     
-    auto mesh = LoadMesh(infile, fmn_opt, scaleFactor);
+    auto mesh = isSkinned ? LoadMesh<true>(infile, fmn_opt, scaleFactor) : LoadMesh<false>(infile, fmn_opt, scaleFactor);
 
     inputFile.replace_extension("");
     const auto outfileName = inputFile.filename().string() + ".rvem";
