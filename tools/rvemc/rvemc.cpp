@@ -96,6 +96,7 @@ template<bool isSkinned>
 std::variant<MeshPart, SkinnedMeshPart> LoadMesh(const std::filesystem::path& path, std::optional<std::string_view> meshName, float scaleFactor) {
     const aiScene* scene = aiImportFile(path.string().c_str(), assimp_flags);
 
+
     if (!scene) {
         FATAL(fmt::format("Cannot load from filesystem: {}", aiGetErrorString()));
     }

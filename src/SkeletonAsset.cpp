@@ -42,7 +42,7 @@ SkeletonData DeserializeSkeleton(std::span<uint8_t> binaryData) {
 	for (uint32_t i = 0; i < header.numBones; i++) {
 		BoneTransform transform = *reinterpret_cast<decltype(transform)*>(fp);
 		fp += sizeof(transform);
-		deserialized.allBones.emplace_back(transform);
+        deserialized.allBones.push_back({transform});
 	}
 	// get bone names
 	for (uint32_t i = 0; i < header.numBones; i++) {
