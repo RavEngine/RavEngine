@@ -28,45 +28,41 @@ RavEngine::MeshAssetSkinned::~MeshAssetSkinned()
 }
 
 //TODO: avoid opening the file twice -- this is a double copy and repeats work, therefore slow
-MeshAssetSkinned::MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> skeleton, float scale) : MeshAsset(path,MeshAssetOptions{false,true}){
+MeshAssetSkinned::MeshAssetSkinned(const std::string& path) // we intentionally DO NOT call the constructor
+{
 	
-	auto fullpath = Format("objects/{}",path);
+	auto fullpath = Format("meshes/{}.rvem",path);
 	
 	if (!GetApp()->GetResources().Exists(fullpath.c_str())){
 		Debug::Fatal("No asset at {}",fullpath);
 	}
 	
 	auto str = GetApp()->GetResources().FileContentsAt(fullpath.c_str());
-	
-	//pull from cmrc
-	auto file_ext = Filesystem::Path(fullpath).extension();
-	//uses a meta-flag to auto-triangulate the input file
-	const aiScene* scene = aiImportFileFromMemory(reinterpret_cast<char*>(str.data()), Debug::AssertSize<unsigned int>(str.size()),
-												  aiProcess_CalcTangentSpace |
-												  aiProcess_GenSmoothNormals              |
-												  aiProcess_JoinIdenticalVertices         |
-												  aiProcess_ImproveCacheLocality          |
-												  aiProcess_LimitBoneWeights              |
-												  aiProcess_RemoveRedundantMaterials      |
-												  aiProcess_SplitLargeMeshes              |
-												  aiProcess_Triangulate                   |
-												  aiProcess_GenUVCoords                   |
-												  aiProcess_SortByPType                   |
-												  aiProcess_FindInstances                 |
-												  aiProcess_ValidateDataStructure         |
-												  aiProcess_OptimizeMeshes				  |
-												  aiProcess_FindInvalidData     ,
-												  file_ext.string().c_str());
-	
-	
-	if (!scene){
-		Debug::Fatal("Cannot load: {}", aiGetErrorString());
-	}
+
+
+	auto mesh = DeserializeMeshFromMemory(str);
+	InitializeFromRawMesh(mesh.first, MeshAssetOptions{ false,true });	// this intializes the staticmesh part
 	
 	
 #if !RVE_SERVER
+	// mesh.second has the file offset
+
+	// check if there is weight data
+	if (str.size() - mesh.second < 4) {
+		Debug::Fatal("Mesh is probably not a skinned mesh");
+	}
+
+	uint8* fp = str.data() + mesh.second;
+	auto size = ((str.data() + str.size()) - fp) / sizeof(VertexWeights);
+	Debug::Assert(size == GetNumVerts(),"Skin does not have vertex weights for every vertex, input file is corrupt");
+
 	//make gpu version
-    std::vector<VertexWeights> weightsgpu; //TODO: read from file
+    std::vector<VertexWeights> weightsgpu;
+	weightsgpu.reserve(size);
+	for (int i = 0; i < size; i++) {
+		VertexWeights weights = *(reinterpret_cast<VertexWeights*>(fp)+i);
+		weightsgpu.push_back(weights);
+	}
 
 	//map to GPU
 	weightsBuffer = GetApp()->GetDevice()->CreateBuffer({

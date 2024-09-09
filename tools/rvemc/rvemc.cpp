@@ -5,13 +5,13 @@
 #include <simdjson.h>
 #include <iostream>
 #include <fstream>
+#include "Skeleton.hpp"
 #include <assimp/cimport.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <assimp/material.h>
 #include <assimp/mesh.h>
 #include "Mesh.hpp"
-#include "Skeleton.hpp"
 #include <variant>
 #include "CaseAnalysis.hpp"
 
@@ -191,7 +191,6 @@ std::variant<MeshPart, SkinnedMeshPart> LoadMesh(const std::filesystem::path& pa
         }
         mesh.vertexWeights = std::move(weightsgpu);
     }
-
     aiReleaseImport(scene);
 
     return mesh;

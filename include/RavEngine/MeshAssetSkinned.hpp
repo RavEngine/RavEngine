@@ -19,11 +19,8 @@ public:
 	
 	~MeshAssetSkinned();
 	
-	MeshAssetSkinned(const std::string& path, Ref<SkeletonAsset> skeleton, float scale = 1.0);
-	
-	//disable
-	MeshAssetSkinned(const std::string& name, const decimalType scale = 1.0) = delete;
-    
+	MeshAssetSkinned(const std::string& path);
+	    
     // use this to load assets
     struct Manager : public GenericWeakReadThroughCache<std::string,MeshAssetSkinned>{};
 #if !RVE_SERVER

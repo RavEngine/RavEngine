@@ -20,7 +20,7 @@ MeshPart RavEngine::MeshAsset::DeserializeMesh(const istream& stream)
 	return {};
 }
 
-MeshPart RavEngine::MeshAsset::DeserializeMeshFromMemory(const std::span<uint8_t> mem)
+std::pair<MeshPart, uint32_t> RavEngine::MeshAsset::DeserializeMeshFromMemory(const std::span<uint8_t> mem)
 {
 	uint8_t* fp = mem.data();
 	SerializedMeshDataHeader header = *reinterpret_cast<SerializedMeshDataHeader*>(fp);
@@ -50,7 +50,7 @@ MeshPart RavEngine::MeshAsset::DeserializeMeshFromMemory(const std::span<uint8_t
 		fp += sizeof(uint32_t);
 	}
 
-	return mesh;
+	return { mesh, fp - mem.data()};
 }
 
 MeshAsset::MeshAsset(const string& name, const MeshAssetOptions& options){
@@ -58,7 +58,7 @@ MeshAsset::MeshAsset(const string& name, const MeshAssetOptions& options){
 	auto str = GetApp()->GetResources().FileContentsAt(dir.c_str());
 
 	auto mesh = DeserializeMeshFromMemory(str);
-	InitializeFromRawMesh(mesh, options);
+	InitializeFromRawMesh(mesh.first, options);
 }
 
 MeshAsset::MeshAsset(const Filesystem::Path& path, const MeshAssetOptions& opt){

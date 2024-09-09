@@ -57,7 +57,7 @@ namespace RavEngine {
 	struct MeshCollectionSkinned : protected MeshCollection<MeshAssetSkinned> {
 	friend class RenderEngine;
 		MeshCollectionSkinned(const Entry& m);
-		MeshCollectionSkinned(const std::string& name, Ref<SkeletonAsset> skeleton, float scale = 1.0) : MeshCollectionSkinned({ MeshAssetSkinned::Manager::Get(name,skeleton, scale) }) {}
+		MeshCollectionSkinned(const std::string& name) : MeshCollectionSkinned({ MeshAssetSkinned::Manager::Get(name) }) {}
 
 		uint32_t GetNumVerts() const;
 		uint32_t GetNumIndices() const;

@@ -39,6 +39,7 @@ public:
 	MeshAsset(MeshAsset&&) = delete;
     
 protected:
+	MeshAsset() {};		// SkinnedMesh needs this
 #if !RVE_SERVER
     RGLBufferPtr vertexBuffer, indexBuffer;
 #endif
@@ -69,7 +70,7 @@ protected:
 	MeshPart systemRAMcopy;
 
 	MeshPart DeserializeMesh(const std::istream& stream);
-	MeshPart DeserializeMeshFromMemory(const std::span<uint8_t> mem);
+	std::pair<MeshPart,uint32_t> DeserializeMeshFromMemory(const std::span<uint8_t> mem);
 
     friend class RenderEngine;
 	
