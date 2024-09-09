@@ -2,7 +2,7 @@
 function(pack_resources)
 	set(optional )
 	set(args TARGET OUTPUT_FILE STREAMING_INPUT_ROOT)
-	set(list_args SHADERS MESHES OBJECTS SKELETONS TEXTURES UIS FONTS SOUNDS STREAMING_ASSETS)
+	set(list_args SHADERS MESHES OBJECTS SKELETONS ANIMATIONS TEXTURES UIS FONTS SOUNDS STREAMING_ASSETS)
 	cmake_parse_arguments(
 		PARSE_ARGV 0
 		ARGS
@@ -142,6 +142,24 @@ function(pack_resources)
 			COMMAND ${RVESKC_PATH} -f "${SKELCONF}" -o "${outdir}"
 			DEPENDS "${SKELCONF}" "${indir}/${inmeshfile}" "${RVESKC_PATH}"
 			COMMENT "Importing Skeleton ${SKELCONF}"
+		)
+		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS "${outfilename}")
+	endforeach()
+
+	# import Animations
+	foreach(ANIMCONF ${ARGS_ANIMATIONS})
+		file(READ "${ANIMCONF}" desc_STR)
+		string(JSON inmeshfile GET "${desc_STR}" file)
+		
+		set(outdir "${CMAKE_CURRENT_BINARY_DIR}/${ARGS_TARGET}/animations/")
+		get_filename_component(outname "${ANIMCONF}" NAME_WE)
+		get_filename_component(indir "${ANIMCONF}" DIRECTORY)
+		set(outfilename "${outdir}/${outname}.rvea")
+		add_custom_command(PRE_BUILD 
+			OUTPUT "${outfilename}"
+			COMMAND ${RVEAC_PATH} -f "${ANIMCONF}" -o "${outdir}"
+			DEPENDS "${ANIMCONF}" "${indir}/${inmeshfile}" "${RVEAC_PATH}"
+			COMMENT "Importing Animation ${ANIMCONF}"
 		)
 		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS "${outfilename}")
 	endforeach()

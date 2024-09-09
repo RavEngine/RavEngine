@@ -44,7 +44,7 @@ class AnimationAsset : public IAnimGraphable{
 	//clip data
 	ozz::unique_ptr<ozz::animation::Animation> anim;
 public:
-	AnimationAsset(const std::string& name, Ref<SkeletonAsset> skeleton);
+	AnimationAsset(const std::string& name);
 	
 	/**
 	 Sample the animation curves

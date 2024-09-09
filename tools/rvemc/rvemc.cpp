@@ -19,7 +19,7 @@ using namespace std;
 using namespace RavEngine;
 
 #define FATAL(reason) {std::cerr << "rvemc error: " << reason << std::endl; std::exit(1);}
-#define ASSERT(cond, str) {if (!cond) FATAL(str)}
+#define ASSERT(cond, str) {if (!(cond)) FATAL(str)}
 
 static constexpr auto assimp_flags = aiProcess_CalcTangentSpace |
 aiProcess_GenSmoothNormals |

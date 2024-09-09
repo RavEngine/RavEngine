@@ -16,7 +16,7 @@
 #include <assimp/postprocess.h>
 #include "VirtualFileSystem.hpp"
 #include "SkeletonAsset.hpp"
-
+#include "Animation.hpp"
 
 using namespace RavEngine;
 using namespace std;
@@ -47,117 +47,98 @@ bool AnimationAssetSegment::Sample(float globaltime, float last_global_starttime
 	return retval;
 }
 
-AnimationAsset::AnimationAsset(const std::string& name, Ref<SkeletonAsset> skeleton){
-	auto path = Format("objects/{}", name);
-	if(GetApp()->GetResources().Exists(path.c_str())){
-		//is this in ozz format
-		auto extension = Filesystem::Path(name).extension();
-		if (extension == ".ozz"){
-            RavEngine::Vector<uint8_t> data;
-			GetApp()->GetResources().FileContentsAt(path.c_str());
-			
-			ozz::io::MemoryStream mstr;
-			mstr.Write(data.data(), data.size());
-			mstr.Seek(0, ozz::io::Stream::kSet);
-			
-			anim = ozz::make_unique<ozz::animation::Animation>();
-			
-			ozz::io::IArchive archive(&mstr);
-			if (archive.TestTag<ozz::animation::Animation>()){
-				archive >> *anim;
-			}
-			else{
-				Debug::Fatal("{} is not an animation",path);
-			}
-		}
-		else{
-			auto data = GetApp()->GetResources().FileContentsAt(path.c_str());
-			const aiScene* scene = aiImportFileFromMemory(reinterpret_cast<char*>(data.data()), Debug::AssertSize<unsigned int>(data.size()) ,
-														  aiProcess_ImproveCacheLocality          |
-														  aiProcess_ValidateDataStructure          |
-														  aiProcess_FindInvalidData     ,
-														  extension.string().c_str());
+template<typename T>
+T ReadBytesFromMem(uint8_t*& fp) {
+	T val = *reinterpret_cast<T*>(fp);
+	fp += sizeof(T);
+	return val;
+}
 
-			if (!scene){
-				Debug::Fatal("Cannot load: {}", aiGetErrorString());
+template<typename T>
+void ReadNFromMem(uint8_t*& fp, T* dest, uint32_t count) {
+	auto nbytes = count * sizeof(T);
+	std::memcpy(dest, fp, nbytes);
+	fp += nbytes;
+}
+
+JointAnimation DeserializeJointAnimation(const std::span<uint8_t> data) {
+	uint8_t* fp = data.data();
+	auto header = ReadBytesFromMem<SerializedJointAnimationHeader>(fp);
+
+	// check header
+	if (strncmp(header.header.data(), "rvea", sizeof("rvea") - 1) != 0) {
+		Debug::Fatal("Header does not match, data is not a mesh!");
+	}
+
+	JointAnimation anim{
+		.duration = header.duration,
+	};
+	anim.tracks.reserve(header.numTracks);
+	anim.name.resize(header.nameLength);
+
+	// read the track name
+	memcpy(anim.name.data(), fp, anim.name.size());
+	fp += anim.name.size();
+
+	for (int i = 0; i < header.numTracks; i++) {
+		auto header = ReadBytesFromMem<SerializedJointAnimationTrackHeader>(fp);
+		auto& track = anim.tracks.emplace_back();
+		track.translations.resize(header.numTranslations);
+		track.rotations.resize(header.numRotations);
+		track.scales.resize(header.numScales);
+
+		ReadNFromMem(fp, track.translations.data(), header.numTranslations);
+		ReadNFromMem(fp, track.rotations.data(), header.numRotations);
+		ReadNFromMem(fp, track.scales.data(), header.numScales);
+	}
+
+	return anim;
+}
+
+AnimationAsset::AnimationAsset(const std::string& name){
+	auto path = Format("animations/{}.rvea", name);
+	if(GetApp()->GetResources().Exists(path.c_str())){
+		
+		auto data = GetApp()->GetResources().FileContentsAt(path.c_str());
+		auto anim = DeserializeJointAnimation(data);
+
+		// convert to ozz
+		ozz::animation::offline::RawAnimation raw_animation;
+		raw_animation.duration = anim.duration;
+		raw_animation.name = anim.name;
+		raw_animation.tracks.reserve(anim.tracks.size());
+
+		duration_seconds = anim.duration;
+		tps = 1000;
+
+		for (const auto& src_track : anim.tracks) {
+			auto& track = raw_animation.tracks.emplace_back();
+			{
+				track.translations.reserve(src_track.translations.size());
+				for (const auto& key : src_track.translations) {
+					track.translations.push_back({ key.time, {key.value.x, key.value.y, key.value.z} });
+				}
 			}
-						
-			Debug::Assert(scene->HasAnimations(), "Scene must have animations");
-			ozz::animation::offline::RawAnimation raw_animation;
-			
-			auto& animations = scene->mAnimations;
-			
-			//find the longest animation, this is the length of the raw anim
-			
-			//assume the first animation is the animation to use
-			auto anim = scene->mAnimations[0];
-            tps = 1000; //anim->mTicksPerSecond; TODO: assimp does not report this correctly
-			raw_animation.duration = anim->mDuration;   // ticks! keys from assimp are also in ticks
-			
-			duration_seconds = anim->mDuration / tps;
-            tps = 30;   // TODO: when assimp's bug is fixed, remove this
-			
-			auto create_keyframe = [&](const aiNodeAnim* channel, ozz::animation::offline::RawAnimation::JointTrack& track){
-				
-				//translate
-				for(int i = 0; i < channel->mNumPositionKeys; i++){
-					auto key = channel->mPositionKeys[i];
-					track.translations.push_back({ static_cast<float>(key.mTime), ozz::math::Float3(key.mValue.x,key.mValue.y,key.mValue.z) });
+
+			{
+				track.rotations.reserve(src_track.rotations.size());
+				for (const auto& key : src_track.rotations) {
+					track.rotations.push_back({ key.time, {key.value.x, key.value.y, key.value.z, key.value.w} });
 				}
-				
-				//rotate
-				for(int i = 0; i < channel->mNumRotationKeys; i++){
-					auto key = channel->mRotationKeys[i];
-					track.rotations.push_back({ static_cast<float>(key.mTime), ozz::math::Quaternion(key.mValue.x,key.mValue.y,key.mValue.z, key.mValue.w) });
-				}
-				
-				//scale
-				for(int i = 0; i < channel->mNumScalingKeys; i++){
-					auto key = channel->mScalingKeys[i];
-					track.scales.push_back({ static_cast<float>(key.mTime), ozz::math::Float3(key.mValue.x,key.mValue.y,key.mValue.z) });
-				}
-			};
-			
-			// populate the tracks
-			raw_animation.tracks.resize(skeleton->GetSkeleton()->num_joints());
-			raw_animation.name = string_view(anim->mName.C_Str());
-			uint32_t num_loaded = 0;
-			for(int i = 0; i < anim->mNumChannels; i++){
-				auto channel = anim->mChannels[i];
-				
-				//tracks must be ordered the same way they are stored in the skeleton
-				//search for the bone in the skeleton, and use its index
-				
-				auto names = skeleton->GetSkeleton()->joint_names();
-				
-				std::string_view bonename(channel->mNodeName.C_Str());
-				
-				auto it = std::find(names.begin(), names.end(), bonename);
-				
-				//this track is not relevant to this skeleton, so ignore it
-				if (it == names.end()){
-					continue;
-				}
-				num_loaded++;
-				
-				//calculate index
-				auto bone_index = it - names.begin();
-				
-				//populate the keyframes per track
-				create_keyframe(channel, raw_animation.tracks[bone_index]);
-				
 			}
-            			
-			Debug::Assert(num_loaded > 0, "No animations were loaded for this skeleton. This can be caused by naming differences if the animation is a different file type than the skeleton.");
-			
-			//free afterward
-			aiReleaseImport(scene);
-			
-			Debug::Assert(raw_animation.Validate(), "Animation validation failed");
-			
-			ozz::animation::offline::AnimationBuilder builder;
-			this->anim = std::move(builder(raw_animation));
+
+			{
+				track.scales.reserve(src_track.scales.size());
+				for (const auto& key : src_track.scales) {
+					track.scales.push_back({ key.time, {key.value.x, key.value.y, key.value.z} });
+				}
+			}
 		}
+		Debug::Assert(raw_animation.Validate(),"Animation {} failed validation",name);
+
+		ozz::animation::offline::AnimationBuilder builder;
+		this->anim = std::move(builder(raw_animation));
+		
 	}
 	else{
 		Debug::Fatal("No file at {}",path);

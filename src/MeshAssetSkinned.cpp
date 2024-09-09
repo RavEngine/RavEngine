@@ -27,7 +27,6 @@ RavEngine::MeshAssetSkinned::~MeshAssetSkinned()
 #endif
 }
 
-//TODO: avoid opening the file twice -- this is a double copy and repeats work, therefore slow
 MeshAssetSkinned::MeshAssetSkinned(const std::string& path) // we intentionally DO NOT call the constructor
 {
 	
