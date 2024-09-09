@@ -108,8 +108,11 @@ AnimationAsset::AnimationAsset(const std::string& name){
 		raw_animation.name = anim.name;
 		raw_animation.tracks.reserve(anim.tracks.size());
 
-		duration_seconds = anim.duration;
+		// working around assimp weirdness (see rvea.cpp)
 		tps = 1000;
+		duration_seconds = anim.duration / tps;
+
+		tps = 30;
 
 		for (const auto& src_track : anim.tracks) {
 			auto& track = raw_animation.tracks.emplace_back();

@@ -54,7 +54,7 @@ JointAnimation LoadAnimation(const std::filesystem::path& path) {
 		//rotate
 		for (int i = 0; i < channel->mNumRotationKeys; i++) {
 			auto key = channel->mRotationKeys[i];
-			track.rotations.push_back({{key.mValue.x,key.mValue.y,key.mValue.z, key.mValue.w}, static_cast<float>(key.mTime)});
+			track.rotations.push_back({{key.mValue.w, key.mValue.x,key.mValue.y,key.mValue.z}, static_cast<float>(key.mTime)});
 		}
 
 		//scale
