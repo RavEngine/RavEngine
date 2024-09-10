@@ -27,7 +27,7 @@ namespace RavEngine {
         // flatten skeleton
 
         auto recurseSkeleton = [&serialized, &nameToOffset](const SkeletonData::Bone& bone, auto&& fn) -> void {
-            serialized.allBones.emplace_back(bone.transform, bone.name);
+            serialized.allBones.push_back({bone.transform, bone.name});
             const auto myIdx = serialized.allBones.size() - 1;
             nameToOffset[bone.name] = myIdx;
 

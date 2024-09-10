@@ -200,13 +200,13 @@ void SerializeMeshPart(const std::filesystem::path& outfile, const std::variant<
     std::filesystem::create_directories(outfile.parent_path());		// make all the folders necessary
 
     bool isSkinned = false;
-    std::visit(CaseAnalysis(
+    std::visit(CaseAnalysis{
         [&isSkinned](const MeshPart& mesh) {
             isSkinned = false;
         }, 
         [&isSkinned](const SkinnedMeshPart& mesh) {
             isSkinned = true;
-        }), mesh);
+        }}, mesh);
 
     // common code for skinned and non-skinned meshes
     ofstream out(outfile, std::ios::binary);
@@ -233,11 +233,11 @@ void SerializeMeshPart(const std::filesystem::path& outfile, const std::variant<
     }, mesh);
    
     // executed only for skinned meshes
-    std::visit(CaseAnalysis(
+    std::visit(CaseAnalysis{
         [](const MeshPart& mesh) {},        // no-op
         [&out](const SkinnedMeshPart& mesh) {
             out.write(reinterpret_cast<const char*>(mesh.vertexWeights.data()), mesh.vertexWeights.size() * sizeof(decltype(mesh.vertexWeights)::value_type));
-        }), mesh);
+        }}, mesh);
 }
 
 int main(int argc, char** argv){
