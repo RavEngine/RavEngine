@@ -71,6 +71,7 @@ if(ST_BUNDLED_DXC)
 	set(LLVM_TARGETS_TO_BUILD "None" CACHE INTERNAL "" FORCE)
     set(HLSL_BUILD_DXILCONV OFF CACHE INTERNAL "" FORCE)
     set(HLSL_DISABLE_SOURCE_GENERATION ON CACHE BOOL "" FORCE)
+    add_subdirectory(deps/DirectXShaderCompiler/projects/include/Tracing EXCLUDE_FROM_ALL) # needed for an ETW
     add_subdirectory(deps/DirectXShaderCompiler EXCLUDE_FROM_ALL)
     set(DXCLIBS "dxcompiler")
     set(ST_DXC_EXE_PATH "$<TARGET_FILE:dxc>" CACHE INTERNAL "")
@@ -78,7 +79,8 @@ if(ST_BUNDLED_DXC)
         PROPERTIES
         DEBUG_POSTFIX ""
     )
-
+    add_dependencies(dxcompiler dxildll)
+    set_target_properties(dxildll PROPERTIES DEBUG_POSTFIX "")
 else()
     set(DXCLIBS "dxcompiler.lib")
     if (WINDOWS_STORE)
