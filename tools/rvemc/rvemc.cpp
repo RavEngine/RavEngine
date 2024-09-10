@@ -225,15 +225,11 @@ void SerializeMeshPart(const std::filesystem::path& outfile, const std::variant<
         // write header
         out.write(reinterpret_cast<const char*>(&header), sizeof(header));
 
-        // write vertices
-        for (const auto& vert : mesh.vertices) {
-            out.write(reinterpret_cast<const char*>(&vert), sizeof(vert));
-        }
+        // vertices and indices
+        out.write(reinterpret_cast<const char*>(mesh.vertices.data()), mesh.vertices.size() * sizeof(mesh.vertices[0]));
+        out.write(reinterpret_cast<const char*>(mesh.indices.data()), mesh.indices.size() * sizeof(mesh.indices[0]));
 
-        // write indices
-        for (const auto& ind : mesh.indices) {
-            out.write(reinterpret_cast<const char*>(&ind), sizeof(ind));
-        }
+
     }, mesh);
    
     // executed only for skinned meshes

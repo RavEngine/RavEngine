@@ -7,7 +7,6 @@
 
 namespace RavEngine{
 
-
 struct SerializedMeshDataHeader{
     const std::array<char, 4> header = {'r','v','e','m'};
     uint32_t numVertices = 0;

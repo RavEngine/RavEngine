@@ -40,14 +40,14 @@ std::pair<MeshPart, uint32_t> RavEngine::MeshAsset::DeserializeMeshFromMemory(co
 		VertexNormalUV vert = *reinterpret_cast<decltype(vert)*>(fp);
 		mesh.vertices.push_back(vert);
 
-		fp += sizeof(VertexNormalUV);
+		fp += sizeof(vert);
 	}
 
 	for (int i = 0; i < header.numIndicies; i++) {
 		uint32_t ind = *reinterpret_cast<decltype(ind)*>(fp);
 		mesh.indices.push_back(ind);
 
-		fp += sizeof(uint32_t);
+		fp += sizeof(ind);
 	}
 
 	return { mesh, fp - mem.data()};
