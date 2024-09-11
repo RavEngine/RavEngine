@@ -6,9 +6,6 @@
 #include <ozz/base/io/stream.h>
 #include <ozz/base/io/archive.h>
 #include "Filesystem.hpp"
-#include <assimp/cimport.h>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
 #include <ozz/base/memory/unique_ptr.h>
 #include <ozz/base/span.h>
 #include <ozz/base/maths/soa_transform.h>

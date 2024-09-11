@@ -1,10 +1,5 @@
 #include "MeshAssetSkinned.hpp"
 #include "App.hpp"
-#include <assimp/cimport.h>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
-#include <assimp/material.h>
-#include <assimp/mesh.h>
 #include "Filesystem.hpp"
 #include "VirtualFileSystem.hpp"
 #if !RVE_SERVER

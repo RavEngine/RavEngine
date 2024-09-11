@@ -561,7 +561,6 @@ target_link_libraries("${PROJECT_NAME}"
 	"LowLevelDynamics"
 	"SceneQuery"
 	"SimulationController"
-	"assimp"
 	"im3d"
 	"physfs-static"
 	${RESONANCE_LIB}

@@ -11,9 +11,6 @@
 #include "DataStructures.hpp"
 #include <ozz/base/span.h>
 #include "Filesystem.hpp"
-#include <assimp/cimport.h>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
 #include "VirtualFileSystem.hpp"
 #include "SkeletonAsset.hpp"
 #include "Animation.hpp"
