@@ -16,8 +16,6 @@
 #define PIX_ENABLED 1
 #endif
 
-#define DX12_USE_AGILITY 1
-
 #define TDR_PIX_CAPTURE 0
 
 // Exports for the Agility SDK. For Windows 10 users, Go here: https://www.nuget.org/packages/Microsoft.Direct3D.D3D12/1.614.0 then unzip it, and place 

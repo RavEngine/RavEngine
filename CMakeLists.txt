@@ -156,6 +156,7 @@ add_subdirectory(deps/r8brain-cmake EXCLUDE_FROM_ALL)
 add_subdirectory(deps/dr_wav EXCLUDE_FROM_ALL)
 add_subdirectory(deps/fmt EXCLUDE_FROM_ALL)
 add_subdirectory(deps/simdjson EXCLUDE_FROM_ALL)
+add_subdirectory(deps/stbi EXCLUDE_FROM_ALL)
 
 # randoms
 set(Random_BuildTests OFF CACHE INTERNAL "")
@@ -571,6 +572,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"GameNetworkingSockets_s"
 	"r8brain"
 	$<$<CONFIG:profile>:TracyClient>
+	stb_image
 	PUBLIC
 	"dr_wav"
 	"fmt"
@@ -662,7 +664,7 @@ group_in("Libraries" "assimp;assimp_cmd;DebugUtils;Detour;DetourCrowd;DetourTile
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL3-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
-sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt;simdjson;TracyClient;
+sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt;simdjson;TracyClient;stb_image;
 ")
 
 group_in("Tools" "rvesc;rvesc_resources;rvemc;rveskc;rve_importlib;rveac")

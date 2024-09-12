@@ -21,6 +21,7 @@ option(RGL_DISABLE_WEBGPU "Force-disable the WebGPU backend" OFF)
 option(RGL_ENABLE_WEBGPU "Force-enable the WebGPU backend" OFF)
 option(RGL_RUNTIME_COMPILATION "Enable runtime shader compilation" OFF)
 option(RGL_SKIP_BACKEND_CHECK "Skip the SDK check" OFF)
+option(RGL_DX_USE_AGILITY "Use the Agility SDK" ON)
 option(RGL_IDE_ROOT "IDE parent folder for targets" "RGL")
 if (NOT RGL_IDE_ROOT)
 	set(RGL_IDE_ROOT "RGL") # CMake sets this to "OFF" for some insane reason
@@ -172,6 +173,20 @@ if(MSVC AND NOT RGL_DISABLE_DX)
 	)
 
 	set_target_properties(D3D12MemoryAllocator PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
+
+	if (RGL_DX_USE_AGILITY)
+		set(AGILITY_SDK_MAJOR_VERSION "1")
+		set(AGILITY_SDK_MINOR_VERSION "614")
+		set(AGILITY_SDK_OUTPUT_DIR "${CMAKE_BINARY_DIR}/$<CONFIGURATION>/D3D12")
+		include(cmake/FetchAgilitySDK.cmake)
+		target_compile_definitions(${PROJECT_NAME} PRIVATE DX12_USE_AGILITY=1)
+		target_link_libraries(${PROJECT_NAME} PRIVATE AgilitySDK)
+
+		set_target_properties("AgilitySDK" "_AgilitySDKInternal" PROPERTIES 
+			FOLDER "${RGL_IDE_ROOT}/Libraries/"
+		)
+		endif()
+		add_dependencies(${PROJECT_NAME} _AgilitySDKInternal)
 else()
 	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_DX12_AVAILABLE=0)
 	set(RGL_DX12_AVAILABLE OFF CACHE INTERNAL "RGL DX12")
@@ -286,6 +301,7 @@ if(ST_BUNDLED_DXC AND NOT WINDOWS_STORE)
 		endforeach()
 	endfunction()
 	dxc_set_for_dir("${CMAKE_CURRENT_LIST_DIR}/deps/ShaderTranspiler/deps/DirectXShaderCompiler")
+	dxc_set_for_dir("${CMAKE_CURRENT_LIST_DIR}/deps/ShaderTranspiler/deps/DirectXShaderCompiler/projects/include/Tracing")
 endif()
 
 if (NOT RGL_SKIP_BACKEND_CHECK)
