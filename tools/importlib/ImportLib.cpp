@@ -122,7 +122,7 @@ namespace RavEngine {
                 node->mTransformation.Decompose(scale, rotation, position);
                 ozzbone.transform.translation = { position.x, position.y, position.z };
                 ozzbone.transform.scale = { scale.x, scale.y, scale.z };
-                ozzbone.transform.rotation = { rotation.x, rotation.y, rotation.z, rotation.w };
+                ozzbone.transform.rotation = { rotation.w , rotation.x, rotation.y, rotation.z};
 
                 ozzbone.name = string_view(node->mName.C_Str());
 
