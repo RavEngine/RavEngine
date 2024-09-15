@@ -14,6 +14,7 @@
 #include "Mesh.hpp"
 #include <variant>
 #include "CaseAnalysis.hpp"
+#include <RavEngine/ImportLib.hpp>
 
 using namespace std;
 using namespace RavEngine;
@@ -38,55 +39,6 @@ aiProcess_ValidateDataStructure |
 aiProcess_OptimizeMeshes |
 aiProcess_FindInvalidData;
 
-MeshPart AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scalemat)
-{
-    MeshPart mp;
-    //mp.indices.mode = indexBufferWidth;
-
-    mp.indices.reserve(mesh->mNumFaces * 3);
-    mp.vertices.reserve(mesh->mNumVertices);
-    for (int vi = 0; vi < mesh->mNumVertices; vi++) {
-        auto vert = mesh->mVertices[vi];
-        vector4 scaled(vert.x, vert.y, vert.z, 1);
-
-        scaled = scalemat * scaled;
-
-        ASSERT(mesh->mTangents, "Mesh does not have tangents!");
-        ASSERT(mesh->mBitangents, "Mesh does not have bitangents!");
-
-        auto normal = mesh->mNormals[vi];
-        auto tangent = mesh->mTangents[vi];
-        auto bitangent = mesh->mBitangents[vi];
-
-        //does mesh have uvs?
-        float uvs[2] = { 0 };
-        if (mesh->mTextureCoords[0]) {
-            uvs[0] = mesh->mTextureCoords[0][vi].x;
-            uvs[1] = mesh->mTextureCoords[0][vi].y;
-        }
-
-        mp.vertices.push_back(VertexNormalUV{
-            .position = {static_cast<float>(scaled.x),static_cast<float>(scaled.y),static_cast<float>(scaled.z)},
-            .normal = {normal.x,normal.y,normal.z},
-            .tangent = {tangent.x, tangent.y, tangent.z},
-            .bitangent = {bitangent.x,bitangent.y,bitangent.z},
-            .uv = {uvs[0],uvs[1]}
-            });
-    }
-
-    for (int ii = 0; ii < mesh->mNumFaces; ii++) {
-        //alert if encounters a degenerate triangle
-        if (mesh->mFaces[ii].mNumIndices != 3) {
-            throw runtime_error("Cannot load model: Degenerate triangle (Num indices = " + to_string(mesh->mFaces[ii].mNumIndices) + ")");
-        }
-
-        mp.indices.push_back(mesh->mFaces[ii].mIndices[0]);
-        mp.indices.push_back(mesh->mFaces[ii].mIndices[1]);
-        mp.indices.push_back(mesh->mFaces[ii].mIndices[2]);
-
-    }
-    return mp;
-}
 
 struct SkinnedMeshPart : public MeshPart {
     std::vector<VertexWeights> vertexWeights;
@@ -119,14 +71,19 @@ std::variant<MeshPart, SkinnedMeshPart> LoadMesh(const std::filesystem::path& pa
     uint32_t index_base = 0;
     for (int i = 0; i < meshCount; i++) {
 
-        auto mp = AIMesh2MeshPart(meshName.has_value() ? scene->mMeshes[meshNode->mMeshes[i]] : scene->mMeshes[i], matrix4(scaleFactor));
-        for (auto& index : mp.indices) {
-            index += index_base;            // renumber indices
-        }
+        try{
+            auto mp = AIMesh2MeshPart(meshName.has_value() ? scene->mMeshes[meshNode->mMeshes[i]] : scene->mMeshes[i], matrix4(scaleFactor));
+            for (auto& index : mp.indices) {
+                index += index_base;            // renumber indices
+            }
 
-        mesh.vertices.insert(mesh.vertices.end(), mp.vertices.begin(), mp.vertices.end());
-        mesh.indices.insert(mesh.indices.end(), mp.indices.begin(), mp.indices.end());
-        index_base += mp.vertices.size();
+            mesh.vertices.insert(mesh.vertices.end(), mp.vertices.begin(), mp.vertices.end());
+            mesh.indices.insert(mesh.indices.end(), mp.indices.begin(), mp.indices.end());
+            index_base += mp.vertices.size();
+        }
+        catch(const std::runtime_error& err){
+            FATAL(err.what());
+        }
     }
 
     decltype(SkinnedMeshPart::vertexWeights) weightsgpu;

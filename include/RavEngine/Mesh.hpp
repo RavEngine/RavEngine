@@ -1,9 +1,8 @@
 #pragma once
-#include <vector>
 #include "Vector.hpp"
 #include <glm/mat4x4.hpp>
-#include <vector>
 #include "Common3D.hpp"
+#include <span>
 
 namespace RavEngine{
 

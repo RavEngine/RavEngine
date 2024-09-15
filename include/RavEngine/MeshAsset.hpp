@@ -1,6 +1,5 @@
 #pragma once
 
-#include "DataStructures.hpp"
 #include "mathtypes.hpp"
 #include "Ref.hpp"
 #include "Common3D.hpp"
@@ -26,14 +25,6 @@ struct MeshAssetOptions{
 
 class MeshAsset {
 public:
-	
-	/**
-	Convert an assimp mesh to a MeshPart
-	@param mesh the assimp mesh to convert
-	@param scaleMat the matrix to apply to each vertex of the mesh
-	@return converted MeshPart
-	*/
-	static MeshPart AIMesh2MeshPart(const aiMesh* mesh, const matrix4& scaleMat);
 
 	MeshAsset(const MeshAsset&) = delete;
 	MeshAsset(MeshAsset&&) = delete;
