@@ -2,7 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 All rights reserved.
 
 Redistribution and use of this software in source and binary forms,
@@ -38,9 +38,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ----------------------------------------------------------------------
 */
 
-/** @file  IFCBoolean.cpp
- *  @brief Implements a subset of Ifc boolean operations
- */
+/// @file  IFCBoolean.cpp
+/// @brief Implements a subset of Ifc boolean operations
 
 #ifndef ASSIMP_BUILD_NO_IFC_IMPORTER
 
@@ -48,9 +47,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Common/PolyTools.h"
 #include "PostProcessing/ProcessHelper.h"
 
-
 #include <iterator>
 #include <tuple>
+#include <utility>
 
 namespace Assimp {
 namespace IFC {
@@ -66,12 +65,13 @@ bool IntersectSegmentPlane(const IfcVector3 &p, const IfcVector3 &n, const IfcVe
 
     // if segment ends on plane, do not report a hit. We stay on that side until a following segment starting at this
     // point leaves the plane through the other side
-    if (std::abs(dotOne + dotTwo) < 1e-6)
+    if (std::abs(dotOne + dotTwo) < ai_epsilon) {
         return false;
+    }
 
     // if segment starts on the plane, report a hit only if the end lies on the *other* side
-    if (std::abs(dotTwo) < 1e-6) {
-        if ((assumeStartOnWhiteSide && dotOne + dotTwo < 1e-6) || (!assumeStartOnWhiteSide && dotOne + dotTwo > -1e-6)) {
+    if (std::abs(dotTwo) < ai_epsilon) {
+        if ((assumeStartOnWhiteSide && dotOne + dotTwo < ai_epsilon) || (!assumeStartOnWhiteSide && dotOne + dotTwo > -ai_epsilon)) {
             out = e0;
             return true;
         } else {
@@ -81,13 +81,15 @@ bool IntersectSegmentPlane(const IfcVector3 &p, const IfcVector3 &n, const IfcVe
 
     // ignore if segment is parallel to plane and far away from it on either side
     // Warning: if there's a few thousand of such segments which slowly accumulate beyond the epsilon, no hit would be registered
-    if (std::abs(dotOne) < 1e-6)
+    if (std::abs(dotOne) < ai_epsilon) {
         return false;
+    }
 
     // t must be in [0..1] if the intersection point is within the given segment
     const IfcFloat t = dotTwo / dotOne;
-    if (t > 1.0 || t < 0.0)
+    if (t > 1.0 || t < 0.0) {
         return false;
+    }
 
     out = e0 + t * seg;
     return true;
@@ -109,11 +111,13 @@ void FilterPolygon(std::vector<IfcVector3> &resultpoly) {
     FuzzyVectorCompare fz(epsilon);
     std::vector<IfcVector3>::iterator e = std::unique(resultpoly.begin(), resultpoly.end(), fz);
 
-    if (e != resultpoly.end())
+    if (e != resultpoly.end()) {
         resultpoly.erase(e, resultpoly.end());
+    }
 
-    if (!resultpoly.empty() && fz(resultpoly.front(), resultpoly.back()))
+    if (!resultpoly.empty() && fz(resultpoly.front(), resultpoly.back())) {
         resultpoly.pop_back();
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -163,7 +167,7 @@ void ProcessBooleanHalfSpaceDifference(const Schema_2x3::IfcHalfSpaceSolid *hs, 
     for (iit = begin; iit != end; vidx += *iit++) {
 
         unsigned int newcount = 0;
-        bool isAtWhiteSide = (in[vidx] - p) * n > -1e-6;
+        bool isAtWhiteSide = (in[vidx] - p) * n > -ai_epsilon;
         for (unsigned int i = 0; i < *iit; ++i) {
             const IfcVector3 &e0 = in[vidx + i], e1 = in[vidx + (i + 1) % *iit];
 
@@ -259,7 +263,7 @@ bool IntersectsBoundaryProfile(const IfcVector3 &e0, const IfcVector3 &e1, const
         // segment-segment intersection
         // solve b0 + b*s = e0 + e*t for (s,t)
         const IfcFloat det = (-b.x * e.y + e.x * b.y);
-        if (std::abs(det) < 1e-6) {
+        if (std::abs(det) < ai_epsilon) {
             // no solutions (parallel lines)
             continue;
         }
@@ -290,8 +294,9 @@ bool IntersectsBoundaryProfile(const IfcVector3 &e0, const IfcVector3 &e1, const
         }
 
         // Line segment ends at boundary -> ignore any hit, it will be handled by possibly following segments
-        if (endsAtSegment && !halfOpen)
+        if (endsAtSegment && !halfOpen) {
             continue;
+        }
 
         // Line segment starts at boundary -> generate a hit only if following that line would change the INSIDE/OUTSIDE
         // state. This should catch the case where a connected set of segments has a point directly on the boundary,
@@ -300,31 +305,34 @@ bool IntersectsBoundaryProfile(const IfcVector3 &e0, const IfcVector3 &e1, const
         if (startsAtSegment) {
             IfcVector3 inside_dir = IfcVector3(b.y, -b.x, 0.0) * windingOrder;
             bool isGoingInside = (inside_dir * e) > 0.0;
-            if (isGoingInside == isStartAssumedInside)
+            if (isGoingInside == isStartAssumedInside) {
                 continue;
+            }
 
             // only insert the point into the list if it is sufficiently far away from the previous intersection point.
             // This way, we avoid duplicate detection if the intersection is directly on the vertex between two segments.
             if (!intersect_results.empty() && intersect_results.back().first == i - 1) {
                 const IfcVector3 diff = intersect_results.back().second - e0;
-                if (IfcVector2(diff.x, diff.y).SquareLength() < 1e-10)
+                if (IfcVector2(diff.x, diff.y).SquareLength() < 1e-10) {
                     continue;
+                }
             }
-            intersect_results.push_back(std::make_pair(i, e0));
+            intersect_results.emplace_back(i, e0);
             continue;
         }
 
         // for a valid intersection, s and t should be in range [0,1]. Including a bit of epsilon on s, potential double
         // hits on two consecutive boundary segments are filtered
-        if (s >= -1e-6 * b_sqlen_inv && s <= 1.0 + 1e-6 * b_sqlen_inv && t >= 0.0 && (t <= 1.0 || halfOpen)) {
+        if (s >= -ai_epsilon * b_sqlen_inv && s <= 1.0 + ai_epsilon * b_sqlen_inv && t >= 0.0 && (t <= 1.0 || halfOpen)) {
             // only insert the point into the list if it is sufficiently far away from the previous intersection point.
             // This way, we avoid duplicate detection if the intersection is directly on the vertex between two segments.
             if (!intersect_results.empty() && intersect_results.back().first == i - 1) {
                 const IfcVector3 diff = intersect_results.back().second - p;
-                if (IfcVector2(diff.x, diff.y).SquareLength() < 1e-10)
+                if (IfcVector2(diff.x, diff.y).SquareLength() < 1e-10) {
                     continue;
+                }
             }
-            intersect_results.push_back(std::make_pair(i, p));
+            intersect_results.emplace_back(i, p);
         }
     }
 
@@ -387,8 +395,8 @@ void ProcessPolygonalBoundedBooleanHalfSpaceDifference(const Schema_2x3::IfcPoly
     n.Normalize();
 
     // obtain the polygonal bounding volume
-    std::shared_ptr<TempMesh> profile = std::shared_ptr<TempMesh>(new TempMesh());
-    if (!ProcessCurve(hs->PolygonalBoundary, *profile.get(), conv)) {
+    std::shared_ptr<TempMesh> profile = std::make_shared<TempMesh>();
+    if (!ProcessCurve(hs->PolygonalBoundary, *profile, conv)) {
         IFCImporter::LogError("expected valid polyline for boundary of boolean halfspace");
         return;
     }
@@ -431,14 +439,14 @@ void ProcessPolygonalBoundedBooleanHalfSpaceDifference(const Schema_2x3::IfcPoly
 
             // if the poly is parallel to the plane, put it completely on the black or white side
             if (std::abs(polyNormal * n) > 0.9999) {
-                bool isOnWhiteSide = (srcVertices[0] - p) * n > -1e-6;
+                bool isOnWhiteSide = (srcVertices[0] - p) * n > -ai_epsilon;
                 std::vector<IfcVector3> &targetSide = isOnWhiteSide ? whiteside : blackside;
                 targetSide.insert(targetSide.end(), srcVertices, srcVertices + srcVtxCount);
             } else {
                 // otherwise start building one polygon for each side. Whenever the current line segment intersects the plane
                 // we put a point there as an end of the current segment. Then we switch to the other side, put a point there, too,
                 // as a beginning of the current segment, and simply continue accumulating vertices.
-                bool isCurrentlyOnWhiteSide = ((srcVertices[0]) - p) * n > -1e-6;
+                bool isCurrentlyOnWhiteSide = ((srcVertices[0]) - p) * n > -ai_epsilon;
                 for (size_t a = 0; a < srcVtxCount; ++a) {
                     IfcVector3 e0 = srcVertices[a];
                     IfcVector3 e1 = srcVertices[(a + 1) % srcVtxCount];
@@ -504,7 +512,7 @@ void ProcessPolygonalBoundedBooleanHalfSpaceDifference(const Schema_2x3::IfcPoly
                 }
                 // now add them to the list of intersections
                 for (size_t b = 0; b < intersected_boundary.size(); ++b)
-                    intersections.push_back(std::make_tuple(a, proj_inv * intersected_boundary[b].second, intersected_boundary[b].first));
+                    intersections.emplace_back(a, proj_inv * intersected_boundary[b].second, intersected_boundary[b].first);
 
                 // and calculate our new inside/outside state
                 if (intersected_boundary.size() & 1)
@@ -661,7 +669,8 @@ void ProcessPolygonalBoundedBooleanHalfSpaceDifference(const Schema_2x3::IfcPoly
 }
 
 // ------------------------------------------------------------------------------------------------
-void ProcessBooleanExtrudedAreaSolidDifference(const Schema_2x3::IfcExtrudedAreaSolid *as, TempMesh &result,
+void ProcessBooleanExtrudedAreaSolidDifference(const Schema_2x3::IfcExtrudedAreaSolid *as, 
+        TempMesh &result,
         const TempMesh &first_operand,
         ConversionData &conv) {
     ai_assert(as != nullptr);
@@ -671,10 +680,10 @@ void ProcessBooleanExtrudedAreaSolidDifference(const Schema_2x3::IfcExtrudedArea
     // operand should be near-planar. Luckily, this is usually the case in Ifc
     // buildings.
 
-    std::shared_ptr<TempMesh> meshtmp = std::shared_ptr<TempMesh>(new TempMesh());
+    std::shared_ptr<TempMesh> meshtmp = std::make_shared<TempMesh>();
     ProcessExtrudedAreaSolid(*as, *meshtmp, conv, false);
 
-    std::vector<TempOpening> openings(1, TempOpening(as, IfcVector3(0, 0, 0), meshtmp, std::shared_ptr<TempMesh>()));
+    std::vector<TempOpening> openings(1, TempOpening(as, IfcVector3(0, 0, 0), std::move(meshtmp), std::shared_ptr<TempMesh>()));
 
     result = first_operand;
 
@@ -699,7 +708,7 @@ void ProcessBooleanExtrudedAreaSolidDifference(const Schema_2x3::IfcExtrudedArea
             continue;
         }
 
-        GenerateOpenings(openings, std::vector<IfcVector3>(1, IfcVector3(1, 0, 0)), temp, false, true);
+        GenerateOpenings(openings, temp, false, true);
         result.Append(temp);
 
         vit += pcount;
@@ -762,4 +771,4 @@ void ProcessBoolean(const Schema_2x3::IfcBooleanResult &boolean, TempMesh &resul
 } // namespace IFC
 } // namespace Assimp
 
-#endif
+#endif // ASSIMP_BUILD_NO_IFC_IMPORTER

@@ -3,7 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -51,9 +51,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assimp/IOSystem.hpp>
 #include <assimp/Importer.hpp>
 
-using namespace Assimp;
+namespace Assimp {
 
-static const aiImporterDesc desc = {
+static constexpr aiImporterDesc desc = {
     "Terragen Heightmap Importer",
     "",
     "",
@@ -74,34 +74,10 @@ TerragenImporter::TerragenImporter() :
 }
 
 // ------------------------------------------------------------------------------------------------
-// Destructor, private as well
-TerragenImporter::~TerragenImporter() {
-    // empty
-}
-
-// ------------------------------------------------------------------------------------------------
 // Returns whether the class can handle the format of the given file.
-bool TerragenImporter::CanRead(const std::string &pFile, IOSystem *pIOHandler, bool checkSig) const {
-    // check file extension
-    std::string extension = GetExtension(pFile);
-
-    if (extension == "ter")
-        return true;
-
-    if (!extension.length() || checkSig) {
-        /*  If CanRead() is called in order to check whether we
-         *  support a specific file extension in general pIOHandler
-         *  might be nullptr and it's our duty to return true here.
-         */
-        if (!pIOHandler) {
-            return true;
-        }
-
-        const char *tokens[] = { "terragen" };
-        return SearchFileHeaderForToken(pIOHandler, pFile, tokens, 1);
-    }
-
-    return false;
+bool TerragenImporter::CanRead(const std::string &pFile, IOSystem *pIOHandler, bool /*checkSig*/) const {
+    static const char *tokens[] = { "terragen" };
+    return SearchFileHeaderForToken(pIOHandler, pFile, tokens, AI_COUNT_OF(tokens));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -250,8 +226,8 @@ void TerragenImporter::InternReadFile(const std::string &pFile,
         }
 
         // Get to the next chunk (4 byte aligned)
-        unsigned dtt = reader.GetCurrentPos();
-        if (dtt & 0x3) {
+        unsigned dtt = reader.GetCurrentPos() & 0x3;
+        if (dtt) {
             reader.IncPtr(4 - dtt);
         }
     }
@@ -263,5 +239,7 @@ void TerragenImporter::InternReadFile(const std::string &pFile,
     // Set the AI_SCENE_FLAGS_TERRAIN bit
     pScene->mFlags |= AI_SCENE_FLAGS_TERRAIN;
 }
+
+} // namespace Assimp
 
 #endif // !! ASSIMP_BUILD_NO_TERRAGEN_IMPORTER

@@ -2,7 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -62,7 +62,7 @@ namespace Assimp {
 class ASEImporter : public BaseImporter {
 public:
     ASEImporter();
-    ~ASEImporter() override;
+    ~ASEImporter() override = default;
 
     // -------------------------------------------------------------------
     /** Returns whether the class can handle the format of the given file.
@@ -153,13 +153,13 @@ private:
      *  \param matrix Current transform
      */
     void AddNodes(const std::vector<ASE::BaseNode*>& nodes,
-        aiNode* pcParent,const char* szName);
+        aiNode* pcParent, const std::string &name);
 
     void AddNodes(const std::vector<ASE::BaseNode*>& nodes,
-        aiNode* pcParent,const char* szName,
+        aiNode* pcParent, const std::string &name,
         const aiMatrix4x4& matrix);
 
-    void AddMeshes(const ASE::BaseNode* snode,aiNode* node);
+    void AddMeshes(const ASE::BaseNode* snode, aiNode* node);
 
     // -------------------------------------------------------------------
     /** Generate a default material and add it to the parser's list
@@ -187,6 +187,5 @@ protected:
 #endif // ASSIMP_BUILD_NO_3DS_IMPORTER
 
 } // end of namespace Assimp
-
 
 #endif // AI_3DSIMPORTER_H_INC

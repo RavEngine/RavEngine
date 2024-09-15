@@ -2,8 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
-
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -40,9 +39,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ----------------------------------------------------------------------
 */
 
-/** @file  IFCMaterial.cpp
- *  @brief Implementation of conversion routines to convert IFC materials to aiMaterial
- */
+/// @file  IFCMaterial.cpp
+/// @brief Implementation of conversion routines to convert IFC materials to aiMaterial
 
 #ifndef ASSIMP_BUILD_NO_IFC_IMPORTER
 
@@ -174,7 +172,6 @@ unsigned int ProcessMaterials(uint64_t id, unsigned int prevMatId, ConversionDat
 
     aiString name;
     name.Set("<IFCDefault>");
-    //  ConvertColorToString( color, name);
 
     // look if there's already a default material with this base color
     for( size_t a = 0; a < conv.materials.size(); ++a ) {

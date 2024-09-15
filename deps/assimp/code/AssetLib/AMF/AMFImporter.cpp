@@ -3,7 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -53,7 +53,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace Assimp {
 
-const aiImporterDesc AMFImporter::Description = {
+static constexpr aiImporterDesc Description = {
     "Additive manufacturing file format(AMF) Importer",
     "smalcom",
     "",
@@ -83,11 +83,7 @@ void AMFImporter::Clear() {
 
 AMFImporter::AMFImporter() AI_NO_EXCEPT :
         mNodeElement_Cur(nullptr),
-        mXmlParser(nullptr),
-        mUnit(),
-        mVersion(),
-        mMaterial_Converted(),
-        mTexture_Converted() {
+        mXmlParser(nullptr) {
     // empty
 }
 
@@ -182,28 +178,6 @@ bool AMFImporter::XML_SearchNode(const std::string &nodeName) {
     return nullptr != mXmlParser->findNode(nodeName);
 }
 
-void AMFImporter::ParseHelper_FixTruncatedFloatString(const char *pInStr, std::string &pOutString) {
-    size_t instr_len;
-
-    pOutString.clear();
-    instr_len = strlen(pInStr);
-    if (!instr_len) return;
-
-    pOutString.reserve(instr_len * 3 / 2);
-    // check and correct floats in format ".x". Must be "x.y".
-    if (pInStr[0] == '.') pOutString.push_back('0');
-
-    pOutString.push_back(pInStr[0]);
-    for (size_t ci = 1; ci < instr_len; ci++) {
-        if ((pInStr[ci] == '.') && ((pInStr[ci - 1] == ' ') || (pInStr[ci - 1] == '-') || (pInStr[ci - 1] == '+') || (pInStr[ci - 1] == '\t'))) {
-            pOutString.push_back('0');
-            pOutString.push_back('.');
-        } else {
-            pOutString.push_back(pInStr[ci]);
-        }
-    }
-}
-
 static bool ParseHelper_Decode_Base64_IsBase64(const char pChar) {
     return (isalnum((unsigned char)pChar) || (pChar == '+') || (pChar == '/'));
 }
@@ -217,7 +191,10 @@ void AMFImporter::ParseHelper_Decode_Base64(const std::string &pInputBase64, std
     uint8_t arr4[4], arr3[3];
 
     // check input data
-    if (pInputBase64.size() % 4) throw DeadlyImportError("Base64-encoded data must have size multiply of four.");
+    if (pInputBase64.size() % 4) {
+        throw DeadlyImportError("Base64-encoded data must have size multiply of four.");
+    }
+
     // prepare output place
     pOutputData.clear();
     pOutputData.reserve(pInputBase64.size() / 4 * 3);
@@ -261,7 +238,7 @@ void AMFImporter::ParseFile(const std::string &pFile, IOSystem *pIOHandler) {
     std::unique_ptr<IOStream> file(pIOHandler->Open(pFile, "rb"));
 
     // Check whether we can read from the file
-    if (file.get() == nullptr) {
+    if (file == nullptr) {
         throw DeadlyImportError("Failed to open AMF file ", pFile, ".");
     }
 
@@ -407,17 +384,17 @@ void AMFImporter::ParseNode_Instance(XmlNode &node) {
         for (auto &currentNode : node.children()) {
             const std::string &currentName = currentNode.name();
             if (currentName == "deltax") {
-                XmlParser::getValueAsFloat(currentNode, als.Delta.x);
+                XmlParser::getValueAsReal(currentNode, als.Delta.x);
             } else if (currentName == "deltay") {
-                XmlParser::getValueAsFloat(currentNode, als.Delta.y);
+                XmlParser::getValueAsReal(currentNode, als.Delta.y);
             } else if (currentName == "deltaz") {
-                XmlParser::getValueAsFloat(currentNode, als.Delta.z);
+                XmlParser::getValueAsReal(currentNode, als.Delta.z);
             } else if (currentName == "rx") {
-                XmlParser::getValueAsFloat(currentNode, als.Delta.x);
+                XmlParser::getValueAsReal(currentNode, als.Delta.x);
             } else if (currentName == "ry") {
-                XmlParser::getValueAsFloat(currentNode, als.Delta.y);
+                XmlParser::getValueAsReal(currentNode, als.Delta.y);
             } else if (currentName == "rz") {
-                XmlParser::getValueAsFloat(currentNode, als.Delta.z);
+                XmlParser::getValueAsReal(currentNode, als.Delta.z);
             }
         }
         ParseHelper_Node_Exit();
@@ -503,19 +480,9 @@ void AMFImporter::ParseNode_Metadata(XmlNode &node) {
     mNodeElement_List.push_back(ne); // and to node element list because its a new object in graph.
 }
 
-bool AMFImporter::CanRead(const std::string &pFile, IOSystem *pIOHandler, bool pCheckSig) const {
-    const std::string extension = GetExtension(pFile);
-
-    if (extension == "amf") {
-        return true;
-    }
-
-    if (extension.empty() || pCheckSig) {
-        const char *tokens[] = { "<amf" };
-        return SearchFileHeaderForToken(pIOHandler, pFile, tokens, 1);
-    }
-
-    return false;
+bool AMFImporter::CanRead(const std::string &pFile, IOSystem *pIOHandler, bool /*pCheckSig*/) const {
+    static const char *tokens[] = { "<amf" };
+    return SearchFileHeaderForToken(pIOHandler, pFile, tokens, AI_COUNT_OF(tokens));
 }
 
 const aiImporterDesc *AMFImporter::GetInfo() const {

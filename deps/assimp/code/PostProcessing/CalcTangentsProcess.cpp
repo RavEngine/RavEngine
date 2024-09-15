@@ -3,7 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 
 
@@ -57,12 +57,6 @@ using namespace Assimp;
 // Constructor to be privately used by Importer
 CalcTangentsProcess::CalcTangentsProcess() :
         configMaxAngle(float(AI_DEG_TO_RAD(45.f))), configSourceUV(0) {
-    // nothing to do here
-}
-
-// ------------------------------------------------------------------------------------------------
-// Destructor, private as well
-CalcTangentsProcess::~CalcTangentsProcess() {
     // nothing to do here
 }
 
@@ -206,8 +200,10 @@ bool CalcTangentsProcess::ProcessMesh(aiMesh *pMesh, unsigned int meshIndex) {
             localBitangent.NormalizeSafe();
 
             // reconstruct tangent/bitangent according to normal and bitangent/tangent when it's infinite or NaN.
-            bool invalid_tangent = is_special_float(localTangent.x) || is_special_float(localTangent.y) || is_special_float(localTangent.z);
-            bool invalid_bitangent = is_special_float(localBitangent.x) || is_special_float(localBitangent.y) || is_special_float(localBitangent.z);
+            bool invalid_tangent = is_special_float(localTangent.x) || is_special_float(localTangent.y) || is_special_float(localTangent.z) 
+                || (-0.5f < localTangent.x && localTangent.x < 0.5f && -0.5f < localTangent.y && localTangent.y < 0.5f && -0.5f < localTangent.z && localTangent.z < 0.5f);
+            bool invalid_bitangent = is_special_float(localBitangent.x) || is_special_float(localBitangent.y) || is_special_float(localBitangent.z)
+                || (-0.5f < localBitangent.x && localBitangent.x < 0.5f && -0.5f < localBitangent.y && localBitangent.y < 0.5f && -0.5f < localBitangent.z && localBitangent.z < 0.5f);
             if (invalid_tangent != invalid_bitangent) {
                 if (invalid_tangent) {
                     localTangent = meshNorm[p] ^ localBitangent;

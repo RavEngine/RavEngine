@@ -2,7 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -57,6 +57,7 @@ enum class ResourceType {
     RT_BaseMaterials,
     RT_EmbeddedTexture2D,
     RT_Texture2DGroup,
+    RT_ColorGroup,
     RT_Unknown
 }; // To be extended with other resource types (eg. material extension resources like Texture2d, Texture2dGroup...)
 
@@ -69,9 +70,7 @@ public:
         // empty
     }
 
-    virtual ~Resource() {
-        // empty
-    }
+    virtual ~Resource() = default;
 
     virtual ResourceType getType() const {
         return ResourceType::RT_Unknown;
@@ -95,7 +94,7 @@ public:
         // empty
     }
 
-    ~EmbeddedTexture() = default;
+    ~EmbeddedTexture() override = default;
 
     ResourceType getType() const override {
         return ResourceType::RT_EmbeddedTexture2D;
@@ -112,10 +111,25 @@ public:
         // empty
     }
 
-    ~Texture2DGroup() = default;
+    ~Texture2DGroup() override = default;
 
     ResourceType getType() const override {
         return ResourceType::RT_Texture2DGroup;
+    }
+};
+
+class ColorGroup : public Resource {
+public:
+    std::vector<aiColor4D> mColors;
+    ColorGroup(int id) :
+            Resource(id){
+        // empty
+    }
+
+    ~ColorGroup() override = default;
+
+    ResourceType getType() const override {
+        return ResourceType::RT_ColorGroup;
     }
 };
 
@@ -129,7 +143,7 @@ public:
         // empty
     }
 
-    ~BaseMaterials() = default;
+    ~BaseMaterials() override = default;
 
     ResourceType getType() const override {
         return ResourceType::RT_BaseMaterials;
@@ -154,7 +168,7 @@ public:
         // empty
     }
 
-    ~Object() = default;
+    ~Object() override = default;
 
     ResourceType getType() const override {
         return ResourceType::RT_Object;

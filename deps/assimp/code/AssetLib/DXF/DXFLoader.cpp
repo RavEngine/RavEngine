@@ -3,7 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -43,7 +43,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *  @brief Implementation of the DXF importer class
  */
 
-
 #ifndef ASSIMP_BUILD_NO_DXF_IMPORTER
 
 #include "AssetLib/DXF/DXFLoader.h"
@@ -57,6 +56,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assimp/importerdesc.h>
 
 #include <numeric>
+#include <utility>
 
 using namespace Assimp;
 
@@ -67,26 +67,269 @@ static constexpr size_t AI_DXF_BINARY_IDENT_LEN = sizeof AI_DXF_BINARY_IDENT;
 // default vertex color that all uncolored vertices will receive
 static const aiColor4D AI_DXF_DEFAULT_COLOR(aiColor4D(0.6f, 0.6f, 0.6f, 0.6f));
 
-// color indices for DXF - 16 are supported, the table is
-// taken directly from the DXF spec.
-static aiColor4D g_aclrDxfIndexColors[] = {
-    aiColor4D (0.6f, 0.6f, 0.6f, 1.0f),
-    aiColor4D (1.0f, 0.0f, 0.0f, 1.0f), // red
-    aiColor4D (0.0f, 1.0f, 0.0f, 1.0f), // green
-    aiColor4D (0.0f, 0.0f, 1.0f, 1.0f), // blue
-    aiColor4D (0.3f, 1.0f, 0.3f, 1.0f), // light green
-    aiColor4D (0.3f, 0.3f, 1.0f, 1.0f), // light blue
-    aiColor4D (1.0f, 0.3f, 0.3f, 1.0f), // light red
-    aiColor4D (1.0f, 0.0f, 1.0f, 1.0f), // pink
-    aiColor4D (1.0f, 0.6f, 0.0f, 1.0f), // orange
-    aiColor4D (0.6f, 0.3f, 0.0f, 1.0f), // dark orange
-    aiColor4D (1.0f, 1.0f, 0.0f, 1.0f), // yellow
-    aiColor4D (0.3f, 0.3f, 0.3f, 1.0f), // dark gray
-    aiColor4D (0.8f, 0.8f, 0.8f, 1.0f), // light gray
-    aiColor4D (0.0f, 00.f, 0.0f, 1.0f), // black
-    aiColor4D (1.0f, 1.0f, 1.0f, 1.0f), // white
-    aiColor4D (0.6f, 0.0f, 1.0f, 1.0f)  // violet
+// color indices for DXF - 256 are supported, the table is
+// taken directly from the AutoCad Index (ACI) table
+// https://gohtx.com/acadcolors.php
+//STH 2024-0126
+static const aiColor4D g_aclrDxfIndexColors[256] = {
+    aiColor4D (0.0f, 0.0f ,0.0f, 1.0f), //dxf color code 0
+    aiColor4D (1.0f, 0.0f ,0.0f, 1.0f), //dxf color code 1
+    aiColor4D (1.0f, 1.0f ,0.0f, 1.0f), //dxf color code 2
+    aiColor4D (0.0f, 1.0f ,0.0f, 1.0f), //dxf color code 3
+    aiColor4D (0.0f, 1.0f ,1.0f, 1.0f), //dxf color code 4
+    aiColor4D (0.0f, 0.0f ,1.0f, 1.0f), //dxf color code 5
+    aiColor4D (1.0f, 0.0f ,1.0f, 1.0f), //dxf color code 6
+    aiColor4D (1.0f, 1.0f ,1.0f, 1.0f), //dxf color code 7
+    aiColor4D (0.3f, 0.3f ,0.3f, 1.0f), //dxf color code 8
+    aiColor4D (0.5f, 0.5f ,0.5f, 1.0f), //dxf color code 9
+    aiColor4D (1.0f, 0.0f ,0.0f, 1.0f), //dxf color code 10
+    aiColor4D (1.0f, 0.7f ,0.7f, 1.0f), //dxf color code 11
+    aiColor4D (0.7f, 0.0f ,0.0f, 1.0f), //dxf color code 12
+    aiColor4D (0.7f, 0.5f ,0.5f, 1.0f), //dxf color code 13
+    aiColor4D (0.5f, 0.0f ,0.0f, 1.0f), //dxf color code 14
+    aiColor4D (0.5f, 0.3f ,0.3f, 1.0f), //dxf color code 15
+    aiColor4D (0.4f, 0.0f ,0.0f, 1.0f), //dxf color code 16
+    aiColor4D (0.4f, 0.3f ,0.3f, 1.0f), //dxf color code 17
+    aiColor4D (0.3f, 0.0f ,0.0f, 1.0f), //dxf color code 18
+    aiColor4D (0.3f, 0.2f ,0.2f, 1.0f), //dxf color code 19
+    aiColor4D (1.0f, 0.2f ,0.0f, 1.0f), //dxf color code 20
+    aiColor4D (1.0f, 0.7f ,0.7f, 1.0f), //dxf color code 21
+    aiColor4D (0.7f, 0.2f ,0.0f, 1.0f), //dxf color code 22
+    aiColor4D (0.7f, 0.6f ,0.5f, 1.0f), //dxf color code 23
+    aiColor4D (0.5f, 0.1f ,0.0f, 1.0f), //dxf color code 24
+    aiColor4D (0.5f, 0.4f ,0.3f, 1.0f), //dxf color code 25
+    aiColor4D (0.4f, 0.1f ,0.0f, 1.0f), //dxf color code 26
+    aiColor4D (0.4f, 0.3f ,0.3f, 1.0f), //dxf color code 27
+    aiColor4D (0.3f, 0.1f ,0.0f, 1.0f), //dxf color code 28
+    aiColor4D (0.3f, 0.2f ,0.2f, 1.0f), //dxf color code 29
+    aiColor4D (1.0f, 0.5f ,0.0f, 1.0f), //dxf color code 30
+    aiColor4D (1.0f, 0.8f ,0.7f, 1.0f), //dxf color code 31
+    aiColor4D (0.7f, 0.4f ,0.0f, 1.0f), //dxf color code 32
+    aiColor4D (0.7f, 0.6f ,0.5f, 1.0f), //dxf color code 33
+    aiColor4D (0.5f, 0.3f ,0.0f, 1.0f), //dxf color code 34
+    aiColor4D (0.5f, 0.4f ,0.3f, 1.0f), //dxf color code 35
+    aiColor4D (0.4f, 0.2f ,0.0f, 1.0f), //dxf color code 36
+    aiColor4D (0.4f, 0.3f ,0.3f, 1.0f), //dxf color code 37
+    aiColor4D (0.3f, 0.2f ,0.0f, 1.0f), //dxf color code 38
+    aiColor4D (0.3f, 0.3f ,0.2f, 1.0f), //dxf color code 39
+    aiColor4D (1.0f, 0.7f ,0.0f, 1.0f), //dxf color code 40
+    aiColor4D (1.0f, 0.9f ,0.7f, 1.0f), //dxf color code 41
+    aiColor4D (0.7f, 0.6f ,0.0f, 1.0f), //dxf color code 42
+    aiColor4D (0.7f, 0.7f ,0.5f, 1.0f), //dxf color code 43
+    aiColor4D (0.5f, 0.4f ,0.0f, 1.0f), //dxf color code 44
+    aiColor4D (0.5f, 0.5f ,0.3f, 1.0f), //dxf color code 45
+    aiColor4D (0.4f, 0.3f ,0.0f, 1.0f), //dxf color code 46
+    aiColor4D (0.4f, 0.4f ,0.3f, 1.0f), //dxf color code 47
+    aiColor4D (0.3f, 0.2f ,0.0f, 1.0f), //dxf color code 48
+    aiColor4D (0.3f, 0.3f ,0.2f, 1.0f), //dxf color code 49
+    aiColor4D (1.0f, 1.0f ,0.0f, 1.0f), //dxf color code 50
+    aiColor4D (1.0f, 1.0f ,0.7f, 1.0f), //dxf color code 51
+    aiColor4D (0.7f, 0.7f ,0.0f, 1.0f), //dxf color code 52
+    aiColor4D (0.7f, 0.7f ,0.5f, 1.0f), //dxf color code 53
+    aiColor4D (0.5f, 0.5f ,0.0f, 1.0f), //dxf color code 54
+    aiColor4D (0.5f, 0.5f ,0.3f, 1.0f), //dxf color code 55
+    aiColor4D (0.4f, 0.4f ,0.0f, 1.0f), //dxf color code 56
+    aiColor4D (0.4f, 0.4f ,0.3f, 1.0f), //dxf color code 57
+    aiColor4D (0.3f, 0.3f ,0.0f, 1.0f), //dxf color code 58
+    aiColor4D (0.3f, 0.3f ,0.2f, 1.0f), //dxf color code 59
+    aiColor4D (0.7f, 1.0f ,0.0f, 1.0f), //dxf color code 60
+    aiColor4D (0.9f, 1.0f ,0.7f, 1.0f), //dxf color code 61
+    aiColor4D (0.6f, 0.7f ,0.0f, 1.0f), //dxf color code 62
+    aiColor4D (0.7f, 0.7f ,0.5f, 1.0f), //dxf color code 63
+    aiColor4D (0.4f, 0.5f ,0.0f, 1.0f), //dxf color code 64
+    aiColor4D (0.5f, 0.5f ,0.3f, 1.0f), //dxf color code 65
+    aiColor4D (0.3f, 0.4f ,0.0f, 1.0f), //dxf color code 66
+    aiColor4D (0.4f, 0.4f ,0.3f, 1.0f), //dxf color code 67
+    aiColor4D (0.2f, 0.3f ,0.0f, 1.0f), //dxf color code 68
+    aiColor4D (0.3f, 0.3f ,0.2f, 1.0f), //dxf color code 69
+    aiColor4D (0.5f, 1.0f ,0.0f, 1.0f), //dxf color code 70
+    aiColor4D (0.8f, 1.0f ,0.7f, 1.0f), //dxf color code 71
+    aiColor4D (0.4f, 0.7f ,0.0f, 1.0f), //dxf color code 72
+    aiColor4D (0.6f, 0.7f ,0.5f, 1.0f), //dxf color code 73
+    aiColor4D (0.3f, 0.5f ,0.0f, 1.0f), //dxf color code 74
+    aiColor4D (0.4f, 0.5f ,0.3f, 1.0f), //dxf color code 75
+    aiColor4D (0.2f, 0.4f ,0.0f, 1.0f), //dxf color code 76
+    aiColor4D (0.3f, 0.4f ,0.3f, 1.0f), //dxf color code 77
+    aiColor4D (0.2f, 0.3f ,0.0f, 1.0f), //dxf color code 78
+    aiColor4D (0.3f, 0.3f ,0.2f, 1.0f), //dxf color code 79
+    aiColor4D (0.2f, 1.0f ,0.0f, 1.0f), //dxf color code 80
+    aiColor4D (0.7f, 1.0f ,0.7f, 1.0f), //dxf color code 81
+    aiColor4D (0.2f, 0.7f ,0.0f, 1.0f), //dxf color code 82
+    aiColor4D (0.6f, 0.7f ,0.5f, 1.0f), //dxf color code 83
+    aiColor4D (0.1f, 0.5f ,0.0f, 1.0f), //dxf color code 84
+    aiColor4D (0.4f, 0.5f ,0.3f, 1.0f), //dxf color code 85
+    aiColor4D (0.1f, 0.4f ,0.0f, 1.0f), //dxf color code 86
+    aiColor4D (0.3f, 0.4f ,0.3f, 1.0f), //dxf color code 87
+    aiColor4D (0.1f, 0.3f ,0.0f, 1.0f), //dxf color code 88
+    aiColor4D (0.2f, 0.3f ,0.2f, 1.0f), //dxf color code 89
+    aiColor4D (0.0f, 1.0f ,0.0f, 1.0f), //dxf color code 90
+    aiColor4D (0.7f, 1.0f ,0.7f, 1.0f), //dxf color code 91
+    aiColor4D (0.0f, 0.7f ,0.0f, 1.0f), //dxf color code 92
+    aiColor4D (0.5f, 0.7f ,0.5f, 1.0f), //dxf color code 93
+    aiColor4D (0.0f, 0.5f ,0.0f, 1.0f), //dxf color code 94
+    aiColor4D (0.3f, 0.5f ,0.3f, 1.0f), //dxf color code 95
+    aiColor4D (0.0f, 0.4f ,0.0f, 1.0f), //dxf color code 96
+    aiColor4D (0.3f, 0.4f ,0.3f, 1.0f), //dxf color code 97
+    aiColor4D (0.0f, 0.3f ,0.0f, 1.0f), //dxf color code 98
+    aiColor4D (0.2f, 0.3f ,0.2f, 1.0f), //dxf color code 99
+    aiColor4D (0.0f, 1.0f ,0.2f, 1.0f), //dxf color code 100
+    aiColor4D (0.7f, 1.0f ,0.7f, 1.0f), //dxf color code 101
+    aiColor4D (0.0f, 0.7f ,0.2f, 1.0f), //dxf color code 102
+    aiColor4D (0.5f, 0.7f ,0.6f, 1.0f), //dxf color code 103
+    aiColor4D (0.0f, 0.5f ,0.1f, 1.0f), //dxf color code 104
+    aiColor4D (0.3f, 0.5f ,0.4f, 1.0f), //dxf color code 105
+    aiColor4D (0.0f, 0.4f ,0.1f, 1.0f), //dxf color code 106
+    aiColor4D (0.3f, 0.4f ,0.3f, 1.0f), //dxf color code 107
+    aiColor4D (0.0f, 0.3f ,0.1f, 1.0f), //dxf color code 108
+    aiColor4D (0.2f, 0.3f ,0.2f, 1.0f), //dxf color code 109
+    aiColor4D (0.0f, 1.0f ,0.5f, 1.0f), //dxf color code 110
+    aiColor4D (0.7f, 1.0f ,0.8f, 1.0f), //dxf color code 111
+    aiColor4D (0.0f, 0.7f ,0.4f, 1.0f), //dxf color code 112
+    aiColor4D (0.5f, 0.7f ,0.6f, 1.0f), //dxf color code 113
+    aiColor4D (0.0f, 0.5f ,0.3f, 1.0f), //dxf color code 114
+    aiColor4D (0.3f, 0.5f ,0.4f, 1.0f), //dxf color code 115
+    aiColor4D (0.0f, 0.4f ,0.2f, 1.0f), //dxf color code 116
+    aiColor4D (0.3f, 0.4f ,0.3f, 1.0f), //dxf color code 117
+    aiColor4D (0.0f, 0.3f ,0.2f, 1.0f), //dxf color code 118
+    aiColor4D (0.2f, 0.3f ,0.3f, 1.0f), //dxf color code 119
+    aiColor4D (0.0f, 1.0f ,0.7f, 1.0f), //dxf color code 120
+    aiColor4D (0.7f, 1.0f ,0.9f, 1.0f), //dxf color code 121
+    aiColor4D (0.0f, 0.7f ,0.6f, 1.0f), //dxf color code 122
+    aiColor4D (0.5f, 0.7f ,0.7f, 1.0f), //dxf color code 123
+    aiColor4D (0.0f, 0.5f ,0.4f, 1.0f), //dxf color code 124
+    aiColor4D (0.3f, 0.5f ,0.5f, 1.0f), //dxf color code 125
+    aiColor4D (0.0f, 0.4f ,0.3f, 1.0f), //dxf color code 126
+    aiColor4D (0.3f, 0.4f ,0.4f, 1.0f), //dxf color code 127
+    aiColor4D (0.0f, 0.3f ,0.2f, 1.0f), //dxf color code 128
+    aiColor4D (0.2f, 0.3f ,0.3f, 1.0f), //dxf color code 129
+    aiColor4D (0.0f, 1.0f ,1.0f, 1.0f), //dxf color code 130
+    aiColor4D (0.7f, 1.0f ,1.0f, 1.0f), //dxf color code 131
+    aiColor4D (0.0f, 0.7f ,0.7f, 1.0f), //dxf color code 132
+    aiColor4D (0.5f, 0.7f ,0.7f, 1.0f), //dxf color code 133
+    aiColor4D (0.0f, 0.5f ,0.5f, 1.0f), //dxf color code 134
+    aiColor4D (0.3f, 0.5f ,0.5f, 1.0f), //dxf color code 135
+    aiColor4D (0.0f, 0.4f ,0.4f, 1.0f), //dxf color code 136
+    aiColor4D (0.3f, 0.4f ,0.4f, 1.0f), //dxf color code 137
+    aiColor4D (0.0f, 0.3f ,0.3f, 1.0f), //dxf color code 138
+    aiColor4D (0.2f, 0.3f ,0.3f, 1.0f), //dxf color code 139
+    aiColor4D (0.0f, 0.7f ,1.0f, 1.0f), //dxf color code 140
+    aiColor4D (0.7f, 0.9f ,1.0f, 1.0f), //dxf color code 141
+    aiColor4D (0.0f, 0.6f ,0.7f, 1.0f), //dxf color code 142
+    aiColor4D (0.5f, 0.7f ,0.7f, 1.0f), //dxf color code 143
+    aiColor4D (0.0f, 0.4f ,0.5f, 1.0f), //dxf color code 144
+    aiColor4D (0.3f, 0.5f ,0.5f, 1.0f), //dxf color code 145
+    aiColor4D (0.0f, 0.3f ,0.4f, 1.0f), //dxf color code 146
+    aiColor4D (0.3f, 0.4f ,0.4f, 1.0f), //dxf color code 147
+    aiColor4D (0.0f, 0.2f ,0.3f, 1.0f), //dxf color code 148
+    aiColor4D (0.2f, 0.3f ,0.3f, 1.0f), //dxf color code 149
+    aiColor4D (0.0f, 0.5f ,1.0f, 1.0f), //dxf color code 150
+    aiColor4D (0.7f, 0.8f ,1.0f, 1.0f), //dxf color code 151
+    aiColor4D (0.0f, 0.4f ,0.7f, 1.0f), //dxf color code 152
+    aiColor4D (0.5f, 0.6f ,0.7f, 1.0f), //dxf color code 153
+    aiColor4D (0.0f, 0.3f ,0.5f, 1.0f), //dxf color code 154
+    aiColor4D (0.3f, 0.4f ,0.5f, 1.0f), //dxf color code 155
+    aiColor4D (0.0f, 0.2f ,0.4f, 1.0f), //dxf color code 156
+    aiColor4D (0.3f, 0.3f ,0.4f, 1.0f), //dxf color code 157
+    aiColor4D (0.0f, 0.2f ,0.3f, 1.0f), //dxf color code 158
+    aiColor4D (0.2f, 0.3f ,0.3f, 1.0f), //dxf color code 159
+    aiColor4D (0.0f, 0.2f ,1.0f, 1.0f), //dxf color code 160
+    aiColor4D (0.7f, 0.7f ,1.0f, 1.0f), //dxf color code 161
+    aiColor4D (0.0f, 0.2f ,0.7f, 1.0f), //dxf color code 162
+    aiColor4D (0.5f, 0.6f ,0.7f, 1.0f), //dxf color code 163
+    aiColor4D (0.0f, 0.1f ,0.5f, 1.0f), //dxf color code 164
+    aiColor4D (0.3f, 0.4f ,0.5f, 1.0f), //dxf color code 165
+    aiColor4D (0.0f, 0.1f ,0.4f, 1.0f), //dxf color code 166
+    aiColor4D (0.3f, 0.3f ,0.4f, 1.0f), //dxf color code 167
+    aiColor4D (0.0f, 0.1f ,0.3f, 1.0f), //dxf color code 168
+    aiColor4D (0.2f, 0.2f ,0.3f, 1.0f), //dxf color code 169
+    aiColor4D (0.0f, 0.0f ,1.0f, 1.0f), //dxf color code 170
+    aiColor4D (0.7f, 0.7f ,1.0f, 1.0f), //dxf color code 171
+    aiColor4D (0.0f, 0.0f ,0.7f, 1.0f), //dxf color code 172
+    aiColor4D (0.5f, 0.5f ,0.7f, 1.0f), //dxf color code 173
+    aiColor4D (0.0f, 0.0f ,0.5f, 1.0f), //dxf color code 174
+    aiColor4D (0.3f, 0.3f ,0.5f, 1.0f), //dxf color code 175
+    aiColor4D (0.0f, 0.0f ,0.4f, 1.0f), //dxf color code 176
+    aiColor4D (0.3f, 0.3f ,0.4f, 1.0f), //dxf color code 177
+    aiColor4D (0.0f, 0.0f ,0.3f, 1.0f), //dxf color code 178
+    aiColor4D (0.2f, 0.2f ,0.3f, 1.0f), //dxf color code 179
+    aiColor4D (0.2f, 0.0f ,1.0f, 1.0f), //dxf color code 180
+    aiColor4D (0.7f, 0.7f ,1.0f, 1.0f), //dxf color code 181
+    aiColor4D (0.2f, 0.0f ,0.7f, 1.0f), //dxf color code 182
+    aiColor4D (0.6f, 0.5f ,0.7f, 1.0f), //dxf color code 183
+    aiColor4D (0.1f, 0.0f ,0.5f, 1.0f), //dxf color code 184
+    aiColor4D (0.4f, 0.3f ,0.5f, 1.0f), //dxf color code 185
+    aiColor4D (0.1f, 0.0f ,0.4f, 1.0f), //dxf color code 186
+    aiColor4D (0.3f, 0.3f ,0.4f, 1.0f), //dxf color code 187
+    aiColor4D (0.1f, 0.0f ,0.3f, 1.0f), //dxf color code 188
+    aiColor4D (0.2f, 0.2f ,0.3f, 1.0f), //dxf color code 189
+    aiColor4D (0.5f, 0.0f ,1.0f, 1.0f), //dxf color code 190
+    aiColor4D (0.8f, 0.7f ,1.0f, 1.0f), //dxf color code 191
+    aiColor4D (0.4f, 0.0f ,0.7f, 1.0f), //dxf color code 192
+    aiColor4D (0.6f, 0.5f ,0.7f, 1.0f), //dxf color code 193
+    aiColor4D (0.3f, 0.0f ,0.5f, 1.0f), //dxf color code 194
+    aiColor4D (0.4f, 0.3f ,0.5f, 1.0f), //dxf color code 195
+    aiColor4D (0.2f, 0.0f ,0.4f, 1.0f), //dxf color code 196
+    aiColor4D (0.3f, 0.3f ,0.4f, 1.0f), //dxf color code 197
+    aiColor4D (0.2f, 0.0f ,0.3f, 1.0f), //dxf color code 198
+    aiColor4D (0.3f, 0.2f ,0.3f, 1.0f), //dxf color code 199
+    aiColor4D (0.7f, 0.0f ,1.0f, 1.0f), //dxf color code 200
+    aiColor4D (0.9f, 0.7f ,1.0f, 1.0f), //dxf color code 201
+    aiColor4D (0.6f, 0.0f ,0.7f, 1.0f), //dxf color code 202
+    aiColor4D (0.7f, 0.5f ,0.7f, 1.0f), //dxf color code 203
+    aiColor4D (0.4f, 0.0f ,0.5f, 1.0f), //dxf color code 204
+    aiColor4D (0.5f, 0.3f ,0.5f, 1.0f), //dxf color code 205
+    aiColor4D (0.3f, 0.0f ,0.4f, 1.0f), //dxf color code 206
+    aiColor4D (0.4f, 0.3f ,0.4f, 1.0f), //dxf color code 207
+    aiColor4D (0.2f, 0.0f ,0.3f, 1.0f), //dxf color code 208
+    aiColor4D (0.3f, 0.2f ,0.3f, 1.0f), //dxf color code 209
+    aiColor4D (1.0f, 0.0f ,1.0f, 1.0f), //dxf color code 210
+    aiColor4D (1.0f, 0.7f ,1.0f, 1.0f), //dxf color code 211
+    aiColor4D (0.7f, 0.0f ,0.7f, 1.0f), //dxf color code 212
+    aiColor4D (0.7f, 0.5f ,0.7f, 1.0f), //dxf color code 213
+    aiColor4D (0.5f, 0.0f ,0.5f, 1.0f), //dxf color code 214
+    aiColor4D (0.5f, 0.3f ,0.5f, 1.0f), //dxf color code 215
+    aiColor4D (0.4f, 0.0f ,0.4f, 1.0f), //dxf color code 216
+    aiColor4D (0.4f, 0.3f ,0.4f, 1.0f), //dxf color code 217
+    aiColor4D (0.3f, 0.0f ,0.3f, 1.0f), //dxf color code 218
+    aiColor4D (0.3f, 0.2f ,0.3f, 1.0f), //dxf color code 219
+    aiColor4D (1.0f, 0.0f ,0.7f, 1.0f), //dxf color code 220
+    aiColor4D (1.0f, 0.7f ,0.9f, 1.0f), //dxf color code 221
+    aiColor4D (0.7f, 0.0f ,0.6f, 1.0f), //dxf color code 222
+    aiColor4D (0.7f, 0.5f ,0.7f, 1.0f), //dxf color code 223
+    aiColor4D (0.5f, 0.0f ,0.4f, 1.0f), //dxf color code 224
+    aiColor4D (0.5f, 0.3f ,0.5f, 1.0f), //dxf color code 225
+    aiColor4D (0.4f, 0.0f ,0.3f, 1.0f), //dxf color code 226
+    aiColor4D (0.4f, 0.3f ,0.4f, 1.0f), //dxf color code 227
+    aiColor4D (0.3f, 0.0f ,0.2f, 1.0f), //dxf color code 228
+    aiColor4D (0.3f, 0.2f ,0.3f, 1.0f), //dxf color code 229
+    aiColor4D (1.0f, 0.0f ,0.5f, 1.0f), //dxf color code 230
+    aiColor4D (1.0f, 0.7f ,0.8f, 1.0f), //dxf color code 231
+    aiColor4D (0.7f, 0.0f ,0.4f, 1.0f), //dxf color code 232
+    aiColor4D (0.7f, 0.5f ,0.6f, 1.0f), //dxf color code 233
+    aiColor4D (0.5f, 0.0f ,0.3f, 1.0f), //dxf color code 234
+    aiColor4D (0.5f, 0.3f ,0.4f, 1.0f), //dxf color code 235
+    aiColor4D (0.4f, 0.0f ,0.2f, 1.0f), //dxf color code 236
+    aiColor4D (0.4f, 0.3f ,0.3f, 1.0f), //dxf color code 237
+    aiColor4D (0.3f, 0.0f ,0.2f, 1.0f), //dxf color code 238
+    aiColor4D (0.3f, 0.2f ,0.3f, 1.0f), //dxf color code 239
+    aiColor4D (1.0f, 0.0f ,0.2f, 1.0f), //dxf color code 240
+    aiColor4D (1.0f, 0.7f ,0.7f, 1.0f), //dxf color code 241
+    aiColor4D (0.7f, 0.0f ,0.2f, 1.0f), //dxf color code 242
+    aiColor4D (0.7f, 0.5f ,0.6f, 1.0f), //dxf color code 243
+    aiColor4D (0.5f, 0.0f ,0.1f, 1.0f), //dxf color code 244
+    aiColor4D (0.5f, 0.3f ,0.4f, 1.0f), //dxf color code 245
+    aiColor4D (0.4f, 0.0f ,0.1f, 1.0f), //dxf color code 246
+    aiColor4D (0.4f, 0.3f ,0.3f, 1.0f), //dxf color code 247
+    aiColor4D (0.3f, 0.0f ,0.1f, 1.0f), //dxf color code 248
+    aiColor4D (0.3f, 0.2f ,0.2f, 1.0f), //dxf color code 249
+    aiColor4D (0.2f, 0.2f ,0.2f, 1.0f), //dxf color code 250
+    aiColor4D (0.3f, 0.3f ,0.3f, 1.0f), //dxf color code 251
+    aiColor4D (0.4f, 0.4f ,0.4f, 1.0f), //dxf color code 252
+    aiColor4D (0.5f, 0.5f ,0.5f, 1.0f), //dxf color code 253
+    aiColor4D (0.7f, 0.7f ,0.7f, 1.0f), //dxf color code 254
+    aiColor4D (1.0f, 1.0f ,1.0f, 1.0f) //dxf color code 255
 };
+
 #define AI_DXF_NUM_INDEX_COLORS (sizeof(g_aclrDxfIndexColors)/sizeof(g_aclrDxfIndexColors[0]))
 #define AI_DXF_ENTITIES_MAGIC_BLOCK "$ASSIMP_ENTITIES_MAGIC"
 
@@ -95,7 +338,7 @@ static const int GroupCode_XComp = 10;
 static const int GroupCode_YComp = 20;
 static const int GroupCode_ZComp = 30;
 
-static const aiImporterDesc desc = {
+static constexpr aiImporterDesc desc = {
     "Drawing Interchange Format (DXF) Importer",
     "",
     "",
@@ -109,32 +352,10 @@ static const aiImporterDesc desc = {
 };
 
 // ------------------------------------------------------------------------------------------------
-// Constructor to be privately used by Importer
-DXFImporter::DXFImporter()
-: BaseImporter() {
-    // empty
-}
-
-// ------------------------------------------------------------------------------------------------
-// Destructor, private as well
-DXFImporter::~DXFImporter() {
-    // empty
-}
-
-// ------------------------------------------------------------------------------------------------
 // Returns whether the class can handle the format of the given file.
-bool DXFImporter::CanRead( const std::string& filename, IOSystem* pIOHandler, bool checkSig ) const {
-    const std::string& extension = GetExtension( filename );
-    if ( extension == desc.mFileExtensions ) {
-        return true;
-    }
-
-    if ( extension.empty() || checkSig ) {
-        const char *pTokens[] = { "SECTION", "HEADER", "ENDSEC", "BLOCKS" };
-        return BaseImporter::SearchFileHeaderForToken(pIOHandler, filename, pTokens, 4, 32 );
-    }
-
-    return false;
+bool DXFImporter::CanRead( const std::string& filename, IOSystem* pIOHandler, bool /*checkSig*/ ) const {
+    static const char *tokens[] = { "SECTION", "HEADER", "ENDSEC", "BLOCKS" };
+    return SearchFileHeaderForToken(pIOHandler, filename, tokens, AI_COUNT_OF(tokens), 32);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -149,7 +370,7 @@ void DXFImporter::InternReadFile( const std::string& filename, aiScene* pScene, 
     std::shared_ptr<IOStream> file = std::shared_ptr<IOStream>( pIOHandler->Open( filename) );
 
     // Check whether we can read the file
-    if( file.get() == nullptr ) {
+    if (file == nullptr) {
         throw DeadlyImportError( "Failed to open DXF file ", filename, "");
     }
 
@@ -164,7 +385,7 @@ void DXFImporter::InternReadFile( const std::string& filename, aiScene* pScene, 
     // DXF files can grow very large, so read them via the StreamReader,
     // which will choose a suitable strategy.
     file->Seek(0,aiOrigin_SET);
-    StreamReaderLE stream( file );
+    StreamReaderLE stream( std::move(file) );
 
     DXF::LineReader reader (stream);
     DXF::FileData output;
@@ -242,7 +463,7 @@ void DXFImporter::ConvertMeshes(aiScene* pScene, DXF::FileData& output) {
         ASSIMP_LOG_VERBOSE_DEBUG("DXF: Unexpanded polycount is ", icount, ", vertex count is ", vcount);
     }
 
-    if (! output.blocks.size()  ) {
+    if (output.blocks.empty()) {
         throw DeadlyImportError("DXF: no data blocks loaded");
     }
 
@@ -377,7 +598,14 @@ void DXFImporter::ExpandBlockReferences(DXF::Block& bl,const DXF::BlockMap& bloc
         // XXX this would be the place to implement recursive expansion if needed.
         const DXF::Block& bl_src = *(*it).second;
 
-        for (std::shared_ptr<const DXF::PolyLine> pl_in : bl_src.lines) {
+        const size_t size = bl_src.lines.size(); // the size may increase in the loop
+        for (size_t i = 0; i < size; ++i) {
+            std::shared_ptr<const DXF::PolyLine> pl_in = bl_src.lines[i];
+            if (!pl_in) {
+                ASSIMP_LOG_ERROR("DXF: PolyLine instance is nullptr, skipping.");
+                continue;
+            }
+
             std::shared_ptr<DXF::PolyLine> pl_out = std::shared_ptr<DXF::PolyLine>(new DXF::PolyLine(*pl_in));
 
             if (bl_src.base.Length() || insert.scale.x!=1.f || insert.scale.y!=1.f || insert.scale.z!=1.f || insert.angle || insert.pos.Length()) {
@@ -385,8 +613,12 @@ void DXFImporter::ExpandBlockReferences(DXF::Block& bl,const DXF::BlockMap& bloc
                 // XXX order
                 aiMatrix4x4 trafo, tmp;
                 aiMatrix4x4::Translation(-bl_src.base,trafo);
-                trafo *= aiMatrix4x4::Scaling(insert.scale,tmp);
+                //Need to translate position before scaling the insert
+                //otherwise the position ends up being the position*scaling
+                //STH 2024.01.17
                 trafo *= aiMatrix4x4::Translation(insert.pos,tmp);
+                trafo *= aiMatrix4x4::Scaling(insert.scale,tmp);
+                //trafo *= aiMatrix4x4::Translation(insert.pos,tmp);
 
                 // XXX rotation currently ignored - I didn't find an appropriate sample model.
                 if (insert.angle != 0.f) {
@@ -477,7 +709,7 @@ void DXFImporter::ParseBlocks(DXF::LineReader& reader, DXF::FileData& output) {
 // ------------------------------------------------------------------------------------------------
 void DXFImporter::ParseBlock(DXF::LineReader& reader, DXF::FileData& output) {
     // push a new block onto the stack.
-    output.blocks.push_back( DXF::Block() );
+    output.blocks.emplace_back();
     DXF::Block& block = output.blocks.back();
 
     while( !reader.End() && !reader.Is(0,"ENDBLK")) {
@@ -522,7 +754,7 @@ void DXFImporter::ParseBlock(DXF::LineReader& reader, DXF::FileData& output) {
 // ------------------------------------------------------------------------------------------------
 void DXFImporter::ParseEntities(DXF::LineReader& reader, DXF::FileData& output) {
     // Push a new block onto the stack.
-    output.blocks.push_back( DXF::Block() );
+    output.blocks.emplace_back();
     DXF::Block& block = output.blocks.back();
 
     block.name = AI_DXF_ENTITIES_MAGIC_BLOCK;
@@ -552,7 +784,7 @@ void DXFImporter::ParseEntities(DXF::LineReader& reader, DXF::FileData& output) 
 }
 
 void DXFImporter::ParseInsertion(DXF::LineReader& reader, DXF::FileData& output) {
-    output.blocks.back().insertions.push_back( DXF::InsertBlock() );
+    output.blocks.back().insertions.emplace_back();
     DXF::InsertBlock& bl = output.blocks.back().insertions.back();
 
     while( !reader.End() && !reader.Is(0)) {
@@ -593,10 +825,11 @@ void DXFImporter::ParseInsertion(DXF::LineReader& reader, DXF::FileData& output)
     }
 }
 
-#define DXF_POLYLINE_FLAG_CLOSED        0x1
-#define DXF_POLYLINE_FLAG_3D_POLYLINE   0x8
-#define DXF_POLYLINE_FLAG_3D_POLYMESH   0x10
-#define DXF_POLYLINE_FLAG_POLYFACEMESH  0x40
+static constexpr unsigned int DXF_POLYLINE_FLAG_CLOSED = 0x1;
+// Currently unused
+//static constexpr unsigned int DXF_POLYLINE_FLAG_3D_POLYLINE = 0x8;
+//static constexpr unsigned int DXF_POLYLINE_FLAG_3D_POLYMESH = 0x10;
+static constexpr unsigned int DXF_POLYLINE_FLAG_POLYFACEMESH = 0x40;
 
 // ------------------------------------------------------------------------------------------------
 void DXFImporter::ParsePolyLine(DXF::LineReader& reader, DXF::FileData& output) {
@@ -644,12 +877,6 @@ void DXFImporter::ParsePolyLine(DXF::LineReader& reader, DXF::FileData& output) 
 
         reader++;
     }
-
-    //if (!(line.flags & DXF_POLYLINE_FLAG_POLYFACEMESH))   {
-    //  DefaultLogger::get()->warn((Formatter::format("DXF: polyline not currently supported: "),line.flags));
-    //  output.blocks.back().lines.pop_back();
-    //  return;
-    //}
 
     if (vguess && line.positions.size() != vguess) {
         ASSIMP_LOG_WARN("DXF: unexpected vertex count in polymesh: ",
@@ -740,12 +967,18 @@ void DXFImporter::ParsePolyLineVertex(DXF::LineReader& reader, DXF::PolyLine& li
         case 71:
         case 72:
         case 73:
-        case 74:
-            if (cnti == 4) {
-                ASSIMP_LOG_WARN("DXF: more than 4 indices per face not supported; ignoring");
-                break;
+        case 74: {
+                if (cnti == 4) {
+                    ASSIMP_LOG_WARN("DXF: more than 4 indices per face not supported; ignoring");
+                    break;
+                }
+                const int index = reader.ValueAsSignedInt();
+                if (index >= 0) {
+                    indices[cnti++] = static_cast<unsigned int>(index);
+                } else {
+                    indices[cnti++] = static_cast<unsigned int>(-index);
+                }
             }
-            indices[cnti++] = reader.ValueAsUnsignedInt();
             break;
 
         // color
@@ -783,8 +1016,7 @@ void DXFImporter::ParsePolyLineVertex(DXF::LineReader& reader, DXF::PolyLine& li
 }
 
 // ------------------------------------------------------------------------------------------------
-void DXFImporter::Parse3DFace(DXF::LineReader& reader, DXF::FileData& output)
-{
+void DXFImporter::Parse3DFace(DXF::LineReader& reader, DXF::FileData& output) {
     // (note) this is also used for for parsing line entities, so we
     // must handle the vertex_count == 2 case as well.
 
@@ -801,8 +1033,7 @@ void DXFImporter::Parse3DFace(DXF::LineReader& reader, DXF::FileData& output)
         if (reader.GroupCode() == 0) {
             break;
         }
-        switch (reader.GroupCode())
-        {
+        switch (reader.GroupCode()) {
 
         // 8 specifies the layer
         case 8:

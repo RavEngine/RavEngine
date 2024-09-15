@@ -2,8 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
-
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -40,14 +39,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ----------------------------------------------------------------------
 */
 
-/** @file  IFCLoad.cpp
- *  @brief Implementation of the Industry Foundation Classes loader.
- */
+/// @file  IFCLoad.cpp
+/// @brief Implementation of the Industry Foundation Classes loader.
 
 #ifndef ASSIMP_BUILD_NO_IFC_IMPORTER
 
 #include <iterator>
 #include <limits>
+#include <memory>
 #include <tuple>
 
 #ifndef ASSIMP_BUILD_NO_COMPRESSED_IFC
@@ -67,12 +66,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assimp/importerdesc.h>
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
+#include <utility>
 
 namespace Assimp {
 template <>
 const char *LogFunctions<IFCImporter>::Prefix() {
-    static auto prefix = "IFC: ";
-    return prefix;
+    return "IFC: ";
 }
 } // namespace Assimp
 
@@ -91,7 +90,6 @@ using namespace Assimp::IFC;
   IfcUnitAssignment
   IfcClosedShell
   IfcDoor
-
  */
 
 namespace {
@@ -105,7 +103,7 @@ void ConvertUnit(const ::Assimp::STEP::EXPRESS::DataType &dt, ConversionData &co
 
 } // namespace
 
-static const aiImporterDesc desc = {
+static constexpr aiImporterDesc desc = {
     "Industry Foundation Classes (IFC) Importer",
     "",
     "",
@@ -119,29 +117,13 @@ static const aiImporterDesc desc = {
 };
 
 // ------------------------------------------------------------------------------------------------
-// Constructor to be privately used by Importer
-IFCImporter::IFCImporter() {}
-
-// ------------------------------------------------------------------------------------------------
-// Destructor, private as well
-IFCImporter::~IFCImporter() {
-}
-
-// ------------------------------------------------------------------------------------------------
 // Returns whether the class can handle the format of the given file.
-bool IFCImporter::CanRead(const std::string &pFile, IOSystem *pIOHandler, bool checkSig) const {
-    const std::string &extension = GetExtension(pFile);
-    if (extension == "ifc" || extension == "ifczip") {
-        return true;
-    } else if ((!extension.length() || checkSig) && pIOHandler) {
-        // note: this is the common identification for STEP-encoded files, so
-        // it is only unambiguous as long as we don't support any further
-        // file formats with STEP as their encoding.
-        const char *tokens[] = { "ISO-10303-21" };
-        const bool found(SearchFileHeaderForToken(pIOHandler, pFile, tokens, 1));
-        return found;
-    }
-    return false;
+bool IFCImporter::CanRead(const std::string &pFile, IOSystem *pIOHandler, bool /*checkSig*/) const {
+    // note: this is the common identification for STEP-encoded files, so
+    // it is only unambiguous as long as we don't support any further
+    // file formats with STEP as their encoding.
+    static const char *tokens[] = { "ISO-10303-21" };
+    return SearchFileHeaderForToken(pIOHandler, pFile, tokens, AI_COUNT_OF(tokens));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -193,7 +175,7 @@ void IFCImporter::InternReadFile(const std::string &pFile, aiScene *pScene, IOSy
                 // get file size, etc.
                 unz_file_info fileInfo;
                 char filename[256];
-                unzGetCurrentFileInfo(zip, &fileInfo, filename, sizeof(filename), 0, 0, 0, 0);
+                unzGetCurrentFileInfo(zip, &fileInfo, filename, sizeof(filename), nullptr, 0, nullptr, 0);
                 if (GetExtension(filename) != "ifc") {
                     continue;
                 }
@@ -203,7 +185,7 @@ void IFCImporter::InternReadFile(const std::string &pFile, aiScene *pScene, IOSy
                 size_t total = 0;
                 int read = 0;
                 do {
-                    int bufferSize = fileInfo.uncompressed_size < INT16_MAX ? fileInfo.uncompressed_size : INT16_MAX;
+                    unsigned bufferSize = fileInfo.uncompressed_size < INT16_MAX ? static_cast<unsigned>(fileInfo.uncompressed_size) : INT16_MAX;
                     void *buffer = malloc(bufferSize);
                     read = unzReadCurrentFile(zip, buffer, bufferSize);
                     if (read > 0) {
@@ -218,7 +200,7 @@ void IFCImporter::InternReadFile(const std::string &pFile, aiScene *pScene, IOSy
                     ThrowException("Failed to decompress IFC ZIP file");
                 }
                 unzCloseCurrentFile(zip);
-                stream.reset(new MemoryIOStream(buff, fileInfo.uncompressed_size, true));
+                stream = std::make_shared<MemoryIOStream>(buff, fileInfo.uncompressed_size, true);
                 if (unzGoToNextFile(zip) == UNZ_END_OF_LIST_OF_FILE) {
                     ThrowException("Found no IFC file member in IFCZIP file (1)");
                 }
@@ -235,10 +217,10 @@ void IFCImporter::InternReadFile(const std::string &pFile, aiScene *pScene, IOSy
 #endif
     }
 
-    std::unique_ptr<STEP::DB> db(STEP::ReadFileHeader(stream));
+    std::unique_ptr<STEP::DB> db(STEP::ReadFileHeader(std::move(stream)));
     const STEP::HeaderInfo &head = static_cast<const STEP::DB &>(*db).GetHeader();
 
-    if (!head.fileSchema.size() || head.fileSchema.substr(0, 3) != "IFC") {
+    if (!head.fileSchema.size() || head.fileSchema.substr(0, 4) != "IFC2") {
         ThrowException("Unrecognized file schema: " + head.fileSchema);
     }
 
@@ -263,7 +245,12 @@ void IFCImporter::InternReadFile(const std::string &pFile, aiScene *pScene, IOSy
 
     // tell the reader for which types we need to simulate STEPs reverse indices
     static const char *const inverse_indices_to_track[] = {
-        "ifcrelcontainedinspatialstructure", "ifcrelaggregates", "ifcrelvoidselement", "ifcreldefinesbyproperties", "ifcpropertyset", "ifcstyleditem"
+        "ifcrelcontainedinspatialstructure", 
+        "ifcrelaggregates", 
+        "ifcrelvoidselement", 
+        "ifcreldefinesbyproperties", 
+        "ifcpropertyset", 
+        "ifcstyleditem"
     };
 
     // feed the IFC schema into the reader and pre-parse all lines
@@ -272,6 +259,8 @@ void IFCImporter::InternReadFile(const std::string &pFile, aiScene *pScene, IOSy
     if (!proj) {
         ThrowException("missing IfcProject entity");
     }
+
+    
 
     ConversionData conv(*db, proj->To<Schema_2x3::IfcProject>(), pScene, settings);
     SetUnits(conv);
@@ -365,6 +354,11 @@ void ConvertUnit(const ::Assimp::STEP::EXPRESS::DataType &dt, ConversionData &co
 
 // ------------------------------------------------------------------------------------------------
 void SetUnits(ConversionData &conv) {
+    if (conv.proj.UnitsInContext == nullptr) {
+        IFCImporter::LogError("Skipping conversion data, nullptr.");
+        return;
+    }
+
     // see if we can determine the coordinate space used to express.
     for (size_t i = 0; i < conv.proj.UnitsInContext->Units.size(); ++i) {
         ConvertUnit(*conv.proj.UnitsInContext->Units[i], conv);
@@ -935,4 +929,4 @@ void MakeTreeRelative(ConversionData &conv) {
 
 } // namespace
 
-#endif
+#endif // ASSIMP_BUILD_NO_IFC_IMPORTER

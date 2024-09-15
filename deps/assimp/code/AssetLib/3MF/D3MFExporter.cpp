@@ -2,7 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -83,7 +83,7 @@ void ExportScene3MF(const char *pFile, IOSystem *pIOSystem, const aiScene *pScen
 namespace D3MF {
 
 D3MFExporter::D3MFExporter(const char *pFile, const aiScene *pScene) :
-        mArchiveName(pFile), m_zipArchive(nullptr), mScene(pScene), mModelOutput(), mRelOutput(), mContentOutput(), mBuildItems(), mRelations() {
+        mArchiveName(pFile), m_zipArchive(nullptr), mScene(pScene) {
     // empty
 }
 
@@ -249,10 +249,10 @@ void D3MFExporter::writeBaseMaterials() {
             if (color.r <= 1 && color.g <= 1 && color.b <= 1 && color.a <= 1) {
 
                 hexDiffuseColor = ai_rgba2hex(
-                        (int)((ai_real)color.r) * 255,
-                        (int)((ai_real)color.g) * 255,
-                        (int)((ai_real)color.b) * 255,
-                        (int)((ai_real)color.a) * 255,
+                        (int)(((ai_real)color.r) * 255),
+                        (int)(((ai_real)color.g) * 255),
+                        (int)(((ai_real)color.b) * 255),
+                        (int)(((ai_real)color.a) * 255),
                         true);
 
             } else {

@@ -2,7 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -48,7 +48,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assimp/Importer.hpp>
 #include <memory>
 
-static const aiImporterDesc desc = {
+static constexpr aiImporterDesc desc = {
     "Ogre3D Mesh Importer",
     "",
     "",
@@ -73,14 +73,10 @@ void OgreImporter::SetupProperties(const Importer *pImp) {
     m_detectTextureTypeFromFilename = pImp->GetPropertyBool(AI_CONFIG_IMPORT_OGRE_TEXTURETYPE_FROM_FILENAME, false);
 }
 
-bool OgreImporter::CanRead(const std::string &pFile, Assimp::IOSystem *pIOHandler, bool checkSig) const {
-    if (!checkSig) {
-        return EndsWith(pFile, ".mesh.xml", false) || EndsWith(pFile, ".mesh", false);
-    }
-
+bool OgreImporter::CanRead(const std::string &pFile, Assimp::IOSystem *pIOHandler, bool /*checkSig*/) const {
     if (EndsWith(pFile, ".mesh.xml", false)) {
-        const char *tokens[] = { "<mesh>" };
-        return SearchFileHeaderForToken(pIOHandler, pFile, tokens, 1);
+        static const char *tokens[] = { "<mesh>" };
+        return SearchFileHeaderForToken(pIOHandler, pFile, tokens, AI_COUNT_OF(tokens));
     }
 
     /// @todo Read and validate first header chunk?

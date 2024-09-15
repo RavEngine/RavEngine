@@ -3,7 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -55,9 +55,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assimp/IOSystem.hpp>
 #include <memory>
 
-using namespace Assimp;
+namespace Assimp {
 
-static const aiImporterDesc desc = {
+static constexpr aiImporterDesc desc = {
     "Raw Importer",
     "",
     "",
@@ -71,21 +71,9 @@ static const aiImporterDesc desc = {
 };
 
 // ------------------------------------------------------------------------------------------------
-// Constructor to be privately used by Importer
-RAWImporter::RAWImporter() {
-    // empty
-}
-
-// ------------------------------------------------------------------------------------------------
-// Destructor, private as well
-RAWImporter::~RAWImporter() {
-    // empty
-}
-
-// ------------------------------------------------------------------------------------------------
 // Returns whether the class can handle the format of the given file.
-bool RAWImporter::CanRead(const std::string &pFile, IOSystem * /*pIOHandler*/, bool /*checkSig*/) const {
-    return SimpleExtensionCheck(pFile, "raw");
+bool RAWImporter::CanRead(const std::string &filename, IOSystem * /*pIOHandler*/, bool /*checkSig*/) const {
+    return SimpleExtensionCheck(filename, "raw");
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -100,7 +88,7 @@ void RAWImporter::InternReadFile(const std::string &pFile,
     std::unique_ptr<IOStream> file(pIOHandler->Open(pFile, "rb"));
 
     // Check whether we can read from the file
-    if (file.get() == nullptr) {
+    if (file == nullptr) {
         throw DeadlyImportError("Failed to open RAW file ", pFile, ".");
     }
 
@@ -116,11 +104,12 @@ void RAWImporter::InternReadFile(const std::string &pFile,
 
     // now read all lines
     char line[4096];
+    const char *end = &line[4096];
     while (GetNextLine(buffer, line)) {
         // if the line starts with a non-numeric identifier, it marks
         // the beginning of a new group
         const char *sz = line;
-        SkipSpaces(&sz);
+        SkipSpaces(&sz, end);
         if (IsLineEnd(*sz)) continue;
         if (!IsNumeric(*sz)) {
             const char *sz2 = sz;
@@ -129,8 +118,8 @@ void RAWImporter::InternReadFile(const std::string &pFile,
             const unsigned int length = (unsigned int)(sz2 - sz);
 
             // find an existing group with this name
-            for (std::vector<GroupInformation>::iterator it = outGroups.begin(), end = outGroups.end();
-                    it != end; ++it) {
+            for (std::vector<GroupInformation>::iterator it = outGroups.begin(), endIt = outGroups.end();
+                    it != endIt; ++it) {
                 if (length == (*it).name.length() && !::strcmp(sz, (*it).name.c_str())) {
                     curGroup = it;
                     sz2 = nullptr;
@@ -138,7 +127,7 @@ void RAWImporter::InternReadFile(const std::string &pFile,
                 }
             }
             if (sz2) {
-                outGroups.push_back(GroupInformation(std::string(sz, length)));
+                outGroups.emplace_back(std::string(sz, length));
                 curGroup = outGroups.end() - 1;
             }
         } else {
@@ -146,7 +135,7 @@ void RAWImporter::InternReadFile(const std::string &pFile,
             float data[12];
             unsigned int num;
             for (num = 0; num < 12; ++num) {
-                if (!SkipSpaces(&sz) || !IsNumeric(*sz)) break;
+                if (!SkipSpaces(&sz, end) || !IsNumeric(*sz)) break;
                 sz = fast_atoreal_move<float>(sz, data[num]);
             }
             if (num != 12 && num != 9) {
@@ -179,7 +168,7 @@ void RAWImporter::InternReadFile(const std::string &pFile,
             }
             // if we don't have the mesh, create it
             if (!output) {
-                (*curGroup).meshes.push_back(MeshInformation(std::string(sz, length)));
+                (*curGroup).meshes.emplace_back(std::string(sz, length));
                 output = &((*curGroup).meshes.back());
             }
             if (12 == num) {
@@ -188,13 +177,13 @@ void RAWImporter::InternReadFile(const std::string &pFile,
                 output->colors.push_back(v);
                 output->colors.push_back(v);
 
-                output->vertices.push_back(aiVector3D(data[3], data[4], data[5]));
-                output->vertices.push_back(aiVector3D(data[6], data[7], data[8]));
-                output->vertices.push_back(aiVector3D(data[9], data[10], data[11]));
+                output->vertices.emplace_back(data[3], data[4], data[5]);
+                output->vertices.emplace_back(data[6], data[7], data[8]);
+                output->vertices.emplace_back(data[9], data[10], data[11]);
             } else {
-                output->vertices.push_back(aiVector3D(data[0], data[1], data[2]));
-                output->vertices.push_back(aiVector3D(data[3], data[4], data[5]));
-                output->vertices.push_back(aiVector3D(data[6], data[7], data[8]));
+                output->vertices.emplace_back(data[0], data[1], data[2]);
+                output->vertices.emplace_back(data[3], data[4], data[5]);
+                output->vertices.emplace_back(data[6], data[7], data[8]);
             }
         }
     }
@@ -298,5 +287,7 @@ void RAWImporter::InternReadFile(const std::string &pFile,
         }
     }
 }
+
+} // namespace Assimp
 
 #endif // !! ASSIMP_BUILD_NO_RAW_IMPORTER

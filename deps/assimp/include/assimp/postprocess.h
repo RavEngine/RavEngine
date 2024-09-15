@@ -2,7 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 
 All rights reserved.
@@ -94,6 +94,7 @@ enum aiPostProcessSteps
      * indexed geometry, this step is compulsory or you'll just waste rendering
      * time. <b>If this flag is not specified</b>, no vertices are referenced by
      * more than one face and <b>no index buffer is required</b> for rendering.
+     * Unless the importer (like ply) had to split vertices. Then you need one regardless.
      */
     aiProcess_JoinIdenticalVertices = 0x2,
 
@@ -378,7 +379,7 @@ enum aiPostProcessSteps
      *     point primitives to separate meshes.
      *   </li>
      *   <li>Set the <tt>#AI_CONFIG_PP_SBP_REMOVE</tt> importer property to
-     *       @code aiPrimitiveType_POINTS | aiPrimitiveType_LINES
+     *       @code aiPrimitiveType_POINT | aiPrimitiveType_LINE
      *       @endcode to cause SortByPType to reject point
      *       and line meshes from the scene.
      *   </li>
@@ -440,7 +441,7 @@ enum aiPostProcessSteps
      *
      * @note UV transformations are usually implemented in real-time apps by
      * transforming texture coordinates at vertex shader stage with a 3x3
-     * (homogenous) transformation matrix.
+     * (homogeneous) transformation matrix.
     */
     aiProcess_TransformUVCoords = 0x80000,
 

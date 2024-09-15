@@ -2,7 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 
 All rights reserved.
@@ -63,8 +63,8 @@ namespace Assimp {
 */
 class NFFImporter : public BaseImporter {
 public:
-    NFFImporter();
-    ~NFFImporter() override;
+    NFFImporter() = default;
+    ~NFFImporter() override = default;
 
     // -------------------------------------------------------------------
     /** Returns whether the class can handle the format of the given file.
@@ -107,7 +107,7 @@ private:
 
         aiColor3D color, diffuse, specular, ambient, emissive;
         ai_real refracti;
-        std::string texFile;        
+        std::string texFile;
         bool twoSided; // For NFF2
         bool shaded;
         ai_real opacity, shininess;

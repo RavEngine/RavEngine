@@ -3,7 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 
 
@@ -70,7 +70,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using namespace Assimp;
 
-static const aiImporterDesc desc = {
+static constexpr aiImporterDesc desc = {
     "Quake III Mesh Importer",
     "",
     "",
@@ -109,7 +109,7 @@ Q3Shader::BlendFunc StringToBlendFunc(const std::string &m) {
 // Load a Quake 3 shader
 bool Q3Shader::LoadShader(ShaderData &fill, const std::string &pFile, IOSystem *io) {
     std::unique_ptr<IOStream> file(io->Open(pFile, "rt"));
-    if (!file.get())
+    if (!file)
         return false; // if we can't access the file, don't worry and return
 
     ASSIMP_LOG_INFO("Loading Quake3 shader file ", pFile);
@@ -123,12 +123,12 @@ bool Q3Shader::LoadShader(ShaderData &fill, const std::string &pFile, IOSystem *
     // remove comments from it (C++ style)
     CommentRemover::RemoveLineComments("//", &_buff[0]);
     const char *buff = &_buff[0];
-
+    const char *end = buff + _buff.size();
     Q3Shader::ShaderDataBlock *curData = nullptr;
     Q3Shader::ShaderMapBlock *curMap = nullptr;
 
     // read line per line
-    for (; SkipSpacesAndLineEnd(&buff); SkipLine(&buff)) {
+    for (; SkipSpacesAndLineEnd(&buff, end); SkipLine(&buff, end)) {
 
         if (*buff == '{') {
             ++buff;
@@ -140,21 +140,21 @@ bool Q3Shader::LoadShader(ShaderData &fill, const std::string &pFile, IOSystem *
             }
 
             // read this data section
-            for (; SkipSpacesAndLineEnd(&buff); SkipLine(&buff)) {
+            for (; SkipSpacesAndLineEnd(&buff, end); SkipLine(&buff, end)) {
                 if (*buff == '{') {
                     ++buff;
                     // add new map section
-                    curData->maps.push_back(Q3Shader::ShaderMapBlock());
+                    curData->maps.emplace_back();
                     curMap = &curData->maps.back();
 
-                    for (; SkipSpacesAndLineEnd(&buff); SkipLine(&buff)) {
+                    for (; SkipSpacesAndLineEnd(&buff, end); SkipLine(&buff, end)) {
                         // 'map' - Specifies texture file name
                         if (TokenMatchI(buff, "map", 3) || TokenMatchI(buff, "clampmap", 8)) {
-                            curMap->name = GetNextToken(buff);
+                            curMap->name = GetNextToken(buff, end);
                         }
                         // 'blendfunc' - Alpha blending mode
                         else if (TokenMatchI(buff, "blendfunc", 9)) {
-                            const std::string blend_src = GetNextToken(buff);
+                            const std::string blend_src = GetNextToken(buff, end);
                             if (blend_src == "add") {
                                 curMap->blend_src = Q3Shader::BLEND_GL_ONE;
                                 curMap->blend_dest = Q3Shader::BLEND_GL_ONE;
@@ -166,12 +166,12 @@ bool Q3Shader::LoadShader(ShaderData &fill, const std::string &pFile, IOSystem *
                                 curMap->blend_dest = Q3Shader::BLEND_GL_ONE_MINUS_SRC_ALPHA;
                             } else {
                                 curMap->blend_src = StringToBlendFunc(blend_src);
-                                curMap->blend_dest = StringToBlendFunc(GetNextToken(buff));
+                                curMap->blend_dest = StringToBlendFunc(GetNextToken(buff, end));
                             }
                         }
                         // 'alphafunc' - Alpha testing mode
                         else if (TokenMatchI(buff, "alphafunc", 9)) {
-                            const std::string at = GetNextToken(buff);
+                            const std::string at = GetNextToken(buff, end);
                             if (at == "GT0") {
                                 curMap->alpha_test = Q3Shader::AT_GT0;
                             } else if (at == "LT128") {
@@ -186,7 +186,6 @@ bool Q3Shader::LoadShader(ShaderData &fill, const std::string &pFile, IOSystem *
                             break;
                         }
                     }
-
                 } else if (*buff == '}') {
                     ++buff;
                     curData = nullptr;
@@ -195,7 +194,7 @@ bool Q3Shader::LoadShader(ShaderData &fill, const std::string &pFile, IOSystem *
 
                 // 'cull' specifies culling behaviour for the model
                 else if (TokenMatchI(buff, "cull", 4)) {
-                    SkipSpaces(&buff);
+                    SkipSpaces(&buff, end);
                     if (!ASSIMP_strincmp(buff, "back", 4)) { // render face's backside, does not function in Q3 engine (bug)
                         curData->cull = Q3Shader::CULL_CCW;
                     } else if (!ASSIMP_strincmp(buff, "front", 5)) { // is not valid keyword in Q3, but occurs in shaders
@@ -209,13 +208,14 @@ bool Q3Shader::LoadShader(ShaderData &fill, const std::string &pFile, IOSystem *
             }
         } else {
             // add new section
-            fill.blocks.push_back(Q3Shader::ShaderDataBlock());
+            fill.blocks.emplace_back();
             curData = &fill.blocks.back();
 
             // get the name of this section
-            curData->name = GetNextToken(buff);
+            curData->name = GetNextToken(buff, end);
         }
     }
+
     return true;
 }
 
@@ -223,7 +223,7 @@ bool Q3Shader::LoadShader(ShaderData &fill, const std::string &pFile, IOSystem *
 // Load a Quake 3 skin
 bool Q3Shader::LoadSkin(SkinData &fill, const std::string &pFile, IOSystem *io) {
     std::unique_ptr<IOStream> file(io->Open(pFile, "rt"));
-    if (!file.get())
+    if (!file)
         return false; // if we can't access the file, don't worry and return
 
     ASSIMP_LOG_INFO("Loading Quake3 skin file ", pFile);
@@ -232,6 +232,7 @@ bool Q3Shader::LoadSkin(SkinData &fill, const std::string &pFile, IOSystem *io) 
     const size_t s = file->FileSize();
     std::vector<char> _buff(s + 1);
     const char *buff = &_buff[0];
+    const char *end = buff + _buff.size();
     file->Read(&_buff[0], s, 1);
     _buff[s] = 0;
 
@@ -240,21 +241,22 @@ bool Q3Shader::LoadSkin(SkinData &fill, const std::string &pFile, IOSystem *io) 
 
     // read token by token and fill output table
     for (; *buff;) {
-        SkipSpacesAndLineEnd(&buff);
+        SkipSpacesAndLineEnd(&buff, end);
 
         // get first identifier
-        std::string ss = GetNextToken(buff);
+        std::string ss = GetNextToken(buff, end);
 
         // ignore tokens starting with tag_
         if (!::strncmp(&ss[0], "tag_", std::min((size_t)4, ss.length())))
             continue;
 
-        fill.textures.push_back(SkinData::TextureEntry());
+        fill.textures.emplace_back();
         SkinData::TextureEntry &entry = fill.textures.back();
 
         entry.first = ss;
-        entry.second = GetNextToken(buff);
+        entry.second = GetNextToken(buff, end);
     }
+
     return true;
 }
 
@@ -293,7 +295,7 @@ void Q3Shader::ConvertShaderToMaterial(aiMaterial *out, const ShaderDataBlock &s
         //  - in any case: set it as diffuse texture
         //
         // If the texture is using 'filter' blending
-        //  - take as lightmap
+        //  - take as light-map
         //
         // Textures with alpha funcs
         //  - aiTextureFlags_UseAlpha is set (otherwise aiTextureFlags_NoAlpha is explicitly set)
@@ -345,22 +347,13 @@ MD3Importer::MD3Importer() :
 
 // ------------------------------------------------------------------------------------------------
 // Destructor, private as well
-MD3Importer::~MD3Importer() {}
+MD3Importer::~MD3Importer() = default;
 
 // ------------------------------------------------------------------------------------------------
 // Returns whether the class can handle the format of the given file.
-bool MD3Importer::CanRead(const std::string &pFile, IOSystem *pIOHandler, bool checkSig) const {
-    const std::string extension = GetExtension(pFile);
-    if (extension == "md3")
-        return true;
-
-    // if check for extension is not enough, check for the magic tokens
-    if (!extension.length() || checkSig) {
-        uint32_t tokens[1];
-        tokens[0] = AI_MD3_MAGIC_NUMBER_LE;
-        return CheckMagicToken(pIOHandler, pFile, tokens, 1);
-    }
-    return false;
+bool MD3Importer::CanRead(const std::string &pFile, IOSystem *pIOHandler, bool /*checkSig*/) const {
+    static const uint32_t tokens[] = { AI_MD3_MAGIC_NUMBER_LE };
+    return CheckMagicToken(pIOHandler, pFile, tokens, AI_COUNT_OF(tokens));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -593,7 +586,7 @@ bool MD3Importer::ReadMultipartFile() {
 
         // original root
         scene_lower->mRootNode->mName.Set("lower");
-        attach.push_back(AttachmentInfo(scene_lower, nd));
+        attach.emplace_back(scene_lower, nd);
 
         // tag_torso
         tag_torso = scene_lower->mRootNode->FindNode("tag_torso");
@@ -602,7 +595,7 @@ bool MD3Importer::ReadMultipartFile() {
             goto error_cleanup;
         }
         scene_upper->mRootNode->mName.Set("upper");
-        attach.push_back(AttachmentInfo(scene_upper, tag_torso));
+        attach.emplace_back(scene_upper, tag_torso);
 
         // tag_head
         tag_head = scene_upper->mRootNode->FindNode("tag_head");
@@ -611,7 +604,7 @@ bool MD3Importer::ReadMultipartFile() {
             goto error_cleanup;
         }
         scene_head->mRootNode->mName.Set("head");
-        attach.push_back(AttachmentInfo(scene_head, tag_head));
+        attach.emplace_back(scene_head, tag_head);
 
         // Remove tag_head and tag_torso from all other model parts ...
         // this ensures (together with AI_INT_MERGE_SCENE_GEN_UNIQUE_NAMES_IF_NECESSARY)
@@ -718,7 +711,7 @@ void MD3Importer::InternReadFile(const std::string &pFile, aiScene *pScene, IOSy
     std::unique_ptr<IOStream> file(pIOHandler->Open(pFile));
 
     // Check whether we can read from the file
-    if (file.get() == nullptr) {
+    if (file == nullptr) {
         throw DeadlyImportError("Failed to open MD3 file ", pFile, ".");
     }
 

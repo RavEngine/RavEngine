@@ -2,7 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -296,9 +296,7 @@ class PropertyInstance
 public:
 
     //! Default constructor
-    PropertyInstance() AI_NO_EXCEPT {
-        // empty
-    }
+    PropertyInstance() AI_NO_EXCEPT = default;
 
     union ValueUnion
     {
@@ -326,7 +324,7 @@ public:
 
     // -------------------------------------------------------------------
     //! Parse a property instance
-    static bool ParseInstance(const char* &pCur,
+    static bool ParseInstance(const char* &pCur, const char *end,
         const Property* prop, PropertyInstance* p_pcOut);
 
     // -------------------------------------------------------------------
@@ -359,17 +357,14 @@ public:
 class ElementInstance {
 public:
     //! Default constructor
-    ElementInstance()  AI_NO_EXCEPT
-    : alProperties() {
-        // empty
-    }
+    ElementInstance() AI_NO_EXCEPT = default;
 
     //! List of all parsed properties
     std::vector< PropertyInstance > alProperties;
 
     // -------------------------------------------------------------------
     //! Parse an element instance
-    static bool ParseInstance(const char* &pCur,
+    static bool ParseInstance(const char *&pCur, const char *end,
         const Element* pcElement, ElementInstance* p_pcOut);
 
     // -------------------------------------------------------------------
@@ -386,10 +381,7 @@ class ElementInstanceList
 public:
 
     //! Default constructor
-    ElementInstanceList() AI_NO_EXCEPT
-    : alInstances() {
-        // empty
-    }
+    ElementInstanceList() AI_NO_EXCEPT = default;
 
     //! List of all element instances
     std::vector< ElementInstance > alInstances;
@@ -413,11 +405,7 @@ class DOM
 public:
 
     //! Default constructor
-    DOM() AI_NO_EXCEPT
-    : alElements()
-    , alElementData() {
-
-    }
+    DOM() AI_NO_EXCEPT = default;
 
 
     //! Contains all elements of the file format
@@ -431,7 +419,7 @@ public:
     static bool ParseInstanceBinary(IOStreamBuffer<char> &streamBuffer, DOM* p_pcOut, PLYImporter* loader, bool p_bBE);
 
     //! Skip all comment lines after this
-    static bool SkipComments(std::vector<char> &buffer);
+    static bool SkipComments(std::vector<char> buffer);
 
     static bool SkipSpaces(std::vector<char> &buffer);
 

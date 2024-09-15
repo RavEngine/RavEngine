@@ -3,7 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -292,6 +292,14 @@ enum aiTextureType {
     aiTextureType_DIFFUSE_ROUGHNESS = 16,
     aiTextureType_AMBIENT_OCCLUSION = 17,
 
+    /** Unknown texture
+     *
+     *  A texture reference that does not match any of the definitions
+     *  above is considered to be 'unknown'. It is still imported,
+     *  but is excluded from any further post-processing.
+    */
+    aiTextureType_UNKNOWN = 18,
+
     /** PBR Material Modifiers
     * Some modern renderers have further PBR modifiers that may be overlaid
     * on top of the 'base' PBR materials for additional realism.
@@ -306,7 +314,7 @@ enum aiTextureType {
     aiTextureType_SHEEN = 19,
 
     /** Clearcoat
-    * Simulates a layer of 'polish' or 'laquer' layered on top of a PBR substrate
+    * Simulates a layer of 'polish' or 'lacquer' layered on top of a PBR substrate
     * https://autodesk.github.io/standard-surface/#closures/coating
     * https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_clearcoat
     */
@@ -318,24 +326,29 @@ enum aiTextureType {
     */
     aiTextureType_TRANSMISSION = 21,
 
-    /** Unknown texture
-     *
-     *  A texture reference that does not match any of the definitions
-     *  above is considered to be 'unknown'. It is still imported,
-     *  but is excluded from any further post-processing.
-    */
-    aiTextureType_UNKNOWN = 18,
+    /**
+     * Maya material declarations
+     */
+    aiTextureType_MAYA_BASE = 22,
+    aiTextureType_MAYA_SPECULAR = 23,
+    aiTextureType_MAYA_SPECULAR_COLOR = 24,
+    aiTextureType_MAYA_SPECULAR_ROUGHNESS = 25,
 
 #ifndef SWIG
     _aiTextureType_Force32Bit = INT_MAX
 #endif
 };
 
-#define AI_TEXTURE_TYPE_MAX aiTextureType_UNKNOWN
+#define AI_TEXTURE_TYPE_MAX aiTextureType_MAYA_SPECULAR_ROUGHNESS
 
 // -------------------------------------------------------------------------------
-// Get a string for a given aiTextureType
-ASSIMP_API const char *TextureTypeToString(enum aiTextureType in);
+/**
+ * @brief  Get a string for a given aiTextureType
+ *
+ * @param  in  The texture type
+ * @return The description string for the texture type.
+ */
+ASSIMP_API const char *aiTextureTypeToString(enum aiTextureType in);
 
 // ---------------------------------------------------------------------------
 /** @brief Defines all shading models supported by the library
@@ -425,7 +438,8 @@ enum aiShadingMode {
 };
 
 // ---------------------------------------------------------------------------
-/** @brief Defines some mixed flags for a particular texture.
+/** 
+ *  @brief Defines some mixed flags for a particular texture.
  *
  *  Usually you'll instruct your cg artists how textures have to look like ...
  *  and how they will be processed in your application. However, if you use
@@ -464,7 +478,8 @@ enum aiTextureFlags {
 };
 
 // ---------------------------------------------------------------------------
-/** @brief Defines alpha-blend flags.
+/** 
+ *  @brief Defines alpha-blend flags.
  *
  *  If you're familiar with OpenGL or D3D, these flags aren't new to you.
  *  They define *how* the final color value of a pixel is computed, basing
@@ -508,7 +523,8 @@ enum aiBlendMode {
 #include "./Compiler/pushpack1.h"
 
 // ---------------------------------------------------------------------------
-/** @brief Defines how an UV channel is transformed.
+/** 
+ *  @brief Defines how an UV channel is transformed.
  *
  *  This is just a helper structure for the #AI_MATKEY_UVTRANSFORM key.
  *  See its documentation for more details.
@@ -552,8 +568,8 @@ struct aiUVTransform {
 
 //! @cond AI_DOX_INCLUDE_INTERNAL
 // ---------------------------------------------------------------------------
-/** @brief A very primitive RTTI system for the contents of material
- *  properties.
+/** 
+ *  @brief A very primitive RTTI system for the contents of material properties.
  */
 enum aiPropertyTypeInfo {
     /** Array of single-precision (32 Bit) floats
@@ -698,7 +714,14 @@ struct aiMaterial
 #ifdef __cplusplus
 
 public:
+    /** 
+     * @brief  The class constructor.
+     */
     aiMaterial();
+
+    /**
+     * @brief The class destructor.
+     */
     ~aiMaterial();
 
     // -------------------------------------------------------------------
@@ -989,6 +1012,9 @@ extern "C" {
 // Roughness factor. 0.0 = Perfectly Smooth, 1.0 = Completely Rough
 #define AI_MATKEY_ROUGHNESS_FACTOR "$mat.roughnessFactor", 0, 0
 #define AI_MATKEY_ROUGHNESS_TEXTURE aiTextureType_DIFFUSE_ROUGHNESS, 0
+// Anisotropy factor. 0.0 = isotropic, 1.0 = anisotropy along tangent direction,
+// -1.0 = anisotropy along bitangent direction
+#define AI_MATKEY_ANISOTROPY_FACTOR "$mat.anisotropyFactor", 0, 0
 
 // Specular/Glossiness Workflow
 // ---------------------------
@@ -1013,7 +1039,7 @@ extern "C" {
 // Clearcoat
 // ---------
 // Clearcoat layer intensity. 0.0 = none (disabled)
-#define AI_MATKEY_CLEARCOAT_FACTOR "$mat.clearcoat.factor", 0, 0
+#define AI_MATKEY_CLEARCOAT_FACTOR           "$mat.clearcoat.factor", 0, 0
 #define AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR "$mat.clearcoat.roughnessFactor", 0, 0
 #define AI_MATKEY_CLEARCOAT_TEXTURE aiTextureType_CLEARCOAT, 0
 #define AI_MATKEY_CLEARCOAT_ROUGHNESS_TEXTURE aiTextureType_CLEARCOAT, 1
@@ -1028,25 +1054,38 @@ extern "C" {
 // Multiplied by AI_MATKEY_TRANSMISSION_FACTOR
 #define AI_MATKEY_TRANSMISSION_TEXTURE aiTextureType_TRANSMISSION, 0
 
+// Volume
+// ------------
+// https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_materials_volume
+// The thickness of the volume beneath the surface. If the value is 0 the material is thin-walled. Otherwise the material is a volume boundary.
+#define AI_MATKEY_VOLUME_THICKNESS_FACTOR "$mat.volume.thicknessFactor", 0, 0
+// Texture that defines the thickness.
+// Multiplied by AI_MATKEY_THICKNESS_FACTOR
+#define AI_MATKEY_VOLUME_THICKNESS_TEXTURE aiTextureType_TRANSMISSION, 1
+// Density of the medium given as the average distance that light travels in the medium before interacting with a particle.
+#define AI_MATKEY_VOLUME_ATTENUATION_DISTANCE "$mat.volume.attenuationDistance", 0, 0
+// The color that white light turns into due to absorption when reaching the attenuation distance.
+#define AI_MATKEY_VOLUME_ATTENUATION_COLOR "$mat.volume.attenuationColor", 0, 0
+
 // Emissive
 // --------
-#define AI_MATKEY_USE_EMISSIVE_MAP "$mat.useEmissiveMap", 0, 0
+#define AI_MATKEY_USE_EMISSIVE_MAP   "$mat.useEmissiveMap", 0, 0
 #define AI_MATKEY_EMISSIVE_INTENSITY "$mat.emissiveIntensity", 0, 0
-#define AI_MATKEY_USE_AO_MAP "$mat.useAOMap", 0, 0
+#define AI_MATKEY_USE_AO_MAP         "$mat.useAOMap", 0, 0
 
 // ---------------------------------------------------------------------------
 // Pure key names for all texture-related properties
 //! @cond MATS_DOC_FULL
-#define _AI_MATKEY_TEXTURE_BASE "$tex.file"
-#define _AI_MATKEY_UVWSRC_BASE "$tex.uvwsrc"
-#define _AI_MATKEY_TEXOP_BASE "$tex.op"
-#define _AI_MATKEY_MAPPING_BASE "$tex.mapping"
-#define _AI_MATKEY_TEXBLEND_BASE "$tex.blend"
+#define _AI_MATKEY_TEXTURE_BASE       "$tex.file"
+#define _AI_MATKEY_UVWSRC_BASE        "$tex.uvwsrc"
+#define _AI_MATKEY_TEXOP_BASE         "$tex.op"
+#define _AI_MATKEY_MAPPING_BASE       "$tex.mapping"
+#define _AI_MATKEY_TEXBLEND_BASE      "$tex.blend"
 #define _AI_MATKEY_MAPPINGMODE_U_BASE "$tex.mapmodeu"
 #define _AI_MATKEY_MAPPINGMODE_V_BASE "$tex.mapmodev"
-#define _AI_MATKEY_TEXMAP_AXIS_BASE "$tex.mapaxis"
-#define _AI_MATKEY_UVTRANSFORM_BASE "$tex.uvtrafo"
-#define _AI_MATKEY_TEXFLAGS_BASE "$tex.flags"
+#define _AI_MATKEY_TEXMAP_AXIS_BASE   "$tex.mapaxis"
+#define _AI_MATKEY_UVTRANSFORM_BASE   "$tex.uvtrafo"
+#define _AI_MATKEY_TEXFLAGS_BASE      "$tex.flags"
 //! @endcond
 
 // ---------------------------------------------------------------------------
@@ -1496,7 +1535,7 @@ ASSIMP_API C_ENUM aiReturn aiGetMaterialFloatArray(
         const char *pKey,
         unsigned int type,
         unsigned int index,
-        ai_real *pOut,
+        float *pOut,
         unsigned int *pMax);
 
 // ---------------------------------------------------------------------------
@@ -1522,7 +1561,7 @@ inline aiReturn aiGetMaterialFloat(const C_STRUCT aiMaterial *pMat,
         const char *pKey,
         unsigned int type,
         unsigned int index,
-        ai_real *pOut) {
+        float *pOut) {
     return aiGetMaterialFloatArray(pMat, pKey, type, index, pOut, (unsigned int *)0x0);
 }
 

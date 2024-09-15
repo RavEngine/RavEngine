@@ -60,23 +60,23 @@ build_arch()
 
     unset DEVROOT SDKROOT CFLAGS LDFLAGS CPPFLAGS CXXFLAGS CMAKE_CLI_INPUT
            
-	export CC="$(xcrun -sdk iphoneos -find clang)"
+    export CC="$(xcrun -sdk iphoneos -find clang)"
     export CPP="$CC -E"
     export DEVROOT=$XCODE_ROOT_DIR/Platforms/$IOS_SDK_DEVICE.platform/Developer
     export SDKROOT=$DEVROOT/SDKs/$IOS_SDK_DEVICE$IOS_SDK_VERSION.sdk
-    export CFLAGS="-arch $1 -pipe -no-cpp-precomp -stdlib=$CPP_STD_LIB -isysroot $SDKROOT -I$SDKROOT/usr/include/ -miphoneos-version-min=$IOS_SDK_TARGET"
-     if [[ "$BUILD_TYPE" =~ "Debug" ]]; then
+    export CFLAGS="-arch $1 -pipe -no-cpp-precomp -isysroot $SDKROOT -I$SDKROOT/usr/include/ -miphoneos-version-min=$IOS_SDK_TARGET"
+    if [[ "$BUILD_TYPE" =~ "Debug" ]]; then
       export CFLAGS="$CFLAGS -Og"
-     else
+    else
 	     export CFLAGS="$CFLAGS -O3"
-     fi
+    fi
     export LDFLAGS="-arch $1 -isysroot $SDKROOT -L$SDKROOT/usr/lib/"
     export CPPFLAGS="$CFLAGS"
     export CXXFLAGS="$CFLAGS -std=$CPP_STD"
 
     rm CMakeCache.txt
     
-    CMAKE_CLI_INPUT="-DCMAKE_C_COMPILER=$CMAKE_C_COMPILER -DCMAKE_CXX_COMPILER=$CMAKE_CXX_COMPILER -DCMAKE_TOOLCHAIN_FILE=./port/iOS/IPHONEOS_$(echo $1 | tr '[:lower:]' '[:upper:]')_TOOLCHAIN.cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DENABLE_BOOST_WORKAROUND=ON -DBUILD_SHARED_LIBS=$BUILD_SHARED_LIBS"
+    CMAKE_CLI_INPUT="-DCMAKE_C_COMPILER=$CMAKE_C_COMPILER -DCMAKE_CXX_COMPILER=$CMAKE_CXX_COMPILER -DCMAKE_TOOLCHAIN_FILE=./port/iOS/IPHONEOS_$(echo $1 | tr '[:lower:]' '[:upper:]')_TOOLCHAIN.cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=$BUILD_SHARED_LIBS -DASSIMP_BUILD_ZLIB=ON"
     
     echo "[!] Running CMake with -G 'Unix Makefiles' $CMAKE_CLI_INPUT"
     
@@ -102,6 +102,7 @@ CPP_STD_LIB=${CPP_STD_LIB_LIST[0]}
 CPP_STD=${CPP_STD_LIST[0]}
 DEPLOY_ARCHS=${BUILD_ARCHS_ALL[*]}
 DEPLOY_FAT=1
+DEPLOY_XCFramework=1
 
 for i in "$@"; do
     case $i in
@@ -117,6 +118,11 @@ for i in "$@"; do
         DEPLOY_ARCHS=`echo $i | sed 's/[-a-zA-Z0-9]*=//'`
         echo "[!] Selecting architectures: $DEPLOY_ARCHS"
     ;;
+    --min-version=*)
+        MIN_IOS_VERSION=`echo $i | sed 's/[-a-zA-Z0-9]*=//'`
+        IOS_SDK_TARGET=$MIN_IOS_VERSION
+        echo "[!] Selecting minimum iOS version: $MIN_IOS_VERSION"
+    ;;
     --debug)
     	BUILD_TYPE=Debug        
         echo "[!] Selecting build type: Debug"
@@ -129,11 +135,17 @@ for i in "$@"; do
         DEPLOY_FAT=0
         echo "[!] Fat binary will not be created."
     ;;
+    --no-xcframework)
+        DEPLOY_XCFramework=0
+        echo "[!] XCFramework will not be created."
+    ;;
     -h|--help)
         echo " - don't build fat library (--no-fat)."
+        echo " - don't build XCFramework (--no-xcframework)."
         echo " - Include debug information and symbols, no compiler optimizations (--debug)."
         echo " - generate dynamic libraries rather than static ones (--shared-lib)."
         echo " - supported architectures (--archs):  $(echo $(join , ${BUILD_ARCHS_ALL[*]}) | sed 's/,/, /g')"
+        echo " - minimum iOS version (--min-version): 16.0"
         echo " - supported C++ STD libs (--stdlib): $(echo $(join , ${CPP_STD_LIB_LIST[*]}) | sed 's/,/, /g')"
         echo " - supported C++ standards (--std): $(echo $(join , ${CPP_STD_LIST[*]}) | sed 's/,/, /g')"
         exit
@@ -147,7 +159,7 @@ cd ../../
 rm -rf $BUILD_DIR
 
 for ARCH_TARGET in $DEPLOY_ARCHS; do
-	echo "Creating folder: $BUILD_DIR/$ARCH_TARGET"
+    echo "Creating folder: $BUILD_DIR/$ARCH_TARGET"
     mkdir -p $BUILD_DIR/$ARCH_TARGET
     echo "Building for arc: $ARCH_TARGET" 
     build_arch $ARCH_TARGET
@@ -157,8 +169,8 @@ done
 
 make_fat_static_or_shared_binary()
 {
-	LIB_NAME=$1
-	LIPO_ARGS=''
+    LIB_NAME=$1
+    LIPO_ARGS=''
     for ARCH_TARGET in $DEPLOY_ARCHS; do
         if [[ "$BUILD_SHARED_LIBS" =~ "ON" ]]; then
             LIPO_ARGS="$LIPO_ARGS-arch $ARCH_TARGET $BUILD_DIR/$ARCH_TARGET/$LIB_NAME.dylib "
@@ -176,8 +188,8 @@ make_fat_static_or_shared_binary()
 
 make_fat_static_binary()
 {
-	LIB_NAME=$1
-	LIPO_ARGS=''
+    LIB_NAME=$1
+    LIPO_ARGS=''
     for ARCH_TARGET in $DEPLOY_ARCHS; do
         LIPO_ARGS="$LIPO_ARGS-arch $ARCH_TARGET $BUILD_DIR/$ARCH_TARGET/$LIB_NAME.a "
     done
@@ -190,16 +202,38 @@ if [[ "$DEPLOY_FAT" -eq 1 ]]; then
     
     if [[ "$BUILD_TYPE" =~ "Debug" ]]; then
     	make_fat_static_or_shared_binary 'libassimpd'
-	    make_fat_static_binary 'libIrrXMLd'
-	    make_fat_static_binary 'libzlibstaticd'
 	else
 		make_fat_static_or_shared_binary 'libassimp'
-	    make_fat_static_binary 'libIrrXML'
-	    make_fat_static_binary 'libzlibstatic'
 	fi
     
     echo "[!] Done! The fat binaries can be found at $BUILD_DIR"
 fi
 
+make_xcframework()
+{
+    LIB_NAME=$1
+    FRAMEWORK_PATH=$BUILD_DIR/$LIB_NAME.xcframework   
 
+    ARGS = ""
+    for ARCH_TARGET in $DEPLOY_ARCHS; do
+        if [[ "$BUILD_SHARED_LIBS" =~ "ON" ]]; then
+            ARGS="$ARGS -library $BUILD_DIR/$ARCH_TARGET/$LIB_NAME.dylib -headers ./include "
+        else
+            ARGS="$ARGS -library $BUILD_DIR/$ARCH_TARGET/$LIB_NAME.a -headers ./include "
+        fi
+    done
 
+    xcodebuild -create-xcframework $ARGS -output $FRAMEWORK_PATH
+}
+
+if [[ "$DEPLOY_XCFramework" -eq 1 ]]; then
+    echo '[+] Creating XCFramework ...'
+
+    if [[ "$BUILD_TYPE" =~ "Debug" ]]; then
+        make_xcframework 'libassimpd'
+    else
+        make_xcframework 'libassimp'
+    fi
+
+    echo "[!] Done! The XCFramework can be found at $BUILD_DIR"
+fi

@@ -3,7 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -224,7 +224,8 @@ size_t AMFImporter::PostprocessHelper_GetTextureID_Or_Create(const std::string &
     }
 
     // Create format hint.
-    strcpy(converted_texture.FormatHint, "rgba0000"); // copy initial string.
+    constexpr char templateColor[] = "rgba0000";
+    memcpy(converted_texture.FormatHint, templateColor, 8);
     if (!r.empty()) converted_texture.FormatHint[4] = '8';
     if (!g.empty()) converted_texture.FormatHint[5] = '8';
     if (!b.empty()) converted_texture.FormatHint[6] = '8';
@@ -690,7 +691,7 @@ void AMFImporter::Postprocess_BuildConstellation(AMFConstellation &pConstellatio
         if (ne->Type == AMFNodeElementBase::ENET_Metadata) continue;
         if (ne->Type != AMFNodeElementBase::ENET_Instance) throw DeadlyImportError("Only <instance> nodes can be in <constellation>.");
 
-        // create alias for conveniance
+        // create alias for convenience
         AMFInstance &als = *((AMFInstance *)ne);
         // find referenced object
         if (!Find_ConvertedNode(als.ObjectID, nodeArray, &found_node)) Throw_ID_NotFound(als.ObjectID);
@@ -815,6 +816,7 @@ nl_clean_loop:
             for (; next_it != nodeArray.end(); ++next_it) {
                 if ((*next_it)->FindNode((*nl_it)->mName) != nullptr) {
                     // if current top node(nl_it) found in another top node then erase it from node_list and restart search loop.
+                    // FIXME: this leaks memory on test models test8.amf and test9.amf
                     nodeArray.erase(nl_it);
 
                     goto nl_clean_loop;
@@ -866,7 +868,7 @@ nl_clean_loop:
             pScene->mTextures[idx]->mHeight = static_cast<unsigned int>(tex_convd.Height);
             pScene->mTextures[idx]->pcData = (aiTexel *)tex_convd.Data;
             // texture format description.
-            strcpy(pScene->mTextures[idx]->achFormatHint, tex_convd.FormatHint);
+            strncpy(pScene->mTextures[idx]->achFormatHint, tex_convd.FormatHint, HINTMAXTEXTURELEN);
             idx++;
         } // for(const SPP_Texture& tex_convd: mTexture_Converted)
 

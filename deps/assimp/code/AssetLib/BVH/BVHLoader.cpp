@@ -4,7 +4,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 
 
@@ -55,10 +55,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <map>
 #include <memory>
 
-using namespace Assimp;
+namespace Assimp {
+
 using namespace Assimp::Formatter;
 
-static const aiImporterDesc desc = {
+static constexpr aiImporterDesc desc = {
     "BVH Importer (MoCap)",
     "",
     "",
@@ -73,8 +74,8 @@ static const aiImporterDesc desc = {
 
 // ------------------------------------------------------------------------------------------------
 // Aborts the file reading with an exception
-template<typename... T>
-AI_WONT_RETURN void BVHLoader::ThrowException(T&&... args) {
+template <typename... T>
+AI_WONT_RETURN void BVHLoader::ThrowException(T &&...args) {
     throw DeadlyImportError(mFileName, ":", mLine, " - ", args...);
 }
 
@@ -88,22 +89,13 @@ BVHLoader::BVHLoader() :
 
 // ------------------------------------------------------------------------------------------------
 // Destructor, private as well
-BVHLoader::~BVHLoader() {}
+BVHLoader::~BVHLoader() = default;
 
 // ------------------------------------------------------------------------------------------------
 // Returns whether the class can handle the format of the given file.
-bool BVHLoader::CanRead(const std::string &pFile, IOSystem *pIOHandler, bool cs) const {
-    // check file extension
-    const std::string extension = GetExtension(pFile);
-
-    if (extension == "bvh")
-        return true;
-
-    if ((!extension.length() || cs) && pIOHandler) {
-        const char *tokens[] = { "HIERARCHY" };
-        return SearchFileHeaderForToken(pIOHandler, pFile, tokens, 1);
-    }
-    return false;
+bool BVHLoader::CanRead(const std::string &pFile, IOSystem *pIOHandler, bool /*checkSig*/) const {
+    static const char *tokens[] = { "HIERARCHY" };
+    return SearchFileHeaderForToken(pIOHandler, pFile, tokens, AI_COUNT_OF(tokens));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -124,7 +116,7 @@ void BVHLoader::InternReadFile(const std::string &pFile, aiScene *pScene, IOSyst
 
     // read file into memory
     std::unique_ptr<IOStream> file(pIOHandler->Open(pFile));
-    if (file.get() == nullptr) {
+    if (file == nullptr) {
         throw DeadlyImportError("Failed to open file ", pFile, ".");
     }
 
@@ -178,7 +170,7 @@ void BVHLoader::ReadHierarchy(aiScene *pScene) {
 }
 
 // ------------------------------------------------------------------------------------------------
-// Reads a node and recursively its childs and returns the created node;
+// Reads a node and recursively its children and returns the created node;
 aiNode *BVHLoader::ReadNode() {
     // first token is name
     std::string nodeName = GetNextToken();
@@ -195,12 +187,12 @@ aiNode *BVHLoader::ReadNode() {
     std::vector<aiNode *> childNodes;
 
     // and create an bone entry for it
-    mNodes.push_back(Node(node));
+    mNodes.emplace_back(node);
     Node &internNode = mNodes.back();
 
     // now read the node's contents
     std::string siteToken;
-    while (1) {
+    while (true) {
         std::string token = GetNextToken();
 
         // node offset to parent node
@@ -256,7 +248,7 @@ aiNode *BVHLoader::ReadEndSite(const std::string &pParentName) {
 
     // now read the node's contents. Only possible entry is "OFFSET"
     std::string token;
-    while (1) {
+    while (true) {
         token.clear();
         token = GetNextToken();
 
@@ -435,7 +427,7 @@ void BVHLoader::CreateAnimation(aiScene *pScene) {
         nodeAnim->mNodeName.Set(nodeName);
         std::map<BVHLoader::ChannelType, int> channelMap;
 
-        //Build map of channels
+        // Build map of channels
         for (unsigned int channel = 0; channel < node.mChannels.size(); ++channel) {
             channelMap[node.mChannels[channel]] = channel;
         }
@@ -450,7 +442,7 @@ void BVHLoader::CreateAnimation(aiScene *pScene) {
 
                 // Now compute all translations
                 for (BVHLoader::ChannelType channel = Channel_PositionX; channel <= Channel_PositionZ; channel = (BVHLoader::ChannelType)(channel + 1)) {
-                    //Find channel in node
+                    // Find channel in node
                     std::map<BVHLoader::ChannelType, int>::iterator mapIter = channelMap.find(channel);
 
                     if (mapIter == channelMap.end())
@@ -494,30 +486,27 @@ void BVHLoader::CreateAnimation(aiScene *pScene) {
             for (unsigned int fr = 0; fr < mAnimNumFrames; ++fr) {
                 aiMatrix4x4 temp;
                 aiMatrix3x3 rotMatrix;
-				for (unsigned int channelIdx = 0; channelIdx < node.mChannels.size(); ++ channelIdx) {
-					switch (node.mChannels[channelIdx]) {
-                    case Channel_RotationX:
-                        {
+                for (unsigned int channelIdx = 0; channelIdx < node.mChannels.size(); ++channelIdx) {
+                    switch (node.mChannels[channelIdx]) {
+                    case Channel_RotationX: {
                         const float angle = node.mChannelValues[fr * node.mChannels.size() + channelIdx] * float(AI_MATH_PI) / 180.0f;
-                        aiMatrix4x4::RotationX( angle, temp); rotMatrix *= aiMatrix3x3( temp);
-                        }
-                        break;
-                    case Channel_RotationY:
-                        {
+                        aiMatrix4x4::RotationX(angle, temp);
+                        rotMatrix *= aiMatrix3x3(temp);
+                    } break;
+                    case Channel_RotationY: {
                         const float angle = node.mChannelValues[fr * node.mChannels.size() + channelIdx] * float(AI_MATH_PI) / 180.0f;
-                        aiMatrix4x4::RotationY( angle, temp); rotMatrix *= aiMatrix3x3( temp);
-                        }
-                        break;
-                    case Channel_RotationZ:
-                        {
+                        aiMatrix4x4::RotationY(angle, temp);
+                        rotMatrix *= aiMatrix3x3(temp);
+                    } break;
+                    case Channel_RotationZ: {
                         const float angle = node.mChannelValues[fr * node.mChannels.size() + channelIdx] * float(AI_MATH_PI) / 180.0f;
-                        aiMatrix4x4::RotationZ( angle, temp); rotMatrix *= aiMatrix3x3( temp);
-                        }
-                        break;
+                        aiMatrix4x4::RotationZ(angle, temp);
+                        rotMatrix *= aiMatrix3x3(temp);
+                    } break;
                     default:
                         break;
-					}
-				}
+                    }
+                }
                 rotkey->mTime = double(fr);
                 rotkey->mValue = aiQuaternion(rotMatrix);
                 ++rotkey;
@@ -533,5 +522,7 @@ void BVHLoader::CreateAnimation(aiScene *pScene) {
         }
     }
 }
+
+} // namespace Assimp
 
 #endif // !! ASSIMP_BUILD_NO_BVH_IMPORTER

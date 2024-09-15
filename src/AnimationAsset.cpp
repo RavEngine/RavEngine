@@ -69,6 +69,7 @@ JointAnimation DeserializeJointAnimation(const std::span<uint8_t> data) {
 
 	JointAnimation anim{
 		.duration = header.duration,
+        .ticksPerSecond = header.ticksPerSecond
 	};
 	anim.tracks.reserve(header.numTracks);
 	anim.name.resize(header.nameLength);
@@ -105,11 +106,8 @@ AnimationAsset::AnimationAsset(const std::string& name){
 		raw_animation.name = anim.name;
 		raw_animation.tracks.reserve(anim.tracks.size());
 
-		// working around assimp weirdness (see rvea.cpp)
-		tps = 1000;
+        tps = anim.ticksPerSecond;;
 		duration_seconds = anim.duration / tps;
-
-		tps = 30;
 
 		for (const auto& src_track : anim.tracks) {
 			auto& track = raw_animation.tracks.emplace_back();

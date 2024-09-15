@@ -2,7 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 
 All rights reserved.
@@ -62,7 +62,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace Assimp {
 namespace MD3   {
 
-// to make it easier for us, we test the magic word against both "endianesses"
+// to make it easier for us, we test the magic word against both "endiannesses"
 #define AI_MD3_MAGIC_NUMBER_BE  AI_MAKE_MAGIC("IDP3")
 #define AI_MD3_MAGIC_NUMBER_LE  AI_MAKE_MAGIC("3PDI")
 
@@ -271,7 +271,7 @@ inline void LatLngNormalToVec3(uint16_t p_iNormal, ai_real* p_afOut)
 
 
 // -------------------------------------------------------------------------------
-/** @brief Pack a Q3 normal into 16bit latitute/longitude representation
+/** @brief Pack a Q3 normal into 16bit latitude/longitude representation
  *  @param p_vIn Input vector
  *  @param p_iOut Output normal
  *

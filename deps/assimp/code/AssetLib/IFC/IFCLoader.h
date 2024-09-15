@@ -2,7 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 
 All rights reserved.
@@ -87,8 +87,8 @@ public:
         int cylindricalTessellation;
     };
 
-    IFCImporter();
-    ~IFCImporter() override;
+    IFCImporter() = default;
+    ~IFCImporter() override = default;
 
     // --------------------
     bool CanRead(const std::string &pFile,

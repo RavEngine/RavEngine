@@ -2,8 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
-
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -144,11 +143,7 @@ namespace Assimp
 
 #if ASSIMP_BLEND_WITH_POLY_2_TRI
 
-#ifdef ASSIMP_USE_HUNTER
-#  include <poly2tri/poly2tri.h>
-#else
-#  include "../contrib/poly2tri/poly2tri/poly2tri.h"
-#endif
+#include "contrib/poly2tri/poly2tri/poly2tri.h"
 
 namespace Assimp
 {
@@ -186,7 +181,7 @@ namespace Assimp
     {
     public:
         BlenderTessellatorP2T( BlenderBMeshConverter& converter );
-        ~BlenderTessellatorP2T( );
+        ~BlenderTessellatorP2T( ) = default;
 
         void Tessellate( const Blender::MLoop* polyLoop, int vertexCount, const std::vector< Blender::MVert >& vertices );
 

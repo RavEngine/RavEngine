@@ -3,7 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -97,7 +97,7 @@ public:
      *  Create an instance of your derived class and assign it to an
      *  #Assimp::Importer instance by calling Importer::SetIOHandler().
      */
-    IOSystem() AI_NO_EXCEPT;
+    IOSystem() AI_NO_EXCEPT = default;
 
     // -------------------------------------------------------------------
     /** @brief Virtual destructor.
@@ -105,7 +105,7 @@ public:
      *  It is safe to be called from within DLL Assimp, we're constructed
      *  on Assimp's heap.
      */
-    virtual ~IOSystem();
+    virtual ~IOSystem() = default;
 
     // -------------------------------------------------------------------
     /** @brief For backward compatibility
@@ -237,17 +237,6 @@ private:
 };
 
 // ----------------------------------------------------------------------------
-AI_FORCE_INLINE IOSystem::IOSystem() AI_NO_EXCEPT :
-        m_pathStack() {
-    // empty
-}
-
-// ----------------------------------------------------------------------------
-AI_FORCE_INLINE IOSystem::~IOSystem() {
-    // empty
-}
-
-// ----------------------------------------------------------------------------
 // For compatibility, the interface of some functions taking a std::string was
 // changed to const char* to avoid crashes between binary incompatible STL
 // versions. This code her is inlined,  so it shouldn't cause any problems.
@@ -286,15 +275,6 @@ AI_FORCE_INLINE bool IOSystem::PushDirectory( const std::string &path ) {
     m_pathStack.push_back( path );
 
     return true;
-}
-
-// ----------------------------------------------------------------------------
-AI_FORCE_INLINE const std::string &IOSystem::CurrentDirectory() const {
-    if ( m_pathStack.empty() ) {
-        static const std::string Dummy;
-        return Dummy;
-    }
-    return m_pathStack[ m_pathStack.size()-1 ];
 }
 
 // ----------------------------------------------------------------------------

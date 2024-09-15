@@ -3,9 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
-
-
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -45,8 +43,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *  Implementation of the NDO importer class.
  */
 
-
 #ifndef ASSIMP_BUILD_NO_NDO_IMPORTER
+
 #include "NDOLoader.h"
 #include <assimp/DefaultLogger.hpp>
 #include <assimp/IOSystem.hpp>
@@ -54,10 +52,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assimp/importerdesc.h>
 #include <assimp/StreamReader.h>
 #include <map>
+#include <limits>
 
 using namespace Assimp;
 
-static const aiImporterDesc desc = {
+static constexpr aiImporterDesc desc = {
     "Nendo Mesh Importer",
     "",
     "",
@@ -71,30 +70,11 @@ static const aiImporterDesc desc = {
 };
 
 // ------------------------------------------------------------------------------------------------
-// Constructor to be privately used by Importer
-NDOImporter::NDOImporter()
-{}
-
-// ------------------------------------------------------------------------------------------------
-// Destructor, private as well
-NDOImporter::~NDOImporter()
-{}
-
-// ------------------------------------------------------------------------------------------------
 // Returns whether the class can handle the format of the given file.
-bool NDOImporter::CanRead( const std::string& pFile, IOSystem* pIOHandler, bool checkSig) const
+bool NDOImporter::CanRead( const std::string& pFile, IOSystem* pIOHandler, bool /*checkSig*/) const
 {
-    // check file extension
-    const std::string extension = GetExtension(pFile);
-
-    if( extension == "ndo")
-        return true;
-
-    if ((checkSig || !extension.length()) && pIOHandler) {
-        const char* tokens[] = {"nendo"};
-        return SearchFileHeaderForToken(pIOHandler,pFile,tokens,1,5);
-    }
-    return false;
+    static const char* tokens[] = {"nendo"};
+    return SearchFileHeaderForToken(pIOHandler,pFile,tokens,AI_COUNT_OF(tokens),5);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -147,7 +127,9 @@ void NDOImporter::InternReadFile( const std::string& pFile,
         ASSIMP_LOG_INFO("NDO file format is 1.2");
     }
     else {
-        ASSIMP_LOG_WARN( "Unrecognized nendo file format version, continuing happily ... :", (head+6));
+        char buff[4] = {0};
+        memcpy(buff, head+6, 3);
+        ASSIMP_LOG_WARN( "Unrecognized nendo file format version, continuing happily ... :", buff);
     }
 
     reader.IncPtr(2); /* skip flags */
@@ -171,6 +153,9 @@ void NDOImporter::InternReadFile( const std::string& pFile,
 
         temp = file_format >= 12 ? reader.GetU4() : reader.GetU2();
         head = (const char*)reader.GetPtr();
+        if (std::numeric_limits<unsigned int>::max() - 76 < temp) {
+            throw DeadlyImportError("Invalid name length");
+        }
         reader.IncPtr(temp + 76); /* skip unknown stuff */
 
         obj.name = std::string(head, temp);
@@ -180,7 +165,7 @@ void NDOImporter::InternReadFile( const std::string& pFile,
         obj.edges.reserve(temp);
         for (unsigned int e = 0; e < temp; ++e) {
 
-            obj.edges.push_back(Edge());
+            obj.edges.emplace_back();
             Edge& edge = obj.edges.back();
 
             for (unsigned int i = 0; i< 8; ++i) {
@@ -197,7 +182,7 @@ void NDOImporter::InternReadFile( const std::string& pFile,
         obj.faces.reserve(temp);
         for (unsigned int e = 0; e < temp; ++e) {
 
-            obj.faces.push_back(Face());
+            obj.faces.emplace_back();
             Face& face = obj.faces.back();
 
             face.elem = file_format >= 12 ? reader.GetU4() : reader.GetU2();
@@ -208,7 +193,7 @@ void NDOImporter::InternReadFile( const std::string& pFile,
         obj.vertices.reserve(temp);
         for (unsigned int e = 0; e < temp; ++e) {
 
-            obj.vertices.push_back(Vertex());
+            obj.vertices.emplace_back();
             Vertex& v = obj.vertices.back();
 
             v.num = file_format >= 12 ? reader.GetU4() : reader.GetU2();
@@ -279,7 +264,7 @@ void NDOImporter::InternReadFile( const std::string& pFile,
 
             const unsigned int key = v.first;
             unsigned int cur_edge = v.second;
-            while (1) {
+            while (true) {
                 unsigned int next_edge, next_vert;
                 if (key == obj.edges[cur_edge].edge[3]) {
                     next_edge = obj.edges[cur_edge].edge[5];

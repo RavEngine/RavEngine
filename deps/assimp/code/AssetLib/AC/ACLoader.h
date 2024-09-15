@@ -2,7 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -125,7 +125,6 @@ public:
                 type(World),
                 name(),
                 children(),
-                texture(),
                 texRepeat(1.f, 1.f),
                 texOffset(0.0f, 0.0f),
                 rotation(),
@@ -151,7 +150,8 @@ public:
         std::vector<Object> children;
 
         // texture to be assigned to all surfaces of the object
-        std::string texture;
+        // the .acc format supports up to 4 textures
+        std::vector<std::string> textures;
 
         // texture repat factors (scaling for all coordinates)
         aiVector2D texRepeat, texOffset;
@@ -216,7 +216,7 @@ private:
      *  load subobjects, the method returns after a 'kids 0' was
      *  encountered.
      *  @objects List of output objects*/
-    void LoadObjectSection(std::vector<Object> &objects);
+    bool LoadObjectSection(std::vector<Object> &objects);
 
     // -------------------------------------------------------------------
     /** Convert all objects into meshes and nodes.
@@ -242,7 +242,7 @@ private:
 
 private:
     // points to the next data line
-    const char *buffer;
+    aiBuffer mBuffer;
 
     // Configuration option: if enabled, up to two meshes
     // are generated per material: those faces who have

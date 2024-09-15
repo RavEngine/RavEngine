@@ -2,8 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
-
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -57,8 +56,7 @@ struct aiNode;
 struct aiMaterial;
 struct aiMesh;
 
-namespace Assimp
-{
+namespace Assimp {
 
 // ------------------------------------------------------------------------------------------------
 /**
@@ -73,7 +71,7 @@ public:
 private:
     void WriteMeshes();
     void WriteMaterials();
-    void WriteTexture(const aiMaterial& mat, aiTextureType type, uint16_t chunk_flags);
+    bool WriteTexture(const aiMaterial& mat, aiTextureType type, uint16_t chunk_flags);
     void WriteFaceMaterialChunk(const aiMesh& mesh);
     int WriteHierarchy(const aiNode& node, int level, int sibling_level);
     void WriteString(const std::string& s);
@@ -88,7 +86,7 @@ private:
 
     std::map<const aiNode*, aiMatrix4x4> trafos;
 
-    typedef std::multimap<const aiNode*, unsigned int> MeshesByNodeMap;
+    using MeshesByNodeMap = std::multimap<const aiNode*, unsigned int>;
     MeshesByNodeMap meshes;
 
 };

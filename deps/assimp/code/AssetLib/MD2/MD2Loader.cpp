@@ -3,9 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
-
-
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -41,7 +39,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ---------------------------------------------------------------------------
 */
 
-
 #ifndef ASSIMP_BUILD_NO_MD2_IMPORTER
 
 /** @file Implementation of the MD2 importer class */
@@ -65,7 +62,7 @@ using namespace Assimp::MD2;
 #   define ARRAYSIZE(_array) (int(sizeof(_array) / sizeof(_array[0])))
 #endif
 
-static const aiImporterDesc desc = {
+static constexpr aiImporterDesc desc = {
     "Quake II Mesh Importer",
     "",
     "",
@@ -79,7 +76,7 @@ static const aiImporterDesc desc = {
 };
 
 // ------------------------------------------------------------------------------------------------
-// Helper function to lookup a normal in Quake 2's precalculated table
+// Helper function to lookup a normal in Quake 2's pre-calculated table
 void MD2::LookupNormalIndex(uint8_t iNormalIndex,aiVector3D& vOut)
 {
     // make sure the normal index has a valid value
@@ -101,25 +98,11 @@ MD2Importer::MD2Importer()
 {}
 
 // ------------------------------------------------------------------------------------------------
-// Destructor, private as well
-MD2Importer::~MD2Importer()
-{}
-
-// ------------------------------------------------------------------------------------------------
 // Returns whether the class can handle the format of the given file.
-bool MD2Importer::CanRead( const std::string& pFile, IOSystem* pIOHandler, bool checkSig) const
+bool MD2Importer::CanRead( const std::string& pFile, IOSystem* pIOHandler, bool /*checkSig*/) const
 {
-    const std::string extension = GetExtension(pFile);
-    if (extension == "md2")
-        return true;
-
-    // if check for extension is not enough, check for the magic tokens
-    if (!extension.length() || checkSig) {
-        uint32_t tokens[1];
-        tokens[0] = AI_MD2_MAGIC_NUMBER_LE;
-        return CheckMagicToken(pIOHandler,pFile,tokens,1);
-    }
-    return false;
+    static const uint32_t tokens[] = { AI_MD2_MAGIC_NUMBER_LE };
+    return CheckMagicToken(pIOHandler,pFile,tokens,AI_COUNT_OF(tokens));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -215,7 +198,7 @@ void MD2Importer::InternReadFile( const std::string& pFile,
     std::unique_ptr<IOStream> file( pIOHandler->Open( pFile));
 
     // Check whether we can read from the file
-    if (file.get() == nullptr) {
+    if (file == nullptr) {
         throw DeadlyImportError("Failed to open MD2 file ", pFile, "");
     }
 

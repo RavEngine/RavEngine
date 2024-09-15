@@ -3,9 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
-
-
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -42,25 +40,106 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <assimp/scene.h>
 
-aiNode::aiNode()
-: mName()
-, mParent(nullptr)
-, mNumChildren(0)
-, mChildren(nullptr)
-, mNumMeshes(0)
-, mMeshes(nullptr)
-, mMetaData(nullptr) {
+#include "ScenePrivate.h"
+
+aiScene::aiScene() :
+        mFlags(0),
+        mRootNode(nullptr),
+        mNumMeshes(0),
+        mMeshes(nullptr),
+        mNumMaterials(0),
+        mMaterials(nullptr),
+        mNumAnimations(0),
+        mAnimations(nullptr),
+        mNumTextures(0),
+        mTextures(nullptr),
+        mNumLights(0),
+        mLights(nullptr),
+        mNumCameras(0),
+        mCameras(nullptr),
+        mMetaData(nullptr),
+        mName(),
+        mNumSkeletons(0),
+        mSkeletons(nullptr),
+        mPrivate(new Assimp::ScenePrivateData()) {
     // empty
 }
 
-aiNode::aiNode(const std::string& name)
-: mName(name)
-, mParent(nullptr)
-, mNumChildren(0)
-, mChildren(nullptr)
-, mNumMeshes(0)
-, mMeshes(nullptr)
-, mMetaData(nullptr) {
+aiScene::~aiScene() {
+    // delete all sub-objects recursively
+    delete mRootNode;
+
+    // To make sure we won't crash if the data is invalid it's
+    // much better to check whether both mNumXXX and mXXX are
+    // valid instead of relying on just one of them.
+    if (mNumMeshes && mMeshes) {
+        for (unsigned int a = 0; a < mNumMeshes; ++a) {
+            delete mMeshes[a];
+        }
+    }
+    delete[] mMeshes;
+
+    if (mNumMaterials && mMaterials) {
+        for (unsigned int a = 0; a < mNumMaterials; ++a) {
+            delete mMaterials[a];
+        }
+    }
+    delete[] mMaterials;
+
+    if (mNumAnimations && mAnimations) {
+        for (unsigned int a = 0; a < mNumAnimations; ++a) {
+            delete mAnimations[a];
+        }
+    }
+    delete[] mAnimations;
+
+    if (mNumTextures && mTextures) {
+        for (unsigned int a = 0; a < mNumTextures; ++a) {
+            delete mTextures[a];
+        }
+    }
+    delete[] mTextures;
+
+    if (mNumLights && mLights) {
+        for (unsigned int a = 0; a < mNumLights; ++a) {
+            delete mLights[a];
+        }
+    }
+    delete[] mLights;
+
+    if (mNumCameras && mCameras) {
+        for (unsigned int a = 0; a < mNumCameras; ++a) {
+            delete mCameras[a];
+        }
+    }
+    delete[] mCameras;
+
+    aiMetadata::Dealloc(mMetaData);
+
+    delete[] mSkeletons;
+
+    delete static_cast<Assimp::ScenePrivateData *>(mPrivate);
+}
+
+aiNode::aiNode() :
+        mName(""),
+        mParent(nullptr),
+        mNumChildren(0),
+        mChildren(nullptr),
+        mNumMeshes(0),
+        mMeshes(nullptr),
+        mMetaData(nullptr) {
+    // empty
+}
+
+aiNode::aiNode(const std::string &name) :
+        mName(name),
+        mParent(nullptr),
+        mNumChildren(0),
+        mChildren(nullptr),
+        mNumMeshes(0),
+        mMeshes(nullptr),
+        mMetaData(nullptr) {
     // empty
 }
 
@@ -68,8 +147,7 @@ aiNode::aiNode(const std::string& name)
 aiNode::~aiNode() {
     // delete all children recursively
     // to make sure we won't crash if the data is invalid ...
-    if (mNumChildren && mChildren)
-    {
+    if (mNumChildren && mChildren) {
         for (unsigned int a = 0; a < mNumChildren; a++)
             delete mChildren[a];
     }
@@ -78,7 +156,7 @@ aiNode::~aiNode() {
     delete mMetaData;
 }
 
-const aiNode *aiNode::FindNode(const char* name) const {
+const aiNode *aiNode::FindNode(const char *name) const {
     if (nullptr == name) {
         return nullptr;
     }
@@ -86,7 +164,7 @@ const aiNode *aiNode::FindNode(const char* name) const {
         return this;
     }
     for (unsigned int i = 0; i < mNumChildren; ++i) {
-        const aiNode* const p = mChildren[i]->FindNode(name);
+        const aiNode *const p = mChildren[i]->FindNode(name);
         if (p) {
             return p;
         }
@@ -95,11 +173,10 @@ const aiNode *aiNode::FindNode(const char* name) const {
     return nullptr;
 }
 
-aiNode *aiNode::FindNode(const char* name) {
-    if (!::strcmp(mName.data, name))return this;
-    for (unsigned int i = 0; i < mNumChildren; ++i)
-    {
-        aiNode* const p = mChildren[i]->FindNode(name);
+aiNode *aiNode::FindNode(const char *name) {
+    if (!::strcmp(mName.data, name)) return this;
+    for (unsigned int i = 0; i < mNumChildren; ++i) {
+        aiNode *const p = mChildren[i]->FindNode(name);
         if (p) {
             return p;
         }
@@ -121,17 +198,16 @@ void aiNode::addChildren(unsigned int numChildren, aiNode **children) {
     }
 
     if (mNumChildren > 0) {
-        aiNode **tmp = new aiNode*[mNumChildren];
-        ::memcpy(tmp, mChildren, sizeof(aiNode*) * mNumChildren);
+        aiNode **tmp = new aiNode *[mNumChildren];
+        ::memcpy(tmp, mChildren, sizeof(aiNode *) * mNumChildren);
         delete[] mChildren;
-        mChildren = new aiNode*[mNumChildren + numChildren];
-        ::memcpy(mChildren, tmp, sizeof(aiNode*) * mNumChildren);
-        ::memcpy(&mChildren[mNumChildren], children, sizeof(aiNode*)* numChildren);
+        mChildren = new aiNode *[mNumChildren + numChildren];
+        ::memcpy(mChildren, tmp, sizeof(aiNode *) * mNumChildren);
+        ::memcpy(&mChildren[mNumChildren], children, sizeof(aiNode *) * numChildren);
         mNumChildren += numChildren;
         delete[] tmp;
-    }
-    else {
-        mChildren = new aiNode*[numChildren];
+    } else {
+        mChildren = new aiNode *[numChildren];
         for (unsigned int i = 0; i < numChildren; i++) {
             mChildren[i] = children[i];
         }

@@ -3,7 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -55,9 +55,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assimp/DefaultLogger.hpp>
 #include <assimp/IOSystem.hpp>
 
-using namespace Assimp;
+namespace Assimp {
 
-static const aiImporterDesc desc = {
+static constexpr aiImporterDesc desc = {
     "Quick3D Importer",
     "",
     "",
@@ -72,30 +72,17 @@ static const aiImporterDesc desc = {
 
 // ------------------------------------------------------------------------------------------------
 // Constructor to be privately used by Importer
-Q3DImporter::Q3DImporter() {
-    // empty
-}
+Q3DImporter::Q3DImporter() = default;
 
 // ------------------------------------------------------------------------------------------------
 // Destructor, private as well
-Q3DImporter::~Q3DImporter() {
-    // empty
-}
+Q3DImporter::~Q3DImporter() = default;
 
 // ------------------------------------------------------------------------------------------------
 // Returns whether the class can handle the format of the given file.
-bool Q3DImporter::CanRead(const std::string &pFile, IOSystem *pIOHandler, bool checkSig) const {
-    const std::string extension = GetExtension(pFile);
-
-    if (extension == "q3s" || extension == "q3o")
-        return true;
-    else if (!extension.length() || checkSig) {
-        if (!pIOHandler)
-            return true;
-        const char *tokens[] = { "quick3Do", "quick3Ds" };
-        return SearchFileHeaderForToken(pIOHandler, pFile, tokens, 2);
-    }
-    return false;
+bool Q3DImporter::CanRead(const std::string &pFile, IOSystem *pIOHandler, bool /*checkSig*/) const {
+    static const char *tokens[] = { "quick3Do", "quick3Ds" };
+    return SearchFileHeaderForToken(pIOHandler, pFile, tokens, AI_COUNT_OF(tokens));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -138,10 +125,20 @@ void Q3DImporter::InternReadFile(const std::string &pFile,
     unsigned int numTextures = (unsigned int)stream.GetI4();
 
     std::vector<Material> materials;
-    materials.reserve(numMats);
+    try {
+        materials.reserve(numMats);
+    } catch (const std::bad_alloc &) {
+        ASSIMP_LOG_ERROR("Invalid alloc for materials.");
+        throw DeadlyImportError("Invalid Quick3D-file, material allocation failed.");
+    }
 
     std::vector<Mesh> meshes;
-    meshes.reserve(numMeshes);
+    try {
+        meshes.reserve(numMeshes);
+    } catch (const std::bad_alloc &) {
+        ASSIMP_LOG_ERROR("Invalid alloc for meshes.");
+        throw DeadlyImportError("Invalid Quick3D-file, mesh allocation failed.");
+    }
 
     // Allocate the scene root node
     pScene->mRootNode = new aiNode();
@@ -156,7 +153,7 @@ void Q3DImporter::InternReadFile(const std::string &pFile,
             // Meshes chunk
         case 'm': {
             for (unsigned int quak = 0; quak < numMeshes; ++quak) {
-                meshes.push_back(Mesh());
+                meshes.emplace_back();
                 Mesh &mesh = meshes.back();
 
                 // read all vertices
@@ -183,7 +180,7 @@ void Q3DImporter::InternReadFile(const std::string &pFile,
 
                 // number of indices
                 for (unsigned int i = 0; i < numVerts; ++i) {
-                    faces.push_back(Face(stream.GetI2()));
+                    faces.emplace_back(stream.GetI2());
                     if (faces.back().indices.empty())
                         throw DeadlyImportError("Quick3D: Found face with zero indices");
                 }
@@ -240,20 +237,23 @@ void Q3DImporter::InternReadFile(const std::string &pFile,
                 if (minor > '0' && major == '3')
                     stream.IncPtr(mesh.faces.size());
             }
-            // stream.IncPtr(4); // unknown value here
         } break;
 
             // materials chunk
         case 'c':
 
             for (unsigned int i = 0; i < numMats; ++i) {
-                materials.push_back(Material());
+                materials.emplace_back();
                 Material &mat = materials.back();
 
                 // read the material name
                 c = stream.GetI1();
                 while (c) {
                     mat.name.data[mat.name.length++] = c;
+                    if (mat.name.length == AI_MAXLEN) {
+                        ASSIMP_LOG_ERROR("String ouverflow detected, skipped material name parsing.");
+                        break;
+                    }
                     c = stream.GetI1();
                 }
 
@@ -278,8 +278,6 @@ void Q3DImporter::InternReadFile(const std::string &pFile,
                 // read the transparency
                 mat.transparency = stream.GetF4();
 
-                // unknown value here
-                // stream.IncPtr(4);
                 // FIX: it could be the texture index ...
                 mat.texIdx = (unsigned int)stream.GetI4();
             }
@@ -385,11 +383,10 @@ void Q3DImporter::InternReadFile(const std::string &pFile,
 
             // TODO
             goto outer;
-        } break;
+        }
 
         default:
             throw DeadlyImportError("Quick3D: Unknown chunk");
-            break;
         };
     }
 outer:
@@ -401,7 +398,7 @@ outer:
     // If we have no materials loaded - generate a default mat
     if (materials.empty()) {
         ASSIMP_LOG_INFO("Quick3D: No material found, generating one");
-        materials.push_back(Material());
+        materials.emplace_back();
         materials.back().diffuse = fgColor;
     }
 
@@ -421,7 +418,7 @@ outer:
                 (*fit).mat = 0;
             }
             if (fidx[(*fit).mat].empty()) ++pScene->mNumMeshes;
-            fidx[(*fit).mat].push_back(FaceIdx(p, q));
+            fidx[(*fit).mat].emplace_back(p, q);
         }
     }
     pScene->mNumMaterials = pScene->mNumMeshes;
@@ -429,7 +426,8 @@ outer:
     pScene->mMeshes = new aiMesh *[pScene->mNumMaterials];
 
     for (unsigned int i = 0, real = 0; i < (unsigned int)materials.size(); ++i) {
-        if (fidx[i].empty()) continue;
+        if (fidx[i].empty())
+            continue;
 
         // Allocate a mesh and a material
         aiMesh *mesh = pScene->mMeshes[real] = new aiMesh();
@@ -552,14 +550,9 @@ outer:
     // Now we need to attach the meshes to the root node of the scene
     pScene->mRootNode->mNumMeshes = pScene->mNumMeshes;
     pScene->mRootNode->mMeshes = new unsigned int[pScene->mNumMeshes];
-    for (unsigned int i = 0; i < pScene->mNumMeshes; ++i)
+    for (unsigned int i = 0; i < pScene->mNumMeshes; ++i) {
         pScene->mRootNode->mMeshes[i] = i;
-
-    /*pScene->mRootNode->mTransformation *= aiMatrix4x4(
-        1.f, 0.f, 0.f, 0.f,
-        0.f, -1.f,0.f, 0.f,
-        0.f, 0.f, 1.f, 0.f,
-        0.f, 0.f, 0.f, 1.f);*/
+    }
 
     // Add cameras and light sources to the scene root node
     pScene->mRootNode->mNumChildren = pScene->mNumLights + pScene->mNumCameras;
@@ -580,5 +573,7 @@ outer:
         nd->mTransformation = pScene->mRootNode->mChildren[0]->mTransformation;
     }
 }
+
+} // namespace Assimp
 
 #endif // !! ASSIMP_BUILD_NO_Q3D_IMPORTER

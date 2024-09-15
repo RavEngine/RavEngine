@@ -134,9 +134,10 @@ bool OpenDDLExport::writeToStream(const std::string &statement) {
 }
 
 bool OpenDDLExport::writeNode(DDLNode *node, std::string &statement) {
+    bool success(true);
     writeNodeHeader(node, statement);
     if (node->hasProperties()) {
-        writeProperties(node, statement);
+        success = writeProperties(node, statement);
     }
     writeLineEnd(statement);
 
@@ -160,7 +161,7 @@ bool OpenDDLExport::writeNode(DDLNode *node, std::string &statement) {
 
     writeToStream(statement);
 
-    return true;
+    return success;
 }
 
 bool OpenDDLExport::writeNodeHeader(DDLNode *node, std::string &statement) {
@@ -224,7 +225,7 @@ bool OpenDDLExport::writeValueType(Value::ValueType type, size_t numItems, std::
         statement += "[";
         char buffer[256];
         ::memset(buffer, '\0', 256 * sizeof(char));
-        sprintf(buffer, "%d", static_cast<int>(numItems));
+        snprintf(buffer, sizeof(buffer), "%d", static_cast<int>(numItems));
         statement += buffer;
         statement += "]";
     }
@@ -255,7 +256,7 @@ bool OpenDDLExport::writeValue(Value *val, std::string &statement) {
             std::stringstream stream;
             char buffer[256];
             ::memset(buffer, '\0', 256 * sizeof(char));
-            sprintf(buffer, "%d", val->getInt16());
+            snprintf(buffer, sizeof(buffer), "%d", val->getInt16());
             statement += buffer;
         } break;
         case Value::ValueType::ddl_int32: {
@@ -263,7 +264,7 @@ bool OpenDDLExport::writeValue(Value *val, std::string &statement) {
             char buffer[256];
             ::memset(buffer, '\0', 256 * sizeof(char));
             const int i = static_cast<int>(val->getInt32());
-            sprintf(buffer, "%d", i);
+            snprintf(buffer, sizeof(buffer), "%d", i);
             statement += buffer;
         } break;
         case Value::ValueType::ddl_int64: {

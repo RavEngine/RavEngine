@@ -3,7 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -60,6 +60,28 @@ extern "C" {
 #endif
 
 // ---------------------------------------------------------------------------
+/**
+ */
+enum aiAnimInterpolation {
+    /** */
+    aiAnimInterpolation_Step,
+
+    /** */
+    aiAnimInterpolation_Linear,
+
+    /** */
+    aiAnimInterpolation_Spherical_Linear,
+
+    /** */
+    aiAnimInterpolation_Cubic_Spline,
+
+/** */
+#ifndef SWIG
+    _aiAnimInterpolation_Force32Bit = INT_MAX
+#endif
+};
+
+// ---------------------------------------------------------------------------
 /** A time-value pair specifying a certain 3D vector for the given time. */
 struct aiVectorKey {
     /** The time of this key */
@@ -68,21 +90,18 @@ struct aiVectorKey {
     /** The value of this key */
     C_STRUCT aiVector3D mValue;
 
+     /** The interpolation setting of this key */
+    C_ENUM aiAnimInterpolation mInterpolation;
+
 #ifdef __cplusplus
 
     /// @brief  The default constructor.
     aiVectorKey() AI_NO_EXCEPT
-            : mTime(0.0),
-              mValue() {
-        // empty
-    }
+            : mTime(0.0), mValue(), mInterpolation(aiAnimInterpolation_Linear) {}
 
     /// @brief  Construction from a given time and key value.
-
     aiVectorKey(double time, const aiVector3D &value) :
-            mTime(time), mValue(value) {
-        // empty
-    }
+            mTime(time), mValue(value), mInterpolation(aiAnimInterpolation_Linear){}
 
     typedef aiVector3D elem_type;
 
@@ -90,6 +109,7 @@ struct aiVectorKey {
     bool operator==(const aiVectorKey &rhs) const {
         return rhs.mValue == this->mValue;
     }
+
     bool operator!=(const aiVectorKey &rhs) const {
         return rhs.mValue != this->mValue;
     }
@@ -98,6 +118,7 @@ struct aiVectorKey {
     bool operator<(const aiVectorKey &rhs) const {
         return mTime < rhs.mTime;
     }
+
     bool operator>(const aiVectorKey &rhs) const {
         return mTime > rhs.mTime;
     }
@@ -114,16 +135,16 @@ struct aiQuatKey {
     /** The value of this key */
     C_STRUCT aiQuaternion mValue;
 
+    /** The interpolation setting of this key */
+    C_ENUM aiAnimInterpolation mInterpolation;
+
 #ifdef __cplusplus
     aiQuatKey() AI_NO_EXCEPT
-            : mTime(0.0),
-              mValue() {
-        // empty
-    }
+            : mTime(0.0), mValue(), mInterpolation(aiAnimInterpolation_Linear) {}
 
     /** Construction from a given time and key value */
     aiQuatKey(double time, const aiQuaternion &value) :
-            mTime(time), mValue(value) {}
+            mTime(time), mValue(value), mInterpolation(aiAnimInterpolation_Linear) {}
 
     typedef aiQuaternion elem_type;
 
@@ -131,6 +152,7 @@ struct aiQuatKey {
     bool operator==(const aiQuatKey &rhs) const {
         return rhs.mValue == this->mValue;
     }
+
     bool operator!=(const aiQuatKey &rhs) const {
         return rhs.mValue != this->mValue;
     }
@@ -139,6 +161,7 @@ struct aiQuatKey {
     bool operator<(const aiQuatKey &rhs) const {
         return mTime < rhs.mTime;
     }
+
     bool operator>(const aiQuatKey &rhs) const {
         return mTime > rhs.mTime;
     }
@@ -195,7 +218,10 @@ struct aiMeshMorphKey {
     /** The time of this key */
     double mTime;
 
-    /** The values and weights at the time of this key */
+    /** The values and weights at the time of this key
+     *   - mValues: index of attachment mesh to apply weight at the same position in mWeights
+     *   - mWeights: weight to apply to the blend shape index at the same position in mValues
+     */
     unsigned int *mValues;
     double *mWeights;
 

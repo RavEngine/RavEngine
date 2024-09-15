@@ -25,11 +25,13 @@ namespace RavEngine {
 		Vector<JointAnimationTrack> tracks;
 		std::string name;
 		float duration = 0;
+        float ticksPerSecond = 0;
 	};
 
 	struct SerializedJointAnimationHeader {
 		const Array<char, 4> header = { 'r','v','e','a' };
 		float duration = 0;
+        float ticksPerSecond = 0;
 		uint32_t numTracks = 0;
 		uint16_t nameLength = 0;
 	};

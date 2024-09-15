@@ -37,11 +37,11 @@ JointAnimation LoadAnimation(const std::filesystem::path& path) {
 
 	//assume the first animation is the animation to use
 	auto anim = scene->mAnimations[0];
-	float tps = 1000; //anim->mTicksPerSecond; TODO: assimp does not report this correctly
+	float tps = anim->mTicksPerSecond; 
 	raw_animation.duration = anim->mDuration;   // ticks! keys from assimp are also in ticks
-
+    raw_animation.ticksPerSecond = tps;
+    
 	float duration_seconds = anim->mDuration / tps;
-	tps = 30;   // TODO: when assimp's bug is fixed, remove this
 
 	auto create_keyframe = [&](const aiNodeAnim* channel, JointAnimationTrack& track) {
 
@@ -106,6 +106,7 @@ void SerializeAnim(const std::filesystem::path& outfile, const JointAnimation& a
 
 	SerializedJointAnimationHeader header{
 		.duration = anim.duration,
+        .ticksPerSecond = anim.ticksPerSecond,
 		.numTracks = uint32_t(anim.tracks.size()),
 		.nameLength = uint16_t(anim.name.size())
 	};

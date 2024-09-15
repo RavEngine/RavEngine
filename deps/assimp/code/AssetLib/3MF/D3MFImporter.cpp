@@ -2,7 +2,7 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -68,7 +68,7 @@ namespace Assimp {
 
 using namespace D3MF;
 
-static const aiImporterDesc desc = {
+static constexpr aiImporterDesc desc = {
     "3mf Importer",
     "",
     "",
@@ -81,33 +81,17 @@ static const aiImporterDesc desc = {
     "3mf"
 };
 
-D3MFImporter::D3MFImporter() :
-        BaseImporter() {
-    // empty
-}
-
-D3MFImporter::~D3MFImporter() {
-    // empty
-}
-
-bool D3MFImporter::CanRead(const std::string &filename, IOSystem *pIOHandler, bool checkSig) const {
-    const std::string extension(GetExtension(filename));
-    if (extension == desc.mFileExtensions) {
-        return true;
-    } 
-
-    if (!extension.length() || checkSig) {
-        if (nullptr == pIOHandler) {
-            return false;
-        }
-        if (!ZipArchiveIOSystem::isZipArchive(pIOHandler, filename)) {
-            return false;
-        }
-        D3MFOpcPackage opcPackage(pIOHandler, filename);
-        return opcPackage.validate();
+bool D3MFImporter::CanRead(const std::string &filename, IOSystem *pIOHandler, bool ) const {
+    if (!ZipArchiveIOSystem::isZipArchive(pIOHandler, filename)) {
+        return false;
+    }
+    static const char *const ModelRef = "3D/3dmodel.model";
+    ZipArchiveIOSystem archive(pIOHandler, filename);
+    if (!archive.Exists(ModelRef)) {
+        return false;
     }
 
-    return false;
+    return true;
 }
 
 void D3MFImporter::SetupProperties(const Importer*) {

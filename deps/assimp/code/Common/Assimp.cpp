@@ -3,9 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
-
-
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -235,8 +233,13 @@ const aiScene *aiImportFileFromMemoryWithProperties(
         unsigned int pFlags,
         const char *pHint,
         const aiPropertyStore *props) {
-    ai_assert(nullptr != pBuffer);
-    ai_assert(0 != pLength);
+    if (pBuffer == nullptr) {
+        return nullptr;
+    }
+
+    if (pLength == 0u) {
+        return nullptr;
+    }
 
     const aiScene *scene = nullptr;
     ASSIMP_BEGIN_EXCEPTION_REGION();
@@ -510,6 +513,11 @@ void aiGetMemoryRequirements(const C_STRUCT aiScene *pIn,
 }
 
 // ------------------------------------------------------------------------------------------------
+ASSIMP_API const C_STRUCT aiTexture *aiGetEmbeddedTexture(const C_STRUCT aiScene *pIn, const char *filename) {
+    return pIn->GetEmbeddedTexture(filename);
+}
+
+// ------------------------------------------------------------------------------------------------
 ASSIMP_API aiPropertyStore *aiCreatePropertyStore(void) {
     return reinterpret_cast<aiPropertyStore *>(new PropertyMap());
 }
@@ -740,14 +748,14 @@ ASSIMP_API void aiVector2DivideByVector(
 }
 
 // ------------------------------------------------------------------------------------------------
-ASSIMP_API float aiVector2Length(
+ASSIMP_API ai_real aiVector2Length(
         const C_STRUCT aiVector2D *v) {
     ai_assert(nullptr != v);
     return v->Length();
 }
 
 // ------------------------------------------------------------------------------------------------
-ASSIMP_API float aiVector2SquareLength(
+ASSIMP_API ai_real aiVector2SquareLength(
         const C_STRUCT aiVector2D *v) {
     ai_assert(nullptr != v);
     return v->SquareLength();
@@ -761,7 +769,7 @@ ASSIMP_API void aiVector2Negate(
 }
 
 // ------------------------------------------------------------------------------------------------
-ASSIMP_API float aiVector2DotProduct(
+ASSIMP_API ai_real aiVector2DotProduct(
         const C_STRUCT aiVector2D *a,
         const C_STRUCT aiVector2D *b) {
     ai_assert(nullptr != a);
@@ -856,14 +864,14 @@ ASSIMP_API void aiVector3DivideByVector(
 }
 
 // ------------------------------------------------------------------------------------------------
-ASSIMP_API float aiVector3Length(
+ASSIMP_API ai_real aiVector3Length(
         const C_STRUCT aiVector3D *v) {
     ai_assert(nullptr != v);
     return v->Length();
 }
 
 // ------------------------------------------------------------------------------------------------
-ASSIMP_API float aiVector3SquareLength(
+ASSIMP_API ai_real aiVector3SquareLength(
         const C_STRUCT aiVector3D *v) {
     ai_assert(nullptr != v);
     return v->SquareLength();
@@ -877,7 +885,7 @@ ASSIMP_API void aiVector3Negate(
 }
 
 // ------------------------------------------------------------------------------------------------
-ASSIMP_API float aiVector3DotProduct(
+ASSIMP_API ai_real aiVector3DotProduct(
         const C_STRUCT aiVector3D *a,
         const C_STRUCT aiVector3D *b) {
     ai_assert(nullptr != a);
@@ -963,7 +971,7 @@ ASSIMP_API void aiMatrix3Inverse(C_STRUCT aiMatrix3x3 *mat) {
 }
 
 // ------------------------------------------------------------------------------------------------
-ASSIMP_API float aiMatrix3Determinant(const C_STRUCT aiMatrix3x3 *mat) {
+ASSIMP_API ai_real aiMatrix3Determinant(const C_STRUCT aiMatrix3x3 *mat) {
     ai_assert(nullptr != mat);
     return mat->Determinant();
 }
@@ -1063,7 +1071,7 @@ ASSIMP_API void aiMatrix4Inverse(C_STRUCT aiMatrix4x4 *mat) {
 }
 
 // ------------------------------------------------------------------------------------------------
-ASSIMP_API float aiMatrix4Determinant(const C_STRUCT aiMatrix4x4 *mat) {
+ASSIMP_API ai_real aiMatrix4Determinant(const C_STRUCT aiMatrix4x4 *mat) {
     ai_assert(nullptr != mat);
     return mat->Determinant();
 }
@@ -1133,7 +1141,7 @@ ASSIMP_API void aiMatrix4RotationX(
 ASSIMP_API void aiMatrix4RotationY(
         C_STRUCT aiMatrix4x4 *mat,
         const float angle) {
-    ai_assert(NULL != mat);
+    ai_assert(nullptr != mat);
     aiMatrix4x4::RotationY(angle, *mat);
 }
 
@@ -1265,7 +1273,6 @@ ASSIMP_API void aiQuaternionInterpolate(
     aiQuaternion::Interpolate(*dst, *start, *end, factor);
 }
 
-
 // stb_image is a lightweight image loader. It is shared by:
 //  - M3D import
 //  - PBRT export
@@ -1275,25 +1282,22 @@ ASSIMP_API void aiQuaternionInterpolate(
 #define ASSIMP_HAS_PBRT_EXPORT (!ASSIMP_BUILD_NO_EXPORT && !ASSIMP_BUILD_NO_PBRT_EXPORTER)
 #define ASSIMP_HAS_M3D ((!ASSIMP_BUILD_NO_EXPORT && !ASSIMP_BUILD_NO_M3D_EXPORTER) || !ASSIMP_BUILD_NO_M3D_IMPORTER)
 
+#ifndef STB_USE_HUNTER
 #if ASSIMP_HAS_PBRT_EXPORT
-#   define ASSIMP_NEEDS_STB_IMAGE 1
+#define ASSIMP_NEEDS_STB_IMAGE 1
 #elif ASSIMP_HAS_M3D
-#   define ASSIMP_NEEDS_STB_IMAGE 1
-#   define STBI_ONLY_PNG
+#define ASSIMP_NEEDS_STB_IMAGE 1
+#define STBI_ONLY_PNG
+#endif
 #endif
 
+// Ensure all symbols are linked correctly
 #if ASSIMP_NEEDS_STB_IMAGE
-
-#   if _MSC_VER // "unreferenced function has been removed" (SSE2 detection routine in x64 builds)
-#       pragma warning(push)
-#       pragma warning(disable: 4505)
-#   endif
-
-#   define STB_IMAGE_IMPLEMENTATION
-#   include "stb/stb_image.h"
-
-#   if _MSC_VER
-#       pragma warning(pop)
-#   endif
-
+// Share stb_image's PNG loader with other importers/exporters instead of bringing our own copy.
+#define STBI_ONLY_PNG
+#ifdef ASSIMP_USE_STB_IMAGE_STATIC
+#define STB_IMAGE_STATIC
+#endif
+#define STB_IMAGE_IMPLEMENTATION
+#include "Common/StbCommon.h"
 #endif

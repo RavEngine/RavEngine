@@ -3,7 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2021, assimp team
+Copyright (c) 2006-2024, assimp team
 
 All rights reserved.
 
@@ -56,7 +56,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <vector>
 
-/// \class CAMFImporter_NodeElement
 /// Base class for elements of nodes.
 class AMFNodeElementBase {
 public:
@@ -88,9 +87,7 @@ public:
 	std::list<AMFNodeElementBase *> Child; ///< Child elements.
 
 public: /// Destructor, virtual..
-	virtual ~AMFNodeElementBase() {
-		// empty
-	}
+	virtual ~AMFNodeElementBase() = default;
 
 	/// Disabled copy constructor and co.
 	AMFNodeElementBase(const AMFNodeElementBase &pNodeElement) = delete;
@@ -103,12 +100,11 @@ protected:
 	/// \param [in] pType - element type.
 	/// \param [in] pParent - parent element.
 	AMFNodeElementBase(const EType pType, AMFNodeElementBase *pParent) :
-			Type(pType), ID(), Parent(pParent), Child() {
+			Type(pType), Parent(pParent) {
 		// empty
 	}
 }; // class IAMFImporter_NodeElement
 
-/// \struct CAMFImporter_NodeElement_Constellation
 /// A collection of objects or constellations with specific relative locations.
 struct AMFConstellation : public AMFNodeElementBase {
 	/// Constructor.
@@ -118,7 +114,6 @@ struct AMFConstellation : public AMFNodeElementBase {
 
 }; // struct CAMFImporter_NodeElement_Constellation
 
-/// \struct CAMFImporter_NodeElement_Instance
 /// Part of constellation.
 struct AMFInstance : public AMFNodeElementBase {
 
@@ -137,7 +132,6 @@ struct AMFInstance : public AMFNodeElementBase {
 			AMFNodeElementBase(ENET_Instance, pParent) {}
 };
 
-/// \struct CAMFImporter_NodeElement_Metadata
 /// Structure that define metadata node.
 struct AMFMetadata : public AMFNodeElementBase {
 
@@ -150,7 +144,6 @@ struct AMFMetadata : public AMFNodeElementBase {
 			AMFNodeElementBase(ENET_Metadata, pParent) {}
 };
 
-/// \struct CAMFImporter_NodeElement_Root
 /// Structure that define root node.
 struct AMFRoot : public AMFNodeElementBase {
 
@@ -163,7 +156,6 @@ struct AMFRoot : public AMFNodeElementBase {
 			AMFNodeElementBase(ENET_Root, pParent) {}
 };
 
-/// \struct CAMFImporter_NodeElement_Color
 /// Structure that define object node.
 struct AMFColor : public AMFNodeElementBase {
 	bool Composed; ///< Type of color stored: if true then look for formula in \ref Color_Composed[4], else - in \ref Color.
@@ -174,12 +166,11 @@ struct AMFColor : public AMFNodeElementBase {
 	/// @brief  Constructor.
 	/// @param [in] pParent - pointer to parent node.
 	AMFColor(AMFNodeElementBase *pParent) :
-			AMFNodeElementBase(ENET_Color, pParent), Composed(false), Color(), Profile() {
+			AMFNodeElementBase(ENET_Color, pParent), Composed(false), Color() {
 		// empty
 	}
 };
 
-/// \struct CAMFImporter_NodeElement_Material
 /// Structure that define material node.
 struct AMFMaterial : public AMFNodeElementBase {
 
@@ -189,7 +180,6 @@ struct AMFMaterial : public AMFNodeElementBase {
 			AMFNodeElementBase(ENET_Material, pParent) {}
 };
 
-/// \struct CAMFImporter_NodeElement_Object
 /// Structure that define object node.
 struct AMFObject : public AMFNodeElementBase {
 
@@ -208,7 +198,6 @@ struct AMFMesh : public AMFNodeElementBase {
 			AMFNodeElementBase(ENET_Mesh, pParent) {}
 };
 
-/// \struct CAMFImporter_NodeElement_Vertex
 /// Structure that define vertex node.
 struct AMFVertex : public AMFNodeElementBase {
 	/// Constructor.
@@ -217,7 +206,6 @@ struct AMFVertex : public AMFNodeElementBase {
 			AMFNodeElementBase(ENET_Vertex, pParent) {}
 };
 
-/// \struct CAMFImporter_NodeElement_Edge
 /// Structure that define edge node.
 struct AMFEdge : public AMFNodeElementBase {
 	/// Constructor.
@@ -226,7 +214,6 @@ struct AMFEdge : public AMFNodeElementBase {
 			AMFNodeElementBase(ENET_Edge, pParent) {}
 };
 
-/// \struct CAMFImporter_NodeElement_Vertices
 /// Structure that define vertices node.
 struct AMFVertices : public AMFNodeElementBase {
 	/// Constructor.
@@ -235,7 +222,6 @@ struct AMFVertices : public AMFNodeElementBase {
 			AMFNodeElementBase(ENET_Vertices, pParent) {}
 };
 
-/// \struct CAMFImporter_NodeElement_Volume
 /// Structure that define volume node.
 struct AMFVolume : public AMFNodeElementBase {
 	std::string MaterialID; ///< Which material to use.
@@ -247,7 +233,6 @@ struct AMFVolume : public AMFNodeElementBase {
 			AMFNodeElementBase(ENET_Volume, pParent) {}
 };
 
-/// \struct CAMFImporter_NodeElement_Coordinates
 /// Structure that define coordinates node.
 struct AMFCoordinates : public AMFNodeElementBase {
 	aiVector3D Coordinate; ///< Coordinate.
@@ -258,7 +243,6 @@ struct AMFCoordinates : public AMFNodeElementBase {
 			AMFNodeElementBase(ENET_Coordinates, pParent) {}
 };
 
-/// \struct CAMFImporter_NodeElement_TexMap
 /// Structure that define texture coordinates node.
 struct AMFTexMap : public AMFNodeElementBase {
 	aiVector3D TextureCoordinate[3]; ///< Texture coordinates.
@@ -270,12 +254,11 @@ struct AMFTexMap : public AMFNodeElementBase {
 	/// Constructor.
 	/// \param [in] pParent - pointer to parent node.
 	AMFTexMap(AMFNodeElementBase *pParent) :
-			AMFNodeElementBase(ENET_TexMap, pParent), TextureCoordinate{}, TextureID_R(), TextureID_G(), TextureID_B(), TextureID_A() {
+			AMFNodeElementBase(ENET_TexMap, pParent), TextureCoordinate{} {
 		// empty
 	}
 };
 
-/// \struct CAMFImporter_NodeElement_Triangle
 /// Structure that define triangle node.
 struct AMFTriangle : public AMFNodeElementBase {
 	size_t V[3]; ///< Triangle vertices.
