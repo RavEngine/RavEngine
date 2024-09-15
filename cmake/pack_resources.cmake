@@ -100,8 +100,8 @@ function(pack_resources)
 	
 	copy_streaming_helper("${ARGS_STREAMING_ASSETS}" "" "${ARGS_STREAMING_INPUT_ROOT}")
 
-	target_sources(${ARGS_TARGET} PUBLIC ${ARGS_OBJECTS} ${ARGS_TEXTURES} ${ARGS_SOUNDS} ${ARGS_MESHES})
-	set_source_files_properties(${ARGS_OBJECTS} ${ARGS_TEXTURES} ${ARGS_SOUNDS} PROPERTIES HEADER_FILE_ONLY ON)
+	target_sources(${ARGS_TARGET} PUBLIC ${ARGS_OBJECTS} ${ARGS_TEXTURES} ${ARGS_SOUNDS} ${ARGS_MESHES} ${ARGS_SKELETONS} ${ARGS_ANIMATIONS})
+	set_source_files_properties(${ARGS_OBJECTS} ${ARGS_TEXTURES} ${ARGS_SOUNDS} ${ARGS_SKELETONS} ${ARGS_ANIMATIONS} PROPERTIES HEADER_FILE_ONLY ON)
 	
 	source_group("Objects" FILES ${ARGS_OBJECTS})
 	source_group("Textures" FILES ${ARGS_TEXTURES})
@@ -109,6 +109,8 @@ function(pack_resources)
 	source_group("UI" FILES ${ARGS_UIS})
 	source_group("Streaming" FILES ${ARGS_STREAMING_ASSETS})
 	source_group("Meshes" FILES ${ARGS_MESHES})
+	source_group("Skeletons" FILES ${ARGS_SKELETONS})
+	source_group("Animations" FILES ${ARGS_ANIMATIONS})
 
 	# import Meshes
 	foreach(MESHCONF ${ARGS_MESHES} ${ENG_MESHES})
