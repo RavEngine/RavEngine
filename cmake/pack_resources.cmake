@@ -100,15 +100,15 @@ function(pack_resources)
 	
 	copy_streaming_helper("${ARGS_STREAMING_ASSETS}" "" "${ARGS_STREAMING_INPUT_ROOT}")
 
-	target_sources(${ARGS_TARGET} PUBLIC ${ARGS_OBJECTS} ${ARGS_TEXTURES} ${ARGS_SOUNDS})
+	target_sources(${ARGS_TARGET} PUBLIC ${ARGS_OBJECTS} ${ARGS_TEXTURES} ${ARGS_SOUNDS} ${ARGS_MESHES})
 	set_source_files_properties(${ARGS_OBJECTS} ${ARGS_TEXTURES} ${ARGS_SOUNDS} PROPERTIES HEADER_FILE_ONLY ON)
 	
 	source_group("Objects" FILES ${ARGS_OBJECTS})
-	source_group("Meshes" FILES ${ARGS_MESHES})
 	source_group("Textures" FILES ${ARGS_TEXTURES})
 	source_group("Sounds" FILES ${ARGS_SOUNDS})
 	source_group("UI" FILES ${ARGS_UIS})
 	source_group("Streaming" FILES ${ARGS_STREAMING_ASSETS})
+	source_group("Meshes" FILES ${ARGS_MESHES})
 
 	# import Meshes
 	foreach(MESHCONF ${ARGS_MESHES} ${ENG_MESHES})
@@ -126,6 +126,9 @@ function(pack_resources)
 			COMMENT "Importing Mesh ${MESHCONF}"
 		)
 		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS "${outfilename}")
+		target_sources(${ARGS_TARGET} PUBLIC "${indir}/${inmeshfile}")
+		source_group("Meshes" FILES  "${indir}/${inmeshfile}")
+		set_source_files_properties("${indir}/${inmeshfile}" PROPERTIES XCODE_EXPLICIT_FILE_TYPE "archive.ar")
 	endforeach()
 
 	# import Skeletons
