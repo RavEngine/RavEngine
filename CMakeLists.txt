@@ -254,7 +254,6 @@ if (NOT RAVENGINE_SERVER)
 endif()
 
 if (NOT CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
-	set(RVE_ENABLE_IMPORT_EXES ON CACHE INTERNAL "")
 	include(cmake/importers.cmake)
 	include(cmake/rvesc.cmake)
 	set(RVESC_PATH rvesc CACHE INTERNAL "")
@@ -270,8 +269,20 @@ if (NOT CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	set(RVEAC_PATH rveac CACHE INTERNAL "")
 else()
 	#host tools configures it
-	set(RVE_ENABLE_IMPORT_EXES OFF CACHE INTERNAL "")
-	include(cmake/importers.cmake)
+	file(GLOB SRC 
+		"${CMAKE_CURRENT_LIST_DIR}/tools/importlib/*.cpp" 
+		"${CMAKE_CURRENT_LIST_DIR}/tools/importlib/*.hpp" 
+		"${CMAKE_CURRENT_LIST_DIR}/tools/importlib/*.h")
+	add_library(rve_importlib ${SRC})
+	target_compile_features(rve_importlib PRIVATE cxx_std_20)
+	target_link_libraries(rve_importlib PRIVATE assimp fmt glm)
+	target_include_directories(rve_importlib 
+		PRIVATE 
+			"${CMAKE_CURRENT_LIST_DIR}/include/RavEngine" 
+			"${CMAKE_CURRENT_LIST_DIR}/tools/importlib/RavEngine" 
+			"${CMAKE_CURRENT_LIST_DIR}/deps/parallel-hashmap/parallel_hashmap"
+		PUBLIC "${CMAKE_CURRENT_LIST_DIR}/tools/importlib"
+	)
 endif()
 
 
