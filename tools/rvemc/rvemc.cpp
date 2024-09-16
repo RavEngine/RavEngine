@@ -56,7 +56,7 @@ std::variant<MeshPart, SkinnedMeshPart> LoadMesh(const std::filesystem::path& pa
     aiNode* meshNode = scene->mRootNode;
     uint32_t meshCount = scene->mNumMeshes;
 
-    using Mesh_t = std::conditional<isSkinned, SkinnedMeshPart, MeshPart>::type;
+    using Mesh_t = typename std::conditional<isSkinned, SkinnedMeshPart, MeshPart>::type;
     
     if (meshName.has_value()) {
         meshNode = scene->mRootNode->FindNode(aiString(std::string(meshName.value())));
