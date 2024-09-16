@@ -71,6 +71,7 @@ if(ST_BUNDLED_DXC)
 	set(LLVM_TARGETS_TO_BUILD "None" CACHE INTERNAL "" FORCE)
     set(HLSL_BUILD_DXILCONV OFF CACHE INTERNAL "" FORCE)
     set(HLSL_DISABLE_SOURCE_GENERATION ON CACHE BOOL "" FORCE)
+    set(LLVM_OPTIMIZED_TABLEGEN OFF CACHE BOOL "" FORCE)
     add_subdirectory(deps/DirectXShaderCompiler/projects/include/Tracing EXCLUDE_FROM_ALL) # needed for an ETW
     add_subdirectory(deps/DirectXShaderCompiler EXCLUDE_FROM_ALL)
     set(DXCLIBS "dxcompiler")
