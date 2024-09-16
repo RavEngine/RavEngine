@@ -130,7 +130,10 @@ function(pack_resources)
 		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS "${outfilename}")
 		target_sources(${ARGS_TARGET} PUBLIC "${indir}/${inmeshfile}")
 		source_group("Meshes" FILES  "${indir}/${inmeshfile}")
-		set_source_files_properties("${indir}/${inmeshfile}" PROPERTIES XCODE_EXPLICIT_FILE_TYPE "archive.ar")
+		set_source_files_properties("${indir}/${inmeshfile}" PROPERTIES 
+			XCODE_EXPLICIT_FILE_TYPE "archive.ar"
+			HEADER_FILE_ONLY ON
+		)
 	endforeach()
 
 	# import Skeletons

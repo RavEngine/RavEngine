@@ -8,6 +8,8 @@ target_include_directories(rve_importlib
 	PUBLIC "${CMAKE_CURRENT_LIST_DIR}/../tools/importlib"
 )
 
+if(RVE_ENABLE_IMPORT_EXES)
+
 macro(make_importer dir)
 
 	file(GLOB SRC "${CMAKE_CURRENT_LIST_DIR}/../tools/${dir}/*.cpp" "${CMAKE_CURRENT_LIST_DIR}/../tools/${dir}/*.hpp" "${CMAKE_CURRENT_LIST_DIR}/../tools/${dir}/*.h")
@@ -33,3 +35,5 @@ target_link_libraries(rveskc PRIVATE assimp cxxopts simdjson fmt glm rve_importl
 
 make_importer(rveac)
 target_link_libraries(rveac PRIVATE assimp cxxopts simdjson fmt glm rve_importlib)
+
+endif()
