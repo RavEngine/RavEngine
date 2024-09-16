@@ -254,7 +254,7 @@ if (NOT RAVENGINE_SERVER)
 endif()
 
 if (NOT CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
-	set(RVE_ENABLE_IMPORT_EXES ON)
+	set(RVE_ENABLE_IMPORT_EXES ON CACHE INTERNAL "")
 	include(cmake/importers.cmake)
 	include(cmake/rvesc.cmake)
 	set(RVESC_PATH rvesc CACHE INTERNAL "")
@@ -270,7 +270,7 @@ if (NOT CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	set(RVEAC_PATH rveac CACHE INTERNAL "")
 else()
 	#host tools configures it
-	set(RVE_ENABLE_IMPORT_EXES OFF)
+	set(RVE_ENABLE_IMPORT_EXES OFF CACHE INTERNAL "")
 	include(cmake/importers.cmake)
 endif()
 
