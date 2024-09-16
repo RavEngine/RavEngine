@@ -40,7 +40,7 @@ jobs:
             cd build
             CC=${{ matrix.compiler.cc }} CXX=${{ matrix.compiler.cxx }} cmake -G "Ninja" .. 
       - name: Build
-        run: cd build; cmake --build . --config Release --target RavEngine
+        run: cd build; cmake --build . --config Release --target RavEngine rvesc rveskc rveac rvemc rglc
       
   build-emscripten:
     name: Emscripten-Linux Compile Check
@@ -84,7 +84,7 @@ jobs:
       - name: Configure
         run: mkdir -p build && cd build; cmake -G "Xcode" -DCMAKE_SYSTEM_NAME=${{ matrix.platform }} -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" .. 
       - name: Build
-        run: cd build; cmake --build . --config release --target RavEngine -- -quiet
+        run: cd build; cmake --build . --config release --target RavEngine rvesc rveskc rveac rvemc rglc -- -quiet
                 
   build-windows:
     name: Windows Compile Check
@@ -102,7 +102,7 @@ jobs:
       - name: Configure
         run: mkdir build && cd build; cmake -DCMAKE_SYSTEM_NAME=${{ matrix.target }} -DCMAKE_SYSTEM_VERSION="10.0" -Wno-dev -A${{ matrix.arch }} .. ; cmake ..
       - name: Build
-        run: cd build; cmake --build . --config release --target RavEngine
+        run: cd build; cmake --build . --config release --target RavEngine rvesc rveskc rveac rvemc rglc
 
   build-android:
     name: Android Compile Check
@@ -132,7 +132,7 @@ jobs:
       - name: Build
         run: |
           cd build
-          cmake --build . --config release --target RavEngine
+          cmake --build . --config release --target RavEngine rvesc rveskc rveac rvemc rglc
   
   test-linux:
     name: Linux Unit Tests

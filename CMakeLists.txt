@@ -85,11 +85,17 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 		set(rglc_path "${TOOLS_DIR}/RGL/rglc${rglc_ext}" CACHE INTERNAL "")
   		set(FlatBuffers_EXECUTABLE "${TOOLS_DIR}/flatc/flatc")
 		set(RVESC_PATH "${TOOLS_DIR}/RVESC/rvesc" CACHE INTERNAL "")
+		set(RVEMC_PATH "${TOOLS_DIR}/RVEMC/rvemc" CACHE INTERNAL "")
+		set(RVEAC_PATH "${TOOLS_DIR}/RVEAC/rveac" CACHE INTERNAL "")
+		set(RVESKC_PATH "${TOOLS_DIR}/RVESKC/rveskc" CACHE INTERNAL "")
 	else()
 		set(PROTOC_CMD "${TOOLS_DIR}/protobuf/Release/protoc" CACHE INTERNAL "")
 		set(rglc_path "${TOOLS_DIR}/RGL/Release/rglc${rglc_ext}" CACHE INTERNAL "")
   		set(FlatBuffers_EXECUTABLE "${TOOLS_DIR}/flatc/Release/flatc")
-		 set(RVESC_PATH "${TOOLS_DIR}/RVESC/Release/rvesc" CACHE INTERNAL "")
+		set(RVESC_PATH "${TOOLS_DIR}/RVESC/Release/rvesc" CACHE INTERNAL "")
+		set(RVEMC_PATH "${TOOLS_DIR}/RVEMC/Release/rvemc" CACHE INTERNAL "")
+		set(RVEAC_PATH "${TOOLS_DIR}/RVEAC/Release/rveac" CACHE INTERNAL "")
+		set(RVESKC_PATH "${TOOLS_DIR}/RVESKC/Release/rveskc" CACHE INTERNAL "")
 	endif()
 
 	file(MAKE_DIRECTORY ${TOOLS_DIR})
@@ -119,12 +125,15 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	if(CMAKE_HOST_WIN32)
 		set(FlatBuffers_EXECUTABLE "${FlatBuffers_EXECUTABLE}.exe")
 		set(RVESC_PATH "${RVESC_PATH}.exe" CACHE INTERNAL "")
+		set(RVEAC_PATH "${RVEAC_PATH}.exe" CACHE INTERNAL "")
+		set(RVEMC_PATH "${RVEMC_PATH}.exe" CACHE INTERNAL "")
+		set(RVESKC_PATH "${RVESKC_PATH}.exe" CACHE INTERNAL "")
 	endif()
 
 	add_custom_command(
 		PRE_BUILD
-		OUTPUT "${PROTOC_CMD}" "${rglc_path}" "${FlatBuffers_EXECUTABLE}" "${RVESC_PATH}"
-		COMMAND ${CMAKE_COMMAND} --build . --config Release --target protoc rglc flatc rvesc
+		OUTPUT "${PROTOC_CMD}" "${rglc_path}" "${FlatBuffers_EXECUTABLE}" "${RVESC_PATH}" "${RVEAC_PATH}" "${RVEMC_PATH}" "${RVESKC_PATH}"
+		COMMAND ${CMAKE_COMMAND} --build . --config Release --target protoc rglc flatc rvesc rveac rveskc rvemc
 		WORKING_DIRECTORY "${TOOLS_DIR}"
 		VERBATIM
 	)
@@ -132,6 +141,10 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 	add_custom_target(flatc DEPENDS "${FlatBuffers_EXECUTABLE}")
 
 	add_custom_target(rvesc DEPENDS "${RVESC_PATH}" flatc)
+
+	add_custom_target(rveac DEPENDS "${RVEAC_PATH}" flatc)
+	add_custom_target(rveskc DEPENDS "${RVESKC_PATH}" flatc)
+	add_custom_target(rvemc DEPENDS "${RVEMC_PATH}" flatc)
 else()
 	set(TOOLS_DIR ${CMAKE_CURRENT_BINARY_DIR}/host-tools CACHE INTERNAL "")
 	set(PROTOC_CMD "protoc" CACHE INTERNAL "")
