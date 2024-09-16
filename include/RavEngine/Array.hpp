@@ -1,6 +1,6 @@
 #pragma once
 #include <array>
-#include <cstdint>
+#include <cstddef>
 
 namespace RavEngine {
     template<typename T, size_t N>
