@@ -115,7 +115,7 @@ namespace RavEngine {
         return serialized;
     }
 
-	RavEngine::NameToBoneResult RavEngine::NameToBone(const aiScene* scene)
+	NameToBoneResult NameToBone(const aiScene* scene)
 	{
         // create hashset of the bones list to determine quickly if a scene node is a relevant bone
         UnorderedMap<std::string_view, aiBone*> bones;
