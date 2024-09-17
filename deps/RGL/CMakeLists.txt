@@ -82,6 +82,9 @@ if (RGL_RUNTIME_COMPILATION OR RGL_ENABLE_RGLC)
 		PUBLIC
 			"tools/librglc/include/"
 	)
+else()
+	# we still need spirv-reflect
+	add_subdirectory(deps/ShaderTranspiler/deps/SPIRV-Reflect EXCLUDE_FROM_ALL)
 endif()
 
 # setup command line compiler utility
@@ -144,6 +147,11 @@ if (NOT VK_FORCE_DISABLED)
 	if(RGL_USE_MINIVKSDK)
 		set_target_properties(vulkan vvl VkLayer_utils loader_asm_gen_files PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
 	endif()
+
+	target_link_libraries(${PROJECT_NAME} PRIVATE SPIRV-Reflect ${X11_LIBRARIES})
+	set_target_properties("SPIRV-Reflect" PROPERTIES 
+		FOLDER "${RGL_IDE_ROOT}/Libraries"
+	)
 else()
 	target_compile_definitions(${PROJECT_NAME} PUBLIC RGL_VK_AVAILABLE=0)
 	set(RGL_VK_AVAILABLE OFF CACHE INTERNAL "RGL Vulkan")
@@ -224,8 +232,8 @@ endif()
 
 if (RGL_RUNTIME_COMPILATION)
 	target_link_libraries(${PROJECT_NAME} PRIVATE librglc)
-	target_link_libraries(${PROJECT_NAME} PRIVATE SPIRV-Reflect ${X11_LIBRARIES})
 endif()
+
 
 if (APPLE)
 	target_include_directories(${PROJECT_NAME} PRIVATE "tools/librglc/include/")
@@ -270,7 +278,7 @@ if (RGL_RUNTIME_COMPILATION OR RGL_ENABLE_RGLC)
 		FOLDER "${RGL_IDE_ROOT}"
 		XCODE_GENERATE_SCHEME ON
 	)
-	set_target_properties("SPIRV-Reflect" "ShaderTranspiler" PROPERTIES 
+	set_target_properties("ShaderTranspiler" PROPERTIES 
 		FOLDER "${RGL_IDE_ROOT}/Libraries"
 	)
 	if (RGL_WEBGPU_AVAILABLE)
