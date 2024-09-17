@@ -57,30 +57,32 @@ if (APPLE)
 endif()
 
 # setup compiler
-if (RGL_WEBGPU_AVAILABLE)
-	set(ST_ENABLE_WGSL ON CACHE INTERNAL "")
-else()
-	set(ST_ENABLE_WGSL OFF CACHE INTERNAL "")
+if (RGL_RUNTIME_COMPILATION OR RGL_ENABLE_RGLC)
+	if (RGL_WEBGPU_AVAILABLE)
+		set(ST_ENABLE_WGSL ON CACHE INTERNAL "")
+	else()
+		set(ST_ENABLE_WGSL OFF CACHE INTERNAL "")
+	endif()
+	set(ST_ENABLE_TEST OFF CACHE INTERNAL "")
+	if((WIN32 AND NOT WINDOWS_STORE) AND EXISTS "${CMAKE_CURRENT_LIST_DIR}/deps/ShaderTranspiler/deps/DirectXShaderCompiler/CMakeLists.txt")
+		message("Building DXC from source")
+		set(ST_BUNDLED_DXC ON)
+	else()
+		message("Not building DXC from source")
+		set(ST_BUNDLED_DXC OFF)
+	endif()
+	add_subdirectory(deps/ShaderTranspiler EXCLUDE_FROM_ALL)
+	file(GLOB_RECURSE LIBRGLC_SOURCES "tools/librglc/*.cpp" "tools/librglc/*.hpp")
+	add_library(librglc ${LIBRGLC_SOURCES}) 
+	target_link_libraries(librglc PRIVATE ShaderTranspiler)
+	target_compile_features(librglc PRIVATE cxx_std_20)
+	target_include_directories(librglc
+		PRIVATE
+			"tools/librglc/include/"
+		PUBLIC
+			"tools/librglc/include/"
+	)
 endif()
-set(ST_ENABLE_TEST OFF CACHE INTERNAL "")
-if((WIN32 AND NOT WINDOWS_STORE) AND EXISTS "${CMAKE_CURRENT_LIST_DIR}/deps/ShaderTranspiler/deps/DirectXShaderCompiler/CMakeLists.txt")
-	message("Building DXC from source")
-	set(ST_BUNDLED_DXC ON)
-else()
-	message("Not building DXC from source")
-	set(ST_BUNDLED_DXC OFF)
-endif()
-add_subdirectory(deps/ShaderTranspiler EXCLUDE_FROM_ALL)
-file(GLOB_RECURSE LIBRGLC_SOURCES "tools/librglc/*.cpp" "tools/librglc/*.hpp")
-add_library(librglc ${LIBRGLC_SOURCES}) 
-target_link_libraries(librglc PRIVATE ShaderTranspiler)
-target_compile_features(librglc PRIVATE cxx_std_20)
-target_include_directories(librglc
-	PRIVATE
-		"tools/librglc/include/"
-	PUBLIC
-		"tools/librglc/include/"
-)
 
 # setup command line compiler utility
 if (RGL_ENABLE_RGLC)
@@ -97,6 +99,7 @@ if (RGL_ENABLE_RGLC)
 		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/rglc"
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/rglc"
 	)
+	add_dependencies(rglc dxc) # ensure the dxc target is enabled
 endif()
 
 if(WINDOWS_STORE OR RGL_DISABLE_VK OR APPLE OR CMAKE_SYSTEM_NAME MATCHES "Emscripten")
@@ -219,9 +222,8 @@ endif()
 
 if (RGL_RUNTIME_COMPILATION)
 	target_link_libraries(${PROJECT_NAME} PRIVATE librglc)
+	target_link_libraries(${PROJECT_NAME} PRIVATE SPIRV-Reflect ${X11_LIBRARIES})
 endif()
-
-target_link_libraries(${PROJECT_NAME} PRIVATE SPIRV-Reflect ${X11_LIBRARIES})
 
 if (APPLE)
 	target_include_directories(${PROJECT_NAME} PRIVATE "tools/librglc/include/")
@@ -255,54 +257,62 @@ target_include_directories(${PROJECT_NAME}
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC NOMINMAX=1)
 
-set_target_properties("RGL" ${rglc_exe} "librglc" PROPERTIES 
+set_target_properties("RGL" PROPERTIES 
 	FOLDER "${RGL_IDE_ROOT}"
 	XCODE_GENERATE_SCHEME ON
 )
-set_target_properties("SPIRV-Reflect" "ShaderTranspiler" PROPERTIES 
-	FOLDER "${RGL_IDE_ROOT}/Libraries"
-)
-if (RGL_WEBGPU_AVAILABLE)
-set_target_properties("libtint" "tint_diagnostic_utils" PROPERTIES 
-	FOLDER "${RGL_IDE_ROOT}/Libraries"
-)
+
+if (RGL_RUNTIME_COMPILATION OR RGL_ENABLE_RGLC)
+	
+	set_target_properties(${rglc_exe} "librglc" PROPERTIES 
+		FOLDER "${RGL_IDE_ROOT}"
+		XCODE_GENERATE_SCHEME ON
+	)
+	set_target_properties("SPIRV-Reflect" "ShaderTranspiler" PROPERTIES 
+		FOLDER "${RGL_IDE_ROOT}/Libraries"
+	)
+	if (RGL_WEBGPU_AVAILABLE)
+	set_target_properties("libtint" "tint_diagnostic_utils" PROPERTIES 
+		FOLDER "${RGL_IDE_ROOT}/Libraries"
+	)
+	endif()
+
+	set_target_properties("GenericCodeGen" "glslang" "OGLCompiler" "MachineIndependent" "OSDependent" "SPIRV" "SPVRemapper" "glslang-default-resource-limits" PROPERTIES 
+		FOLDER "${RGL_IDE_ROOT}/Libraries/glslang"
+	)
+
+	set_target_properties(
+		"SPIRV-Tools-opt" "SPIRV-Tools-reduce" "SPIRV-Tools-static" "SPIRV-Tools-shared" "SPIRV-Tools-lint" "SPIRV-Tools-diff" "SPIRV-Tools-link"
+		"spirv-tools-shared-pkg-config" "spirv-tools-pkg-config"
+		PROPERTIES 
+		FOLDER "${RGL_IDE_ROOT}/Libraries/SPIRV-Tools Libraries"
+	)
+	set_target_properties(
+		"spirv-cross-core"
+		"spirv-cross-glsl" "spirv-cross-hlsl" "spirv-cross-msl" "spirv-cross-reflect" "spirv-cross-cpp" "spirv-cross-util"
+		PROPERTIES 
+		FOLDER "${RGL_IDE_ROOT}/Libraries/SPIRV-Cross"
+	)
+
+	if(ST_BUNDLED_DXC AND NOT WINDOWS_STORE)
+		function(dxc_set_for_dir DIR)
+			get_property(TGTS DIRECTORY "${DIR}" PROPERTY BUILDSYSTEM_TARGETS)
+			set_target_properties(
+				${TGTS}
+				PROPERTIES 
+				FOLDER "${RGL_IDE_ROOT}/Libraries/DirectXShaderCompiler"
+			)
+
+			get_property(SUBDIRS DIRECTORY "${DIR}" PROPERTY SUBDIRECTORIES)
+			foreach(SUBDIR IN LISTS SUBDIRS)
+				dxc_set_for_dir("${SUBDIR}")
+			endforeach()
+		endfunction()
+		dxc_set_for_dir("${CMAKE_CURRENT_LIST_DIR}/deps/ShaderTranspiler/deps/DirectXShaderCompiler")
+		dxc_set_for_dir("${CMAKE_CURRENT_LIST_DIR}/deps/ShaderTranspiler/deps/DirectXShaderCompiler/projects/include/Tracing")
+	endif()
 endif()
 
-set_target_properties("GenericCodeGen" "glslang" "OGLCompiler" "MachineIndependent" "OSDependent" "SPIRV" "SPVRemapper" "glslang-default-resource-limits" PROPERTIES 
-	FOLDER "${RGL_IDE_ROOT}/Libraries/glslang"
-)
-
-set_target_properties(
-	"SPIRV-Tools-opt" "SPIRV-Tools-reduce" "SPIRV-Tools-static" "SPIRV-Tools-shared" "SPIRV-Tools-lint" "SPIRV-Tools-diff" "SPIRV-Tools-link"
-	"spirv-tools-shared-pkg-config" "spirv-tools-pkg-config"
-	PROPERTIES 
-	FOLDER "${RGL_IDE_ROOT}/Libraries/SPIRV-Tools Libraries"
-)
-
-set_target_properties(
-	"spirv-cross-core"
-	"spirv-cross-glsl" "spirv-cross-hlsl" "spirv-cross-msl" "spirv-cross-reflect" "spirv-cross-cpp" "spirv-cross-util"
-	PROPERTIES 
-	FOLDER "${RGL_IDE_ROOT}/Libraries/SPIRV-Cross"
-)
-
-if(ST_BUNDLED_DXC AND NOT WINDOWS_STORE)
-	function(dxc_set_for_dir DIR)
-		get_property(TGTS DIRECTORY "${DIR}" PROPERTY BUILDSYSTEM_TARGETS)
-		set_target_properties(
-			${TGTS}
-			PROPERTIES 
-			FOLDER "${RGL_IDE_ROOT}/Libraries/DirectXShaderCompiler"
-		)
-
-		get_property(SUBDIRS DIRECTORY "${DIR}" PROPERTY SUBDIRECTORIES)
-		foreach(SUBDIR IN LISTS SUBDIRS)
-			dxc_set_for_dir("${SUBDIR}")
-		endforeach()
-	endfunction()
-	dxc_set_for_dir("${CMAKE_CURRENT_LIST_DIR}/deps/ShaderTranspiler/deps/DirectXShaderCompiler")
-	dxc_set_for_dir("${CMAKE_CURRENT_LIST_DIR}/deps/ShaderTranspiler/deps/DirectXShaderCompiler/projects/include/Tracing")
-endif()
 
 if (NOT RGL_SKIP_BACKEND_CHECK)
 	if (RGL_VK_AVAILABLE OR RGL_DX12_AVAILABLE OR RGL_MTL_AVAILABLE OR RGL_WEBGPU_AVAILABLE)

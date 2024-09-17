@@ -71,11 +71,19 @@ else()
 endif()
 
 if (VS_CROSSCOMP AND CMAKE_HOST_WIN32)
-	set(CMAKE_CROSSCOMPILING ON CACHE INTERNAL "")
+	message(here)
+	set(CMAKE_CROSSCOMPILING ON CACHE INTERNAL "" FORCE)
+endif()
+
+# because the above code sometimes just doesn't work??
+if (CMAKE_CROSSCOMPILING OR VS_CROSSCOMP)
+	set(RVE_CROSSCOMP ON CACHE INTERNAL "")
+else()
+	set(RVE_CROSSCOMP OFF CACHE INTERNAL "")
 endif()
 
 # ninja does not use separate config directories for some reason
-if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
+if (RVE_CROSSCOMP AND NOT RAVENGINE_SERVER)
 	set(TOOLS_DIR ${CMAKE_BINARY_DIR}/host-tools CACHE INTERNAL "")
 	if (CMAKE_HOST_WIN32)
 		set(rglc_ext ".exe")
@@ -88,6 +96,7 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 		set(RVEMC_PATH "${TOOLS_DIR}/RVEMC/rvemc" CACHE INTERNAL "")
 		set(RVEAC_PATH "${TOOLS_DIR}/RVEAC/rveac" CACHE INTERNAL "")
 		set(RVESKC_PATH "${TOOLS_DIR}/RVESKC/rveskc" CACHE INTERNAL "")
+		set(ST_DXC_EXE_PATH "") # we never build this here 
 	else()
 		set(PROTOC_CMD "${TOOLS_DIR}/protobuf/Release/protoc" CACHE INTERNAL "")
 		set(rglc_path "${TOOLS_DIR}/RGL/Release/rglc${rglc_ext}" CACHE INTERNAL "")
@@ -96,6 +105,7 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 		set(RVEMC_PATH "${TOOLS_DIR}/RVEMC/Release/rvemc" CACHE INTERNAL "")
 		set(RVEAC_PATH "${TOOLS_DIR}/RVEAC/Release/rveac" CACHE INTERNAL "")
 		set(RVESKC_PATH "${TOOLS_DIR}/RVESKC/Release/rveskc" CACHE INTERNAL "")
+		set(ST_DXC_EXE_PATH "${TOOLS_DIR}/RGL/deps/ShaderTranspiler/deps/DirectXShaderCompiler/Release/bin/dxc.exe" CACHE INTERNAL "")
 	endif()
 
 	file(MAKE_DIRECTORY ${TOOLS_DIR})
@@ -130,10 +140,14 @@ if (CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
 		set(RVESKC_PATH "${RVESKC_PATH}.exe" CACHE INTERNAL "")
 	endif()
 
+	if (WIN32)
+		set(dxc_target "dxc")
+	endif()
+
 	add_custom_command(
 		PRE_BUILD
-		OUTPUT "${PROTOC_CMD}" "${rglc_path}" "${FlatBuffers_EXECUTABLE}" "${RVESC_PATH}" "${RVEAC_PATH}" "${RVEMC_PATH}" "${RVESKC_PATH}"
-		COMMAND ${CMAKE_COMMAND} --build . --config Release --target protoc rglc flatc rvesc rveac rveskc rvemc
+		OUTPUT "${PROTOC_CMD}" "${rglc_path}" "${FlatBuffers_EXECUTABLE}" "${RVESC_PATH}" "${RVEAC_PATH}" "${RVEMC_PATH}" "${RVESKC_PATH}" "${ST_DXC_EXE_PATH}"
+		COMMAND ${CMAKE_COMMAND} --build . --config Release --target protoc rglc flatc rvesc rveac rveskc rvemc ${dxc_target} --parallel
 		WORKING_DIRECTORY "${TOOLS_DIR}"
 		VERBATIM
 	)
@@ -240,7 +254,7 @@ SET(BUILD_EXAMPLE OFF CACHE INTERNAL "")
 add_subdirectory(deps/libnyquist EXCLUDE_FROM_ALL)
 
 # RavEngine Graphics Library (RGL)
-if (NOT CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
+if (NOT RVE_CROSSCOMP AND NOT RAVENGINE_SERVER)
 	set(RGL_ENABLE_RGLC ON CACHE INTERNAL "")
 else()
 	set(RGL_ENABLE_RGLC OFF CACHE INTERNAL "")
@@ -253,7 +267,7 @@ if (NOT RAVENGINE_SERVER)
 	set(RGL_LIB "RGL")
 endif()
 
-if (NOT CMAKE_CROSSCOMPILING AND NOT RAVENGINE_SERVER)
+if (NOT RVE_CROSSCOMP AND NOT RAVENGINE_SERVER)
 	include(cmake/importers.cmake)
 	include(cmake/rvesc.cmake)
 	set(RVESC_PATH rvesc CACHE INTERNAL "")
@@ -286,13 +300,13 @@ else()
 endif()
 
 
-if(CMAKE_CROSSCOMPILING)
+if(RVE_CROSSCOMP)
 	set(protobuf_BUILD_PROTOC_BINARIES OFF CACHE INTERNAL "")	# host-tools will build protoc
 else()
 	set(protobuf_BUILD_PROTOC_BINARIES ON CACHE INTERNAL "")	# this instance will build protoc
 endif()
 add_subdirectory(deps/GameNetworkingSockets EXCLUDE_FROM_ALL)
-if (CMAKE_CROSSCOMPILING)
+if (RVE_CROSSCOMP)
 	if (NOT RAVENGINE_SERVER)
 		set(test_rglc "${rglc_path}")
 	endif()
@@ -335,7 +349,7 @@ if (NOT RAVENGINE_SERVER)
 	set(ZLIB_LIBRARY zlibstatic CACHE INTERNAL "")
 	set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/deps/assimp/contrib/zlib" CACHE INTERNAL "")
 	set(CMAKE_DISABLE_FIND_PACKAGE_ZLIB OFF CACHE INTERNAL "")
-	if (CMAKE_CROSSCOMPILING)
+	if (RVE_CROSSCOMP)
 		set(SA_BUILD_FLATC OFF CACHE INTERNAL "")
 	endif()
 	add_subdirectory(deps/SteamAudio-All EXCLUDE_FROM_ALL)
