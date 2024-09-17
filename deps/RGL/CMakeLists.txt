@@ -99,7 +99,9 @@ if (RGL_ENABLE_RGLC)
 		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/rglc"
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/rglc"
 	)
-	add_dependencies(rglc dxc) # ensure the dxc target is enabled
+	if (WIN32)
+		add_dependencies(rglc dxc) # ensure the dxc target is enabled
+	endif()
 endif()
 
 if(WINDOWS_STORE OR RGL_DISABLE_VK OR APPLE OR CMAKE_SYSTEM_NAME MATCHES "Emscripten")
