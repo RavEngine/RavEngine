@@ -62,3 +62,6 @@ add_subdirectory(../assimp EXCLUDE_FROM_ALL "${CMAKE_BINARY_DIR}/assimp")
 
 include(../../cmake/importers.cmake)
 
+include(../../cmake/rtti.cmake)
+
+disable_rtti_in_dir("${CMAKE_CURRENT_LIST_DIR}")
