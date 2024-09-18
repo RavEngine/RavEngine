@@ -164,7 +164,7 @@ else()
 endif()
 
 if (NOT RAVENGINE_SERVER)
-	set(DISABLE_RTTI_AND_EXCEPTIONS OFF CACHE INTERNAL "")
+	set(DISABLE_RTTI_AND_EXCEPTIONS ON CACHE INTERNAL "")
 	add_subdirectory(deps/RmlUi-freetype EXCLUDE_FROM_ALL)
 	set(RML_LIB "RmlCore")
 endif()
@@ -483,6 +483,7 @@ set_source_files_properties(${SHADERS} PROPERTIES HEADER_FILE_ONLY TRUE)	# preve
 # register the library
 add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} ${NATVIS} ${SHADERS})
 rve_enable_IPO(${PROJECT_NAME})
+target_compile_definitions(${PROJECT_NAME} PUBLIC RMLUI_USE_CUSTOM_RTTI=1)
 
 # set server define
 if(RAVENGINE_SERVER)
@@ -498,6 +499,10 @@ endif()
 # else()
 # 	target_compile_options(${PROJECT_NAME} PUBLIC "/GR-")
 # endif()
+
+include(cmake/rtti.cmake)
+disable_rtti_in_dir("${CMAKE_CURRENT_LIST_DIR}/")
+
 
 # disable the dllimport stuff in RMLUI
 target_compile_definitions(${PROJECT_NAME} PUBLIC -DRMLUI_STATIC_LIB=1 NOMINMAX=1)

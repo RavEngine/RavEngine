@@ -16,6 +16,7 @@ macro(make_importer dir)
 	target_include_directories(${dir} PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../include/RavEngine" "${CMAKE_CURRENT_LIST_DIR}/../deps/parallel-hashmap/parallel_hashmap")
 
 	set_target_properties(${dir} PROPERTIES XCODE_GENERATE_SCHEME ON)
+	target_compile_definitions(${dir} PRIVATE CXXOPTS_NO_RTTI=1)
 
 	set_target_properties(${dir}
 		PROPERTIES

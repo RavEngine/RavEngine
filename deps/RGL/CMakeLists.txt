@@ -94,6 +94,7 @@ if (RGL_ENABLE_RGLC)
 	target_compile_features(rglc PRIVATE cxx_std_20)
 	target_link_libraries(rglc PRIVATE librglc)
 	target_include_directories(rglc PRIVATE "deps/cxxopts/include")
+	target_compile_definitions(rglc PRIVATE CXXOPTS_NO_RTTI=1)
 	set(rglc_path "rglc" CACHE INTERNAL "rglc compiler path")
 	set(rglc_exe "rglc")
 	set_target_properties(rglc

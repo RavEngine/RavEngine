@@ -11,4 +11,6 @@ add_executable(rvesc ${RVESC_SRC})
 target_compile_features(rvesc PUBLIC cxx_std_20)
 
 target_link_libraries(rvesc PUBLIC librglc cxxopts simdjson rvesc_resources fmt)
+target_compile_definitions(rvesc PRIVATE CXXOPTS_NO_RTTI=1)
+
 

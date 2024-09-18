@@ -16,7 +16,6 @@
 #include "AddRemoveAction.hpp"
 #include "PolymorphicIndirection.hpp"
 #include "SparseSet.hpp"
-#include "SharedObject.hpp"
 #if !RVE_SERVER
     #include "VRAMSparseSet.hpp"
     #include "BuiltinMaterials.hpp"
@@ -93,7 +92,7 @@ namespace RavEngine {
         enum { value = sizeof(test<T>(0)) == sizeof(YesType) };
     };
 
-	class World : public RavEngine::virtual_enable_shared_from_this<World> {
+	class World : public std::enable_shared_from_this<World> {
 		friend class AudioPlayer;
 		friend class App;
         friend class PhysicsBodyComponent;
