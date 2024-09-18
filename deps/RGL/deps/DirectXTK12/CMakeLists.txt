@@ -90,7 +90,6 @@ set(LIBRARY_HEADERS
     Inc/EffectPipelineStateDescription.h
     Inc/GeometricPrimitive.h
     Inc/GraphicsMemory.h
-    Inc/Model.h
     Inc/PostProcess.h
     Inc/PrimitiveBatch.h
     Inc/RenderTargetState.h
@@ -124,10 +123,6 @@ set(LIBRARY_SOURCES
     Src/GraphicsMemory.cpp
     Src/LinearAllocator.cpp
     Src/LinearAllocator.h
-    Src/Model.cpp
-    Src/ModelLoadCMO.cpp
-    Src/ModelLoadSDKMESH.cpp
-    Src/ModelLoadVBO.cpp
     Src/NormalMapEffect.cpp
     Src/PBREffect.cpp
     Src/PBREffectFactory.cpp
@@ -404,42 +399,6 @@ install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}-config-version.cmake
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PACKAGE_NAME})
 
-# Model uses dynamic_cast, so we need /GR (Enable RTTI)
-if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /Wall /GR /fp:fast "$<$<NOT:$<CONFIG:DEBUG>>:/guard:cf>")
-    target_link_options(${PROJECT_NAME} PRIVATE /DYNAMICBASE /NXCOMPAT)
-
-    if((CMAKE_SIZEOF_VOID_P EQUAL 4) AND (NOT ${DIRECTX_ARCH} MATCHES "^arm"))
-      target_link_options(${PROJECT_NAME} PRIVATE /SAFESEH)
-    endif()
-
-    if(ENABLE_SPECTRE_MITIGATION
-       AND (MSVC_VERSION GREATER_EQUAL 1913)
-       AND (NOT WINDOWS_STORE)
-       AND (NOT (CMAKE_CXX_COMPILER_ID MATCHES "Clang")))
-      message(STATUS "Building Spectre-mitigated libraries.")
-      target_compile_options(${PROJECT_NAME} PRIVATE "/Qspectre")
-    endif()
-
-    if((MSVC_VERSION GREATER_EQUAL 1924)
-       AND ((NOT (CMAKE_CXX_COMPILER_ID MATCHES "Clang")) OR (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 16.0)))
-      target_compile_options(${PROJECT_NAME} PRIVATE /ZH:SHA_256)
-    endif()
-
-    if((MSVC_VERSION GREATER_EQUAL 1928)
-       AND (CMAKE_SIZEOF_VOID_P EQUAL 8)
-       AND ((NOT (CMAKE_CXX_COMPILER_ID MATCHES "Clang")) OR (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13.0)))
-      target_compile_options(${PROJECT_NAME} PRIVATE "$<$<NOT:$<CONFIG:DEBUG>>:/guard:ehcont>")
-      target_link_options(${PROJECT_NAME} PRIVATE "$<$<NOT:$<CONFIG:DEBUG>>:/guard:ehcont>")
-    endif()
-
-    if(NO_WCHAR_T)
-      message(STATUS "Using non-native wchar_t as unsigned short")
-      target_compile_options(${PROJECT_NAME} PRIVATE "/Zc:wchar_t-")
-    endif()
-else()
-    target_compile_definitions(${PROJECT_NAME} PRIVATE $<IF:$<CONFIG:DEBUG>,_DEBUG,NDEBUG>)
-endif()
 
 if(XBOX_CONSOLE_TARGET STREQUAL "scarlett")
     target_compile_options(${PROJECT_NAME} PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/favor:AMD64 /arch:AVX2,-march=znver2>)
