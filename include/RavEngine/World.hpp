@@ -351,6 +351,8 @@ namespace RavEngine {
 
         // data for the render engine
         struct RenderData{
+            RenderData() = default; // clang 16 fix
+            
             template<typename uploadType, typename auxType>
             struct LightDataType{
                 using upload_data_t = uploadType;
