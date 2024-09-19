@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        compiler: [ {cc: "/usr/bin/gcc-13", cxx: "/usr/bin/g++-13"}, {cc: "/usr/bin/clang-16", cxx: "/usr/bin/clang++-16" } ]
+        compiler: [ {cc: "gcc-13", cxx: "g++-13"}, {cc: "clang-18", cxx: "clang++-18" } ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
         run: |
             mkdir -p build 
             cd build
-            CC=${{ matrix.compiler.cc }} CXX=${{ matrix.compiler.cxx }} cmake -G "Ninja" .. 
+            CC=/usr/bin/${{ matrix.compiler.cc }} CXX=/usr/bin/${{ matrix.compiler.cxx }} cmake -G "Ninja" .. 
       - name: Build
         run: cd build; cmake --build . --config Release --target RavEngine rvesc rveskc rveac rvemc 
       
