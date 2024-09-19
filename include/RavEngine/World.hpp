@@ -28,6 +28,7 @@
 #include "CallableTraits.hpp"
 #include "Format.hpp"
 #include "Queue.hpp"
+#include "Layer.hpp"
 
 namespace RavEngine {
 	struct Entity;
@@ -384,6 +385,9 @@ namespace RavEngine {
             LightDataType<VRAMSparseSet<entity_t, PointLightUploadData>, void*> pointLightData;
              
             LightDataType<VRAMSparseSet<entity_t, SpotLightDataUpload>, void*> spotLightData;
+            
+            // uses world-local ID
+            VRAMVector<renderlayer_t> renderLayers{32};
 
             // uses world-local ID
             VRAMVector<matrix4> worldTransforms;
@@ -936,13 +940,17 @@ namespace RavEngine {
         }
         void NetworkingSpawn(ctti_t,Entity&);
         void NetworkingDestroy(entity_t);
+        void SetupPerEntityRenderData(entity_t);
     public:
+        
+        void SetEntityRenderlayer(entity_t globalid, renderlayer_t layers);
         
         template<typename T, typename ... A>
         inline T Instantiate(A&& ... args){
             auto id = CreateEntity();
             T en;
             en.id = id;
+            SetupPerEntityRenderData(id);
             en.Create(args...);
             NetworkingSpawn(CTTI<T>(),en);
             return en;

@@ -24,6 +24,7 @@
 #include <unordered_set>
 #include "cluster_defs.h"
 #include "Queue.hpp"
+#include "Layer.hpp"
 
 struct SDL_Window;
 
@@ -174,6 +175,7 @@ namespace RavEngine {
             float radius = 0;
 			uint32_t isSingleInstanceMode = 0;	// skinning vs not skinning
 			uint32_t numLODs = 0;
+            renderlayer_t cameraRenderLayers = 0;
 		};
 
 		struct SkinningPrepareUBO {

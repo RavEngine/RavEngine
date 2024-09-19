@@ -104,6 +104,7 @@ namespace RavEngine {
 		float FOV;
 		float nearClip;
 		float farClip;
+        renderlayer_t renderLayers = ALL_LAYERS;
 
 		ViewportOverride viewportOverride;
 

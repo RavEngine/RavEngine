@@ -4,6 +4,7 @@
 #include "mathtypes.hpp"
 #include "DepthPyramid.hpp"
 #include "Vector.hpp"
+#include "Layer.hpp"
 
 namespace RavEngine{
 	struct ViewportOverride {
@@ -25,8 +26,8 @@ namespace RavEngine{
 			glm::mat4 viewOnly;
 			glm::vec3 camPos;
 			glm::vec2 zNearFar;
-
 			ViewportOverride viewportOverride;
+            renderlayer_t layers;
 		};
 		Vector<camData> camDatas;
 		dim_t<int> pixelDimensions;

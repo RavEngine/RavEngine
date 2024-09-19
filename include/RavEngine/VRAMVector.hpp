@@ -80,6 +80,10 @@ namespace RavEngine {
             reserve(initialSize);
         }
         
+        VRAMVector(size_type numValues){
+            resize(numValues);
+        }
+        
         VRAMVector(const VRAMVector&) = delete; // disallow copying
         
         VRAMVector(VRAMVector&& other){         // move construction

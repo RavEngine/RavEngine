@@ -1,6 +1,7 @@
 #pragma once
 #include "Registry.hpp"
 #include "CTTI.hpp"
+#include "Layer.hpp"
 
 namespace RavEngine{
 struct World;
@@ -61,6 +62,10 @@ struct Entity : public AutoCTTI{
     
     inline void MoveTo(World& newWorld) const{
         Registry::MoveEntityToWorld(id, newWorld);
+    }
+    
+    void SetEntityRenderlayer(renderlayer_t layers) const{
+        Registry::SetEntityRenderlayer(id, layers);
     }
     
     Transform& GetTransform();

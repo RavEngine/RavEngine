@@ -7,7 +7,7 @@
 
 namespace librglc {
 
-    constexpr static auto MTL_FIRST_BUFFER = 5;
+    constexpr static auto MTL_FIRST_BUFFER = 6;
 
 	enum class API : uint8_t {
 		Vulkan,

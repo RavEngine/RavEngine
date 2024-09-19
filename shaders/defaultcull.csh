@@ -8,6 +8,7 @@ layout(push_constant, std430) uniform UniformBufferObject{
     float radius;
     uint isSingleInstanceMode;
     uint numLODs;
+    uint cameraRenderLayers;
 } ubo;
 
 layout(std430, binding = 0) readonly buffer idBuffer
@@ -43,8 +44,12 @@ layout(std430, binding = 4) readonly buffer lodDistanceSSBO{
     float lodDistanceBuffer[];
 };
 
-layout(binding = 5) uniform texture2D depthPyramid;
-layout(binding = 6) uniform sampler depthPyramidSampler;
+layout(scalar, binding = 5) readonly buffer renderLayerSSBO{
+    uint renderLayerBuffer[];
+};
+
+layout(binding = 6) uniform texture2D depthPyramid;
+layout(binding = 7) uniform sampler depthPyramidSampler;
 
 // adapted from: https://gist.github.com/XProger/6d1fd465c823bba7138b638691831288
 // Computes signed distance between a point and a plane
@@ -141,6 +146,12 @@ void main() {
 	}
 
 	const uint entityID = entityIDs[currentEntity];
+    
+    // is this entity part of a camera layer? if not, bail
+    if ((ubo.cameraRenderLayers & renderLayerBuffer[entityID]) == 0){
+        return;
+    }
+    
 	mat4 model = modelBuffer[entityID];
     mat3 modelNoTranslate = mat3(model);
 

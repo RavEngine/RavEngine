@@ -48,6 +48,11 @@ class Registry{
         ReleaseEntity(global_id);
     }
     
+    static inline void SetEntityRenderlayer(entity_t global_id, renderlayer_t layers){
+        auto& data = entityData[global_id];
+        data.world->SetEntityRenderlayer(global_id, layers);
+    }
+    
     static inline bool IsInWorld(entity_t global_id){
         auto& data = entityData[global_id];
         return data.world != nullptr;

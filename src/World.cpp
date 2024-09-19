@@ -489,6 +489,19 @@ void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
     });
 }
 #if !RVE_SERVER
+void World::SetupPerEntityRenderData(entity_t worldID){
+    auto& renderLayers = renderData->renderLayers;
+    if (renderLayers.size() <= worldID){
+        auto newSize = closest_power_of(worldID, 2);
+        renderLayers.resize(newSize);
+    }
+    renderLayers[worldID] = ALL_LAYERS;
+}
+
+void World::SetEntityRenderlayer(entity_t globalid, renderlayer_t layers){
+    renderData->renderLayers[localToGlobal[globalid]] = layers;
+}
+
 void DestroyMeshRenderDataGeneric(const auto& mesh, auto material, auto&& renderData, entity_t local_id, auto&& iteratorComparator){
     
     bool removeContains = false;
