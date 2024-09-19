@@ -950,7 +950,9 @@ namespace RavEngine {
             auto id = CreateEntity();
             T en;
             en.id = id;
+#if !RVE_SERVER
             SetupPerEntityRenderData(id);
+#endif
             en.Create(args...);
             NetworkingSpawn(CTTI<T>(),en);
             return en;
