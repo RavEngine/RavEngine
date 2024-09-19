@@ -1143,7 +1143,7 @@ struct LightingType{
 					auto shadowMapSize = shadowTexture->GetSize().width;
 					renderFromPerspective.template operator()<false>(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, {}, shadowRenderPass, [](auto&& mat) {
 						return mat->GetShadowRenderPipeline();
-						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true, .Opaque = true }, lightMats.depthPyramid, ALL_LAYERS);
+						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true, .Opaque = true }, lightMats.depthPyramid, light.shadowLayers);
 
 				}
 				postshadowmapFunction(owner);
@@ -1176,8 +1176,8 @@ struct LightingType{
 				.shadowmapTexture = origLight.shadowData.shadowMap,
 				.spillData = light.lightViewProj
 			};
-			};
-
+        };
+        
 		renderLightShadowmap(worldOwning->renderData->spotLightData, 1,
 			spotlightShadowMapFunction,
 			[](entity_t unused) {}

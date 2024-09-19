@@ -46,6 +46,7 @@ struct DirectionalLightData{
     float intensity;
     int castsShadows;
     int shadowmapBindlessIndex;
+    uint shadowRenderLayers;
 };
 
 layout(scalar, binding = 13) readonly buffer dirLightSSBO{

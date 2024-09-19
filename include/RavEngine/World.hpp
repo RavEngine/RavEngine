@@ -324,6 +324,7 @@ namespace RavEngine {
             float intensity;
             int castsShadows;
             int shadowmapBindlessIndex;
+            renderlayer_t shadowLayers;
         };
 
         struct DirLightAuxData {
@@ -336,6 +337,7 @@ namespace RavEngine {
             float intensity;
             int castsShadows;
             int shadowmapBindlessIndex;
+            renderlayer_t shadowLayers;
         };
 
         struct SpotLightDataUpload {
@@ -347,6 +349,7 @@ namespace RavEngine {
             float penumbraAngle;
             int castsShadows;
             uint32_t shadowmapBindlessIndex;
+            renderlayer_t shadowLayers;
         };
 
         // data for the render engine

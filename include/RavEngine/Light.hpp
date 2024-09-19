@@ -3,6 +3,7 @@
 #include "Common3D.hpp"
 #include "IDebugRenderable.hpp"
 #include "cluster_defs.h"
+#include "Layer.hpp"
 #if !RVE_SERVER
 #include "DepthPyramid.hpp"
 #endif
@@ -42,12 +43,21 @@ public:
 struct ShadowLightBase : public Light {
 private:
 	bool doesCastShadow = false;
+    renderlayer_t shadowLayers = ALL_LAYERS;
+
 public:
 	bool CastsShadows() const { return doesCastShadow; }
 	void SetCastsShadows(bool casts) {
 		invalidate();
 		doesCastShadow = casts;
 	}
+    constexpr void SetShadowLayers(renderlayer_t layers){
+        shadowLayers = layers;
+    }
+    
+    constexpr auto GetShadowLayers() const{
+        return shadowLayers;
+    }
 };
 
 /**

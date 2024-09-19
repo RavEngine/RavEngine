@@ -18,6 +18,7 @@ struct PointLight
     float intensity;
     int castsShadows;
     uint shadowmapBindlessIndex;
+    uint shadowRenderLayers;
 };
 
 struct SpotLight{
@@ -29,6 +30,7 @@ struct SpotLight{
     float penumbraAngle;
     int castsShadows;
     uint shadowmapBindlessIndex;
+    uint shadowRenderLayers;
 };
 
 

@@ -403,6 +403,7 @@ void World::setupRenderTasks(){
                     dirLightUploadData.intensity = lightdata.GetIntensity();
                     dirLightUploadData.castsShadows = lightdata.CastsShadows();
                     dirLightUploadData.shadowmapBindlessIndex = lightdata.shadowData.shadowMap->GetDefaultView().GetReadonlyBindlessTextureHandle();
+                    dirLightUploadData.shadowLayers = lightdata.GetShadowLayers();
                     lightdata.clearInvalidate();
                     
                     dirLightAuxData.shadowDistance = lightdata.GetShadowDistance();
@@ -432,6 +433,7 @@ void World::setupRenderTasks(){
                     denseData.intensity = lightData.GetIntensity();
                     denseData.castsShadows = lightData.CastsShadows();
                     denseData.shadowmapBindlessIndex = lightData.shadowData.shadowMap->GetDefaultView().GetReadonlyBindlessTextureHandle();
+                    denseData.shadowLayers = lightData.GetShadowLayers();
                     lightData.clearInvalidate();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this
@@ -457,6 +459,7 @@ void World::setupRenderTasks(){
                     denseData.intensity = lightData.GetIntensity();
                     denseData.castsShadows = lightData.CastsShadows();
                     denseData.shadowmapBindlessIndex = lightData.shadowData.mapCube->GetDefaultView().GetReadonlyBindlessTextureHandle();
+                    denseData.shadowLayers = lightData.GetShadowLayers();
                     ptr->Get(i).clearInvalidate();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this
