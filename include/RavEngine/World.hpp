@@ -409,7 +409,7 @@ namespace RavEngine {
             locked_node_hashmap<Ref<MaterialInstance>, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;
         };
 
-        std::optional<RenderData> renderData;
+        RenderData renderData;
 
         void updateStaticMeshMaterial(entity_t localId, Ref<MaterialInstance> oldMat, Ref<MaterialInstance> newMat, Ref<MeshCollectionStatic> mesh);
         void updateSkinnedMeshMaterial(entity_t localId, Ref<MaterialInstance> oldMat, Ref<MaterialInstance> newMat, Ref<MeshCollectionSkinned> mesh, Ref<SkeletonAsset> skeleton);
@@ -637,24 +637,16 @@ namespace RavEngine {
 #if !RVE_SERVER
             // if it's a light, register it in the container
             if constexpr (std::is_same_v<T, DirectionalLight>){
-                if (renderData) {
-                    renderData->directionalLightData.DefaultAddAt(local_id);
-                }
+                renderData.directionalLightData.DefaultAddAt(local_id);
             }
             else if constexpr (std::is_same_v<T, AmbientLight>){
-                if (renderData) {
-                    renderData->ambientLightData.DefaultAddAt(local_id);
-                }
+                renderData.ambientLightData.DefaultAddAt(local_id);
             }
             else if constexpr (std::is_same_v<T, PointLight>){
-                if (renderData) {
-                    renderData->pointLightData.DefaultAddAt(local_id);
-                }
+                renderData.pointLightData.DefaultAddAt(local_id);
             }
             else if constexpr (std::is_same_v<T, SpotLight>){
-                if (renderData) {
-                    renderData->spotLightData.DefaultAddAt(local_id);
-                }
+                renderData.spotLightData.DefaultAddAt(local_id);
             }
 #endif
             //detect if T constructor's first argument is an entity_t, if it is, then we need to pass that before args (pass local_id again)
@@ -712,24 +704,16 @@ namespace RavEngine {
 #if !RVE_SERVER
             // if it's a light, register it in the container
             if constexpr (std::is_same_v<T, DirectionalLight>){
-                if (renderData) {
-                    renderData->directionalLightData.EraseAtSparseIndex(local_id);
-                }
+                renderData.directionalLightData.EraseAtSparseIndex(local_id);
             }
             else if constexpr (std::is_same_v<T, AmbientLight>){
-                if (renderData) {
-                    renderData->ambientLightData.EraseAtSparseIndex(local_id);
-                }
+                renderData.ambientLightData.EraseAtSparseIndex(local_id);
             }
             else if constexpr (std::is_same_v<T, PointLight>){
-                if (renderData) {
-                    renderData->pointLightData.EraseAtSparseIndex(local_id);
-                }
+                renderData.pointLightData.EraseAtSparseIndex(local_id);
             }
             else if constexpr (std::is_same_v<T, SpotLight>){
-                if (renderData) {
-                    renderData->spotLightData.EraseAtSparseIndex(local_id);
-                }
+                renderData.spotLightData.EraseAtSparseIndex(local_id);
             }
             else if constexpr (std::is_same_v<T, AudioSourceComponent>) {
                 destroyedAudioSources.enqueue(local_id);

@@ -63,13 +63,6 @@ void RavEngine::World::Tick(float scale) {
 
 
 RavEngine::World::World() : Solver(std::make_unique<PhysicsSolver>()){
-    // init render data if the render engine is online
-#if !RVE_SERVER
-
-    if (GetApp() && GetApp()->GetDevice()) {
-        renderData.emplace();
-    }
-#endif
     SetupTaskGraph();
     EmplacePolymorphicSystem<ScriptSystem>();
     EmplaceSystem<AnimatorSystem>();
@@ -78,9 +71,7 @@ RavEngine::World::World() : Solver(std::make_unique<PhysicsSolver>()){
     CreateDependency<AnimatorSystem,PhysicsLinkSystemRead>();	// run physics reads before animator
     CreateDependency<PhysicsLinkSystemWrite,ScriptSystem>();	// run physics write before scripts
 	CreateDependency<SocketSystem, AnimatorSystem>();			// run animator before socket system
-#if !RVE_SERVER
 
-#endif
     EmplaceSystem<RPCSystem>();
 #if !RVE_SERVER
 
@@ -311,10 +302,10 @@ void World::setupRenderTasks(){
         // to avoid an indirection, we assume all entities may have a transform
         // this wastes some VRAM
         auto nEntities = localToGlobal.size() + std::min(nCreatedThisTick, 1);  // hack: if I don't add 1, then the pbr.vsh shader OOBs, not sure why
-        auto currentBufferSize = renderData->worldTransforms.size();
+        auto currentBufferSize = renderData.worldTransforms.size();
         if (nEntities > currentBufferSize){
             auto newSize = closest_power_of(nEntities, 16);
-            renderData->worldTransforms.resize(newSize);
+            renderData.worldTransforms.resize(newSize);
         }
         nCreatedThisTick = 0;
     });
@@ -335,7 +326,7 @@ void World::setupRenderTasks(){
                     // write new matrix
                     auto owner = trns.GetOwner();
                     auto ownerIDInWorld = owner.GetIdInWorld();
-                    renderData->worldTransforms[ownerIDInWorld] = trns.GetWorldMatrix();
+                    renderData.worldTransforms[ownerIDInWorld] = trns.GetWorldMatrix();
                 });
 
                 trns.ClearTickDirty();
@@ -345,7 +336,7 @@ void World::setupRenderTasks(){
 
     auto updateRenderDataStaticMesh = renderTasks.emplace([this,updateRenderDataGeneric] {
         constexpr static StaticMesh* ptrForTemplate = nullptr;
-        updateRenderDataGeneric(ptrForTemplate,renderData->staticMeshRenderData, [](auto& sm){
+        updateRenderDataGeneric(ptrForTemplate,renderData.staticMeshRenderData, [](auto& sm){
             return sm.GetMesh();
         }, [](auto& row, auto& meshToUpdate){
             return std::find_if(row.commands.begin(), row.commands.end(), [&](const auto& value) {
@@ -358,7 +349,7 @@ void World::setupRenderTasks(){
     auto updateRenderDataSkinnedMesh = renderTasks.emplace([this,updateRenderDataGeneric] {
         constexpr static SkinnedMeshComponent* ptrForTemplate = nullptr;
         constexpr static AnimatorComponent* ptrForTemplate2 = nullptr;
-        updateRenderDataGeneric(ptrForTemplate,renderData->skinnedMeshRenderData, [](auto& sm){
+        updateRenderDataGeneric(ptrForTemplate,renderData.skinnedMeshRenderData, [](auto& sm){
             return std::make_pair(sm.GetMesh(), sm.GetSkeleton());
         }, [](auto& row, auto& valuesToCompare){
             return std::find_if(row.commands.begin(), row.commands.end(), [&](const auto& value) {
@@ -372,7 +363,7 @@ void World::setupRenderTasks(){
             if (t.getTickDirty()) {
                 auto owner = t.GetOwner();
                 auto ownerIDInWorld = owner.GetIdInWorld();
-                renderData->worldTransforms[ownerIDInWorld] = t.GetWorldMatrix();
+                renderData.worldTransforms[ownerIDInWorld] = t.GetWorldMatrix();
             }
         });
     });
@@ -389,7 +380,7 @@ void World::setupRenderTasks(){
                     auto rot = owner.GetTransform().WorldUp();
 
                     // use local ID here, no need for local-to-global translation
-                    auto& uploadData = renderData->directionalLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i));
+                    auto& uploadData = renderData.directionalLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i));
                     uploadData.direction = rot;
                 }
                 auto& lightdata = ptr->Get(i);
@@ -397,8 +388,8 @@ void World::setupRenderTasks(){
                     // update color data if it has changed
                     auto& color = lightdata.GetColorRGBA();
                     auto owner = ptr->GetOwner(i);
-                    auto& dirLightUploadData = renderData->directionalLightData.uploadData.GetForSparseIndex(owner);
-                    auto& dirLightAuxData = renderData->directionalLightData.auxData.GetForSparseIndex(owner);
+                    auto& dirLightUploadData = renderData.directionalLightData.uploadData.GetForSparseIndex(owner);
+                    auto& dirLightAuxData = renderData.directionalLightData.auxData.GetForSparseIndex(owner);
                     dirLightUploadData.color = {color.R, color.G, color.B};
                     dirLightUploadData.intensity = lightdata.GetIntensity();
                     dirLightUploadData.castsShadows = lightdata.CastsShadows();
@@ -421,13 +412,13 @@ void World::setupRenderTasks(){
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
-                    renderData->spotLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.GetWorldMatrix();
+                    renderData.spotLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.GetWorldMatrix();
                 }
                 if (ptr->Get(i).isInvalidated()){
                     // update color data if it has changed
                     auto& lightData = ptr->Get(i);
                     auto& colorData = lightData.GetColorRGBA();
-                    auto& denseData = renderData->spotLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i));
+                    auto& denseData = renderData.spotLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i));
                     denseData.coneAngle = lightData.GetConeAngle();
                     denseData.penumbraAngle = lightData.GetPenumbraAngle();
                     denseData.color = { colorData.R,colorData.G,colorData.B};
@@ -450,13 +441,13 @@ void World::setupRenderTasks(){
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
-                    renderData->pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).position = transform.GetWorldPosition();
+                    renderData.pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i)).position = transform.GetWorldPosition();
                 }
                 if (ptr->Get(i).isInvalidated()){
                     // update color data if it has changed
                     auto& lightData = ptr->Get(i);
                     auto& colorData = lightData.GetColorRGBA();
-                    auto& denseData = renderData->pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i));
+                    auto& denseData = renderData.pointLightData.uploadData.GetForSparseIndex(ptr->GetOwner(i));
                     denseData.color = { colorData.R,colorData.G,colorData.B};
                     denseData.intensity = lightData.GetIntensity();
                     denseData.castsShadows = lightData.CastsShadows();
@@ -476,7 +467,7 @@ void World::setupRenderTasks(){
                 auto ownerLocalId = ptr->GetOwner(i);
                 auto& light = ptr->Get(i);
                 auto& color = light.GetColorRGBA();
-                renderData->ambientLightData.uploadData.GetForSparseIndex(ownerLocalId) = {{color.R, color.G, color.B}, light.GetIntensity(), light.GetIlluminationLayers()};
+                renderData.ambientLightData.uploadData.GetForSparseIndex(ownerLocalId) = {{color.R, color.G, color.B}, light.GetIntensity(), light.GetIlluminationLayers()};
                 light.clearInvalidate();
             }
         }
@@ -496,16 +487,17 @@ void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
 }
 #if !RVE_SERVER
 void World::SetupPerEntityRenderData(entity_t worldID){
-    auto& renderLayers = renderData->renderLayers;
-    if (renderLayers.size() <= worldID){
-        auto newSize = closest_power_of(worldID, 2);
+    auto localID = Registry::GetLocalId(worldID);
+    auto& renderLayers = renderData.renderLayers;
+    if (renderLayers.size() <= localID){
+        auto newSize = closest_power_of(localID+1, 2);
         renderLayers.resize(newSize);
     }
-    renderLayers[worldID] = ALL_LAYERS;
+    renderLayers[localID] = ALL_LAYERS;
 }
 
 void World::SetEntityRenderlayer(entity_t globalid, renderlayer_t layers){
-    renderData->renderLayers[localToGlobal[globalid]] = layers;
+    renderData.renderLayers[Registry::GetLocalId(globalid)] = layers;
 }
 
 void DestroyMeshRenderDataGeneric(const auto& mesh, auto material, auto&& renderData, entity_t local_id, auto&& iteratorComparator){
@@ -563,13 +555,9 @@ void updateMeshMaterialGeneric(auto&& renderData, entity_t localID, auto oldMat,
 
 void RavEngine::World::updateStaticMeshMaterial(entity_t localId, Ref<MaterialInstance> oldMat, Ref<MaterialInstance> newMat, Ref<MeshCollectionStatic> mesh)
 {
-    // do nothing if renderer is not online
-    if (!renderData) {
-        return;
-    }
 
     assert(HasComponent<Transform>(localId) && "Cannot change material on an entity that does not have a transform!");
-    updateMeshMaterialGeneric(renderData->staticMeshRenderData, localId, oldMat, newMat, mesh,
+    updateMeshMaterialGeneric(renderData.staticMeshRenderData, localId, oldMat, newMat, mesh,
         [mesh](auto&& other){
             return other.mesh.lock() == mesh;
         },
@@ -585,13 +573,9 @@ void RavEngine::World::updateStaticMeshMaterial(entity_t localId, Ref<MaterialIn
 
 void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, Ref<MaterialInstance> oldMat, Ref<MaterialInstance> newMat, Ref<MeshCollectionSkinned> mesh, Ref<SkeletonAsset> skeleton)
 {
-    // if render engine is not online, do nothing
-    if (!renderData) {
-        return;
-    }
     
     assert(HasComponent<Transform>(localId) && "Cannot change material on an entity that does not have a transform!");
-    updateMeshMaterialGeneric(renderData->skinnedMeshRenderData, localId, oldMat, newMat, mesh,
+    updateMeshMaterialGeneric(renderData.skinnedMeshRenderData, localId, oldMat, newMat, mesh,
         [mesh, &skeleton](auto&& other){
             return other.mesh.lock() == mesh && other.skeleton.lock() == skeleton;
         },
@@ -607,24 +591,18 @@ void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, Ref<MaterialI
 
 void RavEngine::World::DestroyStaticMeshRenderData(const StaticMesh& mesh, entity_t local_id)
 {
-    if (!renderData) {
-        return;
-    }
     
     auto meshData = mesh.GetMesh();
-    DestroyMeshRenderDataGeneric(mesh.GetMesh(), mesh.GetMaterial(), renderData->staticMeshRenderData, local_id, [meshData](auto&& other){
+    DestroyMeshRenderDataGeneric(mesh.GetMesh(), mesh.GetMaterial(), renderData.staticMeshRenderData, local_id, [meshData](auto&& other){
         return other.mesh.lock() == meshData;
     });
 }
 
 void World::DestroySkinnedMeshRenderData(const SkinnedMeshComponent& mesh, entity_t local_id) {
-    if (!renderData) {
-        return;
-    }
     
     auto skeleton = mesh.GetSkeleton();
     auto meshData = mesh.GetMesh();
-    DestroyMeshRenderDataGeneric(mesh.GetMesh(), mesh.GetMaterial(), renderData->skinnedMeshRenderData, local_id, [&meshData, &skeleton](auto&& other){
+    DestroyMeshRenderDataGeneric(mesh.GetMesh(), mesh.GetMaterial(), renderData.skinnedMeshRenderData, local_id, [&meshData, &skeleton](auto&& other){
         return other.mesh.lock() == meshData && other.skeleton.lock() == skeleton;
     });
 }

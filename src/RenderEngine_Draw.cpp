@@ -99,7 +99,7 @@ struct LightingType{
 		mainCommandBuffer->Reset();
 		mainCommandBuffer->Begin();
 		
-		auto worldTransformBuffer = worldOwning->renderData->worldTransforms.buffer;
+		auto worldTransformBuffer = worldOwning->renderData.worldTransforms.buffer;
 
 		// do skeletal operations
 		struct skeletalMeshPrepareResult {
@@ -137,7 +137,7 @@ struct LightingType{
 				}
 			};
 
-			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+			for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
 				uint32_t totalEntitiesForThisCommand = 0;
 				for (auto& command : drawcommand.commands) {
 					auto subCommandEntityCount = command.entities.DenseSize();
@@ -172,7 +172,7 @@ struct LightingType{
 			// each skinned mesh gets its own 1-instance draw in the buffer. The instance count starts at 0.
 			mainCommandBuffer->BeginComputeDebugMarker("Prepare Skinned Indirect Draw buffer");
 			mainCommandBuffer->BeginCompute(skinningDrawCallPreparePipeline);
-			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+			for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
                 SkinningPrepareUBO ubo;
 				mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 0, 0);
 				for (auto& command : drawcommand.commands) {
@@ -207,7 +207,7 @@ struct LightingType{
 			using mat_t = glm::mat4;
 			std::span<mat_t> matbufMem{ static_cast<mat_t*>(sharedSkeletonMatrixBuffer->GetMappedDataPtr()), sharedSkeletonMatrixBuffer->getBufferSize() / sizeof(mat_t) };
 			SkinningUBO subo;
-			for (const auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+			for (const auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
 				for (auto& command : drawcommand.commands) {
 					auto skeleton = command.skeleton.lock();
 					auto mesh = command.mesh.lock();
@@ -392,7 +392,7 @@ struct LightingType{
 					mainCommandBuffer->BindComputeBuffer(emitter.spawnedThisFrameList, 1);
 					mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 2);
 					mainCommandBuffer->BindComputeBuffer(emitter.particleLifeBuffer, 3);
-					mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->worldTransforms.buffer, 4);
+					mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.worldTransforms.buffer, 4);
 
 					mainCommandBuffer->DispatchIndirect({
 						.indirectBuffer = emitter.indirectComputeBuffer,
@@ -537,8 +537,8 @@ struct LightingType{
 			if constexpr (includeLighting) {
 				// dispatch the lighting binning shaders
 				mainCommandBuffer->BeginComputeDebugMarker("Light Binning");
-				const auto nPointLights = worldOwning->renderData->pointLightData.uploadData.DenseSize();
-				const auto nSpotLights = worldOwning->renderData->spotLightData.uploadData.DenseSize();
+				const auto nPointLights = worldOwning->renderData.pointLightData.uploadData.DenseSize();
+				const auto nSpotLights = worldOwning->renderData.spotLightData.uploadData.DenseSize();
 				if (nPointLights > 0 || nSpotLights > 0) {
 					{
 						GridBuildUBO ubo{
@@ -567,8 +567,8 @@ struct LightingType{
 						mainCommandBuffer->BeginCompute(clusterPopulatePipeline);
 						mainCommandBuffer->SetComputeBytes(ubo, 0);
 						mainCommandBuffer->BindComputeBuffer(lightClusterBuffer, 0);
-						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->pointLightData.uploadData.GetDense().get_underlying().buffer, 1);
-						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->spotLightData.uploadData.GetDense().get_underlying().buffer, 2);
+						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.pointLightData.uploadData.GetDense().get_underlying().buffer, 1);
+						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.spotLightData.uploadData.GetDense().get_underlying().buffer, 2);
 
 						constexpr static auto threadGroupSize = 128;
 
@@ -600,8 +600,8 @@ struct LightingType{
 				.screenDimension = { viewportScissor.offset[0],viewportScissor.offset[1], viewportScissor.extent[0],viewportScissor.extent[1] },
 				.camPos = camPos,
 				.gridSize = { Clustered::gridSizeX, Clustered::gridSizeY, Clustered::gridSizeZ },
-				.ambientLightCount = worldOwning->renderData->ambientLightData.uploadData.DenseSize(),
-				.directionalLightCount = worldOwning->renderData->directionalLightData.uploadData.DenseSize(),
+				.ambientLightCount = worldOwning->renderData.ambientLightData.uploadData.DenseSize(),
+				.directionalLightCount = worldOwning->renderData.directionalLightData.uploadData.DenseSize(),
 				.zNear = zNearFar.x,
 				.zFar = zNearFar.y
 			};
@@ -633,7 +633,7 @@ struct LightingType{
             auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning, &reallocBuffer, layers](matrix4 viewproj, const DepthPyramid pyramid) {
 			// first reset the indirect buffers
 				uint32_t skeletalVertexOffset = 0;
-			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+			for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
 
 				uint32_t total_entities = 0;
 				for (const auto& command : drawcommand.commands) {
@@ -685,8 +685,8 @@ struct LightingType{
 			mainCommandBuffer->BeginComputeDebugMarker("Cull Skinned Meshes");
 			mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
 			mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
-            mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->renderLayers.buffer, 5);
-			for (auto& [materialInstance, drawcommand] : worldOwning->renderData->skinnedMeshRenderData) {
+            mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.buffer, 5);
+			for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
 				CullingUBO cubo{
 					.viewProj = viewproj,
 					.indirectBufferOffset = 0,
@@ -823,7 +823,7 @@ struct LightingType{
 
 					mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
 					mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
-                    mainCommandBuffer->BindComputeBuffer(worldOwning->renderData->renderLayers.buffer, 5);
+                    mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.buffer, 5);
 					CullingUBO cubo{
 						.viewProj = viewproj,
 						.camPos = camPos,
@@ -898,11 +898,11 @@ struct LightingType{
 							mainCommandBuffer->UseResource(light.shadowData.shadowMap->GetDefaultView());
 						});
 
-						mainCommandBuffer->BindBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer,12);
-						mainCommandBuffer->BindBuffer(worldOwning->renderData->directionalLightData.uploadData.GetDense().get_underlying().buffer,13);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData.ambientLightData.uploadData.GetDense().get_underlying().buffer,12);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightData.uploadData.GetDense().get_underlying().buffer,13);
 						mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
-						mainCommandBuffer->BindBuffer(worldOwning->renderData->pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
-						mainCommandBuffer->BindBuffer(worldOwning->renderData->spotLightData.uploadData.GetDense().get_underlying().buffer, 17);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData.pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.uploadData.GetDense().get_underlying().buffer, 17);
 						mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);
@@ -979,11 +979,11 @@ struct LightingType{
 
 						mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
 						if (isLit) {
-							mainCommandBuffer->BindBuffer(worldOwning->renderData->ambientLightData.uploadData.GetDense().get_underlying().buffer, 12);
-							mainCommandBuffer->BindBuffer(worldOwning->renderData->directionalLightData.uploadData.GetDense().get_underlying().buffer, 13);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData.ambientLightData.uploadData.GetDense().get_underlying().buffer, 12);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightData.uploadData.GetDense().get_underlying().buffer, 13);
 							mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
-							mainCommandBuffer->BindBuffer(worldOwning->renderData->pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
-							mainCommandBuffer->BindBuffer(worldOwning->renderData->spotLightData.uploadData.GetDense().get_underlying().buffer, 17);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData.pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.uploadData.GetDense().get_underlying().buffer, 17);
 							mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
 							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);
 							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);	// redundant on some backends, needed for DX
@@ -1079,7 +1079,7 @@ struct LightingType{
 
 			// do culling operations
 			mainCommandBuffer->BeginComputeDebugMarker("Cull Static Meshes");
-			cullTheRenderData(worldOwning->renderData->staticMeshRenderData);
+			cullTheRenderData(worldOwning->renderData.staticMeshRenderData);
 			mainCommandBuffer->EndComputeDebugMarker();
 			if (skeletalPrepareResult.skeletalMeshesExist) {
 				cullSkeletalMeshes(viewproj, pyramid);
@@ -1089,11 +1089,11 @@ struct LightingType{
 			// do rendering operations
 			mainCommandBuffer->BeginRendering(renderPass);
 			mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
-			renderTheRenderData(worldOwning->renderData->staticMeshRenderData, sharedVertexBuffer, lightingFilter);
+			renderTheRenderData(worldOwning->renderData.staticMeshRenderData, sharedVertexBuffer, lightingFilter);
 			mainCommandBuffer->EndRenderDebugMarker();
 			if (skeletalPrepareResult.skeletalMeshesExist) {
 				mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
-				renderTheRenderData(worldOwning->renderData->skinnedMeshRenderData, sharedSkinnedMeshVertexBuffer, lightingFilter);
+				renderTheRenderData(worldOwning->renderData.skinnedMeshRenderData, sharedSkinnedMeshVertexBuffer, lightingFilter);
 				mainCommandBuffer->EndRenderDebugMarker();
 			}
 			mainCommandBuffer->EndRendering();
@@ -1178,7 +1178,7 @@ struct LightingType{
 			};
         };
         
-		renderLightShadowmap(worldOwning->renderData->spotLightData, 1,
+		renderLightShadowmap(worldOwning->renderData.spotLightData, 1,
 			spotlightShadowMapFunction,
 			[](entity_t unused) {}
 		);
@@ -1230,7 +1230,7 @@ struct LightingType{
 			};
 		};
 
-		renderLightShadowmap(worldOwning->renderData->pointLightData, 6,
+		renderLightShadowmap(worldOwning->renderData.pointLightData, 6,
 			pointLightShadowmapFunction,
 			[this](entity_t owner) {
 				auto& origLight = Entity(owner).GetComponent<PointLight>();
@@ -1290,7 +1290,7 @@ struct LightingType{
 						};
 
 
-					renderLightShadowmap(worldOwning->renderData->directionalLightData, 1,
+					renderLightShadowmap(worldOwning->renderData.directionalLightData, 1,
 						dirlightShadowmapDataFunction,
 						[](entity_t unused) {}
 					);
@@ -1667,19 +1667,19 @@ struct LightingType{
 			mainCommandBuffer->BeginRenderDebugMarker("Light depth pyramids");
 			{
 				DirectionalLight* ptr = nullptr;
-				genPyramidForLight(worldOwning->renderData->directionalLightData, ptr, 1, [](uint32_t index, auto&& origLight) {
+				genPyramidForLight(worldOwning->renderData.directionalLightData, ptr, 1, [](uint32_t index, auto&& origLight) {
 					return origLight.GetShadowMap();
 				});
 			}
 			{
 				SpotLight* ptr = nullptr;
-				genPyramidForLight(worldOwning->renderData->spotLightData, ptr,1, [](uint32_t index, auto&& origLight) {
+				genPyramidForLight(worldOwning->renderData.spotLightData, ptr,1, [](uint32_t index, auto&& origLight) {
 					return origLight.GetShadowMap();
 				});
 			}
 			{
 				PointLight* ptr = nullptr;
-				genPyramidForLight(worldOwning->renderData->pointLightData, ptr, 6, [](uint32_t index, auto&& origLight) {
+				genPyramidForLight(worldOwning->renderData.pointLightData, ptr, 6, [](uint32_t index, auto&& origLight) {
 					struct ReturnData {
 						DepthPyramid pyramid;
 						RGLTexturePtr shadowMap;
