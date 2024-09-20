@@ -325,12 +325,19 @@ namespace RavEngine {
             int castsShadows;
             int shadowmapBindlessIndex;
             renderlayer_t shadowLayers;
+            renderlayer_t illuminationLayers;
         };
 
         struct DirLightAuxData {
             float shadowDistance = 0;
         };
 
+        struct AmbientLightUploadData{
+            glm::vec3 color;
+            float intensity;
+            renderlayer_t illuminationLayers;
+        };
+        
         struct PointLightUploadData {
             glm::vec3 position;
             glm::vec3 color;
@@ -338,6 +345,7 @@ namespace RavEngine {
             int castsShadows;
             int shadowmapBindlessIndex;
             renderlayer_t shadowLayers;
+            renderlayer_t illuminationLayers;
         };
 
         struct SpotLightDataUpload {
@@ -350,6 +358,7 @@ namespace RavEngine {
             int castsShadows;
             uint32_t shadowmapBindlessIndex;
             renderlayer_t shadowLayers;
+            renderlayer_t illuminationLayers;
         };
 
         // data for the render engine
@@ -384,7 +393,7 @@ namespace RavEngine {
             
             LightDataType<VRAMSparseSet<entity_t, DirLightUploadData>, UnorderedSparseSet<entity_t, DirLightAuxData>> directionalLightData;
             
-            LightDataType<VRAMSparseSet<entity_t, glm::vec4>, void*> ambientLightData;
+            LightDataType<VRAMSparseSet<entity_t, AmbientLightUploadData>, void*> ambientLightData;
             
             LightDataType<VRAMSparseSet<entity_t, PointLightUploadData>, void*> pointLightData;
              

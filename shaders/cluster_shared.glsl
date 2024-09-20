@@ -19,6 +19,7 @@ struct PointLight
     int castsShadows;
     uint shadowmapBindlessIndex;
     uint shadowRenderLayers;
+    uint illuminationLayers;
 };
 
 struct SpotLight{
@@ -31,6 +32,7 @@ struct SpotLight{
     int castsShadows;
     uint shadowmapBindlessIndex;
     uint shadowRenderLayers;
+    uint illuminationLayers;
 };
 
 

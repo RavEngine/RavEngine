@@ -33,6 +33,7 @@ layout(location = 13) in float clipSpaceZ;
 struct AmbientLightData{
     vec3 color;
     float intensity;
+    uint illuminationLayers;
 };
 
 layout(scalar, binding = 12) readonly buffer ambientLightSSBO{
@@ -47,6 +48,7 @@ struct DirectionalLightData{
     int castsShadows;
     int shadowmapBindlessIndex;
     uint shadowRenderLayers;
+    uint illuminationLayers;
 };
 
 layout(scalar, binding = 13) readonly buffer dirLightSSBO{

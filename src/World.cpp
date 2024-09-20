@@ -404,6 +404,7 @@ void World::setupRenderTasks(){
                     dirLightUploadData.castsShadows = lightdata.CastsShadows();
                     dirLightUploadData.shadowmapBindlessIndex = lightdata.shadowData.shadowMap->GetDefaultView().GetReadonlyBindlessTextureHandle();
                     dirLightUploadData.shadowLayers = lightdata.GetShadowLayers();
+                    dirLightUploadData.illuminationLayers = lightdata.GetIlluminationLayers();
                     lightdata.clearInvalidate();
                     
                     dirLightAuxData.shadowDistance = lightdata.GetShadowDistance();
@@ -434,6 +435,7 @@ void World::setupRenderTasks(){
                     denseData.castsShadows = lightData.CastsShadows();
                     denseData.shadowmapBindlessIndex = lightData.shadowData.shadowMap->GetDefaultView().GetReadonlyBindlessTextureHandle();
                     denseData.shadowLayers = lightData.GetShadowLayers();
+                    denseData.illuminationLayers = lightData.GetIlluminationLayers();
                     lightData.clearInvalidate();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this
@@ -460,6 +462,7 @@ void World::setupRenderTasks(){
                     denseData.castsShadows = lightData.CastsShadows();
                     denseData.shadowmapBindlessIndex = lightData.shadowData.mapCube->GetDefaultView().GetReadonlyBindlessTextureHandle();
                     denseData.shadowLayers = lightData.GetShadowLayers();
+                    denseData.illuminationLayers = lightData.GetIlluminationLayers();
                     ptr->Get(i).clearInvalidate();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this
@@ -473,7 +476,7 @@ void World::setupRenderTasks(){
                 auto ownerLocalId = ptr->GetOwner(i);
                 auto& light = ptr->Get(i);
                 auto& color = light.GetColorRGBA();
-                renderData->ambientLightData.uploadData.GetForSparseIndex(ownerLocalId) = {color.R, color.G, color.B, light.GetIntensity()};
+                renderData->ambientLightData.uploadData.GetForSparseIndex(ownerLocalId) = {{color.R, color.G, color.B}, light.GetIntensity(), light.GetIlluminationLayers()};
                 light.clearInvalidate();
             }
         }

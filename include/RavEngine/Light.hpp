@@ -14,6 +14,7 @@ class CameraComponent;
 class Light : public Queryable<Light,IDebugRenderable>, public IDebugRenderable {
     ColorRGBA color{1,1,1,1};
 	float Intensity = 1.0;
+    renderlayer_t illuminationLayers = ALL_LAYERS;
 protected:
     bool tickInvalidated = true;    // trigger the world to update its parallel datastructure
     constexpr inline void invalidate(){tickInvalidated = true;}
@@ -38,6 +39,14 @@ public:
     constexpr void clearInvalidate(){
         tickInvalidated = false;
     }
+    
+    constexpr void SetIlluminationLayers(renderlayer_t layers){
+        invalidate();
+        illuminationLayers = layers;
+    }
+    constexpr auto GetIlluminationLayers(){
+        return illuminationLayers;
+    }
 };
 
 struct ShadowLightBase : public Light {
@@ -52,6 +61,7 @@ public:
 		doesCastShadow = casts;
 	}
     constexpr void SetShadowLayers(renderlayer_t layers){
+        invalidate();
         shadowLayers = layers;
     }
     
