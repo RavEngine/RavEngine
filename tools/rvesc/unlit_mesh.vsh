@@ -22,9 +22,8 @@ struct EntityIn
 layout(location = ENTITY_INPUT_LOCATION) in uint inEntityID;
 layout(std430, binding = MODEL_MATRIX_BINDING) readonly buffer modelMatrixBuffer{mat4 model[];};
 
-layout(location = 11) out vec3 worldPosition; // even though these are unused, they must be here for D3D
-layout(location = 12) out vec3 viewPosition;
-layout(location = 13) out float clipSpaceZ;
+#define VARYINGDIR out
+#include "mesh_varyings.glsl"
 
 #include "make_engine_data.glsl"
 
@@ -39,4 +38,5 @@ void main(){
 
     gl_Position = user_out.position;
     clipSpaceZ = gl_Position.z;
+    varyingEntityID = inEntityID;
 }

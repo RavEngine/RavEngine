@@ -15,9 +15,8 @@ struct ParticleMatrices{
 
 layout(location = 0) in vec2 in_position;
 
-layout(location = 11) out vec3 worldPosition;
-layout(location = 12) out vec3 viewPosition;
-layout(location = 13) out float clipSpaceZ;
+#define VARYINGDIR out
+#include "mesh_varyings.glsl"
 
 void main(){
     
@@ -44,4 +43,5 @@ void main(){
 
     worldPosition = user_out.worldPosition;
     viewPosition = (engineConstants[0].viewOnly * vec4(worldPosition,1)).xyz;
+    varyingEntityID = 0;
 }

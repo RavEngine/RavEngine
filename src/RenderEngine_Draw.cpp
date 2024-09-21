@@ -903,6 +903,7 @@ struct LightingType{
 						mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData.pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.uploadData.GetDense().get_underlying().buffer, 17);
+                        mainCommandBuffer->BindBuffer(worldOwning->renderData.renderLayers.buffer, 28);
 						mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);
@@ -990,6 +991,7 @@ struct LightingType{
 							mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
 							mainCommandBuffer->BindBuffer(worldOwning->renderData.pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
 							mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.uploadData.GetDense().get_underlying().buffer, 17);
+                            mainCommandBuffer->BindBuffer(worldOwning->renderData.renderLayers.buffer, 28);
 							mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
 							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);
 							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);	// redundant on some backends, needed for DX

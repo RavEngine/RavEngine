@@ -5,9 +5,8 @@ struct UnlitOut{
 
 #include "%s"
 
-layout(location = 11) in vec3 worldPosition;  // even though they're unused, these must be here for D3D
-layout(location = 12) in vec3 viewPosition;
-layout(location = 13) in float clipSpaceZ;
+#define VARYINGDIR in
+#include "mesh_varyings.glsl"
 
 layout(location = 0) out vec4 outcolor;
 #if RVE_TRANSPARENT

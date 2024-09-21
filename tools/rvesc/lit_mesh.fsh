@@ -23,9 +23,8 @@ struct LitOutput{
 #else
    
 #endif
-layout(location = 11) in vec3 worldPosition;
-layout(location = 12) in vec3 viewPosition;
-layout(location = 13) in float clipSpaceZ;
+#define VARYINGDIR in
+#include "mesh_varyings.glsl"
 
 #include "lit_mesh_shared.glsl"
 #include "mesh_shared.glsl"
@@ -69,6 +68,10 @@ layout(scalar, binding = 17) readonly buffer spotLightSSBO{
     SpotLight spotLights[];
 };
 
+layout(scalar, binding = 28) readonly buffer renderLayerSSBO{
+    uint entityRenderLayers[];
+};
+
 layout(set = 1, binding = 0) uniform texture2D shadowMaps[];      // the bindless heap must be in set 1 binding 0
 layout(set = 2, binding = 0) uniform textureCube pointShadowMaps[];    // we alias these because everything goes into the one heap
 
@@ -77,12 +80,18 @@ void main(){
     LitOutput user_out = frag();
     outcolor = vec4(0); // NV: these don't default-init to 0
     outnormal = vec4(user_out.normal,1);
+    
+    const uint entityRenderLayer = entityRenderLayers[varyingEntityID];
 
     // compute lighting based on the results of the user's function
 
     // ambient lights
     for(uint i = 0; i < engineConstants[0].ambientLightCount; i++){
         AmbientLightData light = ambientLights[i];
+        
+        if ((entityRenderLayer & light.illuminationLayers) == 0){
+            continue;
+        }
 
         float ao = 1;
         #if 0
@@ -98,6 +107,11 @@ void main(){
     // directional lights
     for(uint i = 0; i < engineConstants[0].directionalLightCount; i++){
         DirectionalLightData light = dirLights[i];
+        
+        if ((entityRenderLayer & light.illuminationLayers) == 0){
+            continue;
+        }
+        
         vec3 lightResult = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, light.toLight, 1, light.color * light.intensity);
         float pcfFactor = 1;
         
@@ -126,6 +140,10 @@ void main(){
     for(uint i = 0; i < nPointLights && i < CLUSTER_MAX_POINTS; i++){
         uint lightIndex = clusters[tileIndex].pointLightIndices[i];
         PointLight light = pointLights[lightIndex];
+        
+        if ((entityRenderLayer & light.illuminationLayers) == 0){
+            continue;
+        }
 
         vec3 toLight = normalize(light.position - worldPosition);
 
@@ -159,6 +177,10 @@ void main(){
     for(uint i = 0; i < nSpotLights && i < CLUSTER_MAX_SPOTS; i++){
         uint lightIndex = clusters[tileIndex].spotLightIndices[i];
         SpotLight light = spotLights[lightIndex];
+        
+        if ((entityRenderLayer & light.illuminationLayers) == 0){
+            continue;
+        }
 
         vec4 position = light.worldTransform * vec4(0,0,0,1);
 
