@@ -16,3 +16,16 @@ layout(scalar, binding = 20) readonly buffer matrixSSBO
     ParticleMatrices matrixData[];
 };
 
+struct EmitterState
+{
+    uint aliveParticleCount;
+    uint freeListCount;
+    uint createdThisFrame;
+    uint emitterOwnerID;
+};
+
+layout(scalar, binding = 22) readonly buffer emitterStateBuffer
+{
+    EmitterState emitterState[];
+};
+

@@ -43,5 +43,5 @@ void main(){
 
     worldPosition = user_out.worldPosition;
     viewPosition = (engineConstants[0].viewOnly * vec4(worldPosition,1)).xyz;
-    varyingEntityID = 0;
+    varyingEntityID = emitterState[0].emitterOwnerID;
 }

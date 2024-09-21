@@ -71,7 +71,8 @@ namespace RavEngine {
 		constexpr static uint8_t
 			particleDataBufferBinding = 18,
 			particleAliveIndexBufferBinding = 19,
-			particleMatrixBufferBinding = 20
+			particleMatrixBufferBinding = 20,
+            particleEmitterStateBufferBinding = 22
 			;
 
 		bool IsTransparent() const {

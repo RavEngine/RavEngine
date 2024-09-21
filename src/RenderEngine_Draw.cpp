@@ -982,6 +982,7 @@ struct LightingType{
 						mainCommandBuffer->BindRenderPipeline(pipeline);
 						mainCommandBuffer->BindBuffer(emitter.particleDataBuffer, material->particleDataBufferBinding);
 						mainCommandBuffer->BindBuffer(activeParticleIndexBuffer, material->particleAliveIndexBufferBinding);
+                        mainCommandBuffer->BindBuffer(emitter.emitterStateBuffer, material->particleEmitterStateBufferBinding);
 						mainCommandBuffer->BindBuffer(transientBuffer, material->particleMatrixBufferBinding, particleBillboardMatrices);
 
 						mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);

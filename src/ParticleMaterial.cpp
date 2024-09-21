@@ -48,6 +48,12 @@ namespace RavEngine {
 						.stageFlags = RGL::BindingVisibility::Vertex,
 						.writable = false,
 					},
+                    {
+                        .binding = particleEmitterStateBufferBinding,
+                        .type = RGL::BindingType::StorageBuffer,
+                        .stageFlags = RGL::BindingVisibility::Vertex,
+                        .writable = false,
+                    },
 
 				},
 			};
