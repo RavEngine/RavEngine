@@ -713,8 +713,8 @@ struct LightingType{
 #else
 						mainCommandBuffer->SetComputeBytes(cubo, 0);
 #endif
-						mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 5);
-						mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 6);
+						mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 6);
+						mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 7);
 						mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 						cubo.indirectBufferOffset += lodsForThisMesh;
 						cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
@@ -852,8 +852,8 @@ struct LightingType{
 #else
 							mainCommandBuffer->SetComputeBytes(cubo, 0);
 #endif
-							mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 5);
-							mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 6);
+							mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 6);
+							mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 7);
 							mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 							cubo.indirectBufferOffset += lodsForThisMesh;
 							cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
