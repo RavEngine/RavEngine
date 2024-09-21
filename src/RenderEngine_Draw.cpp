@@ -862,7 +862,7 @@ struct LightingType{
 					mainCommandBuffer->EndCompute();
 				}
 				};
-			auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, particleBillboardMatrices, &lightDataOffset](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
+			auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, particleBillboardMatrices, &lightDataOffset,&layers](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
 				// do static meshes
 				mainCommandBuffer->SetViewport({
 					.x = float(viewportScissor.offset[0]),
@@ -959,7 +959,13 @@ struct LightingType{
 				}
 
 				// render particles
-				worldOwning->Filter([this, &viewproj, &particleBillboardMatrices, &currentLightingType, &pipelineSelectorFunction, &lightDataOffset, &worldOwning](const ParticleEmitter& emitter, const Transform& t) {
+                worldOwning->Filter([this, &viewproj, &particleBillboardMatrices, &currentLightingType, &pipelineSelectorFunction, &lightDataOffset, &worldOwning, &layers](const ParticleEmitter& emitter, const Transform& t) {
+                    // check if the render layers match
+                    auto renderLayers = worldOwning->renderData.renderLayers[emitter.GetOwner().GetIdInWorld()];
+                    if ((renderLayers & layers) == 0){
+                        return;
+                    }
+                    
 					// check if shadow casting is enabled
 					if (!emitter.GetCastsShadows() && currentLightingType.FilterLightBlockers) {
 						return;
