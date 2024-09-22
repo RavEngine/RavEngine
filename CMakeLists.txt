@@ -741,34 +741,56 @@ group_in("Libraries/SteamAudio"
 
 # tests
 if (RAVENGINE_BUILD_TESTS)
-	include(CTest)
-	add_executable("${PROJECT_NAME}_TestBasics" EXCLUDE_FROM_ALL "test/basics.cpp")
-	target_link_libraries("${PROJECT_NAME}_TestBasics" PUBLIC "RavEngine" )
+	if (RAVENGINE_SERVER)
+		include(CTest)
+		add_executable("${PROJECT_NAME}_TestBasics" EXCLUDE_FROM_ALL "test/basics.cpp")
+		target_link_libraries("${PROJECT_NAME}_TestBasics" PUBLIC "RavEngine" )
 
-	add_executable("${PROJECT_NAME}_DSPerf" EXCLUDE_FROM_ALL "test/dsperf.cpp")
-	target_link_libraries("${PROJECT_NAME}_DSPerf" PUBLIC "RavEngine")
+		add_executable("${PROJECT_NAME}_DSPerf" EXCLUDE_FROM_ALL "test/dsperf.cpp")
+		target_link_libraries("${PROJECT_NAME}_DSPerf" PUBLIC "RavEngine")
 
-	target_compile_features("${PROJECT_NAME}_TestBasics" PRIVATE cxx_std_20)
-	target_compile_features("${PROJECT_NAME}_DSPerf" PRIVATE cxx_std_20)
+		target_compile_features("${PROJECT_NAME}_TestBasics" PRIVATE cxx_std_20)
+		target_compile_features("${PROJECT_NAME}_DSPerf" PRIVATE cxx_std_20)
 
-	set_target_properties("${PROJECT_NAME}_TestBasics" "${PROJECT_NAME}_DSPerf" PROPERTIES 
-		VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
-		XCODE_GENERATE_SCHEME ON	# create a scheme in Xcode
-	)
+		set_target_properties("${PROJECT_NAME}_TestBasics" "${PROJECT_NAME}_DSPerf" PROPERTIES 
+			VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
+			XCODE_GENERATE_SCHEME ON	# create a scheme in Xcode
+		)
 
-	macro(test name executable)
-	add_test(
-		NAME ${name} 
-		COMMAND ${executable} "${name}" -C $<CONFIGURATION> 
-		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>
-	)
-	endmacro()
+		macro(test name executable)
+		add_test(
+			NAME ${name} 
+			COMMAND ${executable} "${name}" -C $<CONFIGURATION> 
+			WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIGURATION>
+		)
+		endmacro()
 
-	test("CTTI" "${PROJECT_NAME}_TestBasics")
-	test("Test_UUID" "${PROJECT_NAME}_TestBasics")
-    test("Test_AddDel" "${PROJECT_NAME}_TestBasics")
-    test("Test_SpawnDestroy" "${PROJECT_NAME}_TestBasics")
-    test("Test_MoveBetweenWorlds" "${PROJECT_NAME}_TestBasics")
+		test("CTTI" "${PROJECT_NAME}_TestBasics")
+		test("Test_UUID" "${PROJECT_NAME}_TestBasics")
+		test("Test_AddDel" "${PROJECT_NAME}_TestBasics")
+		test("Test_SpawnDestroy" "${PROJECT_NAME}_TestBasics")
+		test("Test_MoveBetweenWorlds" "${PROJECT_NAME}_TestBasics")
+	endif()
+
+	# dummy app
+	if (NOT RAVENGINE_SERVER)
+		add_executable("${PROJECT_NAME}_DummyApp" EXCLUDE_FROM_ALL "test/dummyapp.cpp")
+		target_link_libraries("${PROJECT_NAME}_DummyApp" PUBLIC "RavEngine")
+		pack_resources(TARGET "${PROJECT_NAME}_DummyApp"
+			OUTPUT_FILE DATA_PACK
+			# we have no custom assets
+		)
+
+		set_target_properties("${PROJECT_NAME}_DummyApp" 
+			PROPERTIES 
+			XCODE_ATTRIBUTE_BUNDLE_IDENTIFIER "com.ravbug.RVEDummyApp"
+			XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.ravbug.RVEDummyApp"
+			XCODE_ATTRIBUTE_CURRENTYEAR "${CURRENTYEAR}"
+			VS_GLOBAL_OutputType AppContainerExe
+			VS_WINDOWS_TARGET_PLATFORM_VERSION "10.0.19041.0"				# be runnable on Windows 10
+			VS_WINDOWS_TARGET_PLATFORM_MIN_VERSION "10.0.19041.0"
+		)
+	endif()
 endif()
 
 # Disable unecessary build / install of targets

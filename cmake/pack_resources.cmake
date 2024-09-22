@@ -24,6 +24,8 @@ function(pack_resources)
 			)
 	endif()	
 
+	rve_disable_rtti("${ARGS_TARGET}")
+
 	get_property(eng_dir GLOBAL PROPERTY ENG_DIR)
 
 	# add polygon primitives provided by engine
@@ -112,6 +114,7 @@ function(pack_resources)
 	source_group("Skeletons" FILES ${ARGS_SKELETONS})
 	source_group("Animations" FILES ${ARGS_ANIMATIONS})
 
+	message(RVEMC_PATH = ${RVEMC_PATH})
 	# import Meshes
 	foreach(MESHCONF ${ARGS_MESHES} ${ENG_MESHES})
 		file(READ "${MESHCONF}" desc_STR)

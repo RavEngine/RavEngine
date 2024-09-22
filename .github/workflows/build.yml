@@ -38,9 +38,9 @@ jobs:
         run: |
             mkdir -p build 
             cd build
-            CC=/usr/bin/${{ matrix.compiler.cc }} CXX=/usr/bin/${{ matrix.compiler.cxx }} cmake -G "Ninja" .. 
+            CC=/usr/bin/${{ matrix.compiler.cc }} CXX=/usr/bin/${{ matrix.compiler.cxx }} cmake -G "Ninja" -DRAVENGINE_BUILD_TESTS=ON -DRAVENGINE_SERVER=OFF .. 
       - name: Build
-        run: cd build; cmake --build . --config Release --target RavEngine rvesc rveskc rveac rvemc 
+        run: cd build; cmake --build . --config Release --target RavEngine RavEngine_DummyApp rvesc rveskc rveac rvemc 
       
   build-emscripten:
     name: Emscripten-Linux Compile Check
@@ -82,9 +82,9 @@ jobs:
         with:
          xcode-version: "15.3"
       - name: Configure
-        run: mkdir -p build && cd build; cmake -G "Xcode" -DCMAKE_SYSTEM_NAME=${{ matrix.platform }} -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" .. 
+        run: mkdir -p build && cd build; cmake -G "Xcode" -DCMAKE_SYSTEM_NAME=${{ matrix.platform }} -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DRAVENGINE_BUILD_TESTS=ON -DRAVENGINE_SERVER=OFF .. 
       - name: Build
-        run: cd build; cmake --build . --config release --target RavEngine rvesc rveskc rveac rvemc  -- -quiet
+        run: cd build; cmake --build . --config release --target RavEngine RavEngine_DummyApp rvesc rveskc rveac rvemc  -- -quiet
                 
   build-windows:
     name: Windows Compile Check
@@ -100,9 +100,9 @@ jobs:
         with:
           submodules: recursive
       - name: Configure
-        run: mkdir build && cd build; cmake -DCMAKE_SYSTEM_NAME=${{ matrix.target }} -DCMAKE_SYSTEM_VERSION="10.0" -Wno-dev -A${{ matrix.arch }} .. ; cmake ..
+        run: mkdir build && cd build; cmake -DCMAKE_SYSTEM_NAME=${{ matrix.target }} -DCMAKE_SYSTEM_VERSION="10.0" -Wno-dev -A${{ matrix.arch }} -DRAVENGINE_BUILD_TESTS=ON -DRAVENGINE_SERVER=OFF .. ; cmake ..
       - name: Build
-        run: cd build; cmake --build . --config release --target RavEngine rvesc rveskc rveac rvemc 
+        run: cd build; cmake --build . --config release --target RavEngine RavEngine_DummyApp rvesc rveskc rveac rvemc 
 
   build-android:
     name: Android Compile Check
