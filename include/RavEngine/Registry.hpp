@@ -60,7 +60,7 @@ class Registry{
 
     static perobject_t GetEntityAttributes(entity_t global_id) {
         auto& data = entityData[global_id];
-        data.world->GetEntityAttributes(global_id);
+        return data.world->GetEntityAttributes(global_id);
     }
     
     static inline bool IsInWorld(entity_t global_id){

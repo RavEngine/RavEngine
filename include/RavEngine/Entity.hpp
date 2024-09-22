@@ -71,6 +71,10 @@ struct Entity : public AutoCTTI{
     void SetEntityAttributes(perobject_t attributes) {
         Registry::SetEntityAttributes(id, attributes);
     }
+
+    perobject_t GetEntityAttributes() const {
+        return Registry::GetEntityAttributes(id);
+    }
     
     Transform& GetTransform();
     
