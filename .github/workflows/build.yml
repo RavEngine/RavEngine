@@ -82,7 +82,7 @@ jobs:
         with:
          xcode-version: "15.3"
       - name: Configure
-        run: mkdir -p build && cd build; cmake -G "Xcode" -DCMAKE_SYSTEM_NAME=${{ matrix.platform }} -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DRAVENGINE_BUILD_TESTS=ON -DRAVENGINE_SERVER=OFF .. 
+        run: mkdir -p build && cd build; cmake -G "Xcode" -DCMAKE_SYSTEM_NAME=${{ matrix.platform }} -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DRAVENGINE_BUILD_TESTS=ON -DRAVENGINE_SERVER=OFF -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED="NO" .. 
       - name: Build
         run: cd build; cmake --build . --config release --target RavEngine RavEngine_DummyApp rvesc rveskc rveac rvemc  -- -quiet
                 
