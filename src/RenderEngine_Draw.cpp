@@ -1358,20 +1358,10 @@ struct LightingType{
                 if (worldOwning->skybox && worldOwning->skybox->skyMat && worldOwning->skybox->skyMat->GetMat()->renderPipeline) {
                     mainCommandBuffer->BeginRenderDebugMarker("Skybox");
                     mainCommandBuffer->BindRenderPipeline(worldOwning->skybox->skyMat->GetMat()->renderPipeline);
-                    uint32_t totalIndices = 0;
-                    // if a custom mesh is supplied, render that. Otherwise, render the builtin icosphere.
-                    if (worldOwning->skybox->skyMesh) {
-                        mainCommandBuffer->SetVertexBuffer(worldOwning->skybox->skyMesh->vertexBuffer);
-                        mainCommandBuffer->SetIndexBuffer(worldOwning->skybox->skyMesh->indexBuffer);
-                        totalIndices = worldOwning->skybox->skyMesh->totalIndices;
-                    }
-                    else {
-                        mainCommandBuffer->SetVertexBuffer(pointLightVertexBuffer);
-                        mainCommandBuffer->SetIndexBuffer(pointLightIndexBuffer);
-                        totalIndices = nPointLightIndices;
-                    }
+                    
+                    mainCommandBuffer->SetVertexBuffer(screenTriVerts);
                     mainCommandBuffer->SetVertexBytes(viewproj, 0);
-                    mainCommandBuffer->DrawIndexed(totalIndices);
+                    mainCommandBuffer->Draw(3);
                     mainCommandBuffer->EndRenderDebugMarker();
                 }
                 mainCommandBuffer->EndRendering();

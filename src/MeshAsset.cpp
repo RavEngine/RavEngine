@@ -72,9 +72,6 @@ RavEngine::MeshAsset::~MeshAsset()
 {
 #if !RVE_SERVER
 	if (auto app = GetApp()) {
-		auto& gcBuffers = app->GetRenderEngine().gcBuffers;
-		gcBuffers.enqueue(vertexBuffer);
-		gcBuffers.enqueue(indexBuffer);
 		app->GetRenderEngine().DeallocateMesh(meshAllocation);
 	}
 #endif
@@ -137,29 +134,6 @@ void MeshAsset::InitializeFromRawMeshView(const MeshPartView& allMeshes, const M
         totalVerts = v.size();
         totalIndices = i.size();
 #if !RVE_SERVER
-		auto device = GetApp()->GetDevice();
-
-		vertexBuffer = device->CreateBuffer({
-			uint32_t(totalVerts),
-			{.VertexBuffer = true},
-			sizeof(decltype(allMeshes.vertices)::value_type),
-			RGL::BufferAccess::Private,
-			{.Writable = false},
-		});
-
-		uint32_t index_stride = sizeof(uint32_t);
-
-		indexBuffer = device->CreateBuffer({
-			uint32_t(totalIndices),
-			{.IndexBuffer = true},
-			index_stride,
-			RGL::BufferAccess::Private,
-			{.Writable = false},
-		});
-
-		vertexBuffer->SetBufferData({ v.data(),v.size_bytes() });
-		indexBuffer->SetBufferData({ i.data(), i.size_bytes() });
-
 		meshAllocation = GetApp()->GetRenderEngine().AllocateMesh(v, i);
 #endif
     }

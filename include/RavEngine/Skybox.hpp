@@ -35,13 +35,12 @@ namespace RavEngine {
 	struct Skybox {
 		bool enabled = true;
 		Ref<ISkyMaterialInstance> skyMat;
-		Ref<MeshAsset> skyMesh;	// optional. If unset, the default sky mesh is rendered instead. 
 
 		// default constructor, loads default sky implementation
 		Skybox();
 
 		// supply a custom mesh and material
-		Skybox(const decltype(skyMat)& sm, const decltype(skyMesh)& sme = nullptr) : skyMat(sm), skyMesh(sme) {}
+		Skybox(const decltype(skyMat)& sm ): skyMat(sm){}
 
 		friend class App;
 	};

@@ -852,26 +852,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	});
 	quadVertBuffer->SetBufferData(quadVerts);
 
-	auto pointLightMeshData = genIcosphere(2);
-
-	pointLightVertexBuffer = device->CreateBuffer({
-		uint32_t(pointLightMeshData.Positions.size()),
-		{.VertexBuffer = true},
-		sizeof(float) * 3,
-		RGL::BufferAccess::Private
-	});
-
-	pointLightIndexBuffer = device->CreateBuffer({
-		uint32_t(pointLightMeshData.TriangleIndices.size()),
-		{.IndexBuffer = true},
-		sizeof(uint32_t),
-		RGL::BufferAccess::Private,
-	});
-
-	pointLightVertexBuffer->SetBufferData({ pointLightMeshData.Positions.data(), pointLightMeshData.Positions.size() * sizeof(pointLightMeshData.Positions[0]) });
-	pointLightIndexBuffer->SetBufferData({ pointLightMeshData.TriangleIndices.data(), pointLightMeshData.TriangleIndices.size() * sizeof(pointLightMeshData.TriangleIndices[0]) });
-	nPointLightIndices = pointLightMeshData.TriangleIndices.size();
-
 	lightClusterBuffer = device->CreateBuffer({
 		Clustered::numClusters,
 		{.StorageBuffer = true},

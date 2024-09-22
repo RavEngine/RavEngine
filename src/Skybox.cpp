@@ -14,19 +14,19 @@ using namespace std;
 
 Skybox::Skybox() : skyMat(std::make_shared<DefaultSkyMaterialInstance>(Material::Manager::Get<DefaultSkyMaterial>())) {}
 
-RavEngine::ISkyMaterial::ISkyMaterial(const std::string& shaderpath) : Material(shaderpath, 
+RavEngine::ISkyMaterial::ISkyMaterial(const std::string& shaderpath) : Material("defaultsky",shaderpath,
     {
         .vertConfig = {
             .vertexBindings = {{
                 .binding = 0,
-                .stride = sizeof(Vertex),
+                .stride = sizeof(Vertex2D),
             }},
             .attributeDescs = {
                 {
                     .location = 0,
                     .binding = 0,
-                    .offset = offsetof(Vertex,position),
-                    .format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
+                    .offset = offsetof(Vertex2D,position),
+                    .format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
                 },
             }
         },

@@ -31,9 +31,6 @@ public:
     
 protected:
 	MeshAsset() {};		// SkinnedMesh needs this
-#if !RVE_SERVER
-    RGLBufferPtr vertexBuffer, indexBuffer;
-#endif
 
 	size_t totalVerts = 0, totalIndices = 0;
     Bounds bounds;
