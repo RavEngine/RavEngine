@@ -1088,14 +1088,20 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
                 },
 				{
 					.binding = 6,
-					.type = RGL::BindingType::SampledImage,
+					.type = RGL::BindingType::StorageBuffer,
 					.stageFlags = RGL::BindingVisibility::Compute,
 				},
 				{
 					.binding = 7,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Compute,
+				},
+				{
+					.binding = 8,
 					.type = RGL::BindingType::Sampler,
 					.stageFlags = RGL::BindingVisibility::Compute,
 				},
+				
 				
 			},
 			.constants = {{ sizeof(CullingUBO), 0, RGL::StageVisibility::Compute}}

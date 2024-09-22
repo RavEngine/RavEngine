@@ -67,6 +67,10 @@ struct Entity : public AutoCTTI{
     void SetEntityRenderlayer(renderlayer_t layers) const{
         Registry::SetEntityRenderlayer(id, layers);
     }
+
+    void SetEntityAttributes(perobject_t attributes) {
+        Registry::SetEntityAttributes(id, attributes);
+    }
     
     Transform& GetTransform();
     

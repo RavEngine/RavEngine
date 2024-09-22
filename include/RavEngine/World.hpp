@@ -402,6 +402,9 @@ namespace RavEngine {
             // uses world-local ID
             VRAMVector<renderlayer_t> renderLayers{32};
 
+            struct 
+            VRAMVector<perobject_t> perObjectAttributes{ 32 };
+
             // uses world-local ID
             VRAMVector<matrix4> worldTransforms;
 
@@ -941,6 +944,10 @@ namespace RavEngine {
     public:
         
         void SetEntityRenderlayer(entity_t globalid, renderlayer_t layers);
+
+        void SetEntityAttributes(entity_t globalid, perobject_t attributes);
+
+        perobject_t GetEntityAttributes(entity_t globalid);
         
         template<typename T, typename ... A>
         inline T Instantiate(A&& ... args){

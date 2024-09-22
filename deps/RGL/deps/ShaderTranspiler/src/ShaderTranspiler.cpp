@@ -474,6 +474,7 @@ IMResult SPIRVToHLSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMo
 	spirv_cross::CompilerHLSL::Options options;
 	options.shader_model = opt.version;
 	options.point_size_compat = true;
+	options.enable_16bit_types = true;
 	hlsl.set_hlsl_options(options);
 
 	setEntryPoint(hlsl, opt.entryPoint);

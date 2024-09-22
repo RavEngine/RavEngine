@@ -108,7 +108,7 @@ macro(rvesc_compile descfile shader_target)
 			PRE_BUILD 
 			OUTPUT "${dx_final_name}"
 			DEPENDS "${outname}"
-			COMMAND ${ST_DXC_EXE_PATH} $<$<CONFIG:Debug>:-Qembed_debug> $<$<CONFIG:Debug>:-Zi> $<$<CONFIG:Debug>:-Od> -Fo \"${dx_final_name}\" -T ${dxc_profile}s_6_8 \"${outname}\"
+			COMMAND ${ST_DXC_EXE_PATH} $<$<CONFIG:Debug>:-Qembed_debug> $<$<CONFIG:Debug>:-Zi> $<$<CONFIG:Debug>:-Od> /enable-16bit-types -Fo \"${dx_final_name}\" -T ${dxc_profile}s_6_8 \"${outname}\"
 		)
 	endif()
 	
@@ -197,7 +197,7 @@ function(declare_shader infile shader_target)
 			PRE_BUILD 
 			OUTPUT "${dx_final_name}"
 			DEPENDS "${outname}"
-			COMMAND ${ST_DXC_EXE_PATH} $<$<CONFIG:Debug>:-Qembed_debug> $<$<CONFIG:Debug>:-Zi> $<$<CONFIG:Debug>:-Od> -Fo \"${dx_final_name}\" -T ${dxc_profile}s_6_8 \"${outname}\"
+			COMMAND ${ST_DXC_EXE_PATH} $<$<CONFIG:Debug>:-Qembed_debug> $<$<CONFIG:Debug>:-Zi> $<$<CONFIG:Debug>:-Od> /enable-16bit-types -Fo \"${dx_final_name}\" -T ${dxc_profile}s_6_8 \"${outname}\"
 		)
 	endif()
 	if(RGL_MTL_AVAILABLE)

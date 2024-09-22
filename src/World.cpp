@@ -489,15 +489,28 @@ void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
 void World::SetupPerEntityRenderData(entity_t worldID){
     auto localID = Registry::GetLocalId(worldID);
     auto& renderLayers = renderData.renderLayers;
+    auto& perObjectAttributes = renderData.perObjectAttributes;
     if (renderLayers.size() <= localID){
         auto newSize = closest_power_of(localID+1, 2);
         renderLayers.resize(newSize);
+        perObjectAttributes.resize(newSize);
     }
     renderLayers[localID] = ALL_LAYERS;
+    perObjectAttributes[localID] = ALL_ATTRIBUTES;
 }
 
 void World::SetEntityRenderlayer(entity_t globalid, renderlayer_t layers){
     renderData.renderLayers[Registry::GetLocalId(globalid)] = layers;
+}
+
+void World::SetEntityAttributes(entity_t globalid, perobject_t attributes)
+{
+    renderData.perObjectAttributes[Registry::GetLocalId(globalid)] = attributes;
+}
+
+perobject_t World::GetEntityAttributes(entity_t globalid)
+{
+    return renderData.perObjectAttributes[Registry::GetLocalId(globalid)];
 }
 
 void DestroyMeshRenderDataGeneric(const auto& mesh, auto material, auto&& renderData, entity_t local_id, auto&& iteratorComparator){
@@ -685,3 +698,5 @@ RavEngine::World::MDICommandBase::~MDICommandBase()
   
 }
 #endif
+
+

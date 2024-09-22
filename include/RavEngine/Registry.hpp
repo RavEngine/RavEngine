@@ -52,6 +52,16 @@ class Registry{
         auto& data = entityData[global_id];
         data.world->SetEntityRenderlayer(global_id, layers);
     }
+
+    static inline void SetEntityAttributes(entity_t global_id, perobject_t attributes) {
+        auto& data = entityData[global_id];
+        data.world->SetEntityAttributes(global_id, attributes);
+    }
+
+    static perobject_t GetEntityAttributes(entity_t global_id) {
+        auto& data = entityData[global_id];
+        data.world->GetEntityAttributes(global_id);
+    }
     
     static inline bool IsInWorld(entity_t global_id){
         auto& data = entityData[global_id];

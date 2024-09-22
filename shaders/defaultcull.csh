@@ -1,4 +1,7 @@
 #extension GL_EXT_samplerless_texture_functions : enable
+#extension GL_EXT_shader_8bit_storage : enable
+#extension GL_EXT_shader_16bit_storage : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
 layout(push_constant, std430) uniform UniformBufferObject{
 	mat4 viewProj;
     vec3 camPos;
@@ -48,8 +51,14 @@ layout(scalar, binding = 5) readonly buffer renderLayerSSBO{
     uint renderLayerBuffer[];
 };
 
-layout(binding = 6) uniform texture2D depthPyramid;
-layout(binding = 7) uniform sampler depthPyramidSampler;
+layout(scalar, binding = 6) readonly buffer perObjectSSBO{
+    uint16_t perObjectFlags[];
+};
+
+layout(binding = 7) uniform texture2D depthPyramid;
+layout(binding = 8) uniform sampler depthPyramidSampler;
+
+
 
 // adapted from: https://gist.github.com/XProger/6d1fd465c823bba7138b638691831288
 // Computes signed distance between a point and a plane
@@ -151,7 +160,12 @@ void main() {
     if ((ubo.cameraRenderLayers & renderLayerBuffer[entityID]) == 0){
         return;
     }
-    
+
+    uint16_t attributeBitmask = perObjectFlags[0];
+    const bool skipFrustumCulling = !bool(attributeBitmask & 1);    // if the bit is set, then frustum culling is enabled
+    const bool skipOcclusionCulling = !bool(attributeBitmask & (1 << 1));
+
+
 	mat4 model = modelBuffer[entityID];
     mat3 modelNoTranslate = mat3(model);
 
@@ -175,10 +189,10 @@ void main() {
     
     // test all the transformed NDC planes
     // is considered on camera if the bounding sphere intersects the camera frustum
-    bool isOnCamera = CullSphere(planes, center, radius) > 0;
+    bool isOnCamera = skipFrustumCulling ? true : CullSphere(planes, center, radius) > 0;
 
     // check occlusion
-    if (isOnCamera){
+    if (isOnCamera && !skipOcclusionCulling){
         // occlusion culling is not available on Metal or WebGPU
 #if !defined(RGL_SL_MTL) && !defined(RGL_SL_WGSL)
 		ClipBoundingBoxResult projected = projectWorldSpaceSphere(center, radius, ubo.viewProj);

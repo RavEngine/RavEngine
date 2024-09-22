@@ -686,6 +686,7 @@ struct LightingType{
 			mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
 			mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
             mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.buffer, 5);
+			mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.perObjectAttributes.buffer, 6);
 			for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
 				CullingUBO cubo{
 					.viewProj = viewproj,
@@ -713,8 +714,8 @@ struct LightingType{
 #else
 						mainCommandBuffer->SetComputeBytes(cubo, 0);
 #endif
-						mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 6);
-						mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 7);
+						mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 7);
+						mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 8);
 						mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 						cubo.indirectBufferOffset += lodsForThisMesh;
 						cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
@@ -824,6 +825,7 @@ struct LightingType{
 					mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
 					mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
                     mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.buffer, 5);
+					mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.perObjectAttributes.buffer, 6);
 					CullingUBO cubo{
 						.viewProj = viewproj,
 						.camPos = camPos,
@@ -852,8 +854,8 @@ struct LightingType{
 #else
 							mainCommandBuffer->SetComputeBytes(cubo, 0);
 #endif
-							mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 6);
-							mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 7);
+							mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 7);
+							mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 8);
 							mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 							cubo.indirectBufferOffset += lodsForThisMesh;
 							cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
