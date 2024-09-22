@@ -775,6 +775,7 @@ if (RAVENGINE_BUILD_TESTS)
 	# dummy app
 	if (NOT RAVENGINE_SERVER)
 		add_executable("${PROJECT_NAME}_DummyApp" EXCLUDE_FROM_ALL "test/dummyapp.cpp")
+		target_compile_features("${PROJECT_NAME}_DummyApp" PRIVATE cxx_std_20)
 		target_link_libraries("${PROJECT_NAME}_DummyApp" PUBLIC "RavEngine")
 		pack_resources(TARGET "${PROJECT_NAME}_DummyApp"
 			OUTPUT_FILE DATA_PACK
