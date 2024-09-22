@@ -161,7 +161,7 @@ void main() {
         return;
     }
 
-    uint16_t attributeBitmask = perObjectFlags[0];
+    uint16_t attributeBitmask = perObjectFlags[entityID];
     const bool skipFrustumCulling = !bool(attributeBitmask & 1);    // if the bit is set, then frustum culling is enabled
     const bool skipOcclusionCulling = !bool(attributeBitmask & (1 << 1));
 

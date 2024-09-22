@@ -1,4 +1,7 @@
 #extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_shader_16bit_storage : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
 struct LitOutput{
     vec4 color;
     vec3 normal;
@@ -72,6 +75,10 @@ layout(scalar, binding = 28) readonly buffer renderLayerSSBO{
     uint entityRenderLayers[];
 };
 
+layout(scalar, binding = 29) readonly buffer perObjectAttributesSSBO{
+    uint16_t perObjectFlags[];
+};
+
 layout(set = 1, binding = 0) uniform texture2D shadowMaps[];      // the bindless heap must be in set 1 binding 0
 layout(set = 2, binding = 0) uniform textureCube pointShadowMaps[];    // we alias these because everything goes into the one heap
 
@@ -82,6 +89,8 @@ void main(){
     outnormal = vec4(user_out.normal,1);
     
     const uint entityRenderLayer = entityRenderLayers[varyingEntityID];
+    const uint16_t attributeBitmask = perObjectFlags[varyingEntityID];
+    const bool recievesShadows = bool(attributeBitmask & (1 << 3));
 
     // compute lighting based on the results of the user's function
 
@@ -115,7 +124,7 @@ void main(){
         vec3 lightResult = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, light.toLight, 1, light.color * light.intensity);
         float pcfFactor = 1;
         
-        if (bool(light.castsShadows)){
+        if (recievesShadows && bool(light.castsShadows)){
              pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);
         }
 
@@ -152,7 +161,7 @@ void main(){
         vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, getLightAttenuation(dist),  light.color * light.intensity);
         float pcfFactor = 1;
 
-        if (bool(light.castsShadows)){
+        if (recievesShadows && bool(light.castsShadows)){
             // adapted from: https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/Mesh.hlsl#L233
             vec3 shadowPos = worldPosition - light.position;
             float shadowDistance = length(shadowPos);
@@ -198,7 +207,7 @@ void main(){
         vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, getLightAttenuation(dist),  light.color * light.intensity);
 
         float pcfFactor = 1;
-        if (bool(light.castsShadows)){
+        if (recievesShadows && bool(light.castsShadows)){
             pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);
         }
 
