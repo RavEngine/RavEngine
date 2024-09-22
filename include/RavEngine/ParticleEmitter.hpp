@@ -79,13 +79,6 @@ namespace RavEngine {
 		// for internal use only
 		uint32_t GetNextParticleSpawnCount();
 
-		void SetCastsShadows(bool value) {
-			castsShadows = value;
-		}
-
-		bool GetCastsShadows() const{
-			return castsShadows;
-		}
 
 		// when a particle systen is frozen, it does not tick. 
 		// If a particle system is set to invisible, it also becomes frozen
@@ -137,7 +130,6 @@ namespace RavEngine {
 			uint32_t maxTotalParticlesOffset = 0;
 		} renderState;
 
-		bool castsShadows : 1 = true;
 		bool emittingThisFrame : 1 = false;
 		bool isVisible : 1 = true;
 		bool isFrozen : 1 = false;
