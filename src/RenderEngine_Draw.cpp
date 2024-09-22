@@ -970,6 +970,13 @@ struct LightingType{
                     if ((renderLayers & layers) == 0){
                         return;
                     }
+
+					// check if casting shadows
+					auto attributes = worldOwning->renderData.perObjectAttributes[emitter.GetOwner().GetIdInWorld()];
+					const bool shouldConsider = !shadowMode || (shadowMode && (attributes & CastsShadowsBit));
+					if (!shouldConsider) {
+						return;
+					}
                     
 					// check if shadow casting is enabled
 					if (!emitter.GetCastsShadows() && currentLightingType.FilterLightBlockers) {
