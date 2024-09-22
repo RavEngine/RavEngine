@@ -516,7 +516,7 @@ struct LightingType{
 			prepareSkeletalCullingBuffer();
 		}
 
-		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult]<bool includeLighting = true, bool transparentMode = false, bool shadowMode = false>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers){
+		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult]<bool includeLighting = true, bool transparentMode = false>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers){
             
             uint32_t particleBillboardMatrices = 0;
 
@@ -630,7 +630,7 @@ struct LightingType{
 
 			
 
-            auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning, &reallocBuffer, layers](matrix4 viewproj, const DepthPyramid pyramid) {
+            auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning, &reallocBuffer, layers, lightingFilter](matrix4 viewproj, const DepthPyramid pyramid) {
 			// first reset the indirect buffers
 				uint32_t skeletalVertexOffset = 0;
 			for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
@@ -691,7 +691,7 @@ struct LightingType{
 				CullingUBO cubo{
 					.viewProj = viewproj,
 					.indirectBufferOffset = 0,
-					.singleInstanceModeAndShadowMode = 1 | (shadowMode ? (1 << 1) : 0),
+					.singleInstanceModeAndShadowMode = 1u | (lightingFilter.FilterLightBlockers ? (1 << 1) : 0u),
 					.numLODs = 1,
                     .cameraRenderLayers = layers
 				};
@@ -830,7 +830,7 @@ struct LightingType{
 						.viewProj = viewproj,
 						.camPos = camPos,
 						.indirectBufferOffset = 0,
-						.singleInstanceModeAndShadowMode = (shadowMode ? (1 << 1) : 0),
+						.singleInstanceModeAndShadowMode = (lightingFilter.FilterLightBlockers ? (1 << 1) : 0u),
                         .cameraRenderLayers = layers
 					};
 					static_assert(sizeof(cubo) <= 128, "CUBO is too big!");
@@ -973,15 +973,11 @@ struct LightingType{
 
 					// check if casting shadows
 					auto attributes = worldOwning->renderData.perObjectAttributes[emitter.GetOwner().GetIdInWorld()];
-					const bool shouldConsider = !shadowMode || (shadowMode && (attributes & CastsShadowsBit));
+					const bool shouldConsider = !currentLightingType.FilterLightBlockers || (currentLightingType.FilterLightBlockers && (attributes & CastsShadowsBit));
 					if (!shouldConsider) {
 						return;
 					}
                     
-					// check if shadow casting is enabled
-					if (!emitter.GetCastsShadows() && currentLightingType.FilterLightBlockers) {
-						return;
-					}
 					if (!emitter.GetVisible()) {
 						return;
 					}
@@ -1162,7 +1158,7 @@ struct LightingType{
 
 					shadowRenderPass->SetDepthAttachmentTexture(shadowTexture->GetDefaultView());
 					auto shadowMapSize = shadowTexture->GetSize().width;
-					renderFromPerspective.template operator()<false,false,true>(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, {}, shadowRenderPass, [](auto&& mat) {
+					renderFromPerspective.template operator()<false,false>(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, {}, shadowRenderPass, [](auto&& mat) {
 						return mat->GetShadowRenderPipeline();
 						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true, .Opaque = true }, lightMats.depthPyramid, light.shadowLayers);
 
