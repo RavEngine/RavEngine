@@ -516,7 +516,7 @@ struct LightingType{
 			prepareSkeletalCullingBuffer();
 		}
 
-		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult]<bool includeLighting = true, bool transparentMode = false>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers){
+		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult]<bool includeLighting = true, bool transparentMode = false, bool shadowMode = false>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers){
             
             uint32_t particleBillboardMatrices = 0;
 
@@ -691,7 +691,7 @@ struct LightingType{
 				CullingUBO cubo{
 					.viewProj = viewproj,
 					.indirectBufferOffset = 0,
-					.isSingleInstanceMode = 1,
+					.singleInstanceModeAndShadowMode = 1 | (shadowMode ? (1 << 1) : 0),
 					.numLODs = 1,
                     .cameraRenderLayers = layers
 				};
@@ -830,6 +830,7 @@ struct LightingType{
 						.viewProj = viewproj,
 						.camPos = camPos,
 						.indirectBufferOffset = 0,
+						.singleInstanceModeAndShadowMode = (shadowMode ? (1 << 1) : 0),
                         .cameraRenderLayers = layers
 					};
 					static_assert(sizeof(cubo) <= 128, "CUBO is too big!");
@@ -1154,7 +1155,7 @@ struct LightingType{
 
 					shadowRenderPass->SetDepthAttachmentTexture(shadowTexture->GetDefaultView());
 					auto shadowMapSize = shadowTexture->GetSize().width;
-					renderFromPerspective.template operator()<false>(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, {}, shadowRenderPass, [](auto&& mat) {
+					renderFromPerspective.template operator()<false,false,true>(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, {}, shadowRenderPass, [](auto&& mat) {
 						return mat->GetShadowRenderPipeline();
 						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true, .Opaque = true }, lightMats.depthPyramid, light.shadowLayers);
 

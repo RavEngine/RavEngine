@@ -9,7 +9,7 @@ layout(push_constant, std430) uniform UniformBufferObject{
 	uint numObjects;
 	uint cullingBufferOffset;
     float radius;
-    uint isSingleInstanceMode;
+    uint isSingleInstanceModeAndShadowMode; // LSB is single instance mode, bit 2 is shadow mode
     uint numLODs;
     uint cameraRenderLayers;
 } ubo;
@@ -164,7 +164,16 @@ void main() {
     uint16_t attributeBitmask = perObjectFlags[entityID];
     const bool skipFrustumCulling = !bool(attributeBitmask & 1);    // if the bit is set, then frustum culling is enabled
     const bool skipOcclusionCulling = !bool(attributeBitmask & (1 << 1));
+    const bool castsShadows = bool(attributeBitmask & (1 << 2));
 
+    const int isSingleInstanceMode = int(bool(ubo.isSingleInstanceModeAndShadowMode & 1));
+    const bool isShadowMode = bool(ubo.isSingleInstanceModeAndShadowMode & (1 << 1));
+
+    // does this entity cast shadows
+    const bool shouldConsider = !isShadowMode || (isShadowMode && castsShadows);
+    if (!shouldConsider){
+        return;                    
+    }
 
 	mat4 model = modelBuffer[entityID];
     mat3 modelNoTranslate = mat3(model);
@@ -261,10 +270,10 @@ void main() {
         }
 
         // atomic-increment the instance count and write the entity ID into the output ID buffer based on the previous value of the instance count
-		uint idx = atomicAdd(indirectBuffer[ubo.indirectBufferOffset + lodID + ubo.isSingleInstanceMode * gl_GlobalInvocationID.x].instanceCount,1);
+		uint idx = atomicAdd(indirectBuffer[ubo.indirectBufferOffset + lodID + isSingleInstanceMode * gl_GlobalInvocationID.x].instanceCount,1);
 		uint idxLODOffset = ubo.numObjects * lodID + ubo.cullingBufferOffset;
 
-        uint cullingSingleObjectModeOffset = gl_GlobalInvocationID.x * ubo.isSingleInstanceMode; 
+        uint cullingSingleObjectModeOffset = gl_GlobalInvocationID.x * isSingleInstanceMode; 
 		entityIDsToRender[idx + idxLODOffset + cullingSingleObjectModeOffset] = entityID;
 	}
 
