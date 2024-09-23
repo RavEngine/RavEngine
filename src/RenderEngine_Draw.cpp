@@ -1354,17 +1354,22 @@ struct LightingType{
 				RVE_PROFILE_SECTION_END(unlittrans);
                 
                 // then do the skybox, if one is defined.
-                mainCommandBuffer->BeginRendering(unlitRenderPass);
                 if (worldOwning->skybox && worldOwning->skybox->skyMat && worldOwning->skybox->skyMat->GetMat()->renderPipeline) {
+                    struct skyboxData{
+                        glm::mat4 invView;
+                    } data {glm::inverse(viewonly)};
+                    
+                    auto transientOffset = WriteTransient(data);
+                    
+                    mainCommandBuffer->BeginRendering(unlitRenderPass);
                     mainCommandBuffer->BeginRenderDebugMarker("Skybox");
                     mainCommandBuffer->BindRenderPipeline(worldOwning->skybox->skyMat->GetMat()->renderPipeline);
-                    
+                    mainCommandBuffer->BindBuffer(transientBuffer, 0, transientOffset);
                     mainCommandBuffer->SetVertexBuffer(screenTriVerts);
-                    mainCommandBuffer->SetVertexBytes(viewproj, 0);
                     mainCommandBuffer->Draw(3);
                     mainCommandBuffer->EndRenderDebugMarker();
+                    mainCommandBuffer->EndRendering();
                 }
-                mainCommandBuffer->EndRendering();
 
 
 				// apply transparency
