@@ -1357,11 +1357,13 @@ struct LightingType{
                 if (worldOwning->skybox && worldOwning->skybox->skyMat && worldOwning->skybox->skyMat->GetMat()->renderPipeline) {
                     struct skyboxData{
                         glm::mat3 invView;
+                        glm::vec3 camPos;
                         float fov;
                         float aspectRatio;
                     } data {
                         glm::inverse(camData.viewOnly),
-                        deg_to_rad(camData.fov), //TODO: pass this in somehow
+                        camData.camPos,
+                        deg_to_rad(camData.fov),
                         float(fullSizeViewport.width) / float(fullSizeViewport.height)
                     };
                     

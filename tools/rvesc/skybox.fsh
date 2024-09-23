@@ -11,6 +11,18 @@ struct SkyboxInput{
     vec3 skyRay;
 };
 
+struct EngineData{
+    mat3 invView;
+    vec3 camPos;
+    float fov;
+    float aspectRatio;
+};
+
+layout(scalar, binding = 1) readonly buffer engineDataSSBO
+{
+    EngineData constants;
+};
+
 #include "%s"
 
 void main(){

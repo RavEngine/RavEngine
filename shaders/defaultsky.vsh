@@ -5,6 +5,7 @@ layout(location = 0) out vec3 v_sky_ray;
 
 struct EngineData{
     mat3 invView;
+    vec3 camPos;
     float fov;
     float aspectRatio;
 };
