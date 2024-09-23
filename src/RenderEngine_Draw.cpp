@@ -1356,15 +1356,21 @@ struct LightingType{
                 // then do the skybox, if one is defined.
                 if (worldOwning->skybox && worldOwning->skybox->skyMat && worldOwning->skybox->skyMat->GetMat()->renderPipeline) {
                     struct skyboxData{
-                        glm::mat4 invView;
-                    } data {glm::inverse(viewonly)};
+                        glm::mat3 invView;
+                        float fov;
+                        float aspectRatio;
+                    } data {
+                        glm::inverse(viewonly),
+                        60, //TODO: pass this in somehow
+                        float(fullSizeViewport.width) / float(fullSizeViewport.height)
+                    };
                     
                     auto transientOffset = WriteTransient(data);
                     
                     mainCommandBuffer->BeginRendering(unlitRenderPass);
                     mainCommandBuffer->BeginRenderDebugMarker("Skybox");
                     mainCommandBuffer->BindRenderPipeline(worldOwning->skybox->skyMat->GetMat()->renderPipeline);
-                    mainCommandBuffer->BindBuffer(transientBuffer, 0, transientOffset);
+                    mainCommandBuffer->BindBuffer(transientBuffer, 1, transientOffset);
                     mainCommandBuffer->SetVertexBuffer(screenTriVerts);
                     mainCommandBuffer->Draw(3);
                     mainCommandBuffer->EndRenderDebugMarker();

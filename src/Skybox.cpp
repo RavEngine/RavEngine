@@ -41,7 +41,7 @@ RavEngine::ISkyMaterial::ISkyMaterial(const std::string& shaderpath) : Material(
         .depthCompareFunction = RGL::DepthCompareFunction::Equal,
         .bindings = {
             {
-                .binding = 0,
+                .binding = 1,
                 .type = RGL::BindingType::StorageBuffer,
                 .stageFlags = RGL::BindingVisibility::VertexFragment
             }
