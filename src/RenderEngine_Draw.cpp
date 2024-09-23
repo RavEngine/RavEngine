@@ -1275,12 +1275,12 @@ struct LightingType{
 			auto nextImgSize = view.pixelDimensions;
 			auto& target = view.collection;
 
-			auto renderLitPass_Impl = [this,&target, &renderFromPerspective,&renderLightShadowmap,&worldOwning]<bool transparentMode = false>(auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea, renderlayer_t layers) {
+			auto renderLitPass_Impl = [this,&target, &renderFromPerspective,&renderLightShadowmap,&worldOwning]<bool transparentMode = false>(auto&& camData, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// directional light shadowmaps
 
 				if constexpr (!transparentMode) {
 					mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
-					const auto dirlightShadowmapDataFunction = [&camPos](uint8_t index, RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
+                    const auto dirlightShadowmapDataFunction = [&camData](uint8_t index, RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
 						auto dirvec = light.direction;
 
 						auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
@@ -1289,7 +1289,7 @@ struct LightingType{
 
 						auto lightProj = RMath::orthoProjection<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
 						auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
-						const vector3 reposVec{ std::round(-camPos.pos.x), std::round(camPos.pos.y), std::round(-camPos.pos.z) };
+						const vector3 reposVec{ std::round(-camData.camPos.x), std::round(camData.camPos.y), std::round(-camData.camPos.z) };
 						lightView = glm::translate(lightView, reposVec);
 
 						auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
@@ -1299,7 +1299,7 @@ struct LightingType{
 						return lightViewProjResult{
 							.lightProj = lightProj,
 							.lightView = lightView,
-							.camPos = camPos.pos,
+							.camPos = camData.camPos,
 							.depthPyramid = origLight.shadowData.pyramid,
 							.shadowmapTexture = origLight.shadowData.shadowMap,
 							.spillData = light.lightViewProj
@@ -1317,30 +1317,30 @@ struct LightingType{
 
 				// render all the static meshes
 
-				renderFromPerspective.template operator()<true, transparentMode>(viewproj, viewonly, projOnly, camPos.pos, camPos.zNearFar, transparentMode ? litTransparentPass : litRenderPass, [](auto&& mat) {
+				renderFromPerspective.template operator()<true, transparentMode>(camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, transparentMode ? litTransparentPass : litRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-                }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, layers);
+                }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers);
 
 				
 			};
 
-            auto renderLitPass = [&renderLitPass_Impl](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea, renderlayer_t layer) {
-				renderLitPass_Impl(viewproj, viewonly, projOnly, camPos, fullSizeViewport, fullSizeScissor, renderArea, layer);
+            auto renderLitPass = [&renderLitPass_Impl](auto&& camData, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+				renderLitPass_Impl(camData, fullSizeViewport, fullSizeScissor, renderArea);
 			};
 
-			auto renderLitPassTransparent = [&renderLitPass_Impl](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea, renderlayer_t layer) {
-				renderLitPass_Impl.template operator()<true>(viewproj, viewonly, projOnly, camPos, fullSizeViewport, fullSizeScissor, renderArea, layer);
+			auto renderLitPassTransparent = [&renderLitPass_Impl](auto&& camData, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+				renderLitPass_Impl.template operator()<true>(camData, fullSizeViewport, fullSizeScissor, renderArea);
 			};
 
-            auto renderFinalPass = [this, &target, &worldOwning, &view, &guiScaleFactor, &nextImgSize, &renderFromPerspective](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea, renderlayer_t layers) {
+            auto renderFinalPass = [this, &target, &worldOwning, &view, &guiScaleFactor, &nextImgSize, &renderFromPerspective](auto&& camData, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
                 
                 //render unlits
 				RVE_PROFILE_SECTION(unlit, "Encode Unlit Opaques");
                 unlitRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
                 unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
-				renderFromPerspective.template operator() < false > (viewproj, viewonly, projOnly, camPos.pos, {}, unlitRenderPass, [](auto&& mat) {
+				renderFromPerspective.template operator() < false > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitRenderPass, [](auto&& mat) {
                     return mat->GetMainRenderPipeline();
-                }, renderArea, {.Unlit = true, .Opaque = true }, target.depthPyramid, layers);
+                }, renderArea, {.Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers);
 				RVE_PROFILE_SECTION_END(unlit);
 
 				// render unlits with transparency
@@ -1348,9 +1348,9 @@ struct LightingType{
 				unlitTransparentPass->SetAttachmentTexture(0, target.transparencyAccumulation->GetDefaultView());
 				unlitTransparentPass->SetAttachmentTexture(1, target.transparencyRevealage->GetDefaultView());
 				unlitTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
-				renderFromPerspective.template operator() < false, true > (viewproj, viewonly, projOnly, camPos.pos, {}, unlitTransparentPass, [](auto&& mat) {
+				renderFromPerspective.template operator() < false, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitTransparentPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-				}, renderArea, { .Unlit = true, .Transparent = true }, target.depthPyramid, layers);
+				}, renderArea, { .Unlit = true, .Transparent = true }, target.depthPyramid, camData.layers);
 				RVE_PROFILE_SECTION_END(unlittrans);
                 
                 // then do the skybox, if one is defined.
@@ -1360,8 +1360,8 @@ struct LightingType{
                         float fov;
                         float aspectRatio;
                     } data {
-                        glm::inverse(viewonly),
-                        60, //TODO: pass this in somehow
+                        glm::inverse(camData.viewOnly),
+                        deg_to_rad(camData.fov), //TODO: pass this in somehow
                         float(fullSizeViewport.width) / float(fullSizeViewport.height)
                     };
                     
@@ -1533,7 +1533,7 @@ struct LightingType{
 				// process debug shapes
 				RVE_PROFILE_SECTION(debugShapes, "Encode Debug Navigation");
 				mainCommandBuffer->BeginRenderDebugMarker("Debug Navigation Mesh");
-				currentNavState.viewProj = viewproj;
+				currentNavState.viewProj = camData.viewProj;
 				worldOwning->FilterPolymorphic([this](PolymorphicGetResult<IDebugRenderable, World::PolymorphicIndirection> dbg, const PolymorphicGetResult<Transform, World::PolymorphicIndirection> transform) {
 					for (int i = 0; i < dbg.size(); i++) {
 						auto& ptr = dbg[i];
@@ -1572,7 +1572,7 @@ struct LightingType{
 						debugRenderBufferSize = im3dMeta.nverts;
 					}
 
-					data.m_appData = (void*)&viewproj;
+					data.m_appData = (void*)&camData.viewProj;
 					debugRenderBufferOffset = 0;
 					data.drawCallback = [](const Im3d::DrawList& list) {
 						GetApp()->GetRenderEngine().DebugRender(list);
@@ -1592,14 +1592,6 @@ struct LightingType{
 			};
 
 			auto doPassWithCamData = [this,&target,&nextImgSize](auto&& camdata, auto&& function) {
-				const auto viewproj = camdata.viewProj;
-				const auto invviewproj = glm::inverse(viewproj);
-
-				struct {
-					glm::vec3 pos;
-					glm::vec2 zNearFar;
-				} camData{camdata.camPos , camdata.zNearFar};
-
 				const auto camPos = camdata.camPos;
 				const auto viewportOverride = camdata.viewportOverride;
 
@@ -1620,7 +1612,7 @@ struct LightingType{
 						.extent = { uint32_t(nextImgSize.width), uint32_t(nextImgSize.height) }
 				};
 
-				function(viewproj, camdata.viewOnly, camdata.projOnly, camData, fullSizeViewport, fullSizeScissor, renderArea, camdata.layers);
+				function(camdata, fullSizeViewport, fullSizeScissor, renderArea);
 			};
             
 			auto generatePyramid = [this](const DepthPyramid& depthPyramid, RGLTexturePtr depthStencil) {
@@ -1753,10 +1745,10 @@ struct LightingType{
 				stackarray(offsets, uint32_t, view.camDatas.size());
 				uint32_t offset_index = 0;
 
-				auto renderSSAOPass = [this, &target, &nextImgSize, &worldOwning, &offsets, &offset_index](auto&& viewproj, auto&& viewonly, auto&& projOnly, auto&& camPos, auto&& fullsizeViewport, auto&& fullSizeScissor, auto&& renderArea, renderlayer_t layers) {
+				auto renderSSAOPass = [this, &target, &nextImgSize, &worldOwning, &offsets, &offset_index](auto&& camData, auto&& fullsizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 
 					ssaoUBO pushConstants{
-						.viewProj = viewproj,
+						.viewProj = camData.viewProj,
 						.viewRect = {0,0, nextImgSize.width, nextImgSize.height},
 						.viewRegion = {renderArea.offset[0], renderArea.offset[1], renderArea.extent[0], renderArea.extent[1]}
 					};

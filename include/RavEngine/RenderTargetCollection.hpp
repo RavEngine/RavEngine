@@ -28,6 +28,7 @@ namespace RavEngine{
 			glm::vec2 zNearFar;
 			ViewportOverride viewportOverride;
             renderlayer_t layers;
+            float fov;
 		};
 		Vector<camData> camDatas;
 		dim_t<int> pixelDimensions;

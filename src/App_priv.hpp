@@ -386,7 +386,7 @@ void App::Tick(){
             auto camPos = camera.GetOwner().GetTransform().GetWorldPosition();
             
             auto viewportOverride = camera.viewportOverride;
-            mainWindowView.camDatas.push_back(RenderViewCollection::camData{ viewProj, projOnly, viewOnly, camPos,{camera.nearClip, camera.farClip} ,viewportOverride, camera.renderLayers} );
+            mainWindowView.camDatas.push_back(RenderViewCollection::camData{ viewProj, projOnly, viewOnly, camPos,{camera.nearClip, camera.farClip} ,viewportOverride, camera.renderLayers, camera.FOV});
         }
 
         mainWindowView.pixelDimensions = window->GetSizeInPixels();
