@@ -1371,6 +1371,8 @@ struct LightingType{
                     
                     mainCommandBuffer->BeginRendering(unlitRenderPass);
                     mainCommandBuffer->BeginRenderDebugMarker("Skybox");
+                    mainCommandBuffer->SetViewport(fullSizeViewport);
+                    mainCommandBuffer->SetScissor(fullSizeScissor);
                     mainCommandBuffer->BindRenderPipeline(worldOwning->skybox->skyMat->GetMat()->renderPipeline);
                     mainCommandBuffer->BindBuffer(transientBuffer, 1, transientOffset);
                     mainCommandBuffer->SetVertexBuffer(screenTriVerts);
