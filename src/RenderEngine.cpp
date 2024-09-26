@@ -621,8 +621,8 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	};
 
 	// copy shader
-	auto lightToFbFSH = LoadShaderByFilename("light_to_fb.fsh",device);
-	auto lightToFbVSH = LoadShaderByFilename("light_to_fb.vsh",device);
+	auto lightToFbFSH = LoadShaderByFilename("light_to_fb_fsh",device);
+	auto lightToFbVSH = LoadShaderByFilename("light_to_fb_vsh",device);
 
 	auto lightToFBPipelineLayout = device->CreatePipelineLayout({
 		.bindings = {
@@ -728,8 +728,8 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
             .pipelineLayout = lightToFBPipelineLayout,
 		});
 
-	auto guiVSH = LoadShaderByFilename("gui.vsh", device);
-	auto guiFSH = LoadShaderByFilename("gui.fsh", device);
+	auto guiVSH = LoadShaderByFilename("gui_vsh", device);
+	auto guiFSH = LoadShaderByFilename("gui_fsh", device);
 
 	static_assert(sizeof(Rml::Vertex::colour) == sizeof(uint32_t));
 
@@ -862,8 +862,8 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 
 	// debug render pipelines
 #ifndef NDEBUG
-	auto debugVSH = LoadShaderByFilename("debug.vsh", device);
-	auto debugFSH = LoadShaderByFilename("debug.fsh", device);
+	auto debugVSH = LoadShaderByFilename("debug_vsh", device);
+	auto debugFSH = LoadShaderByFilename("debug_fsh", device);
 	auto createDebugRenderPipeline = [this, debugVSH, debugFSH, debugPipelineLayout, device](RGL::PolygonOverride drawMode, RGL::PrimitiveTopology topology) {
 		RGL::RenderPipelineDescriptor rpd{
 			.stages = {
@@ -949,7 +949,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	clusterBuildGridPipeline = device->CreateComputePipeline(RGL::ComputePipelineDescriptor{
 		.stage = {
 			.type = RGL::ShaderStageDesc::Type::Compute,
-			.shaderModule = LoadShaderByFilename("cluster_build_grid.csh",device)
+			.shaderModule = LoadShaderByFilename("cluster_build_grid_csh",device)
 		},
 		.pipelineLayout = gridBuildLayout
 	});
@@ -981,13 +981,13 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	clusterPopulatePipeline = device->CreateComputePipeline(RGL::ComputePipelineDescriptor{
 		.stage = {
 			.type = RGL::ShaderStageDesc::Type::Compute,
-			.shaderModule = LoadShaderByFilename("cluster_assign_lights.csh",device)
+			.shaderModule = LoadShaderByFilename("cluster_assign_lights_csh",device)
 		},
 		.pipelineLayout = clusterPopulateLayout
 	});
 
 	// skinned mesh compute pipeline
-	auto skinnedCSH = LoadShaderByFilename("skinning_cs.csh", device);
+	auto skinnedCSH = LoadShaderByFilename("skinning_cs_csh", device);
 	auto skinnedPipelineLayout = device->CreatePipelineLayout({
 		 .bindings = {
 				{
@@ -1086,7 +1086,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			},
 			.constants = {{ sizeof(CullingUBO), 0, RGL::StageVisibility::Compute}}
 	});
-	auto defaultCullCSH = LoadShaderByFilename("defaultcull.csh", device);
+	auto defaultCullCSH = LoadShaderByFilename("defaultcull_csh", device);
 	defaultCullingComputePipeline = device->CreateComputePipeline({
 		.stage = {
 			.type = RGL::ShaderStageDesc::Type::Compute,
@@ -1107,7 +1107,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.constants = {{ sizeof(SkinningPrepareUBO), 0, RGL::StageVisibility::Compute}}
 	});
 
-	auto drawcallPrepareCSH = LoadShaderByFilename("skinned_mesh_drawcall.csh",device);
+	auto drawcallPrepareCSH = LoadShaderByFilename("skinned_mesh_drawcall_csh",device);
 	skinningDrawCallPreparePipeline = device->CreateComputePipeline({
 		.stage = {
 			.type = RGL::ShaderStageDesc::Type::Compute,
@@ -1136,7 +1136,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
             }
         }
     });
-    auto depthPyramidCSH = LoadShaderByFilename("depthpyramid.csh",device);
+    auto depthPyramidCSH = LoadShaderByFilename("depthpyramid_csh",device);
     depthPyramidPipeline = device->CreateComputePipeline({
         .stage = {
             .type = RGL::ShaderStageDesc::Type::Compute,
@@ -1145,8 +1145,8 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
         .pipelineLayout = depthPyramidLayout
     });
 
-	auto depthPyramidCopyVSH = LoadShaderByFilename("depthpyramidcopy.vsh", device);
-	auto depthPyramidCopyFSH = LoadShaderByFilename("depthpyramidcopy.fsh", device);
+	auto depthPyramidCopyVSH = LoadShaderByFilename("depthpyramidcopy_vsh", device);
+	auto depthPyramidCopyFSH = LoadShaderByFilename("depthpyramidcopy_fsh", device);
 
 	auto depthPyramidCopyLayout = device->CreatePipelineLayout({
 		.bindings = {
@@ -1220,7 +1220,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			   },
 		   },
 		});
-    defaultPostEffectVSH = LoadShaderByFilename("defaultpostprocess.vsh", device);
+    defaultPostEffectVSH = LoadShaderByFilename("defaultpostprocess_vsh", device);
     
     
     auto ssaoLayout = device->CreatePipelineLayout({
@@ -1279,11 +1279,11 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.stages = {
 				{
 					.type = RGL::ShaderStageDesc::Type::Vertex,
-					.shaderModule = LoadShaderByFilename("transparency_apply.vsh", device),
+					.shaderModule = LoadShaderByFilename("transparency_apply_vsh", device),
 				},
 				{
 					.type = RGL::ShaderStageDesc::Type::Fragment,
-					.shaderModule = LoadShaderByFilename("transparency_apply.fsh", device),
+					.shaderModule = LoadShaderByFilename("transparency_apply_fsh", device),
 				}
 		},
 		.vertexConfig = {
@@ -1350,11 +1350,11 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
         .stages = {
                 {
                     .type = RGL::ShaderStageDesc::Type::Vertex,
-                    .shaderModule = LoadShaderByFilename("ssao.vsh", device),
+                    .shaderModule = LoadShaderByFilename("ssao_vsh", device),
                 },
                 {
                     .type = RGL::ShaderStageDesc::Type::Fragment,
-                    .shaderModule = LoadShaderByFilename("ssao.fsh", device),
+                    .shaderModule = LoadShaderByFilename("ssao_fsh", device),
                 }
         },
         .vertexConfig = {
@@ -1423,8 +1423,8 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.constants = {{sizeof(navDebugUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex)}}
 	});
 
-	auto recastDebugVSH = LoadShaderByFilename("debugNav.vsh", device);
-	auto recastDebugFSH = LoadShaderByFilename("debugNav.fsh", device);
+	auto recastDebugVSH = LoadShaderByFilename("debugNav_vsh", device);
+	auto recastDebugFSH = LoadShaderByFilename("debugNav_fsh", device);
 	auto createDebugNavPipeline = [navDebugLayout, device, recastDebugFSH, recastDebugVSH](RGL::PolygonOverride drawMode, RGL::PrimitiveTopology topology) {
 		RGL::RenderPipelineDescriptor recastDebugDesc{
 		.stages = {
@@ -1500,7 +1500,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	recastPointPipeline = createDebugNavPipeline(RGL::PolygonOverride::Line, RGL::PrimitiveTopology::PointList);
 	recastTrianglePipeline = createDebugNavPipeline(RGL::PolygonOverride::Fill, RGL::PrimitiveTopology::TriangleList);
 
-	auto particleCreateShader = LoadShaderByFilename("create_particle.csh", device);
+	auto particleCreateShader = LoadShaderByFilename("create_particle_csh", device);
 	auto particleCreateLayout = device->CreatePipelineLayout({
 		.bindings = {
 			{
@@ -1566,7 +1566,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	particleDispatchSetupPipeline = device->CreateComputePipeline({
 		.stage = {
 			.type = RGL::ShaderStageDesc::Type::Compute,
-			.shaderModule = LoadShaderByFilename("particle_dispatch_setup.csh",device)
+			.shaderModule = LoadShaderByFilename("particle_dispatch_setup_csh",device)
 		},
 		.pipelineLayout = particleDispatchLayout
 	});
@@ -1592,7 +1592,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	particleDispatchSetupPipelineIndexed = device->CreateComputePipeline({
 		.stage = {
 			.type = RGL::ShaderStageDesc::Type::Compute,
-			.shaderModule = LoadShaderByFilename("particle_dispatch_setup_indexed.csh",device)
+			.shaderModule = LoadShaderByFilename("particle_dispatch_setup_indexed_csh",device)
 		},
 		.pipelineLayout = particleDispatchLayoutIndexed
 	});
@@ -1629,7 +1629,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	particleKillPipeline = device->CreateComputePipeline({
 		.stage = {
 			.type = RGL::ShaderStageDesc::Type::Compute,
-			.shaderModule = LoadShaderByFilename("kill_particle.csh",device)
+			.shaderModule = LoadShaderByFilename("kill_particle_csh",device)
 		},
 		.pipelineLayout = particleKillLayout
 	});

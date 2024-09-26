@@ -35,7 +35,7 @@ PostProcessPass::PostProcessPass(const std::string_view name, const PostProcessC
             },
             {
                 .type = RGL::ShaderStageDesc::Type::Fragment,
-                .shaderModule = LoadShaderByFilename(Format("{}.fsh",name), device),
+                .shaderModule = LoadShaderByFilename(Format("{}_fsh",name), device),
             }
         },
         .vertexConfig = {

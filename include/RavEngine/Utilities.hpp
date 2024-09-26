@@ -56,7 +56,7 @@ static inline std::string FormatWithSep(T value)
 using Random = effolkronium::random_static;
 
 /**
-Load a shader given its filename (ie "myshader.vsh"). Must include extension.
+Load a shader given its filename (ie "myshader_vsh"). Must include extension.
 @param name filename of the shader
 @return RGLShaderLibrary
 */

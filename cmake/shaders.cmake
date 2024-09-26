@@ -27,11 +27,11 @@ macro(shader_compile infile stage api extension binary)
 		set(shader_inc_dir "${eng_dir}/shaders")
 
 		get_filename_component(name_only ${infile} NAME)
+		STRING(REPLACE "." "_" name_only ${name_only} )
 		set(outname "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}.${extension}")
 		set(finalrootpath "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}")
 		if (${api} MATCHES "Metal")
-			STRING(REPLACE "." "_" name_fixed ${name_only} )
-			set(entrypoint "--entrypoint" "${name_fixed}")
+			set(entrypoint "--entrypoint" "${name_only}")
 		endif()
 		add_custom_command(
 			PRE_BUILD
