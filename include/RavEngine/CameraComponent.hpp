@@ -8,6 +8,7 @@
 
 namespace RavEngine {
 	class RenderEngine;
+    class RenderTexture;
 	class CameraComponent : public ComponentWithOwner, public Disableable {
 	protected:
 		friend class RenderEngine;
@@ -114,7 +115,8 @@ namespace RavEngine {
 			Splitscreen			// incompatible with render textures
 		} mode = DisplayMode::Exclusive;
 
-		constexpr static bool isRenderTexture = false;
+		
+        Ref<RenderTexture> target;  // if unset, renders to the screen
 
 	protected:
         Mode projection = Mode::Perspective;

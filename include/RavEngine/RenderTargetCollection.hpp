@@ -7,6 +7,8 @@
 #include "Layer.hpp"
 
 namespace RavEngine{
+    class RenderTexture;
+
 	struct ViewportOverride {
 		glm::vec2 originFactor {0, 0};
 		glm::vec2 sizeFactor {1, 1};
@@ -14,7 +16,7 @@ namespace RavEngine{
 
 	struct RenderTargetCollection {
 		RGLTexturePtr normalTexture, depthStencil, lightingTexture, lightingScratchTexture, ssaoTexture, transparencyAccumulation, transparencyRevealage;
-		RGL::ITexture* finalFramebuffer;
+		RGL::ITexture* finalFramebuffer = nullptr;
 		DepthPyramid depthPyramid;
 	};
 

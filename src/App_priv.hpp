@@ -376,22 +376,44 @@ void App::Tick(){
             Debug::Fatal("Cannot render: World does not have a camera!");
         }
         mainWindowView.camDatas.clear();
-        for (const auto& camera : *allCameras) {
-            if (!camera.IsActive()) {
-                continue;
-            }
-            auto projOnly = camera.GenerateProjectionMatrix(windowSize.width, windowSize.height);
+        
+        constexpr auto MakeCamData = [](const auto& camera, uint32_t width, uint32_t height){
+            auto projOnly = camera.GenerateProjectionMatrix(width, height);
             auto viewOnly = camera.GenerateViewMatrix();
             auto viewProj = projOnly * viewOnly;
             auto camPos = camera.GetOwner().GetTransform().GetWorldPosition();
             
             auto viewportOverride = camera.viewportOverride;
-            mainWindowView.camDatas.push_back(RenderViewCollection::camData{ viewProj, projOnly, viewOnly, camPos,{camera.nearClip, camera.farClip} ,viewportOverride, camera.renderLayers, camera.FOV});
+            
+            return RenderViewCollection::camData{ viewProj, projOnly, viewOnly, camPos,{camera.nearClip, camera.farClip} ,viewportOverride, camera.renderLayers, camera.FOV};
+        };
+        std::vector<RenderViewCollection> allViews;
+        for(const auto& camera : *allCameras){
+            if (!camera.IsActive()) {
+                continue;
+            }
+            if (!camera.target){
+                continue;   // only want render texture cameras
+            }
+            
+            auto& collection = camera.target->GetCollection();
+            auto size = collection.normalTexture->GetSize();
+            allViews.push_back({collection, {MakeCamData(camera, size.width, size.height)}, {static_cast<int>(size.width), static_cast<int>(size.height)}});
+        }
+        
+        for (const auto& camera : *allCameras) {
+            if (!camera.IsActive()) {
+                continue;
+            }
+            if (camera.target){
+                continue;   // no render texture cameras
+            }
+           
+            mainWindowView.camDatas.push_back(MakeCamData(camera, windowSize.width, windowSize.height));
         }
 
         mainWindowView.pixelDimensions = window->GetSizeInPixels();
 
-        std::vector<RenderViewCollection> allViews;
         allViews.push_back(mainWindowView);
 
 #ifdef RVE_XR_AVAILABLE
@@ -404,7 +426,7 @@ void App::Tick(){
         }
 #endif
 
-        auto mainCommandBuffer = Renderer->Draw(renderWorld, allViews,scale);
+        auto mainCommandBuffer = Renderer->Draw(renderWorld, allViews, scale);
 
 
         // show the results to the user

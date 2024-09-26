@@ -91,7 +91,7 @@ struct LightingType{
 	/**
  Render one frame using the current state of every object in the world
  */
-	RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const std::vector<RenderViewCollection>& targets, float guiScaleFactor) {
+	RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const std::span<RenderViewCollection> screenTargets, float guiScaleFactor) {
 		transientOffset = 0;
 
 		RVE_PROFILE_FN_N("RenderEngine::Draw");
@@ -1270,7 +1270,7 @@ struct LightingType{
 		Profile::EndFrame(Profile::RenderEncodeShadowmaps);
 
 		RVE_PROFILE_SECTION(allViews, "Render Encode All Views");
-		for (const auto& view : targets) {
+		for (const auto& view : screenTargets) {
 			currentRenderSize = view.pixelDimensions;
 			auto nextImgSize = view.pixelDimensions;
 			auto& target = view.collection;

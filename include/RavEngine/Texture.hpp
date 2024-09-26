@@ -5,6 +5,7 @@
 #include "Filesystem.hpp"
 #include <RGL/Types.hpp>
 #include <RGL/TextureFormat.hpp>
+#include "RenderTargetCollection.hpp"
 
 namespace RavEngine{
 
@@ -20,6 +21,7 @@ public:
     Texture(const std::string& filename, uint16_t width, uint16_t height);
 
 	Texture(const Filesystem::Path& pathOnDisk);
+    Texture(RGLTexturePtr tx) : texture(tx){}
 	
 	virtual ~Texture();
 	    
@@ -69,6 +71,19 @@ public:
 	RuntimeTexture(int width, int height, const Config& config) : Texture(){
 		CreateTexture(width, height, config);
 	}
+};
+
+class RenderTexture {
+public:
+    RenderTexture(int width, int height);
+    
+    Ref<RuntimeTexture> GetTexture();
+    const auto& GetCollection() const{
+        return collection;
+    }
+private:
+    RenderTargetCollection collection;
+    Ref<RuntimeTexture> finalFB;
 };
 
 }

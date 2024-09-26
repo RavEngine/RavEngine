@@ -204,7 +204,7 @@ namespace RavEngine {
 		void ResizeRenderTargetCollection(RenderTargetCollection& collection, dim size);
 
 		//render a world, for internal use only
-		RGLCommandBufferPtr Draw(Ref<RavEngine::World>, const std::vector<RenderViewCollection>& targets, float guiScaleFactor);
+		RGLCommandBufferPtr Draw(Ref<RavEngine::World>, const std::span<RenderViewCollection> screenTargets, float guiScaleFactor);
         
         /**
          @return The name of the current rendering API in use
