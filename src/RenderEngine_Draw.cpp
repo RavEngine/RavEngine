@@ -517,7 +517,7 @@ struct LightingType{
 		}
 
 		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult]<bool includeLighting = true, bool transparentMode = false>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers){
-            
+			RVE_PROFILE_FN_N("RenderFromPerspective");
             uint32_t particleBillboardMatrices = 0;
 
             struct QuadParticleData {
@@ -536,6 +536,7 @@ struct LightingType{
 
 			if constexpr (includeLighting) {
 				// dispatch the lighting binning shaders
+				RVE_PROFILE_SECTION(lightBinning,"Light binning");
 				mainCommandBuffer->BeginComputeDebugMarker("Light Binning");
 				const auto nPointLights = worldOwning->renderData.pointLightData.uploadData.DenseSize();
 				const auto nSpotLights = worldOwning->renderData.spotLightData.uploadData.DenseSize();
@@ -577,6 +578,7 @@ struct LightingType{
 						mainCommandBuffer->EndCompute();
 					}
 				}
+				RVE_PROFILE_SECTION_END(lightBinning);
 				mainCommandBuffer->EndComputeDebugMarker();
 			}
 
@@ -611,6 +613,7 @@ struct LightingType{
 
 			auto reallocBuffer = [this](RGLBufferPtr& buffer, uint32_t size_count, uint32_t stride, RGL::BufferAccess access, RGL::BufferConfig::Type type, RGL::BufferFlags flags) {
 				if (buffer == nullptr || buffer->getBufferSize() < size_count * stride) {
+					RVE_PROFILE_FN_N("Realloc buffer");
 					// trash old buffer if it exists
 					if (buffer) {
 						gcBuffers.enqueue(buffer);
@@ -631,6 +634,7 @@ struct LightingType{
 			
 
             auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning, &reallocBuffer, layers, lightingFilter](matrix4 viewproj, const DepthPyramid pyramid) {
+				RVE_PROFILE_FN_N("Cull Skeletal Meshes");
 			// first reset the indirect buffers
 				uint32_t skeletalVertexOffset = 0;
 			for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
@@ -762,7 +766,7 @@ struct LightingType{
 
             auto cullTheRenderData = [this, &viewproj, &worldTransformBuffer, &camPos, &pyramid, &lightingFilter, &reallocBuffer, layers, &worldOwning](auto&& renderData) {
 				for (auto& [materialInstance, drawcommand] : renderData) {
-					
+					RVE_PROFILE_FN_N("Cull RenderData");
 					bool shouldKeep = filterRenderData(lightingFilter, materialInstance);
 
 					
@@ -867,6 +871,7 @@ struct LightingType{
 				};
 			auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, particleBillboardMatrices, &lightDataOffset,&layers](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
 				// do static meshes
+				RVE_PROFILE_FN_N("RenderTheRenderData");
 				mainCommandBuffer->SetViewport({
 					.x = float(viewportScissor.offset[0]),
 					.y = float(viewportScissor.offset[1]),
@@ -1279,6 +1284,7 @@ struct LightingType{
 				// directional light shadowmaps
 
 				if constexpr (!transparentMode) {
+					RVE_PROFILE_SECTION(dirShadow, "Render Encode Dirlight shadowmap");
 					mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
                     const auto dirlightShadowmapDataFunction = [&camData](uint8_t index, RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
 						auto dirvec = light.direction;
@@ -1312,7 +1318,7 @@ struct LightingType{
 						[](entity_t unused) {}
 					);
 					mainCommandBuffer->EndRenderDebugMarker();
-
+					RVE_PROFILE_SECTION_END(dirShadow);
 				}
 
 				// render all the static meshes
@@ -1550,7 +1556,6 @@ struct LightingType{
 				mainCommandBuffer->EndRenderDebugMarker();
 				RVE_PROFILE_SECTION_END(debugShapes);
 
-				RVE_PROFILE_SECTION(wireframes, "Encode Debug Wireframes");
 				mainCommandBuffer->BeginRenderDebugMarker("Debug Wireframes");
 				Im3d::AppData& data = Im3d::GetAppData();
 
@@ -1561,6 +1566,7 @@ struct LightingType{
                 const auto& im3dcontext = Im3d::GetContext();
                 Im3d::EndFrame();
 				if (im3dcontext.getDrawListCount() > 0) {
+					RVE_PROFILE_SECTION(wireframes, "Encode Debug Wireframes");
 					for (int i = 0; i < im3dcontext.getDrawListCount(); i++) {
 						im3dMeta.nverts += im3dcontext.getDrawLists()[i].m_vertexCount;
 					}
