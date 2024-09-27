@@ -382,8 +382,10 @@ void App::Tick(){
         }
         RVE_PROFILE_SECTION_END(tickallworlds);
 #if !RVE_SERVER
+		RVE_PROFILE_SECTION(getSwapchain, "Acquire Swapchain Image");
         auto nextTexture = window->GetNextSwapchainImage();
         mainWindowView.collection.finalFramebuffer = nextTexture.texture;
+		RVE_PROFILE_SECTION_END(getSwapchain);
 
         // get the cameras to render
         auto allCameras = renderWorld->GetAllComponentsOfType<CameraComponent>();
