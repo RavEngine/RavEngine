@@ -262,11 +262,15 @@ function(pack_resources)
 
 	# allow inserting into the mac / ios resource bundle
 	set_target_properties(${ARGS_TARGET} PROPERTIES 
-		MACOSX_BUNDLE TRUE
 		#XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH $<$<OR:$<CONFIG:DEBUG>,$<CONFIG:CHECKED>,$<CONFIG:PROFILE>>:YES>
 		VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
 		XCODE_GENERATE_SCHEME ON	# create a scheme in Xcode
 	)
+	if (NOT RAVENGINE_SERVER)
+		set_target_properties(${ARGS_TARGET} PROPERTIES 
+			MACOSX_BUNDLE ON
+		)
+	endif()
 
 	set(assets ${ARGS_OBJECTS} ${ARGS_TEXTURES} ${copy_depends})
 

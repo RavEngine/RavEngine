@@ -267,8 +267,10 @@ int App::run(int argc, char** argv) {
    
 #if !RVE_SERVER
     float windowScaleFactor = GetMainWindow()->GetDPIScale();
+    SDL_Event event;
+#endif
 	bool exit = false;
-	SDL_Event event;
+	
 	while (!exit) {
 #if __APPLE__
 		@autoreleasepool{
@@ -281,7 +283,7 @@ int App::run(int argc, char** argv) {
 		float deltaSeconds = std::chrono::duration<decltype(deltaSeconds)>(deltaTimeMicroseconds).count();
 		time += deltaSeconds;
 		currentScale = deltaSeconds * evalNormal;
-
+#if !RVE_SERVER
 		RVE_PROFILE_SECTION(events, "Process all Events");
 		auto windowflags = SDL_GetWindowFlags(window->window);
 		while (SDL_PollEvent(&event)) {
@@ -312,13 +314,28 @@ int App::run(int argc, char** argv) {
 			}
 		}
         RVE_PROFILE_SECTION_END(events);
+#endif // !RVE_SERVER
         Tick();
+#if RVE_SERVER
+        //make up the difference
+        // because there's no vsync on server builds, we need to add delay
+        //can't just call sleep because sleep is not very accurate
+        clocktype::duration work_time;
+        do{
+            auto workEnd = clocktype::now();
+            work_time = workEnd - now;
+            auto delta = min_tick_time - work_time;
+            if (delta > std::chrono::duration<double, std::milli>(3)) {
+                auto dc = std::chrono::duration_cast<std::chrono::milliseconds>(delta);
+                std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(dc.count()-1));
+            }
+        }while (work_time < min_tick_time);
+#endif
             lastFrameTime = now;
 #if __APPLE__
 		}	// end of @autoreleasepool
 #endif
 	}
-#endif  // !RVE_SERVER
 	
     return OnShutdown();
 }
@@ -449,18 +466,6 @@ void App::Tick(){
         if (GetAudioActive()) {
             player->SetWorld(renderWorld);
         }
-        //make up the difference
-        //can't use sleep because sleep is not very accurate
-        /*clocktype::duration work_time;
-        do{
-            auto workEnd = clocktype::now();
-            work_time = workEnd - now;
-            auto delta = min_tick_time - work_time;
-            if (delta > std::chrono::duration<double, std::milli>(3)) {
-                auto dc = std::chrono::duration_cast<std::chrono::milliseconds>(delta);
-                std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(dc.count()-1));
-            }
-        }while (work_time < min_tick_time);*/
 	skip_xr_frame:
 		;	// dummy statement for the label
 #endif

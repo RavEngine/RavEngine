@@ -266,7 +266,7 @@ if (NOT RAVENGINE_SERVER)
 	set(RGL_LIB "RGL")
 endif()
 
-if (NOT RVE_CROSSCOMP AND NOT RAVENGINE_SERVER)
+if (NOT RVE_CROSSCOMP)
 	include(cmake/importers.cmake)
 	include(cmake/rvesc.cmake)
 	set(RVESC_PATH rvesc CACHE INTERNAL "")

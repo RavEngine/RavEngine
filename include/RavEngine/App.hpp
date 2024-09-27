@@ -47,6 +47,10 @@ struct AudioPlayer;
 
 	class App {
 		friend class NetworkManager;
+#if RVE_SERVER
+        constexpr static std::chrono::duration<double> min_tick_time{1.0/60};
+#endif
+        
 #if !RVE_SERVER
         std::unique_ptr<RenderEngine> Renderer;
 #endif

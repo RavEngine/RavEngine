@@ -6,7 +6,9 @@
 #define SDL_WINRT_METADATA_FILE_AVAILABLE	// we are using C++20 so we can't have /ZW
 
 #endif
+#if !RVE_SERVER
 #include <SDL3/SDL_main.h>
+#endif
 
 #ifdef _WINRT
 // UWP startup requires extra effort
