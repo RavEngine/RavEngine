@@ -91,7 +91,7 @@ struct PostProcessEffect{
 };
 
 struct PostProcessEffectStack{
-    Vector<Ref<PostProcessEffect>> effects;
+    Vector<std::unique_ptr<PostProcessEffect>> effects;
     
 };
 

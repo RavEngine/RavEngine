@@ -1409,7 +1409,7 @@ struct LightingType{
                 RGL::TextureView currentInput = target.lightingTexture->GetDefaultView();
                 RGL::TextureView altInput = target.lightingScratchTexture->GetDefaultView();
                 
-                for(const auto effect : globalEffects.effects){
+                for(const auto& effect : camData.postProcessingEffects->effects){
                     if (!effect->enabled){
                         continue;
                     }

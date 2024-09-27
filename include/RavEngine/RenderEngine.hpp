@@ -110,9 +110,7 @@ namespace RavEngine {
         auto GetDefaultPostEffectVSH() const{
             return defaultPostEffectVSH;
         }
-        
-        PostProcessEffectStack globalEffects;
-        
+                
 		constexpr static RGL::TextureFormat
 			normalTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
 			colorTexFormat = RGL::TextureFormat::RGBA16_Sfloat,

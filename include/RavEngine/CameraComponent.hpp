@@ -5,6 +5,7 @@
 #include "Transform.hpp"
 #include "ComponentWithOwner.hpp"
 #include "RenderTargetCollection.hpp"
+#include "PostProcess.hpp"
 
 namespace RavEngine {
 	class RenderEngine;
@@ -16,6 +17,10 @@ namespace RavEngine {
         CameraComponent(entity_t owner, float inFOV = 60, float inNearClip = 0.1, float inFarClip = 100) : FOV(inFOV), nearClip(inNearClip), farClip(inFarClip), ComponentWithOwner(owner){}
 
 		virtual ~CameraComponent() {}
+        
+        CameraComponent(const CameraComponent&) = delete;   // no copy
+        CameraComponent(CameraComponent&&) = default;       // default move-construct and move-equals
+        CameraComponent& operator=(CameraComponent&&) = default;
 
 		/**
 		Enable / disable this camera
@@ -117,6 +122,8 @@ namespace RavEngine {
 
 		
         Ref<RenderTexture> target;  // if unset, renders to the screen
+        
+        PostProcessEffectStack postProcessingEffects;
 
 	protected:
         Mode projection = Mode::Perspective;

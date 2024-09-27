@@ -8,6 +8,7 @@
 
 namespace RavEngine{
     class RenderTexture;
+    struct PostProcessEffectStack;
 
 	struct ViewportOverride {
 		glm::vec2 originFactor {0, 0};
@@ -31,6 +32,7 @@ namespace RavEngine{
 			ViewportOverride viewportOverride;
             renderlayer_t layers;
             float fov;
+            const PostProcessEffectStack* postProcessingEffects = nullptr;
 		};
 		Vector<camData> camDatas;
 		dim_t<int> pixelDimensions;

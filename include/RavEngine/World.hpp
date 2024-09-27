@@ -140,7 +140,7 @@ namespace RavEngine {
             
             template<typename ... A>
             inline T& Emplace(entity_t local_id, A&& ... args){
-                auto& ret = dense_set.emplace(args...);
+                auto& ret = dense_set.emplace(std::forward<A>(args)...);
                 aux_set.emplace(local_id);
                 if (local_id >= sparse_set.size()){
                     sparse_set.resize(closest_multiple_of<int>(local_id+1,2),INVALID_ENTITY);  //ensure there is enough space for this id
@@ -657,7 +657,7 @@ namespace RavEngine {
                 return ptr->Emplace(local_id, localToGlobal[local_id], args...);
             }
             else{
-                return ptr->Emplace(local_id,args...);
+                return ptr->Emplace(local_id,std::forward<A>(args)...);
             }
         }
 

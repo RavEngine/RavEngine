@@ -66,7 +66,7 @@ public:
      */
     template<typename ... A>
     inline T& emplace(A&& ... args){
-        underlying.emplace_back(args...);
+        underlying.emplace_back(std::forward<A>(args)...);
         return underlying.back();
     }
     
