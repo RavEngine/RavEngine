@@ -24,7 +24,8 @@ namespace RavEngine {
 			RGL::ITexture* texture;
 			RGL::SwapchainPresentConfig presentConfig;
 		};
-		SwapchainResult GetNextSwapchainImage();
+        void QueueGetNextSwapchainImage(RGL::SwapchainPresentConfig&);
+		SwapchainResult BlockGetNextSwapchainImage(const RGL::SwapchainPresentConfig& );
 
 		dim_t<int> windowdims;
         

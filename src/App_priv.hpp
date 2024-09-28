@@ -346,6 +346,9 @@ void App::Tick(){
 #endif
         
 #if !RVE_SERVER
+        RVE_PROFILE_SECTION(getSwapchain, "Acquire Swapchain Image");
+        RGL::SwapchainPresentConfig swapchainPresentConfig;
+        window->QueueGetNextSwapchainImage(swapchainPresentConfig);
 #ifndef NDEBUG
         RenderEngine::debuggerInput->TickAxes();
 #endif
@@ -382,10 +385,6 @@ void App::Tick(){
         }
         RVE_PROFILE_SECTION_END(tickallworlds);
 #if !RVE_SERVER
-		RVE_PROFILE_SECTION(getSwapchain, "Acquire Swapchain Image");
-        auto nextTexture = window->GetNextSwapchainImage();
-        mainWindowView.collection.finalFramebuffer = nextTexture.texture;
-		RVE_PROFILE_SECTION_END(getSwapchain);
 
         // get the cameras to render
         auto allCameras = renderWorld->GetAllComponentsOfType<CameraComponent>();
@@ -433,8 +432,6 @@ void App::Tick(){
 
         mainWindowView.pixelDimensions = window->GetSizeInPixels();
 
-        allViews.push_back(mainWindowView);
-
 #ifdef RVE_XR_AVAILABLE
         // update OpenXR data if it is requested
         std::pair<std::vector<XrView>, XrFrameState> xrBeginData;
@@ -445,6 +442,10 @@ void App::Tick(){
         }
 #endif
 
+        auto nextTexture = window->BlockGetNextSwapchainImage(swapchainPresentConfig);
+        RVE_PROFILE_SECTION_END(getSwapchain);
+        mainWindowView.collection.finalFramebuffer = nextTexture.texture;
+        allViews.push_back(mainWindowView);
         auto mainCommandBuffer = Renderer->Draw(renderWorld, allViews, scale);
 
 
