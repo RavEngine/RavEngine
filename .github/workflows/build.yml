@@ -33,12 +33,12 @@ jobs:
               sudo add-apt-repository ppa:ubuntu-toolchain-r/test
               sudo apt-get update -y
               sudo apt remove build-essential -y
-              sudo apt-get install cmake g++-13 gcc-13 clang-16 llvm-16 ninja-build libgl1-mesa-dev uuid-dev libwayland-dev libxkbcommon-dev libasound2-dev libegl-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends
+              sudo apt-get install cmake g++-13 gcc-13 clang-16 llvm-16 mold ninja-build libgl1-mesa-dev uuid-dev libwayland-dev libxkbcommon-dev libasound2-dev libegl-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends
       - name: Configure
         run: |
             mkdir -p build 
             cd build
-            CC=/usr/bin/${{ matrix.compiler.cc }} CXX=/usr/bin/${{ matrix.compiler.cxx }} cmake -G "Ninja" -DRAVENGINE_BUILD_TESTS=ON -DRAVENGINE_SERVER=OFF .. 
+            CC=/usr/bin/${{ matrix.compiler.cc }} CXX=/usr/bin/${{ matrix.compiler.cxx }} cmake -G "Ninja" -DRAVENGINE_BUILD_TESTS=ON -DRAVENGINE_SERVER=OFF -DCMAKE_LINKER=mold .. 
       - name: Build
         run: cd build; cmake --build . --config Release --target RavEngine RavEngine_DummyApp rvesc rveskc rveac rvemc 
       
