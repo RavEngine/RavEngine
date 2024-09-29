@@ -38,7 +38,7 @@ jobs:
         run: |
             mkdir -p build 
             cd build
-            CC=/usr/bin/${{ matrix.compiler.cc }} CXX=/usr/bin/${{ matrix.compiler.cxx }} cmake -G "Ninja" -DRAVENGINE_BUILD_TESTS=ON -DRAVENGINE_SERVER=OFF -DCMAKE_LINKER=mold .. 
+            CC=/usr/bin/${{ matrix.compiler.cc }} CXX=/usr/bin/${{ matrix.compiler.cxx }} cmake -G "Ninja" -DRAVENGINE_BUILD_TESTS=ON -DRAVENGINE_SERVER=OFF -DCMAKE_LINKER=/usr/bin/mold .. 
       - name: Build
         run: cd build; cmake --build . --config Release --target RavEngine RavEngine_DummyApp rvesc rveskc rveac rvemc 
       
