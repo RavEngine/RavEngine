@@ -10,6 +10,7 @@
 #include "App.hpp"
 #include "Debug.hpp"
 #include "AudioMeshAsset.hpp"
+#include "Profile.hpp"
 
 #include "mathtypes.hpp"
 #include <glm/gtc/type_ptr.hpp>
@@ -19,6 +20,7 @@ using namespace std;
 
 void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBufferInlineView& buffer, PlanarSampleBufferInlineView& scratchBuffer, PlanarSampleBufferInlineView monoSourceData, const vector3& sourcePos, entity_t owningEntity, const matrix4& invListenerTransform)
 {
+    RVE_PROFILE_FN;
     // get the binaural effect
     auto& audioPlayer = GetApp()->GetAudioPlayer();
     auto state = audioPlayer->GetSteamAudioState();
@@ -288,6 +290,7 @@ void RavEngine::GeometryAudioSpace::RoomData::ConsiderAudioSource(const vector3&
 
 void RavEngine::GeometryAudioSpace::RoomData::CalculateRoom(const matrix4& invRoomTransform, const vector3& listenerForwardWorldSpace, const vector3& listenerUpWorldSpace, const vector3& listenerRightWorldSpace)
 {
+    RVE_PROFILE_FN;
     iplSimulatorCommit(steamAudioSimulator);        // apply all queued changes
 
     const auto forwardRoomSpace = invRoomTransform * vector4(listenerForwardWorldSpace, 1);

@@ -10,6 +10,7 @@
 #include "DataStructures.hpp"
 #include "AudioGraphAsset.hpp"
 #include "App.hpp"
+#include "Profile.hpp"
 #include <algorithm>
 #if _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -82,11 +83,11 @@ inline static void TZero(T* data, size_t nData){
 }
 
 void AudioPlayer::Tick() {
-    
     static_assert(sizeof(SnapshotToRender) == sizeof(void*), "Not a pointer! Check this!");
    
     auto queuedSize = SDL_GetAudioStreamQueued(stream);
     if (queuedSize < maxAudioSampleLatency) {
+        RVE_PROFILE_SECTION(tickAudio,"AudioPlayer::Tick");
         GetApp()->SwapRenderAudioSnapshot();
         SnapshotToRender = GetApp()->GetRenderAudioSnapshot();
 #if USE_MT_IMPL
@@ -96,10 +97,12 @@ void AudioPlayer::Tick() {
 #endif
         
         SDL_PutAudioStreamData(stream, interleavedOutputBuffer.data(), interleavedOutputBuffer.size() * sizeof(interleavedOutputBuffer[0]));
+        RVE_PROFILE_SECTION_END(tickAudio);
     }
 }
 
 void RavEngine::AudioPlayer::CalculateGeometryAudioSpace(AudioSnapshot::GeometryAudioSpaceData& r) {
+    RVE_PROFILE_FN;
     auto& room = r.room;
 
     // destroyed-sources
@@ -158,6 +161,7 @@ void RavEngine::AudioPlayer::CalculateGeometryAudioSpace(AudioSnapshot::Geometry
 
 void RavEngine::AudioPlayer::CalculateSimpleAudioSpace(AudioSnapshot::SimpleAudioSpaceData& r)
 {
+    RVE_PROFILE_FN;
     auto& room = r.room;
 
     // destroyed-sources
@@ -201,6 +205,7 @@ void RavEngine::AudioPlayer::CalculateSimpleAudioSpace(AudioSnapshot::SimpleAudi
 
 void RavEngine::AudioPlayer::CalculateBoxAudioSpace(AudioSnapshot::BoxReverbationSpaceData& r)
 {
+    RVE_PROFILE_FN;
     auto& room = r.room;
 
     // destroyed-sources
@@ -230,6 +235,7 @@ void RavEngine::AudioPlayer::CalculateBoxAudioSpace(AudioSnapshot::BoxReverbatio
 
 void RavEngine::AudioPlayer::CalculateFinalMix()
 {
+    RVE_PROFILE_FN;
     auto sharedBufferView = playerRenderBuffer->GetWritableDataBufferView();
     auto effectScratchBuffer = playerRenderBuffer->GetWritableScratchBufferView();
 

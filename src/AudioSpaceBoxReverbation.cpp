@@ -3,6 +3,7 @@
 #include "AudioPlayer.hpp"
 #include <base/misc_math.h>
 #include <common/room_effects_utils.h>
+#include "Profile.hpp"
 
 namespace RavEngine {
 	RavEngine::BoxReverbationAudioSpace::BoxReverbationAudioSpace(entity_t owner) : roomData(std::make_unique<RoomData>()), ComponentWithOwner(owner)
@@ -63,6 +64,7 @@ namespace RavEngine {
 
 	void BoxReverbationAudioSpace::RoomData::RenderSpace(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer, const vector3& listenerPosRoomSpace, const quaternion& listenerRotRoomSpace, const vector3& roomHalfExts, const BoxReverbationAudioSpace::RoomProperties& roomProperties)
 	{
+		RVE_PROFILE_FN;
 		audioEngine->SetHeadPosition(listenerPosRoomSpace.x, listenerPosRoomSpace.y, listenerPosRoomSpace.z);
 		audioEngine->SetHeadRotation(listenerRotRoomSpace.x, listenerRotRoomSpace.y, listenerRotRoomSpace.z, listenerRotRoomSpace.w);
 
