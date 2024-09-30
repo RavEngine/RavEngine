@@ -6,7 +6,7 @@
 #include "Profile.hpp"
 
 namespace RavEngine {
-	RavEngine::BoxReverbationAudioSpace::BoxReverbationAudioSpace(entity_t owner) : roomData(std::make_unique<RoomData>()), ComponentWithOwner(owner)
+	RavEngine::BoxReverbationAudioSpace::BoxReverbationAudioSpace(Entity owner) : roomData(std::make_unique<RoomData>()), ComponentWithOwner(owner)
 	{
 
 	}

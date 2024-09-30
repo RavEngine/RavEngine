@@ -21,7 +21,7 @@ public:
 	~NetworkServer();	//calls stop
 	static void SteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t*);
 
-	void SpawnEntity(World*, ctti_t, entity_t, const uuids::uuid&);
+	void SpawnEntity(World*, ctti_t, Entity, const uuids::uuid&);
 	void DestroyEntity(const uuids::uuid&);
 
 	void SendMessageToAllClients(const std::string_view& msg, Reliability mode) const;

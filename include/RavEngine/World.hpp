@@ -489,7 +489,7 @@ namespace RavEngine {
             template<typename BaseIncludingArgument>
             inline auto HandleFor(int idx){
                 auto& elt = elts.at(idx);
-                return BaseIncludingArgument(owner,elt.full_id);
+                return BaseIncludingArgument({owner,world},elt.full_id);
             }
 			
 			auto begin(){
@@ -624,6 +624,12 @@ namespace RavEngine {
             return (*componentMap.try_emplace(RavEngine::CTTI<T>(),static_cast<T*>(nullptr)).first).second.template GetSet<T>();
         }
         
+        struct EntityRedir{
+            World* owner;
+            entity_t id;
+            operator Entity() const;
+        };
+                
         template<typename T, typename ... A>
         inline T& EmplaceComponent(entity_t local_id, A&& ... args){
             auto ptr = MakeIfNotExists<T>();
@@ -652,9 +658,9 @@ namespace RavEngine {
                 renderData.spotLightData.DefaultAddAt(local_id);
             }
 #endif
-            //detect if T constructor's first argument is an entity_t, if it is, then we need to pass that before args (pass local_id again)
-            if constexpr(std::is_constructible<T,entity_t, A...>::value || (sizeof ... (A) == 0 && std::is_constructible<T,entity_t>::value)){
-                return ptr->Emplace(local_id, localToGlobal[local_id], args...);
+            //detect if T constructor's first argument is an Entity, if it is, then we need to pass that before args (pass local_id again)
+            if constexpr(std::is_constructible<T,Entity, A...>::value || (sizeof ... (A) == 0 && std::is_constructible<T,Entity>::value)){
+                return ptr->Emplace(local_id, EntityRedir{this,local_id}, args...);
             }
             else{
                 return ptr->Emplace(local_id,std::forward<A>(args)...);
@@ -954,6 +960,7 @@ namespace RavEngine {
             auto id = CreateEntity();
             T en;
             en.id = id;
+            en.world = this;
 #if !RVE_SERVER
             SetupPerEntityRenderData(id);
 #endif

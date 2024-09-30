@@ -21,7 +21,7 @@ private:
 #endif
 public:
 	
-	SkinnedMeshComponent(entity_t owner, Ref<SkeletonAsset> sk, Ref<MeshCollectionSkinned> mesh) : ComponentWithOwner(owner), skeleton(sk), mesh(mesh){}
+	SkinnedMeshComponent(Entity owner, Ref<SkeletonAsset> sk, Ref<MeshCollectionSkinned> mesh) : ComponentWithOwner(owner), skeleton(sk), mesh(mesh){}
 #if !RVE_SERVER
 	inline void SetMaterial(decltype(mat) newMat){
 		updateMaterialInWorldRenderData(newMat);

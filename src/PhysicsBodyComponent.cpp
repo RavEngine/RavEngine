@@ -23,7 +23,7 @@ static inline PxQuat convertQuat(const quaternion& q) {
 	return PxQuat(q.x, q.y, q.z, q.w);
 }
 
-PhysicsBodyComponent::PhysicsBodyComponent(entity_t owner) : ComponentWithOwner(owner){}
+PhysicsBodyComponent::PhysicsBodyComponent(Entity owner) : ComponentWithOwner(owner){}
 
 void PhysicsBodyComponent::CompleteConstruction(){
     GetOwner().GetWorld()->Solver->Spawn(*this);
@@ -50,12 +50,12 @@ void PhysicsBodyComponent::Destroy(){
 
 /// Dynamic Body ========================================
 
-RigidBodyDynamicComponent::RigidBodyDynamicComponent(entity_t owner) : PhysicsBodyComponent(owner) {
+RigidBodyDynamicComponent::RigidBodyDynamicComponent(Entity owner) : PhysicsBodyComponent(owner) {
 	rigidActor = PhysicsSolver::phys->createRigidDynamic(PxTransform(PxVec3(0, 0, 0)));	//will be set pre-tick to the entity's location
     CompleteConstruction();
-    Entity e(owner);
-    assert(e.HasComponent<Transform>());    // must already have a transform!
-    setDynamicsWorldPose(e.GetTransform().GetWorldPosition(), e.GetTransform().GetWorldRotation());
+    assert(owner.HasComponent<Transform>());    // must already have a transform!
+    const auto& transform = owner.GetTransform();
+    setDynamicsWorldPose(transform.GetWorldPosition(), transform.GetWorldRotation());
 }
 
 void RavEngine::PhysicsBodyComponent::OnDestroyDetatchCollider(RavEngine::PhysicsCollider& collider)
@@ -316,7 +316,7 @@ void RigidBodyDynamicComponent::ClearAllTorques(){
 }
 
 /// Static Body ========================================
-RigidBodyStaticComponent::RigidBodyStaticComponent(entity_t owner) : PhysicsBodyComponent(owner) {
+RigidBodyStaticComponent::RigidBodyStaticComponent(Entity owner) : PhysicsBodyComponent(owner) {
 	rigidActor = PhysicsSolver::phys->createRigidStatic(PxTransform(PxVec3(0, 0, 0)));	//will be set pre-tick to the entity's location
     CompleteConstruction();
 }

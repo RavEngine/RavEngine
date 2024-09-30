@@ -15,7 +15,7 @@ namespace RavEngine {
     private:
         Ref<MeshCollectionStatic> mesh;
         Ref<MaterialInstance> material;
-        StaticMesh(entity_t owner, decltype(mesh) m) : ComponentWithOwner(owner){
+        StaticMesh(Entity owner, decltype(mesh) m) : ComponentWithOwner(owner){
             SetMesh(m);
         }
         void updateMaterialInWorldRenderData(decltype(material) mat);
@@ -25,7 +25,7 @@ namespace RavEngine {
         }
     public:
 
-        StaticMesh(entity_t owner, Ref<MeshCollectionStatic> m, decltype(material) mat) : StaticMesh(owner, m) {
+        StaticMesh(Entity owner, Ref<MeshCollectionStatic> m, decltype(material) mat) : StaticMesh(owner, m) {
             SetMaterial(mat);
 		}
         

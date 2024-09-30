@@ -10,11 +10,11 @@ namespace RavEngine{
  */
 struct ConstraintTarget : public ComponentWithOwner, public Queryable<ConstraintTarget> {
 	friend class Constraint;
-	ConstraintTarget(entity_t id) : ComponentWithOwner(id){}
+	ConstraintTarget(Entity id) : ComponentWithOwner(id){}
 	void Destroy();
 private:
 	// stores the list of entities that are targeting the owner of this component
-	UnorderedSet<entity_t> targeters;
+	UnorderedSet<Entity> targeters;
 	
 	/**
 	 Entities that are targeting this owner call this method when they break connection
@@ -43,7 +43,7 @@ protected:
 	ComponentHandle<ConstraintTarget> target;
 	float influence = 1.0;
 public:
-	Constraint(entity_t, decltype(target));
+	Constraint(Entity, decltype(target));
 	// invoked by the world on component removal or owner destruction, do not invoke manually
 	void Destroy();
 	auto GetTarget() const { return target; }
@@ -55,7 +55,7 @@ public:
 struct SocketConstraint : public Constraint, public QueryableDelta<Constraint,SocketConstraint>{
 	using QueryableDelta<Constraint,SocketConstraint>::GetQueryTypes;
 	std::string boneTarget;
-	SocketConstraint(entity_t id, decltype(target), const decltype(boneTarget)& );
+	SocketConstraint(Entity id, decltype(target), const decltype(boneTarget)& );
 };
 
 /**

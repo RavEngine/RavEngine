@@ -58,7 +58,7 @@ public Queryable<PhysicsBodyComponent
             return rigidActor->getScene();
         }
         
-        PhysicsBodyComponent(entity_t owner);
+        PhysicsBodyComponent(Entity owner);
         virtual ~PhysicsBodyComponent();
         
         void Destroy();
@@ -222,8 +222,8 @@ public Queryable<PhysicsBodyComponent
 
 	class RigidBodyDynamicComponent : public PhysicsBodyComponent, public QueryableDelta<PhysicsBodyComponent,RigidBodyDynamicComponent> {
 	public:
-		RigidBodyDynamicComponent(entity_t owner);
-		RigidBodyDynamicComponent(entity_t owner, physx::PxU32 fg, physx::PxU32 fm) : RigidBodyDynamicComponent(owner) {
+		RigidBodyDynamicComponent(Entity owner);
+		RigidBodyDynamicComponent(Entity owner, physx::PxU32 fg, physx::PxU32 fm) : RigidBodyDynamicComponent(owner) {
 			this->filterGroup = fg; this->filterMask = fm;
 		}
 		virtual ~RigidBodyDynamicComponent();
@@ -328,9 +328,9 @@ public Queryable<PhysicsBodyComponent
 
 	struct RigidBodyStaticComponent : public PhysicsBodyComponent, public QueryableDelta<PhysicsBodyComponent,RigidBodyStaticComponent> {
         using QueryableDelta<PhysicsBodyComponent,RigidBodyStaticComponent>::GetQueryTypes;
-		RigidBodyStaticComponent(entity_t owner);
+		RigidBodyStaticComponent(Entity owner);
 		virtual ~RigidBodyStaticComponent();
-		RigidBodyStaticComponent(entity_t owner, physx::PxU32 fg, physx::PxU32 fm) : RigidBodyStaticComponent(owner) {
+		RigidBodyStaticComponent(Entity owner, physx::PxU32 fg, physx::PxU32 fm) : RigidBodyStaticComponent(owner) {
 			this->filterGroup = fg; this->filterMask = fm;
 		}
 

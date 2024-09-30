@@ -6,7 +6,7 @@
 using namespace RavEngine;
 using namespace std;
 
-void NetworkManager::Spawn(World* source, ctti_t id, entity_t ent_id, const uuids::uuid& uuid) {
+void NetworkManager::Spawn(World* source, ctti_t id, Entity ent_id, const uuids::uuid& uuid) {
 	// Running on the server?
     if (IsServer()){
         server->SpawnEntity(source,id,ent_id,uuid);

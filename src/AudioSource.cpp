@@ -20,7 +20,7 @@ using namespace std;
 
 SampledAudioDataProvider::SampledAudioDataProvider(decltype(asset) a, uint8_t nchannels) : asset(a), AudioDataProvider(AudioPlayer::GetBufferSize(), nchannels){}
 
-AudioSourceComponent::AudioSourceComponent(entity_t owner, Ref<AudioDataProvider> a) : ComponentWithOwner(owner), AudioSourceBase(a){
+AudioSourceComponent::AudioSourceComponent(Entity owner, Ref<AudioDataProvider> a) : ComponentWithOwner(owner), AudioSourceBase(a){
 }
 
 AmbientAudioSourceComponent::AmbientAudioSourceComponent(Ref<AudioDataProvider> a)  : AudioSourceBase(a) {}

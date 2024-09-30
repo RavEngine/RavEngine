@@ -21,7 +21,7 @@ void RavEngine::NetworkServer::HandleDisconnect(HSteamNetConnection connection)
 	OwnershipTracker.erase(connection);
 }
 
-void NetworkServer::SpawnEntity(World* source, ctti_t id, entity_t ent_id, const uuids::uuid& netID) {
+void NetworkServer::SpawnEntity(World* source, ctti_t id, Entity ent_id, const uuids::uuid& netID) {
 	NetworkIdentities[netID] = ent_id;
     auto message = CreateSpawnCommand(netID,id,source->worldID);
 	auto len = message.size();

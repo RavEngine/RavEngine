@@ -10,7 +10,7 @@ void ConstraintTarget::Destroy(){
 	auto owner = GetOwner();
 	// disconnect the targeters by resetting their handles
 	for(const auto entity : targeters){
-		auto ds = Entity(entity).GetAllComponentsPolymorphic<Constraint>();
+		auto ds = entity.GetAllComponentsPolymorphic<Constraint>();
 		for(uint16_t i = 0; i < ds.size(); i++){
 			auto a = ds.HandleFor<PolymorphicComponentHandle<Constraint>>(i);
 			a->target.reset();
@@ -18,19 +18,19 @@ void ConstraintTarget::Destroy(){
 	}
 }
 
-Constraint::Constraint(entity_t id, decltype(target) targetEntity) : ComponentWithOwner(id), target(targetEntity){
+Constraint::Constraint(Entity id, decltype(target) targetEntity) : ComponentWithOwner(id), target(targetEntity){
 	Debug::Assert(target, "Cannot add Constraint to invalid entity!");
-	target->AddTargeter(GetOwner().id);;
+	target->AddTargeter(GetOwner());;
 }
 
 void Constraint::Destroy(){
 	if (target){
-		target->DeleteTargeter(GetOwner().id);
+		target->DeleteTargeter(GetOwner());
 	}
 }
 
 
-SocketConstraint::SocketConstraint(entity_t id, decltype(target) t, const decltype(boneTarget)& tgt) : Constraint(id,t) , boneTarget(tgt){
+SocketConstraint::SocketConstraint(Entity id, decltype(target) t, const decltype(boneTarget)& tgt) : Constraint(id,t) , boneTarget(tgt){
 	//TODO: check if target entity has the bone
 	Debug::Assert(target.GetOwner().GetComponent<AnimatorComponent>().GetSkeleton()->HasBone(tgt), "Cannot add socket constraint to nonexistent bone {}", tgt);
 }

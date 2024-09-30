@@ -176,7 +176,7 @@ public:
  For attaching a movable source to an Entity. Affected by Rooms.
  */
 struct AudioSourceComponent : public AudioSourceBase, public ComponentWithOwner, public Queryable<AudioSourceComponent>{
-    AudioSourceComponent(entity_t owner, Ref<AudioDataProvider> a);
+    AudioSourceComponent(Entity owner, Ref<AudioDataProvider> a);
 };
 
 /**
@@ -197,9 +197,9 @@ struct InstantaneousAudioSource : public AudioSourceBase{
 
 struct InstantaneousAudioSourceToPlay {
     InstantaneousAudioSource source;
-    entity_t fakeOwner;
+    Entity fakeOwner{INVALID_ENTITY, nullptr};
     InstantaneousAudioSourceToPlay(const InstantaneousAudioSource& source, entity_t fakeOwner) :
-        source(source), fakeOwner(fakeOwner) {}
+        source(source), fakeOwner(fakeOwner,nullptr) {}
 };
 
 

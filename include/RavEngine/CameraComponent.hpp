@@ -14,7 +14,7 @@ namespace RavEngine {
 	protected:
 		friend class RenderEngine;
 	public:
-        CameraComponent(entity_t owner, float inFOV = 60, float inNearClip = 0.1, float inFarClip = 100) : FOV(inFOV), nearClip(inNearClip), farClip(inFarClip), ComponentWithOwner(owner){}
+        CameraComponent(Entity owner, float inFOV = 60, float inNearClip = 0.1, float inFarClip = 100) : FOV(inFOV), nearClip(inNearClip), farClip(inFarClip), ComponentWithOwner(owner){}
 
 		virtual ~CameraComponent() {}
         

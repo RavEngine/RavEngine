@@ -971,13 +971,13 @@ struct LightingType{
 				// render particles
                 worldOwning->Filter([this, &viewproj, &particleBillboardMatrices, &currentLightingType, &pipelineSelectorFunction, &lightDataOffset, &worldOwning, &layers](const ParticleEmitter& emitter, const Transform& t) {
                     // check if the render layers match
-                    auto renderLayers = worldOwning->renderData.renderLayers[emitter.GetOwner().GetIdInWorld()];
+                    auto renderLayers = worldOwning->renderData.renderLayers[emitter.GetOwner().GetID()];
                     if ((renderLayers & layers) == 0){
                         return;
                     }
 
 					// check if casting shadows
-					auto attributes = worldOwning->renderData.perObjectAttributes[emitter.GetOwner().GetIdInWorld()];
+                    auto attributes = worldOwning->renderData.perObjectAttributes[emitter.GetOwner().GetID()];
 					const bool shouldConsider = !currentLightingType.FilterLightBlockers || (currentLightingType.FilterLightBlockers && (attributes & CastsShadowsBit));
 					if (!shouldConsider) {
 						return;
@@ -1145,7 +1145,7 @@ struct LightingType{
 					continue;	// don't do anything if the light doesn't cast
 				}
 				auto sparseIdx = lightStore.uploadData.GetSparseIndexForDense(i);
-				auto owner = worldOwning->GetLocalToGlobal()[sparseIdx];
+				auto owner = Entity(sparseIdx, worldOwning.get());
 
 				using lightadt_t = std::remove_reference_t<decltype(lightStore)>;
 
@@ -1174,7 +1174,7 @@ struct LightingType{
 		};
 
 		Profile::BeginFrame(Profile::RenderEncodeSpotShadows);
-		const auto spotlightShadowMapFunction = [](uint8_t index, RavEngine::World::SpotLightDataUpload& light, auto unusedAux, entity_t owner) {
+		const auto spotlightShadowMapFunction = [](uint8_t index, RavEngine::World::SpotLightDataUpload& light, auto unusedAux, Entity owner) {
 
 			auto lightProj = RMath::perspectiveProjection<float>(light.coneAngle * 2, 1, 0.1, 100);
 
@@ -1186,7 +1186,7 @@ struct LightingType{
 
 			auto camPos = light.worldTransform * glm::vec4(0, 0, 0, 1);
 
-			auto& origLight = Entity(owner).GetComponent<SpotLight>();
+			auto& origLight = owner.GetComponent<SpotLight>();
 
 			light.lightViewProj = lightProj * viewMat;	// save this because the shader needs it
 
@@ -1202,12 +1202,12 @@ struct LightingType{
         
 		renderLightShadowmap(worldOwning->renderData.spotLightData, 1,
 			spotlightShadowMapFunction,
-			[](entity_t unused) {}
+			[](Entity unused) {}
 		);
 		Profile::EndFrame(Profile::RenderEncodeSpotShadows);
 
 		Profile::BeginFrame(Profile::RenderEncodePointShadows);
-		const auto pointLightShadowmapFunction = [](uint8_t index, const RavEngine::World::PointLightUploadData& light, auto unusedAux, entity_t owner) {
+		const auto pointLightShadowmapFunction = [](uint8_t index, const RavEngine::World::PointLightUploadData& light, auto unusedAux, Entity owner) {
 			auto lightProj = RMath::perspectiveProjection<float>(90, 1, 0.1, 100);
 
 			glm::mat4 viewMat;
@@ -1240,7 +1240,7 @@ struct LightingType{
             
 			auto camPos = light.position;
 
-			auto& origLight = Entity(owner).GetComponent<PointLight>();
+			auto& origLight = owner.GetComponent<PointLight>();
 
 			return lightViewProjResult{
 				.lightProj = lightProj,
@@ -1254,8 +1254,8 @@ struct LightingType{
 
 		renderLightShadowmap(worldOwning->renderData.pointLightData, 6,
 			pointLightShadowmapFunction,
-			[this](entity_t owner) {
-				auto& origLight = Entity(owner).GetComponent<PointLight>();
+			[this](Entity owner) {
+				auto& origLight = owner.GetComponent<PointLight>();
 				for (uint32_t i = 0; i < 6; i++) {
 					mainCommandBuffer->CopyTextureToTexture(
 						{
@@ -1286,7 +1286,7 @@ struct LightingType{
 				if constexpr (!transparentMode) {
 					RVE_PROFILE_SECTION(dirShadow, "Render Encode Dirlight shadowmap");
 					mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
-                    const auto dirlightShadowmapDataFunction = [&camData](uint8_t index, RavEngine::World::DirLightUploadData& light, auto auxDataPtr, entity_t owner) {
+                    const auto dirlightShadowmapDataFunction = [&camData](uint8_t index, RavEngine::World::DirLightUploadData& light, auto auxDataPtr, Entity owner) {
 						auto dirvec = light.direction;
 
 						auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
@@ -1298,7 +1298,7 @@ struct LightingType{
 						const vector3 reposVec{ std::round(-camData.camPos.x), std::round(camData.camPos.y), std::round(-camData.camPos.z) };
 						lightView = glm::translate(lightView, reposVec);
 
-						auto& origLight = Entity(owner).GetComponent<DirectionalLight>();
+						auto& origLight = owner.GetComponent<DirectionalLight>();
 
 						light.lightViewProj = lightProj * lightView;	// remember this because the rendering also needs it
 
@@ -1315,7 +1315,7 @@ struct LightingType{
 
 					renderLightShadowmap(worldOwning->renderData.directionalLightData, 1,
 						dirlightShadowmapDataFunction,
-						[](entity_t unused) {}
+						[](Entity unused) {}
 					);
 					mainCommandBuffer->EndRenderDebugMarker();
 					RVE_PROFILE_SECTION_END(dirShadow);
@@ -1671,7 +1671,7 @@ struct LightingType{
 				for (uint32_t i = 0; i < lightStore.uploadData.DenseSize(); i++) {
 					const auto& light = lightStore.uploadData.GetDense()[i];
 					auto sparseIdx = lightStore.uploadData.GetSparseIndexForDense(i);
-					auto owner = worldOwning->GetLocalToGlobal()[sparseIdx];
+					auto owner = Entity(sparseIdx, worldOwning.get());
 
 					using LightType = std::remove_pointer_t<decltype(lightType)>;
 

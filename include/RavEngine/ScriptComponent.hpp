@@ -12,7 +12,7 @@ namespace RavEngine {
 	class ScriptComponent : public ComponentWithOwner,  public Queryable<ScriptComponent> {
 	public:
         
-        ScriptComponent(entity_t owner) : ComponentWithOwner(owner){}
+        ScriptComponent(Entity owner) : ComponentWithOwner(owner){}
         
 		/**
 		Override to provide cleanup behavior.

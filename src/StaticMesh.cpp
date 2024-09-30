@@ -11,7 +11,7 @@ void RavEngine::StaticMesh::updateMaterialInWorldRenderData(decltype(material) t
 		auto prev = GetMaterial();
 		auto owner = GetOwner();
 		auto world = owner.GetWorld();
-		auto localID = owner.GetIdInWorld();
+		auto localID = owner.GetID();
 		world->updateStaticMeshMaterial(localID, prev, to,GetMesh());
 	}
 	
@@ -24,7 +24,7 @@ void RavEngine::SkinnedMeshComponent::updateMaterialInWorldRenderData(decltype(m
 		auto prev = GetMaterial();
 		auto owner = GetOwner();
 		auto world = owner.GetWorld();
-		auto localID = owner.GetIdInWorld();
+		auto localID = owner.GetID();
 		world->updateSkinnedMeshMaterial(localID, prev, to, GetMesh(), GetSkeleton());
 	}
 	

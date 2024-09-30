@@ -62,7 +62,7 @@ void RavEngine::World::Tick(float scale) {
 }
 
 
-RavEngine::World::World() : Solver(std::make_unique<PhysicsSolver>()){
+RavEngine::World::World() : Solver(std::make_unique<PhysicsSolver>(this)){
     SetupTaskGraph();
     EmplacePolymorphicSystem<ScriptSystem>();
     EmplaceSystem<AnimatorSystem>();
@@ -90,13 +90,13 @@ void World::NetworkingSpawn(ctti_t id, Entity& handle){
             auto& netidcomp = handle.EmplaceComponent<NetworkIdentity>(id);
             
             // now send the message to spawn this on the other end
-            GetApp()->networkManager.Spawn(this,id,handle.id,netidcomp.GetNetworkID());
+            GetApp()->networkManager.Spawn(this,id,handle,netidcomp.GetNetworkID());
         }
     }
 }
 
 void World::NetworkingDestroy(entity_t id){
-    Entity handle{id};
+    Entity handle{id,this};
     // are we networked, and is this the server?
     if (NetworkManager::IsNetworked() && NetworkManager::IsServer()){
         // is this a networkobject?
@@ -211,7 +211,7 @@ void World::SetupTaskGraph(){
             Filter([this](const AudioSourceComponent& audioSource, const Transform& transform){
                 auto snapshot = GetApp()->GetCurrentAudioSnapshot();
                 auto provider = audioSource.GetPlayer();
-                snapshot->sources.emplace(provider,transform.GetWorldPosition(),transform.GetWorldRotation(), audioSource.GetOwner().GetIdInWorld());
+                snapshot->sources.emplace(provider,transform.GetWorldPosition(),transform.GetWorldRotation(), audioSource.GetOwner().GetID());
                 snapshot->dataProviders.insert(provider);
             });
         
@@ -221,8 +221,8 @@ void World::SetupTaskGraph(){
             };
             for (const auto& source : instantaneousToPlay) {
                 if (checkFunc(source)) {
-                    destroyedAudioSources.enqueue(source.fakeOwner);
-                    instantaneousAudioSourceFreeList.ReturnID(source.fakeOwner);    // expired sources return their IDs
+                    destroyedAudioSources.enqueue(source.fakeOwner.id);
+                    instantaneousAudioSourceFreeList.ReturnID(source.fakeOwner.id);    // expired sources return their IDs
                 }
             }
             instantaneousToPlay.remove_if(checkFunc);
@@ -232,7 +232,7 @@ void World::SetupTaskGraph(){
             for(auto& f : instantaneousToPlay){
                 auto snapshot = GetApp()->GetCurrentAudioSnapshot();
                 auto provider = f.source.GetPlayer();
-                snapshot->sources.emplace(provider,f.source.source_position,quaternion(0,0,0,1), f.fakeOwner);
+                snapshot->sources.emplace(provider,f.source.source_position,quaternion(0,0,0,1), f.fakeOwner.GetID());
                 snapshot->dataProviders.insert(provider);
             }
         }).name("Point Audios").succeed(audioClear);
@@ -271,7 +271,7 @@ void World::SetupTaskGraph(){
 
         auto copyAudioGeometry = audioTasks.emplace([this] {
             Filter([this](const AudioMeshComponent& mesh, const Transform& transform) {
-                GetApp()->GetCurrentAudioSnapshot()->audioMeshes.emplace_back(transform.GetWorldMatrix(), mesh.GetAsset(), mesh.GetOwner().GetIdInWorld());
+                GetApp()->GetCurrentAudioSnapshot()->audioMeshes.emplace_back(transform.GetWorldMatrix(), mesh.GetAsset(), mesh.GetOwner().GetID());
             });
          }).name("Geometry Audio Meshes").succeed(audioClear);
 
@@ -290,6 +290,11 @@ void World::SetupTaskGraph(){
     }
 #endif
 }
+
+World::EntityRedir::operator Entity() const{
+    return {id, owner};
+}
+
 #if !RVE_SERVER
 
 void World::setupRenderTasks(){
@@ -325,7 +330,7 @@ void World::setupRenderTasks(){
                     auto& vec = *it;
                     // write new matrix
                     auto owner = trns.GetOwner();
-                    auto ownerIDInWorld = owner.GetIdInWorld();
+                    auto ownerIDInWorld = owner.GetID();
                     renderData.worldTransforms[ownerIDInWorld] = trns.GetWorldMatrix();
                 });
 
@@ -362,7 +367,7 @@ void World::setupRenderTasks(){
         Filter([this](const ParticleEmitter& emitter, const Transform& t) {
             if (t.getTickDirty()) {
                 auto owner = t.GetOwner();
-                auto ownerIDInWorld = owner.GetIdInWorld();
+                auto ownerIDInWorld = owner.GetID();
                 renderData.worldTransforms[ownerIDInWorld] = t.GetWorldMatrix();
             }
         });
@@ -373,7 +378,7 @@ void World::setupRenderTasks(){
     auto updateInvalidatedDirs = renderTasks.emplace([this]{
         if (auto ptr = GetAllComponentsOfType<DirectionalLight>()){
             for(int i = 0; i < ptr->DenseSize(); i++){
-                auto owner = Entity(localToGlobal[ptr->GetOwner(i)]);
+                auto owner = Entity(ptr->GetOwner(i),this);
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
@@ -408,7 +413,7 @@ void World::setupRenderTasks(){
     auto updateInvalidatedSpots = renderTasks.emplace([this]{
         if (auto ptr = GetAllComponentsOfType<SpotLight>()){
             for(int i = 0; i < ptr->DenseSize(); i++){
-                auto owner = Entity(localToGlobal[ptr->GetOwner(i)]);
+                auto owner = Entity(ptr->GetOwner(i),this);
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
@@ -437,7 +442,7 @@ void World::setupRenderTasks(){
     auto updateInvalidatedPoints = renderTasks.emplace([this]{
         if (auto ptr = GetAllComponentsOfType<PointLight>()){
             for(int i = 0; i < ptr->DenseSize(); i++){
-                auto owner = Entity(localToGlobal[ptr->GetOwner(i)]);
+                auto owner = Entity(ptr->GetOwner(i),this);
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
@@ -623,20 +628,20 @@ void World::DestroySkinnedMeshRenderData(const SkinnedMeshComponent& mesh, entit
 void World::StaticMeshChangedVisibility(const StaticMesh* mesh){
 	auto owner = mesh->GetOwner();
 	if (mesh->GetEnabled()){
-        updateStaticMeshMaterial(owner.GetIdInWorld(),{},mesh->GetMaterial(),mesh->GetMesh());
+        updateStaticMeshMaterial(owner.GetID(),{},mesh->GetMaterial(),mesh->GetMesh());
 	}
 	else{
-		DestroyStaticMeshRenderData(*mesh, owner.GetIdInWorld());
+		DestroyStaticMeshRenderData(*mesh, owner.GetID());
 	}
 }
 
 void World::SkinnedMeshChangedVisibility(const SkinnedMeshComponent* mesh){
 	auto owner = mesh->GetOwner();
 	if (mesh->GetEnabled()){
-        updateSkinnedMeshMaterial(owner.GetIdInWorld(),{},mesh->GetMaterial(),mesh->GetMesh(),mesh->GetSkeleton());
+        updateSkinnedMeshMaterial(owner.GetID(),{},mesh->GetMaterial(),mesh->GetMesh(),mesh->GetSkeleton());
 	}
 	else{
-		DestroySkinnedMeshRenderData(*mesh, owner.GetIdInWorld());
+		DestroySkinnedMeshRenderData(*mesh, owner.GetID());
 	}
 }
 #endif

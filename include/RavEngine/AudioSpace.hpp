@@ -87,7 +87,7 @@ public:
     };
 	
     
-	SimpleAudioSpace(entity_t owner) : ComponentWithOwner(owner), data(std::make_shared<RoomData>()) {}
+	SimpleAudioSpace(Entity owner) : ComponentWithOwner(owner), data(std::make_shared<RoomData>()) {}
 	
     void SetRadius(float radius) {
         data->sourceRadius = radius;
@@ -218,7 +218,7 @@ public:
         return data->meshRadius;
     }
 
-    GeometryAudioSpace(entity_t owner) : ComponentWithOwner(owner), data(std::make_shared<RoomData>()) {}
+    GeometryAudioSpace(Entity owner) : ComponentWithOwner(owner), data(std::make_shared<RoomData>()) {}
 
     void DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const override {}
 private:
@@ -274,7 +274,7 @@ private:
     vector3 roomHalfExts{ 10, 10, 10 };
     RoomProperties roomProperties;
 public:
-    BoxReverbationAudioSpace(entity_t owner);
+    BoxReverbationAudioSpace(Entity owner);
     void DebugDraw(RavEngine::DebugDrawer& dbg, const RavEngine::Transform& tr) const override {}
     auto GetData() const {
         return roomData;

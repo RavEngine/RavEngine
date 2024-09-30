@@ -8,72 +8,69 @@ struct World;
 struct Transform;
 
 struct Entity : public AutoCTTI{
+    World* world = nullptr;
     entity_t id = INVALID_ENTITY;
     
-    Entity(entity_t id) : id(id){}
+    Entity(entity_t id, World* owner) : id(id), world(owner){}
+    Entity(const Entity&) = default;
     Entity(){}
+    bool operator==(const Entity& other) const{
+        return world == other.world && id == other.GetID();
+    }
     
     template<typename T, typename ... A>
-    inline T& EmplaceComponent(A&& ... args) const{
-        return Registry::EmplaceComponent<T>(id, args...);
+    T& EmplaceComponent(A&& ... args) const{
+        return world->EmplaceComponent<T>(id, args...);
     }
     
     template<typename T>
-    inline void DestroyComponent() const{
-        Registry::DestroyComponent<T>(id);
+    void DestroyComponent() const{
+        world->DestroyComponent<T>(id);
     }
 
     template<typename T>
-    inline bool HasComponent() const{
-        return Registry::HasComponent<T>(id);
+    bool HasComponent() const{
+        return world->HasComponent<T>(id);
     }
     
     template<typename T>
-    inline bool HasComponentOfBase() const{
-        return Registry::HasComponentOfBase<T>(id);
+    bool HasComponentOfBase() const{
+        return world->HasComponentOfBase<T>(id);
     }
     
     template<typename T>
-    inline auto GetAllComponentsPolymorphic() const{
-        return Registry::GetAllComponentsPolymorphic<T>(id);
+    auto GetAllComponentsPolymorphic() const{
+        return world->GetAllComponentsPolymorphic<T>(id);
     }
 
     template<typename T>
-    inline T& GetComponent() const{
-       return Registry::GetComponent<T>(id);
+    T& GetComponent() const{
+       return world->GetComponent<T>(id);
     }
     
-    inline void Destroy(){
-        Registry::DestroyEntity(id);
+    entity_t GetID() const{
+        return id;
+    }
+    
+    void Destroy(){
+        world->DestroyEntity(id);
         id = INVALID_ENTITY;
     }
-    
-    inline bool IsInWorld(){
-        return Registry::IsInWorld(id);
-    }
 
-    inline World* GetWorld() const {
-        return Registry::GetWorld(id);
-    }
-    
-    inline decltype(id) GetIdInWorld() const{
-        return Registry::GetLocalId(id);
-    }
-    
-    inline void MoveTo(World& newWorld) const{
-        Registry::MoveEntityToWorld(id, newWorld);
+    World* GetWorld() const {
+        return world;
     }
     
     void SetEntityRenderlayer(renderlayer_t layers) const{
-        Registry::SetEntityRenderlayer(id, layers);
+        world->SetEntityRenderlayer(id, layers);
     }
 
     void SetEntityAttributes(perobject_t attributes) {
-        Registry::SetEntityAttributes(id, attributes);
+        world->SetEntityAttributes(id, attributes);
     }
 
     perobject_t GetEntityAttributes() const {
-        return Registry::GetEntityAttributes(id);
+        return world->GetEntityAttributes(id);
     }
     
     Transform& GetTransform();
@@ -82,4 +79,13 @@ struct Entity : public AutoCTTI{
     // define your own to hide this one
     inline void Create(){}
 };
+}
+
+namespace std{
+    template<>
+    struct hash<RavEngine::Entity>{
+        inline size_t operator()(const RavEngine::Entity& entity) const {
+            return (size_t(entity.GetID()) << sizeof(entity_t)) | (uint32_t(uintptr_t(entity.GetWorld())));
+        }
+    };
 }

@@ -102,7 +102,7 @@ namespace RavEngine {
 		/**
 		Spawn a networkidentity. For internal use only, called by the world
 		*/
-		void Spawn(World* source, ctti_t type_id, entity_t ent_id, const uuids::uuid& entity_id);
+		void Spawn(World* source, ctti_t type_id, Entity ent_id, const uuids::uuid& entity_id);
 
 		/**
 		Spawn a networkidentity. For internal use only, called by the world

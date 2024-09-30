@@ -22,8 +22,8 @@ namespace RavEngine {
         mutable matrix4 matrix;				// defined as the world space transform of the PARENT
         UnorderedVector<ComponentHandle<Transform>>  children;        //non-owning
         quaternion rotation;
-        vector3 position, scale;
         ComponentHandle<Transform> parent;    //non-owning
+        vector3 position, scale;
         mutable bool isDirty : 1 = true;		// used for when the transform hierarchy has been changed
         mutable bool isTickDirty : 1 = true;    // used for when this transform has been updated in the current tick and needs updating in the world's render data
 
@@ -32,7 +32,7 @@ namespace RavEngine {
         static_assert(sizeof(matrix) >= sizeof(children), "Invalid struct order");
         static_assert(sizeof(children) >= sizeof(rotation), "Invalid struct order");
         static_assert(sizeof(rotation) >= sizeof(position), "Invalid struct order");
-        static_assert(sizeof(position) >= sizeof(parent), "Invalid struct order");
+        static_assert(sizeof(parent) >= sizeof(position), "Invalid struct order");
 #endif
         
 		friend class World;
@@ -69,13 +69,13 @@ namespace RavEngine {
             return isTickDirty;
         }
         
-		Transform(entity_t owner, const vector3& inpos, const quaternion& inrot, const vector3& inscale) : ComponentWithOwner(owner){
+		Transform(Entity owner, const vector3& inpos, const quaternion& inrot, const vector3& inscale) : ComponentWithOwner(owner){
             matrix = matrix4(1);
 			SetLocalPosition(inpos);
 			SetLocalRotation(inrot);
 			SetLocalScale(inscale);
 		}
-		Transform(entity_t owner) : Transform(owner, vector3(0, 0, 0), quaternion(1.0, 0.0, 0.0, 0.0), vector3(1, 1, 1)) {}
+		Transform(Entity owner) : Transform(owner, vector3(0, 0, 0), quaternion(1.0, 0.0, 0.0, 0.0), vector3(1, 1, 1)) {}
         
 		Transform& SetLocalPosition(const vector3&);
         Transform& SetWorldPosition(const vector3&);

@@ -12,10 +12,10 @@ namespace RavEngine {
 	public:
 				
 		//default constructor - used on Server (triggers spawn message)
-		NetworkIdentity(entity_t owner, ctti_t ent_type_id) : NetworkID(uuids::uuid::create()), NetTypeID(ent_type_id), ComponentWithOwner(owner) {}
+		NetworkIdentity(Entity owner, ctti_t ent_type_id) : NetworkID(uuids::uuid::create()), NetTypeID(ent_type_id), ComponentWithOwner(owner) {}
 		
 		//Used on clients
-		NetworkIdentity(entity_t owner, const uuids::uuid& id) : NetworkID(id),ComponentWithOwner(owner){
+		NetworkIdentity(Entity owner, const uuids::uuid& id) : NetworkID(id),ComponentWithOwner(owner){
             // don't trigger spawn message
         }
 		

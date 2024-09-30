@@ -61,12 +61,9 @@ void PhysicsSolver::onContact(const physx::PxContactPairHeader& pairHeader, cons
             continue;
         }
 
-        Entity actor1_e, actor2_e;
+        Entity actor1_e(entity_t(uintptr_t(pairHeader.actors[0]->userData)),owner);
+        Entity actor2_e(entity_t(uintptr_t(pairHeader.actors[1]->userData)), owner);
         
-        //get the physics body component stored in the user data (non-owning pointer!)
-        std::memcpy(&actor1_e, &pairHeader.actors[0]->userData, sizeof(actor1_e));
-        std::memcpy(&actor2_e, &pairHeader.actors[1]->userData, sizeof(actor2_e));
-
         auto& actor1 = actor1_e.GetAllComponentsPolymorphic<PhysicsBodyComponent>()[0];
         auto& actor2 = actor2_e.GetAllComponentsPolymorphic<PhysicsBodyComponent>()[0];
 
@@ -118,11 +115,9 @@ void PhysicsSolver::onTrigger(physx::PxTriggerPair* pairs, physx::PxU32 count)
             continue;
         }
         
-        Entity other_e;
-        Entity trigger_e;
+        Entity other_e(entity_t(uintptr_t(cp.otherActor->userData)),owner);
+        Entity trigger_e(entity_t(uintptr_t(cp.triggerActor->userData)), owner);
         
-        memcpy(&other_e, &cp.otherActor->userData, sizeof(other_e));
-        memcpy(&trigger_e, &cp.triggerActor->userData, sizeof(trigger_e));
     
         auto& other = other_e.GetAllComponentsPolymorphic<PhysicsBodyComponent>()[0];
         auto& trigger = trigger_e.GetAllComponentsPolymorphic<PhysicsBodyComponent>()[0];
@@ -158,7 +153,7 @@ bool RavEngine::PhysicsSolver::Raycast(const vector3& origin, const vector3& dir
     bool result = scene->raycast(PxVec3(origin.x, origin.y, origin.z), PxVec3(direction.x, direction.y, direction.z), maxDistance, hit);
 
     //construct hit result
-    out_hit = RaycastHit(hit);
+    out_hit = RaycastHit(hit,owner);
     return result;
 }
 
@@ -193,7 +188,7 @@ bool RavEngine::PhysicsSolver::generic_overlap(const PhysicsTransform& t, const 
 void PhysicsSolver::Spawn(PhysicsBodyComponent& actor){
     auto e = actor.GetOwner();
     if (actor.rigidActor->userData == nullptr){
-        memcpy(&actor.rigidActor->userData, &e, sizeof(e)); // store the ID inside the userdata variable (NOT a pointer)
+        memcpy(&actor.rigidActor->userData, &e.id, sizeof(e.id)); // store the ID inside the userdata variable (NOT a pointer)
     }
     scene->lockWrite();
     scene->addActor(*(actor.rigidActor));
@@ -231,7 +226,7 @@ void PhysicsSolver::Tick(float scaleFactor){
 }
 
 //constructor which configures PhysX
-PhysicsSolver::PhysicsSolver(){
+PhysicsSolver::PhysicsSolver(World* world): owner(world){
     if (foundation == nullptr){
         foundation = PxCreateFoundation(PX_PHYSICS_VERSION, gDefaultAllocatorCallback, gDefaultErrorCallback);
     }
@@ -286,18 +281,18 @@ PhysicsSolver::PhysicsSolver(){
     }
 }
 
-PhysicsSolver::RaycastHit::RaycastHit(const physx::PxRaycastBuffer& hit) : 
+PhysicsSolver::RaycastHit::RaycastHit(const physx::PxRaycastBuffer& hit, World* owner) :
     hasBlocking(hit.hasBlock),
     hitPosition(vector3(hit.block.position.x, hit.block.position.y, hit.block.position.z)),
     hitNormal(vector3(hit.block.normal.x, hit.block.normal.y, hit.block.normal.z)),
     hitDistance(hit.block.distance) {
 
     if (hit.hasBlock) {
-        hitObject = (entity_t(uintptr_t(hit.block.actor->userData)));
+        hitObject = {entity_t(uintptr_t(hit.block.actor->userData)),owner};
     }
 }
 
 Entity RavEngine::PhysicsSolver::RaycastHit::getEntity() const
 {
-    return Entity(hitObject);
+    return hitObject;
 }

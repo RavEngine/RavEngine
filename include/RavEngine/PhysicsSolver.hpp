@@ -16,6 +16,7 @@
 #include <PxFiltering.h>
 #include <cstdint>
 #include "Types.hpp"
+#include "Entity.hpp"
 
 struct FilterLayers {
     enum Enum {
@@ -29,6 +30,7 @@ struct FilterLayers {
 namespace RavEngine {
     struct Entity;
     struct PhysicsBodyComponent;
+    struct World;
     class PhysicsSolver : public physx::PxSimulationEventCallback {
         friend class World;
         PhysicsTaskDispatcher taskDispatcher;
@@ -41,6 +43,7 @@ namespace RavEngine {
         static physx::PxPhysics* phys;
         static physx::PxPvd* pvd;
 		static physx::PxCooking* cooking;
+        World* owner = nullptr;
         physx::PxScene* scene;
 
         void DeallocatePhysx();
@@ -62,7 +65,7 @@ namespace RavEngine {
         friend class PhysicsBodyComponent;
 
     public:
-        PhysicsSolver();
+        PhysicsSolver(World* world);
 		~PhysicsSolver(){
 			DeallocatePhysx();
 		}
@@ -77,7 +80,7 @@ namespace RavEngine {
         //scene query methods
         struct RaycastHit {
             RaycastHit() {}
-            RaycastHit(const physx::PxRaycastBuffer& hit);
+            RaycastHit(const physx::PxRaycastBuffer& hit, World* owner);
             
             bool hasBlocking{};
             vector3 hitPosition{};
@@ -85,7 +88,7 @@ namespace RavEngine {
             decimalType hitDistance{};
             Entity getEntity() const;
         private:
-            entity_t hitObject = INVALID_ENTITY;
+            Entity hitObject;
         };
 
         /**
