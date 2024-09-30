@@ -33,7 +33,7 @@ jobs:
               sudo add-apt-repository ppa:ubuntu-toolchain-r/test
               sudo apt update -y
               sudo apt remove build-essential -y
-              sudo apt install g++-13 gcc-13 clang-16 llvm-16 lld snap ninja-build libgl1-mesa-dev uuid-dev libwayland-dev libxkbcommon-dev libasound2-dev libegl-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends
+              sudo apt install g++-13 gcc-13 clang-16 llvm-16 lld-16 snap ninja-build libgl1-mesa-dev uuid-dev libwayland-dev libxkbcommon-dev libasound2-dev libegl-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends
               sudo snap install cmake --classic
               cmake --version
       - name: Configure
