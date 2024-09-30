@@ -306,7 +306,7 @@ void World::setupRenderTasks(){
         // can the world transform list hold that many objects?
         // to avoid an indirection, we assume all entities may have a transform
         // this wastes some VRAM
-        auto nEntities = localToGlobal.size() + std::min(nCreatedThisTick, 1);  // hack: if I don't add 1, then the pbr.vsh shader OOBs, not sure why
+        auto nEntities = numEntities + std::min(nCreatedThisTick, 1);  // hack: if I don't add 1, then the pbr.vsh shader OOBs, not sure why
         auto currentBufferSize = renderData.worldTransforms.size();
         if (nEntities > currentBufferSize){
             auto newSize = closest_power_of(nEntities, 16);
@@ -491,8 +491,7 @@ void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
     });
 }
 #if !RVE_SERVER
-void World::SetupPerEntityRenderData(entity_t worldID){
-    auto localID = Registry::GetLocalId(worldID);
+void World::SetupPerEntityRenderData(entity_t localID){
     auto& renderLayers = renderData.renderLayers;
     auto& perObjectAttributes = renderData.perObjectAttributes;
     if (renderLayers.size() <= localID){
@@ -504,18 +503,18 @@ void World::SetupPerEntityRenderData(entity_t worldID){
     perObjectAttributes[localID] = ALL_ATTRIBUTES;
 }
 
-void World::SetEntityRenderlayer(entity_t globalid, renderlayer_t layers){
-    renderData.renderLayers[Registry::GetLocalId(globalid)] = layers;
+void World::SetEntityRenderlayer(entity_t localid, renderlayer_t layers){
+    renderData.renderLayers[localid] = layers;
 }
 
-void World::SetEntityAttributes(entity_t globalid, perobject_t attributes)
+void World::SetEntityAttributes(entity_t localid, perobject_t attributes)
 {
-    renderData.perObjectAttributes[Registry::GetLocalId(globalid)] = attributes;
+    renderData.perObjectAttributes[localid] = attributes;
 }
 
-perobject_t World::GetEntityAttributes(entity_t globalid)
+perobject_t World::GetEntityAttributes(entity_t localid)
 {
-    return renderData.perObjectAttributes[Registry::GetLocalId(globalid)];
+    return renderData.perObjectAttributes[localid];
 }
 
 void DestroyMeshRenderDataGeneric(const auto& mesh, auto material, auto&& renderData, entity_t local_id, auto&& iteratorComparator){
@@ -654,12 +653,10 @@ entity_t World::CreateEntity(){
         available.pop();
     }
     else{
-        id = static_cast<decltype(id)>(localToGlobal.size());
-        localToGlobal.push_back(INVALID_ENTITY);
+        id = numEntities++;
         nCreatedThisTick++;
     }
-    localToGlobal[id] = Registry::CreateEntity(this, id);
-    return localToGlobal[id];
+    return id;
 }
 
 World::~World() {
@@ -670,8 +667,8 @@ World::~World() {
     });
 #endif
 
-    for(entity_t i = 0; i < localToGlobal.size(); i++){
-        if (EntityIsValid(localToGlobal[i])){
+    for(entity_t i = 0; i < numEntities; i++){
+        if (EntityIsValid(i)){
             DestroyEntity(i); // destroy takes a local ID
         }
     }

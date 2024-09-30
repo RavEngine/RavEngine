@@ -171,67 +171,12 @@ int Test_SpawnDestroy(){
     return 0;
 }
 
-int Test_MoveBetweenWorlds(){
-    // move between worlds
-    World w1, w2;
-    
-    std::array<MyPrototype, 10> w1entities;
-    std::array<MyPrototype, 20> w2entities;
-    
-    for(auto& e : w1entities){
-        e = w1.Instantiate<MyPrototype>();
-    }
-    
-    for(auto& e : w2entities){
-        e = w2.Instantiate<MyPrototype>();
-    }
-    
-    int w1count = 0;
-    w1.Filter([&](IntComponent& ic){
-        ic.value = 1;
-        w1count++;
-    });
-    
-    int w2count = 0;
-    w2.Filter( [&](IntComponent& ic){
-        ic.value = 2;
-        w2count++;
-    });
-    
-    cout << "w1count = " << w1count << ", w2count = " << w2count << "\n";
-    assert(w1count == w1entities.size());
-    assert(w2count == w2entities.size());
-    
-    // move some entities from w2 to w1
-    constexpr auto move_c = w2entities.size()/2;
-    for(int i = 0; i < move_c; i++){
-        w2entities[i].MoveTo(w1);
-    }
-    
-    w1count = 0;
-    w1.Filter([&](const IntComponent& ic){
-        w1count++;
-        cout << ic.value << " ";
-    });
-    cout << "\n";
-    w2count = 0;
-    w2.Filter([&](const IntComponent& ic){
-        w2count++;
-        cout << ic.value << " ";
-    });
-    cout << "\nAfter moving " << move_c <<" entities to w1, w1count = " << w1count << ", w2count = " << w2count << "\n";
-    assert(w1count == w1entities.size() + move_c);
-    assert(w2count == w2entities.size() - move_c);
-    return 0;
-}
-
 int main(int argc, char** argv) {
     const unordered_map<std::string_view, std::function<int(void)>> tests{
 		{"CTTI",&Test_CTTI},
         {"Test_UUID",&Test_UUID},
         {"Test_AddDel",&Test_AddDel},
         {"Test_SpawnDestroy",&Test_SpawnDestroy},
-        {"Test_MoveBetweenWorlds",&Test_MoveBetweenWorlds}
     };
 	    
 	if (argc < 2){

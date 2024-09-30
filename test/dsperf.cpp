@@ -33,7 +33,7 @@ static inline void do_test(const T& ds, const is_fn& insert_func, const es_fn& e
 			insert_func(i);
 		}
 	});
-	cout << StrFormat("Time to add {} elements: {} µs\n",ds.size(), dur.count()/100);
+	cout << Format("Time to add {} elements: {} µs\n",ds.size(), dur.count()/100);
 	
 	// time to remove elements from the middle
 	dur = time([&]{
@@ -41,7 +41,7 @@ static inline void do_test(const T& ds, const is_fn& insert_func, const es_fn& e
 			erase_func(i);
 		}
 	});
-	cout << StrFormat("Time to remove {} elements: {} µs\n",1'000, dur.count()/100);
+	cout << Format("Time to remove {} elements: {} µs\n",1'000, dur.count()/100);
     
     // time to iterate 90*10 times (10 seconds worth of ticking on default)
     constexpr auto iter_count = 90*10;
@@ -53,7 +53,7 @@ static inline void do_test(const T& ds, const is_fn& insert_func, const es_fn& e
             }
         }
     });
-    cout << StrFormat("Time to iterate {} times: {} µs (sum = {})\n",iter_count, dur.count()/100,sum);
+    cout << Format("Time to iterate {} times: {} µs (sum = {})\n",iter_count, dur.count()/100,sum);
     
 }
 
@@ -101,16 +101,6 @@ int main(int argc, const char** argv){
 			vec.insert(i);
 		},[&](int i){
 			vec.erase(vec.begin() + i);
-		});
-	}
-	
-	{
-		cout << ("\nunordered_contiguous_set\n");
-		unordered_contiguous_set<int> vec;
-		do_test(vec,[&](int i){
-			vec.insert(i);
-		},[&](int i){
-			vec.erase(i);
 		});
 	}
     
