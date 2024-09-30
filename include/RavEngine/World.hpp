@@ -227,7 +227,6 @@ namespace RavEngine {
             std::array<char, buf_size> buffer;
             Function<void(AnySparseSet*,entity_t,World*)> _impl_destroyFn;
             Function<void(AnySparseSet*)> _impl_deallocFn;
-            Function<void(AnySparseSet*, entity_t, entity_t, World*)> _impl_moveFn;
         public:
             // avoid capture overhead by wrapping
             void destroyFn(entity_t id, World* world){
@@ -235,9 +234,6 @@ namespace RavEngine {
             }
             void deallocFn(){
                 _impl_deallocFn(this);
-            }
-            void moveFn(entity_t id_a, entity_t id_b, World* world){
-                _impl_moveFn(this, id_a, id_b, world);
             }
             
             template<typename T>
@@ -256,15 +252,6 @@ namespace RavEngine {
                 }),
                 _impl_deallocFn([](AnySparseSet* thisptr) {
                     thisptr->GetSet<T>()->~EntitySparseSet<T>();
-                }),
-                _impl_moveFn([](AnySparseSet* thisptr, entity_t localID, entity_t otherLocalID, World* otherWorld){
-                    auto sp = thisptr->GetSet<T>();
-                    if (sp->HasComponent(localID)){
-                        auto& comp = sp->GetComponent(localID);
-                        otherWorld->EmplaceComponent<T>(otherLocalID, std::move(comp));
-                        // then delete it from here
-                        sp->Destroy(localID);
-                    }
                 })
             {
                 static_assert(sizeof(EntitySparseSet<T>) <= buf_size);
