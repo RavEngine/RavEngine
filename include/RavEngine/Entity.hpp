@@ -1,7 +1,8 @@
 #pragma once
-#include "Registry.hpp"
 #include "CTTI.hpp"
 #include "Layer.hpp"
+#include "Types.hpp"
+#include "World.hpp"
 
 namespace RavEngine{
 struct World;

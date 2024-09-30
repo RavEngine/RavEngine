@@ -97,8 +97,8 @@ namespace RavEngine {
 		friend class AudioPlayer;
 		friend class App;
         friend class PhysicsBodyComponent;
-        Vector<entity_t> localToGlobal;
         Queue<entity_t> available;
+        entity_t numEntities = 0;
         ConcurrentQueue<entity_t> destroyedAudioSources, destroyedMeshSources;
 
         class InstantaneousAudioSourceFreeList {
@@ -124,10 +124,6 @@ namespace RavEngine {
         friend class Entity;
         friend class Registry;
     public:
-        auto& GetLocalToGlobal() {
-            return localToGlobal;
-        }
-
         template<typename T>
         class EntitySparseSet{
             unordered_vector<T> dense_set;
@@ -616,7 +612,6 @@ namespace RavEngine {
             }
             // unset localToGlobal
             available.push(local_id);
-            localToGlobal[local_id] = INVALID_ENTITY;
         }
         
         template<typename T>
@@ -987,18 +982,6 @@ namespace RavEngine {
                 auto& sp_erased = componentRow.second;
                 fn(sp_erased);
             }
-        }
-        
-        // return the new local id
-        inline entity_t AddEntityFrom(World* other,entity_t other_local_id){
-            auto newID = CreateEntity();
-            
-            other->EnumerateComponentsOn(other_local_id, [&](AnySparseSet& sp_erased){
-                // call the moveFn to move the other entity data into this
-                sp_erased.moveFn(other_local_id,newID,this);
-            });
-            other->localToGlobal[other_local_id] = INVALID_ENTITY;
-            return newID;
         }
         
         virtual ~World();
