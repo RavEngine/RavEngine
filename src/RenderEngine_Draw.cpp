@@ -1207,7 +1207,7 @@ struct LightingType{
 		Profile::EndFrame(Profile::RenderEncodeSpotShadows);
 
 		Profile::BeginFrame(Profile::RenderEncodePointShadows);
-		const auto pointLightShadowmapFunction = [](uint8_t index, const RavEngine::World::PointLightUploadData& light, auto unusedAux, Entity owner) {
+		constexpr auto pointLightShadowmapFunction = [](uint8_t index, const RavEngine::World::PointLightUploadData& light, auto unusedAux, Entity owner) {
 			auto lightProj = RMath::perspectiveProjection<float>(deg_to_rad(90), 1, 0.1, 100);
 
 			glm::mat4 viewMat;
@@ -1231,7 +1231,7 @@ struct LightingType{
                     viewMat = glm::toMat4(glm::quat(glm::vec3{0,deg_to_rad(180),0}));
 				} break;
 				case 5: {			// -z
-                    viewMat = glm::mat4(0);
+                    viewMat = glm::mat4(1);
 				} break;
 			}
             
