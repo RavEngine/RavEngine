@@ -11,7 +11,9 @@
 namespace RavEngine{
 
 // Derive from this struct to get a free CTTI specialization
-struct AutoCTTI{};
+struct AutoCTTI{
+    AutoCTTI() {}
+};
 
 typedef size_t ctti_t;
 
