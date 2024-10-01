@@ -1208,7 +1208,7 @@ struct LightingType{
 
 		Profile::BeginFrame(Profile::RenderEncodePointShadows);
 		const auto pointLightShadowmapFunction = [](uint8_t index, const RavEngine::World::PointLightUploadData& light, auto unusedAux, Entity owner) {
-			auto lightProj = RMath::perspectiveProjection<float>(90, 1, 0.1, 100);
+			auto lightProj = RMath::perspectiveProjection<float>(deg_to_rad(90), 1, 0.1, 100);
 
 			glm::mat4 viewMat;
             auto lightPos = light.position;
