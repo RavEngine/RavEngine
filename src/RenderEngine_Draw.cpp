@@ -1228,10 +1228,10 @@ struct LightingType{
                     viewMat = glm::toMat4(glm::quat(glm::vec3{deg_to_rad(90),0,0}));
 				} break;
 				case 4: {			// +z
-                    viewMat = glm::mat4(1);
+                    viewMat = glm::toMat4(glm::quat(glm::vec3{0,deg_to_rad(180),0}));
 				} break;
 				case 5: {			// -z
-                    viewMat = glm::toMat4(glm::quat(glm::vec3{0,deg_to_rad(180),0}));
+                    viewMat = glm::mat4(0);
 				} break;
 			}
             
