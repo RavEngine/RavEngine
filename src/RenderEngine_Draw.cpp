@@ -1214,59 +1214,47 @@ struct LightingType{
             auto lightPos = light.position;
 
 			// rotate view space to each cubemap direction based on the index
-			switch (index) {
-                case 0: {			// +x
-                    viewMat = {
-                        {0,0,-1,0},
-                        {0,1,0,0},
-                        {1,0,0,0},
-                        {0,0,0,1},
-                    };
-				} break;
-				case 1: {			// -x
-                    viewMat = {
-                        {0,0,1,0},
-                        {0,1,0,0},
-                        {-1,0,0,0},
-                        {0,0,0,1},
-                    };
-				} break;
-				case 2: {			// +y
-                    viewMat = {
-                        {1,0,0,0},
-                        {0,0,1,0},
-                        {0,-1,0,0},
-                        {0,0,0,1},
-                    };
-				} break;
-				case 3: {			// -y
-                    viewMat = {
-                        {1,0,0,0},
-                        {0,0,-1,0},
-                        {0,1,0,0},
-                        {0,0,0,1},
-                    };
-				} break;
-				case 4: {			// +z
-                    viewMat = {
-                        {1,0,0,0},
-                        {0,1,0,0},
-                        {0,0,1,0},
-                        {0,0,0,1},
-                    };
-				} break;
-				case 5: {			// -z
-                    viewMat = {
-                        {-1,0,0,0},
-                        {0,1,0,0},
-                        {0,0,-1,0},
-                        {0,0,0,1},
-                    };
-				} break;
-			}
+            constexpr glm::mat4 rotationMatrices[] = {
+                {// +x
+                    {0,0,-1,0},
+                    {0,1,0,0},
+                    {1,0,0,0},
+                    {0,0,0,1},
+                },
+                {// -x
+                    {0,0,1,0},
+                    {0,1,0,0},
+                    {-1,0,0,0},
+                    {0,0,0,1},
+                },
+                {// +y
+                    {1,0,0,0},
+                    {0,0,1,0},
+                    {0,-1,0,0},
+                    {0,0,0,1},
+                },
+                {// -y
+                    {1,0,0,0},
+                    {0,0,-1,0},
+                    {0,1,0,0},
+                    {0,0,0,1},
+                },
+                {// +z
+                   {1,0,0,0},
+                   {0,1,0,0},
+                   {0,0,1,0},
+                   {0,0,0,1},
+               },
+                { // -z
+                    {-1,0,0,0},
+                    {0,1,0,0},
+                    {0,0,-1,0},
+                    {0,0,0,1},
+                }
+            };
             
             // center around light
-            viewMat = glm::translate(viewMat, -lightPos);
+            viewMat = glm::translate(rotationMatrices[index], -lightPos);
             
 			auto camPos = light.position;
 
