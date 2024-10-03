@@ -161,7 +161,7 @@ namespace RGL {
                 debugUtilsEnabled = true;
             }
             else {
-                LogMessage(MessageSeverity::Warning, "Debug utils not found. Debugging diagnostics will be disabled.");
+                LogMessage(MessageSeverity::Warning, "Debug utils not found. Debugging diagnostics and messages will be disabled.");
             }
 
             if (exts.contains(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)) {
@@ -169,7 +169,7 @@ namespace RGL {
                 debugReportEnabled = true;
             }
             else {
-                LogMessage(MessageSeverity::Warning, "Debug report not found. Debugging messages will be disabled.");
+                LogMessage(MessageSeverity::Warning, "Debug report not found. Debugging messages will be less informative.");
             }
         }
 
@@ -185,7 +185,7 @@ namespace RGL {
         volkLoadInstance(instance);
 
         // setup the debug messenger
-        if (debugReportEnabled) {
+        if (debugUtilsEnabled) {
             VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{
                .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
                .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
