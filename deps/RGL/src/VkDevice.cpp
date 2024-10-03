@@ -14,17 +14,34 @@
 #include <vector>
 #include <stdexcept>
 #include <set>
+#include <unordered_set>
 #include <vk_mem_alloc.h>
 
 namespace RGL {
 
     template<typename T>
-    void loadVulkanFunction(VkDevice device, T& ptr, const char* fnname) {
+    void loadVulkanFunction(VkDevice device, T& ptr, const char* fnname, bool continueOnFail = false) {
         ptr = (std::remove_reference_t<decltype(ptr)>) vkGetDeviceProcAddr(device, fnname);
-        if (!ptr) {
+        if (!ptr && !continueOnFail) {
             FatalError(std::string("Cannot get Vulkan function pointer: ") + fnname);
         }
     }
+
+    auto getMissingDeviceExtensions(const VkPhysicalDevice device, auto&& extensionList) {
+        uint32_t extensionCount;
+        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+        std::set<std::string> requiredExtensions(std::begin(extensionList), std::end(extensionList));
+
+        for (const auto& extension : availableExtensions) {
+            requiredExtensions.erase(extension.extensionName);
+        }
+
+        return requiredExtensions;
+    };
 
     constexpr static const char* const deviceExtensions[] = {
            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -35,21 +52,7 @@ namespace RGL {
 #endif
     };
 
-    auto getMissingDeviceExtensions(const VkPhysicalDevice device) {
-        uint32_t extensionCount;
-        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-
-        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
-
-        std::set<std::string> requiredExtensions(std::begin(deviceExtensions), std::end(deviceExtensions));
-
-        for (const auto& extension : availableExtensions) {
-            requiredExtensions.erase(extension.extensionName);
-        }
-
-        return requiredExtensions;
-    };
+    
 
     // find a queue of the right family
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
@@ -209,31 +212,23 @@ namespace RGL {
             FatalError("Cannot init - Shader Draw Parameters (baseInstance et al) are not supported.");
         }
 
-        std::vector<const char*> runtimeExtensions{std::begin(deviceExtensions),std::end(deviceExtensions)};
-
-#ifndef NDEBUG
-        runtimeExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-#endif
-
         VkDeviceCreateInfo deviceCreateInfo{
             .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
             .pNext = &deviceFeatures2,
             .queueCreateInfoCount = static_cast<decltype(VkDeviceCreateInfo::queueCreateInfoCount)>(queueCreateInfos.size()),
             .pQueueCreateInfos = queueCreateInfos.data(),      // could pass an array here if we were making more than one queue
-            .enabledExtensionCount = static_cast<uint32_t>(runtimeExtensions.size()),             // device-specific extensions are ignored on later vulkan versions but we set it anyways
-            .ppEnabledExtensionNames = runtimeExtensions.data(),
+            .enabledExtensionCount = static_cast<uint32_t>(std::size(deviceExtensions)),             // device-specific extensions are ignored on later vulkan versions but we set it anyways
+            .ppEnabledExtensionNames = deviceExtensions,
             .pEnabledFeatures = nullptr,        // because we are using deviceFeatures2
         };
         if constexpr (enableValidationLayers) {
             deviceCreateInfo.enabledLayerCount = std::size(validationLayers);
             deviceCreateInfo.ppEnabledLayerNames = validationLayers;
         }
-#if !__ANDROID__
-        VK_CHECK(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device));
-#else
+
         auto result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device);
         if (result == VK_ERROR_EXTENSION_NOT_PRESENT) {
-            auto missing = getMissingDeviceExtensions(physicalDevice);
+            auto missing = getMissingDeviceExtensions(physicalDevice, deviceExtensions);
             std::string message = "vkCreateDevice error: Missing extensions:\n";
             for (const auto& ext : missing) {
                 message += "\t - " + ext + "\n";
@@ -243,16 +238,19 @@ namespace RGL {
         else if (result != VK_SUCCESS) {
             FatalError(std::string("vkCreateDevice failed: ") + string_VkResult(result));
         }
-#endif
+
 
         //volkLoadDevice(device);
         // load extra functions
         loadVulkanFunction(device, vkCmdPushDescriptorSetKHR, "vkCmdPushDescriptorSetKHR");
 
 #ifndef NDEBUG
-        loadVulkanFunction(device, rgl_vkDebugMarkerSetObjectNameEXT, "vkDebugMarkerSetObjectNameEXT");
-        loadVulkanFunction(device, rgl_vkCmdBeginDebugUtilsLabelEXT, "vkCmdBeginDebugUtilsLabelEXT");
-        loadVulkanFunction(device, rgl_vkCmdEndDebugUtilsLabelEXT, "vkCmdEndDebugUtilsLabelEXT");
+        loadVulkanFunction(device, vkSetDebugUtilsObjectNameEXT, "vkSetDebugUtilsObjectNameEXT",true);
+        loadVulkanFunction(device, rgl_vkCmdBeginDebugUtilsLabelEXT, "vkCmdBeginDebugUtilsLabelEXT",true);
+        loadVulkanFunction(device, rgl_vkCmdEndDebugUtilsLabelEXT, "vkCmdEndDebugUtilsLabelEXT",true);
+        if (vkSetDebugUtilsObjectNameEXT == nullptr || rgl_vkCmdBeginDebugUtilsLabelEXT == nullptr || rgl_vkCmdEndDebugUtilsLabelEXT == nullptr) {
+            LogMessage(MessageSeverity::Warning, "Debug Utils are not present. Capture debug info will be limited.");
+        }
 #endif
         
         vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
@@ -380,8 +378,9 @@ namespace RGL {
            .object = reinterpret_cast<uint64_t>(resource),
            .pObjectName = debugName
         };
-
-        VK_CHECK(this->rgl_vkDebugMarkerSetObjectNameEXT(this->device, &objectName));
+        if (rgl_vkSetDebugUtilsObjectNameEXT) {
+            VK_CHECK(this->rgl_vkSetDebugUtilsObjectNameEXT(this->device, &objectName));
+        }
 #endif
     }
 

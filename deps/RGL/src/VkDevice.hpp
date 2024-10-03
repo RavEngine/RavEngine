@@ -28,8 +28,8 @@ namespace RGL {
 		VkCommandPool commandPool = VK_NULL_HANDLE;
         VmaAllocator_T* vkallocator;
 		PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = nullptr;	// device-tied extension function
-		PFN_vkDebugMarkerSetObjectNameEXT rgl_vkDebugMarkerSetObjectNameEXT = nullptr;
 
+		PFN_vkDebugMarkerSetObjectNameEXT rgl_vkSetDebugUtilsObjectNameEXT = nullptr;
 		PFN_vkCmdEndDebugUtilsLabelEXT rgl_vkCmdEndDebugUtilsLabelEXT = nullptr;
 		PFN_vkCmdBeginDebugUtilsLabelEXT rgl_vkCmdBeginDebugUtilsLabelEXT = nullptr;
 

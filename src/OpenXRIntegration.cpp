@@ -96,6 +96,20 @@ namespace RavEngine {
 			};
 
 			XR_CHECK(xrCreateInstance(&xrCreateInfo, &xr.instance));
+			
+			{
+				XrInstanceProperties instanceProps{
+					.type = XR_TYPE_INSTANCE_PROPERTIES,
+					.next = nullptr,
+				};
+				xrGetInstanceProperties(xr.instance, &instanceProps);
+				uint16_t major, minor;
+				uint32_t patch;
+				major = instanceProps.runtimeVersion >> 48;
+				minor = (instanceProps.runtimeVersion & 0xffffULL) >> 32;
+				patch = instanceProps.runtimeVersion & 0xffffffffULL;
+					Debug::Log("OpenXR Runtime: {} {}.{}.{}", std::string_view(instanceProps.runtimeName, strnlen(instanceProps.runtimeName, std::size(instanceProps.runtimeName))), major, minor, patch);
+			}
 
 			// setup debug messenger
 			XR_CHECK(xrGetInstanceProcAddr(xr.instance, "xrCreateDebugUtilsMessengerEXT", (PFN_xrVoidFunction*)(&xr.ext_xrCreateDebugUtilsMessengerEXT)));

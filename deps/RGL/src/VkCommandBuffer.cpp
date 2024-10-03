@@ -817,14 +817,18 @@ namespace RGL {
 				currentRenderPipeline = pipeline;
 			},
 			[this](const CmdBeginDebugMarker& arg) {
-				VkDebugUtilsLabelEXT markerInfo = {
-				.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
-				.pLabelName = arg.label.c_str()
+				if (owningQueue->owningDevice->rgl_vkCmdBeginDebugUtilsLabelEXT) {
+					VkDebugUtilsLabelEXT markerInfo = {
+					.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+					.pLabelName = arg.label.c_str()
 					};
-				owningQueue->owningDevice->rgl_vkCmdBeginDebugUtilsLabelEXT(commandBuffer, &markerInfo);
+					owningQueue->owningDevice->rgl_vkCmdBeginDebugUtilsLabelEXT(commandBuffer, &markerInfo);
+				}
 			},
 			[this](const CmdEndDebugMarker&) {
-				owningQueue->owningDevice->rgl_vkCmdEndDebugUtilsLabelEXT(commandBuffer);
+				if (owningQueue->owningDevice->rgl_vkCmdEndDebugUtilsLabelEXT) {
+					owningQueue->owningDevice->rgl_vkCmdEndDebugUtilsLabelEXT(commandBuffer);
+				}
 			},
 			[this](const CmdBeginCompute& arg) {
 				ApplyBarriers();
