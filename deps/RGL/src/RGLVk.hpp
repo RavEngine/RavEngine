@@ -19,13 +19,6 @@ struct VmaAllocation_T;
 #define VK_CHECK(a) {auto VK_CHECK_RESULT = a; Assert(VK_CHECK_RESULT == VK_SUCCESS, std::string("Vulkan assertion failed: ") + # a + " -> " + string_VkResult(VK_CHECK_RESULT));}
 #define VK_VALID(a) {assert(a != VK_NULL_HANDLE);}
 
-constexpr bool enableValidationLayers =
-#if defined(NDEBUG) || defined(ANDROID)		// we don't use the built-in validation layers on Android. Use the external layers: https://developer.android.com/ndk/guides/graphics/validation-layer
-false;
-#else
-true;
-#endif
-
 constexpr static const char* const validationLayers[] = {
 	"VK_LAYER_KHRONOS_validation",
 #ifdef RECONSTRUCT
@@ -40,6 +33,8 @@ constexpr static const char* const validationLayers[] = {
 namespace RGL {
 	void InitVk(const InitOptions&);
 	void DeinitVk();
+
+	bool IsValidationEnabled();
 
 	struct DeviceVk;
 

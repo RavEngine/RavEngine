@@ -34,7 +34,7 @@ namespace RGL {
         std::vector<VkExtensionProperties> availableExtensions(extensionCount);
         vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
 
-        std::set<std::string> requiredExtensions(std::begin(extensionList), std::end(extensionList));
+        std::unordered_set<std::string> requiredExtensions(std::begin(extensionList), std::end(extensionList));
 
         for (const auto& extension : availableExtensions) {
             requiredExtensions.erase(extension.extensionName);
@@ -221,7 +221,7 @@ namespace RGL {
             .ppEnabledExtensionNames = deviceExtensions,
             .pEnabledFeatures = nullptr,        // because we are using deviceFeatures2
         };
-        if constexpr (enableValidationLayers) {
+        if (IsValidationEnabled()) {
             deviceCreateInfo.enabledLayerCount = std::size(validationLayers);
             deviceCreateInfo.ppEnabledLayerNames = validationLayers;
         }

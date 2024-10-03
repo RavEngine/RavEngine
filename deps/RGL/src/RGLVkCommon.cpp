@@ -7,8 +7,11 @@
 #include <stdexcept>
 #include <cstring>
 #include <vk_mem_alloc.h>
+#include <unordered_set>
 
 RGL_STATIC(RGL::instance) = VK_NULL_HANDLE;
+
+bool isValidationEnabled = true;
 
 namespace RGL {
 
@@ -96,24 +99,34 @@ namespace RGL {
 
         // validation layers
         std::vector<VkLayerProperties> availableLayers;
-        if constexpr (enableValidationLayers) {
+#ifndef NDEBUG
+        std::vector<std::string_view> activeLayers;
+        {
             uint32_t layerCount;
             vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
             availableLayers.resize(layerCount);
             vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
             for (const char* layerName : validationLayers) {
 
                 if (std::find_if(availableLayers.begin(), availableLayers.end(), [layerName](auto& layerProperties) {
                     return strcmp(layerName, layerProperties.layerName) == 0;
                     }
                 ) == availableLayers.end()) {
-                    FatalError(std::string("required validation layer not found: ") + layerName);
+                    LogMessage(MessageSeverity::Warning, std::string("Required validation layer not found: ") + layerName);
+                }
+                else {
+                    activeLayers.push_back(layerName);
                 }
             }
-            instanceCreateInfo.enabledLayerCount = std::size(validationLayers);
-            instanceCreateInfo.ppEnabledLayerNames = validationLayers;
+
+            if (std::find_if(availableLayers.begin(), availableLayers.end(), [](auto& layerProperties) {
+                return strcmp("VK_LAYER_KHRONOS_validation", layerProperties.layerName) == 0;
+                }
+            ) == availableLayers.end()) {
+                isValidationEnabled = false;
+            }
         }
+#endif
 
         // load GLFW's specific extensions for Vulkan
         const char* minExtensions[] = {
@@ -129,10 +142,37 @@ namespace RGL {
         };
         instanceCreateInfo.enabledExtensionCount = std::size(minExtensions);
         std::vector<const char*> extensions(minExtensions, minExtensions + instanceCreateInfo.enabledExtensionCount);
-        if constexpr (enableValidationLayers) {
-            extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-            extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME); // debug callback
+
+        // look for debug utils
+        bool debugUtilsEnabled = false;
+        bool debugReportEnabled = false;
+        {
+            uint32_t numExt;
+            VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &numExt, nullptr));
+            std::vector<VkExtensionProperties> extensionProperties(numExt);
+            VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &numExt, extensionProperties.data()));
+            std::unordered_set<std::string_view> exts;
+            for (const auto& ext : extensionProperties) {
+                exts.insert(ext.extensionName);
+            }
+
+            if (exts.contains(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
+                extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+                debugUtilsEnabled = true;
+            }
+            else {
+                LogMessage(MessageSeverity::Warning, "Debug utils not found. Debugging diagnostics will be disabled.");
+            }
+
+            if (exts.contains(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)) {
+                extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+                debugReportEnabled = true;
+            }
+            else {
+                LogMessage(MessageSeverity::Warning, "Debug report not found. Debugging messages will be disabled.");
+            }
         }
+
         instanceCreateInfo.ppEnabledExtensionNames = extensions.data();
         instanceCreateInfo.enabledExtensionCount = extensions.size();
         // when doing own implementation, use vkEnumerateInstanceExtensionProperties
@@ -145,7 +185,7 @@ namespace RGL {
         volkLoadInstance(instance);
 
         // setup the debug messenger
-        if constexpr (enableValidationLayers) {
+        if (debugReportEnabled) {
             VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{
                .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
                .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
@@ -155,13 +195,17 @@ namespace RGL {
             };
             VK_CHECK(CreateDebugUtilsMessengerEXT(instance, &debugCreateInfo, nullptr, &debugMessenger));
         }
-
         
     }
 
     void DeinitVk() {
         DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
         vkDestroyInstance(instance, nullptr);
+    }
+
+    bool IsValidationEnabled()
+    {
+        return isValidationEnabled;
     }
 
     SwapChainSupportDetails querySwapChainSupport(const VkPhysicalDevice device, const VkSurfaceKHR surface) {
