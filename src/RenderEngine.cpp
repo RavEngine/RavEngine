@@ -53,13 +53,10 @@
 	#include "AppleUtilities.h"
 #endif
 
-#if _WIN32 && !_UWP
+#if _WIN32
 #define _WIN32_WINNT _WIN32_WINNT_WIN10
 #include <ShellScalingApi.h>
 #pragma comment(lib, "Shcore.lib")
-#elif _UWP
-#include <winrt/Windows.Graphics.Display.h>
-using namespace winrt;
 #endif
 #include <ParticleMaterial.hpp>
 

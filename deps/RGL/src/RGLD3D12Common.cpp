@@ -224,12 +224,8 @@ namespace RGL {
         PIXEndCapture(FALSE);
 #endif
 #if defined(_DEBUG)
-       
-#if _UWP
-        OutputDebugStringW(_com_error(reason, nullptr).ErrorMessage());
-#else
+
         OutputDebugStringA(_com_error(reason, nullptr).ErrorMessage());
-#endif
 
         ComPtr<ID3D12DeviceRemovedExtendedData> pDred;
         DX_CHECK(pDevice->QueryInterface(IID_PPV_ARGS(&pDred)));
@@ -287,12 +283,7 @@ namespace RGL {
         DX_CHECK(D3D12GetDebugInterface(IID_PPV_ARGS(&debugInterface)));
         debugInterface->EnableDebugLayer();
 
-        constexpr static const char* const pixlibname = 
-#if _UWP
-            "WinPixEventRuntime_UAP.dll";
-#else
-            "WinPixEventRuntime.dll";
-#endif
+        constexpr static const char* const pixlibname = "WinPixEventRuntime.dll";
 
 #if 0
         // load WinPixEventRuntime manually so we don't have to use the NuGet (because it doesn't work with cmake projects)

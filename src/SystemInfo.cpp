@@ -27,12 +27,6 @@
     #include <fstream>
 #endif
 
-#if _UWP
-#include <winrt/Windows.System.Diagnostics.h>
-#include <winrt/Windows.System.Profile.h>
-using namespace winrt;
-#endif
-
 using namespace RavEngine;
 using namespace std;
 using namespace RavEngine::SystemInfo;
@@ -104,9 +98,6 @@ std::string SystemInfo::OperatingSystemNameString(){
     char buf[8]{0};
     AppleOSName(buf, sizeof(buf));
     return buf;
-#elif _UWP
-    auto vi = winrt::Windows::System::Profile::AnalyticsInfo::VersionInfo();
-    return Format("UWP {}",to_string(vi.DeviceFamily()));
 #elif _WIN32
     return "Windows WIN32";
 #elif __linux__
@@ -122,15 +113,6 @@ SystemInfo::OSVersion SystemInfo::OperatingSystemVersion(){
     vers.major = v.major;
     vers.minor = v.minor;
     vers.patch = v.patch;
-#elif _UWP
-    auto vi = winrt::Windows::System::Profile::AnalyticsInfo::VersionInfo();
-    auto str = to_string(vi.DeviceFamilyVersion());
-    auto asInt = std::stoull(str);
-    // convert this int into the four-part version
-    vers.major = (asInt & 0xFFFF000000000000) >> 48;
-    vers.minor = (asInt & 0xFFFF00000000) >> 32;
-    vers.patch = (asInt & 0xFFFF0000) >> 16;
-    vers.extra = (asInt & 0xFFFF);
 #elif _WIN32
     NTSTATUS(WINAPI * RtlGetVersion)(LPOSVERSIONINFOEXW);
     OSVERSIONINFOEXW osInfo;
@@ -159,10 +141,6 @@ SystemInfo::OSVersion SystemInfo::OperatingSystemVersion(){
 uint32_t SystemInfo::SystemRAM(){
 #ifdef __APPLE__
     return GetAppleSystemRAM();
-#elif _UWP
-    auto pk = winrt::Windows::System::Diagnostics::SystemDiagnosticInfo::GetForCurrentSystem();
-    auto bytes = pk.MemoryUsage().GetReport().TotalPhysicalSizeInBytes();
-    return bytes / 1024 / 1024;
 #elif _WIN32
     ULONGLONG memKB;
     GetPhysicallyInstalledSystemMemory(&memKB);

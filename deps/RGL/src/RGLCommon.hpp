@@ -1,12 +1,6 @@
 #pragma once
 #include <RGL/Core.hpp>
 
-#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)
-#define _UWP 1   
-#else
-#define _UWP 0
-#endif
-
 #define RGL_STATIC(a) decltype(a) a
 
 namespace RGL {
