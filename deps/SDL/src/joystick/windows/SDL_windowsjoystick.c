@@ -36,7 +36,7 @@
 #include "../../thread/SDL_systhread.h"
 #include "../../core/windows/SDL_windows.h"
 #include "../../core/windows/SDL_hid.h"
-#if !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
+#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 #include <dbt.h>
 #endif
 
@@ -79,7 +79,7 @@ void WINDOWS_RAWINPUTEnabledChanged(void)
     SetWindowsDeviceChanged();
 }
 
-#if !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
+#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 
 typedef struct
 {
@@ -211,9 +211,7 @@ static bool SDL_WaitForDeviceNotification(SDL_DeviceNotificationData *data, SDL_
     return (lastret != -1);
 }
 
-#endif // !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
-
-#ifndef SDL_PLATFORM_WINRT
+#endif // !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 static SDL_DeviceNotificationData s_notification_data;
@@ -243,7 +241,7 @@ static int SDLCALL SDL_JoystickThread(void *_data)
 #ifdef SDL_JOYSTICK_XINPUT
             // WM_DEVICECHANGE not working, poll for new XINPUT controllers
             SDL_WaitConditionTimeout(s_condJoystickThread, s_mutexJoyStickEnum, 1000);
-            if (SDL_XINPUT_Enabled() && XINPUTGETCAPABILITIES) {
+            if (SDL_XINPUT_Enabled()) {
                 // scan for any change in XInput devices
                 Uint8 userId;
                 for (userId = 0; userId < XUSER_MAX_COUNT; userId++) {
@@ -320,8 +318,6 @@ static void SDL_StopJoystickThread(void)
     s_joystickThread = NULL;
 }
 
-#endif // !defined(SDL_PLATFORM_WINRT)
-
 void WINDOWS_AddJoystickDevice(JoyStick_DeviceData *device)
 {
     device->send_add_event = true;
@@ -333,22 +329,21 @@ void WINDOWS_AddJoystickDevice(JoyStick_DeviceData *device)
 void WINDOWS_JoystickDetect(void);
 void WINDOWS_JoystickQuit(void);
 
-// Function to scan the system for joysticks.
 static bool WINDOWS_JoystickInit(void)
 {
-    if (!SDL_DINPUT_JoystickInit()) {
+    if (!SDL_XINPUT_JoystickInit()) {
         WINDOWS_JoystickQuit();
         return false;
     }
 
-    if (!SDL_XINPUT_JoystickInit()) {
+    if (!SDL_DINPUT_JoystickInit()) {
         WINDOWS_JoystickQuit();
         return false;
     }
 
     WIN_InitDeviceNotification();
 
-#if !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
+#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
     s_bJoystickThread = SDL_GetHintBoolean(SDL_HINT_JOYSTICK_THREAD, false);
     if (s_bJoystickThread) {
         if (!SDL_StartJoystickThread()) {
@@ -639,7 +634,7 @@ void WINDOWS_JoystickQuit(void)
     }
     SYS_Joystick = NULL;
 
-#if !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
+#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
     if (s_bJoystickThread) {
         SDL_StopJoystickThread();
     } else {

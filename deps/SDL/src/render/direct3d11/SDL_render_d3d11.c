@@ -20,13 +20,11 @@
 */
 #include "SDL_internal.h"
 
-#if SDL_VIDEO_RENDER_D3D11
+#ifdef SDL_VIDEO_RENDER_D3D11
 
 #define COBJMACROS
 #include "../../core/windows/SDL_windows.h"
-#ifndef SDL_PLATFORM_WINRT
 #include "../../video/windows/SDL_windowswindow.h"
-#endif
 #include "../SDL_sysrender.h"
 #include "../SDL_d3dmath.h"
 #include "../../video/SDL_pixels_c.h"
@@ -36,22 +34,6 @@
 #include <dxgidebug.h>
 
 #include "SDL_shaders_d3d11.h"
-
-#ifdef SDL_PLATFORM_WINRT
-
-#if NTDDI_VERSION > NTDDI_WIN8
-#include <dxgi1_3.h>
-#endif
-
-#include "SDL_render_winrt.h"
-
-#if WINAPI_FAMILY == WINAPI_FAMILY_APP
-#include <windows.ui.xaml.media.dxinterop.h>
-// TODO, WinRT, XAML: get the ISwapChainBackgroundPanelNative from something other than a global var
-extern ISwapChainBackgroundPanelNative *WINRT_GlobalSwapChainBackgroundPanelNative;
-#endif // WINAPI_FAMILY == WINAPI_FAMILY_APP
-
-#endif // SDL_PLATFORM_WINRT
 
 #if defined(_MSC_VER) && !defined(__clang__)
 #define SDL_COMPOSE_ERROR(str) __FUNCTION__ ", " str
@@ -71,19 +53,19 @@ extern ISwapChainBackgroundPanelNative *WINRT_GlobalSwapChainBackgroundPanelNati
 // Sampler types
 typedef enum
 {
-    SDL_D3D11_SAMPLER_NEAREST_CLAMP,
-    SDL_D3D11_SAMPLER_NEAREST_WRAP,
-    SDL_D3D11_SAMPLER_LINEAR_CLAMP,
-    SDL_D3D11_SAMPLER_LINEAR_WRAP,
-    SDL_NUM_D3D11_SAMPLERS
-} SDL_D3D11_sampler_type;
+    D3D11_SAMPLER_NEAREST_CLAMP,
+    D3D11_SAMPLER_NEAREST_WRAP,
+    D3D11_SAMPLER_LINEAR_CLAMP,
+    D3D11_SAMPLER_LINEAR_WRAP,
+    D3D11_SAMPLER_COUNT
+} D3D11_Sampler;
 
 // Vertex shader, common values
 typedef struct
 {
     Float4X4 model;
     Float4X4 projectionAndView;
-} VertexShaderConstants;
+} D3D11_VertexShaderConstants;
 
 // These should mirror the definitions in D3D11_PixelShader_Common.hlsli
 //static const float TONEMAP_NONE = 0;
@@ -114,13 +96,13 @@ typedef struct
     float sdr_white_point;
 
     float YCbCr_matrix[16];
-} PixelShaderConstants;
+} D3D11_PixelShaderConstants;
 
 typedef struct
 {
     ID3D11Buffer *constants;
-    PixelShaderConstants shader_constants;
-} PixelShaderState;
+    D3D11_PixelShaderConstants shader_constants;
+} D3D11_PixelShaderState;
 
 // Per-vertex data
 typedef struct
@@ -128,7 +110,7 @@ typedef struct
     Float2 pos;
     Float2 tex;
     SDL_FColor color;
-} VertexPositionColor;
+} D3D11_VertexPositionColor;
 
 // Per-texture data
 typedef struct
@@ -171,8 +153,8 @@ typedef struct
 // Private renderer data
 typedef struct
 {
-    void *hDXGIMod;
-    void *hD3D11Mod;
+    SDL_SharedObject *hDXGIMod;
+    SDL_SharedObject *hD3D11Mod;
     IDXGIFactory2 *dxgiFactory;
     IDXGIAdapter *dxgiAdapter;
     IDXGIDebug *dxgiDebug;
@@ -191,7 +173,7 @@ typedef struct
     ID3D11PixelShader *pixelShaders[NUM_SHADERS];
     int blendModesCount;
     D3D11_BlendMode *blendModes;
-    ID3D11SamplerState *samplers[SDL_NUM_D3D11_SAMPLERS];
+    ID3D11SamplerState *samplers[D3D11_SAMPLER_COUNT];
     D3D_FEATURE_LEVEL featureLevel;
     bool pixelSizeChanged;
 
@@ -200,7 +182,7 @@ typedef struct
     ID3D11RasterizerState *clippedRasterizer;
 
     // Vertex buffer constants
-    VertexShaderConstants vertexShaderConstantsData;
+    D3D11_VertexShaderConstants vertexShaderConstantsData;
     ID3D11Buffer *vertexShaderConstants;
 
     // Cached renderer properties
@@ -209,7 +191,7 @@ typedef struct
     ID3D11RasterizerState *currentRasterizerState;
     ID3D11BlendState *currentBlendState;
     D3D11_Shader currentShader;
-    PixelShaderState currentShaderState[NUM_SHADERS];
+    D3D11_PixelShaderState currentShaderState[NUM_SHADERS];
     ID3D11ShaderResourceView *currentShaderResource;
     ID3D11SamplerState *currentSampler;
     bool cliprectDirty;
@@ -222,14 +204,7 @@ typedef struct
     int currentVertexBuffer;
 } D3D11_RenderData;
 
-/* Define D3D GUIDs here so we don't have to include uuid.lib.
- *
- * Fix for SDL bug https://bugzilla.libsdl.org/show_bug.cgi?id=3437:
- * The extra 'SDL_' was added to the start of each IID's name, in order
- * to prevent build errors on both MinGW-w64 and WinRT/UWP.
- * (SDL bug https://bugzilla.libsdl.org/show_bug.cgi?id=3336 led to
- * linker errors in WinRT/UWP builds.)
- */
+// Define D3D GUIDs here so we don't have to include uuid.lib.
 
 #ifdef HAVE_GCC_DIAGNOSTIC_PRAGMA
 #pragma GCC diagnostic push
@@ -238,9 +213,6 @@ typedef struct
 
 static const GUID SDL_IID_IDXGIFactory2 = { 0x50c83a1c, 0xe072, 0x4c48, { 0x87, 0xb0, 0x36, 0x30, 0xfa, 0x36, 0xa6, 0xd0 } };
 static const GUID SDL_IID_IDXGIDevice1 = { 0x77db970f, 0x6276, 0x48ba, { 0xba, 0x28, 0x07, 0x01, 0x43, 0xb4, 0x39, 0x2c } };
-#if defined(SDL_PLATFORM_WINRT) && NTDDI_VERSION > NTDDI_WIN8
-static const GUID SDL_IID_IDXGIDevice3 = { 0x6007896c, 0x3244, 0x4afd, { 0xbf, 0x18, 0xa6, 0xd3, 0xbe, 0xda, 0x50, 0x23 } };
-#endif
 static const GUID SDL_IID_ID3D11Texture2D = { 0x6f15aaf2, 0xd208, 0x4e89, { 0x9a, 0xb4, 0x48, 0x95, 0x35, 0xd3, 0x4f, 0x9c } };
 static const GUID SDL_IID_ID3D11Device1 = { 0xa04bfb29, 0x08ef, 0x43d6, { 0xa4, 0x9c, 0xa9, 0xbd, 0xbd, 0xcb, 0xe6, 0x86 } };
 static const GUID SDL_IID_ID3D11DeviceContext1 = { 0xbb2c6faa, 0xb5fb, 0x4082, { 0x8e, 0x6b, 0x38, 0x8b, 0x8c, 0xfa, 0x90, 0xe1 } };
@@ -271,7 +243,7 @@ SDL_PixelFormat D3D11_DXGIFormatToSDLPixelFormat(DXGI_FORMAT dxgiFormat)
     }
 }
 
-static DXGI_FORMAT SDLPixelFormatToDXGITextureFormat(Uint32 format, Uint32 colorspace)
+static DXGI_FORMAT SDLPixelFormatToDXGITextureFormat(Uint32 format, Uint32 output_colorspace)
 {
     switch (format) {
     case SDL_PIXELFORMAT_RGBA64_FLOAT:
@@ -279,12 +251,12 @@ static DXGI_FORMAT SDLPixelFormatToDXGITextureFormat(Uint32 format, Uint32 color
     case SDL_PIXELFORMAT_XBGR2101010:
         return DXGI_FORMAT_R10G10B10A2_UNORM;
     case SDL_PIXELFORMAT_ARGB8888:
-        if (colorspace == SDL_COLORSPACE_SRGB_LINEAR) {
+        if (output_colorspace == SDL_COLORSPACE_SRGB_LINEAR) {
             return DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
         }
         return DXGI_FORMAT_B8G8R8A8_UNORM;
     case SDL_PIXELFORMAT_XRGB8888:
-        if (colorspace == SDL_COLORSPACE_SRGB_LINEAR) {
+        if (output_colorspace == SDL_COLORSPACE_SRGB_LINEAR) {
             return DXGI_FORMAT_B8G8R8X8_UNORM_SRGB;
         }
         return DXGI_FORMAT_B8G8R8X8_UNORM;
@@ -555,10 +527,6 @@ static HRESULT D3D11_CreateDeviceResources(SDL_Renderer *renderer)
     // See if we need debug interfaces
     createDebug = SDL_GetHintBoolean(SDL_HINT_RENDER_DIRECT3D11_DEBUG, false);
 
-#ifdef SDL_PLATFORM_WINRT
-    CreateDXGIFactory2Func = CreateDXGIFactory2;
-    D3D11CreateDeviceFunc = D3D11CreateDevice;
-#else
     data->hDXGIMod = SDL_LoadObject("dxgi.dll");
     if (!data->hDXGIMod) {
         result = E_FAIL;
@@ -585,7 +553,6 @@ static HRESULT D3D11_CreateDeviceResources(SDL_Renderer *renderer)
         result = E_FAIL;
         goto done;
     }
-#endif // SDL_PLATFORM_WINRT
 
     if (createDebug) {
 #ifdef __IDXGIInfoQueue_INTERFACE_DEFINED__
@@ -731,7 +698,7 @@ static HRESULT D3D11_CreateDeviceResources(SDL_Renderer *renderer)
 
     // Setup space to hold vertex shader constants:
     SDL_zero(constantBufferDesc);
-    constantBufferDesc.ByteWidth = sizeof(VertexShaderConstants);
+    constantBufferDesc.ByteWidth = sizeof(D3D11_VertexShaderConstants);
     constantBufferDesc.Usage = D3D11_USAGE_DEFAULT;
     constantBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     result = ID3D11Device_CreateBuffer(data->d3dDevice,
@@ -754,7 +721,7 @@ static HRESULT D3D11_CreateDeviceResources(SDL_Renderer *renderer)
         { D3D11_FILTER_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_CLAMP },
         { D3D11_FILTER_MIN_MAG_MIP_LINEAR, D3D11_TEXTURE_ADDRESS_WRAP },
     };
-    SDL_COMPILE_TIME_ASSERT(samplerParams_SIZE, SDL_arraysize(samplerParams) == SDL_NUM_D3D11_SAMPLERS);
+    SDL_COMPILE_TIME_ASSERT(samplerParams_SIZE, SDL_arraysize(samplerParams) == D3D11_SAMPLER_COUNT);
     SDL_zero(samplerDesc);
     samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
     samplerDesc.MipLODBias = 0.0f;
@@ -820,15 +787,11 @@ done:
     return result;
 }
 
-#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINGDK)
-
 static DXGI_MODE_ROTATION D3D11_GetCurrentRotation(void)
 {
     // FIXME
     return DXGI_MODE_ROTATION_IDENTITY;
 }
-
-#endif // defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINGDK)
 
 static BOOL D3D11_IsDisplayRotated90Degrees(DXGI_MODE_ROTATION rotation)
 {
@@ -897,13 +860,7 @@ static bool D3D11_GetViewportAlignedD3DRect(SDL_Renderer *renderer, const SDL_Re
 static HRESULT D3D11_CreateSwapChain(SDL_Renderer *renderer, int w, int h)
 {
     D3D11_RenderData *data = (D3D11_RenderData *)renderer->internal;
-#ifdef SDL_PLATFORM_WINRT
-    IUnknown *coreWindow = D3D11_GetCoreWindowFromSDLRenderer(renderer);
-    const BOOL usingXAML = (!coreWindow);
-#else
     IUnknown *coreWindow = NULL;
-    const BOOL usingXAML = FALSE;
-#endif
     IDXGISwapChain3 *swapChain3 = NULL;
     HRESULT result = S_OK;
 
@@ -928,19 +885,10 @@ static HRESULT D3D11_CreateSwapChain(SDL_Renderer *renderer, int w, int h)
     swapChainDesc.SampleDesc.Quality = 0;
     swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     swapChainDesc.BufferCount = 2; // Use double-buffering to minimize latency.
-#if SDL_WINAPI_FAMILY_PHONE
-    swapChainDesc.Scaling = DXGI_SCALING_STRETCH;        // On phone, only stretch and aspect-ratio stretch scaling are allowed.
-    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD; // On phone, no swap effects are supported.
-    // TODO, WinRT: see if Win 8.x DXGI_SWAP_CHAIN_DESC1 settings are available on Windows Phone 8.1, and if there's any advantage to having them on
-#else
-    if (usingXAML) {
-        swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+    if (WIN_IsWindows8OrGreater()) {
+        swapChainDesc.Scaling = DXGI_SCALING_NONE;
     } else {
-        if (WIN_IsWindows8OrGreater()) {
-            swapChainDesc.Scaling = DXGI_SCALING_NONE;
-        } else {
-            swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
-        }
+        swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
     }
     if (SDL_GetWindowFlags(renderer->window) & SDL_WINDOW_TRANSPARENT) {
         swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
@@ -948,7 +896,6 @@ static HRESULT D3D11_CreateSwapChain(SDL_Renderer *renderer, int w, int h)
     } else {
         swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL; // All Windows Store apps must use this SwapEffect.
     }
-#endif
     swapChainDesc.Flags = 0;
 
     if (coreWindow) {
@@ -962,28 +909,6 @@ static HRESULT D3D11_CreateSwapChain(SDL_Renderer *renderer, int w, int h)
             WIN_SetErrorFromHRESULT(SDL_COMPOSE_ERROR("IDXGIFactory2::CreateSwapChainForCoreWindow"), result);
             goto done;
         }
-    } else if (usingXAML) {
-        result = IDXGIFactory2_CreateSwapChainForComposition(data->dxgiFactory,
-                                                             (IUnknown *)data->d3dDevice,
-                                                             &swapChainDesc,
-                                                             NULL,
-                                                             &data->swapChain);
-        if (FAILED(result)) {
-            WIN_SetErrorFromHRESULT(SDL_COMPOSE_ERROR("IDXGIFactory2::CreateSwapChainForComposition"), result);
-            goto done;
-        }
-
-#if WINAPI_FAMILY == WINAPI_FAMILY_APP
-        result = ISwapChainBackgroundPanelNative_SetSwapChain(WINRT_GlobalSwapChainBackgroundPanelNative, (IDXGISwapChain *)data->swapChain);
-        if (FAILED(result)) {
-            WIN_SetErrorFromHRESULT(SDL_COMPOSE_ERROR("ISwapChainBackgroundPanelNative::SetSwapChain"), result);
-            goto done;
-        }
-#else
-        SDL_SetError(SDL_COMPOSE_ERROR("XAML support is not yet available for Windows Phone"));
-        result = E_FAIL;
-        goto done;
-#endif
     } else {
 #if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINGDK)
         HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(renderer->window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
@@ -1102,11 +1027,7 @@ static HRESULT D3D11_CreateWindowSizeDependentResources(SDL_Renderer *renderer)
     /* The width and height of the swap chain must be based on the display's
      * non-rotated size.
      */
-#ifdef SDL_PLATFORM_WINRT
-    SDL_GetWindowSize(renderer->window, &w, &h);
-#else
     SDL_GetWindowSizeInPixels(renderer->window, &w, &h);
-#endif
     data->rotation = D3D11_GetCurrentRotation();
     // SDL_Log("%s: windowSize={%d,%d}, orientation=%d\n", __FUNCTION__, w, h, (int)data->rotation);
     if (D3D11_IsDisplayRotated90Degrees(data->rotation)) {
@@ -1116,8 +1037,6 @@ static HRESULT D3D11_CreateWindowSizeDependentResources(SDL_Renderer *renderer)
     }
 
     if (data->swapChain) {
-        // IDXGISwapChain::ResizeBuffers is not available on Windows Phone 8.
-#if !defined(SDL_PLATFORM_WINRT) || !SDL_WINAPI_FAMILY_PHONE
         // If the swap chain already exists, resize it.
         result = IDXGISwapChain_ResizeBuffers(data->swapChain,
                                               0,
@@ -1136,7 +1055,6 @@ static HRESULT D3D11_CreateWindowSizeDependentResources(SDL_Renderer *renderer)
             WIN_SetErrorFromHRESULT(SDL_COMPOSE_ERROR("IDXGISwapChain::ResizeBuffers"), result);
             goto done;
         }
-#endif
     } else {
         result = D3D11_CreateSwapChain(renderer, w, h);
         if (FAILED(result) || !data->swapChain) {
@@ -1144,23 +1062,7 @@ static HRESULT D3D11_CreateWindowSizeDependentResources(SDL_Renderer *renderer)
         }
     }
 
-#if !SDL_WINAPI_FAMILY_PHONE
-    /* Set the proper rotation for the swap chain.
-     *
-     * To note, the call for this, IDXGISwapChain1::SetRotation, is not necessary
-     * on Windows Phone 8.0, nor is it supported there.
-     *
-     * IDXGISwapChain1::SetRotation does seem to be available on Windows Phone 8.1,
-     * however I've yet to find a way to make it work.  It might have something to
-     * do with IDXGISwapChain::ResizeBuffers appearing to not being available on
-     * Windows Phone 8.1 (it wasn't on Windows Phone 8.0), but I'm not 100% sure of this.
-     * The call doesn't appear to be entirely necessary though, and is a performance-related
-     * call, at least according to the following page on MSDN:
-     * http://code.msdn.microsoft.com/windowsapps/DXGI-swap-chain-rotation-21d13d71
-     *   -- David L.
-     *
-     * TODO, WinRT: reexamine the docs for IDXGISwapChain1::SetRotation, see if might be available, usable, and prudent-to-call on WinPhone 8.1
-     */
+    // Set the proper rotation for the swap chain.
     if (WIN_IsWindows8OrGreater()) {
         if (data->swapEffect == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL) {
             result = IDXGISwapChain1_SetRotation(data->swapChain, data->rotation);
@@ -1170,7 +1072,6 @@ static HRESULT D3D11_CreateWindowSizeDependentResources(SDL_Renderer *renderer)
             }
         }
     }
-#endif
 
     result = IDXGISwapChain_GetBuffer(data->swapChain,
                                       0,
@@ -1211,26 +1112,6 @@ done:
 static HRESULT D3D11_UpdateForWindowSizeChange(SDL_Renderer *renderer)
 {
     return D3D11_CreateWindowSizeDependentResources(renderer);
-}
-
-void D3D11_Trim(SDL_Renderer *renderer)
-{
-#ifdef SDL_PLATFORM_WINRT
-#if NTDDI_VERSION > NTDDI_WIN8
-    D3D11_RenderData *data = (D3D11_RenderData *)renderer->internal;
-    HRESULT result = S_OK;
-    IDXGIDevice3 *dxgiDevice = NULL;
-
-    result = ID3D11Device_QueryInterface(data->d3dDevice, &SDL_IID_IDXGIDevice3, &dxgiDevice);
-    if (FAILED(result)) {
-        // WIN_SetErrorFromHRESULT(__FUNCTION__ ", ID3D11Device to IDXGIDevice3", result);
-        return;
-    }
-
-    IDXGIDevice3_Trim(dxgiDevice);
-    SAFE_RELEASE(dxgiDevice);
-#endif
-#endif
 }
 
 static void D3D11_WindowEvent(SDL_Renderer *renderer, const SDL_WindowEvent *event)
@@ -1835,8 +1716,6 @@ static bool D3D11_LockTexture(SDL_Renderer *renderer, SDL_Texture *texture,
      * have the ability to write a CPU-bound pixel buffer to a rectangular
      * subrect of a texture.  Direct3D 11.1 can, however, write a pixel
      * buffer to an entire texture, hence the use of a staging texture.
-     *
-     * TODO, WinRT: consider avoiding the use of a staging texture in D3D11_LockTexture if/when the entire texture is being updated
      */
     ID3D11Texture2D_GetDesc(textureData->mainTexture, &stagingTextureDesc);
     stagingTextureDesc.Width = rect->w;
@@ -1955,7 +1834,7 @@ static bool D3D11_QueueNoOp(SDL_Renderer *renderer, SDL_RenderCommand *cmd)
 
 static bool D3D11_QueueDrawPoints(SDL_Renderer *renderer, SDL_RenderCommand *cmd, const SDL_FPoint *points, int count)
 {
-    VertexPositionColor *verts = (VertexPositionColor *)SDL_AllocateRenderVertices(renderer, count * sizeof(VertexPositionColor), 0, &cmd->data.draw.first);
+    D3D11_VertexPositionColor *verts = (D3D11_VertexPositionColor *)SDL_AllocateRenderVertices(renderer, count * sizeof(D3D11_VertexPositionColor), 0, &cmd->data.draw.first);
     int i;
     SDL_FColor color = cmd->data.draw.color;
     bool convert_color = SDL_RenderingLinearSpace(renderer);
@@ -1989,7 +1868,7 @@ static bool D3D11_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, 
 {
     int i;
     int count = indices ? num_indices : num_vertices;
-    VertexPositionColor *verts = (VertexPositionColor *)SDL_AllocateRenderVertices(renderer, count * sizeof(VertexPositionColor), 0, &cmd->data.draw.first);
+    D3D11_VertexPositionColor *verts = (D3D11_VertexPositionColor *)SDL_AllocateRenderVertices(renderer, count * sizeof(D3D11_VertexPositionColor), 0, &cmd->data.draw.first);
     bool convert_color = SDL_RenderingLinearSpace(renderer);
     D3D11_TextureData *textureData = texture ? (D3D11_TextureData *)texture->internal : NULL;
     float u_scale = textureData ? (float)texture->w / textureData->w : 0.0f;
@@ -2044,7 +1923,7 @@ static bool D3D11_UpdateVertexBuffer(SDL_Renderer *renderer,
     D3D11_RenderData *rendererData = (D3D11_RenderData *)renderer->internal;
     HRESULT result = S_OK;
     const int vbidx = rendererData->currentVertexBuffer;
-    const UINT stride = sizeof(VertexPositionColor);
+    const UINT stride = sizeof(D3D11_VertexPositionColor);
     const UINT offset = 0;
 
     if (dataSizeInBytes == 0) {
@@ -2183,7 +2062,6 @@ static bool D3D11_UpdateViewport(SDL_Renderer *renderer)
         orientationAlignedViewport.w = (float)viewport->w;
         orientationAlignedViewport.h = (float)viewport->h;
     }
-    // TODO, WinRT: get custom viewports working with non-Landscape modes (Portrait, PortraitFlipped, and LandscapeFlipped)
 
     d3dviewport.TopLeftX = orientationAlignedViewport.x;
     d3dviewport.TopLeftY = orientationAlignedViewport.y;
@@ -2209,7 +2087,7 @@ static ID3D11RenderTargetView *D3D11_GetCurrentRenderTargetView(SDL_Renderer *re
     }
 }
 
-static void D3D11_SetupShaderConstants(SDL_Renderer *renderer, const SDL_RenderCommand *cmd, const SDL_Texture *texture, PixelShaderConstants *constants)
+static void D3D11_SetupShaderConstants(SDL_Renderer *renderer, const SDL_RenderCommand *cmd, const SDL_Texture *texture, D3D11_PixelShaderConstants *constants)
 {
     float output_headroom;
 
@@ -2246,6 +2124,7 @@ static void D3D11_SetupShaderConstants(SDL_Renderer *renderer, const SDL_RenderC
             } else if (texture->colorspace == SDL_COLORSPACE_HDR10) {
                 constants->input_type = INPUTTYPE_HDR10;
             } else {
+                // The sampler will convert from sRGB to linear on load if working in linear colorspace
                 constants->input_type = INPUTTYPE_UNSPECIFIED;
             }
             break;
@@ -2272,7 +2151,7 @@ static void D3D11_SetupShaderConstants(SDL_Renderer *renderer, const SDL_RenderC
 }
 
 static bool D3D11_SetDrawState(SDL_Renderer *renderer, const SDL_RenderCommand *cmd,
-                              D3D11_Shader shader, const PixelShaderConstants *shader_constants,
+                              D3D11_Shader shader, const D3D11_PixelShaderConstants *shader_constants,
                               const int numShaderResources, ID3D11ShaderResourceView **shaderResources,
                               ID3D11SamplerState *sampler, const Float4X4 *matrix)
 
@@ -2285,8 +2164,8 @@ static bool D3D11_SetDrawState(SDL_Renderer *renderer, const SDL_RenderCommand *
     const SDL_BlendMode blendMode = cmd->data.draw.blend;
     ID3D11BlendState *blendState = NULL;
     bool updateSubresource = false;
-    PixelShaderState *shader_state = &rendererData->currentShaderState[shader];
-    PixelShaderConstants solid_constants;
+    D3D11_PixelShaderState *shader_state = &rendererData->currentShaderState[shader];
+    D3D11_PixelShaderConstants solid_constants;
 
     if (numShaderResources > 0) {
         shaderResource = shaderResources[0];
@@ -2430,7 +2309,7 @@ static bool D3D11_SetCopyState(SDL_Renderer *renderer, const SDL_RenderCommand *
     D3D11_RenderData *rendererData = (D3D11_RenderData *)renderer->internal;
     D3D11_TextureData *textureData = (D3D11_TextureData *)texture->internal;
     ID3D11SamplerState *textureSampler;
-    PixelShaderConstants constants;
+    D3D11_PixelShaderConstants constants;
 
     if (!textureData) {
         return SDL_SetError("Texture is not currently available");
@@ -2442,10 +2321,10 @@ static bool D3D11_SetCopyState(SDL_Renderer *renderer, const SDL_RenderCommand *
     case D3D11_FILTER_MIN_MAG_MIP_POINT:
         switch (cmd->data.draw.texture_address_mode) {
         case SDL_TEXTURE_ADDRESS_CLAMP:
-            textureSampler = rendererData->samplers[SDL_D3D11_SAMPLER_NEAREST_CLAMP];
+            textureSampler = rendererData->samplers[D3D11_SAMPLER_NEAREST_CLAMP];
             break;
         case SDL_TEXTURE_ADDRESS_WRAP:
-            textureSampler = rendererData->samplers[SDL_D3D11_SAMPLER_NEAREST_WRAP];
+            textureSampler = rendererData->samplers[D3D11_SAMPLER_NEAREST_WRAP];
             break;
         default:
             return SDL_SetError("Unknown texture address mode: %d\n", cmd->data.draw.texture_address_mode);
@@ -2454,10 +2333,10 @@ static bool D3D11_SetCopyState(SDL_Renderer *renderer, const SDL_RenderCommand *
     case D3D11_FILTER_MIN_MAG_MIP_LINEAR:
         switch (cmd->data.draw.texture_address_mode) {
         case SDL_TEXTURE_ADDRESS_CLAMP:
-            textureSampler = rendererData->samplers[SDL_D3D11_SAMPLER_LINEAR_CLAMP];
+            textureSampler = rendererData->samplers[D3D11_SAMPLER_LINEAR_CLAMP];
             break;
         case SDL_TEXTURE_ADDRESS_WRAP:
-            textureSampler = rendererData->samplers[SDL_D3D11_SAMPLER_LINEAR_WRAP];
+            textureSampler = rendererData->samplers[D3D11_SAMPLER_LINEAR_WRAP];
             break;
         default:
             return SDL_SetError("Unknown texture address mode: %d\n", cmd->data.draw.texture_address_mode);
@@ -2580,7 +2459,7 @@ static bool D3D11_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd
         {
             const size_t count = cmd->data.draw.count;
             const size_t first = cmd->data.draw.first;
-            const size_t start = first / sizeof(VertexPositionColor);
+            const size_t start = first / sizeof(D3D11_VertexPositionColor);
             D3D11_SetDrawState(renderer, cmd, SHADER_SOLID, NULL, 0, NULL, NULL, NULL);
             D3D11_DrawPrimitives(renderer, D3D11_PRIMITIVE_TOPOLOGY_POINTLIST, start, count);
             break;
@@ -2590,8 +2469,8 @@ static bool D3D11_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd
         {
             const size_t count = cmd->data.draw.count;
             const size_t first = cmd->data.draw.first;
-            const size_t start = first / sizeof(VertexPositionColor);
-            const VertexPositionColor *verts = (VertexPositionColor *)(((Uint8 *)vertices) + first);
+            const size_t start = first / sizeof(D3D11_VertexPositionColor);
+            const D3D11_VertexPositionColor *verts = (D3D11_VertexPositionColor *)(((Uint8 *)vertices) + first);
             D3D11_SetDrawState(renderer, cmd, SHADER_SOLID, NULL, 0, NULL, NULL, NULL);
             D3D11_DrawPrimitives(renderer, D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP, start, count);
             if (verts[0].pos.x != verts[count - 1].pos.x || verts[0].pos.y != verts[count - 1].pos.y) {
@@ -2614,7 +2493,7 @@ static bool D3D11_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd
             SDL_Texture *texture = cmd->data.draw.texture;
             const size_t count = cmd->data.draw.count;
             const size_t first = cmd->data.draw.first;
-            const size_t start = first / sizeof(VertexPositionColor);
+            const size_t start = first / sizeof(D3D11_VertexPositionColor);
 
             if (texture) {
                 D3D11_SetCopyState(renderer, cmd, NULL);
@@ -2736,15 +2615,10 @@ static bool D3D11_RenderPresent(SDL_Renderer *renderer)
 
     SDL_zero(parameters);
 
-#if SDL_WINAPI_FAMILY_PHONE
-    result = IDXGISwapChain_Present(data->swapChain, data->syncInterval, data->presentFlags);
-#else
     /* The application may optionally specify "dirty" or "scroll"
      * rects to improve efficiency in certain scenarios.
-     * This option is not available on Windows Phone 8, to note.
      */
     result = IDXGISwapChain1_Present1(data->swapChain, data->syncInterval, data->presentFlags, &parameters);
-#endif
 
     /* Discard the contents of the render target.
      * This is a valid operation only when the existing contents will be entirely
@@ -2758,8 +2632,6 @@ static bool D3D11_RenderPresent(SDL_Renderer *renderer)
     if (FAILED(result) && result != DXGI_ERROR_WAS_STILL_DRAWING) {
         /* If the device was removed either by a disconnect or a driver upgrade, we
          * must recreate all device resources.
-         *
-         * TODO, WinRT: consider throwing an exception if D3D11_RenderPresent fails, especially if there is a way to salvage debug info from users' machines
          */
         if (result == DXGI_ERROR_DEVICE_REMOVED) {
             D3D11_HandleDeviceLost(renderer);
@@ -2778,22 +2650,6 @@ static bool D3D11_SetVSync(SDL_Renderer *renderer, const int vsync)
 {
     D3D11_RenderData *data = (D3D11_RenderData *)renderer->internal;
 
-#if SDL_WINAPI_FAMILY_PHONE
-    /* VSync is required in Windows Phone, at least for Win Phone 8.0 and 8.1.
-     * Failure to use it seems to either result in:
-     *
-     *  - with the D3D11 debug runtime turned OFF, vsync seemingly gets turned
-     *    off (framerate doesn't get capped), but nothing appears on-screen
-     *
-     *  - with the D3D11 debug runtime turned ON, vsync gets automatically
-     *    turned back on, and the following gets output to the debug console:
-     *
-     *    DXGI ERROR: IDXGISwapChain::Present: Interval 0 is not supported, changed to Interval 1. [ UNKNOWN ERROR #1024: ]
-     */
-    if (vsync == 0) {
-        return SDL_Unsupported();
-    }
-#endif
     if (vsync < 0) {
         return SDL_Unsupported();
     }
@@ -2893,4 +2749,4 @@ SDL_RenderDriver D3D11_RenderDriver = {
     D3D11_CreateRenderer, "direct3d11"
 };
 
-#endif // SDL_VIDEO_RENDER_D3D11 && !SDL_RENDER_DISABLED
+#endif // SDL_VIDEO_RENDER_D3D11

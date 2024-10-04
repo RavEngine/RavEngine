@@ -238,7 +238,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
                     int i;
 
                     for (i = 1; i <= MAX_MOUSE_BUTTONS; ++i) {
-                        if (event.buttonMask & SDL_BUTTON(i)) {
+                        if (event.buttonMask & SDL_BUTTON_MASK(i)) {
                             Uint8 button;
 
                             switch (i) {
@@ -255,7 +255,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
                                 button = (Uint8)i;
                                 break;
                             }
-                            SDL_SendMouseButton(UIKit_GetEventTimestamp([event timestamp]), sdlwindow, SDL_GLOBAL_MOUSE_ID, SDL_PRESSED, button);
+                            SDL_SendMouseButton(UIKit_GetEventTimestamp([event timestamp]), sdlwindow, SDL_GLOBAL_MOUSE_ID, button, true);
                         }
                     }
                 }
@@ -294,7 +294,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
                     int i;
 
                     for (i = 1; i <= MAX_MOUSE_BUTTONS; ++i) {
-                        if (event.buttonMask & SDL_BUTTON(i)) {
+                        if (event.buttonMask & SDL_BUTTON_MASK(i)) {
                             Uint8 button;
 
                             switch (i) {
@@ -311,7 +311,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
                                 button = (Uint8)i;
                                 break;
                             }
-                            SDL_SendMouseButton(UIKit_GetEventTimestamp([event timestamp]), sdlwindow, SDL_GLOBAL_MOUSE_ID, SDL_RELEASED, button);
+                            SDL_SendMouseButton(UIKit_GetEventTimestamp([event timestamp]), sdlwindow, SDL_GLOBAL_MOUSE_ID, button, false);
                         }
                     }
                 }
@@ -431,7 +431,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
     if (!SDL_HasKeyboard()) {
         for (UIPress *press in presses) {
             SDL_Scancode scancode = [self scancodeFromPress:press];
-            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, SDL_PRESSED);
+            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, true);
         }
     }
     if (SDL_TextInputActive(sdlwindow)) {
@@ -444,7 +444,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
     if (!SDL_HasKeyboard()) {
         for (UIPress *press in presses) {
             SDL_Scancode scancode = [self scancodeFromPress:press];
-            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, SDL_RELEASED);
+            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, false);
         }
     }
     if (SDL_TextInputActive(sdlwindow)) {
@@ -457,7 +457,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
     if (!SDL_HasKeyboard()) {
         for (UIPress *press in presses) {
             SDL_Scancode scancode = [self scancodeFromPress:press];
-            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, SDL_RELEASED);
+            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, false);
         }
     }
     if (SDL_TextInputActive(sdlwindow)) {

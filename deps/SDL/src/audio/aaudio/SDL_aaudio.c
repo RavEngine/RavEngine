@@ -55,7 +55,7 @@ struct SDL_PrivateAudioData
 
 typedef struct AAUDIO_Data
 {
-    void *handle;
+    SDL_SharedObject *handle;
 #define SDL_PROC(ret, func, params) ret (*func) params;
 #include "SDL_aaudiofuncs.h"
 } AAUDIO_Data;
@@ -82,7 +82,7 @@ static void AAUDIO_errorCallback(AAudioStream *stream, void *userData, aaudio_re
     // You MUST NOT close the audio stream from this callback, so we cannot call SDL_AudioDeviceDisconnected here.
     // Just flag the device so we can kill it in PlayDevice instead.
     SDL_AudioDevice *device = (SDL_AudioDevice *) userData;
-    SDL_AtomicSet(&device->hidden->error_callback_triggered, (int) error);  // AAUDIO_OK is zero, so !triggered means no error.
+    SDL_SetAtomicInt(&device->hidden->error_callback_triggered, (int) error);  // AAUDIO_OK is zero, so !triggered means no error.
     SDL_SignalSemaphore(device->hidden->semaphore);  // in case we're blocking in WaitDevice.
 }
 
@@ -163,7 +163,7 @@ static Uint8 *AAUDIO_GetDeviceBuf(SDL_AudioDevice *device, int *bufsize)
 
 static bool AAUDIO_WaitDevice(SDL_AudioDevice *device)
 {
-    while (!SDL_AtomicGet(&device->shutdown)) {
+    while (!SDL_GetAtomicInt(&device->shutdown)) {
         // this semaphore won't fire when the app is in the background (AAUDIO_PauseDevices was called).
         if (SDL_WaitSemaphoreTimeout(device->hidden->semaphore, 100)) {
             return true;  // semaphore was signaled, let's go!
@@ -218,7 +218,7 @@ static bool AAUDIO_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int 
     struct SDL_PrivateAudioData *hidden = device->hidden;
 
     // AAUDIO_dataCallback picks up our work and unblocks AAUDIO_WaitDevice. But make sure we didn't fail here.
-    const aaudio_result_t err = (aaudio_result_t) SDL_AtomicGet(&hidden->error_callback_triggered);
+    const aaudio_result_t err = (aaudio_result_t) SDL_GetAtomicInt(&hidden->error_callback_triggered);
     if (err) {
         SDL_LogError(SDL_LOG_CATEGORY_AUDIO, "aaudio: Audio device triggered error %d (%s)", (int) err, ctx.AAudio_convertResultToText(err));
 
@@ -237,8 +237,8 @@ static int AAUDIO_RecordDevice(SDL_AudioDevice *device, void *buffer, int buflen
     struct SDL_PrivateAudioData *hidden = device->hidden;
 
     // AAUDIO_dataCallback picks up our work and unblocks AAUDIO_WaitDevice. But make sure we didn't fail here.
-    if (SDL_AtomicGet(&hidden->error_callback_triggered)) {
-        SDL_AtomicSet(&hidden->error_callback_triggered, 0);
+    if (SDL_GetAtomicInt(&hidden->error_callback_triggered)) {
+        SDL_SetAtomicInt(&hidden->error_callback_triggered, 0);
         return -1;
     }
 
@@ -279,7 +279,7 @@ static bool BuildAAudioStream(SDL_AudioDevice *device)
     const bool recording = device->recording;
     aaudio_result_t res;
 
-    SDL_AtomicSet(&hidden->error_callback_triggered, 0);
+    SDL_SetAtomicInt(&hidden->error_callback_triggered, 0);
 
     AAudioStreamBuilder *builder = NULL;
     res = ctx.AAudio_createStreamBuilder(&builder);
@@ -308,8 +308,8 @@ static bool BuildAAudioStream(SDL_AudioDevice *device)
     }
     ctx.AAudioStreamBuilder_setFormat(builder, format);
     ctx.AAudioStreamBuilder_setSampleRate(builder, device->spec.freq);
-    ctx.AAudioStreamBuilder_setChannelCount(builder, device->spec.channels);
 #endif
+    ctx.AAudioStreamBuilder_setChannelCount(builder, device->spec.channels);
 
     const aaudio_direction_t direction = (recording ? AAUDIO_DIRECTION_INPUT : AAUDIO_DIRECTION_OUTPUT);
     ctx.AAudioStreamBuilder_setDirection(builder, direction);
@@ -320,7 +320,7 @@ static bool BuildAAudioStream(SDL_AudioDevice *device)
         ctx.AAudioStreamBuilder_setPerformanceMode(builder, AAUDIO_PERFORMANCE_MODE_LOW_LATENCY);
     }
 
-    LOGI("AAudio Try to open %u hz %u bit chan %u %s samples %u",
+    LOGI("AAudio Try to open %u hz %u bit %u channels %s samples %u",
          device->spec.freq, SDL_AUDIO_BITSIZE(device->spec.format),
          device->spec.channels, SDL_AUDIO_ISBIGENDIAN(device->spec.format) ? "BE" : "LE", device->sample_frames);
 
@@ -370,7 +370,7 @@ static bool BuildAAudioStream(SDL_AudioDevice *device)
         return false;
     }
 
-    LOGI("AAudio Actually opened %u hz %u bit chan %u %s samples %u, buffers %d",
+    LOGI("AAudio Actually opened %u hz %u bit %u channels %s samples %u, buffers %d",
          device->spec.freq, SDL_AUDIO_BITSIZE(device->spec.format),
          device->spec.channels, SDL_AUDIO_ISBIGENDIAN(device->spec.format) ? "BE" : "LE", device->sample_frames, hidden->num_buffers);
 
@@ -386,9 +386,9 @@ static bool BuildAAudioStream(SDL_AudioDevice *device)
 }
 
 // !!! FIXME: make this non-blocking!
-static void SDLCALL RequestAndroidPermissionBlockingCallback(void *userdata, const char *permission, SDL_bool granted)
+static void SDLCALL RequestAndroidPermissionBlockingCallback(void *userdata, const char *permission, bool granted)
 {
-    SDL_AtomicSet((SDL_AtomicInt *) userdata, granted ? 1 : -1);
+    SDL_SetAtomicInt((SDL_AtomicInt *) userdata, granted ? 1 : -1);
 }
 
 static bool AAUDIO_OpenDevice(SDL_AudioDevice *device)
@@ -402,16 +402,16 @@ static bool AAUDIO_OpenDevice(SDL_AudioDevice *device)
     if (device->recording) {
         // !!! FIXME: make this non-blocking!
         SDL_AtomicInt permission_response;
-        SDL_AtomicSet(&permission_response, 0);
+        SDL_SetAtomicInt(&permission_response, 0);
         if (!SDL_RequestAndroidPermission("android.permission.RECORD_AUDIO", RequestAndroidPermissionBlockingCallback, &permission_response)) {
             return false;
         }
 
-        while (SDL_AtomicGet(&permission_response) == 0) {
+        while (SDL_GetAtomicInt(&permission_response) == 0) {
             SDL_Delay(10);
         }
 
-        if (SDL_AtomicGet(&permission_response) < 0) {
+        if (SDL_GetAtomicInt(&permission_response) < 0) {
             LOGI("This app doesn't have RECORD_AUDIO permission");
             return SDL_SetError("This app doesn't have RECORD_AUDIO permission");
         }

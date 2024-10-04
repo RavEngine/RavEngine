@@ -39,7 +39,7 @@ static bool SupportsIMMDevice = false;
 #endif
 
 // DirectX function pointers for audio
-static void *DSoundDLL = NULL;
+static SDL_SharedObject *DSoundDLL = NULL;
 typedef HRESULT(WINAPI *fnDirectSoundCreate8)(LPGUID, LPDIRECTSOUND *, LPUNKNOWN);
 typedef HRESULT(WINAPI *fnDirectSoundEnumerateW)(LPDSENUMCALLBACKW, LPVOID);
 typedef HRESULT(WINAPI *fnDirectSoundCaptureCreate8)(LPCGUID, LPDIRECTSOUNDCAPTURE8 *, LPUNKNOWN);
@@ -234,7 +234,7 @@ static bool DSOUND_WaitDevice(SDL_AudioDevice *device)
     /* Semi-busy wait, since we have no way of getting play notification
        on a primary mixing buffer located in hardware (DirectX 5.0)
      */
-    while (!SDL_AtomicGet(&device->shutdown)) {
+    while (!SDL_GetAtomicInt(&device->shutdown)) {
         DWORD status = 0;
         DWORD cursor = 0;
         DWORD junk = 0;
@@ -336,7 +336,7 @@ static Uint8 *DSOUND_GetDeviceBuf(SDL_AudioDevice *device, int *buffer_size)
 static bool DSOUND_WaitRecordingDevice(SDL_AudioDevice *device)
 {
     struct SDL_PrivateAudioData *h = device->hidden;
-    while (!SDL_AtomicGet(&device->shutdown)) {
+    while (!SDL_GetAtomicInt(&device->shutdown)) {
         DWORD junk, cursor;
         if (IDirectSoundCaptureBuffer_GetCurrentPosition(h->capturebuf, &junk, &cursor) != DS_OK) {
             return false;

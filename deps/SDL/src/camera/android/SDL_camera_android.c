@@ -23,6 +23,7 @@
 #include "../SDL_syscamera.h"
 #include "../SDL_camera_c.h"
 #include "../../video/SDL_pixels_c.h"
+#include "../../video/SDL_surface_c.h"
 #include "../../thread/SDL_systhread.h"
 
 #ifdef SDL_CAMERA_DRIVER_ANDROID
@@ -194,7 +195,7 @@ static const char *MediaStatusStr(const media_status_t rc)
 {
     switch (rc) {
         case AMEDIA_OK: return "no error";
-        case AMEDIACODEC_ERROR_INSUFFICIENT_RESOURCE: return "insuffient resources";
+        case AMEDIACODEC_ERROR_INSUFFICIENT_RESOURCE: return "insufficient resources";
         case AMEDIACODEC_ERROR_RECLAIMED: return "reclaimed";
         case AMEDIA_ERROR_UNKNOWN: return "unknown error";
         case AMEDIA_ERROR_MALFORMED: return "malformed";
@@ -516,7 +517,7 @@ static bool PrepareCamera(SDL_Camera *device)
     return true;
 }
 
-static void SDLCALL CameraPermissionCallback(void *userdata, const char *permission, SDL_bool granted)
+static void SDLCALL CameraPermissionCallback(void *userdata, const char *permission, bool granted)
 {
     SDL_Camera *device = (SDL_Camera *) userdata;
     if (device->hidden != NULL) {   // if device was already closed, don't send an event.

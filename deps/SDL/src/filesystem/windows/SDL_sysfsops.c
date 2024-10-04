@@ -29,13 +29,13 @@
 #include "../../core/windows/SDL_windows.h"
 #include "../SDL_sysfilesystem.h"
 
-int SDL_SYS_EnumerateDirectory(const char *path, const char *dirname, SDL_EnumerateDirectoryCallback cb, void *userdata)
+bool SDL_SYS_EnumerateDirectory(const char *path, const char *dirname, SDL_EnumerateDirectoryCallback cb, void *userdata)
 {
-    int result = 1;
+    SDL_EnumerationResult result = SDL_ENUM_CONTINUE;
     if (*path == '\0') {  // if empty (completely at the root), we need to enumerate drive letters.
         const DWORD drives = GetLogicalDrives();
         char name[3] = { 0, ':', '\0' };
-        for (int i = 'A'; (result == 1) && (i <= 'Z'); i++) {
+        for (int i = 'A'; (result == SDL_ENUM_CONTINUE) && (i <= 'Z'); i++) {
             if (drives & (1 << (i - 'A'))) {
                 name[0] = (char) i;
                 result = cb(userdata, dirname, name);
@@ -45,7 +45,7 @@ int SDL_SYS_EnumerateDirectory(const char *path, const char *dirname, SDL_Enumer
         const size_t patternlen = SDL_strlen(path) + 3;
         char *pattern = (char *) SDL_malloc(patternlen);
         if (!pattern) {
-            return -1;
+            return false;
         }
 
         // you need a wildcard to enumerate through FindFirstFileEx(), but the wildcard is only checked in the
@@ -56,15 +56,14 @@ int SDL_SYS_EnumerateDirectory(const char *path, const char *dirname, SDL_Enumer
         WCHAR *wpattern = WIN_UTF8ToStringW(pattern);
         SDL_free(pattern);
         if (!wpattern) {
-            return -1;
+            return false;
         }
 
         WIN32_FIND_DATAW entw;
         HANDLE dir = FindFirstFileExW(wpattern, FindExInfoStandard, &entw, FindExSearchNameMatch, NULL, 0);
         SDL_free(wpattern);
         if (dir == INVALID_HANDLE_VALUE) {
-            WIN_SetError("Failed to enumerate directory");
-            return -1;
+            return WIN_SetError("Failed to enumerate directory");
         }
 
         do {
@@ -78,17 +77,17 @@ int SDL_SYS_EnumerateDirectory(const char *path, const char *dirname, SDL_Enumer
 
             char *utf8fn = WIN_StringToUTF8W(fn);
             if (!utf8fn) {
-                result = -1;
+                result = SDL_ENUM_FAILURE;
             } else {
                 result = cb(userdata, dirname, utf8fn);
                 SDL_free(utf8fn);
             }
-        } while ((result == 1) && (FindNextFileW(dir, &entw) != 0));
+        } while ((result == SDL_ENUM_CONTINUE) && (FindNextFileW(dir, &entw) != 0));
 
         FindClose(dir);
     }
 
-    return result;
+    return (result != SDL_ENUM_FAILURE);
 }
 
 bool SDL_SYS_RemovePath(const char *path)
@@ -100,6 +99,7 @@ bool SDL_SYS_RemovePath(const char *path)
 
     WIN32_FILE_ATTRIBUTE_DATA info;
     if (!GetFileAttributesExW(wpath, GetFileExInfoStandard, &info)) {
+        SDL_free(wpath);
         if (GetLastError() == ERROR_FILE_NOT_FOUND) {
             // Note that ERROR_PATH_NOT_FOUND means a parent dir is missing, and we consider that an error.
             return true;  // thing is already gone, call it a success.
@@ -151,7 +151,7 @@ bool SDL_SYS_CopyFile(const char *oldpath, const char *newpath)
         return false;
     }
 
-    const BOOL rc = CopyFileW(woldpath, wnewpath, TRUE);
+    const BOOL rc = CopyFileExW(woldpath, wnewpath, NULL, NULL, NULL, COPY_FILE_ALLOW_DECRYPTED_DESTINATION|COPY_FILE_NO_BUFFERING);
     SDL_free(wnewpath);
     SDL_free(woldpath);
     if (!rc) {
@@ -167,7 +167,16 @@ bool SDL_SYS_CreateDirectory(const char *path)
         return false;
     }
 
-    const DWORD rc = CreateDirectoryW(wpath, NULL);
+    DWORD rc = CreateDirectoryW(wpath, NULL);
+    if (!rc && (GetLastError() == ERROR_ALREADY_EXISTS)) {
+        WIN32_FILE_ATTRIBUTE_DATA winstat;
+        if (GetFileAttributesExW(wpath, GetFileExInfoStandard, &winstat)) {
+            if (winstat.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                rc = 1;  // exists and is already a directory: cool.
+            }
+        }
+    }
+
     SDL_free(wpath);
     if (!rc) {
         return WIN_SetError("Couldn't create directory");

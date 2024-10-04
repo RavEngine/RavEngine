@@ -55,13 +55,13 @@ extern bool SDL_SetKeyboardFocus(SDL_Window *window);
 extern void SDL_SendKeyboardUnicodeKey(Uint64 timestamp, Uint32 ch);
 
 // Send a keyboard key event
-extern bool SDL_SendKeyboardKey(Uint64 timestamp, SDL_KeyboardID keyboardID, int rawcode, SDL_Scancode scancode, Uint8 state);
-extern bool SDL_SendKeyboardKeyIgnoreModifiers(Uint64 timestamp, SDL_KeyboardID keyboardID, int rawcode, SDL_Scancode scancode, Uint8 state);
+extern bool SDL_SendKeyboardKey(Uint64 timestamp, SDL_KeyboardID keyboardID, int rawcode, SDL_Scancode scancode, bool down);
+extern bool SDL_SendKeyboardKeyIgnoreModifiers(Uint64 timestamp, SDL_KeyboardID keyboardID, int rawcode, SDL_Scancode scancode, bool down);
 extern bool SDL_SendKeyboardKeyAutoRelease(Uint64 timestamp, SDL_Scancode scancode);
 
 /* This is for platforms that don't know the keymap but can report scancode and keycode directly.
    Most platforms should prefer to optionally call SDL_SetKeymap and then use SDL_SendKeyboardKey. */
-extern bool SDL_SendKeyboardKeyAndKeycode(Uint64 timestamp, SDL_KeyboardID keyboardID, int rawcode, SDL_Scancode scancode, SDL_Keycode keycode, Uint8 state);
+extern bool SDL_SendKeyboardKeyAndKeycode(Uint64 timestamp, SDL_KeyboardID keyboardID, int rawcode, SDL_Scancode scancode, SDL_Keycode keycode, bool down);
 
 // Release all the autorelease keys
 extern void SDL_ReleaseAutoReleaseKeys(void);
@@ -82,6 +82,6 @@ extern void SDL_SendEditingTextCandidates(char **candidates, int num_candidates,
 extern void SDL_QuitKeyboard(void);
 
 // Toggle on or off pieces of the keyboard mod state.
-extern void SDL_ToggleModState(const SDL_Keymod modstate, const bool toggle);
+extern void SDL_ToggleModState(SDL_Keymod modstate, bool toggle);
 
 #endif // SDL_keyboard_c_h_

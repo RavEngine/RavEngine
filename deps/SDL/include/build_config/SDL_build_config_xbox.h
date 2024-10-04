@@ -82,6 +82,7 @@
 #define HAVE_MEMMOVE 1
 #define HAVE_MEMCMP 1
 #define HAVE_STRLEN 1
+#define HAVE_STRPBRK 1
 #define HAVE__STRREV 1
 /* These functions have security warnings, so we won't use them */
 /* #undef HAVE__STRUPR */
@@ -138,7 +139,7 @@
 #define HAVE_SINF   1
 #define HAVE_SQRTF  1
 #define HAVE_TANF   1
-#if defined(_MSC_VER)
+#ifdef _MSC_VER
 /* These functions were added with the VC++ 2013 C runtime library */
 #define HAVE_STRTOLL 1
 #define HAVE_STRTOULL 1
@@ -171,6 +172,9 @@
 #define SDL_JOYSTICK_GAMEINPUT 1
 #define SDL_HAPTIC_DUMMY 1
 
+/* Enable various process implementations */
+#define SDL_PROCESS_DUMMY 1
+
 /* Enable the sensor driver */
 #ifdef HAVE_SENSORSAPI_H
 #define SDL_SENSOR_WINDOWS  1
@@ -193,27 +197,18 @@
 #define SDL_TIMER_WINDOWS   1
 
 /* Enable various video drivers */
-#define SDL_VIDEO_DRIVER_DUMMY  1
-#define SDL_VIDEO_DRIVER_WINDOWS    1
-
-#if !defined(SDL_VIDEO_RENDER_D3D12)
-#define SDL_VIDEO_RENDER_D3D12  1
-#endif
-
-#if !defined(SDL_GPU_D3D12)
-#define SDL_GPU_D3D12 1
-#endif
+#define SDL_VIDEO_DRIVER_DUMMY 1
+#define SDL_VIDEO_DRIVER_WINDOWS 1
+#define SDL_VIDEO_RENDER_D3D12 1
 
 /* Enable OpenGL support */
-#ifndef SDL_VIDEO_OPENGL
-#define SDL_VIDEO_OPENGL    1
-#endif
-#ifndef SDL_VIDEO_OPENGL_WGL
-#define SDL_VIDEO_OPENGL_WGL    1
-#endif
-#ifndef SDL_VIDEO_RENDER_OGL
-#define SDL_VIDEO_RENDER_OGL    1
-#endif
+#define SDL_VIDEO_OPENGL 1
+#define SDL_VIDEO_OPENGL_WGL 1
+#define SDL_VIDEO_RENDER_OGL 1
+
+/* Enable GPU support */
+#define SDL_GPU_D3D12 1
+#define SDL_VIDEO_RENDER_GPU 1
 
 /* Enable system power support */
 /*#define SDL_POWER_WINDOWS 1*/

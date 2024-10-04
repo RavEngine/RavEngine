@@ -37,7 +37,7 @@ extern "C" {
 /*
  * Internal stuff.
  */
-static bool s_bXInputEnabled = true;
+static bool s_bXInputEnabled = false;
 
 bool SDL_XINPUT_Enabled(void)
 {
@@ -46,11 +46,13 @@ bool SDL_XINPUT_Enabled(void)
 
 bool SDL_XINPUT_JoystickInit(void)
 {
-    s_bXInputEnabled = SDL_GetHintBoolean(SDL_HINT_XINPUT_ENABLED, true);
+    bool enabled = SDL_GetHintBoolean(SDL_HINT_XINPUT_ENABLED, true);
 
-    if (s_bXInputEnabled && !WIN_LoadXInputDLL()) {
-        s_bXInputEnabled = false; // oh well.
+    if (enabled && !WIN_LoadXInputDLL()) {
+        enabled = false; // oh well.
     }
+    s_bXInputEnabled = enabled;
+
     return true;
 }
 
@@ -342,7 +344,8 @@ static void UpdateXInputJoystickState(SDL_Joystick *joystick, XINPUT_STATE *pXIn
     SDL_SendJoystickAxis(timestamp, joystick, 5, ((int)pXInputState->Gamepad.bRightTrigger * 257) - 32768);
 
     for (button = 0; button < (Uint8)SDL_arraysize(s_XInputButtons); ++button) {
-        SDL_SendJoystickButton(timestamp, joystick, button, (wButtons & s_XInputButtons[button]) ? SDL_PRESSED : SDL_RELEASED);
+        bool down = ((wButtons & s_XInputButtons[button]) != 0);
+        SDL_SendJoystickButton(timestamp, joystick, button, down);
     }
 
     if (wButtons & XINPUT_GAMEPAD_DPAD_UP) {

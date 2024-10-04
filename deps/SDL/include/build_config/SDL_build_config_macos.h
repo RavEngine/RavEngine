@@ -68,6 +68,7 @@
 #define HAVE_STRLEN 1
 #define HAVE_STRLCPY    1
 #define HAVE_STRLCAT    1
+#define HAVE_STRPBRK    1
 #define HAVE_STRCHR 1
 #define HAVE_STRRCHR    1
 #define HAVE_STRSTR 1
@@ -169,6 +170,9 @@
 #define SDL_JOYSTICK_MFI 1
 #endif
 
+/* Enable various process implementations */
+#define SDL_PROCESS_POSIX 1
+
 /* Enable the dummy sensor driver */
 #define SDL_SENSOR_DUMMY  1
 
@@ -211,66 +215,33 @@
 #define SDL_VIDEO_DRIVER_X11_SUPPORTS_GENERIC_EVENTS 1
 #endif
 
-#ifndef SDL_VIDEO_RENDER_OGL
 #define SDL_VIDEO_RENDER_OGL    1
-#endif
-
-#ifndef SDL_VIDEO_RENDER_OGL_ES2
 #define SDL_VIDEO_RENDER_OGL_ES2 1
-#endif
 
 /* Metal only supported on 64-bit architectures with 10.11+ */
 #if TARGET_RT_64_BIT && (MAC_OS_X_VERSION_MAX_ALLOWED >= 101100)
-#define SDL_PLATFORM_SUPPORTS_METAL    1
-#else
-#define SDL_PLATFORM_SUPPORTS_METAL    0
+#define SDL_PLATFORM_SUPPORTS_METAL 1
 #endif
 
-#ifndef SDL_VIDEO_RENDER_METAL
-#if SDL_PLATFORM_SUPPORTS_METAL
-#define SDL_VIDEO_RENDER_METAL    1
-#else
-#define SDL_VIDEO_RENDER_METAL    0
-#endif
+#ifdef SDL_PLATFORM_SUPPORTS_METAL
+#define SDL_VIDEO_RENDER_METAL 1
 #endif
 
 /* Enable OpenGL support */
-#ifndef SDL_VIDEO_OPENGL
-#define SDL_VIDEO_OPENGL    1
-#endif
-#ifndef SDL_VIDEO_OPENGL_ES2
-#define SDL_VIDEO_OPENGL_ES2    1
-#endif
-#ifndef SDL_VIDEO_OPENGL_EGL
-#define SDL_VIDEO_OPENGL_EGL    1
-#endif
-#ifndef SDL_VIDEO_OPENGL_CGL
-#define SDL_VIDEO_OPENGL_CGL    1
-#endif
-#ifndef SDL_VIDEO_OPENGL_GLX
-#define SDL_VIDEO_OPENGL_GLX    1
-#endif
+#define SDL_VIDEO_OPENGL 1
+#define SDL_VIDEO_OPENGL_ES2 1
+#define SDL_VIDEO_OPENGL_EGL 1
+#define SDL_VIDEO_OPENGL_CGL 1
+#define SDL_VIDEO_OPENGL_GLX 1
 
 /* Enable Vulkan and Metal support */
-#ifndef SDL_VIDEO_VULKAN
-#if SDL_PLATFORM_SUPPORTS_METAL
-#define SDL_VIDEO_VULKAN 1
-#else
-#define SDL_VIDEO_VULKAN 0
-#endif
-#endif
-
-#define SDL_GPU_VULKAN SDL_VIDEO_VULKAN
-
-#ifndef SDL_VIDEO_METAL
-#if SDL_PLATFORM_SUPPORTS_METAL
+#ifdef SDL_PLATFORM_SUPPORTS_METAL
 #define SDL_VIDEO_METAL 1
-#else
-#define SDL_VIDEO_METAL 0
+#define SDL_GPU_METAL 1
+#define SDL_VIDEO_VULKAN 1
+#define SDL_GPU_VULKAN 1
+#define SDL_VIDEO_RENDER_GPU 1
 #endif
-#endif
-
-#define SDL_GPU_METAL SDL_VIDEO_METAL
 
 /* Enable system power support */
 #define SDL_POWER_MACOSX 1

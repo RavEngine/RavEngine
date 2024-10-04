@@ -29,7 +29,9 @@
  */
 
 #include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_atomic.h>
 #include <SDL3/SDL_error.h>
+#include <SDL3/SDL_thread.h>
 
 /******************************************************************************/
 /* Enable thread safety attributes only with clang.
@@ -184,22 +186,22 @@ extern SDL_DECLSPEC void SDLCALL SDL_LockMutex(SDL_Mutex *mutex) SDL_ACQUIRE(mut
  * Try to lock a mutex without blocking.
  *
  * This works just like SDL_LockMutex(), but if the mutex is not available,
- * this function returns SDL_FALSE immediately.
+ * this function returns false immediately.
  *
  * This technique is useful if you need exclusive access to a resource but
  * don't want to wait for it, and will return to it to try again later.
  *
- * This function returns SDL_TRUE if passed a NULL mutex.
+ * This function returns true if passed a NULL mutex.
  *
  * \param mutex the mutex to try to lock.
- * \returns SDL_TRUE on success, SDL_FALSE if the mutex would block.
+ * \returns true on success, false if the mutex would block.
  *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_LockMutex
  * \sa SDL_UnlockMutex
  */
-extern SDL_DECLSPEC SDL_bool SDLCALL SDL_TryLockMutex(SDL_Mutex *mutex) SDL_TRY_ACQUIRE(0, mutex);
+extern SDL_DECLSPEC bool SDLCALL SDL_TryLockMutex(SDL_Mutex *mutex) SDL_TRY_ACQUIRE(0, mutex);
 
 /**
  * Unlock the mutex.
@@ -379,7 +381,7 @@ extern SDL_DECLSPEC void SDLCALL SDL_LockRWLockForWriting(SDL_RWLock *rwlock) SD
  * Try to lock a read/write lock _for reading_ without blocking.
  *
  * This works just like SDL_LockRWLockForReading(), but if the rwlock is not
- * available, then this function returns SDL_FALSE immediately.
+ * available, then this function returns false immediately.
  *
  * This technique is useful if you need access to a resource but don't want to
  * wait for it, and will return to it to try again later.
@@ -387,10 +389,10 @@ extern SDL_DECLSPEC void SDLCALL SDL_LockRWLockForWriting(SDL_RWLock *rwlock) SD
  * Trying to lock for read-only access can succeed if other threads are
  * holding read-only locks, as this won't prevent access.
  *
- * This function returns SDL_TRUE if passed a NULL rwlock.
+ * This function returns true if passed a NULL rwlock.
  *
  * \param rwlock the rwlock to try to lock.
- * \returns SDL_TRUE on success, SDL_FALSE if the lock would block.
+ * \returns true on success, false if the lock would block.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -398,13 +400,13 @@ extern SDL_DECLSPEC void SDLCALL SDL_LockRWLockForWriting(SDL_RWLock *rwlock) SD
  * \sa SDL_TryLockRWLockForWriting
  * \sa SDL_UnlockRWLock
  */
-extern SDL_DECLSPEC SDL_bool SDLCALL SDL_TryLockRWLockForReading(SDL_RWLock *rwlock) SDL_TRY_ACQUIRE_SHARED(0, rwlock);
+extern SDL_DECLSPEC bool SDLCALL SDL_TryLockRWLockForReading(SDL_RWLock *rwlock) SDL_TRY_ACQUIRE_SHARED(0, rwlock);
 
 /**
  * Try to lock a read/write lock _for writing_ without blocking.
  *
  * This works just like SDL_LockRWLockForWriting(), but if the rwlock is not
- * available, then this function returns SDL_FALSE immediately.
+ * available, then this function returns false immediately.
  *
  * This technique is useful if you need exclusive access to a resource but
  * don't want to wait for it, and will return to it to try again later.
@@ -417,10 +419,10 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_TryLockRWLockForReading(SDL_RWLock *rwl
  * read-only lock. Doing so results in undefined behavior. Unlock the
  * read-only lock before requesting a write lock.
  *
- * This function returns SDL_TRUE if passed a NULL rwlock.
+ * This function returns true if passed a NULL rwlock.
  *
  * \param rwlock the rwlock to try to lock.
- * \returns SDL_TRUE on success, SDL_FALSE if the lock would block.
+ * \returns true on success, false if the lock would block.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -428,7 +430,7 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_TryLockRWLockForReading(SDL_RWLock *rwl
  * \sa SDL_TryLockRWLockForReading
  * \sa SDL_UnlockRWLock
  */
-extern SDL_DECLSPEC SDL_bool SDLCALL SDL_TryLockRWLockForWriting(SDL_RWLock *rwlock) SDL_TRY_ACQUIRE(0, rwlock);
+extern SDL_DECLSPEC bool SDLCALL SDL_TryLockRWLockForWriting(SDL_RWLock *rwlock) SDL_TRY_ACQUIRE(0, rwlock);
 
 /**
  * Unlock the read/write lock.
@@ -560,10 +562,10 @@ extern SDL_DECLSPEC void SDLCALL SDL_WaitSemaphore(SDL_Semaphore *sem);
  * This function checks to see if the semaphore pointed to by `sem` has a
  * positive value and atomically decrements the semaphore value if it does. If
  * the semaphore doesn't have a positive value, the function immediately
- * returns SDL_FALSE.
+ * returns false.
  *
  * \param sem the semaphore to wait on.
- * \returns SDL_TRUE if the wait succeeds, SDL_FALSE if the wait would block.
+ * \returns true if the wait succeeds, false if the wait would block.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -571,7 +573,7 @@ extern SDL_DECLSPEC void SDLCALL SDL_WaitSemaphore(SDL_Semaphore *sem);
  * \sa SDL_WaitSemaphore
  * \sa SDL_WaitSemaphoreTimeout
  */
-extern SDL_DECLSPEC SDL_bool SDLCALL SDL_TryWaitSemaphore(SDL_Semaphore *sem);
+extern SDL_DECLSPEC bool SDLCALL SDL_TryWaitSemaphore(SDL_Semaphore *sem);
 
 /**
  * Wait until a semaphore has a positive value and then decrements it.
@@ -583,7 +585,7 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_TryWaitSemaphore(SDL_Semaphore *sem);
  * \param sem the semaphore to wait on.
  * \param timeoutMS the length of the timeout, in milliseconds, or -1 to wait
  *                  indefinitely.
- * \returns SDL_TRUE if the wait succeeds or SDL_FALSE if the wait times out.
+ * \returns true if the wait succeeds or false if the wait times out.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -591,7 +593,7 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_TryWaitSemaphore(SDL_Semaphore *sem);
  * \sa SDL_TryWaitSemaphore
  * \sa SDL_WaitSemaphore
  */
-extern SDL_DECLSPEC SDL_bool SDLCALL SDL_WaitSemaphoreTimeout(SDL_Semaphore *sem, Sint32 timeoutMS);
+extern SDL_DECLSPEC bool SDLCALL SDL_WaitSemaphoreTimeout(SDL_Semaphore *sem, Sint32 timeoutMS);
 
 /**
  * Atomically increment a semaphore's value and wake waiting threads.
@@ -741,8 +743,8 @@ extern SDL_DECLSPEC void SDLCALL SDL_WaitCondition(SDL_Condition *cond, SDL_Mute
  * \param mutex the mutex used to coordinate thread access.
  * \param timeoutMS the maximum time to wait, in milliseconds, or -1 to wait
  *                  indefinitely.
- * \returns SDL_TRUE if the condition variable is signaled, SDL_FALSE if the
- *          condition is not signaled in the allotted time.
+ * \returns true if the condition variable is signaled, false if the condition
+ *          is not signaled in the allotted time.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -752,11 +754,156 @@ extern SDL_DECLSPEC void SDLCALL SDL_WaitCondition(SDL_Condition *cond, SDL_Mute
  * \sa SDL_SignalCondition
  * \sa SDL_WaitCondition
  */
-extern SDL_DECLSPEC SDL_bool SDLCALL SDL_WaitConditionTimeout(SDL_Condition *cond,
+extern SDL_DECLSPEC bool SDLCALL SDL_WaitConditionTimeout(SDL_Condition *cond,
                                                 SDL_Mutex *mutex, Sint32 timeoutMS);
 
 /* @} *//* Condition variable functions */
 
+/**
+ *  \name Thread-safe initialization state functions
+ */
+/* @{ */
+
+/**
+ * The current status of an SDL_InitState structure.
+ *
+ * \since This enum is available since SDL 3.0.0.
+ */
+typedef enum SDL_InitStatus
+{
+    SDL_INIT_STATUS_UNINITIALIZED,
+    SDL_INIT_STATUS_INITIALIZING,
+    SDL_INIT_STATUS_INITIALIZED,
+    SDL_INIT_STATUS_UNINITIALIZING
+} SDL_InitStatus;
+
+/**
+ * A structure used for thread-safe initialization and shutdown.
+ *
+ * Here is an example of using this:
+ *
+ * ```c
+ *    static SDL_AtomicInitState init;
+ *
+ *    bool InitSystem(void)
+ *    {
+ *        if (!SDL_ShouldInit(&init)) {
+ *            // The system is initialized
+ *            return true;
+ *        }
+ *
+ *        // At this point, you should not leave this function without calling SDL_SetInitialized()
+ *
+ *        bool initialized = DoInitTasks();
+ *        SDL_SetInitialized(&init, initialized);
+ *        return initialized;
+ *    }
+ *
+ *    bool UseSubsystem(void)
+ *    {
+ *        if (SDL_ShouldInit(&init)) {
+ *            // Error, the subsystem isn't initialized
+ *            SDL_SetInitialized(&init, false);
+ *            return false;
+ *        }
+ *
+ *        // Do work using the initialized subsystem
+ *
+ *        return true;
+ *    }
+ *
+ *    void QuitSystem(void)
+ *    {
+ *        if (!SDL_ShouldQuit(&init)) {
+ *            // The system is not initialized
+ *            return true;
+ *        }
+ *
+ *        // At this point, you should not leave this function without calling SDL_SetInitialized()
+ *
+ *        DoQuitTasks();
+ *        SDL_SetInitialized(&init, false);
+ *    }
+ * ```
+ *
+ * Note that this doesn't protect any resources created during initialization,
+ * or guarantee that nobody is using those resources during cleanup. You
+ * should use other mechanisms to protect those, if that's a concern for your
+ * code.
+ *
+ * \since This struct is available since SDL 3.0.0.
+ */
+typedef struct SDL_InitState
+{
+    SDL_AtomicInt status;
+    SDL_ThreadID thread;
+    void *reserved;
+} SDL_InitState;
+
+/**
+ * Return whether initialization should be done.
+ *
+ * This function checks the passed in state and if initialization should be
+ * done, sets the status to `SDL_INIT_STATUS_INITIALIZING` and returns true.
+ * If another thread is already modifying this state, it will wait until
+ * that's done before returning.
+ *
+ * If this function returns true, the calling code must call
+ * SDL_SetInitialized() to complete the initialization.
+ *
+ * \param state the initialization state to check.
+ * \returns true if initialization needs to be done, false otherwise.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_SetInitialized
+ * \sa SDL_ShouldQuit
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_ShouldInit(SDL_InitState *state);
+
+/**
+ * Return whether cleanup should be done.
+ *
+ * This function checks the passed in state and if cleanup should be done,
+ * sets the status to `SDL_INIT_STATUS_UNINITIALIZING` and returns true.
+ *
+ * If this function returns true, the calling code must call
+ * SDL_SetInitialized() to complete the cleanup.
+ *
+ * \param state the initialization state to check.
+ * \returns true if cleanup needs to be done, false otherwise.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_SetInitialized
+ * \sa SDL_ShouldInit
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_ShouldQuit(SDL_InitState *state);
+
+/**
+ * Finish an initialization state transition.
+ *
+ * This function sets the status of the passed in state to
+ * `SDL_INIT_STATUS_INITIALIZED` or `SDL_INIT_STATUS_UNINITIALIZED` and allows
+ * any threads waiting for the status to proceed.
+ *
+ * \param state the initialization state to check.
+ * \param initialized the new initialization state.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_ShouldInit
+ * \sa SDL_ShouldQuit
+ */
+extern SDL_DECLSPEC void SDLCALL SDL_SetInitialized(SDL_InitState *state, bool initialized);
+
+/* @} *//* Thread-safe initialization state functions */
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

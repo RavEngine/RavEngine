@@ -348,8 +348,9 @@ KMSDRM_FBInfo *KMSDRM_FBFromBO(SDL_VideoDevice *_this, struct gbm_bo *bo)
 {
     SDL_VideoData *viddata = _this->internal;
     unsigned w, h;
-    int ret, num_planes = 0;
-    Uint32 format, strides[4] = { 0 }, handles[4] = { 0 }, offsets[4] = { 0 }, flags = 0;
+    int rc = -1;
+    int num_planes = 0;
+    uint32_t format, strides[4] = { 0 }, handles[4] = { 0 }, offsets[4] = { 0 }, flags = 0;
     uint64_t modifiers[4] = { 0 };
 
     // Check for an existing framebuffer
@@ -375,28 +376,36 @@ KMSDRM_FBInfo *KMSDRM_FBFromBO(SDL_VideoDevice *_this, struct gbm_bo *bo)
     h = KMSDRM_gbm_bo_get_height(bo);
     format = KMSDRM_gbm_bo_get_format(bo);
 
-    modifiers[0] = KMSDRM_gbm_bo_get_modifier(bo);
-    num_planes = KMSDRM_gbm_bo_get_plane_count(bo);
-    for (int i = 0; i < num_planes; i++) {
-        strides[i] = KMSDRM_gbm_bo_get_stride_for_plane(bo, i);
-        handles[i] = KMSDRM_gbm_bo_get_handle_for_plane(bo, i).u32;
-        offsets[i] = KMSDRM_gbm_bo_get_offset(bo, i);
-        modifiers[i] = modifiers[0];
+    if (KMSDRM_drmModeAddFB2WithModifiers &&
+        KMSDRM_gbm_bo_get_modifier &&
+        KMSDRM_gbm_bo_get_plane_count &&
+        KMSDRM_gbm_bo_get_offset &&
+        KMSDRM_gbm_bo_get_stride_for_plane &&
+        KMSDRM_gbm_bo_get_handle_for_plane) {
+
+        modifiers[0] = KMSDRM_gbm_bo_get_modifier(bo);
+        num_planes = KMSDRM_gbm_bo_get_plane_count(bo);
+        for (int i = 0; i < num_planes; i++) {
+            strides[i] = KMSDRM_gbm_bo_get_stride_for_plane(bo, i);
+            handles[i] = KMSDRM_gbm_bo_get_handle_for_plane(bo, i).u32;
+            offsets[i] = KMSDRM_gbm_bo_get_offset(bo, i);
+            modifiers[i] = modifiers[0];
+        }
+
+        if (modifiers[0] && modifiers[0] != DRM_FORMAT_MOD_INVALID) {
+            flags = DRM_MODE_FB_MODIFIERS;
+        }
+
+        rc = KMSDRM_drmModeAddFB2WithModifiers(viddata->drm_fd, w, h, format, handles, strides, offsets, modifiers, &fb_info->fb_id, flags);
     }
 
-    if (modifiers[0] && modifiers[0] != DRM_FORMAT_MOD_INVALID) {
-        flags = DRM_MODE_FB_MODIFIERS;
-    }
-
-    ret = KMSDRM_drmModeAddFB2WithModifiers(viddata->drm_fd, w, h, format, handles, strides, offsets, modifiers, &fb_info->fb_id, flags);
-
-    if (ret) {
+    if (rc < 0) {
         strides[0] = KMSDRM_gbm_bo_get_stride(bo);
         handles[0] = KMSDRM_gbm_bo_get_handle(bo).u32;
-        ret = KMSDRM_drmModeAddFB(viddata->drm_fd, w, h, 24, 32, strides[0], handles[0], &fb_info->fb_id);
+        rc = KMSDRM_drmModeAddFB(viddata->drm_fd, w, h, 24, 32, strides[0], handles[0], &fb_info->fb_id);
     }
 
-    if (ret) {
+    if (rc < 0) {
         SDL_free(fb_info);
         return NULL;
     }
@@ -525,9 +534,23 @@ static drmModeModeInfo *KMSDRM_GetClosestDisplayMode(SDL_VideoDisplay *display, 
 /* _this is a SDL_VideoDevice *                                              */
 /*****************************************************************************/
 
+static bool KMSDRM_DropMaster(SDL_VideoDevice *_this)
+{
+    SDL_VideoData *viddata = _this->internal;
+
+    /* Check if we have DRM master to begin with */
+    if (KMSDRM_drmAuthMagic(viddata->drm_fd, 0) == -EACCES) {
+        /* Nope, nothing to do then */
+        return true;
+    }
+
+    return KMSDRM_drmDropMaster(viddata->drm_fd) == 0;
+}
+
 // Deinitializes the internal of the SDL Displays in the SDL display list.
 static void KMSDRM_DeinitDisplays(SDL_VideoDevice *_this)
 {
+    SDL_VideoData *viddata = _this->internal;
     SDL_DisplayID *displays;
     SDL_DisplayData *dispdata;
     int i;
@@ -553,6 +576,11 @@ static void KMSDRM_DeinitDisplays(SDL_VideoDevice *_this)
             }
         }
         SDL_free(displays);
+    }
+
+    if (viddata->drm_fd >= 0) {
+        close(viddata->drm_fd);
+        viddata->drm_fd = -1;
     }
 }
 
@@ -990,8 +1018,6 @@ cleanup:
 
 /* Initializes the list of SDL displays: we build a new display for each
    connecter connector we find.
-   Inoffeensive for VK compatibility, except we must leave the drm_fd
-   closed when we get to the end of this function.
    This is to be called early, in VideoInit(), because it gets us
    the videomode information, which SDL needs immediately after VideoInit(). */
 static bool KMSDRM_InitDisplays(SDL_VideoDevice *_this)
@@ -1062,10 +1088,13 @@ static bool KMSDRM_InitDisplays(SDL_VideoDevice *_this)
     // Block for Vulkan compatibility.
     /***********************************/
 
-    /* THIS IS FOR VULKAN! Leave the FD closed, so VK can work.
-       Will reopen this in CreateWindow, but only if requested a non-VK window. */
-    close(viddata->drm_fd);
-    viddata->drm_fd = -1;
+    /* Vulkan requires DRM master on its own FD to work, so try to drop master
+       on our FD. This will only work without root on kernels v5.8 and later.
+       If it doesn't work, just close the FD and we'll reopen it later. */
+    if (!KMSDRM_DropMaster(_this)) {
+        close(viddata->drm_fd);
+        viddata->drm_fd = -1;
+    }
 
 cleanup:
     if (resources) {
@@ -1093,10 +1122,15 @@ static bool KMSDRM_GBMInit(SDL_VideoDevice *_this, SDL_DisplayData *dispdata)
     SDL_VideoData *viddata = _this->internal;
     bool result = true;
 
-    // Reopen the FD!
-    viddata->drm_fd = open(viddata->devpath, O_RDWR | O_CLOEXEC);
+    // Reopen the FD if we weren't able to drop master on the original one
+    if (viddata->drm_fd < 0) {
+        viddata->drm_fd = open(viddata->devpath, O_RDWR | O_CLOEXEC);
+        if (viddata->drm_fd < 0) {
+            return SDL_SetError("Could not reopen %s", viddata->devpath);
+        }
+    }
 
-    // Set the FD we just opened as current DRM master.
+    // Set the FD as current DRM master.
     KMSDRM_drmSetMaster(viddata->drm_fd);
 
     // Create the GBM device.
@@ -1122,8 +1156,9 @@ static void KMSDRM_GBMDeinit(SDL_VideoDevice *_this, SDL_DisplayData *dispdata)
         viddata->gbm_dev = NULL;
     }
 
-    // Finally close DRM FD. May be reopen on next non-vulkan window creation.
-    if (viddata->drm_fd >= 0) {
+    /* Finally drop DRM master if possible, otherwise close DRM FD.
+       May be reopened on next non-vulkan window creation. */
+    if (viddata->drm_fd >= 0 && !KMSDRM_DropMaster(_this)) {
         close(viddata->drm_fd);
         viddata->drm_fd = -1;
     }
@@ -1553,11 +1588,6 @@ bool KMSDRM_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Propert
     windata->viddata = viddata;
     window->internal = windata;
 
-    SDL_PropertiesID props = SDL_GetWindowProperties(window);
-    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_KMSDRM_DEVICE_INDEX_NUMBER, viddata->devindex);
-    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_KMSDRM_DRM_FD_NUMBER, viddata->drm_fd);
-    SDL_SetPointerProperty(props, SDL_PROP_WINDOW_KMSDRM_GBM_DEVICE_POINTER, viddata->gbm_dev);
-
     // Do we want a double buffering scheme to get low video lag?
     windata->double_buffer = false;
     if (SDL_GetHintBoolean(SDL_HINT_VIDEO_DOUBLE_BUFFER, false)) {
@@ -1660,6 +1690,11 @@ bool KMSDRM_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Propert
 
     // If we have just created a Vulkan window, establish that we are in Vulkan mode now.
     viddata->vulkan_mode = is_vulkan;
+
+    SDL_PropertiesID props = SDL_GetWindowProperties(window);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_KMSDRM_DEVICE_INDEX_NUMBER, viddata->devindex);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_KMSDRM_DRM_FD_NUMBER, viddata->drm_fd);
+    SDL_SetPointerProperty(props, SDL_PROP_WINDOW_KMSDRM_GBM_DEVICE_POINTER, viddata->gbm_dev);
 
     /* Focus on the newly created window.
        SDL_SetMouseFocus() also takes care of calling KMSDRM_ShowCursor() if necessary. */

@@ -22,7 +22,7 @@
 
 #if SDL_HAVE_BLIT_A
 
-#include "SDL_blit.h"
+#include "SDL_surface_c.h"
 
 // Functions to perform alpha blended blitting
 
@@ -779,10 +779,9 @@ static void BlitARGBto565PixelAlpha(SDL_BlitInfo *info)
         DUFFS_LOOP4({
         Uint32 s = *srcp;
         unsigned alpha = s >> 27; // downscale alpha to 5 bits
-        /* FIXME: Here we special-case opaque alpha since the
+        /* Here we special-case opaque alpha since the
            compositioning used (>>8 instead of /255) doesn't handle
-           it correctly. Also special-case alpha=0 for speed?
-           Benchmark this! */
+           it correctly. */
         if (alpha) {
           if (alpha == (SDL_ALPHA_OPAQUE >> 3)) {
             *dstp = (Uint16)((s >> 8 & 0xf800) + (s >> 5 & 0x7e0) + (s >> 3  & 0x1f));
@@ -792,8 +791,7 @@ static void BlitARGBto565PixelAlpha(SDL_BlitInfo *info)
              * convert source and destination to G0RAB65565
              * and blend all components at the same time
              */
-            s = ((s & 0xfc00) << 11) + (s >> 8 & 0xf800)
-              + (s >> 3 & 0x1f);
+            s = ((s & 0xfc00) << 11) + (s >> 8 & 0xf800) + (s >> 3 & 0x1f);
             d = (d | d << 16) & 0x07e0f81f;
             d += (s - d) * alpha >> 5;
             d &= 0x07e0f81f;
@@ -825,21 +823,19 @@ static void BlitARGBto555PixelAlpha(SDL_BlitInfo *info)
         unsigned alpha;
         Uint32 s = *srcp;
         alpha = s >> 27; // downscale alpha to 5 bits
-        /* FIXME: Here we special-case opaque alpha since the
+        /* Here we special-case opaque alpha since the
            compositioning used (>>8 instead of /255) doesn't handle
-           it correctly. Also special-case alpha=0 for speed?
-           Benchmark this! */
+           it correctly. */
         if (alpha) {
           if (alpha == (SDL_ALPHA_OPAQUE >> 3)) {
             *dstp = (Uint16)((s >> 9 & 0x7c00) + (s >> 6 & 0x3e0) + (s >> 3  & 0x1f));
           } else {
             Uint32 d = *dstp;
             /*
-             * convert source and destination to G0RAB65565
+             * convert source and destination to G0RAB55555
              * and blend all components at the same time
              */
-            s = ((s & 0xf800) << 10) + (s >> 9 & 0x7c00)
-              + (s >> 3 & 0x1f);
+            s = ((s & 0xf800) << 10) + (s >> 9 & 0x7c00) + (s >> 3 & 0x1f);
             d = (d | d << 16) & 0x03e07c1f;
             d += (s - d) * alpha >> 5;
             d &= 0x03e07c1f;
@@ -1326,15 +1322,15 @@ static void BlitNtoNPixelAlpha(SDL_BlitInfo *info)
 
 SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface)
 {
-    const SDL_PixelFormatDetails *sf = surface->internal->format;
-    const SDL_PixelFormatDetails *df = surface->internal->map.info.dst_fmt;
+    const SDL_PixelFormatDetails *sf = surface->fmt;
+    const SDL_PixelFormatDetails *df = surface->map.info.dst_fmt;
 
-    switch (surface->internal->map.info.flags & ~SDL_COPY_RLE_MASK) {
+    switch (surface->map.info.flags & ~SDL_COPY_RLE_MASK) {
     case SDL_COPY_BLEND:
         // Per-pixel alpha blits
         switch (df->bytes_per_pixel) {
         case 1:
-            if (surface->internal->map.info.dst_pal) {
+            if (surface->map.info.dst_pal) {
                 return BlitNto1PixelAlpha;
             } else {
                 // RGB332 has no palette !
@@ -1345,7 +1341,7 @@ SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface)
             if (sf->bytes_per_pixel == 4 && sf->Amask == 0xff000000 && sf->Gmask == 0xff00 && ((sf->Rmask == 0xff && df->Rmask == 0x1f) || (sf->Bmask == 0xff && df->Bmask == 0x1f))) {
                 if (df->Gmask == 0x7e0) {
                     return BlitARGBto565PixelAlpha;
-                } else if (df->Gmask == 0x3e0) {
+                } else if (df->Gmask == 0x3e0 && !df->Amask) {
                     return BlitARGBto555PixelAlpha;
                 }
             }
@@ -1390,7 +1386,7 @@ SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface)
             // Per-surface alpha blits
             switch (df->bytes_per_pixel) {
             case 1:
-                if (surface->internal->map.info.dst_pal) {
+                if (surface->map.info.dst_pal) {
                     return BlitNto1SurfaceAlpha;
                 } else {
                     // RGB332 has no palette !
@@ -1398,7 +1394,7 @@ SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface)
                 }
 
             case 2:
-                if (surface->internal->map.identity) {
+                if (surface->map.identity) {
                     if (df->Gmask == 0x7e0) {
 #ifdef SDL_MMX_INTRINSICS
                         if (SDL_HasMMX()) {
@@ -1445,7 +1441,7 @@ SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface)
         if (sf->Amask == 0) {
             if (df->bytes_per_pixel == 1) {
 
-                if (surface->internal->map.info.dst_pal) {
+                if (surface->map.info.dst_pal) {
                     return BlitNto1SurfaceAlphaKey;
                 } else {
                     // RGB332 has no palette !

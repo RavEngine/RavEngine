@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-#include "SDL_blit.h"
+#include "SDL_surface_c.h"
 
 static bool SDL_LowerSoftStretchNearest(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *dst, const SDL_Rect *dstrect);
 static bool SDL_LowerSoftStretchLinear(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *dst, const SDL_Rect *dstrect);
@@ -42,7 +42,7 @@ bool SDL_SoftStretch(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *dst
 
     if (src->format != dst->format) {
         // Slow!
-        SDL_Surface *src_tmp = SDL_ConvertSurfaceAndColorspace(src, dst->format, dst->internal->palette, dst->internal->colorspace, dst->internal->props);
+        SDL_Surface *src_tmp = SDL_ConvertSurfaceAndColorspace(src, dst->format, dst->palette, dst->colorspace, dst->props);
         if (!src_tmp) {
             return false;
         }
@@ -69,7 +69,7 @@ bool SDL_SoftStretch(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *dst
                 result = SDL_ConvertPixelsAndColorspace(dstrect->w, dstrect->h,
                             dst_tmp->format, SDL_COLORSPACE_SRGB, 0,
                             dst_tmp->pixels, dst_tmp->pitch,
-                            dst->format, dst->internal->colorspace, SDL_GetSurfaceProperties(dst),
+                            dst->format, dst->colorspace, SDL_GetSurfaceProperties(dst),
                             (Uint8 *)dst->pixels + dstrect->y * dst->pitch + dstrect->x * SDL_BYTESPERPIXEL(dst->format), dst->pitch);
             }
         } else {
@@ -376,7 +376,7 @@ static bool scale_mat(const Uint32 *src, int src_w, int src_h, int src_pitch, Ui
 #define CAST_uint32x2_t      (uint32x2_t)
 #endif
 
-#if defined(SDL_PLATFORM_WINRT) || defined(_MSC_VER)
+#if defined(_MSC_VER)
 #ifdef SDL_NEON_INTRINSICS
 #undef CAST_uint8x8_t
 #undef CAST_uint32x2_t

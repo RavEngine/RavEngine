@@ -22,7 +22,7 @@
 /**
  *  \file SDL.h
  *
- *  Main include header for the SDL library, version 3.1.2
+ *  Main include header for the SDL library, version 3.1.3
  */
 
 #ifndef SDL_h_
@@ -65,6 +65,7 @@
 #include <SDL3/SDL_pixels.h>
 #include <SDL3/SDL_platform.h>
 #include <SDL3/SDL_power.h>
+#include <SDL3/SDL_process.h>
 #include <SDL3/SDL_properties.h>
 #include <SDL3/SDL_rect.h>
 #include <SDL3/SDL_render.h>
