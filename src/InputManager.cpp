@@ -125,8 +125,8 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
 	switch (event.type) {
 		case SDL_EVENT_KEY_DOWN:
 		case SDL_EVENT_KEY_UP:
-			ProcessActionID(event.key.scancode, static_cast<ActionState>(event.key.state), Make_CID(0));
-			ProcessAxisID(event.key.scancode, event.key.state, Make_CID(0));
+			ProcessActionID(event.key.scancode, static_cast<ActionState>(event.key.down), Make_CID(0));
+			ProcessAxisID(event.key.scancode, event.key.down, Make_CID(0));
 			break;
         case SDL_EVENT_MOUSE_MOTION:
             if (windowflags & SDL_EVENT_WINDOW_FOCUS_GAINED) {
@@ -149,7 +149,7 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
         case SDL_EVENT_MOUSE_BUTTON_UP:
             if (windowflags & SDL_EVENT_WINDOW_FOCUS_GAINED) {
-				ProcessActionID(event.button.button, static_cast<ActionState>(event.button.state), CID::C0);
+				ProcessActionID(event.button.button, static_cast<ActionState>(event.button.down), CID::C0);
 			}
 			break;
             
@@ -161,8 +161,8 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
 		case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
 		case SDL_EVENT_GAMEPAD_BUTTON_UP:
 			// a controller button can be an axis or an action
-			ProcessActionID(event.gbutton.button + Special::CONTROLLER_BUTTON_OFFSET, static_cast<ActionState>(event.gbutton.state), Make_CID(event.gdevice.which + 1));
-			ProcessAxisID(event.gbutton.button + Special::CONTROLLER_BUTTON_OFFSET, static_cast<ActionState>(event.gbutton.state), Make_CID(event.gdevice.which + 1));
+			ProcessActionID(event.gbutton.button + Special::CONTROLLER_BUTTON_OFFSET, static_cast<ActionState>(event.gbutton.down), Make_CID(event.gdevice.which + 1));
+			ProcessAxisID(event.gbutton.button + Special::CONTROLLER_BUTTON_OFFSET, static_cast<ActionState>(event.gbutton.down), Make_CID(event.gdevice.which + 1));
 			break;
 		case SDL_EVENT_GAMEPAD_ADDED:
 			{
