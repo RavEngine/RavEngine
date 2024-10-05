@@ -1214,42 +1214,26 @@ struct LightingType{
             auto lightPos = light.position;
 
 			// rotate view space to each cubemap direction based on the index
-            constexpr glm::mat4 rotationMatrices[] = {
+            const glm::mat4 rotationMatrices[] = {
                 {// +x
-                    {0,0,-1,0},
-                    {0,1,0,0},
-                    {1,0,0,0},
-                    {0,0,0,1},
+                    glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ -1.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, -1.0f, 0.0f })
                 },
                 {// -x
-                    {0,0,1,0},
-                    {0,1,0,0},
-                    {-1,0,0,0},
-                    {0,0,0,1},
+                    glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ 1.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, -1.0f, 0.0f })
                 },
                 {// +y
-                    {1,0,0,0},
-                    {0,0,1,0},
-                    {0,-1,0,0},
-                    {0,0,0,1},
+                    glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, -1.0f, 0.0f }, glm::vec3{ 0.0f, 0.0f, 1.0f })
                 },
                 {// -y
-                    {1,0,0,0},
-                    {0,0,-1,0},
-                    {0,1,0,0},
-                    {0,0,0,1},
+                    glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, 1.0f, 0.0f }, glm::vec3{ 0.0f, 0.0f, -1.0f })
                 },
-                {// +z
-                   {1,0,0,0},
-                   {0,1,0,0},
-                   {0,0,1,0},
-                   {0,0,0,1},
+                // +Z
+                {
+                    glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, 0.0f, -1.0f }, glm::vec3{ 0.0f, -1.0f, 0.0f })
                },
-                { // -z
-                    {-1,0,0,0},
-                    {0,1,0,0},
-                    {0,0,-1,0},
-                    {0,0,0,1},
+                // -z
+                    {
+                    glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, 0.0f, 1.0f }, glm::vec3{ 0.0f, -1.0f, 0.0f })
                 }
             };
             

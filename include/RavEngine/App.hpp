@@ -4,11 +4,6 @@
 #include "SpinLock.hpp"
 #include <taskflow/taskflow.hpp>
 #include "NetworkManager.hpp"
-#if defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_APP)
-	#undef SDL_MAIN_NEEDED
-	#undef SDL_MAIN_AVAILABLE
-	#define _WINRT 1
-#endif
 #if !RVE_SERVER
 #include <RGL/Types.hpp>
 #include "RenderTargetCollection.hpp"

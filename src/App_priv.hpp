@@ -225,7 +225,7 @@ int App::run(int argc, char** argv) {
 	
 	// if built in non-UWP for Windows, need to manually set DPI awareness
 	// for some weird reason, it's not present on ARM
-#if defined _WIN32 && !_WINRT && !defined(_M_ARM64)
+#if defined _WIN32 && !defined(_M_ARM64)
 	SetProcessDPIAware();
 	//SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 #endif
