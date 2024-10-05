@@ -101,7 +101,7 @@ static int (*PIPEWIRE_pw_properties_setf)(struct pw_properties *, const char *, 
 #ifdef SDL_AUDIO_DRIVER_PIPEWIRE_DYNAMIC
 
 static const char *pipewire_library = SDL_AUDIO_DRIVER_PIPEWIRE_DYNAMIC;
-static void *pipewire_handle = NULL;
+static SDL_SharedObject *pipewire_handle = NULL;
 
 static bool pipewire_dlsym(const char *fn, void **addr)
 {
@@ -283,7 +283,7 @@ static uint32_t param_clear(struct spa_list *param_list, uint32_t id)
     spa_list_for_each_safe(p, t, param_list, link) {
         if (id == SPA_ID_INVALID || p->id == id) {
             spa_list_remove(&p->link);
-            free(p);
+            free(p); // This should NOT be SDL_free()
             count++;
         }
     }
@@ -317,7 +317,7 @@ static struct param *param_add(struct spa_list *params,
     p->seq = seq;
     if (param != NULL) {
         p->param = SPA_PTROFF(p, sizeof(*p), struct spa_pod);
-        memcpy(p->param, param, SPA_POD_SIZE(param));
+        SDL_memcpy(p->param, param, SPA_POD_SIZE(param));
     } else {
         param_clear(params, id);
         p->param = NULL;
@@ -339,7 +339,7 @@ static void param_update(struct spa_list *param_list, struct spa_list *pending_l
                 p->seq != SPA_PARAMS_INFO_SEQ(params[i]) &&
                 p->param != NULL) {
                     spa_list_remove(&p->link);
-                    free(p);
+                    free(p); // This should NOT be SDL_free()
             }
         }
     }
@@ -347,7 +347,7 @@ static void param_update(struct spa_list *param_list, struct spa_list *pending_l
         spa_list_remove(&p->link);
         if (p->param == NULL) {
             param_clear(param_list, p->id);
-            free(p);
+            free(p); // This should NOT be SDL_free()
         } else {
             spa_list_append(param_list, &p->link);
         }
@@ -840,7 +840,7 @@ static void proxy_destroy(void *data)
     }
     param_clear(&g->param_list, SPA_ID_INVALID);
     param_clear(&g->pending_list, SPA_ID_INVALID);
-    free(g->name);
+    free(g->name); // This should NOT be SDL_free()
 }
 
 static const struct pw_proxy_events proxy_events = {
@@ -981,7 +981,7 @@ static bool hotplug_loop_init(void)
 
     hotplug.have_1_0_5 = PIPEWIRE_pw_check_library_version(1,0,5);
 
-    hotplug.loop = PIPEWIRE_pw_thread_loop_new("SDLAudioHotplug", NULL);
+    hotplug.loop = PIPEWIRE_pw_thread_loop_new("SDLPwCameraPlug", NULL);
     if (!hotplug.loop) {
         return SDL_SetError("Pipewire: Failed to create hotplug detection loop (%i)", errno);
     }

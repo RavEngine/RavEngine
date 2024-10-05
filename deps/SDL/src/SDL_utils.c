@@ -20,8 +20,6 @@
 */
 #include "SDL_internal.h"
 
-#include "SDL_hashtable.h"
-
 #if defined(SDL_PLATFORM_UNIX) || defined(SDL_PLATFORM_APPLE)
 #include <unistd.h>
 #endif
@@ -121,7 +119,6 @@ bool SDL_endswith(const char *string, const char *suffix)
     return false;
 }
 
-// Assume we can wrap SDL_AtomicInt values and cast to Uint32
 SDL_COMPILE_TIME_ASSERT(sizeof_object_id, sizeof(int) == sizeof(Uint32));
 
 Uint32 SDL_GetNextObjectID(void)

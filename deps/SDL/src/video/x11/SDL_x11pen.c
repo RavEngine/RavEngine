@@ -36,7 +36,7 @@ static bool X11_XInput2DeviceIsPen(SDL_VideoDevice *_this, const XIDeviceInfo *d
         const XIAnyClassInfo *classinfo = dev->classes[i];
         if (classinfo->type == XIValuatorClass) {
             const XIValuatorClassInfo *val_classinfo = (const XIValuatorClassInfo *)classinfo;
-            if (val_classinfo->label == data->pen_atom_abs_pressure) {
+            if (val_classinfo->label == data->atoms.pen_atom_abs_pressure) {
                 return true;
             }
         }
@@ -51,7 +51,7 @@ static bool X11_XInput2PenIsEraser(SDL_VideoDevice *_this, int deviceid, char *d
     #define PEN_ERASER_NAME_TAG  "eraser" // String constant to identify erasers
     SDL_VideoData *data = (SDL_VideoData *)_this->internal;
 
-    if (data->pen_atom_wacom_tool_type != None) {
+    if (data->atoms.pen_atom_wacom_tool_type != None) {
         Atom type_return;
         int format_return;
         unsigned long num_items_return;
@@ -60,7 +60,7 @@ static bool X11_XInput2PenIsEraser(SDL_VideoDevice *_this, int deviceid, char *d
 
         // Try Wacom-specific method
         if (Success == X11_XIGetProperty(data->display, deviceid,
-                                         data->pen_atom_wacom_tool_type,
+                                         data->atoms.pen_atom_wacom_tool_type,
                                          0, 32, False,
                                          AnyPropertyType, &type_return, &format_return,
                                          &num_items_return, &bytes_after_return,
@@ -154,7 +154,7 @@ static bool X11_XInput2PenWacomDeviceID(SDL_VideoDevice *_this, int deviceid, Ui
     Sint32 serial_id_buf[3];
     int result;
 
-    if ((result = X11_XInput2PenGetIntProperty(_this, deviceid, data->pen_atom_wacom_serial_ids, serial_id_buf, 3)) == 3) {
+    if ((result = X11_XInput2PenGetIntProperty(_this, deviceid, data->atoms.pen_atom_wacom_serial_ids, serial_id_buf, 3)) == 3) {
         *wacom_devicetype_id = serial_id_buf[2];
         *wacom_serial = serial_id_buf[1];
         return true;
@@ -222,14 +222,14 @@ static X11_PenHandle *X11_MaybeAddPen(SDL_VideoDevice *_this, const XIDeviceInfo
             const float min = (float)val_classinfo->min;
             const float max = (float)val_classinfo->max;
             bool use_this_axis = true;
-            SDL_PenAxis axis = SDL_PEN_NUM_AXES;
+            SDL_PenAxis axis = SDL_PEN_AXIS_COUNT;
 
             // afaict, SDL_PEN_AXIS_DISTANCE is never reported by XInput2 (Wayland can offer it, though)
-            if (vname == data->pen_atom_abs_pressure) {
+            if (vname == data->atoms.pen_atom_abs_pressure) {
                 axis = SDL_PEN_AXIS_PRESSURE;
-            } else if (vname == data->pen_atom_abs_tilt_x) {
+            } else if (vname == data->atoms.pen_atom_abs_tilt_x) {
                 axis = SDL_PEN_AXIS_XTILT;
-            } else if (vname == data->pen_atom_abs_tilt_y) {
+            } else if (vname == data->atoms.pen_atom_abs_tilt_y) {
                 axis = SDL_PEN_AXIS_YTILT;
             } else {
                 use_this_axis = false;
@@ -304,12 +304,12 @@ void X11_InitPen(SDL_VideoDevice *_this)
     SDL_VideoData *data = (SDL_VideoData *)_this->internal;
 
     #define LOOKUP_PEN_ATOM(X) X11_XInternAtom(data->display, X, False)
-    data->pen_atom_device_product_id = LOOKUP_PEN_ATOM("Device Product ID");
-    data->pen_atom_wacom_serial_ids = LOOKUP_PEN_ATOM("Wacom Serial IDs");
-    data->pen_atom_wacom_tool_type = LOOKUP_PEN_ATOM("Wacom Tool Type");
-    data->pen_atom_abs_pressure = LOOKUP_PEN_ATOM("Abs Pressure");
-    data->pen_atom_abs_tilt_x = LOOKUP_PEN_ATOM("Abs Tilt X");
-    data->pen_atom_abs_tilt_y = LOOKUP_PEN_ATOM("Abs Tilt Y");
+    data->atoms.pen_atom_device_product_id = LOOKUP_PEN_ATOM("Device Product ID");
+    data->atoms.pen_atom_wacom_serial_ids = LOOKUP_PEN_ATOM("Wacom Serial IDs");
+    data->atoms.pen_atom_wacom_tool_type = LOOKUP_PEN_ATOM("Wacom Tool Type");
+    data->atoms.pen_atom_abs_pressure = LOOKUP_PEN_ATOM("Abs Pressure");
+    data->atoms.pen_atom_abs_tilt_x = LOOKUP_PEN_ATOM("Abs Tilt X");
+    data->atoms.pen_atom_abs_tilt_y = LOOKUP_PEN_ATOM("Abs Tilt Y");
     #undef LOOKUP_PEN_ATOM
 
     // Do an initial check on devices. After this, we'll add/remove individual pens when XI_HierarchyChanged events alert us.
@@ -336,7 +336,7 @@ void X11_QuitPen(SDL_VideoDevice *_this)
 static void X11_XInput2NormalizePenAxes(const X11_PenHandle *pen, float *coords)
 {
     // Normalise axes
-    for (int axis = 0; axis < SDL_PEN_NUM_AXES; ++axis) {
+    for (int axis = 0; axis < SDL_PEN_AXIS_COUNT; ++axis) {
         const int valuator = pen->valuator_for_axis[axis];
         if (valuator == SDL_X11_PEN_AXIS_VALUATOR_MISSING) {
             continue;
@@ -402,10 +402,10 @@ static void X11_XInput2NormalizePenAxes(const X11_PenHandle *pen, float *coords)
 }
 
 void X11_PenAxesFromValuators(const X11_PenHandle *pen,
-                              const double *input_values, const unsigned char *mask, const int mask_len,
-                              float axis_values[SDL_PEN_NUM_AXES])
+                              const double *input_values, const unsigned char *mask, int mask_len,
+                              float axis_values[SDL_PEN_AXIS_COUNT])
 {
-    for (int i = 0; i < SDL_PEN_NUM_AXES; i++) {
+    for (int i = 0; i < SDL_PEN_AXIS_COUNT; i++) {
         const int valuator = pen->valuator_for_axis[i];
         if ((valuator == SDL_X11_PEN_AXIS_VALUATOR_MISSING) || (valuator >= mask_len * 8) || !(XIMaskIsSet(mask, valuator))) {
             axis_values[i] = 0.0f;

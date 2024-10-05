@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-#include "SDL_blit.h"
+#include "SDL_surface_c.h"
 
 #ifdef SDL_SSE_INTRINSICS
 /* *INDENT-OFF* */ // clang-format off
@@ -229,7 +229,7 @@ static void SDL_FillSurfaceRect4(Uint8 *pixels, int pitch, Uint32 color, int w, 
 /*
  * This function performs a fast fill of the given rectangle with 'color'
  */
-SDL_bool SDL_FillSurfaceRect(SDL_Surface *dst, const SDL_Rect *rect, Uint32 color)
+bool SDL_FillSurfaceRect(SDL_Surface *dst, const SDL_Rect *rect, Uint32 color)
 {
     if (!SDL_SurfaceValid(dst)) {
         return SDL_InvalidParamError("SDL_FillSurfaceRect(): dst");
@@ -237,7 +237,7 @@ SDL_bool SDL_FillSurfaceRect(SDL_Surface *dst, const SDL_Rect *rect, Uint32 colo
 
     // If 'rect' == NULL, then fill the whole surface
     if (!rect) {
-        rect = &dst->internal->clip_rect;
+        rect = &dst->clip_rect;
         // Don't attempt to fill if the surface's clip_rect is empty
         if (SDL_RectEmpty(rect)) {
             return true;
@@ -247,7 +247,7 @@ SDL_bool SDL_FillSurfaceRect(SDL_Surface *dst, const SDL_Rect *rect, Uint32 colo
     return SDL_FillSurfaceRects(dst, rect, 1, color);
 }
 
-SDL_bool SDL_FillSurfaceRects(SDL_Surface *dst, const SDL_Rect *rects, int count, Uint32 color)
+bool SDL_FillSurfaceRects(SDL_Surface *dst, const SDL_Rect *rects, int count, Uint32 color)
 {
     SDL_Rect clipped;
     Uint8 *pixels;
@@ -346,7 +346,7 @@ SDL_bool SDL_FillSurfaceRects(SDL_Surface *dst, const SDL_Rect *rects, int count
     for (i = 0; i < count; ++i) {
         rect = &rects[i];
         // Perform clipping
-        if (!SDL_GetRectIntersection(rect, &dst->internal->clip_rect, &clipped)) {
+        if (!SDL_GetRectIntersection(rect, &dst->clip_rect, &clipped)) {
             continue;
         }
         rect = &clipped;

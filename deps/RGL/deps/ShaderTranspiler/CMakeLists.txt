@@ -84,9 +84,6 @@ if(ST_BUNDLED_DXC)
     set_target_properties(dxildll PROPERTIES DEBUG_POSTFIX "")
 else()
     set(DXCLIBS "dxcompiler.lib")
-    if (WINDOWS_STORE)
-        set(DXCLIBS "") # can't use it on UWP
-    endif()
     set(ST_DXC_EXE_PATH "dxc.exe" CACHE INTERNAL "")
 endif()
 

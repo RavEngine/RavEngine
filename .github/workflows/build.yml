@@ -95,7 +95,7 @@ jobs:
         fail-fast: false
         matrix:
             arch: [x64, ARM64]
-            target: [Windows, WindowsStore]
+            target: [Windows]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

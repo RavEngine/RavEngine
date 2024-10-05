@@ -75,7 +75,7 @@ found_date:
     }
 }
 
-SDL_bool SDL_GetCurrentTime(SDL_Time *ticks)
+bool SDL_GetCurrentTime(SDL_Time *ticks)
 {
     FILETIME ft;
 
@@ -85,9 +85,6 @@ SDL_bool SDL_GetCurrentTime(SDL_Time *ticks)
 
     SDL_zero(ft);
 
-#ifdef SDL_PLATFORM_WINRT
-    GetSystemTimePreciseAsFileTime(&ft);
-#else
     static pfnGetSystemTimePreciseAsFileTime pGetSystemTimePreciseAsFileTime = NULL;
     static bool load_attempted = false;
 
@@ -105,14 +102,13 @@ SDL_bool SDL_GetCurrentTime(SDL_Time *ticks)
     } else {
         GetSystemTimeAsFileTime(&ft);
     }
-#endif
 
     *ticks = SDL_TimeFromWindows(ft.dwLowDateTime, ft.dwHighDateTime);
 
     return true;
 }
 
-SDL_bool SDL_TimeToDateTime(SDL_Time ticks, SDL_DateTime *dt, SDL_bool localTime)
+bool SDL_TimeToDateTime(SDL_Time ticks, SDL_DateTime *dt, bool localTime)
 {
     FILETIME ft, local_ft;
     SYSTEMTIME utc_st, local_st;

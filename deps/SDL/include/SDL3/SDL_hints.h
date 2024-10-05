@@ -1011,8 +1011,8 @@ extern "C" {
  *
  * By default, SDL will try all available GPU backends in a reasonable order
  * until it finds one that can work, but this hint allows the app or user to
- * force a specific target, such as "d3d11" if, say, your hardware supports
- * D3D12 but want to try using D3D11 instead.
+ * force a specific target, such as "direct3d11" if, say, your hardware
+ * supports D3D12 but want to try using D3D11 instead.
  *
  * This hint should be set before SDL_GPUSelectBackend() is called.
  *
@@ -1655,6 +1655,17 @@ extern "C" {
 #define SDL_HINT_JOYSTICK_HIDAPI_STEAMDECK "SDL_JOYSTICK_HIDAPI_STEAMDECK"
 
 /**
+ * A variable controlling whether the HIDAPI driver for HORI licensed Steam
+ * controllers should be used.
+ *
+ * This variable can be set to the following values: "0" - HIDAPI driver is
+ * not used "1" - HIDAPI driver is used
+ *
+ * The default is the value of SDL_HINT_JOYSTICK_HIDAPI
+ */
+#define SDL_HINT_JOYSTICK_HIDAPI_STEAM_HORI "SDL_JOYSTICK_HIDAPI_STEAM_HORI"
+
+/**
  * A variable controlling whether the HIDAPI driver for Nintendo Switch
  * controllers should be used.
  *
@@ -1730,8 +1741,8 @@ extern "C" {
  * - "0": HIDAPI driver is not used.
  * - "1": HIDAPI driver is used.
  *
- * This driver doesn't work with the dolphinbar, so the default is SDL_FALSE
- * for now.
+ * This driver doesn't work with the dolphinbar, so the default is false for
+ * now.
  *
  * This hint should be set before enumerating controllers.
  *
@@ -2139,7 +2150,7 @@ extern "C" {
  * - "latin_letters": For keyboards using non-Latin letters, such as Russian
  *   or Thai, the letter keys generate keycodes as though it had an en_US
  *   layout. e.g. pressing the key associated with SDL_SCANCODE_A on a Russian
- *   keyboard would yield 'a' instead of 'ф'.
+ *   keyboard would yield 'a' instead of a Cyrillic letter.
  *
  * The default value for this hint is "french_numbers,latin_letters"
  *
@@ -2497,11 +2508,11 @@ extern "C" {
  * system while relative mode is active, in case the desired confinement state
  * became out-of-sync due to interference from other running programs.
  *
- * The variable can be integers representing miliseconds between each refresh.
- * A value of zero means SDL will not automatically refresh the confinement.
- * The default value varies depending on the operating system, this variable
- * might not have any effects on inapplicable platforms such as those without
- * a cursor.
+ * The variable can be integers representing milliseconds between each
+ * refresh. A value of zero means SDL will not automatically refresh the
+ * confinement. The default value varies depending on the operating system,
+ * this variable might not have any effects on inapplicable platforms such as
+ * those without a cursor.
  *
  * This hint can be set anytime.
  *
@@ -2991,7 +3002,7 @@ extern "C" {
  * - "1": Force SDL_THREAD_PRIORITY_TIME_CRITICAL to a realtime scheduling
  *   policy
  *
- * This hint should be set before calling SDL_SetThreadPriority()
+ * This hint should be set before calling SDL_SetCurrentThreadPriority()
  *
  * \since This hint is available since SDL 3.0.0.
  */
@@ -2999,22 +3010,22 @@ extern "C" {
 
 /**
  * A string specifying additional information to use with
- * SDL_SetThreadPriority.
+ * SDL_SetCurrentThreadPriority.
  *
- * By default SDL_SetThreadPriority will make appropriate system changes in
- * order to apply a thread priority. For example on systems using pthreads the
- * scheduler policy is changed automatically to a policy that works well with
- * a given priority. Code which has specific requirements can override SDL's
- * default behavior with this hint.
+ * By default SDL_SetCurrentThreadPriority will make appropriate system
+ * changes in order to apply a thread priority. For example on systems using
+ * pthreads the scheduler policy is changed automatically to a policy that
+ * works well with a given priority. Code which has specific requirements can
+ * override SDL's default behavior with this hint.
  *
  * pthread hint values are "current", "other", "fifo" and "rr". Currently no
  * other platform hint values are defined but may be in the future.
  *
  * On Linux, the kernel may send SIGKILL to realtime tasks which exceed the
  * distro configured execution budget for rtkit. This budget can be queried
- * through RLIMIT_RTTIME after calling SDL_SetThreadPriority().
+ * through RLIMIT_RTTIME after calling SDL_SetCurrentThreadPriority().
  *
- * This hint should be set before calling SDL_SetThreadPriority()
+ * This hint should be set before calling SDL_SetCurrentThreadPriority()
  *
  * \since This hint is available since SDL 3.0.0.
  */
@@ -3939,119 +3950,6 @@ extern "C" {
 #define SDL_HINT_WINDOWS_ERASE_BACKGROUND_MODE "SDL_WINDOWS_ERASE_BACKGROUND_MODE"
 
 /**
- * A variable controlling whether back-button-press events on Windows Phone to
- * be marked as handled.
- *
- * Windows Phone devices typically feature a Back button. When pressed, the OS
- * will emit back-button-press events, which apps are expected to handle in an
- * appropriate manner. If apps do not explicitly mark these events as
- * 'Handled', then the OS will invoke its default behavior for unhandled
- * back-button-press events, which on Windows Phone 8 and 8.1 is to terminate
- * the app (and attempt to switch to the previous app, or to the device's home
- * screen).
- *
- * Setting the SDL_HINT_WINRT_HANDLE_BACK_BUTTON hint to "1" will cause SDL to
- * mark back-button-press events as Handled, if and when one is sent to the
- * app.
- *
- * Internally, Windows Phone sends back button events as parameters to special
- * back-button-press callback functions. Apps that need to respond to
- * back-button-press events are expected to register one or more callback
- * functions for such, shortly after being launched (during the app's
- * initialization phase). After the back button is pressed, the OS will invoke
- * these callbacks. If the app's callback(s) do not explicitly mark the event
- * as handled by the time they return, or if the app never registers one of
- * these callback, the OS will consider the event un-handled, and it will
- * apply its default back button behavior (terminate the app).
- *
- * SDL registers its own back-button-press callback with the Windows Phone OS.
- * This callback will emit a pair of SDL key-press events (SDL_EVENT_KEY_DOWN
- * and SDL_EVENT_KEY_UP), each with a scancode of SDL_SCANCODE_AC_BACK, after
- * which it will check the contents of the hint,
- * SDL_HINT_WINRT_HANDLE_BACK_BUTTON. If the hint's value is set to "1", the
- * back button event's Handled property will get set to 'true'. If the hint's
- * value is set to something else, or if it is unset, SDL will leave the
- * event's Handled property alone. (By default, the OS sets this property to
- * 'false', to note.)
- *
- * SDL apps can either set SDL_HINT_WINRT_HANDLE_BACK_BUTTON well before a
- * back button is pressed, or can set it in direct-response to a back button
- * being pressed.
- *
- * In order to get notified when a back button is pressed, SDL apps should
- * register a callback function with SDL_AddEventWatch(), and have it listen
- * for SDL_EVENT_KEY_DOWN events that have a scancode of SDL_SCANCODE_AC_BACK.
- * (Alternatively, SDL_EVENT_KEY_UP events can be listened-for. Listening for
- * either event type is suitable.) Any value of
- * SDL_HINT_WINRT_HANDLE_BACK_BUTTON set by such a callback, will be applied
- * to the OS' current back-button-press event.
- *
- * More details on back button behavior in Windows Phone apps can be found at
- * the following page, on Microsoft's developer site:
- * http://msdn.microsoft.com/en-us/library/windowsphone/develop/jj247550(v=vs.105).aspx
- *
- * \since This hint is available since SDL 3.0.0.
- */
-#define SDL_HINT_WINRT_HANDLE_BACK_BUTTON "SDL_WINRT_HANDLE_BACK_BUTTON"
-
-/**
- * A variable specifying the label text for a WinRT app's privacy policy link.
- *
- * Network-enabled WinRT apps must include a privacy policy. On Windows 8,
- * 8.1, and RT, Microsoft mandates that this policy be available via the
- * Windows Settings charm. SDL provides code to add a link there, with its
- * label text being set via the optional hint,
- * SDL_HINT_WINRT_PRIVACY_POLICY_LABEL.
- *
- * Please note that a privacy policy's contents are not set via this hint. A
- * separate hint, SDL_HINT_WINRT_PRIVACY_POLICY_URL, is used to link to the
- * actual text of the policy.
- *
- * The contents of this hint should be encoded as a UTF8 string.
- *
- * The default value is "Privacy Policy".
- *
- * For additional information on linking to a privacy policy, see the
- * documentation for SDL_HINT_WINRT_PRIVACY_POLICY_URL.
- *
- * This hint should be set before SDL is initialized.
- *
- * \since This hint is available since SDL 3.0.0.
- */
-#define SDL_HINT_WINRT_PRIVACY_POLICY_LABEL "SDL_WINRT_PRIVACY_POLICY_LABEL"
-
-/**
- * A variable specifying the URL to a WinRT app's privacy policy.
- *
- * All network-enabled WinRT apps must make a privacy policy available to its
- * users. On Windows 8, 8.1, and RT, Microsoft mandates that this policy be
- * available in the Windows Settings charm, as accessed from within the app.
- * SDL provides code to add a URL-based link there, which can point to the
- * app's privacy policy.
- *
- * To setup a URL to an app's privacy policy, set
- * SDL_HINT_WINRT_PRIVACY_POLICY_URL before calling any SDL_Init() functions.
- * The contents of the hint should be a valid URL. For example,
- * "http://www.example.com".
- *
- * The default value is "", which will prevent SDL from adding a privacy
- * policy link to the Settings charm. This hint should only be set during app
- * init.
- *
- * The label text of an app's "Privacy Policy" link may be customized via
- * another hint, SDL_HINT_WINRT_PRIVACY_POLICY_LABEL.
- *
- * Please note that on Windows Phone, Microsoft does not provide standard UI
- * for displaying a privacy policy link, and as such,
- * SDL_HINT_WINRT_PRIVACY_POLICY_URL will not get used on that platform.
- * Network-enabled phone apps should display their privacy policy through some
- * other, in-app means.
- *
- * \since This hint is available since SDL 3.0.0.
- */
-#define SDL_HINT_WINRT_PRIVACY_POLICY_URL "SDL_WINRT_PRIVACY_POLICY_URL"
-
-/**
  * A variable controlling whether X11 windows are marked as override-redirect.
  *
  * If set, this _might_ increase framerate at the expense of the desktop not
@@ -4092,7 +3990,7 @@ extern "C" {
 /**
  * Specify the XCB library to load for the X11 driver.
  *
- * This defaults to "libX11-xcb.so"
+ * The default is platform-specific, often "libX11-xcb.so.1".
  *
  * This hint should be set before initializing the video subsystem.
  *
@@ -4162,8 +4060,8 @@ typedef enum SDL_HintPriority
  * \param name the hint to set.
  * \param value the value of the hint variable.
  * \param priority the SDL_HintPriority level for the hint.
- * \returns SDL_TRUE on success or SDL_FALSE on failure; call SDL_GetError()
- *          for more information.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -4173,7 +4071,7 @@ typedef enum SDL_HintPriority
  * \sa SDL_ResetHint
  * \sa SDL_SetHint
  */
-extern SDL_DECLSPEC SDL_bool SDLCALL SDL_SetHintWithPriority(const char *name, const char *value, SDL_HintPriority priority);
+extern SDL_DECLSPEC bool SDLCALL SDL_SetHintWithPriority(const char *name, const char *value, SDL_HintPriority priority);
 
 /**
  * Set a hint with normal priority.
@@ -4184,8 +4082,8 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_SetHintWithPriority(const char *name, c
  *
  * \param name the hint to set.
  * \param value the value of the hint variable.
- * \returns SDL_TRUE on success or SDL_FALSE on failure; call SDL_GetError()
- *          for more information.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -4195,7 +4093,7 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_SetHintWithPriority(const char *name, c
  * \sa SDL_ResetHint
  * \sa SDL_SetHintWithPriority
  */
-extern SDL_DECLSPEC SDL_bool SDLCALL SDL_SetHint(const char *name, const char *value);
+extern SDL_DECLSPEC bool SDLCALL SDL_SetHint(const char *name, const char *value);
 
 /**
  * Reset a hint to the default value.
@@ -4205,8 +4103,8 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_SetHint(const char *name, const char *v
  * change.
  *
  * \param name the hint to set.
- * \returns SDL_TRUE on success or SDL_FALSE on failure; call SDL_GetError()
- *          for more information.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -4215,7 +4113,7 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_SetHint(const char *name, const char *v
  * \sa SDL_SetHint
  * \sa SDL_ResetHints
  */
-extern SDL_DECLSPEC SDL_bool SDLCALL SDL_ResetHint(const char *name);
+extern SDL_DECLSPEC bool SDLCALL SDL_ResetHint(const char *name);
 
 /**
  * Reset all hints to the default values.
@@ -4267,7 +4165,7 @@ extern SDL_DECLSPEC const char *SDLCALL SDL_GetHint(const char *name);
  * \sa SDL_GetHint
  * \sa SDL_SetHint
  */
-extern SDL_DECLSPEC SDL_bool SDLCALL SDL_GetHintBoolean(const char *name, SDL_bool default_value);
+extern SDL_DECLSPEC bool SDLCALL SDL_GetHintBoolean(const char *name, bool default_value);
 
 /**
  * A callback used to send notifications of hint value changes.
@@ -4300,8 +4198,8 @@ typedef void(SDLCALL *SDL_HintCallback)(void *userdata, const char *name, const 
  * \param callback An SDL_HintCallback function that will be called when the
  *                 hint value changes.
  * \param userdata a pointer to pass to the callback function.
- * \returns SDL_TRUE on success or SDL_FALSE on failure; call SDL_GetError()
- *          for more information.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -4309,7 +4207,7 @@ typedef void(SDLCALL *SDL_HintCallback)(void *userdata, const char *name, const 
  *
  * \sa SDL_RemoveHintCallback
  */
-extern SDL_DECLSPEC SDL_bool SDLCALL SDL_AddHintCallback(const char *name, SDL_HintCallback callback, void *userdata);
+extern SDL_DECLSPEC bool SDLCALL SDL_AddHintCallback(const char *name, SDL_HintCallback callback, void *userdata);
 
 /**
  * Remove a function watching a particular hint.

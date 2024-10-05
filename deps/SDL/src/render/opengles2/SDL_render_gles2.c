@@ -20,12 +20,11 @@
 */
 #include "SDL_internal.h"
 
-#if SDL_VIDEO_RENDER_OGL_ES2
+#ifdef SDL_VIDEO_RENDER_OGL_ES2
 
 #include "../../video/SDL_sysvideo.h" // For SDL_RecreateWindow
 #include <SDL3/SDL_opengles2.h>
 #include "../SDL_sysrender.h"
-#include "../../video/SDL_blit.h"
 #include "../../video/SDL_pixels_c.h"
 #include "SDL_shaders_gles2.h"
 
@@ -1993,7 +1992,6 @@ static SDL_Surface *GLES2_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rec
 {
     GLES2_RenderData *data = (GLES2_RenderData *)renderer->internal;
     SDL_PixelFormat format = renderer->target ? renderer->target->format : SDL_PIXELFORMAT_RGBA32;
-    int w, h;
     SDL_Surface *surface;
 
     surface = SDL_CreateSurface(rect->w, rect->h, format);
@@ -2001,10 +1999,14 @@ static SDL_Surface *GLES2_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rec
         return NULL;
     }
 
-    SDL_GetCurrentRenderOutputSize(renderer, &w, &h);
+    int y = rect->y;
+    if (!renderer->target) {
+        int w, h;
+        SDL_GetRenderOutputSize(renderer, &w, &h);
+        y = (h - y) - rect->h;
+    }
 
-    data->glReadPixels(rect->x, renderer->target ? rect->y : (h - rect->y) - rect->h,
-                       rect->w, rect->h, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+    data->glReadPixels(rect->x, y, rect->w, rect->h, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
     if (!GL_CheckError("glReadPixels()", renderer)) {
         SDL_DestroySurface(surface);
         return NULL;
@@ -2039,16 +2041,6 @@ static bool GLES2_RenderPresent(SDL_Renderer *renderer)
 static bool GLES2_SetVSync(SDL_Renderer *renderer, const int vsync)
 {
     int interval = 0;
-
-#ifdef SDL_PLATFORM_WINRT
-    /* DLudwig, 2013-11-29: ANGLE for WinRT doesn't seem to work unless VSync
-     * is turned on.  Not doing so will freeze the screen's contents to that
-     * of the first drawn frame.
-     */
-    if (vsync == 0) {
-        return SDL_Unsupported();
-    }
-#endif
 
     if (!SDL_GL_SetSwapInterval(vsync)) {
         return false;
@@ -2198,18 +2190,13 @@ static bool GLES2_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL
     }
 #endif
 
-    renderer->rect_index_order[0] = 0;
-    renderer->rect_index_order[1] = 1;
-    renderer->rect_index_order[2] = 3;
-    renderer->rect_index_order[3] = 1;
-    renderer->rect_index_order[4] = 3;
-    renderer->rect_index_order[5] = 2;
-
     if (SDL_GL_ExtensionSupported("GL_EXT_blend_minmax")) {
         data->GL_EXT_blend_minmax_supported = true;
     }
 
     // Set up parameters for rendering
+    data->glDisable(GL_DEPTH_TEST);
+    data->glDisable(GL_CULL_FACE);
     data->glActiveTexture(GL_TEXTURE0);
     data->glPixelStorei(GL_PACK_ALIGNMENT, 1);
     data->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);

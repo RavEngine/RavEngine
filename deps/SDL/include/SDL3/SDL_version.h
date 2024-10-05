@@ -30,7 +30,6 @@
 #define SDL_version_h_
 
 #include <SDL3/SDL_stdinc.h>
-#include <SDL3/SDL_error.h>
 
 #include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
@@ -63,7 +62,7 @@ extern "C" {
  *
  * \since This macro is available since SDL 3.0.0.
  */
-#define SDL_MICRO_VERSION   2
+#define SDL_MICRO_VERSION   3
 
 /**
  * This macro turns the version numbers into a numeric value.

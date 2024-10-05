@@ -53,9 +53,6 @@ if(MSVC)
 	if(NOT CMAKE_GENERATOR STREQUAL "Ninja")
     	add_definitions(/MP)				# parallelize each target, unless Ninja is the generator
 	endif()
-	if (WINDOWS_STORE)
-		add_definitions(/sdl-)
-	endif()
 endif()
 
 # ============ build machine tools ==============
@@ -194,7 +191,8 @@ set(CXXOPTS_ENABLE_INSTALL OFF CACHE INTERNAL "")
 add_subdirectory(deps/cxxopts EXCLUDE_FROM_ALL)
 
 # tracy
-set(TRACY_ENABLE $<IF:$<CONFIG:profile>,ON,OFF> CACHE INTERNAL "")
+#set(TRACY_ENABLE $<IF:$<CONFIG:profile>,ON,OFF> CACHE INTERNAL "")
+set(TRACY_ENABLE ON)
 add_subdirectory(deps/tracy EXCLUDE_FROM_ALL)
 
 
@@ -392,13 +390,9 @@ set(GPU_LIB_COPIED ON CACHE INTERNAL "")
 if(EMSCRIPTEN)
 	set(TARGET_BUILD_PLATFORM "linux" CACHE INTERNAL "")
 	set(PLATFORM "Linux" CACHE INTERNAL "")
-elseif (WIN32 OR WINDOWS_STORE)
+elseif (WIN32)
 	set(TARGET_BUILD_PLATFORM "windows" CACHE INTERNAL "")
-	if (WINDOWS_STORE)
-		set(PLATFORM "uwp")
-	elseif(WIN32)
-		set(PLATFORM "Windows")
-	endif()
+	set(PLATFORM "Windows")
 elseif(APPLE)
 	set(TARGET_BUILD_PLATFORM "linux" CACHE INTERNAL "")
 	set(PLATFORM "macOS")
@@ -417,7 +411,7 @@ endif()
 
 # Call into PhysX's CMake scripts
 add_subdirectory("${PHYSX_ROOT_DIR}/compiler/public" EXCLUDE_FROM_ALL)
-if(EMSCRIPTEN OR ( (WIN32 OR WINDOWS_STORE) AND CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "ARM64"))
+if(EMSCRIPTEN OR (WIN32 AND CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "ARM64"))
 	# disable vectorization
 	target_compile_definitions(LowLevelAABB PRIVATE "PX_SIMD_DISABLED")
 	target_compile_definitions(SceneQuery PRIVATE "PX_SIMD_DISABLED")
@@ -519,7 +513,7 @@ if(APPLE OR LINUX)
 	target_compile_options("${PROJECT_NAME}" PUBLIC -ffast-math -ffp-contract=fast)
 endif()
 
-if (NOT APPLE AND NOT WINDOWS_STORE)
+if (NOT APPLE)
 target_precompile_headers("${PROJECT_NAME}" PRIVATE 
 	"<phmap.h>"
 	"<vector>"
@@ -586,7 +580,7 @@ if(LINUX)
 	set(ATOMIC_LIB "atomic") # need to explicitly link libatomic on linux
 endif()
 
-if(WIN32 OR WINDOWS_STORE)
+if(WIN32)
 	set(DXGI_LIB "dxgi.lib")
 	set(WIN32_LIBS "Rpcrt4.lib")
 endif()
@@ -617,7 +611,8 @@ target_link_libraries("${PROJECT_NAME}"
 	"libnyquist"
 	"GameNetworkingSockets_s"
 	"r8brain"
-	$<$<CONFIG:profile>:TracyClient>
+	#$<$<CONFIG:profile>:TracyClient>
+	TracyClient
 	stb_image
 	PUBLIC
 	"dr_wav"
@@ -812,11 +807,6 @@ endmacro()
 
 get_all_targets(all_targets)
 
-if(WINDOWS_STORE)
-	# WINNT version is messed up when compiling for UWP, fixes here
-	target_compile_definitions("GameNetworkingSockets_s" PUBLIC "_CRT_SECURE_NO_WARNINGS" "BUILD_DLL" "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS" "_CRT_NONSTDC_NO_DEPRECATE" "_WIN32_WINNT=9501")
-endif()
-
 # disable warnings in subdirectory targets
 foreach(TGT ${all_targets})
 	if(NOT "${TGT}" STREQUAL "${PROJECT_NAME}")
@@ -828,10 +818,6 @@ foreach(TGT ${all_targets})
 				target_compile_options(${TGT} PRIVATE "/W0")
 			else()
 				target_compile_options(${TGT} PRIVATE "-w")
-			endif()
-
-			if (WINDOWS_STORE)
-				target_compile_definitions(${TGT} PUBLIC "_CRT_SECURE_NO_WARNINGS" "BUILD_DLL" "_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS" "_CRT_NONSTDC_NO_DEPRECATE")
 			endif()
 
 			#set_target_properties(${TGT} PROPERTIES

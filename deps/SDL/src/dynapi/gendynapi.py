@@ -85,7 +85,7 @@ def main():
                     ignore_wiki_documentation = False
                 continue
 
-            # Discard wiki documentions blocks.
+            # Discard wiki documentations blocks.
             if line.startswith("#ifdef SDL_WIKI_DOCUMENTATION_SECTION"):
                 ignore_wiki_documentation = True
                 continue
@@ -167,6 +167,7 @@ def main():
             func = func.replace(" SDL_PRINTF_VARARG_FUNCV(2)", "");
             func = func.replace(" SDL_PRINTF_VARARG_FUNCV(3)", "");
             func = func.replace(" SDL_WPRINTF_VARARG_FUNC(3)", "");
+            func = func.replace(" SDL_WPRINTF_VARARG_FUNCV(3)", "");
             func = func.replace(" SDL_SCANF_VARARG_FUNC(2)", "");
             func = func.replace(" SDL_SCANF_VARARG_FUNCV(2)", "");
             func = func.replace(" SDL_ANALYZER_NORETURN", "");

@@ -9,12 +9,9 @@
 #include <RGL/CommandQueue.hpp>
 
 
-#if _WIN32 && !_UWP
+#if _WIN32
 #include <shtypes.h>
-#include <ShellScalingApi.h>
-#elif _UWP
-#include <winrt/Windows.Graphics.Display.h>
-using namespace winrt;
+#include <ShellScalingApi.h>;
 #elif __APPLE__
 #include "AppleUtilities.h"
 #endif
@@ -62,9 +59,7 @@ namespace RavEngine {
     {
         RGL::CreateSurfaceConfig surfaceConfig{ nullptr, 0 };
 
-#if _UWP
-        surfaceConfig.pointer = SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WINRT_WINDOW_POINTER, NULL);
-#elif _WIN32
+#if _WIN32
         HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
         surfaceConfig.pointer = &hwnd;
 #elif TARGET_OS_IPHONE
@@ -101,7 +96,7 @@ namespace RavEngine {
     }
 
     float Window::QueryScaleFactor() const{
-# if _WIN32 && !_UWP
+# if _WIN32
 
         HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
         auto monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
@@ -112,9 +107,6 @@ namespace RavEngine {
         else {
             Debug::Fatal("GetScaleFactorForMonitor failed");
         }
-#elif _UWP
-        auto dinf = winrt::Windows::Graphics::Display::DisplayInformation::GetForCurrentView();
-        return static_cast<int32_t>(dinf.ResolutionScale()) / 100.0;
 #elif __APPLE__
         // since iOS and macOS do not use OpenGL we cannot use the GL call here
         // instead we derive it by querying display data

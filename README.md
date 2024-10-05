@@ -88,8 +88,6 @@ Other notes:
 | visionOS 2D 1+ (WIP) | Device + Simulator* | Apple Clang | Xcode | Metal |
 | Windows 10+ (Win32) | x86_64, aarch64 | MSVC | Visual Studio, Ninja | DX12, Vulkan |
 | Windows 10+ (GDK) | x86_64 | MSVC | Visual Studio | DX12, Vulkan |
-| Windows 10+ (UWP) | x86_64, aarch64 | MSVC | Visual Studio | DX12 |
-| Xbox Series (UWP) | x86_64 | MSVC | Visual Studio | DX12 |
 | Linux | x86_64, aarch64 | Clang, gcc | Ninja, Make | Vulkan |
 | Android (WIP) | x86, x86_64, arm64-v8a, arm7a | NDK Clang | Ninja, Make, Android Studio | Vulkan |
 | Emscripten (Early WIP) | WebAssembly | emcc | Ninja, Make | WebGPU |
@@ -111,7 +109,7 @@ Software
 - macOS, iOS, tvOS, visionOS
    - Xcode 15.3+
    - CMake
-- Windows, UWP, Xbox
+- Windows
    - Visual Studio 2022 or later with the "Desktop Development in C++" and "Game Development in C++" modules
    - CMake (included with Visual Studio)
    - LunarG Vulkan SDK (optional unless Vulkan support is desired)

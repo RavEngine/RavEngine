@@ -66,7 +66,7 @@ static void (*SNDIO_sio_initpar)(struct sio_par *);
 
 #ifdef SDL_AUDIO_DRIVER_SNDIO_DYNAMIC
 static const char *sndio_library = SDL_AUDIO_DRIVER_SNDIO_DYNAMIC;
-static void *sndio_handle = NULL;
+static SDL_SharedObject *sndio_handle = NULL;
 
 static bool load_sndio_sym(const char *fn, void **addr)
 {
@@ -151,7 +151,7 @@ static bool SNDIO_WaitDevice(SDL_AudioDevice *device)
 {
     const bool recording = device->recording;
 
-    while (!SDL_AtomicGet(&device->shutdown)) {
+    while (!SDL_GetAtomicInt(&device->shutdown)) {
         if (SNDIO_sio_eof(device->hidden->dev)) {
             return false;
         }
@@ -200,7 +200,7 @@ static int SNDIO_RecordDevice(SDL_AudioDevice *device, void *buffer, int buflen)
 static void SNDIO_FlushRecording(SDL_AudioDevice *device)
 {
     char buf[512];
-    while (!SDL_AtomicGet(&device->shutdown) && (SNDIO_sio_read(device->hidden->dev, buf, sizeof(buf)) > 0)) {
+    while (!SDL_GetAtomicInt(&device->shutdown) && (SNDIO_sio_read(device->hidden->dev, buf, sizeof(buf)) > 0)) {
         // do nothing
     }
 }

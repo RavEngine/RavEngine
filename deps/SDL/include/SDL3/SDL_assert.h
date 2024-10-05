@@ -220,7 +220,7 @@ typedef enum SDL_AssertState
  */
 typedef struct SDL_AssertData
 {
-    SDL_bool always_ignore;  /**< SDL_TRUE if app should always continue when assertion is triggered. */
+    bool always_ignore;  /**< true if app should always continue when assertion is triggered. */
     unsigned int trigger_count; /**< Number of times this assertion has been triggered. */
     const char *condition;  /**< A string of this assert's test code. */
     const char *filename;  /**< The source file where this assert lives. */
@@ -366,10 +366,9 @@ extern SDL_DECLSPEC SDL_AssertState SDLCALL SDL_ReportAssertion(SDL_AssertData *
  * \since This macro is available since SDL 3.0.0.
  */
 #define SDL_assert_paranoid(condition) SDL_disabled_assert(condition)
-#endif
 
 /* Enable various levels of assertions. */
-#if SDL_ASSERT_LEVEL == 0   /* assertions disabled */
+#elif SDL_ASSERT_LEVEL == 0   /* assertions disabled */
 #   define SDL_assert(condition) SDL_disabled_assert(condition)
 #   define SDL_assert_release(condition) SDL_disabled_assert(condition)
 #   define SDL_assert_paranoid(condition) SDL_disabled_assert(condition)

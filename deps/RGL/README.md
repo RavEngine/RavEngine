@@ -22,7 +22,6 @@ RavEngine Graphics Library - a thin RHI for Vulkan, DirectX12, and Metal
 - iOS (device only)
 - tvOS (device only)
 - Windows 10+ (Arm64 + x86_64)
-- Windows 10+ UWP (Arm64 + x86_64)
 - Linux
 - WebAssembly (WIP)
 

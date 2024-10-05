@@ -25,6 +25,8 @@
 
 #include <SDL3/SDL_vulkan.h>
 
+#include "SDL_surface_c.h"
+
 // The SDL video driver
 
 typedef struct SDL_VideoDisplay SDL_VideoDisplay;
@@ -264,7 +266,8 @@ struct SDL_VideoDevice
     bool (*GetWindowBordersSize)(SDL_VideoDevice *_this, SDL_Window *window, int *top, int *left, int *bottom, int *right);
     void (*GetWindowSizeInPixels)(SDL_VideoDevice *_this, SDL_Window *window, int *w, int *h);
     bool (*SetWindowOpacity)(SDL_VideoDevice *_this, SDL_Window *window, float opacity);
-    bool (*SetWindowModalFor)(SDL_VideoDevice *_this, SDL_Window *modal_window, SDL_Window *parent_window);
+    bool (*SetWindowParent)(SDL_VideoDevice *_this, SDL_Window *window, SDL_Window *parent);
+    bool (*SetWindowModal)(SDL_VideoDevice *_this, SDL_Window *window, bool modal);
     void (*ShowWindow)(SDL_VideoDevice *_this, SDL_Window *window);
     void (*HideWindow)(SDL_VideoDevice *_this, SDL_Window *window);
     void (*RaiseWindow)(SDL_VideoDevice *_this, SDL_Window *window);
@@ -434,12 +437,13 @@ struct SDL_VideoDevice
         int egl_platform;
         int driver_loaded;
         char driver_path[256];
-        void *dll_handle;
+        SDL_SharedObject *dll_handle;
     } gl_config;
 
     SDL_EGLAttribArrayCallback egl_platformattrib_callback;
     SDL_EGLIntArrayCallback egl_surfaceattrib_callback;
     SDL_EGLIntArrayCallback egl_contextattrib_callback;
+    void *egl_attrib_callback_userdata;
 
     /* * * */
     // Cache current GL context; don't call the OS when it hasn't changed.
@@ -464,7 +468,7 @@ struct SDL_VideoDevice
         SDL_FunctionPointer vkEnumerateInstanceExtensionProperties;
         int loader_loaded;
         char loader_path[256];
-        void *loader_handle;
+        SDL_SharedObject *loader_handle;
     } vulkan_config;
 
     /* * * */
@@ -497,7 +501,6 @@ typedef struct VideoBootStrap
 extern VideoBootStrap COCOA_bootstrap;
 extern VideoBootStrap X11_bootstrap;
 extern VideoBootStrap WINDOWS_bootstrap;
-extern VideoBootStrap WINRT_bootstrap;
 extern VideoBootStrap HAIKU_bootstrap;
 extern VideoBootStrap UIKIT_bootstrap;
 extern VideoBootStrap Android_bootstrap;

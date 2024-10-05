@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-#if SDL_VIDEO_RENDER_PSP
+#ifdef SDL_VIDEO_RENDER_PSP
 
 #include "../SDL_sysrender.h"
 
@@ -1375,11 +1375,7 @@ static bool PSP_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_P
     sceGuEnable(GU_SCISSOR_TEST);
 
     // Backface culling
-    /*
-    FIXME: Culling probably un-needed ? It can conflict with SDL_RENDERCMD_GEOMETRY
-    sceGuFrontFace(GU_CCW);
-    sceGuEnable(GU_CULL_FACE);
-    */
+    sceGuDisable(GU_CULL_FACE);
 
     // Setup initial blend state
     ResetBlendState(&data->blendState);

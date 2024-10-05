@@ -20,14 +20,14 @@
 */
 #include "SDL_internal.h"
 
-#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_GDK)
+#if defined(SDL_PLATFORM_WINDOWS)
 #include "core/windows/SDL_windows.h"
 #endif
 
 #include "SDL_assert_c.h"
 #include "video/SDL_sysvideo.h"
 
-#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_GDK)
+#if defined(SDL_PLATFORM_WINDOWS)
 #ifndef WS_OVERLAPPEDWINDOW
 #define WS_OVERLAPPEDWINDOW 0
 #endif
@@ -86,7 +86,7 @@ static void SDL_AddAssertionToReport(SDL_AssertData *data)
     }
 }
 
-#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_GDK)
+#if defined(SDL_PLATFORM_WINDOWS)
 #define ENDLINE "\r\n"
 #else
 #define ENDLINE "\n"
@@ -175,7 +175,7 @@ static SDL_AssertState SDLCALL SDL_PromptAssertion(const SDL_AssertData *data, v
 
     // .. and if it didn't, try to allocate as much room as we actually need.
     if (len >= (int)buf_len) {
-        if (SDL_size_add_overflow(len, 1, &buf_len) == 0) {
+        if (SDL_size_add_check_overflow(len, 1, &buf_len)) {
             message = (char *)SDL_malloc(buf_len);
             if (message) {
                 len = SDL_RenderAssertMessage(message, buf_len, data);

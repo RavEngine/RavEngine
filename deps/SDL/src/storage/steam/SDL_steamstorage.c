@@ -32,13 +32,13 @@
 
 typedef struct STEAM_RemoteStorage
 {
-    void *libsteam_api;
+    SDL_SharedObject *libsteam_api;
     #define STEAM_PROC(ret, func, parms) \
         steamfntype_##func func;
     #include "SDL_steamstorage_proc.h"
 } STEAM_RemoteStorage;
 
-static SDL_bool STEAM_CloseStorage(void *userdata)
+static bool STEAM_CloseStorage(void *userdata)
 {
     bool result = true;
     STEAM_RemoteStorage *steam = (STEAM_RemoteStorage*) userdata;
@@ -53,12 +53,12 @@ static SDL_bool STEAM_CloseStorage(void *userdata)
     return result;
 }
 
-static SDL_bool STEAM_StorageReady(void *userdata)
+static bool STEAM_StorageReady(void *userdata)
 {
     return true;
 }
 
-static SDL_bool STEAM_GetStoragePathInfo(void *userdata, const char *path, SDL_PathInfo *info)
+static bool STEAM_GetStoragePathInfo(void *userdata, const char *path, SDL_PathInfo *info)
 {
     STEAM_RemoteStorage *steam = (STEAM_RemoteStorage*) userdata;
     void *steamremotestorage = steam->SteamAPI_SteamRemoteStorage_v016();
@@ -74,7 +74,7 @@ static SDL_bool STEAM_GetStoragePathInfo(void *userdata, const char *path, SDL_P
     return true;
 }
 
-static SDL_bool STEAM_ReadStorageFile(void *userdata, const char *path, void *destination, Uint64 length)
+static bool STEAM_ReadStorageFile(void *userdata, const char *path, void *destination, Uint64 length)
 {
     bool result = false;
     STEAM_RemoteStorage *steam = (STEAM_RemoteStorage*) userdata;
@@ -93,9 +93,9 @@ static SDL_bool STEAM_ReadStorageFile(void *userdata, const char *path, void *de
     return result;
 }
 
-static SDL_bool STEAM_WriteStorageFile(void *userdata, const char *path, const void *source, Uint64 length)
+static bool STEAM_WriteStorageFile(void *userdata, const char *path, const void *source, Uint64 length)
 {
-    int result = false;
+    bool result = false;
     STEAM_RemoteStorage *steam = (STEAM_RemoteStorage*) userdata;
     void *steamremotestorage = steam->SteamAPI_SteamRemoteStorage_v016();
     if (steamremotestorage == NULL) {
@@ -129,6 +129,7 @@ static Uint64 STEAM_GetStorageSpaceRemaining(void *userdata)
 }
 
 static const SDL_StorageInterface STEAM_user_iface = {
+    sizeof(SDL_StorageInterface),
     STEAM_CloseStorage,
     STEAM_StorageReady,
     NULL,   // enumerate
