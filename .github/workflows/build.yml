@@ -122,7 +122,7 @@ jobs:
         id: setup-ndk
         uses: nttld/setup-ndk@v1
         with:
-          ndk-version: r25c
+          ndk-version: r27
       - name: Report NDK
         run: echo ${{ steps.setup-ndk.outputs.ndk-path }}
       - name: Install dependencies
