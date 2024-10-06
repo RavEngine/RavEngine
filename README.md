@@ -114,7 +114,7 @@ Software
    - CMake (included with Visual Studio)
    - LunarG Vulkan SDK (optional unless Vulkan support is desired)
 - Android
-   - Android Studio 4.2 or later with NDK 25 or later
+   - Android Studio 4.2 or later with NDK 27 or later
    - Host requirements:
       - macOS host: Xcode 15.3+
 	  - Windows Host: Visual Studio 2022 with the "Desktop Development in C++" and "Game Development in C++" modules
