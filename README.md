@@ -1,5 +1,5 @@
 # RavEngine
-A C++20 cross-platform game framework, with emphasis on addressing pain points in existing game engines. Notable features:
+A C++23 cross-platform game framework, with emphasis on addressing pain points in existing game engines. Notable features:
 1. Fast Parallel ECS, with support for querying by base class
 2. Multithreaded physics simulation
 3. 3D spatial audio, including room reverbation modeling
@@ -45,7 +45,7 @@ add_subdirectory("RavEngine") # configure the engine library
 file(GLOB SOURCES "src/*.cpp" "src/*.hpp" "src/*.h")
 add_executable("${PROJECT_NAME}" ${SOURCES})
 target_link_libraries("${PROJECT_NAME}" PUBLIC "RavEngine" )  # also adds header includes
-target_compile_features("${PROJECT_NAME}" PRIVATE cxx_std_20)  # require C++20
+target_compile_features("${PROJECT_NAME}" PRIVATE cxx_std_23)  # Set C++ version
 
 # inform engine about your different assets
 file(GLOB objects "objects/*.obj" "objects/*.fbx")

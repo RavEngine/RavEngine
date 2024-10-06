@@ -16,7 +16,9 @@ namespace RavEngine{
 	};
 
 	struct RenderTargetCollection {
-		RGLTexturePtr normalTexture, depthStencil, lightingTexture, lightingScratchTexture, ssaoTexture, transparencyAccumulation, transparencyRevealage;
+		RGLTexturePtr normalTexture, depthStencil, lightingTexture, lightingScratchTexture, ssaoTexture, transparencyAccumulation, transparencyRevealage, mlabDepth;
+        
+        std::array<RGLTexturePtr, 4> mlabAccum;
 		RGL::ITexture* finalFramebuffer = nullptr;
 		DepthPyramid depthPyramid;
 	};

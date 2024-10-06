@@ -1717,6 +1717,28 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 	collection.lightingTexture = device->CreateTexture(lightingConfig);
     lightingConfig.debugName = "Lighting texture Swap 2";
     collection.lightingScratchTexture = device->CreateTexture(lightingConfig);
+    
+    const auto formats = {RGL::TextureFormat::RGBA16_Sfloat, RGL::TextureFormat::RGBA8_Unorm, RGL::TextureFormat::RGBA8_Unorm, RGL::TextureFormat::RGBA8_Unorm};
+    for(const auto& [i, format] : Enumerate(formats)){
+        collection.mlabAccum[i] = device->CreateTexture({
+            .usage = {.Sampled = true, .Storage = true },
+            .aspect = {.HasColor = true },
+            .width = width,
+            .height = height,
+            .format = format,
+            .initialLayout = RGL::ResourceLayout::Undefined,
+            .debugName = "MLAB Accumulation"
+        });
+    }
+   collection.mlabDepth = device->CreateTexture({
+        .usage = {.Sampled = true, .Storage = true},
+        .aspect = {.HasColor = true },
+        .width = width,
+        .height = height,
+        .format = RGL::TextureFormat::RGBA16_Sfloat,
+        .initialLayout = RGL::ResourceLayout::Undefined,
+        .debugName = "MLAB Depth"
+    });
 
 	return collection;
 }
@@ -1728,6 +1750,11 @@ void RavEngine::RenderEngine::ResizeRenderTargetCollection(RenderTargetCollectio
 	gcTextures.enqueue(collection.lightingTexture);
     gcTextures.enqueue(collection.depthPyramid.pyramidTexture);
     gcTextures.enqueue(collection.lightingScratchTexture);
+    gcTextures.enqueue(collection.mlabDepth);
+    
+    for(const auto tx : collection.mlabAccum){
+        gcTextures.enqueue(tx);
+    }
 
 	auto newcol = CreateRenderTargetCollection(size);
 	collection = newcol;
