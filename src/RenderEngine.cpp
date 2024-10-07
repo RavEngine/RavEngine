@@ -438,31 +438,31 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				.format = RenderTargetCollection::formats[0],
 				.loadOp = RGL::LoadAccessOperation::Clear,
 				.storeOp = RGL::StoreAccessOperation::Store,
-				.clearColor = {0,0,0,0}
+				.clearColor = {0,0,0,1}
 			},
 			{
                 .format = RenderTargetCollection::formats[1],
 				.loadOp = RGL::LoadAccessOperation::Clear,
 				.storeOp = RGL::StoreAccessOperation::Store,
-				.clearColor = {0,0,0,0}
+				.clearColor = {0,0,0,1}
 			},
             {
                 .format = RenderTargetCollection::formats[2],
                 .loadOp = RGL::LoadAccessOperation::Clear,
                 .storeOp = RGL::StoreAccessOperation::Store,
-                .clearColor = {0,0,0,0}
+                .clearColor = {0,0,0,1}
             },
             {
                 .format = RenderTargetCollection::formats[3],
                 .loadOp = RGL::LoadAccessOperation::Clear,
                 .storeOp = RGL::StoreAccessOperation::Store,
-                .clearColor = {0,0,0,0}
+                .clearColor = {0,0,0,1}
             },
             {
                 .format = RenderTargetCollection::mlabDepthFormat,
                 .loadOp = RGL::LoadAccessOperation::Clear,
                 .storeOp = RGL::StoreAccessOperation::Store,
-                .clearColor = {0,0,0,0}
+                .clearColor = {1,1,1,1}
             },
 		}
 	});
