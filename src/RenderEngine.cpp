@@ -1294,9 +1294,11 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.attachments = {
 				{
 					.format = colorTexFormat,
-					.sourceColorBlendFactor = RGL::BlendFactor::SourceAlpha,
-					.destinationColorBlendFactor = RGL::BlendFactor::OneMinusSourceAlpha,
-					.blendEnabled = true
+                    .sourceColorBlendFactor = RGL::BlendFactor::SourceAlpha,
+                    .destinationColorBlendFactor = RGL::BlendFactor::SourceAlpha,
+                    .alphaBlendOperation = RGL::BlendOperation::Add,
+                    .colorWriteMask = RGL::ColorWriteMask::RGB,
+                    .blendEnabled = true,
 
 				},
 			}
