@@ -367,13 +367,20 @@ namespace RavEngine {
 		return sizeof(ubo);
 	}
 
-	extern std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterialBindings(const std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc>& bindings);
+extern std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterialBindings(const std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc>& bindings, OpacityMode opacityMode);
+
+extern std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentUnlitMaterialBindings(const std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc>& bindings, OpacityMode opacityMode);
 
 	ParticleRenderMaterialConfig MeshParticleRenderMaterial_Impl::augmentMeshConfig(const ParticleRenderMaterialConfig& in, LightingMode mode)
 	{
 		auto cpy = in;
 
-		cpy.bindings = augmentLitMaterialBindings(cpy.bindings);
+        if (mode == LightingMode::Lit){
+            cpy.bindings = augmentLitMaterialBindings(cpy.bindings, in.opacityMode);
+        }
+        else{
+            cpy.bindings = augmentUnlitMaterialBindings(cpy.bindings, in.opacityMode);
+        }
 		cpy.bindings.push_back({
 					.binding = 21,									// engine-required binding
 					.type = RGL::BindingType::StorageBuffer,
@@ -387,7 +394,12 @@ namespace RavEngine {
 	{
 		auto cpy = in;
 
-		cpy.bindings = augmentLitMaterialBindings(cpy.bindings);
+        if (mode == LightingMode::Lit){
+            cpy.bindings = augmentLitMaterialBindings(cpy.bindings, in.opacityMode);
+        }
+        else{
+            cpy.bindings = augmentUnlitMaterialBindings(cpy.bindings, in.opacityMode);
+        }
 
 		return cpy;
 	}
