@@ -9,6 +9,7 @@ layout(binding = 7) uniform texture2D t_emissive;
 
 layout(location = 0) in vec2 inUV;
 layout(location = 1) in vec3[3] inTBN;
+layout(early_fragment_tests) in;
 
 LitOutput frag()
 {
