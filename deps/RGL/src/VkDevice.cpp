@@ -47,6 +47,7 @@ namespace RGL {
            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
            VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
            VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
+           VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME,
 #if !__ANDROID__    // only 5% of android devices have this extension so we have to go without it
            VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
 #endif
@@ -168,10 +169,13 @@ namespace RGL {
             };
             queueCreateInfos.push_back(queueCreateInfo);
         }
-
+        VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT fse_features{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT,
+            .pNext = nullptr
+        };
         VkPhysicalDeviceVulkan13Features vulkan1_3Features{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-            .pNext = nullptr
+            .pNext = &fse_features
         };
         
         VkPhysicalDeviceVulkan12Features vulkan1_2Features{
@@ -210,6 +214,9 @@ namespace RGL {
         }
         if (vulkan1_1Features.shaderDrawParameters == VK_FALSE) {
             FatalError("Cannot init - Shader Draw Parameters (baseInstance et al) are not supported.");
+        }
+        if (fse_features.fragmentShaderPixelInterlock == VK_FALSE) {
+            FatalError("Cannot init - Fragment Shader Interlock is not supported");
         }
 
         VkDeviceCreateInfo deviceCreateInfo{

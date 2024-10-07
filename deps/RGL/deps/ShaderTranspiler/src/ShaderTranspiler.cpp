@@ -14,6 +14,7 @@
 #endif
 #include <atomic>
 #include <mutex>
+#include <format>
 
 
 #if (ST_BUNDLED_DXC == 1 || defined _MSC_VER)
@@ -74,7 +75,7 @@ static ReflectData getReflectData(const spirv_cross::Compiler& comp, const spirv
 	SpvReflectShaderModule spvModule;
 	SpvReflectResult result = spvReflectCreateShaderModule(spirvdata.size() * sizeof(spirvdata[0]), spirvdata.data(), &spvModule);
 	if (result != SPV_REFLECT_RESULT_SUCCESS){
-		throw runtime_error("SPIRV reflection capture failed");
+		throw runtime_error(std::format("SPIRV reflection capture failed: {}",int(result)));
 	}
 	
 	const auto sortfn = [](const auto& spvreflvars, auto& inoutscontainer){

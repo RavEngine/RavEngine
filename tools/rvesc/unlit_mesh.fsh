@@ -12,7 +12,9 @@ void main(){
   vec4 outcolor = user_out.color;
 
   #if RVE_TRANSPARENT
+    beginInvocationInterlockARB();
     writeTransparency(outcolor);
+    endInvocationInterlockARB();
  #else
     result = outcolor;
   #endif

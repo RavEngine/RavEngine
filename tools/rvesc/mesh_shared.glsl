@@ -1,3 +1,5 @@
+#extension GL_ARB_fragment_shader_interlock : enable
+
 #define VARYINGDIR in
 #include "mesh_varyings.glsl"
 
