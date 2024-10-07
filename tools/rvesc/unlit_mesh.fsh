@@ -5,14 +5,6 @@ struct UnlitOut{
 
 #include "%s"
 
-#define VARYINGDIR in
-#include "mesh_varyings.glsl"
-
-layout(location = 0) out vec4 outcolor;
-#if RVE_TRANSPARENT
-layout(location = 1) out float revealage;
-#endif
-
 #include "mesh_shared.glsl"
 
 void main(){

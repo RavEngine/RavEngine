@@ -19,15 +19,6 @@ struct LitOutput{
 #include "BRDF.glsl"
 #include "cluster_shared.glsl"
 
-    layout(location = 0) out vec4 outcolor;     // accumulation if in transparent mode
-#if RVE_TRANSPARENT
-    layout(location = 1) out float revealage;
-#else
-   
-#endif
-#define VARYINGDIR in
-#include "mesh_varyings.glsl"
-
 #include "lit_mesh_shared.glsl"
 #include "mesh_shared.glsl"
 

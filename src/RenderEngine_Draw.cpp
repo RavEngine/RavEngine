@@ -1391,6 +1391,7 @@ struct LightingType{
 
 
 				// apply transparency
+#if 0
 				transparencyApplyPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
 
 				mainCommandBuffer->BeginRenderDebugMarker("Apply All Transparency");
@@ -1410,6 +1411,7 @@ struct LightingType{
 
 				mainCommandBuffer->EndRendering();
 				mainCommandBuffer->EndRenderDebugMarker();
+#endif
 
                 // afterwards render the post processing effects
 				RVE_PROFILE_SECTION(postfx, "Encode Post Processing Effects");

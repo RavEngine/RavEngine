@@ -1,3 +1,11 @@
+#define VARYINGDIR in
+#include "mesh_varyings.glsl"
+
+layout(location = 0) out vec4 outcolor;     // accumulation if in transparent mode
+
+#if RVE_TRANSPARENT
+    layout(location = 1) out float revealage;
+#endif
 
 void writeTransparency(inout vec4 outcolor){
     #if RVE_TRANSPARENT
