@@ -435,17 +435,35 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	transparentClearPass = RGL::CreateRenderPass({
 		.attachments = {
 			{
-				.format = accumFormat,
+				.format = RenderTargetCollection::formats[0],
 				.loadOp = RGL::LoadAccessOperation::Clear,
 				.storeOp = RGL::StoreAccessOperation::Store,
 				.clearColor = {0,0,0,0}
 			},
 			{
-				.format = revealageFormat,
+                .format = RenderTargetCollection::formats[1],
 				.loadOp = RGL::LoadAccessOperation::Clear,
 				.storeOp = RGL::StoreAccessOperation::Store,
-				.clearColor = {1,1,1,1}
+				.clearColor = {0,0,0,0}
 			},
+            {
+                .format = RenderTargetCollection::formats[2],
+                .loadOp = RGL::LoadAccessOperation::Clear,
+                .storeOp = RGL::StoreAccessOperation::Store,
+                .clearColor = {0,0,0,0}
+            },
+            {
+                .format = RenderTargetCollection::formats[3],
+                .loadOp = RGL::LoadAccessOperation::Clear,
+                .storeOp = RGL::StoreAccessOperation::Store,
+                .clearColor = {0,0,0,0}
+            },
+            {
+                .format = RenderTargetCollection::mlabDepthFormat,
+                .loadOp = RGL::LoadAccessOperation::Clear,
+                .storeOp = RGL::StoreAccessOperation::Store,
+                .clearColor = {0,0,0,0}
+            },
 		}
 	});
 
@@ -1666,11 +1684,10 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 	collection.lightingTexture = device->CreateTexture(lightingConfig);
     lightingConfig.debugName = "Lighting texture Swap 2";
     collection.lightingScratchTexture = device->CreateTexture(lightingConfig);
-    
-    const auto formats = {RGL::TextureFormat::RGBA16_Sfloat, RGL::TextureFormat::RGBA8_Unorm, RGL::TextureFormat::RGBA8_Unorm, RGL::TextureFormat::RGBA8_Unorm};
-    for(const auto& [i, format] : Enumerate(formats)){
+
+    for(const auto& [i, format] : Enumerate(RenderTargetCollection::formats)){
         collection.mlabAccum[i] = device->CreateTexture({
-            .usage = {.Sampled = true, .Storage = true },
+            .usage = {.Sampled = true, .Storage = true, .ColorAttachment = true },
             .aspect = {.HasColor = true },
             .width = width,
             .height = height,
@@ -1680,11 +1697,11 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
         });
     }
    collection.mlabDepth = device->CreateTexture({
-        .usage = {.Sampled = true, .Storage = true},
+        .usage = {.Sampled = true, .Storage = true, .ColorAttachment = true},
         .aspect = {.HasColor = true },
         .width = width,
         .height = height,
-        .format = RGL::TextureFormat::RGBA16_Sfloat,
+        .format = RenderTargetCollection::mlabDepthFormat,
         .initialLayout = RGL::ResourceLayout::Undefined,
         .debugName = "MLAB Depth"
     });

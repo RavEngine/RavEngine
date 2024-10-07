@@ -1732,14 +1732,15 @@ struct LightingType{
 			mainCommandBuffer->EndRenderDebugMarker();
 			RVE_PROFILE_SECTION_END(lit);
 
-#if 0
-			transparentClearPass->SetAttachmentTexture(0, target.transparencyAccumulation->GetDefaultView());
-			transparentClearPass->SetAttachmentTexture(1, target.transparencyRevealage->GetDefaultView());
+
+            for(const auto& [i, tx] : Enumerate(target.mlabAccum)){
+                transparentClearPass->SetAttachmentTexture(i, tx->GetDefaultView());
+            }
+            transparentClearPass->SetAttachmentTexture(4, target.mlabDepth->GetDefaultView());
 
 			mainCommandBuffer->BeginRenderDebugMarker("Lit Pass Transparent");
 			mainCommandBuffer->BeginRendering(transparentClearPass);
 			mainCommandBuffer->EndRendering();
-#endif
 
             litTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 			RVE_PROFILE_SECTION(littrans, "Encode Lit Pass Transparent");

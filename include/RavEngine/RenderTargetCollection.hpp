@@ -19,6 +19,8 @@ namespace RavEngine{
 		RGLTexturePtr depthStencil, lightingTexture, lightingScratchTexture, ssaoTexture, mlabDepth;
         
         std::array<RGLTexturePtr, 4> mlabAccum;
+        constexpr static std::array<RGL::TextureFormat, 4> formats = {RGL::TextureFormat::RGBA16_Sfloat, RGL::TextureFormat::RGBA8_Unorm, RGL::TextureFormat::RGBA8_Unorm, RGL::TextureFormat::RGBA8_Unorm};
+        constexpr static auto mlabDepthFormat = RGL::TextureFormat::RGBA16_Sfloat;
 		RGL::ITexture* finalFramebuffer = nullptr;
 		DepthPyramid depthPyramid;
 	};
