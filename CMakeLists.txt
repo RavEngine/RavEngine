@@ -285,7 +285,7 @@ else()
 		"${CMAKE_CURRENT_LIST_DIR}/tools/importlib/*.hpp" 
 		"${CMAKE_CURRENT_LIST_DIR}/tools/importlib/*.h")
 	add_library(rve_importlib ${SRC})
-	target_compile_features(rve_importlib PRIVATE cxx_std_20)
+	target_compile_features(rve_importlib PRIVATE cxx_std_23)
 	target_link_libraries(rve_importlib PRIVATE assimp fmt glm)
 	target_include_directories(rve_importlib 
 		PRIVATE 
@@ -508,7 +508,7 @@ set_source_files_properties(${SHADERS} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "sour
 source_group("Shaders" FILES ${SHADERS})
 
 # vectorization
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 if(APPLE OR LINUX)
 	target_compile_options("${PROJECT_NAME}" PUBLIC -ffast-math -ffp-contract=fast)
 endif()
@@ -744,8 +744,8 @@ if (RAVENGINE_BUILD_TESTS)
 		add_executable("${PROJECT_NAME}_DSPerf" EXCLUDE_FROM_ALL "test/dsperf.cpp")
 		target_link_libraries("${PROJECT_NAME}_DSPerf" PUBLIC "RavEngine")
 
-		target_compile_features("${PROJECT_NAME}_TestBasics" PRIVATE cxx_std_20)
-		target_compile_features("${PROJECT_NAME}_DSPerf" PRIVATE cxx_std_20)
+		target_compile_features("${PROJECT_NAME}_TestBasics" PRIVATE cxx_std_23)
+		target_compile_features("${PROJECT_NAME}_DSPerf" PRIVATE cxx_std_23)
 
 		set_target_properties("${PROJECT_NAME}_TestBasics" "${PROJECT_NAME}_DSPerf" PROPERTIES 
 			VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>"
@@ -769,7 +769,7 @@ if (RAVENGINE_BUILD_TESTS)
 	# dummy app
 	if (NOT RAVENGINE_SERVER)
 		add_executable("${PROJECT_NAME}_DummyApp" EXCLUDE_FROM_ALL "test/dummyapp.cpp")
-		target_compile_features("${PROJECT_NAME}_DummyApp" PRIVATE cxx_std_20)
+		target_compile_features("${PROJECT_NAME}_DummyApp" PRIVATE cxx_std_23)
 		target_link_libraries("${PROJECT_NAME}_DummyApp" PUBLIC "RavEngine")
 		pack_resources(TARGET "${PROJECT_NAME}_DummyApp"
 			OUTPUT_FILE DATA_PACK

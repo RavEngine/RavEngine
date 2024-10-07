@@ -382,8 +382,7 @@ void CommandBufferMTL::CopyTextureToTexture(const TextureCopyConfig& from, const
 void CommandBufferMTL::BeginRenderDebugMarker(const std::string &label){
 #ifndef NDEBUG
     auto str = [NSString stringWithUTF8String:label.c_str()];
-    [currentComputeCommandEncoder pushDebugGroup:str];
-    [currentCommandEncoder pushDebugGroup:str];
+    [currentCommandBuffer pushDebugGroup:str];
 #endif
 }
 
@@ -393,8 +392,7 @@ void CommandBufferMTL::BeginComputeDebugMarker(const std::string &label){
 
 void CommandBufferMTL::EndRenderDebugMarker(){
 #ifndef NDEBUG
-    [currentCommandEncoder popDebugGroup];
-    [currentComputeCommandEncoder popDebugGroup];
+    [currentCommandBuffer popDebugGroup];
 #endif
 }
 

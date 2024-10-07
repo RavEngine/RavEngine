@@ -516,7 +516,7 @@ struct LightingType{
 			prepareSkeletalCullingBuffer();
 		}
 
-		auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult]<bool includeLighting = true, bool transparentMode = false>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers){
+        auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult]<bool includeLighting = true, bool transparentMode = false>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers, const RenderTargetCollection* target){
 			RVE_PROFILE_FN_N("RenderFromPerspective");
             uint32_t particleBillboardMatrices = 0;
 
@@ -869,7 +869,7 @@ struct LightingType{
 					mainCommandBuffer->EndCompute();
 				}
 				};
-			auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, particleBillboardMatrices, &lightDataOffset,&layers](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
+			auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, particleBillboardMatrices, &lightDataOffset,&layers, &target](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
 				// do static meshes
 				RVE_PROFILE_FN_N("RenderTheRenderData");
 				mainCommandBuffer->SetViewport({
@@ -917,7 +917,15 @@ struct LightingType{
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);
 					}
-
+                    if constexpr(transparentMode){
+                        assert(target != nullptr); // no target provided!
+                        mainCommandBuffer->SetFragmentTexture(target->mlabAccum[0]->GetDefaultView(), 23);
+                        mainCommandBuffer->SetFragmentTexture(target->mlabAccum[1]->GetDefaultView(), 24);
+                        mainCommandBuffer->SetFragmentTexture(target->mlabAccum[2]->GetDefaultView(), 25);
+                        mainCommandBuffer->SetFragmentTexture(target->mlabAccum[3]->GetDefaultView(), 26);
+                        mainCommandBuffer->SetFragmentTexture(target->mlabDepth->GetDefaultView(), 27);
+                    }
+                        
 					// set push constant data
 					auto pushConstantData = materialInstance->GetPushConstantData();
 
@@ -969,7 +977,7 @@ struct LightingType{
 				}
 
 				// render particles
-                worldOwning->Filter([this, &viewproj, &particleBillboardMatrices, &currentLightingType, &pipelineSelectorFunction, &lightDataOffset, &worldOwning, &layers](const ParticleEmitter& emitter, const Transform& t) {
+                worldOwning->Filter([this, &viewproj, &particleBillboardMatrices, &currentLightingType, &pipelineSelectorFunction, &lightDataOffset, &worldOwning, &layers, &target](const ParticleEmitter& emitter, const Transform& t) {
                     // check if the render layers match
                     auto renderLayers = worldOwning->renderData.renderLayers[emitter.GetOwner().GetID()];
                     if ((renderLayers & layers) == 0){
@@ -987,7 +995,7 @@ struct LightingType{
 						return;
 					}
 
-					auto sharedParticleImpl = [this, &particleBillboardMatrices, &pipelineSelectorFunction, &worldOwning, &lightDataOffset](const ParticleEmitter& emitter, auto&& materialInstance, Ref<ParticleRenderMaterial> material, RGLBufferPtr activeParticleIndexBuffer, bool isLit) {
+					auto sharedParticleImpl = [this, &particleBillboardMatrices, &pipelineSelectorFunction, &worldOwning, &lightDataOffset, &target](const ParticleEmitter& emitter, auto&& materialInstance, Ref<ParticleRenderMaterial> material, RGLBufferPtr activeParticleIndexBuffer, bool isLit) {
 						auto pipeline = pipelineSelectorFunction(material);
 
 
@@ -1010,6 +1018,14 @@ struct LightingType{
 							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);
 							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);	// redundant on some backends, needed for DX
 						}
+                        if constexpr(transparentMode){
+                            assert(target != nullptr); // no target provided!
+                            mainCommandBuffer->SetFragmentTexture(target->mlabAccum[0]->GetDefaultView(), 23);
+                            mainCommandBuffer->SetFragmentTexture(target->mlabAccum[1]->GetDefaultView(), 24);
+                            mainCommandBuffer->SetFragmentTexture(target->mlabAccum[2]->GetDefaultView(), 25);
+                            mainCommandBuffer->SetFragmentTexture(target->mlabAccum[3]->GetDefaultView(), 26);
+                            mainCommandBuffer->SetFragmentTexture(target->mlabDepth->GetDefaultView(), 27);
+                        }
 
 						std::byte pushConstants[128]{  };
 
@@ -1165,7 +1181,7 @@ struct LightingType{
 					auto shadowMapSize = shadowTexture->GetSize().width;
 					renderFromPerspective.template operator()<false,false>(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, {}, shadowRenderPass, [](auto&& mat) {
 						return mat->GetShadowRenderPipeline();
-						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true, .Opaque = true }, lightMats.depthPyramid, light.shadowLayers);
+						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true, .Opaque = true }, lightMats.depthPyramid, light.shadowLayers, nullptr);
 
 				}
 				postshadowmapFunction(owner);
@@ -1327,7 +1343,7 @@ struct LightingType{
 
 				renderFromPerspective.template operator()<true, transparentMode>(camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, transparentMode ? litTransparentPass : litRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-                }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers);
+                }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, &target);
 
 				
 			};
@@ -1348,17 +1364,15 @@ struct LightingType{
                 unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 				renderFromPerspective.template operator() < false > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitRenderPass, [](auto&& mat) {
                     return mat->GetMainRenderPipeline();
-                }, renderArea, {.Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers);
+                }, renderArea, {.Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers, &target);
 				RVE_PROFILE_SECTION_END(unlit);
 
 				// render unlits with transparency
 				RVE_PROFILE_SECTION(unlittrans, "Encode Unlit Transparents");
-				unlitTransparentPass->SetAttachmentTexture(0, target.transparencyAccumulation->GetDefaultView());
-				unlitTransparentPass->SetAttachmentTexture(1, target.transparencyRevealage->GetDefaultView());
 				unlitTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 				renderFromPerspective.template operator() < false, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitTransparentPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-				}, renderArea, { .Unlit = true, .Transparent = true }, target.depthPyramid, camData.layers);
+				}, renderArea, { .Unlit = true, .Transparent = true }, target.depthPyramid, camData.layers,&target);
 				RVE_PROFILE_SECTION_END(unlittrans);
                 
                 // then do the skybox, if one is defined.
@@ -1391,25 +1405,24 @@ struct LightingType{
 
 
 				// apply transparency
+
 				transparencyApplyPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
 
 				mainCommandBuffer->BeginRenderDebugMarker("Apply All Transparency");
 				mainCommandBuffer->BeginRendering(transparencyApplyPass);
 
 				mainCommandBuffer->BindRenderPipeline(transparencyApplyPipeline);
-				mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-				mainCommandBuffer->SetFragmentTexture(target.transparencyAccumulation->GetDefaultView(), 1);
-				mainCommandBuffer->SetFragmentTexture(target.transparencyRevealage->GetDefaultView(), 2);
+                
+                for(const auto& [i, tx] : Enumerate(target.mlabAccum)){
+                    mainCommandBuffer->SetFragmentTexture(tx->GetDefaultView(), i);
+                }
+                
 				mainCommandBuffer->SetVertexBuffer(screenTriVerts);
-
-				LightToFBUBO transparencyUBO{
-					.viewRect = {renderArea.offset[0], renderArea.offset[1], renderArea.extent[0], renderArea.extent[1]}
-				};
-				mainCommandBuffer->SetFragmentBytes(transparencyUBO, 0);
 				mainCommandBuffer->Draw(3);
 
 				mainCommandBuffer->EndRendering();
 				mainCommandBuffer->EndRenderDebugMarker();
+
 
                 // afterwards render the post processing effects
 				RVE_PROFILE_SECTION(postfx, "Encode Post Processing Effects");
@@ -1715,11 +1728,9 @@ struct LightingType{
 
 			// lit pass
 			litRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
-			litRenderPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
 			litRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
 			litClearRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
-			litClearRenderPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
 			litClearRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
 			mainCommandBuffer->BeginRenderDebugMarker("Lit Pass Opaque");
@@ -1734,16 +1745,16 @@ struct LightingType{
 			mainCommandBuffer->EndRenderDebugMarker();
 			RVE_PROFILE_SECTION_END(lit);
 
-			transparentClearPass->SetAttachmentTexture(0, target.transparencyAccumulation->GetDefaultView());
-			transparentClearPass->SetAttachmentTexture(1, target.transparencyRevealage->GetDefaultView());
+
+            for(const auto& [i, tx] : Enumerate(target.mlabAccum)){
+                transparentClearPass->SetAttachmentTexture(i, tx->GetDefaultView());
+            }
+            transparentClearPass->SetAttachmentTexture(4, target.mlabDepth->GetDefaultView());
 
 			mainCommandBuffer->BeginRenderDebugMarker("Lit Pass Transparent");
 			mainCommandBuffer->BeginRendering(transparentClearPass);
 			mainCommandBuffer->EndRendering();
 
-			litTransparentPass->SetAttachmentTexture(0, target.transparencyAccumulation->GetDefaultView());
-			litTransparentPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
-			litTransparentPass->SetAttachmentTexture(2, target.transparencyRevealage->GetDefaultView());
             litTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 			RVE_PROFILE_SECTION(littrans, "Encode Lit Pass Transparent");
 			for (const auto& camdata : view.camDatas) {
@@ -1800,8 +1811,7 @@ struct LightingType{
 				mainCommandBuffer->BindRenderPipeline(ssaoPipeline);
 				mainCommandBuffer->BeginRenderDebugMarker("SSAO");
 				mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-				mainCommandBuffer->SetFragmentTexture(view.collection.normalTexture->GetDefaultView(), 1);
-				mainCommandBuffer->SetFragmentTexture(view.collection.depthStencil->GetDefaultView(), 2);
+				mainCommandBuffer->SetFragmentTexture(view.collection.depthStencil->GetDefaultView(), 1);
 				mainCommandBuffer->BindBuffer(ssaoSamplesBuffer, 8);
 
                 for (const auto& camdata : view.camDatas) {

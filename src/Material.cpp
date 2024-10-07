@@ -128,7 +128,7 @@ namespace RavEngine {
         }
     }
 
-    std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterialBindings(const std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc>& bindings) {
+std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterialBindings(const std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc>& bindings, OpacityMode opacityMode) {
         auto configBindingsCopy = bindings;
         configBindingsCopy.push_back(
             {
@@ -179,6 +179,43 @@ namespace RavEngine {
                 .stageFlags = RGL::BindingVisibility::Fragment
             }
         );
+        if (opacityMode == OpacityMode::Transparent){ // storage images for MLAB
+            configBindingsCopy.push_back(
+                                         {
+                                             .binding = 23,
+                                             .type = RGL::BindingType::StorageImage,
+                                             .stageFlags = RGL::BindingVisibility::Fragment
+                                         }
+                                         );
+            configBindingsCopy.push_back(
+                                         {
+                                             .binding = 24,
+                                             .type = RGL::BindingType::StorageImage,
+                                             .stageFlags = RGL::BindingVisibility::Fragment
+                                         }
+                                         );
+            configBindingsCopy.push_back(
+                                         {
+                                             .binding = 25,
+                                             .type = RGL::BindingType::StorageImage,
+                                             .stageFlags = RGL::BindingVisibility::Fragment
+                                         }
+                                         );
+            configBindingsCopy.push_back(
+                                         {
+                                             .binding = 26,
+                                             .type = RGL::BindingType::StorageImage,
+                                             .stageFlags = RGL::BindingVisibility::Fragment
+                                         }
+                                         );
+            configBindingsCopy.push_back(
+                                         {
+                                             .binding = 27,
+                                             .type = RGL::BindingType::StorageImage,
+                                             .stageFlags = RGL::BindingVisibility::Fragment
+                                         }
+                                         );
+        }
         configBindingsCopy.push_back(
             {
                 .binding = 28,
@@ -218,7 +255,7 @@ namespace RavEngine {
         {
             .vertConfig = defaultVertexConfig,
             .colorBlendConfig = options.opacityMode == OpacityMode::Opaque ? defaultColorBlendConfig : defaultTransparentColorBlendConfig,
-            .bindings = augmentLitMaterialBindings(pipeOptions.bindings),
+            .bindings = augmentLitMaterialBindings(pipeOptions.bindings, options.opacityMode),
             .pushConstantSize = pipeOptions.pushConstantSize,
             .cullMode = options.cullMode,
             .opacityMode = options.opacityMode
@@ -227,7 +264,7 @@ namespace RavEngine {
     {
     }
 
-    static std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentUnlitMaterialBindings(const std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc>& bindings) {
+    std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentUnlitMaterialBindings(const std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc>& bindings, OpacityMode opacityMode) {
         auto configBindingsCopy = bindings;
         configBindingsCopy.push_back(
             {
@@ -236,6 +273,44 @@ namespace RavEngine {
                 .stageFlags = RGL::BindingVisibility::VertexFragment
             }
         );
+        
+        if (opacityMode == OpacityMode::Transparent){ // storage images for MLAB
+            configBindingsCopy.push_back(
+                                         {
+                                             .binding = 23,
+                                             .type = RGL::BindingType::StorageImage,
+                                             .stageFlags = RGL::BindingVisibility::Fragment
+                                         }
+                                         );
+            configBindingsCopy.push_back(
+                                         {
+                                             .binding = 24,
+                                             .type = RGL::BindingType::StorageImage,
+                                             .stageFlags = RGL::BindingVisibility::Fragment
+                                         }
+                                         );
+            configBindingsCopy.push_back(
+                                         {
+                                             .binding = 25,
+                                             .type = RGL::BindingType::StorageImage,
+                                             .stageFlags = RGL::BindingVisibility::Fragment
+                                         }
+                                         );
+            configBindingsCopy.push_back(
+                                         {
+                                             .binding = 26,
+                                             .type = RGL::BindingType::StorageImage,
+                                             .stageFlags = RGL::BindingVisibility::Fragment
+                                         }
+                                         );
+            configBindingsCopy.push_back(
+                                         {
+                                             .binding = 27,
+                                             .type = RGL::BindingType::StorageImage,
+                                             .stageFlags = RGL::BindingVisibility::Fragment
+                                         }
+                                         );
+        }
         return configBindingsCopy;
     }
 
@@ -243,7 +318,7 @@ namespace RavEngine {
         : Material(vsh_name, fsh_name, MaterialConfig{
             .vertConfig = defaultVertexConfig,
             .colorBlendConfig = options.opacityMode == OpacityMode::Opaque ? defaultUnlitColorBlendConfig : defaultTransparentUnlitColorBlendConfig,
-            .bindings = augmentUnlitMaterialBindings(pipeOptions.bindings),
+            .bindings = augmentUnlitMaterialBindings(pipeOptions.bindings, options.opacityMode),
             .pushConstantSize = pipeOptions.pushConstantSize,
             .cullMode = options.cullMode,
             .opacityMode = options.opacityMode

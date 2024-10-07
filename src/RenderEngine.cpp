@@ -333,11 +333,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				   .loadOp = RGL::LoadAccessOperation::Load,
 				   .storeOp = RGL::StoreAccessOperation::Store,
 			   },
-			   {
-				   .format = normalTexFormat,
-				   .loadOp = RGL::LoadAccessOperation::Load,
-				   .storeOp = RGL::StoreAccessOperation::Store,
-			   },
 		   },
 		   .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
 			   .format = RGL::TextureFormat::D32SFloat,
@@ -352,11 +347,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		   .attachments = {
 			   {
 				   .format = colorTexFormat,
-				   .loadOp = RGL::LoadAccessOperation::Clear,
-				   .storeOp = RGL::StoreAccessOperation::Store,
-			   },
-			   {
-				   .format = normalTexFormat,
 				   .loadOp = RGL::LoadAccessOperation::Clear,
 				   .storeOp = RGL::StoreAccessOperation::Store,
 			   },
@@ -402,23 +392,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
     });
 
 	litTransparentPass = RGL::CreateRenderPass({
-		.attachments = {
-			{
-				.format = accumFormat,
-				.loadOp = RGL::LoadAccessOperation::Load,
-				.storeOp = RGL::StoreAccessOperation::Store,
-			},
-			{
-				.format = normalTexFormat,
-				.loadOp = RGL::LoadAccessOperation::Load,
-				.storeOp = RGL::StoreAccessOperation::Store,
-			},
-			{
-				.format = revealageFormat,
-				.loadOp = RGL::LoadAccessOperation::Load,
-				.storeOp = RGL::StoreAccessOperation::Store,
-			},
-		},
+		.attachments = {},
         .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
             .format = RGL::TextureFormat::D32SFloat,
             .loadOp = RGL::LoadAccessOperation::Load,
@@ -427,18 +401,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	});
 
 	unlitTransparentPass = RGL::CreateRenderPass({
-		.attachments = {
-			{
-				.format = accumFormat,
-				.loadOp = RGL::LoadAccessOperation::Load,
-				.storeOp = RGL::StoreAccessOperation::Store,
-			},
-			{
-				.format = revealageFormat,
-				.loadOp = RGL::LoadAccessOperation::Load,
-				.storeOp = RGL::StoreAccessOperation::Store,
-			},
-		},
+		.attachments = {},
         .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
             .format = RGL::TextureFormat::D32SFloat,
             .loadOp = RGL::LoadAccessOperation::Load,
@@ -450,17 +413,35 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	transparentClearPass = RGL::CreateRenderPass({
 		.attachments = {
 			{
-				.format = accumFormat,
+				.format = RenderTargetCollection::formats[0],
 				.loadOp = RGL::LoadAccessOperation::Clear,
 				.storeOp = RGL::StoreAccessOperation::Store,
-				.clearColor = {0,0,0,0}
+				.clearColor = {0,0,0,1}
 			},
 			{
-				.format = revealageFormat,
+                .format = RenderTargetCollection::formats[1],
 				.loadOp = RGL::LoadAccessOperation::Clear,
 				.storeOp = RGL::StoreAccessOperation::Store,
-				.clearColor = {1,1,1,1}
+				.clearColor = {0,0,0,1}
 			},
+            {
+                .format = RenderTargetCollection::formats[2],
+                .loadOp = RGL::LoadAccessOperation::Clear,
+                .storeOp = RGL::StoreAccessOperation::Store,
+                .clearColor = {0,0,0,1}
+            },
+            {
+                .format = RenderTargetCollection::formats[3],
+                .loadOp = RGL::LoadAccessOperation::Clear,
+                .storeOp = RGL::StoreAccessOperation::Store,
+                .clearColor = {0,0,0,1}
+            },
+            {
+                .format = RenderTargetCollection::mlabDepthFormat,
+                .loadOp = RGL::LoadAccessOperation::Clear,
+                .storeOp = RGL::StoreAccessOperation::Store,
+                .clearColor = {1,1,1,1}
+            },
 		}
 	});
 
@@ -1255,21 +1236,25 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.bindings = {
 			{
 				.binding = 0,
-				.type = RGL::BindingType::Sampler,
+				.type = RGL::BindingType::StorageImage,
 				.stageFlags = RGL::BindingVisibility::Fragment,
 			},
-			{
-				.binding = 1,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 2,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
+            {
+                .binding = 1,
+                .type = RGL::BindingType::StorageImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+            {
+                .binding = 2,
+                .type = RGL::BindingType::StorageImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+            {
+                .binding = 3,
+                .type = RGL::BindingType::StorageImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
 		},
-		.constants = {{sizeof(LightToFBUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)}}
 	});
 
 	transparencyApplyPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
@@ -1309,9 +1294,11 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.attachments = {
 				{
 					.format = colorTexFormat,
-					.sourceColorBlendFactor = RGL::BlendFactor::SourceAlpha,
-					.destinationColorBlendFactor = RGL::BlendFactor::OneMinusSourceAlpha,
-					.blendEnabled = true
+                    .sourceColorBlendFactor = RGL::BlendFactor::SourceAlpha,
+                    .destinationColorBlendFactor = RGL::BlendFactor::SourceAlpha,
+                    .alphaBlendOperation = RGL::BlendOperation::Add,
+                    .colorWriteMask = RGL::ColorWriteMask::RGB,
+                    .blendEnabled = true,
 
 				},
 			}
@@ -1641,57 +1628,21 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 
 	RenderTargetCollection collection;
 
-	if (createDepth) {
-		collection.depthStencil = device->CreateTexture({
-			.usage = {.Sampled = true, .DepthStencilAttachment = true },
-			.aspect = {.HasDepth = true },
-			.width = width,
-			.height = height,
-			.format = RGL::TextureFormat::D32SFloat,
-			.debugName = "Depth Texture"
-			}
-		);
-
-		auto dim = std::min(width, height);
-		
-
-		collection.depthPyramid = {dim};
-
-	}
-
-	collection.normalTexture = device->CreateTexture({
-		.usage = {.Sampled = true, .ColorAttachment = true },
-		.aspect = {.HasColor = true },
-		.width = width,
-		.height = height,
-		.format = normalTexFormat,
-		.initialLayout = RGL::ResourceLayout::Undefined,
-		.debugName = "Normal gbuffer"
-		}
-	);
-
-	collection.transparencyAccumulation = device->CreateTexture({
-		.usage = {.Sampled = true, .ColorAttachment = true },
-		.aspect = {.HasColor = true },
-		.width = width,
-		.height = height,
-		.format = accumFormat,
-		.initialLayout = RGL::ResourceLayout::Undefined,
-		.debugName = "Transparency Accumulation"
-		}
-	);
-
-	collection.transparencyRevealage = device->CreateTexture({
-		.usage = {.Sampled = true, .ColorAttachment = true },
-		.aspect = {.HasColor = true },
-		.width = width,
-		.height = height,
-		.format = revealageFormat,
-		.initialLayout = RGL::ResourceLayout::Undefined,
-		.debugName = "Transparency Revealage"
-		}
-	);
-
+    if (createDepth) {
+        collection.depthStencil = device->CreateTexture({
+            .usage = {.Sampled = true, .DepthStencilAttachment = true },
+            .aspect = {.HasDepth = true },
+            .width = width,
+            .height = height,
+            .format = RGL::TextureFormat::D32SFloat,
+            .debugName = "Depth Texture"
+        });
+        
+        auto dim = std::min(width, height);
+        
+        collection.depthPyramid = {dim};
+        
+    }
     
     collection.ssaoTexture = device->CreateTexture({
         .usage = {.Sampled = true, .ColorAttachment = true },
@@ -1718,16 +1669,41 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
     lightingConfig.debugName = "Lighting texture Swap 2";
     collection.lightingScratchTexture = device->CreateTexture(lightingConfig);
 
+    for(const auto& [i, format] : Enumerate(RenderTargetCollection::formats)){
+        collection.mlabAccum[i] = device->CreateTexture({
+            .usage = {.Sampled = true, .Storage = true, .ColorAttachment = true },
+            .aspect = {.HasColor = true },
+            .width = width,
+            .height = height,
+            .format = format,
+            .initialLayout = RGL::ResourceLayout::Undefined,
+            .debugName = "MLAB Accumulation"
+        });
+    }
+   collection.mlabDepth = device->CreateTexture({
+        .usage = {.Sampled = true, .Storage = true, .ColorAttachment = true},
+        .aspect = {.HasColor = true },
+        .width = width,
+        .height = height,
+        .format = RenderTargetCollection::mlabDepthFormat,
+        .initialLayout = RGL::ResourceLayout::Undefined,
+        .debugName = "MLAB Depth"
+    });
+
 	return collection;
 }
 
 void RavEngine::RenderEngine::ResizeRenderTargetCollection(RenderTargetCollection& collection, dim size)
 {
 	gcTextures.enqueue(collection.depthStencil);
-	gcTextures.enqueue(collection.normalTexture);
 	gcTextures.enqueue(collection.lightingTexture);
     gcTextures.enqueue(collection.depthPyramid.pyramidTexture);
     gcTextures.enqueue(collection.lightingScratchTexture);
+    gcTextures.enqueue(collection.mlabDepth);
+    
+    for(const auto tx : collection.mlabAccum){
+        gcTextures.enqueue(tx);
+    }
 
 	auto newcol = CreateRenderTargetCollection(size);
 	collection = newcol;

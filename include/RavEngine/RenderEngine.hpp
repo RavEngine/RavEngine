@@ -112,10 +112,7 @@ namespace RavEngine {
         }
                 
 		constexpr static RGL::TextureFormat
-			normalTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
 			colorTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
-			accumFormat = RGL::TextureFormat::RGBA16_Sfloat,
-			revealageFormat = RGL::TextureFormat::R16_Float,
 			ssaoFormat = RGL::TextureFormat::R32_Float,
 			depthFormat = RGL::TextureFormat::D32SFloat;
 
@@ -211,7 +208,7 @@ namespace RavEngine {
 		
 		static struct vs {
 			bool vsync = true;
-            bool ssao = false;
+            const bool ssao = false;
 		} VideoSettings;
 
 		void SyncVideoSettings();

@@ -2,6 +2,7 @@
 #include <effolkronium/random.hpp>
 #include <sstream>
 #include <type_traits>
+#include <ranges>
 #if !RVE_SERVER
 #include <RGL/Types.hpp>
 #endif
@@ -54,6 +55,12 @@ static inline std::string FormatWithSep(T value)
 	
 //random generation
 using Random = effolkronium::random_static;
+
+auto Enumerate(const auto& data) {
+    return data | std::views::transform([i = 0](const auto& value) mutable {
+        return std::make_pair(i++, value);
+    });
+}
 
 /**
 Load a shader given its filename (ie "myshader_vsh"). Must include extension.

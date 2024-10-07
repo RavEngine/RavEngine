@@ -28,6 +28,8 @@ set(SPIRV_CROSS_ENABLE_C_API OFF CACHE INTERNAL "")
 set(SPIRV_CROSS_SKIP_INSTALL ON CACHE INTERNAL "")
 add_subdirectory(deps/SPIRV-Cross EXCLUDE_FROM_ALL)
 
+set(SPIRV_REFLECT_EXECUTABLE OFF)
+set(SPIRV_REFLECT_STATIC_LIB ON)
 add_subdirectory(deps/SPIRV-Reflect EXCLUDE_FROM_ALL)
 
 if (ST_ENABLE_WGSL)
@@ -119,7 +121,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
     spirv-cross-msl
     spirv-cross-reflect
     SPIRV-Tools
-    SPIRV-Reflect
+    spirv-reflect-static
     ${TINT_LIB}
     ${FOUNDATION_LIB}
 )

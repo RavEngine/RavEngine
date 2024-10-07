@@ -411,7 +411,7 @@ void App::Tick(){
             }
             
             auto& collection = camera.target->GetCollection();
-            auto size = collection.normalTexture->GetSize();
+            auto size = collection.depthStencil->GetSize();
             allViews.push_back({collection, {MakeCamData(camera, size.width, size.height)}, {static_cast<int>(size.width), static_cast<int>(size.height)}});
         }
         

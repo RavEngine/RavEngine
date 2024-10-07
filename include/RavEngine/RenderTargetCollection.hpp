@@ -1,6 +1,7 @@
 #pragma once
 #if !RVE_SERVER
 #include <RGL/Types.hpp>
+#include <RGL/TextureFormat.hpp>
 #include "mathtypes.hpp"
 #include "DepthPyramid.hpp"
 #include "Vector.hpp"
@@ -16,7 +17,11 @@ namespace RavEngine{
 	};
 
 	struct RenderTargetCollection {
-		RGLTexturePtr normalTexture, depthStencil, lightingTexture, lightingScratchTexture, ssaoTexture, transparencyAccumulation, transparencyRevealage;
+		RGLTexturePtr depthStencil, lightingTexture, lightingScratchTexture, ssaoTexture, mlabDepth;
+        
+        std::array<RGLTexturePtr, 4> mlabAccum;
+        constexpr static std::array<RGL::TextureFormat, 4> formats = {RGL::TextureFormat::RGBA16_Sfloat, RGL::TextureFormat::RGBA8_Unorm, RGL::TextureFormat::RGBA8_Unorm, RGL::TextureFormat::RGBA8_Unorm};
+        constexpr static auto mlabDepthFormat = RGL::TextureFormat::RGBA16_Sfloat;
 		RGL::ITexture* finalFramebuffer = nullptr;
 		DepthPyramid depthPyramid;
 	};

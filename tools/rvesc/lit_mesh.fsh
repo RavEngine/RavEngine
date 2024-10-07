@@ -19,16 +19,6 @@ struct LitOutput{
 #include "BRDF.glsl"
 #include "cluster_shared.glsl"
 
-    layout(location = 0) out vec4 outcolor;     // accumulation if in transparent mode
-    layout(location = 1) out vec4 outnormal;
-#if RVE_TRANSPARENT
-    layout(location = 2) out float revealage;
-#else
-   
-#endif
-#define VARYINGDIR in
-#include "mesh_varyings.glsl"
-
 #include "lit_mesh_shared.glsl"
 #include "mesh_shared.glsl"
 
@@ -85,8 +75,7 @@ layout(set = 2, binding = 0) uniform textureCube pointShadowMaps[];    // we ali
 void main(){
 
     LitOutput user_out = frag();
-    outcolor = vec4(0); // NV: these don't default-init to 0
-    outnormal = vec4(user_out.normal,1);
+    vec4 outcolor = vec4(0); // NV: these don't default-init to 0
     
     const uint entityRenderLayer = entityRenderLayers[varyingEntityID];
     const uint16_t attributeBitmask = perObjectFlags[varyingEntityID];
@@ -220,7 +209,11 @@ void main(){
     outcolor += vec4(user_out.emissiveColor,0);  // don't want to add emissivity to the alpha channel
 
     #if RVE_TRANSPARENT
+        beginInvocationInterlockARB();
         writeTransparency(outcolor);
+        endInvocationInterlockARB();
+    #else
+        result = outcolor;
     #endif
 
 }

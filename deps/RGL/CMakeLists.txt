@@ -84,6 +84,8 @@ if (RGL_RUNTIME_COMPILATION OR RGL_ENABLE_RGLC)
 	)
 else()
 	# we still need spirv-reflect
+	set(SPIRV_REFLECT_EXECUTABLE OFF)
+	set(SPIRV_REFLECT_STATIC_LIB ON)
 	add_subdirectory(deps/ShaderTranspiler/deps/SPIRV-Reflect EXCLUDE_FROM_ALL)
 endif()
 
@@ -149,8 +151,8 @@ if (NOT VK_FORCE_DISABLED)
 		set_target_properties(vulkan vvl VkLayer_utils loader_asm_gen_files PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
 	endif()
 
-	target_link_libraries(${PROJECT_NAME} PRIVATE SPIRV-Reflect ${X11_LIBRARIES})
-	set_target_properties("SPIRV-Reflect" PROPERTIES 
+	target_link_libraries(${PROJECT_NAME} PRIVATE spirv-reflect-static ${X11_LIBRARIES})
+	set_target_properties("spirv-reflect-static" PROPERTIES 
 		FOLDER "${RGL_IDE_ROOT}/Libraries"
 	)
 else()
