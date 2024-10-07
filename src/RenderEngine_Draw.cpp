@@ -1405,27 +1405,24 @@ struct LightingType{
 
 
 				// apply transparency
-#if 0
+
 				transparencyApplyPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
 
 				mainCommandBuffer->BeginRenderDebugMarker("Apply All Transparency");
 				mainCommandBuffer->BeginRendering(transparencyApplyPass);
 
 				mainCommandBuffer->BindRenderPipeline(transparencyApplyPipeline);
-				mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-				mainCommandBuffer->SetFragmentTexture(target.transparencyAccumulation->GetDefaultView(), 1);
-				mainCommandBuffer->SetFragmentTexture(target.transparencyRevealage->GetDefaultView(), 2);
+                
+                for(const auto& [i, tx] : Enumerate(target.mlabAccum)){
+                    mainCommandBuffer->SetFragmentTexture(tx->GetDefaultView(), i);
+                }
+                
 				mainCommandBuffer->SetVertexBuffer(screenTriVerts);
-
-				LightToFBUBO transparencyUBO{
-					.viewRect = {renderArea.offset[0], renderArea.offset[1], renderArea.extent[0], renderArea.extent[1]}
-				};
-				mainCommandBuffer->SetFragmentBytes(transparencyUBO, 0);
 				mainCommandBuffer->Draw(3);
 
 				mainCommandBuffer->EndRendering();
 				mainCommandBuffer->EndRenderDebugMarker();
-#endif
+
 
                 // afterwards render the post processing effects
 				RVE_PROFILE_SECTION(postfx, "Encode Post Processing Effects");

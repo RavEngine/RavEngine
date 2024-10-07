@@ -1258,21 +1258,25 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.bindings = {
 			{
 				.binding = 0,
-				.type = RGL::BindingType::Sampler,
+				.type = RGL::BindingType::StorageImage,
 				.stageFlags = RGL::BindingVisibility::Fragment,
 			},
-			{
-				.binding = 1,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 2,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
+            {
+                .binding = 1,
+                .type = RGL::BindingType::StorageImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+            {
+                .binding = 2,
+                .type = RGL::BindingType::StorageImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
+            {
+                .binding = 3,
+                .type = RGL::BindingType::StorageImage,
+                .stageFlags = RGL::BindingVisibility::Fragment,
+            },
 		},
-		.constants = {{sizeof(LightToFBUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)}}
 	});
 
 	transparencyApplyPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
