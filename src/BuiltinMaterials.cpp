@@ -56,9 +56,6 @@ STATIC(RavEngine::defaultColorBlendConfig) {
                 {
                     .format = RenderEngine::colorTexFormat
                 },
-                {
-                    .format = RenderEngine::normalTexFormat
-                },
     }
 };
 
@@ -68,9 +65,6 @@ STATIC(RavEngine::defaultTransparentColorBlendConfig) {
                     .format = RenderEngine::accumFormat,
                     .destinationColorBlendFactor = RGL::BlendFactor::One,
                     .blendEnabled = true
-                },
-                {
-                    .format = RenderEngine::normalTexFormat
                 },
                 {
                     .format = RenderEngine::revealageFormat,

@@ -20,9 +20,8 @@ struct LitOutput{
 #include "cluster_shared.glsl"
 
     layout(location = 0) out vec4 outcolor;     // accumulation if in transparent mode
-    layout(location = 1) out vec4 outnormal;
 #if RVE_TRANSPARENT
-    layout(location = 2) out float revealage;
+    layout(location = 1) out float revealage;
 #else
    
 #endif
@@ -86,7 +85,6 @@ void main(){
 
     LitOutput user_out = frag();
     outcolor = vec4(0); // NV: these don't default-init to 0
-    outnormal = vec4(user_out.normal,1);
     
     const uint entityRenderLayer = entityRenderLayers[varyingEntityID];
     const uint16_t attributeBitmask = perObjectFlags[varyingEntityID];

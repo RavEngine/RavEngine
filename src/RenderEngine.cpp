@@ -333,11 +333,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				   .loadOp = RGL::LoadAccessOperation::Load,
 				   .storeOp = RGL::StoreAccessOperation::Store,
 			   },
-			   {
-				   .format = normalTexFormat,
-				   .loadOp = RGL::LoadAccessOperation::Load,
-				   .storeOp = RGL::StoreAccessOperation::Store,
-			   },
 		   },
 		   .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
 			   .format = RGL::TextureFormat::D32SFloat,
@@ -352,11 +347,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		   .attachments = {
 			   {
 				   .format = colorTexFormat,
-				   .loadOp = RGL::LoadAccessOperation::Clear,
-				   .storeOp = RGL::StoreAccessOperation::Store,
-			   },
-			   {
-				   .format = normalTexFormat,
 				   .loadOp = RGL::LoadAccessOperation::Clear,
 				   .storeOp = RGL::StoreAccessOperation::Store,
 			   },
@@ -405,11 +395,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.attachments = {
 			{
 				.format = accumFormat,
-				.loadOp = RGL::LoadAccessOperation::Load,
-				.storeOp = RGL::StoreAccessOperation::Store,
-			},
-			{
-				.format = normalTexFormat,
 				.loadOp = RGL::LoadAccessOperation::Load,
 				.storeOp = RGL::StoreAccessOperation::Store,
 			},
@@ -1659,17 +1644,6 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 
 	}
 
-	collection.normalTexture = device->CreateTexture({
-		.usage = {.Sampled = true, .ColorAttachment = true },
-		.aspect = {.HasColor = true },
-		.width = width,
-		.height = height,
-		.format = normalTexFormat,
-		.initialLayout = RGL::ResourceLayout::Undefined,
-		.debugName = "Normal gbuffer"
-		}
-	);
-
 	collection.transparencyAccumulation = device->CreateTexture({
 		.usage = {.Sampled = true, .ColorAttachment = true },
 		.aspect = {.HasColor = true },
@@ -1746,7 +1720,6 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 void RavEngine::RenderEngine::ResizeRenderTargetCollection(RenderTargetCollection& collection, dim size)
 {
 	gcTextures.enqueue(collection.depthStencil);
-	gcTextures.enqueue(collection.normalTexture);
 	gcTextures.enqueue(collection.lightingTexture);
     gcTextures.enqueue(collection.depthPyramid.pyramidTexture);
     gcTextures.enqueue(collection.lightingScratchTexture);

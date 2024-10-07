@@ -1715,11 +1715,9 @@ struct LightingType{
 
 			// lit pass
 			litRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
-			litRenderPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
 			litRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
 			litClearRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
-			litClearRenderPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
 			litClearRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
 			mainCommandBuffer->BeginRenderDebugMarker("Lit Pass Opaque");
@@ -1742,8 +1740,7 @@ struct LightingType{
 			mainCommandBuffer->EndRendering();
 
 			litTransparentPass->SetAttachmentTexture(0, target.transparencyAccumulation->GetDefaultView());
-			litTransparentPass->SetAttachmentTexture(1, target.normalTexture->GetDefaultView());
-			litTransparentPass->SetAttachmentTexture(2, target.transparencyRevealage->GetDefaultView());
+			litTransparentPass->SetAttachmentTexture(1, target.transparencyRevealage->GetDefaultView());
             litTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 			RVE_PROFILE_SECTION(littrans, "Encode Lit Pass Transparent");
 			for (const auto& camdata : view.camDatas) {
@@ -1800,8 +1797,7 @@ struct LightingType{
 				mainCommandBuffer->BindRenderPipeline(ssaoPipeline);
 				mainCommandBuffer->BeginRenderDebugMarker("SSAO");
 				mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-				mainCommandBuffer->SetFragmentTexture(view.collection.normalTexture->GetDefaultView(), 1);
-				mainCommandBuffer->SetFragmentTexture(view.collection.depthStencil->GetDefaultView(), 2);
+				mainCommandBuffer->SetFragmentTexture(view.collection.depthStencil->GetDefaultView(), 1);
 				mainCommandBuffer->BindBuffer(ssaoSamplesBuffer, 8);
 
                 for (const auto& camdata : view.camDatas) {
