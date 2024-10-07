@@ -392,18 +392,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
     });
 
 	litTransparentPass = RGL::CreateRenderPass({
-		.attachments = {
-			{
-				.format = accumFormat,
-				.loadOp = RGL::LoadAccessOperation::Load,
-				.storeOp = RGL::StoreAccessOperation::Store,
-			},
-			{
-				.format = revealageFormat,
-				.loadOp = RGL::LoadAccessOperation::Load,
-				.storeOp = RGL::StoreAccessOperation::Store,
-			},
-		},
+		.attachments = {},
         .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
             .format = RGL::TextureFormat::D32SFloat,
             .loadOp = RGL::LoadAccessOperation::Load,
@@ -412,18 +401,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	});
 
 	unlitTransparentPass = RGL::CreateRenderPass({
-		.attachments = {
-			{
-				.format = accumFormat,
-				.loadOp = RGL::LoadAccessOperation::Load,
-				.storeOp = RGL::StoreAccessOperation::Store,
-			},
-			{
-				.format = revealageFormat,
-				.loadOp = RGL::LoadAccessOperation::Load,
-				.storeOp = RGL::StoreAccessOperation::Store,
-			},
-		},
+		.attachments = {},
         .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
             .format = RGL::TextureFormat::D32SFloat,
             .loadOp = RGL::LoadAccessOperation::Load,

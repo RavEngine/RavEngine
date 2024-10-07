@@ -211,7 +211,7 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
             configBindingsCopy.push_back(
                                          {
                                              .binding = 27,
-                                             .type = RGL::BindingType::StorageBuffer,
+                                             .type = RGL::BindingType::StorageImage,
                                              .stageFlags = RGL::BindingVisibility::Fragment
                                          }
                                          );
@@ -306,7 +306,7 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
             configBindingsCopy.push_back(
                                          {
                                              .binding = 27,
-                                             .type = RGL::BindingType::StorageBuffer,
+                                             .type = RGL::BindingType::StorageImage,
                                              .stageFlags = RGL::BindingVisibility::Fragment
                                          }
                                          );

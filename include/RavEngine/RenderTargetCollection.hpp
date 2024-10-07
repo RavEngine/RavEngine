@@ -1,6 +1,7 @@
 #pragma once
 #if !RVE_SERVER
 #include <RGL/Types.hpp>
+#include <RGL/TextureFormat.hpp>
 #include "mathtypes.hpp"
 #include "DepthPyramid.hpp"
 #include "Vector.hpp"

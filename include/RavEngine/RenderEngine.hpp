@@ -113,8 +113,6 @@ namespace RavEngine {
                 
 		constexpr static RGL::TextureFormat
 			colorTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
-			accumFormat = RGL::TextureFormat::RGBA16_Sfloat,
-			revealageFormat = RGL::TextureFormat::R16_Float,
 			ssaoFormat = RGL::TextureFormat::R32_Float,
 			depthFormat = RGL::TextureFormat::D32SFloat;
 
