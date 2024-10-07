@@ -16,7 +16,7 @@ namespace RavEngine{
 	};
 
 	struct RenderTargetCollection {
-		RGLTexturePtr depthStencil, lightingTexture, lightingScratchTexture, ssaoTexture, transparencyAccumulation, transparencyRevealage, mlabDepth;
+		RGLTexturePtr depthStencil, lightingTexture, lightingScratchTexture, ssaoTexture, mlabDepth;
         
         std::array<RGLTexturePtr, 4> mlabAccum;
 		RGL::ITexture* finalFramebuffer = nullptr;

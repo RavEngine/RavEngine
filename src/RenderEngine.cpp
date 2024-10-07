@@ -1626,46 +1626,21 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 
 	RenderTargetCollection collection;
 
-	if (createDepth) {
-		collection.depthStencil = device->CreateTexture({
-			.usage = {.Sampled = true, .DepthStencilAttachment = true },
-			.aspect = {.HasDepth = true },
-			.width = width,
-			.height = height,
-			.format = RGL::TextureFormat::D32SFloat,
-			.debugName = "Depth Texture"
-			}
-		);
-
-		auto dim = std::min(width, height);
-		
-
-		collection.depthPyramid = {dim};
-
-	}
-
-	collection.transparencyAccumulation = device->CreateTexture({
-		.usage = {.Sampled = true, .ColorAttachment = true },
-		.aspect = {.HasColor = true },
-		.width = width,
-		.height = height,
-		.format = accumFormat,
-		.initialLayout = RGL::ResourceLayout::Undefined,
-		.debugName = "Transparency Accumulation"
-		}
-	);
-
-	collection.transparencyRevealage = device->CreateTexture({
-		.usage = {.Sampled = true, .ColorAttachment = true },
-		.aspect = {.HasColor = true },
-		.width = width,
-		.height = height,
-		.format = revealageFormat,
-		.initialLayout = RGL::ResourceLayout::Undefined,
-		.debugName = "Transparency Revealage"
-		}
-	);
-
+    if (createDepth) {
+        collection.depthStencil = device->CreateTexture({
+            .usage = {.Sampled = true, .DepthStencilAttachment = true },
+            .aspect = {.HasDepth = true },
+            .width = width,
+            .height = height,
+            .format = RGL::TextureFormat::D32SFloat,
+            .debugName = "Depth Texture"
+        });
+        
+        auto dim = std::min(width, height);
+        
+        collection.depthPyramid = {dim};
+        
+    }
     
     collection.ssaoTexture = device->CreateTexture({
         .usage = {.Sampled = true, .ColorAttachment = true },

@@ -75,7 +75,7 @@ layout(set = 2, binding = 0) uniform textureCube pointShadowMaps[];    // we ali
 void main(){
 
     LitOutput user_out = frag();
-    outcolor = vec4(0); // NV: these don't default-init to 0
+    vec4 outcolor = vec4(0); // NV: these don't default-init to 0
     
     const uint entityRenderLayer = entityRenderLayers[varyingEntityID];
     const uint16_t attributeBitmask = perObjectFlags[varyingEntityID];
@@ -210,6 +210,8 @@ void main(){
 
     #if RVE_TRANSPARENT
         writeTransparency(outcolor);
+    #else
+        result = outcolor;
     #endif
 
 }

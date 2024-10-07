@@ -1353,8 +1353,6 @@ struct LightingType{
 
 				// render unlits with transparency
 				RVE_PROFILE_SECTION(unlittrans, "Encode Unlit Transparents");
-				unlitTransparentPass->SetAttachmentTexture(0, target.transparencyAccumulation->GetDefaultView());
-				unlitTransparentPass->SetAttachmentTexture(1, target.transparencyRevealage->GetDefaultView());
 				unlitTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 				renderFromPerspective.template operator() < false, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitTransparentPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
@@ -1734,15 +1732,15 @@ struct LightingType{
 			mainCommandBuffer->EndRenderDebugMarker();
 			RVE_PROFILE_SECTION_END(lit);
 
+#if 0
 			transparentClearPass->SetAttachmentTexture(0, target.transparencyAccumulation->GetDefaultView());
 			transparentClearPass->SetAttachmentTexture(1, target.transparencyRevealage->GetDefaultView());
 
 			mainCommandBuffer->BeginRenderDebugMarker("Lit Pass Transparent");
 			mainCommandBuffer->BeginRendering(transparentClearPass);
 			mainCommandBuffer->EndRendering();
+#endif
 
-			litTransparentPass->SetAttachmentTexture(0, target.transparencyAccumulation->GetDefaultView());
-			litTransparentPass->SetAttachmentTexture(1, target.transparencyRevealage->GetDefaultView());
             litTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 			RVE_PROFILE_SECTION(littrans, "Encode Lit Pass Transparent");
 			for (const auto& camdata : view.camDatas) {

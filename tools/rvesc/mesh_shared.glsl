@@ -1,10 +1,10 @@
 #define VARYINGDIR in
 #include "mesh_varyings.glsl"
 
-layout(location = 0) out vec4 outcolor;     // accumulation if in transparent mode
-
 #if RVE_TRANSPARENT
     layout(location = 1) out float revealage;
+#else
+    layout(location = 0) out vec4 result;
 #endif
 
 void writeTransparency(inout vec4 outcolor){
@@ -13,7 +13,7 @@ void writeTransparency(inout vec4 outcolor){
     float weight = max(min(1.0, max(max(outcolor.r, outcolor.g), outcolor.b) * outcolor.a), outcolor.a) * clamp(0.03 / (1e-5 + pow(clipSpaceZ / 200, 4.0)), 1e-2, 3e3);
 
     // pre-multiplied 
-    revealage = outcolor.a;
-    outcolor = vec4(outcolor.rgb * outcolor.a, outcolor.a) * weight;
+    //revealage = outcolor.a;
+    //outcolor = vec4(outcolor.rgb * outcolor.a, outcolor.a) * weight;
     #endif
 }

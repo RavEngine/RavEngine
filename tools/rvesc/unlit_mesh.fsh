@@ -9,9 +9,11 @@ struct UnlitOut{
 
 void main(){
   UnlitOut user_out = frag();
-  outcolor = user_out.color;
+  vec4 outcolor = user_out.color;
 
   #if RVE_TRANSPARENT
-  writeTransparency(outcolor);
+    writeTransparency(outcolor);
+ #else
+    result = outcolor;
   #endif
 }

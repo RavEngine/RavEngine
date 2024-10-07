@@ -60,19 +60,7 @@ STATIC(RavEngine::defaultColorBlendConfig) {
 };
 
 STATIC(RavEngine::defaultTransparentColorBlendConfig) {
-    .attachments = {
-                {
-                    .format = RenderEngine::accumFormat,
-                    .destinationColorBlendFactor = RGL::BlendFactor::One,
-                    .blendEnabled = true
-                },
-                {
-                    .format = RenderEngine::revealageFormat,
-                    .sourceColorBlendFactor = RGL::BlendFactor::Zero,
-                    .destinationColorBlendFactor = RGL::BlendFactor::OneMinusSourceColor,
-                    .blendEnabled = true
-                },
-    }
+    .attachments = {}
 };
 
 STATIC(RavEngine::defaultUnlitColorBlendConfig) {
@@ -84,20 +72,7 @@ STATIC(RavEngine::defaultUnlitColorBlendConfig) {
 };
 
 STATIC(RavEngine::defaultTransparentUnlitColorBlendConfig) {
-    .attachments = {
-        {
-            .format = RenderEngine::accumFormat,
-            .destinationColorBlendFactor = RGL::BlendFactor::One,
-            .blendEnabled = true
-
-        },
-        {
-            .format = RenderEngine::revealageFormat,
-            .sourceColorBlendFactor = RGL::BlendFactor::Zero,
-            .destinationColorBlendFactor = RGL::BlendFactor::OneMinusSourceColor,
-            .blendEnabled = true
-        },
-    }
+    .attachments = {}   // no attachments
 };
 
 
