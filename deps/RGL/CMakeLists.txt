@@ -296,13 +296,13 @@ if (RGL_RUNTIME_COMPILATION OR RGL_ENABLE_RGLC)
 
 	set_target_properties(
 		"SPIRV-Tools-opt" "SPIRV-Tools-reduce" "SPIRV-Tools-static" "SPIRV-Tools-shared" "SPIRV-Tools-lint" "SPIRV-Tools-diff" "SPIRV-Tools-link"
-		"spirv-tools-shared-pkg-config" "spirv-tools-pkg-config"
+		"spirv-tools-shared-pkg-config" "spirv-tools-pkg-config" "spirv-reflect-static"
 		PROPERTIES 
 		FOLDER "${RGL_IDE_ROOT}/Libraries/SPIRV-Tools Libraries"
 	)
 	set_target_properties(
-		"spirv-cross-core"
-		"spirv-cross-glsl" "spirv-cross-hlsl" "spirv-cross-msl" "spirv-cross-reflect" "spirv-cross-cpp" "spirv-cross-util"
+		"spirv-cross-core" "spirv-cross-glsl" "spirv-cross-hlsl" "spirv-cross-msl" 
+		"spirv-cross-reflect" "spirv-cross-cpp" "spirv-cross-util"
 		PROPERTIES 
 		FOLDER "${RGL_IDE_ROOT}/Libraries/SPIRV-Cross"
 	)

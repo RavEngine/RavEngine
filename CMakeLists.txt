@@ -210,6 +210,13 @@ if (NOT RAVENGINE_SERVER)
 	set(SDL_TESTS OFF CACHE INTERNAL "")
     set(SDL_TEST_LIBRARY OFF CACHE INTERNAL "")
 	set(SDL_REVISION "RVE Vendored SDL" CACHE INTERNAL "") # this prevents re-configures every time a git change occurs: https://github.com/libsdl-org/SDL/issues/9998
+
+	# disable subsystems we don't use
+	set(SDL_GPU OFF CACHE INTERNAL "")
+	set(SDL_RENDER OFF CACHE INTERNAL "")
+	set(SDL_CAMERA OFF CACHE INTERNAL "")
+	set(SDL_OPENGL OFF CACHE INTERNAL "")
+	set(SDL_OPENGLES OFF CACHE INTERNAL "")
 	add_subdirectory(deps/SDL EXCLUDE_FROM_ALL)
 		if(SDL_STATIC)
 			set(SDL2STATIC_LIB 	"SDL3-static")
@@ -705,7 +712,9 @@ group_in("Libraries" "assimp;assimp_cmd;DebugUtils;Detour;DetourCrowd;DetourTile
 im3d;libnyquist;libopus;libprotobuf;libprotobuf-lite;libwavpack;openssl;physfs;physfs-static;BUILD_FUSE_ALL;\
 Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlottie;rlottie-image-loader;RmlCore;ssl;\
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL3-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
-sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt;simdjson;TracyClient;stb_image;
+sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt;simdjson;TracyClient;stb_image;phonon_bundle;PffftObj;pf_conv_arch_avx2;\
+pf_conv_arch_avx;pf_conv_arch_sse4;pf_conv_arch_sse3;pf_conv_arch_dflt;pf_conv_dispatcher;pf_conv_arch_none;PFFASTCONV;PFDSP;SDL_uclibc;\
+glm_static;flatbuffers;
 ")
 
 group_in("Tools" "rvesc;rvesc_resources;rvemc;rveskc;rve_importlib;rveac")

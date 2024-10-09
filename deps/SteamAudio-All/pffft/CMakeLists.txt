@@ -242,16 +242,6 @@ if (PFFFT_USE_FFTPACK)
   set_property(TARGET FFTPACK_DOUBLE APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   )
-
-  # builtin test program of fftpack
-  add_executable(test_fftpack_float fftpack.c fftpack.h)
-  target_compile_definitions(test_fftpack_float PRIVATE _USE_MATH_DEFINES TESTING_FFTPACK)
-  target_link_libraries(test_fftpack_float ${MATHLIB})
-
-  add_executable(test_fftpack_double fftpack.c fftpack.h)
-  target_compile_definitions(test_fftpack_double PRIVATE _USE_MATH_DEFINES FFTPACK_DOUBLE_PRECISION TESTING_FFTPACK)
-  target_link_libraries(test_fftpack_double ${MATHLIB})
-
 endif()
 
 ######################################################
@@ -275,149 +265,9 @@ if (PFFFT_USE_TYPE_FLOAT)
   endif()
 endif()
 
-add_executable( test_fft_factors  test_fft_factors.c )
-if (PFFFT_USE_TYPE_FLOAT)
-  target_compile_definitions(test_fft_factors PRIVATE PFFFT_ENABLE_FLOAT)
-endif()
-if (PFFFT_USE_TYPE_DOUBLE)
-  target_compile_definitions(test_fft_factors PRIVATE PFFFT_ENABLE_DOUBLE)
-endif()
-target_link_libraries(test_fft_factors PFFFT ${ASANLIB} ${MATHLIB})
-
-######################################################
-
-add_executable( test_pffft_cpp test_pffft.cpp )
-target_compile_definitions(test_pffft_cpp PRIVATE _USE_MATH_DEFINES)
-if (PFFFT_USE_TYPE_FLOAT)
-  target_compile_definitions(test_pffft_cpp PRIVATE PFFFT_ENABLE_FLOAT)
-endif()
-if (PFFFT_USE_TYPE_DOUBLE)
-  target_compile_definitions(test_pffft_cpp PRIVATE PFFFT_ENABLE_DOUBLE)
-endif()
-target_link_libraries( test_pffft_cpp  PFFFT ${STDCXXLIB} ${ASANLIB} )
-
-######################################################
-
-add_executable( test_pffft_cpp_11 test_pffft.cpp )
-target_compile_definitions(test_pffft_cpp_11 PRIVATE _USE_MATH_DEFINES)
-if (PFFFT_USE_TYPE_FLOAT)
-  target_compile_definitions(test_pffft_cpp_11 PRIVATE PFFFT_ENABLE_FLOAT)
-endif()
-if (PFFFT_USE_TYPE_DOUBLE)
-  target_compile_definitions(test_pffft_cpp_11 PRIVATE PFFFT_ENABLE_DOUBLE)
-endif()
-target_link_libraries( test_pffft_cpp_11  PFFFT ${STDCXXLIB} ${ASANLIB} )
-
-set_property(TARGET test_pffft_cpp_11 PROPERTY CXX_STANDARD 11)
-set_property(TARGET test_pffft_cpp_11 PROPERTY CXX_STANDARD_REQUIRED ON)
-
-
 ######################################################
 
 if (PFFFT_USE_TYPE_FLOAT)
-  add_executable(bench_pffft_float   bench_pffft.c pffft.h)
-  target_compile_definitions(bench_pffft_float PRIVATE _USE_MATH_DEFINES)
-  target_compile_definitions(bench_pffft_float PRIVATE PFFFT_ENABLE_FLOAT)
-  if (PFFFT_USE_DEBUG_ASAN)
-    target_compile_options(bench_pffft_float PRIVATE "-fsanitize=address")
-  endif()
-
-  target_link_libraries( bench_pffft_float  PFFFT ${ASANLIB} )
-
-  if (PFFFT_USE_FFTPACK)
-    target_compile_definitions(bench_pffft_float PRIVATE HAVE_FFTPACK=1)
-    target_link_libraries(bench_pffft_float  FFTPACK_FLOAT)
-  endif()
-
-  if (PFFFT_USE_BENCH_FFTW)
-    target_compile_definitions(bench_pffft_float PRIVATE HAVE_FFTW=1)
-    target_link_libraries(bench_pffft_float  fftw3f)
-  endif()
-
-  if (PATH_GREEN AND PFFFT_USE_BENCH_GREEN)
-    target_compile_definitions(bench_pffft_float PRIVATE HAVE_GREEN_FFTS=1)
-    target_link_libraries(bench_pffft_float  GreenFFT)
-  endif()
-
-  if (PATH_KISS AND PFFFT_USE_BENCH_KISS)
-    target_compile_definitions(bench_pffft_float PRIVATE HAVE_KISS_FFT=1)
-    target_link_libraries(bench_pffft_float  KissFFT)
-  endif()
-
-  if (PATH_POCKET AND PFFFT_USE_BENCH_POCKET)
-    target_compile_definitions(bench_pffft_float PRIVATE HAVE_POCKET_FFT=1)
-    target_link_libraries(bench_pffft_float  PocketFFT)
-  endif()
-
-  if (PFFFT_USE_BENCH_MKL)
-    if ( (CMAKE_SYSTEM_PROCESSOR STREQUAL "i686") OR (CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64") )
-      # has chances to work
-    else()
-      # other PROCESSORs could be "ppc", "ppc64",  "arm", "aarch64", "armv7l" - or something else?!
-      message(WARNING "using Intel MKL on '${CMAKE_SYSTEM_PROCESSOR}' might fail.")
-    endif()
-    message(STATUS "In case compiling/linking with Intel MKL fails, check CMakeLists.txt or deactivate PFFFT_USE_BENCH_MKL")
-    target_compile_definitions(bench_pffft_float PRIVATE HAVE_MKL=1)
-    target_link_libraries(bench_pffft_float  mkl_intel_lp64 mkl_sequential -lmkl_core)
-  endif()
-endif()
-
-if (PFFFT_USE_TYPE_DOUBLE)
-  add_executable(bench_pffft_double   bench_pffft.c pffft.h)
-  target_compile_definitions(bench_pffft_double PRIVATE _USE_MATH_DEFINES)
-  target_compile_definitions(bench_pffft_double PRIVATE PFFFT_ENABLE_DOUBLE)
-  if (PFFFT_USE_DEBUG_ASAN)
-    target_compile_options(bench_pffft_double PRIVATE "-fsanitize=address")
-  endif()
-  target_link_libraries( bench_pffft_double  PFFFT ${ASANLIB} )
-
-  if (PFFFT_USE_FFTPACK)
-    target_compile_definitions(bench_pffft_double PRIVATE HAVE_FFTPACK=1)
-    target_link_libraries(bench_pffft_double  FFTPACK_DOUBLE)
-  endif()
-
-  if (PFFFT_USE_BENCH_FFTW)
-    target_compile_definitions(bench_pffft_double PRIVATE HAVE_FFTW=1)
-    target_link_libraries(bench_pffft_double  fftw3)
-  endif()
-
-  if (PATH_POCKET AND PFFFT_USE_BENCH_POCKET)
-    target_compile_definitions(bench_pffft_double PRIVATE HAVE_POCKET_FFT=1)
-    target_link_libraries(bench_pffft_double  PocketFFT)
-  endif()
-
-  if (PFFFT_USE_BENCH_MKL)
-    if ( (CMAKE_SYSTEM_PROCESSOR STREQUAL "i686") OR (CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64") )
-      # has chances to work
-    else()
-      # other PROCESSORs could be "ppc", "ppc64",  "arm", "aarch64", "armv7l" - or something else?!
-      message(WARNING "using Intel MKL on '${CMAKE_SYSTEM_PROCESSOR}' might fail.")
-    endif()
-    message(STATUS "In case compiling/linking with Intel MKL fails, check CMakeLists.txt or deactivate PFFFT_USE_BENCH_MKL")
-    target_compile_definitions(bench_pffft_double PRIVATE HAVE_MKL=1)
-    target_link_libraries(bench_pffft_double  mkl_intel_lp64 mkl_sequential -lmkl_core)
-  endif()
-endif()
-
-######################################################
-
-if (PFFFT_USE_TYPE_FLOAT)
-
-    add_executable(bench_pf_mixer_float   bench_mixers.cpp papi_perf_counter.h)
-    target_compile_definitions(bench_pf_mixer_float PRIVATE _USE_MATH_DEFINES)
-    target_compile_definitions(bench_pf_mixer_float PRIVATE PFFFT_ENABLE_FLOAT)
-    target_link_libraries( bench_pf_mixer_float  ${ASANLIB} )
-    if (PFFFT_USE_DEBUG_ASAN)
-      target_compile_options(bench_pf_mixer_float PRIVATE "-fsanitize=address")
-    endif()
-    if (PAPI_FOUND)
-        target_compile_definitions(bench_pf_mixer_float PRIVATE HAVE_PAPI=1)
-        target_link_libraries(bench_pf_mixer_float ${PAPI_LIBRARIES})
-    endif()
-    target_link_libraries( bench_pf_mixer_float  PFDSP $<$<CXX_COMPILER_ID:GNU>:stdc++> )
-
-
-  ############################################################################
 
   add_library(pf_conv_arch_none pf_conv.cpp pf_conv.h pf_cplx.h)
   target_compile_definitions(pf_conv_arch_none PRIVATE CONV_ARCH_POST=none MIPP_NO_INTRINSICS=1)
@@ -525,25 +375,5 @@ if (PFFFT_USE_TYPE_FLOAT)
       message(STATUS "link pf_conv_arch_none against MIPP")
       target_link_libraries(pf_conv_arch_none MIPP)
   endif()
-
-  ############################################################################
-
-  add_executable(bench_pf_conv_float   bench_conv.cpp papi_perf_counter.h)
-  set_property(TARGET bench_pf_conv_float PROPERTY CXX_STANDARD 11)
-  set_property(TARGET bench_pf_conv_float PROPERTY CXX_STANDARD_REQUIRED ON)
-  target_compile_definitions(bench_pf_conv_float PRIVATE _USE_MATH_DEFINES)
-  target_compile_definitions(bench_pf_conv_float PRIVATE PFFFT_ENABLE_FLOAT)
-  if (PFFFT_USE_DEBUG_ASAN)
-      target_compile_options(bench_pf_conv_float PRIVATE "-fsanitize=address")
-  endif()
-  target_link_libraries( bench_pf_conv_float  ${ASANLIB} )
-  if (PAPI_FOUND)
-      target_compile_definitions(bench_pf_conv_float PRIVATE HAVE_PAPI=1)
-      target_link_libraries(bench_pf_conv_float ${PAPI_LIBRARIES})
-  endif()
-  if(MIPP_FOUND)
-      target_link_libraries(bench_pf_conv_float MIPP)
-  endif()
-  target_link_libraries( bench_pf_conv_float  pf_conv_dispatcher PFDSP $<$<CXX_COMPILER_ID:GNU>:stdc++> )
 
 endif()
