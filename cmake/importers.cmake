@@ -27,7 +27,7 @@ macro(make_importer dir)
 endmacro()
 
 make_importer(rvemc)
-target_link_libraries(rvemc PRIVATE assimp cxxopts simdjson fmt glm rve_importlib)
+target_link_libraries(rvemc PRIVATE assimp cxxopts simdjson fmt glm rve_importlib meshoptimizer)
 
 make_importer(rveskc)
 target_link_libraries(rveskc PRIVATE assimp cxxopts simdjson fmt glm rve_importlib)

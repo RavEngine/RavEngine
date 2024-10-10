@@ -15,6 +15,7 @@
 #include <variant>
 #include "CaseAnalysis.hpp"
 #include <RavEngine/ImportLib.hpp>
+#include <meshoptimizer.h>
 
 using namespace std;
 using namespace RavEngine;
@@ -85,6 +86,19 @@ std::variant<MeshPart, SkinnedMeshPart> LoadMesh(const std::filesystem::path& pa
             FATAL(err.what());
         }
     }
+    
+    // optimize mesh
+    
+    std::vector<uint32_t> remap(mesh.indices.size()); // allocate temporary memory for the remap table
+    size_t vertex_count = meshopt_generateVertexRemap(remap.data(), mesh.indices.data(), mesh.indices.size(), mesh.vertices.data(), mesh.vertices.size(), sizeof(vertex_t));
+    
+    meshopt_remapIndexBuffer(mesh.indices.data(),mesh.indices.data(),mesh.indices.size(),remap.data());
+    meshopt_remapVertexBuffer(mesh.vertices.data(),mesh.vertices.data(), mesh.vertices.size(), sizeof(vertex_t), remap.data());
+    
+    meshopt_optimizeVertexCache(mesh.indices.data(), mesh.indices.data(), mesh.indices.size(), mesh.vertices.size());
+    meshopt_optimizeOverdraw(mesh.indices.data(), mesh.indices.data(), mesh.indices.size(), &mesh.vertices[0].position.x, mesh.vertices.size(), sizeof(vertex_t), 1.05f);
+    
+    meshopt_optimizeVertexFetch(mesh.vertices.data(), mesh.indices.data(), mesh.indices.size(), mesh.vertices.data(), mesh.vertices.size(), sizeof(vertex_t));
 
     decltype(SkinnedMeshPart::vertexWeights) weightsgpu;
     if constexpr (isSkinned) {
