@@ -89,7 +89,7 @@ std::variant<MeshPart, SkinnedMeshPart> LoadMesh(const std::filesystem::path& pa
     
     // optimize mesh
     
-    std::vector<uint32_t> remap(mesh.indices.size()); // allocate temporary memory for the remap table
+    std::vector<uint32_t> remap(mesh.vertices.size()); // allocate temporary memory for the remap table
     size_t vertex_count = meshopt_generateVertexRemap(remap.data(), mesh.indices.data(), mesh.indices.size(), mesh.vertices.data(), mesh.vertices.size(), sizeof(vertex_t));
     
     meshopt_remapIndexBuffer(mesh.indices.data(),mesh.indices.data(),mesh.indices.size(),remap.data());
@@ -131,7 +131,7 @@ std::variant<MeshPart, SkinnedMeshPart> LoadMesh(const std::filesystem::path& pa
                 for (int j = 0; j < bone->mNumWeights; j++) {
                     auto weightval = bone->mWeights[j];
 
-                    allweights[weightval.mVertexId + current_offset].weights.push_back({ VertexWeights::vweights::vw{idx,weightval.mWeight} });
+                    allweights[remap[weightval.mVertexId] + current_offset].weights.push_back({ VertexWeights::vweights::vw{idx,weightval.mWeight} });
                 }
 
             }
