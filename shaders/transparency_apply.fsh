@@ -32,5 +32,9 @@ void main()
         AlphaTotal *= oitData.ACV[i].a;
     }
 
-    outcolor = vec4(CFinal, AlphaTotal);
+    // why 1-Alpha? because pixels that haven't been written to have (0,0,0,1) as their values.
+    // while Alpha contains the real alpha. We need to use OneMinusSrcAlpha when blending.
+    // without inversion, this would result in all unwritten pixels to get set to black.
+    // Therefore, we invert it here, and OneMinusSrcAlpha re-inverts it, producing the correct result.
+    outcolor = vec4(CFinal, 1-AlphaTotal);
 }
