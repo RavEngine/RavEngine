@@ -60,6 +60,8 @@ set(ASSIMP_NO_EXPORT ON CACHE INTERNAL "")
 set(ASSIMP_BUILD_ZLIB ON CACHE INTERNAL "")
 add_subdirectory(../assimp EXCLUDE_FROM_ALL "${CMAKE_BINARY_DIR}/assimp")
 
+add_subdirectory(../meshoptimizer "${CMAKE_BINARY_DIR}/meshoptimizer")
+
 include(../../cmake/importers.cmake)
 
 include(../../cmake/rtti.cmake)

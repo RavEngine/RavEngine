@@ -5,7 +5,7 @@
 #include <RGL/Types.hpp>
 #include <RGL/Common.hpp>
 
-#define MTL_CHECK(a) {NSError* err = nullptr; a; if(err != nullptr){ NSLog(@"%@",err); assert(false);}}
+#define MTL_CHECK(a) {NSError* err = nullptr; a; if(err != nullptr){ RGL::FatalError([[NSString stringWithFormat:@"%s\n\n%@", #a, err] UTF8String]);}}
 
 
 namespace RGL {
