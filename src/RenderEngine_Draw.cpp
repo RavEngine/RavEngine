@@ -1305,6 +1305,7 @@ struct LightingType{
 					RVE_PROFILE_SECTION(dirShadow, "Render Encode Dirlight shadowmap");
 					mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
                     
+                    // CSM code adapted from https://learnopengl.com/Guest-Articles/2021/CSM
                     constexpr static auto getFrustumCornersWorldSpace = [](const glm::mat4& proj, const glm::mat4& view)
                     {
                         const auto inv = glm::inverse(proj * view);
@@ -1332,17 +1333,44 @@ struct LightingType{
                     
                     auto corners = getFrustumCornersWorldSpace(camData.projOnly, camData.viewOnly);
                     
-                    const auto dirlightShadowmapDataFunction = [&camData](uint8_t index, RavEngine::World::DirLightUploadData& light, auto auxDataPtr, Entity owner) {
+                    glm::vec3 center(0, 0, 0);
+                    for (const auto& v : corners)
+                    {
+                        center += glm::vec3(v);
+                    }
+                    center /= corners.size();
+                    
+                    const auto dirlightShadowmapDataFunction = [&camData,&corners,&center](uint8_t index, RavEngine::World::DirLightUploadData& light, auto auxDataPtr, Entity owner) {
 						auto dirvec = light.direction;
+                        
+                        const auto lightView = glm::lookAt(
+                            center + dirvec,
+                            center,
+                            glm::vec3(0.0f, 1.0f, 0.0f)
+                        );
+                        
+                        float minX = std::numeric_limits<float>::max();
+                        float maxX = std::numeric_limits<float>::lowest();
+                        float minY = std::numeric_limits<float>::max();
+                        float maxY = std::numeric_limits<float>::lowest();
+                        float minZ = std::numeric_limits<float>::max();
+                        float maxZ = std::numeric_limits<float>::lowest();
+                        for (const auto& v : corners)
+                        {
+                            const auto trf = lightView * v;
+                            minX = std::min(minX, trf.x);
+                            maxX = std::max(maxX, trf.x);
+                            minY = std::min(minY, trf.y);
+                            maxY = std::max(maxY, trf.y);
+                            minZ = std::min(minZ, trf.z);
+                            maxZ = std::max(maxZ, trf.z);
+                        }
 
 						auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
 
 						auto lightArea = auxdata->shadowDistance;
 
 						auto lightProj = RMath::orthoProjection<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
-						auto lightView = glm::lookAt(dirvec, { 0,0,0 }, { 0,1,0 });
-						const vector3 reposVec{ std::round(-camData.camPos.x), std::round(camData.camPos.y), std::round(-camData.camPos.z) };
-						lightView = glm::translate(lightView, reposVec);
 
 						auto& origLight = owner.GetComponent<DirectionalLight>();
 
