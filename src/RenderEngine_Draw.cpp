@@ -1304,6 +1304,34 @@ struct LightingType{
 				if constexpr (!transparentMode) {
 					RVE_PROFILE_SECTION(dirShadow, "Render Encode Dirlight shadowmap");
 					mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
+                    
+                    constexpr static auto getFrustumCornersWorldSpace = [](const glm::mat4& proj, const glm::mat4& view)
+                    {
+                        const auto inv = glm::inverse(proj * view);
+                        uint8_t i = 0;
+                        Array<glm::vec4,8> frustumCorners;
+                        for (uint8_t x = 0; x < 2; ++x)
+                        {
+                            for (uint8_t y = 0; y < 2; ++y)
+                            {
+                                for (uint8_t z = 0; z < 2; ++z)
+                                {
+                                    const glm::vec4 pt =
+                                        inv * glm::vec4(
+                                            2.0f * x - 1.0f,
+                                            2.0f * y - 1.0f,
+                                            2.0f * z - 1.0f,
+                                            1.0f);
+                                    frustumCorners.at(i++) = pt / pt.w;
+                                }
+                            }
+                        }
+                        
+                        return frustumCorners;
+                    };
+                    
+                    auto corners = getFrustumCornersWorldSpace(camData.projOnly, camData.viewOnly);
+                    
                     const auto dirlightShadowmapDataFunction = [&camData](uint8_t index, RavEngine::World::DirLightUploadData& light, auto auxDataPtr, Entity owner) {
 						auto dirvec = light.direction;
 
