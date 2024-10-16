@@ -16,7 +16,6 @@ namespace RavEngine{
 enum class PostProcessTextureInput : uint8_t{
     Unused,
     EngineColor,
-    EngineNormal,
     UserDefined
 };
 
