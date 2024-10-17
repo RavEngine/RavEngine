@@ -301,12 +301,12 @@ namespace RavEngine {
         };
     
         struct DirLightUploadData {
-            glm::mat4 lightViewProj;
+            glm::mat4 lightViewProj[MAX_CASCADES];
             glm::vec3 color;
             glm::vec3 direction;
             float intensity;
             int castsShadows;
-            int shadowmapBindlessIndex;
+            int shadowmapBindlessIndex[MAX_CASCADES];
             renderlayer_t shadowLayers;
             renderlayer_t illuminationLayers;
         };

@@ -1390,7 +1390,7 @@ struct LightingType{
 
 						auto& origLight = owner.GetComponent<DirectionalLight>();
 
-						light.lightViewProj = lightProj * lightView;	// remember this because the rendering also needs it
+						light.lightViewProj[index] = lightProj * lightView;	// remember this because the rendering also needs it
 
 						return lightViewProjResult{
 							.lightProj = lightProj,
@@ -1398,7 +1398,7 @@ struct LightingType{
 							.camPos = camData.camPos,
 							.depthPyramid = origLight.shadowData.pyramid[index],
 							.shadowmapTexture = origLight.shadowData.shadowMap[index],
-							.spillData = light.lightViewProj
+							.spillData = light.lightViewProj[index]
 						};
                     };
 

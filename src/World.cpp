@@ -398,7 +398,9 @@ void World::setupRenderTasks(){
                     dirLightUploadData.color = {color.R, color.G, color.B};
                     dirLightUploadData.intensity = lightdata.GetIntensity();
                     dirLightUploadData.castsShadows = lightdata.CastsShadows();
-                    dirLightUploadData.shadowmapBindlessIndex = lightdata.shadowData.shadowMap[0]->GetDefaultView().GetReadonlyBindlessTextureHandle();
+                    for(uint8_t i = 0; i < MAX_CASCADES; i++){
+                        dirLightUploadData.shadowmapBindlessIndex[i] = lightdata.shadowData.shadowMap[i]->GetDefaultView().GetReadonlyBindlessTextureHandle();
+                    }
                     dirLightUploadData.shadowLayers = lightdata.GetShadowLayers();
                     dirLightUploadData.illuminationLayers = lightdata.GetIlluminationLayers();
                     lightdata.clearInvalidate();

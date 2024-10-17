@@ -33,12 +33,12 @@ layout(scalar, binding = 12) readonly buffer ambientLightSSBO{
 };
 
 struct DirectionalLightData{
-    mat4 lightViewProj;
+    mat4 lightViewProj[4];
     vec3 color;
     vec3 toLight;
     float intensity;
     int castsShadows;
-    int shadowmapBindlessIndex;
+    int shadowmapBindlessIndex[4];
     uint shadowRenderLayers;
     uint illuminationLayers;
 };
@@ -114,7 +114,8 @@ void main(){
         float pcfFactor = 1;
         
         if (recievesShadows && bool(light.castsShadows)){
-             pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);
+            uint cascadeindex = 0;
+             pcfFactor = pcfForShadow(worldPosition, light.lightViewProj[cascadeindex], shadowSampler, shadowMaps[light.shadowmapBindlessIndex[cascadeindex]]);
         }
 
         outcolor += vec4(lightResult * user_out.ao * pcfFactor,0);

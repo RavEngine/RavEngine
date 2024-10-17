@@ -1,5 +1,4 @@
 #pragma once
-#define NOMINMAX
 #include <RGL/Types.hpp>
 #include <RGL/Swapchain.hpp>
 #include "D3D12DynamicDescriptorHeap.hpp"
