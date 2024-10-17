@@ -1304,43 +1304,57 @@ struct LightingType{
 				if constexpr (!transparentMode) {
 					RVE_PROFILE_SECTION(dirShadow, "Render Encode Dirlight shadowmap");
 					mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
+                
                     
-                    // CSM code adapted from https://learnopengl.com/Guest-Articles/2021/CSM
-                    constexpr static auto getFrustumCornersWorldSpace = [](const glm::mat4& proj, const glm::mat4& view)
-                    {
-                        const auto inv = glm::inverse(proj * view);
-                        uint8_t i = 0;
-                        Array<glm::vec4,8> frustumCorners;
-                        for (uint8_t x = 0; x < 2; ++x)
+                    const auto dirlightShadowmapDataFunction = [&camData](uint8_t index, RavEngine::World::DirLightUploadData& light, auto auxDataPtr, Entity owner) {
+                        
+                        // CSM code adapted from https://learnopengl.com/Guest-Articles/2021/CSM
+                        constexpr static auto getFrustumCornersWorldSpace = [](const glm::mat4& proj, const glm::mat4& view)
                         {
-                            for (uint8_t y = 0; y < 2; ++y)
+                            const auto inv = glm::inverse(proj * view);
+                            uint8_t i = 0;
+                            Array<glm::vec4,8> frustumCorners;
+                            for (uint8_t x = 0; x < 2; ++x)
                             {
-                                for (uint8_t z = 0; z < 2; ++z)
+                                for (uint8_t y = 0; y < 2; ++y)
                                 {
-                                    const glm::vec4 pt =
-                                        inv * glm::vec4(
-                                            2.0f * x - 1.0f,
-                                            2.0f * y - 1.0f,
-                                            2.0f * z - 1.0f,
-                                            1.0f);
-                                    frustumCorners.at(i++) = pt / pt.w;
+                                    for (uint8_t z = 0; z < 2; ++z)
+                                    {
+                                        const glm::vec4 pt =
+                                            inv * glm::vec4(
+                                                2.0f * x - 1.0f,
+                                                2.0f * y - 1.0f,
+                                                2.0f * z - 1.0f,
+                                                1.0f);
+                                        frustumCorners.at(i++) = pt / pt.w;
+                                    }
                                 }
                             }
+                            
+                            return frustumCorners;
+                        };
+                        
+                        // decide the near and far clips for the cascade
+                        float near = camData.zNearFar[0], far = camData.zNearFar[1];
+                        if (index > 0){
+                            near = glm::mix(camData.zNearFar[0], camData.zNearFar[1], camData.shadowCascades[index-1]);
+                        }
+                        const auto numCascades = std::min<uint8_t>(camData.numCascades, camData.shadowCascades.size());
+                        if (index < numCascades - 1){
+                            far = glm::mix(camData.zNearFar[0], camData.zNearFar[1], camData.shadowCascades[index]);
                         }
                         
-                        return frustumCorners;
-                    };
-                    
-                    auto corners = getFrustumCornersWorldSpace(camData.projOnly, camData.viewOnly);
-                    
-                    glm::vec3 center(0, 0, 0);
-                    for (const auto& v : corners)
-                    {
-                        center += glm::vec3(v);
-                    }
-                    center /= corners.size();
-                    
-                    const auto dirlightShadowmapDataFunction = [&camData,&corners,&center](uint8_t index, RavEngine::World::DirLightUploadData& light, auto auxDataPtr, Entity owner) {
+                        const auto proj = RMath::perspectiveProjection(deg_to_rad(camData.fov), float(camData.targetWidth/camData.targetHeight), near, far);
+                        
+                        auto corners = getFrustumCornersWorldSpace(proj, camData.viewOnly);
+                        
+                        glm::vec3 center(0, 0, 0);
+                        for (const auto& v : corners)
+                        {
+                            center += glm::vec3(v);
+                        }
+                        center /= corners.size();
+                        
 						auto dirvec = light.direction;
                         
                         const auto lightView = glm::lookAt(
@@ -1384,8 +1398,13 @@ struct LightingType{
 							.shadowmapTexture = origLight.shadowData.shadowMap,
 							.spillData = light.lightViewProj
 						};
-						};
+                    };
 
+                    const auto numCascades = std::min<uint8_t>(camData.numCascades, camData.shadowCascades.size());
+                    
+#ifndef NDEBUG
+                    Debug::Assert(std::is_sorted(std::begin(camData.shadowCascades), std::end(camData.shadowCascades)),"Cascades must be in sorted order");
+#endif
 
 					renderLightShadowmap(worldOwning->renderData.directionalLightData, 1,
 						dirlightShadowmapDataFunction,

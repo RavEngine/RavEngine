@@ -6,6 +6,7 @@
 #include "ComponentWithOwner.hpp"
 #include "RenderTargetCollection.hpp"
 #include "PostProcess.hpp"
+#include "Array.hpp"
 
 namespace RavEngine {
 	class RenderEngine;
@@ -105,11 +106,15 @@ namespace RavEngine {
 
 			return { originClipSpaceWS3, glm::normalize(destClipSpaceWS3 - originClipSpaceWS3) };
 		}
-		
+        
+        Array<float, 4> shadowCascades{0.25, 0.5, 0.75, 1};
+        uint8_t numCascades = 4;
+
 		//camera details
 		float FOV;
 		float nearClip;
 		float farClip;
+        
         renderlayer_t renderLayers = ALL_LAYERS;
 
 		ViewportOverride viewportOverride;

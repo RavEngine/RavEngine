@@ -36,7 +36,10 @@ namespace RavEngine{
 			glm::vec2 zNearFar;
 			ViewportOverride viewportOverride;
             renderlayer_t layers;
+            Array<float, 4> shadowCascades;
+            uint8_t numCascades;
             float fov;
+            uint32_t targetWidth, targetHeight;
             const PostProcessEffectStack* postProcessingEffects = nullptr;
 		};
 		Vector<camData> camDatas;
