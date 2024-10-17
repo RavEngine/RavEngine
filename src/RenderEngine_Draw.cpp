@@ -900,7 +900,9 @@ struct LightingType{
 					if constexpr (includeLighting) {
 						// make textures resident and put them in the right format
 						worldOwning->Filter([this](const DirectionalLight& light, const Transform& t) {
-							mainCommandBuffer->UseResource(light.shadowData.shadowMap->GetDefaultView());
+                            for(const auto& shadowMap : light.shadowData.shadowMap){
+                                mainCommandBuffer->UseResource(shadowMap->GetDefaultView());
+                            }
 						});
 						worldOwning->Filter([this](const SpotLight& light, const Transform& t) {
 							mainCommandBuffer->UseResource(light.shadowData.shadowMap->GetDefaultView());
@@ -1394,8 +1396,8 @@ struct LightingType{
 							.lightProj = lightProj,
 							.lightView = lightView,
 							.camPos = camData.camPos,
-							.depthPyramid = origLight.shadowData.pyramid,
-							.shadowmapTexture = origLight.shadowData.shadowMap,
+							.depthPyramid = origLight.shadowData.pyramid[index],
+							.shadowmapTexture = origLight.shadowData.shadowMap[index],
 							.spillData = light.lightViewProj
 						};
                     };
@@ -1406,7 +1408,7 @@ struct LightingType{
                     Debug::Assert(std::is_sorted(std::begin(camData.shadowCascades), std::end(camData.shadowCascades)),"Cascades must be in sorted order");
 #endif
 
-					renderLightShadowmap(worldOwning->renderData.directionalLightData, 1,
+					renderLightShadowmap(worldOwning->renderData.directionalLightData, numCascades,
 						dirlightShadowmapDataFunction,
 						[](Entity unused) {}
 					);
@@ -1777,8 +1779,12 @@ struct LightingType{
 			mainCommandBuffer->BeginRenderDebugMarker("Light depth pyramids");
 			{
 				DirectionalLight* ptr = nullptr;
-				genPyramidForLight(worldOwning->renderData.directionalLightData, ptr, 1, [](uint32_t index, auto&& origLight) {
-					return origLight.GetShadowMap();
+                genPyramidForLight(worldOwning->renderData.directionalLightData, ptr, MAX_CASCADES, [](uint32_t index, auto&& origLight) {
+                    struct ReturnData {
+                        DepthPyramid pyramid;
+                        RGLTexturePtr shadowMap;
+                    };
+                    return ReturnData{origLight.shadowData.pyramid[index], origLight.shadowData.shadowMap[index]};
 				});
 			}
 			{

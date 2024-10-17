@@ -4,6 +4,7 @@
 #include "IDebugRenderable.hpp"
 #include "cluster_defs.h"
 #include "Layer.hpp"
+#include "Types.hpp"
 #if !RVE_SERVER
 #include "DepthPyramid.hpp"
 #endif
@@ -70,28 +71,6 @@ public:
     }
 };
 
-/**
- A light that casts shadows
- */
-struct UnidirectionalShadowLight : public ShadowLightBase, public QueryableDelta<ShadowLightBase,UnidirectionalShadowLight>{
-	using QueryableDelta<ShadowLightBase,UnidirectionalShadowLight>::GetQueryTypes;
-#if !RVE_SERVER
-	struct ShadowMap {
-		DepthPyramid pyramid;
-		RGLTexturePtr shadowMap;
-	} shadowData;
-#endif
-	
-public:
-	UnidirectionalShadowLight();
-#if !RVE_SERVER
-	const ShadowMap& GetShadowMap() const {
-		return shadowData;
-	}
-#endif
-	
-};
-
 struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 	using light_t = AmbientLight;
 	using QueryableDelta<Light,AmbientLight>::GetQueryTypes;
@@ -103,12 +82,21 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 
 };
 
-struct DirectionalLight : public UnidirectionalShadowLight, public QueryableDelta<QueryableDelta<Light,UnidirectionalShadowLight>,DirectionalLight>{
+struct DirectionalLight : public ShadowLightBase, public QueryableDelta<QueryableDelta<Light,ShadowLightBase>,DirectionalLight>{
 	using light_t = DirectionalLight;
-	using QueryableDelta<QueryableDelta<Light,UnidirectionalShadowLight>,DirectionalLight>::GetQueryTypes;
+	using QueryableDelta<QueryableDelta<Light,ShadowLightBase>,DirectionalLight>::GetQueryTypes;
 private:
     float shadowDistance = 30;
 public:
+    
+    DirectionalLight();
+    
+#if !RVE_SERVER
+    struct ShadowMap {
+        Array<DepthPyramid,MAX_CASCADES> pyramid;
+        Array<RGLTexturePtr,4> shadowMap;
+    } shadowData;
+#endif
     
     void SetShadowDistance(decltype(shadowDistance) distance){
         tickInvalidated = true;
@@ -133,8 +121,8 @@ struct PointLight : public ShadowLightBase, public QueryableDelta<QueryableDelta
 
 #if !RVE_SERVER
 	struct ShadowData {
-		std::array<DepthPyramid, 6> cubePyramids;
-		std::array<RGLTexturePtr, 6> cubeShadowmaps;
+		Array<DepthPyramid, 6> cubePyramids;
+		Array<RGLTexturePtr, 6> cubeShadowmaps;
 		RGLTexturePtr mapCube;
 	} shadowData;
 #endif
@@ -149,15 +137,30 @@ private:
 	}
 };
 
-class SpotLight : public UnidirectionalShadowLight, public QueryableDelta<QueryableDelta<Light,UnidirectionalShadowLight>,SpotLight>{
+class SpotLight : public ShadowLightBase, public QueryableDelta<QueryableDelta<Light,ShadowLightBase>,SpotLight>{
     //light properties
     float coneAngle = 45.0;    // in degrees
     float penumbraAngle = 10;
 public:
 	using light_t = SpotLight;
-	using QueryableDelta<QueryableDelta<Light,UnidirectionalShadowLight>,SpotLight>::GetQueryTypes;
+	using QueryableDelta<QueryableDelta<Light,ShadowLightBase>,SpotLight>::GetQueryTypes;
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
+    
+    SpotLight();
+    
+#if !RVE_SERVER
+    struct ShadowMap {
+        DepthPyramid pyramid;
+        RGLTexturePtr shadowMap;
+    } shadowData;
+#endif
+    
+#if !RVE_SERVER
+    const ShadowMap& GetShadowMap() const {
+        return shadowData;
+    }
+#endif
     
     constexpr void SetConeAngle(decltype(coneAngle) inAngle){
         invalidate();

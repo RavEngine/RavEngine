@@ -34,22 +34,45 @@ void SpotLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) cons
 }
 
 
-RavEngine::UnidirectionalShadowLight::UnidirectionalShadowLight()
+RavEngine::DirectionalLight::DirectionalLight()
 {
 #if !RVE_SERVER
 	constexpr static auto dim = 4096;
-	shadowData.pyramid = {dim,"Shadowmap Depth Pyramid"};
+    for(auto& pyramid : shadowData.pyramid){
+        pyramid = {dim,"Shadowmap Cascasde Depth Pyramid"};
+    }
 
 	auto device = GetApp()->GetDevice();
 
-	shadowData.shadowMap = device->CreateTexture({
-		.usage = {.Sampled = true, .DepthStencilAttachment = true },
-		.aspect = {.HasDepth = true },
-		.width = dim,
-		.height = dim,
-		.format = RGL::TextureFormat::D32SFloat,
-		.debugName = "Shadow Texture"
-	});
+    for(auto& shadowMap : shadowData.shadowMap){
+        shadowMap = device->CreateTexture({
+            .usage = {.Sampled = true, .DepthStencilAttachment = true },
+            .aspect = {.HasDepth = true },
+            .width = dim,
+            .height = dim,
+            .format = RGL::TextureFormat::D32SFloat,
+            .debugName = "Shadow Cascade Texture"
+        });
+    }
+#endif
+}
+
+RavEngine::SpotLight::SpotLight()
+{
+#if !RVE_SERVER
+    constexpr static auto dim = 4096;
+    shadowData.pyramid = {dim,"Shadowmap Spot Light Depth Pyramid"};
+
+    auto device = GetApp()->GetDevice();
+    
+    shadowData.shadowMap = device->CreateTexture({
+        .usage = {.Sampled = true, .DepthStencilAttachment = true },
+        .aspect = {.HasDepth = true },
+        .width = dim,
+        .height = dim,
+        .format = RGL::TextureFormat::D32SFloat,
+        .debugName = "Spot Light Shadow Texture"
+    });
 #endif
 }
 
@@ -70,7 +93,7 @@ RavEngine::PointLight::PointLight()
 			.width = dim,
 			.height = dim,
 			.format = RGL::TextureFormat::D32SFloat,
-			.debugName = "Shadow Texture"
+			.debugName = "Point Light Shadow Texture"
 		});
 	}
 

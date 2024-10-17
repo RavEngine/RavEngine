@@ -17,3 +17,5 @@ static constexpr inline bool PosIsValid(pos_t id){
 }
  
 using e_clock_t = std::chrono::steady_clock;
+
+constexpr uint8_t MAX_CASCADES = 4;
