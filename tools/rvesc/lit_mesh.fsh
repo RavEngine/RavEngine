@@ -39,6 +39,7 @@ struct DirectionalLightData{
     float intensity;
     int castsShadows;
     int shadowmapBindlessIndex[4];
+    float cascadeDistances[4];
     uint shadowRenderLayers;
     uint illuminationLayers;
 };
@@ -114,8 +115,25 @@ void main(){
         float pcfFactor = 1;
         
         if (recievesShadows && bool(light.castsShadows)){
-            uint cascadeindex = 0;
-             pcfFactor = pcfForShadow(worldPosition, light.lightViewProj[cascadeindex], shadowSampler, shadowMaps[light.shadowmapBindlessIndex[cascadeindex]]);
+            vec4 viewSpace = engineConstants[0].viewOnly * vec4(worldPosition,1);
+            float depthValue = abs(viewSpace.z);
+            uint cascadeCount = engineConstants[0].numCascades;
+            
+            uint layer = 0;
+            for (int i = 0; i < cascadeCount; ++i)
+            {
+                if (depthValue < light.cascadeDistances[i])
+                {
+                    layer = i;
+                    break;
+                }
+            }
+            if (layer == -1)
+            {
+                layer = cascadeCount;
+            }
+            
+             pcfFactor = pcfForShadow(worldPosition, light.lightViewProj[layer], shadowSampler, shadowMaps[light.shadowmapBindlessIndex[layer]]);
         }
 
         outcolor += vec4(lightResult * user_out.ao * pcfFactor,0);

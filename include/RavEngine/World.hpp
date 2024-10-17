@@ -306,7 +306,8 @@ namespace RavEngine {
             glm::vec3 direction;
             float intensity;
             int castsShadows;
-            int shadowmapBindlessIndex[MAX_CASCADES];
+            int shadowmapBindlessIndex[MAX_CASCADES]{0};
+            float cascadeDistances[MAX_CASCADES]{0};
             renderlayer_t shadowLayers;
             renderlayer_t illuminationLayers;
         };
