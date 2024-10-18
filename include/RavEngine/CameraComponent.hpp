@@ -107,7 +107,7 @@ namespace RavEngine {
 			return { originClipSpaceWS3, glm::normalize(destClipSpaceWS3 - originClipSpaceWS3) };
 		}
         
-        Array<float, MAX_CASCADES> shadowCascades{0.05, 0.15, 0.2, 1};
+        Array<float, MAX_CASCADES> shadowCascades{0.1, 0.2, 0.3, 1};
         uint8_t numCascades = shadowCascades.size();
 
 		//camera details

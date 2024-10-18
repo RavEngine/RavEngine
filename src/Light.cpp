@@ -38,21 +38,27 @@ RavEngine::DirectionalLight::DirectionalLight()
 {
 #if !RVE_SERVER
 	constexpr static auto dim = 4096;
-    for(auto& pyramid : shadowData.pyramid){
-        pyramid = {dim,"Shadowmap Cascasde Depth Pyramid"};
+    {
+        int i = 0;
+        for(auto& pyramid : shadowData.pyramid){
+            pyramid = {dim,Format("Shadowmap Cascasde {} Depth Pyramid", i++)};
+        }
     }
 
 	auto device = GetApp()->GetDevice();
 
-    for(auto& shadowMap : shadowData.shadowMap){
-        shadowMap = device->CreateTexture({
-            .usage = {.Sampled = true, .DepthStencilAttachment = true },
-            .aspect = {.HasDepth = true },
-            .width = dim,
-            .height = dim,
-            .format = RGL::TextureFormat::D32SFloat,
-            .debugName = "Shadow Cascade Texture"
-        });
+    {
+        int i = 0;
+        for(auto& shadowMap : shadowData.shadowMap){
+            shadowMap = device->CreateTexture({
+                .usage = {.Sampled = true, .DepthStencilAttachment = true },
+                .aspect = {.HasDepth = true },
+                .width = dim,
+                .height = dim,
+                .format = RGL::TextureFormat::D32SFloat,
+                .debugName = Format("Shadow Cascade {} Texture", i++)
+            });
+        }
     }
 #endif
 }
@@ -81,21 +87,27 @@ RavEngine::PointLight::PointLight()
 #if !RVE_SERVER
 
 	constexpr static auto dim = 1024;
-	for (auto& facePyramid : shadowData.cubePyramids) {
-		facePyramid = { dim, "Shadowmap Depth Pyramid Face Point Light" };
-	}
+    {
+        int i = 0;
+        for (auto& facePyramid : shadowData.cubePyramids) {
+            facePyramid = { dim, Format("Shadowmap Depth Pyramid Face {} Point Light", i++) };
+        }
+    }
 	auto device = GetApp()->GetDevice();
 
-	for (auto& shadowMap : shadowData.cubeShadowmaps) {
-		shadowMap = device->CreateTexture({
-			.usage = {.TransferSource = true, .Sampled = true, .DepthStencilAttachment = true },
-			.aspect = {.HasDepth = true },
-			.width = dim,
-			.height = dim,
-			.format = RGL::TextureFormat::D32SFloat,
-			.debugName = "Point Light Shadow Texture"
-		});
-	}
+    {
+        int i = 0;
+        for (auto& shadowMap : shadowData.cubeShadowmaps) {
+            shadowMap = device->CreateTexture({
+                .usage = {.TransferSource = true, .Sampled = true, .DepthStencilAttachment = true },
+                .aspect = {.HasDepth = true },
+                .width = dim,
+                .height = dim,
+                .format = RGL::TextureFormat::D32SFloat,
+                .debugName = Format("Point Light Shadow Texture Face {}", i++)
+            });
+        }
+    }
 
 	shadowData.mapCube = device->CreateTexture({
 		.usage = {.TransferDestination = true, .Sampled = true, .DepthStencilAttachment = true },
