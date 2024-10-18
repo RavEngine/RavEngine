@@ -1339,7 +1339,8 @@ struct LightingType{
                         };
                         
                         // decide the near and far clips for the cascade
-                        float near = camData.zNearFar[0], far = camData.zNearFar[1];
+                        float near = camData.zNearFar[0];
+                        float far = camData.zNearFar[1];
                         if (index > 0){
                             near = glm::mix(camData.zNearFar[0], camData.zNearFar[1], camData.shadowCascades[index-1]);
                         }
