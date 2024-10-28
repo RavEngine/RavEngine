@@ -1389,8 +1389,7 @@ struct LightingType{
 
 						auto lightArea = auxdata->shadowDistance;
 
-						// Tune this parameter according to the scene
-#if 0
+						// TODO: Tune this parameter according to the scene
 						constexpr float zMult = 10.0f;
 						if (minZ < 0)
 						{
@@ -1408,7 +1407,6 @@ struct LightingType{
 						{
 							maxZ *= zMult;
 						}
-#endif
 
 						// calculate the proj centered on the camera
 						auto centerX = (minX + maxX) / 2;
