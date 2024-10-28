@@ -142,7 +142,7 @@ void main(){
                 layer = cascadeCount - 1;
             }
             
-            layer = cascadeCount - layer - 1;
+            //layer = cascadeCount - layer - 1;
             
              pcfFactor = pcfForShadow(worldPosition, light.lightViewProj[layer], shadowSampler, shadowMaps[light.shadowmapBindlessIndex[layer]]);
             color = pallete[layer];

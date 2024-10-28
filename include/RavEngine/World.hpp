@@ -13,7 +13,6 @@
 #include "SpinLock.hpp"
 #include <taskflow/taskflow.hpp>
 #include "Types.hpp"
-#include "AddRemoveAction.hpp"
 #include "PolymorphicIndirection.hpp"
 #include "SparseSet.hpp"
 #if !RVE_SERVER
@@ -677,12 +676,6 @@ namespace RavEngine {
         inline void DestroyComponent(entity_t local_id){
 
             auto setptr = componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>();
-            // perform special cases
-            if constexpr (RemoveAction<T>::HasCustomAction()){
-                auto& comp = setptr->GetComponent(local_id);
-                RemoveAction<T> obj;
-                obj.DoAction(&comp);
-            }
 
             if constexpr (std::is_same_v<T, StaticMesh>) {
                 // remove the entry from the render data structure

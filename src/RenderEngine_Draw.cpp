@@ -1317,19 +1317,19 @@ struct LightingType{
                         {
                             const auto inv = glm::inverse(proj * view);
                             uint8_t i = 0;
-                            Array<glm::vec4,8> frustumCorners;
-                            for (uint8_t x = 0; x < 2; ++x)
+							Array<glm::vec4, 8> frustumCorners{ };
+                            for (unsigned int x = 0; x < 2; ++x)
                             {
-                                for (uint8_t y = 0; y < 2; ++y)
+                                for (unsigned int y = 0; y < 2; ++y)
                                 {
-                                    for (uint8_t z = 0; z < 2; ++z)
+                                    for (unsigned int z = 0; z < 2; ++z)
                                     {
-                                        const glm::vec4 pt =
-                                            inv * glm::vec4(
-                                                2.0f * x - 1.0f,
-                                                2.0f * y - 1.0f,
-                                                2.0f * z - 1.0f,
-                                                1.0f);
+										const glm::vec4 ndcpt(
+											2.0f * x - 1.0f,
+											2.0f * y - 1.0f,
+											z,
+											1.0f);
+                                        const glm::vec4 pt = inv * ndcpt;
                                         frustumCorners.at(i++) = pt / pt.w;
                                     }
                                 }
@@ -1388,6 +1388,30 @@ struct LightingType{
 						auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
 
 						auto lightArea = auxdata->shadowDistance;
+
+						// Tune this parameter according to the scene
+#if 0
+						constexpr float zMult = 10.0f;
+						if (minZ < 0)
+						{
+							minZ *= zMult;
+						}
+						else
+						{
+							minZ /= zMult;
+						}
+						if (maxZ < 0)
+						{
+							maxZ /= zMult;
+						}
+						else
+						{
+							maxZ *= zMult;
+						}
+#endif
+
+						// calculate the proj centered on the camera
+						auto centerX = (minX + maxX) / 2;
 
 						auto lightProj = RMath::orthoProjection<float>(minX, maxX, minY, maxY, minZ, maxZ);
 

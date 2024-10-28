@@ -16,6 +16,7 @@ OPTION( BUILD_SHARED_LIBS "Build package with shared libraries." OFF)
 
 OPTION( RAVENGINE_BUILD_TESTS "Build tests" OFF)
 option( RAVENGINE_SERVER "Build as a headless server" ${RAVENGINE_BUILD_TESTS})
+option(RAVENGINE_MSVC_ITERATOR_DEBUG_LEVEL "Iterator debug level (MSVC only)" "0x0")
 
 # ban in-source builds
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
@@ -839,3 +840,6 @@ foreach(TGT ${all_targets})
 	endif()
 endforeach()
 
+if (MSVC)
+	set_iterator_debug_level("${CMAKE_CURRENT_LIST_DIR}/")
+endif()
