@@ -115,6 +115,7 @@ namespace RavEngine {
         rpd.stages.pop_back();  // no fragment shader
         rpd.rasterizerConfig.windingOrder = RGL::WindingOrder::Clockwise;   // backface shadows
         rpd.colorBlendConfig.attachments.clear();                           // only write to depth
+        rpd.rasterizerConfig.depthClampEnable = true;                       // clamp out-of-view fragments
         shadowRenderPipeline = device->CreateRenderPipeline(rpd);
     }
 

@@ -167,6 +167,7 @@ void CommandBufferMTL::BindRenderPipeline(RGLRenderPipelinePtr pipelineIn){
     [currentCommandEncoder setFrontFacingWinding:rgl2mtlwinding(pipeline->settings.rasterizerConfig.windingOrder)];
     [currentCommandEncoder setCullMode:rgl2mtlcullmode(pipeline->settings.rasterizerConfig.cullMode)];
     [currentCommandEncoder setTriangleFillMode:pipeline->currentFillMode];
+    [currentCommandEncoder setDepthClipMode:pipeline->settings.rasterizerConfig.depthClampEnable ? MTLDepthClipModeClamp : MTLDepthClipModeClip];
     currentPrimitiveType = rgl2mtlprimitiveType(pipeline->settings.inputAssembly.topology);
 }
 
