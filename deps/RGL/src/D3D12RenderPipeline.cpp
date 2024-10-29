@@ -344,6 +344,7 @@ namespace RGL {
         rasterizerDesc.CullMode = rgl2d3d12cull(desc.rasterizerConfig.cullMode);
         rasterizerDesc.FrontCounterClockwise = desc.rasterizerConfig.windingOrder == decltype(desc.rasterizerConfig.windingOrder)::Counterclockwise;
         rasterizerDesc.FillMode = rgl2d3d12FillMode(desc.rasterizerConfig.polygonOverride);
+        rasterizerDesc.DepthClipEnable = !desc.rasterizerConfig.depthClampEnable;
 
         CD3DX12_DEPTH_STENCIL_DESC depthStencilDesc{ D3D12_DEFAULT };
         depthStencilDesc.DepthEnable = desc.depthStencilConfig.depthTestEnabled;
