@@ -33,13 +33,13 @@ layout(scalar, binding = 12) readonly buffer ambientLightSSBO{
 };
 
 struct DirectionalLightData{
-    mat4 lightViewProj[4];
+    mat4 lightViewProj[SH_MAX_CASCADES];
     vec3 color;
     vec3 toLight;
     float intensity;
     int castsShadows;
-    int shadowmapBindlessIndex[4];
-    float cascadeDistances[4];
+    int shadowmapBindlessIndex[SH_MAX_CASCADES];
+    float cascadeDistances[SH_MAX_CASCADES];
     uint shadowRenderLayers;
     uint illuminationLayers;
 };

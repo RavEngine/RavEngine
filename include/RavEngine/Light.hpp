@@ -2,7 +2,6 @@
 #include "Queryable.hpp"
 #include "Common3D.hpp"
 #include "IDebugRenderable.hpp"
-#include "cluster_defs.h"
 #include "Layer.hpp"
 #include "Types.hpp"
 #if !RVE_SERVER

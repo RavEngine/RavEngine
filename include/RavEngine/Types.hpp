@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <limits>
 #include <chrono>
+#include "cluster_defs.h"
 
 using entity_t = uint32_t;
 using pos_t = uint32_t;
@@ -18,4 +19,4 @@ static constexpr inline bool PosIsValid(pos_t id){
  
 using e_clock_t = std::chrono::steady_clock;
 
-constexpr uint8_t MAX_CASCADES = 4;
+constexpr uint8_t MAX_CASCADES = SH_MAX_CASCADES;
