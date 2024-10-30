@@ -91,14 +91,52 @@ struct LightingType{
 	/**
  Render one frame using the current state of every object in the world
  */
-	RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const std::span<RenderViewCollection> screenTargets, float guiScaleFactor) {
-		transientOffset = 0;
-
-		RVE_PROFILE_FN_N("RenderEngine::Draw");
-		DestroyUnusedResources();
-		mainCommandBuffer->Reset();
-		mainCommandBuffer->Begin();
-		
+RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const std::span<RenderViewCollection> screenTargets, float guiScaleFactor) {
+    transientOffset = 0;
+    
+    RVE_PROFILE_FN_N("RenderEngine::Draw");
+    DestroyUnusedResources();
+    mainCommandBuffer->Reset();
+    mainCommandBuffer->Begin();
+    
+   
+    
+    // sync transforms to GPU
+    {
+        int8_t gapCounter = 0;
+        uint32_t rangeBegin = 0;
+        bool needsSync = false;
+        for(uint32_t i = 0; i < worldOwning->renderData.worldTransformsToSync.size(); i++){
+            bool& modified = worldOwning->renderData.worldTransformsToSync[i];
+            if (modified && gapCounter == 0){
+                gapCounter = 2; // we can have gaps of up to 2 matrices before making a new range
+                rangeBegin = i;
+                modified = false;
+            }
+            if (!modified){
+                auto prevValue = gapCounter;
+                gapCounter = std::max(0, gapCounter - 1);   // decrement
+                if (gapCounter == 0 && prevValue != 0){
+                    // this is the end of the range. add a command
+                    //Debug::Log("Range: {} - {}", rangeBegin, i);
+                    if (!needsSync){
+                        transformSyncCommandBuffer->Reset();
+                        transformSyncCommandBuffer->Begin();
+                    }
+                    
+                    needsSync = true;
+                }
+            }
+        }
+        
+        //TODO: if the loop ends and gapCounter != 0, then create another range
+        
+        if (needsSync){
+            transformSyncCommandBuffer->End();
+        }
+    }
+        
+        
 		auto worldTransformBuffer = worldOwning->renderData.worldTransforms.buffer;
 
 		// do skeletal operations

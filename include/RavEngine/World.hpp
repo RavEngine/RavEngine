@@ -385,11 +385,12 @@ namespace RavEngine {
             // uses world-local ID
             VRAMVector<renderlayer_t> renderLayers{32};
 
-            struct 
             VRAMVector<perobject_t> perObjectAttributes{ 32 };
 
             // uses world-local ID
             VRAMVector<matrix4> worldTransforms;
+            RGLBufferPtr privateWorldTransforms;
+            std::vector<unsigned char> worldTransformsToSync;
 
             locked_node_hashmap<Ref<MaterialInstance>, MDIICommand, phmap::NullMutex> staticMeshRenderData;
             locked_node_hashmap<Ref<MaterialInstance>, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;

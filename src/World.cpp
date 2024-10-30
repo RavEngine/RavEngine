@@ -311,6 +311,18 @@ void World::setupRenderTasks(){
         if (nEntities > currentBufferSize){
             auto newSize = closest_power_of(nEntities, 16);
             renderData.worldTransforms.resize(newSize);
+            renderData.worldTransformsToSync.resize(newSize, false);
+            if (renderData.privateWorldTransforms){
+                GetApp()->GetRenderEngine().gcBuffers.enqueue(renderData.privateWorldTransforms);
+            }
+            
+            renderData.privateWorldTransforms = GetApp()->GetDevice()->CreateBuffer({
+                newSize,
+                {.StorageBuffer = true},
+                sizeof(renderData.worldTransforms[0]),
+                RGL::BufferAccess::Private,
+                {.TransferDestination = true, .debugName = "World transform private buffer"}
+            });
         }
         nCreatedThisTick = 0;
     });
@@ -332,6 +344,7 @@ void World::setupRenderTasks(){
                     auto owner = trns.GetOwner();
                     auto ownerIDInWorld = owner.GetID();
                     renderData.worldTransforms[ownerIDInWorld] = trns.GetWorldMatrix();
+                    renderData.worldTransformsToSync[ownerIDInWorld] = true;    // signal that this was modified
                 });
 
                 trns.ClearTickDirty();
