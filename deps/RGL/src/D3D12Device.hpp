@@ -1,5 +1,4 @@
 #pragma once
-#define NOMINMAX
 #include <RGL/Types.hpp>
 #include <RGL/Device.hpp>
 #include <RGL/Pipeline.hpp>

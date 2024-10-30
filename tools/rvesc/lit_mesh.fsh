@@ -33,12 +33,13 @@ layout(scalar, binding = 12) readonly buffer ambientLightSSBO{
 };
 
 struct DirectionalLightData{
-    mat4 lightViewProj;
+    mat4 lightViewProj[SH_MAX_CASCADES];
     vec3 color;
     vec3 toLight;
     float intensity;
     int castsShadows;
-    int shadowmapBindlessIndex;
+    int shadowmapBindlessIndex[SH_MAX_CASCADES];
+    float cascadeDistances[SH_MAX_CASCADES];
     uint shadowRenderLayers;
     uint illuminationLayers;
 };
@@ -113,9 +114,40 @@ void main(){
         vec3 lightResult = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, light.toLight, 1, light.color * light.intensity);
         float pcfFactor = 1;
         
+        vec4 color = vec4(0);
+        
+        vec4 pallete[] = {
+            vec4(1,0,0,1),
+            vec4(0,1,0,1),
+            vec4(0,0,1,1),
+            vec4(1,0,1,1),
+        };
+        
         if (recievesShadows && bool(light.castsShadows)){
-             pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);
+            vec4 viewSpace = engineConstants[0].viewOnly * vec4(worldPosition,1);
+            float depthValue = abs(viewSpace.z);
+            int cascadeCount = int(engineConstants[0].numCascades);
+            
+            int layer = -1;
+            for (int i = 0; i < cascadeCount; ++i)
+            {
+                if (depthValue < light.cascadeDistances[i])
+                {
+                    layer = i;
+                    break;
+                }
+            }
+            if (layer == -1)
+            {
+                layer = cascadeCount - 1;
+            }
+            
+            //layer = cascadeCount - layer - 1;
+            
+             pcfFactor = pcfForShadow(worldPosition, light.lightViewProj[layer], shadowSampler, shadowMaps[light.shadowmapBindlessIndex[layer]]);
+            color = pallete[layer];
         }
+        //outcolor += color;
 
         outcolor += vec4(lightResult * user_out.ao * pcfFactor,0);
     }

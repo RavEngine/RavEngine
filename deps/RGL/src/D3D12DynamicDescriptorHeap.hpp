@@ -1,5 +1,4 @@
 #pragma once
-#define NOMINMAX
 #include <memory>
 #include <queue>
 #include <directx/d3d12.h>

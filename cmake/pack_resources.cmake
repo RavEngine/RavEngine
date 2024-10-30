@@ -201,6 +201,7 @@ function(pack_resources)
 	if(NOT APPLE)
 		set(rve_cmrc_resource_name "${ARGS_TARGET}_ShaderResources")
 		cmrc_add_resource_library("${rve_cmrc_resource_name}" WHENCE "${CMAKE_CURRENT_BINARY_DIR}/${ARGS_TARGET}_ShaderIntermediate/" ${all_shaders_property} )
+		target_compile_definitions("${ARGS_TARGET}_ShaderResources" PUBLIC $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=0>)
 		set_target_properties("${rve_cmrc_resource_name}" PROPERTIES
 			LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cmrc/$<CONFIGURATION>/"
 			ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cmrc/$<CONFIGURATION>/"
@@ -244,6 +245,8 @@ function(pack_resources)
 	)
 	target_compile_features(${rve_externs_lib} PRIVATE cxx_std_20)
 	target_link_libraries("${ARGS_TARGET}" PRIVATE "${rve_externs_lib}")
+	target_compile_definitions(${rve_externs_lib} PUBLIC $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=0>)
+
 
 	set_target_properties(${rve_cmrc_resource_name} "${ARGS_TARGET}_CompileShaders" ${rve_externs_lib} PROPERTIES
 		FOLDER "RavEngine Auxillary"

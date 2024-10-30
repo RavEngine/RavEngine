@@ -1,5 +1,4 @@
 #pragma once
-#define NOMINMAX
 #include <RGL/Pipeline.hpp>
 #include <RGL/Types.hpp>
 #include <directx/d3d12.h>

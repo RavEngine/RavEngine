@@ -516,7 +516,7 @@ struct LightingType{
 			prepareSkeletalCullingBuffer();
 		}
 
-        auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult]<bool includeLighting = true, bool transparentMode = false>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers, const RenderTargetCollection* target){
+        auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult]<bool includeLighting = true, bool transparentMode = false>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, uint32_t numCascades, const renderlayer_t layers, const RenderTargetCollection* target){
 			RVE_PROFILE_FN_N("RenderFromPerspective");
             uint32_t particleBillboardMatrices = 0;
 
@@ -594,6 +594,7 @@ struct LightingType{
 				uint32_t directionalLightCount;
 				float zNear;
 				float zFar;
+                uint32_t numCascades;
 			}
 			lightData{
 				.viewProj = viewproj,
@@ -605,7 +606,8 @@ struct LightingType{
 				.ambientLightCount = worldOwning->renderData.ambientLightData.uploadData.DenseSize(),
 				.directionalLightCount = worldOwning->renderData.directionalLightData.uploadData.DenseSize(),
 				.zNear = zNearFar.x,
-				.zFar = zNearFar.y
+				.zFar = zNearFar.y,
+                .numCascades = numCascades
 			};
 
 #pragma pack(pop)
@@ -900,7 +902,9 @@ struct LightingType{
 					if constexpr (includeLighting) {
 						// make textures resident and put them in the right format
 						worldOwning->Filter([this](const DirectionalLight& light, const Transform& t) {
-							mainCommandBuffer->UseResource(light.shadowData.shadowMap->GetDefaultView());
+                            for(const auto& shadowMap : light.shadowData.shadowMap){
+                                mainCommandBuffer->UseResource(shadowMap->GetDefaultView());
+                            }
 						});
 						worldOwning->Filter([this](const SpotLight& light, const Transform& t) {
 							mainCommandBuffer->UseResource(light.shadowData.shadowMap->GetDefaultView());
@@ -1181,7 +1185,7 @@ struct LightingType{
 					auto shadowMapSize = shadowTexture->GetSize().width;
 					renderFromPerspective.template operator()<false,false>(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, {}, shadowRenderPass, [](auto&& mat) {
 						return mat->GetShadowRenderPipeline();
-						}, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true, .Opaque = true }, lightMats.depthPyramid, light.shadowLayers, nullptr);
+                    }, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true, .Opaque = true }, lightMats.depthPyramid, MAX_CASCADES, light.shadowLayers, nullptr);
 
 				}
 				postshadowmapFunction(owner);
@@ -1313,19 +1317,19 @@ struct LightingType{
                         {
                             const auto inv = glm::inverse(proj * view);
                             uint8_t i = 0;
-                            Array<glm::vec4,8> frustumCorners;
-                            for (uint8_t x = 0; x < 2; ++x)
+							Array<glm::vec4, 8> frustumCorners{ };
+                            for (unsigned int x = 0; x < 2; ++x)
                             {
-                                for (uint8_t y = 0; y < 2; ++y)
+                                for (unsigned int y = 0; y < 2; ++y)
                                 {
-                                    for (uint8_t z = 0; z < 2; ++z)
+                                    for (unsigned int z = 0; z < 2; ++z)
                                     {
-                                        const glm::vec4 pt =
-                                            inv * glm::vec4(
-                                                2.0f * x - 1.0f,
-                                                2.0f * y - 1.0f,
-                                                2.0f * z - 1.0f,
-                                                1.0f);
+										const glm::vec4 ndcpt(
+											2.0f * x - 1.0f,
+											2.0f * y - 1.0f,
+											z,
+											1.0f);
+                                        const glm::vec4 pt = inv * ndcpt;
                                         frustumCorners.at(i++) = pt / pt.w;
                                     }
                                 }
@@ -1335,7 +1339,8 @@ struct LightingType{
                         };
                         
                         // decide the near and far clips for the cascade
-                        float near = camData.zNearFar[0], far = camData.zNearFar[1];
+                        float near = camData.zNearFar[0];
+                        float far = camData.zNearFar[1];
                         if (index > 0){
                             near = glm::mix(camData.zNearFar[0], camData.zNearFar[1], camData.shadowCascades[index-1]);
                         }
@@ -1344,7 +1349,8 @@ struct LightingType{
                             far = glm::mix(camData.zNearFar[0], camData.zNearFar[1], camData.shadowCascades[index]);
                         }
                         
-                        const auto proj = RMath::perspectiveProjection(deg_to_rad(camData.fov), float(camData.targetWidth/camData.targetHeight), near, far);
+                        //FIXME: the *1.5 is a hack. Without it, the matrices are not placed properly and the edges of the shadowmap cut into the view when the camera is not axis aligned in world space.
+                        const auto proj = RMath::perspectiveProjection(deg_to_rad(camData.fov * 1.5), float(camData.targetWidth/camData.targetHeight), near, far);
                         
                         auto corners = getFrustumCornersWorldSpace(proj, camData.viewOnly);
                         
@@ -1384,19 +1390,42 @@ struct LightingType{
 
 						auto lightArea = auxdata->shadowDistance;
 
-						auto lightProj = RMath::orthoProjection<float>(-lightArea, lightArea, -lightArea, lightArea, -100, 100);
+						// TODO: Tune this parameter according to the scene
+						constexpr float zMult = 10.0f;
+						if (minZ < 0)
+						{
+							minZ *= zMult;
+						}
+						else
+						{
+							minZ /= zMult;
+						}
+						if (maxZ < 0)
+						{
+							maxZ /= zMult;
+						}
+						else
+						{
+							maxZ *= zMult;
+						}
+
+						// calculate the proj centered on the camera
+						auto centerX = (minX + maxX) / 2;
+
+						auto lightProj = RMath::orthoProjection<float>(minX, maxX, minY, maxY, minZ, maxZ);
 
 						auto& origLight = owner.GetComponent<DirectionalLight>();
 
-						light.lightViewProj = lightProj * lightView;	// remember this because the rendering also needs it
-
+						light.lightViewProj[index] = lightProj * lightView;	// remember this because the rendering also needs it
+                        light.cascadeDistances[index] = far;
+                        
 						return lightViewProjResult{
 							.lightProj = lightProj,
 							.lightView = lightView,
 							.camPos = camData.camPos,
-							.depthPyramid = origLight.shadowData.pyramid,
-							.shadowmapTexture = origLight.shadowData.shadowMap,
-							.spillData = light.lightViewProj
+							.depthPyramid = origLight.shadowData.pyramid[index],
+							.shadowmapTexture = origLight.shadowData.shadowMap[index],
+							.spillData = light.lightViewProj[index]
 						};
                     };
 
@@ -1406,7 +1435,7 @@ struct LightingType{
                     Debug::Assert(std::is_sorted(std::begin(camData.shadowCascades), std::end(camData.shadowCascades)),"Cascades must be in sorted order");
 #endif
 
-					renderLightShadowmap(worldOwning->renderData.directionalLightData, 1,
+					renderLightShadowmap(worldOwning->renderData.directionalLightData, numCascades,
 						dirlightShadowmapDataFunction,
 						[](Entity unused) {}
 					);
@@ -1418,7 +1447,7 @@ struct LightingType{
 
 				renderFromPerspective.template operator()<true, transparentMode>(camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, transparentMode ? litTransparentPass : litRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-                }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, &target);
+                }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.numCascades, camData.layers, &target);
 
 				
 			};
@@ -1439,7 +1468,7 @@ struct LightingType{
                 unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 				renderFromPerspective.template operator() < false > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitRenderPass, [](auto&& mat) {
                     return mat->GetMainRenderPipeline();
-                }, renderArea, {.Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers, &target);
+                }, renderArea, {.Unlit = true, .Opaque = true }, target.depthPyramid, camData.numCascades, camData.layers, &target);
 				RVE_PROFILE_SECTION_END(unlit);
 
 				// render unlits with transparency
@@ -1447,7 +1476,7 @@ struct LightingType{
 				unlitTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 				renderFromPerspective.template operator() < false, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitTransparentPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-				}, renderArea, { .Unlit = true, .Transparent = true }, target.depthPyramid, camData.layers,&target);
+				}, renderArea, { .Unlit = true, .Transparent = true }, target.depthPyramid, camData.numCascades, camData.layers,&target);
 				RVE_PROFILE_SECTION_END(unlittrans);
                 
                 // then do the skybox, if one is defined.
@@ -1777,8 +1806,12 @@ struct LightingType{
 			mainCommandBuffer->BeginRenderDebugMarker("Light depth pyramids");
 			{
 				DirectionalLight* ptr = nullptr;
-				genPyramidForLight(worldOwning->renderData.directionalLightData, ptr, 1, [](uint32_t index, auto&& origLight) {
-					return origLight.GetShadowMap();
+                genPyramidForLight(worldOwning->renderData.directionalLightData, ptr, MAX_CASCADES, [](uint32_t index, auto&& origLight) {
+                    struct ReturnData {
+                        DepthPyramid pyramid;
+                        RGLTexturePtr shadowMap;
+                    };
+                    return ReturnData{origLight.shadowData.pyramid[index], origLight.shadowData.shadowMap[index]};
 				});
 			}
 			{
