@@ -15,9 +15,14 @@ void main()
         return;
     }
     
-    
+#if !defined(RGL_SL_MTL) && !defined(RGL_SL_WGSL)
     // Sampler is set up to do min reduction, so this computes the minimum depth of a 2x2 texel quad
     float depth = texture(sampler2D(inImage, g_sampler), (vec2(pos) + vec2(0.5)) / dim).x;
+#else
+    // Metal and WebGPU do not have reduction samplers, so we need to emulate them in software
+    vec4 values = textureGather(sampler2D(inImage, g_sampler), (vec2(pos) + vec2(0.5)) / dim);
+    float depth = min(min(values.x, values.y), min(values.z, values.w));
+#endif
 
     imageStore(outImage, ivec2(pos), vec4(depth));
 }

@@ -202,8 +202,6 @@ void main() {
 
     // check occlusion
     if (isOnCamera && !skipOcclusionCulling){
-        // occlusion culling is not available on Metal or WebGPU
-#if !defined(RGL_SL_MTL) && !defined(RGL_SL_WGSL)
 		ClipBoundingBoxResult projected = projectWorldSpaceSphere(center, radius, ubo.viewProj);
 
         float mipDim = textureSize(depthPyramid,0).x;
@@ -231,13 +229,24 @@ void main() {
                 ndcCorners[i].y = 1 - ndcCorners[i].y;          // flip Y because we access textures that way
 
                 //sample the depth pyramid at that specific level
+#if !defined(RGL_SL_MTL) && !defined(RGL_SL_WGSL)
                 float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i], miplevel).x;
+#else
+                // Metal and WebGPU do not have reduction samplers, so we need to emulate them in software
+                const ivec2 dim = textureSize(depthPyramid, int(miplevel)).xy;
+                const vec2 distance_one_pixel = 1.0f/dim;
+                const float depth_quad_a = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i], miplevel).x;
+                const float depth_quad_b = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i] + vec2(distance_one_pixel.x,0),miplevel).x;
+                const float depth_quad_c = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i] + vec2(0,distance_one_pixel.y),miplevel).x;
+                const float depth_quad_d = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i] + distance_one_pixel, miplevel).x;
+                float depth = min(min(depth_quad_a, depth_quad_b), min(depth_quad_c, depth_quad_d));
+                
+#endif
                 minDepth = min(minDepth, depth);
             }
             
             isOnCamera = isOnCamera && projected.referenceZ >= minDepth;
         }
-#endif
     }
 
 	if (isOnCamera) {

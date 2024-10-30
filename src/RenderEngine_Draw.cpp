@@ -26,7 +26,7 @@
 #include "MeshCollection.hpp"
 
 #if __APPLE__ || __EMSCRIPTEN__
-#define OCCLUSION_CULLING_UNAVAILABLE
+//#define OCCLUSION_CULLING_UNAVAILABLE
 #endif
 
 
