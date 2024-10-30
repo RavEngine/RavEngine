@@ -1640,7 +1640,7 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
         
         auto dim = std::min(width, height);
         
-        collection.depthPyramid = {dim};
+        collection.depthPyramid = {static_cast<uint16_t>(dim)};
         
     }
     

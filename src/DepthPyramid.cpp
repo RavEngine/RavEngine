@@ -5,8 +5,10 @@
 #include "RenderEngine.hpp"
 
 namespace RavEngine {
-	DepthPyramid::DepthPyramid(uint32_t width, const std::string_view name)
+	DepthPyramid::DepthPyramid(uint16_t width, const std::string_view name)
 	{
+        width = std::min<uint16_t>(width, 1024);
+        
         // the depth pyramid is the next POT smaller
         dim = pow(2, std::floor(std::log2f(width)));;
 
