@@ -125,6 +125,9 @@ namespace RGL {
             if (typeRank(features1.deviceType) < typeRank(features2.deviceType)){
                 return true;
             }
+            else if (typeRank(features1.deviceType) > typeRank(features2.deviceType)) {
+                return false;
+            }
 
             constexpr static auto GetTotalVRAM = [](VkPhysicalDevice dev){
                 VkPhysicalDeviceMemoryProperties mem;
