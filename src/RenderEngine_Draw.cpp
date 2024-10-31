@@ -99,45 +99,76 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
     mainCommandBuffer->Reset();
     mainCommandBuffer->Begin();
     
-   
+    auto worldTransformBufferHost = worldOwning->renderData.worldTransforms.buffer;
+    auto worldTransformBuffer = worldOwning->renderData.privateWorldTransforms;
+
     
     // sync transforms to GPU
     {
         int8_t gapCounter = 0;
         uint32_t rangeBegin = 0;
         bool needsSync = false;
-        for(uint32_t i = 0; i < worldOwning->renderData.worldTransformsToSync.size(); i++){
-            bool& modified = worldOwning->renderData.worldTransformsToSync[i];
+        auto& syncTrackBuffer = worldOwning->renderData.worldTransformsToSync;
+        
+        auto endRange = [&](uint32_t end){
+            // this is the end of the range. add a command
+            //Debug::Log("Range: {} - {}", rangeBegin, i);
+            if (!needsSync){
+                transformSyncCommandBuffer->Reset();
+                transformSyncCommandBuffer->Begin();
+            }
+            constexpr uint32_t elemSize = sizeof(worldOwning->renderData.worldTransforms[0]);
+            const auto bufferOffset = rangeBegin * elemSize;
+            const auto copySize = (end - rangeBegin) * elemSize;
+            transformSyncCommandBuffer->CopyBufferToBuffer(
+                                                           {
+                                                               .buffer = worldTransformBufferHost,
+                                                               .offset = bufferOffset
+                                                           },
+                                                           {
+                                                               .buffer = worldTransformBuffer,
+                                                               .offset = bufferOffset
+                                                           }, copySize);
+            
+            needsSync = true;
+        };
+        
+        for(uint32_t i = 0; i < syncTrackBuffer.size(); i++){
+            auto& modified = syncTrackBuffer[i];
+            
             if (modified && gapCounter == 0){
                 gapCounter = 2; // we can have gaps of up to 2 matrices before making a new range
                 rangeBegin = i;
-                modified = false;
             }
             if (!modified){
                 auto prevValue = gapCounter;
                 gapCounter = std::max(0, gapCounter - 1);   // decrement
                 if (gapCounter == 0 && prevValue != 0){
-                    // this is the end of the range. add a command
-                    //Debug::Log("Range: {} - {}", rangeBegin, i);
-                    if (!needsSync){
-                        transformSyncCommandBuffer->Reset();
-                        transformSyncCommandBuffer->Begin();
-                    }
-                    
-                    needsSync = true;
+                    endRange(i);
                 }
+            }
+            if (modified){
+                modified = false;
             }
         }
         
-        //TODO: if the loop ends and gapCounter != 0, then create another range
+        // if the loop ends and gapCounter != 0, then create another range
+        if (gapCounter != 0){
+            endRange(uint32_t(syncTrackBuffer.size()));
+        }
         
         if (needsSync){
+           
+            
             transformSyncCommandBuffer->End();
+            RGL::CommitConfig config{
+                
+            };
+            transformSyncCommandBuffer->Commit(config);
         }
     }
         
         
-		auto worldTransformBuffer = worldOwning->renderData.worldTransforms.buffer;
 
 		// do skeletal operations
 		struct skeletalMeshPrepareResult {
