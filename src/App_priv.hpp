@@ -449,10 +449,7 @@ void App::Tick(){
         RGL::CommitConfig commitconfig{
             .signalFence = window->swapchainFence,
         };
-        Profile::BeginFrame(Profile::RenderExecuteCommandlist);
         mainCommandBuffer->Commit(commitconfig);
-        mainCommandBuffer->BlockUntilCompleted();
-        Profile::EndFrame(Profile::RenderExecuteCommandlist);
 
         window->swapchain->Present(nextTexture.presentConfig);
         Profile::EndTick();

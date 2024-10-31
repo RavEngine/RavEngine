@@ -99,6 +99,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
     mainCommandBuffer->Reset();
     mainCommandBuffer->Begin();
     
+	RVE_PROFILE_SECTION(enc_sync_transforms,"Encode Sync Transforms");
     auto worldTransformBufferHost = worldOwning->renderData.worldTransforms.buffer;
     auto worldTransformBuffer = worldOwning->renderData.privateWorldTransforms;
 
@@ -164,9 +165,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
             RGL::CommitConfig config{
                 
             };
+			// this CB does not need to signal a fence because CBs on a given queue are guarenteed to complete before the next one begins
             transformSyncCommandBuffer->Commit(config);
         }
     }
+	RVE_PROFILE_SECTION_END(enc_sync_transforms);
         
         
 
@@ -268,6 +271,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		
 
 		auto poseSkeletalMeshes = [this,&worldOwning]() {
+			RVE_PROFILE_FN_N("Enc Pose Skinned Meshes");
 			mainCommandBuffer->BeginComputeDebugMarker("Pose Skinned Meshes");
 			mainCommandBuffer->BeginCompute(skinnedMeshComputePipeline);
 			mainCommandBuffer->BindComputeBuffer(sharedSkinnedMeshVertexBuffer, 0);
@@ -1222,7 +1226,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 
 		// the generic shadowmap rendering function
-		Profile::BeginFrame(Profile::RenderEncodeShadowmaps);
+		RVE_PROFILE_SECTION(encode_shadowmaps, "Render Encode Shadowmaps");
 		auto renderLightShadowmap = [this, &renderFromPerspective, &worldOwning](auto&& lightStore, uint32_t numShadowmaps, auto&& genLightViewProjAtIndex, auto&& postshadowmapFunction) {
 			if (lightStore.uploadData.DenseSize() <= 0) {
 				return;
@@ -1262,7 +1266,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			mainCommandBuffer->EndRenderDebugMarker();
 		};
 
-		Profile::BeginFrame(Profile::RenderEncodeSpotShadows);
+		RVE_PROFILE_SECTION(encode_spot_shadows,"Render Encode Spot Shadows");
 		const auto spotlightShadowMapFunction = [](uint8_t index, RavEngine::World::SpotLightDataUpload& light, auto unusedAux, Entity owner) {
 
 			auto lightProj = RMath::perspectiveProjection<float>(light.coneAngle * 2, 1, 0.1, 100);
@@ -1293,9 +1297,9 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			spotlightShadowMapFunction,
 			[](Entity unused) {}
 		);
-		Profile::EndFrame(Profile::RenderEncodeSpotShadows);
+		RVE_PROFILE_SECTION_END(encode_spot_shadows);
 
-		Profile::BeginFrame(Profile::RenderEncodePointShadows);
+		RVE_PROFILE_SECTION(encode_point_shadows, "Render Encode Point Shadows");
 		constexpr auto pointLightShadowmapFunction = [](uint8_t index, const RavEngine::World::PointLightUploadData& light, auto unusedAux, Entity owner) {
 			auto lightProj = RMath::perspectiveProjection<float>(deg_to_rad(90), 1, 0.1, 100);
 
@@ -1362,8 +1366,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					);
 				}
 		});
-		Profile::EndFrame(Profile::RenderEncodePointShadows);
-		Profile::EndFrame(Profile::RenderEncodeShadowmaps);
+		RVE_PROFILE_SECTION_END(encode_point_shadows);
+		RVE_PROFILE_SECTION_END(encode_shadowmaps);
 
 		RVE_PROFILE_SECTION(allViews, "Render Encode All Views");
 		for (const auto& view : screenTargets) {
@@ -1815,6 +1819,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
             
 			auto generatePyramid = [this](const DepthPyramid& depthPyramid, RGLTexturePtr depthStencil) {
 #ifndef OCCLUSION_CULLING_UNAVAILABLE
+				RVE_PROFILE_FN_N("generatePyramid");
 				// build the depth pyramid using the depth data from the previous frame
 				depthPyramidCopyPass->SetAttachmentTexture(0, depthPyramid.pyramidTexture->GetViewForMip(0));
 				mainCommandBuffer->BeginRendering(depthPyramidCopyPass);
@@ -1856,6 +1861,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 			// also generate the pyramids for the shadow lights
 			auto genPyramidForLight = [&generatePyramid,&worldOwning](auto&& lightStore, auto* lightType, uint32_t nMaps, auto&& getMapDataForIndex) -> void {
+				RVE_PROFILE_FN_N("genPyramidForLight");
 				for (uint32_t i = 0; i < lightStore.uploadData.DenseSize(); i++) {
 					const auto& light = lightStore.uploadData.GetDense()[i];
 					auto sparseIdx = lightStore.uploadData.GetSparseIndexForDense(i);

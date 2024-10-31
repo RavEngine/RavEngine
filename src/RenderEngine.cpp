@@ -1712,6 +1712,7 @@ void RavEngine::RenderEngine::ResizeRenderTargetCollection(RenderTargetCollectio
 
 RavEngine::RenderEngine::~RenderEngine()
 {
+	mainCommandBuffer->BlockUntilCompleted();
 	mainCommandQueue->WaitUntilCompleted();
 	DestroyUnusedResources();
 	device->BlockUntilIdle();
