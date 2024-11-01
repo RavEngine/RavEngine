@@ -563,10 +563,9 @@ App::~App(){
         return;
     }
 
+#if !RVE_SERVER
 	// ensure the GPU is done doing work
 	window->BlockGetNextSwapchainImage({});
-
-#if !RVE_SERVER
 #ifndef NDEBUG
 	Renderer->DeactivateDebugger();
 #endif
