@@ -84,13 +84,7 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 struct DirectionalLight : public ShadowLightBase, public QueryableDelta<QueryableDelta<Light,ShadowLightBase>,DirectionalLight>{
 	using light_t = DirectionalLight;
 	using QueryableDelta<QueryableDelta<Light,ShadowLightBase>,DirectionalLight>::GetQueryTypes;
-private:
-    float shadowDistance = 30;
-public:
-    
-    Array<float, MAX_CASCADES> shadowCascades{0.1, 0.2, 0.3, 1};
-    uint8_t numCascades = shadowCascades.size();
-    
+
     DirectionalLight();
     
 #if !RVE_SERVER
@@ -98,16 +92,9 @@ public:
         Array<DepthPyramid,MAX_CASCADES> pyramid;
         Array<RGLTexturePtr,4> shadowMap;
     } shadowData;
+    Array<float, MAX_CASCADES> shadowCascades{0.1, 0.2, 0.3, 1};
+    uint8_t numCascades = shadowCascades.size();
 #endif
-    
-    void SetShadowDistance(decltype(shadowDistance) distance){
-        tickInvalidated = true;
-        shadowDistance = distance;
-    }
-    
-    auto GetShadowDistance() const{
-        return shadowDistance;
-    }
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
 

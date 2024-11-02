@@ -407,7 +407,6 @@ void World::setupRenderTasks(){
                     auto& color = lightdata.GetColorRGBA();
                     auto owner = ptr->GetOwner(i);
                     auto& dirLightUploadData = renderData.directionalLightData.uploadData.GetForSparseIndex(owner);
-                    auto& dirLightAuxData = renderData.directionalLightData.auxData.GetForSparseIndex(owner);
                     dirLightUploadData.color = {color.R, color.G, color.B};
                     dirLightUploadData.intensity = lightdata.GetIntensity();
                     dirLightUploadData.castsShadows = lightdata.CastsShadows();
@@ -419,7 +418,6 @@ void World::setupRenderTasks(){
                     dirLightUploadData.numCascades = lightdata.numCascades;
                     lightdata.clearInvalidate();
                     
-                    dirLightAuxData.shadowDistance = lightdata.GetShadowDistance();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this
             }
