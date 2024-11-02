@@ -16,6 +16,7 @@
 #include <set>
 #include <unordered_set>
 #include <vk_mem_alloc.h>
+#include <algorithm>
 
 namespace RGL {
 
