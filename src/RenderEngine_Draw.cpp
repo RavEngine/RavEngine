@@ -25,6 +25,9 @@
 #include "Profile.hpp"
 #include "MeshCollection.hpp"
 
+#undef near		// for some INSANE reason, Microsoft defines these words and they leak into here only on ARM targets
+#undef far
+
 #if __APPLE__ || __EMSCRIPTEN__
 //#define OCCLUSION_CULLING_UNAVAILABLE
 #endif
