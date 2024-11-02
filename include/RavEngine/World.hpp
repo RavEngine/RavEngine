@@ -311,11 +311,7 @@ namespace RavEngine {
             renderlayer_t illuminationLayers;
             uint32_t numCascades;
         };
-
-        struct DirLightAuxData {
-            float shadowDistance = 0;
-        };
-
+        
         struct AmbientLightUploadData{
             glm::vec3 color;
             float intensity;
@@ -348,40 +344,13 @@ namespace RavEngine {
         // data for the render engine
         struct RenderData{
             
-            template<typename uploadType, typename auxType>
-            struct LightDataType{
-                using upload_data_t = uploadType;
-                using aux_data_t = auxType;
-                
-                uploadType uploadData;
-                auxType auxData;
-                
-                constexpr static bool hasAuxData = ! std::is_same_v<auxType,void*>;
-                
-                void DefaultAddAt(entity_t sparseIndex){
-                    uploadData.Emplace(sparseIndex);
-                    if constexpr(hasAuxData){
-                        auxData.Emplace(sparseIndex);
-                    }
-                }
-                
-                void EraseAtSparseIndex(entity_t sparseIndex){
-                    uploadData.EraseAtSparseIndex(sparseIndex);
-                    if constexpr(hasAuxData){
-                        auxData.EraseAtSparseIndex(sparseIndex);
-                    }
-                }
-                
-            };
+            VRAMSparseSet<entity_t, DirLightUploadData> directionalLightData;
             
+            VRAMSparseSet<entity_t, AmbientLightUploadData> ambientLightData;
             
-            LightDataType<VRAMSparseSet<entity_t, DirLightUploadData>, UnorderedSparseSet<entity_t, DirLightAuxData>> directionalLightData;
-            
-            LightDataType<VRAMSparseSet<entity_t, AmbientLightUploadData>, void*> ambientLightData;
-            
-            LightDataType<VRAMSparseSet<entity_t, PointLightUploadData>, void*> pointLightData;
+            VRAMSparseSet<entity_t, PointLightUploadData> pointLightData;
              
-            LightDataType<VRAMSparseSet<entity_t, SpotLightDataUpload>, void*> spotLightData;
+            VRAMSparseSet<entity_t, SpotLightDataUpload> spotLightData;
             
             // uses world-local ID
             VRAMVector<renderlayer_t> renderLayers{32};
@@ -630,16 +599,16 @@ namespace RavEngine {
 #if !RVE_SERVER
             // if it's a light, register it in the container
             if constexpr (std::is_same_v<T, DirectionalLight>){
-                renderData.directionalLightData.DefaultAddAt(local_id);
+                renderData.directionalLightData.Emplace(local_id);
             }
             else if constexpr (std::is_same_v<T, AmbientLight>){
-                renderData.ambientLightData.DefaultAddAt(local_id);
+                renderData.ambientLightData.Emplace(local_id);
             }
             else if constexpr (std::is_same_v<T, PointLight>){
-                renderData.pointLightData.DefaultAddAt(local_id);
+                renderData.pointLightData.Emplace(local_id);
             }
             else if constexpr (std::is_same_v<T, SpotLight>){
-                renderData.spotLightData.DefaultAddAt(local_id);
+                renderData.spotLightData.Emplace(local_id);
             }
 #endif
             //detect if T constructor's first argument is an Entity, if it is, then we need to pass that before args (pass local_id again)

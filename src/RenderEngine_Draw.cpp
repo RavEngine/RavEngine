@@ -614,8 +614,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				// dispatch the lighting binning shaders
 				RVE_PROFILE_SECTION(lightBinning,"Light binning");
 				mainCommandBuffer->BeginComputeDebugMarker("Light Binning");
-				const auto nPointLights = worldOwning->renderData.pointLightData.uploadData.DenseSize();
-				const auto nSpotLights = worldOwning->renderData.spotLightData.uploadData.DenseSize();
+				const auto nPointLights = worldOwning->renderData.pointLightData.DenseSize();
+				const auto nSpotLights = worldOwning->renderData.spotLightData.DenseSize();
 				if (nPointLights > 0 || nSpotLights > 0) {
 					{
 						GridBuildUBO ubo{
@@ -644,8 +644,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->BeginCompute(clusterPopulatePipeline);
 						mainCommandBuffer->SetComputeBytes(ubo, 0);
 						mainCommandBuffer->BindComputeBuffer(lightClusterBuffer, 0);
-						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.pointLightData.uploadData.GetDense().get_underlying().buffer, 1);
-						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.spotLightData.uploadData.GetDense().get_underlying().buffer, 2);
+						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.pointLightData.GetDense().get_underlying().buffer, 1);
+						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.spotLightData.GetDense().get_underlying().buffer, 2);
 
 						constexpr static auto threadGroupSize = 128;
 
@@ -678,8 +678,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				.screenDimension = { viewportScissor.offset[0],viewportScissor.offset[1], viewportScissor.extent[0],viewportScissor.extent[1] },
 				.camPos = camPos,
 				.gridSize = { Clustered::gridSizeX, Clustered::gridSizeY, Clustered::gridSizeZ },
-				.ambientLightCount = worldOwning->renderData.ambientLightData.uploadData.DenseSize(),
-				.directionalLightCount = worldOwning->renderData.directionalLightData.uploadData.DenseSize(),
+				.ambientLightCount = worldOwning->renderData.ambientLightData.DenseSize(),
+				.directionalLightCount = worldOwning->renderData.directionalLightData.DenseSize(),
 				.zNear = zNearFar.x,
 				.zFar = zNearFar.y,
 			};
@@ -984,11 +984,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 							mainCommandBuffer->UseResource(light.shadowData.shadowMap->GetDefaultView());
 						});
 
-						mainCommandBuffer->BindBuffer(worldOwning->renderData.ambientLightData.uploadData.GetDense().get_underlying().buffer,12);
-						mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightData.uploadData.GetDense().get_underlying().buffer,13);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData.ambientLightData.GetDense().get_underlying().buffer,12);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightData.GetDense().get_underlying().buffer,13);
 						mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
-						mainCommandBuffer->BindBuffer(worldOwning->renderData.pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
-						mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.uploadData.GetDense().get_underlying().buffer, 17);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData.pointLightData.GetDense().get_underlying().buffer, 15);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.GetDense().get_underlying().buffer, 17);
                         mainCommandBuffer->BindBuffer(worldOwning->renderData.renderLayers.buffer, 28);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData.perObjectAttributes.buffer, 29);
 						mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
@@ -1085,11 +1085,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 						mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
 						if (isLit) {
-							mainCommandBuffer->BindBuffer(worldOwning->renderData.ambientLightData.uploadData.GetDense().get_underlying().buffer, 12);
-							mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightData.uploadData.GetDense().get_underlying().buffer, 13);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData.ambientLightData.GetDense().get_underlying().buffer, 12);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightData.GetDense().get_underlying().buffer, 13);
 							mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
-							mainCommandBuffer->BindBuffer(worldOwning->renderData.pointLightData.uploadData.GetDense().get_underlying().buffer, 15);
-							mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.uploadData.GetDense().get_underlying().buffer, 17);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData.pointLightData.GetDense().get_underlying().buffer, 15);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.GetDense().get_underlying().buffer, 17);
                             mainCommandBuffer->BindBuffer(worldOwning->renderData.renderLayers.buffer, 28);
 							mainCommandBuffer->BindBuffer(worldOwning->renderData.perObjectAttributes.buffer, 29);
 							mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
@@ -1229,30 +1229,25 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		// the generic shadowmap rendering function
 		RVE_PROFILE_SECTION(encode_shadowmaps, "Render Encode Shadowmaps");
         auto renderLightShadowmap = [this, &renderFromPerspective, &worldOwning](auto&& lightStore, uint32_t numShadowmaps, auto&& genLightViewProjAtIndex, auto&& postshadowmapFunction, auto&& shouldRendershadowmap) {
-			if (lightStore.uploadData.DenseSize() <= 0) {
+			if (lightStore.DenseSize() <= 0) {
 				return;
 			}
 			mainCommandBuffer->BeginRenderDebugMarker("Render shadowmap");
-			for (uint32_t i = 0; i < lightStore.uploadData.DenseSize(); i++) {
-				auto& light = lightStore.uploadData.GetDense()[i];
+			for (uint32_t i = 0; i < lightStore.DenseSize(); i++) {
+				auto& light = lightStore.GetDense()[i];
 				if (!light.castsShadows) {
 					continue;	// don't do anything if the light doesn't cast
 				}
-				auto sparseIdx = lightStore.uploadData.GetSparseIndexForDense(i);
+				auto sparseIdx = lightStore.GetSparseIndexForDense(i);
 				auto owner = Entity(sparseIdx, worldOwning.get());
 
 				using lightadt_t = std::remove_reference_t<decltype(lightStore)>;
-
-				void* aux_data = nullptr;
-				if constexpr (lightadt_t::hasAuxData) {
-					aux_data = &lightStore.auxData.GetDense()[i];
-				}
 
 				for (uint8_t i = 0; i < numShadowmaps; i++) {
                     if (!shouldRendershadowmap(i, owner)){
                         continue;
                     }
-					lightViewProjResult lightMats = genLightViewProjAtIndex(i, light, aux_data, owner);
+					lightViewProjResult lightMats = genLightViewProjAtIndex(i, light, owner);
 
 					auto lightSpaceMatrix = lightMats.lightProj * lightMats.lightView;
 
@@ -1271,7 +1266,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		};
 
 		RVE_PROFILE_SECTION(encode_spot_shadows,"Render Encode Spot Shadows");
-		const auto spotlightShadowMapFunction = [](uint8_t index, RavEngine::World::SpotLightDataUpload& light, auto unusedAux, Entity owner) {
+		const auto spotlightShadowMapFunction = [](uint8_t index, RavEngine::World::SpotLightDataUpload& light, Entity owner) {
 
 			auto lightProj = RMath::perspectiveProjection<float>(light.coneAngle * 2, 1, 0.1, 100);
 
@@ -1305,7 +1300,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		RVE_PROFILE_SECTION_END(encode_spot_shadows);
 
 		RVE_PROFILE_SECTION(encode_point_shadows, "Render Encode Point Shadows");
-		constexpr auto pointLightShadowmapFunction = [](uint8_t index, const RavEngine::World::PointLightUploadData& light, auto unusedAux, Entity owner) {
+		constexpr auto pointLightShadowmapFunction = [](uint8_t index, const RavEngine::World::PointLightUploadData& light, Entity owner) {
 			auto lightProj = RMath::perspectiveProjection<float>(deg_to_rad(90), 1, 0.1, 100);
 
 			glm::mat4 viewMat;
@@ -1391,7 +1386,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
                 
                     
-                    const auto dirlightShadowmapDataFunction = [&camData](uint8_t index, RavEngine::World::DirLightUploadData& light, auto auxDataPtr, Entity owner) {
+                    const auto dirlightShadowmapDataFunction = [&camData](uint8_t index, RavEngine::World::DirLightUploadData& light, Entity owner) {
                         
                         auto& origLight = owner.GetComponent<DirectionalLight>();
     #ifndef NDEBUG
@@ -1471,10 +1466,6 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                             minZ = std::min(minZ, trf.z);
                             maxZ = std::max(maxZ, trf.z);
                         }
-
-						auto auxdata = static_cast<World::DirLightAuxData*>(auxDataPtr);
-
-						auto lightArea = auxdata->shadowDistance;
 
 						// TODO: Tune this parameter according to the scene
 						constexpr float zMult = 10.0f;
@@ -1874,9 +1865,9 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			// also generate the pyramids for the shadow lights
 			auto genPyramidForLight = [&generatePyramid,&worldOwning](auto&& lightStore, auto* lightType, uint32_t nMaps, auto&& getMapDataForIndex) -> void {
 				RVE_PROFILE_FN_N("genPyramidForLight");
-				for (uint32_t i = 0; i < lightStore.uploadData.DenseSize(); i++) {
-					const auto& light = lightStore.uploadData.GetDense()[i];
-					auto sparseIdx = lightStore.uploadData.GetSparseIndexForDense(i);
+				for (uint32_t i = 0; i < lightStore.DenseSize(); i++) {
+					const auto& light = lightStore.GetDense()[i];
+					auto sparseIdx = lightStore.GetSparseIndexForDense(i);
 					auto owner = Entity(sparseIdx, worldOwning.get());
 
 					using LightType = std::remove_pointer_t<decltype(lightType)>;
