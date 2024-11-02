@@ -32,6 +32,8 @@
 #include <format>
 #endif
 
+#include <algorithm>
+
 using namespace RGL;
 
 RGL_STATIC(RGL::currentAPI) = API::Uninitialized;

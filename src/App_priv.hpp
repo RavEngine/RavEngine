@@ -451,7 +451,7 @@ void App::Tick(){
         };
         Profile::BeginFrame(Profile::RenderExecuteCommandlist);
         mainCommandBuffer->Commit(commitconfig);
-        mainCommandBuffer->BlockUntilCompleted();
+        //mainCommandBuffer->BlockUntilCompleted();
         Profile::EndFrame(Profile::RenderExecuteCommandlist);
 
         window->swapchain->Present(nextTexture.presentConfig);

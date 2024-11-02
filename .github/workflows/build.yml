@@ -14,7 +14,7 @@ on:
 jobs:
   build-linux:
     name: Linux x64 Compile Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
