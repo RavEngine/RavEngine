@@ -42,6 +42,7 @@ struct DirectionalLightData{
     float cascadeDistances[SH_MAX_CASCADES];
     uint shadowRenderLayers;
     uint illuminationLayers;
+    uint numCascades;
 };
 
 layout(scalar, binding = 13) readonly buffer dirLightSSBO{
@@ -126,7 +127,7 @@ void main(){
         if (recievesShadows && bool(light.castsShadows)){
             vec4 viewSpace = engineConstants[0].viewOnly * vec4(worldPosition,1);
             float depthValue = abs(viewSpace.z);
-            int cascadeCount = int(engineConstants[0].numCascades);
+            int cascadeCount = int(light.numCascades);
             
             int layer = -1;
             for (int i = 0; i < cascadeCount; ++i)

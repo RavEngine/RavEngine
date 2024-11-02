@@ -9,7 +9,6 @@ struct EngineData_Internal{
     uint directionalLightCount;
     float zNear;
     float zFar;
-    uint numCascades;
 };
 
 layout(scalar, binding = 11) readonly buffer lightAuxDataSSBO{

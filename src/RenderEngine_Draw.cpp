@@ -592,7 +592,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			prepareSkeletalCullingBuffer();
 		}
 
-        auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult]<bool includeLighting = true, bool transparentMode = false>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, uint32_t numCascades, const renderlayer_t layers, const RenderTargetCollection* target){
+        auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult]<bool includeLighting = true, bool transparentMode = false>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers, const RenderTargetCollection* target){
 			RVE_PROFILE_FN_N("RenderFromPerspective");
             uint32_t particleBillboardMatrices = 0;
 
@@ -670,7 +670,6 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				uint32_t directionalLightCount;
 				float zNear;
 				float zFar;
-                uint32_t numCascades;
 			}
 			lightData{
 				.viewProj = viewproj,
@@ -683,7 +682,6 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				.directionalLightCount = worldOwning->renderData.directionalLightData.uploadData.DenseSize(),
 				.zNear = zNearFar.x,
 				.zFar = zNearFar.y,
-                .numCascades = numCascades
 			};
 
 #pragma pack(pop)
@@ -1230,7 +1228,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 		// the generic shadowmap rendering function
 		RVE_PROFILE_SECTION(encode_shadowmaps, "Render Encode Shadowmaps");
-		auto renderLightShadowmap = [this, &renderFromPerspective, &worldOwning](auto&& lightStore, uint32_t numShadowmaps, auto&& genLightViewProjAtIndex, auto&& postshadowmapFunction) {
+        auto renderLightShadowmap = [this, &renderFromPerspective, &worldOwning](auto&& lightStore, uint32_t numShadowmaps, auto&& genLightViewProjAtIndex, auto&& postshadowmapFunction, auto&& shouldRendershadowmap) {
 			if (lightStore.uploadData.DenseSize() <= 0) {
 				return;
 			}
@@ -1251,6 +1249,9 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				}
 
 				for (uint8_t i = 0; i < numShadowmaps; i++) {
+                    if (!shouldRendershadowmap(i, owner)){
+                        continue;
+                    }
 					lightViewProjResult lightMats = genLightViewProjAtIndex(i, light, aux_data, owner);
 
 					auto lightSpaceMatrix = lightMats.lightProj * lightMats.lightView;
@@ -1261,7 +1262,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					auto shadowMapSize = shadowTexture->GetSize().width;
 					renderFromPerspective.template operator()<false,false>(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, {}, shadowRenderPass, [](auto&& mat) {
 						return mat->GetShadowRenderPipeline();
-                    }, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true, .Opaque = true }, lightMats.depthPyramid, MAX_CASCADES, light.shadowLayers, nullptr);
+                    }, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true, .Opaque = true }, lightMats.depthPyramid, light.shadowLayers, nullptr);
 
 				}
 				postshadowmapFunction(owner);
@@ -1298,7 +1299,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
         
 		renderLightShadowmap(worldOwning->renderData.spotLightData, 1,
 			spotlightShadowMapFunction,
-			[](Entity unused) {}
+			[](Entity unused) {},
+            [](uint32_t i, auto&& entity){ return true;}
 		);
 		RVE_PROFILE_SECTION_END(encode_spot_shadows);
 
@@ -1368,7 +1370,9 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						}
 					);
 				}
-		});
+            },
+        [](uint32_t i, auto&& entity){ return true;}
+        );
 		RVE_PROFILE_SECTION_END(encode_point_shadows);
 		RVE_PROFILE_SECTION_END(encode_shadowmaps);
 
@@ -1380,6 +1384,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 			auto renderLitPass_Impl = [this,&target, &renderFromPerspective,&renderLightShadowmap,&worldOwning]<bool transparentMode = false>(auto&& camData, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// directional light shadowmaps
+                
 
 				if constexpr (!transparentMode) {
 					RVE_PROFILE_SECTION(dirShadow, "Render Encode Dirlight shadowmap");
@@ -1387,6 +1392,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                 
                     
                     const auto dirlightShadowmapDataFunction = [&camData](uint8_t index, RavEngine::World::DirLightUploadData& light, auto auxDataPtr, Entity owner) {
+                        
+                        auto& origLight = owner.GetComponent<DirectionalLight>();
+    #ifndef NDEBUG
+                        Debug::Assert(std::is_sorted(std::begin(origLight.shadowCascades), std::end(origLight.shadowCascades)),"Cascades must be in sorted order");
+    #endif
                         
                         // CSM code adapted from https://learnopengl.com/Guest-Articles/2021/CSM
                         constexpr static auto getFrustumCornersWorldSpace = [](const glm::mat4& proj, const glm::mat4& view)
@@ -1418,11 +1428,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                         float near = camData.zNearFar[0];
                         float far = camData.zNearFar[1];
                         if (index > 0){
-                            near = glm::mix(camData.zNearFar[0], camData.zNearFar[1], camData.shadowCascades[index-1]);
+                            near = glm::mix(camData.zNearFar[0], camData.zNearFar[1], origLight.shadowCascades[index-1]);
                         }
-                        const auto numCascades = std::min<uint8_t>(camData.numCascades, camData.shadowCascades.size());
+                        const auto numCascades = std::min<uint8_t>(origLight.numCascades, origLight.shadowCascades.size());
                         if (index < numCascades - 1){
-                            far = glm::mix(camData.zNearFar[0], camData.zNearFar[1], camData.shadowCascades[index]);
+                            far = glm::mix(camData.zNearFar[0], camData.zNearFar[1], origLight.shadowCascades[index]);
                         }
                         
                         //FIXME: the *1.5 is a hack. Without it, the matrices are not placed properly and the edges of the shadowmap cut into the view when the camera is not axis aligned in world space.
@@ -1490,8 +1500,6 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 						auto lightProj = RMath::orthoProjection<float>(minX, maxX, minY, maxY, minZ, maxZ);
 
-						auto& origLight = owner.GetComponent<DirectionalLight>();
-
 						light.lightViewProj[index] = lightProj * lightView;	// remember this because the rendering also needs it
                         light.cascadeDistances[index] = far;
                         
@@ -1505,15 +1513,16 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						};
                     };
 
-                    const auto numCascades = std::min<uint8_t>(camData.numCascades, camData.shadowCascades.size());
-                    
-#ifndef NDEBUG
-                    Debug::Assert(std::is_sorted(std::begin(camData.shadowCascades), std::end(camData.shadowCascades)),"Cascades must be in sorted order");
-#endif
-
-					renderLightShadowmap(worldOwning->renderData.directionalLightData, numCascades,
+					renderLightShadowmap(worldOwning->renderData.directionalLightData, MAX_CASCADES,
 						dirlightShadowmapDataFunction,
-						[](Entity unused) {}
+						[](Entity unused) {},
+                         [](uint32_t index, const Entity& owner){
+                            auto& origLight = owner.GetComponent<DirectionalLight>();
+                            if (index >= origLight.numCascades ){
+                                return false;     // only render the requested number of cascades
+                            }
+                            return true;
+                        }
 					);
 					mainCommandBuffer->EndRenderDebugMarker();
 					RVE_PROFILE_SECTION_END(dirShadow);
@@ -1523,7 +1532,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 				renderFromPerspective.template operator()<true, transparentMode>(camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, transparentMode ? litTransparentPass : litRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-                }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.numCascades, camData.layers, &target);
+                }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, &target);
 
 				
 			};
@@ -1544,7 +1553,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                 unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 				renderFromPerspective.template operator() < false > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitRenderPass, [](auto&& mat) {
                     return mat->GetMainRenderPipeline();
-                }, renderArea, {.Unlit = true, .Opaque = true }, target.depthPyramid, camData.numCascades, camData.layers, &target);
+                }, renderArea, {.Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers, &target);
 				RVE_PROFILE_SECTION_END(unlit);
 
 				// render unlits with transparency
@@ -1552,7 +1561,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				unlitTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 				renderFromPerspective.template operator() < false, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitTransparentPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-				}, renderArea, { .Unlit = true, .Transparent = true }, target.depthPyramid, camData.numCascades, camData.layers,&target);
+				}, renderArea, { .Unlit = true, .Transparent = true }, target.depthPyramid, camData.layers,&target);
 				RVE_PROFILE_SECTION_END(unlittrans);
                 
                 // then do the skybox, if one is defined.

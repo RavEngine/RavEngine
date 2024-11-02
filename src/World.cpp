@@ -416,6 +416,7 @@ void World::setupRenderTasks(){
                     }
                     dirLightUploadData.shadowLayers = lightdata.GetShadowLayers();
                     dirLightUploadData.illuminationLayers = lightdata.GetIlluminationLayers();
+                    dirLightUploadData.numCascades = lightdata.numCascades;
                     lightdata.clearInvalidate();
                     
                     dirLightAuxData.shadowDistance = lightdata.GetShadowDistance();

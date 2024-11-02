@@ -88,6 +88,9 @@ private:
     float shadowDistance = 30;
 public:
     
+    Array<float, MAX_CASCADES> shadowCascades{0.1, 0.2, 0.3, 1};
+    uint8_t numCascades = shadowCascades.size();
+    
     DirectionalLight();
     
 #if !RVE_SERVER

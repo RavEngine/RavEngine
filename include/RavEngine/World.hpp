@@ -309,6 +309,7 @@ namespace RavEngine {
             float cascadeDistances[MAX_CASCADES]{0};
             renderlayer_t shadowLayers;
             renderlayer_t illuminationLayers;
+            uint32_t numCascades;
         };
 
         struct DirLightAuxData {
