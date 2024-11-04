@@ -1,4 +1,6 @@
-# Copyright (C) 2020 The Khronos Group Inc.
+#!/bin/bash
+
+# Copyright (C) 2020 Google, Inc.
 #
 # All rights reserved.
 #
@@ -14,7 +16,7 @@
 #    disclaimer in the documentation and/or other materials provided
 #    with the distribution.
 #
-#    Neither the name of The Khronos Group Inc. nor the names of its
+#    Neither the name of Google Inc. nor the names of its
 #    contributors may be used to endorse or promote products derived
 #    from this software without specific prior written permission.
 #
@@ -31,34 +33,19 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-# The HLSL source is directly embedded into the glslang target when ENABLE_HLSL
-# is set.
-# This source now lives at: glslang/HLSL/
-# The HLSL target is now just a stub that exists for backwards compatibility for
-# projects that referenced this target.
+set -e # Fail on any error.
 
-add_library(HLSL ${LIB_TYPE} "stub.cpp")
-set_target_properties(HLSL PROPERTIES
-    FOLDER hlsl
-    POSITION_INDEPENDENT_CODE ON
-    VERSION   "${GLSLANG_VERSION}"
-    SOVERSION "${GLSLANG_VERSION_MAJOR}")
+. /bin/using.sh # Declare the bash `using` function for configuring toolchains.
 
-if(WIN32 AND BUILD_SHARED_LIBS)
-    set_target_properties(HLSL PROPERTIES PREFIX "")
-endif()
+set -x # Display commands being run.
 
-if(ENABLE_GLSLANG_INSTALL)
-    install(TARGETS HLSL EXPORT glslang-targets)
+using cmake-3.17.2
+using clang-10.0.0
+using ninja-1.10.0
+using python-3.12
 
-    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/HLSLTargets.cmake" "
-        message(WARNING \"Using `HLSLTargets.cmake` is deprecated: use `find_package(glslang)` to find glslang CMake targets.\")
+echo "Building..."
+mkdir /build && cd /build
 
-        if (NOT TARGET glslang::HLSL)
-            include(\"${CMAKE_INSTALL_FULL_LIBDIR}/cmake/${PROJECT_NAME}/glslang-targets.cmake\")
-        endif()
-
-        add_library(HLSL ALIAS glslang::HLSL)
-    ")
-    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/HLSLTargets.cmake" DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake)
-endif()
+cmake "$ROOT_DIR" -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$(pwd)/install" -DBUILD_SHARED_LIBS=$BUILD_SHARED_LIBS -DENABLE_OPT=0
+ninja install

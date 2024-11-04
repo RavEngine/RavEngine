@@ -45,7 +45,7 @@ BillboardVertexResult billboard_vert(uint particleID, ParticleMatrices matrices,
         vec2(1,0) * cellDim,
         vec2(1,1) * cellDim
     };
-    vec2 uv = uvs[gl_VertexID];
+    vec2 uv = uvs[gl_VertexIndex];
 
     float row = frame / numSprites.x;
     float col = frame % numSprites.y;

@@ -28,9 +28,9 @@ void main(){
         vec2(1, -1)
     };
     
-    vec2 inPos = quadPositions[gl_VertexID];
+    vec2 inPos = quadPositions[gl_VertexIndex];
 
-    uint particle = aliveParticleIndexBuffer[gl_InstanceID];
+    uint particle = aliveParticleIndexBuffer[gl_InstanceIndex];
 
 #if CUSTOM_INDEXING
     ParticleVertexOut user_out = vert(particle, matrixData[0], inPos);

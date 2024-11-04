@@ -25,8 +25,8 @@ vec3 skyray(vec2 uv, float fieldOfView, float aspectRatio)
 void main()
 {
     
-    float x = -1.0 + float((gl_VertexID & 1) << 2);
-    float y = -1.0 + float((gl_VertexID & 2) << 1);
+    float x = -1.0 + float((gl_VertexIndex & 1) << 2);
+    float y = -1.0 + float((gl_VertexIndex & 2) << 1);
 
     // render behind everything
     gl_Position = vec4(x, y, 0, 1);

@@ -31,12 +31,8 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-solutions = [
-  { "name"        : ".",
-    "url"         : "https://github.com/KhronosGroup/glslang",
-    "deps_file"   : "DEPS",
-    "managed"     : False,
-    "custom_deps" : {
-    },
-  },
-]
+APP_ABI := all
+APP_BUILD_SCRIPT := Android.mk
+APP_STL := c++_static
+APP_PLATFORM := android-24
+NDK_TOOLCHAIN_VERSION := 4.9

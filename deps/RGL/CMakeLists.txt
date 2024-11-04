@@ -290,7 +290,7 @@ if (RGL_RUNTIME_COMPILATION OR RGL_ENABLE_RGLC)
 	)
 	endif()
 
-	set_target_properties("GenericCodeGen" "glslang" "OGLCompiler" "MachineIndependent" "OSDependent" "SPIRV" "SPVRemapper" "glslang-default-resource-limits" PROPERTIES 
+	set_target_properties("GenericCodeGen" "glslang" "MachineIndependent" "OSDependent" "SPIRV" "SPVRemapper" "glslang-default-resource-limits" PROPERTIES 
 		FOLDER "${RGL_IDE_ROOT}/Libraries/glslang"
 	)
 

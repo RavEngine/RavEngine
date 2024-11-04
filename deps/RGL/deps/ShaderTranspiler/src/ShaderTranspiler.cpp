@@ -243,8 +243,6 @@ struct CompileGLSLResult {
 	std::vector<LiveAttribute> attributes;
 };
 
-constexpr int textureBindingOffset = 16;
-
 const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLanguage ShaderType, const std::vector<std::filesystem::path>& includePaths, bool debug, bool enableInclude, std::string preamble = "", bool performWebGPUModifications = false) {
 	//initialize. Do only once per process!
 	if (!glslAngInitialized)
@@ -265,11 +263,6 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLan
 
 	//set the associated strings
 	shader.setStrings(strings.data(), strings.size());
-	shader.setAutoMapBindings(true);
-	shader.setShiftBinding(glslang::EResTexture, textureBindingOffset);
-	shader.setShiftBinding(glslang::EResSampler, textureBindingOffset);
-	shader.setShiftBinding(glslang::EResImage, textureBindingOffset);
-    shader.setEnvInputVulkanRulesRelaxed(); // use GL_EXT_vulkan_glsl_relaxed TODO: make this configurable
     
     // remap push constants to uniform buffer
 	if (performWebGPUModifications) {
@@ -310,11 +303,10 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLan
 
 
 	//=========== vulkan versioning (should alow this to be passed in, or find out from the system) ========
-	const int DefaultVersion = 460;
-
-	int ClientInputSemanticsVersion = DefaultVersion;
-	glslang::EShTargetClientVersion VulkanClientVersion = glslang::EShTargetVulkan_1_3;
-	glslang::EShTargetLanguageVersion TargetVersion = glslang::EShTargetSpv_1_6;
+    
+	constexpr int ClientInputSemanticsVersion = 460;
+	constexpr glslang::EShTargetClientVersion VulkanClientVersion = glslang::EShTargetVulkan_1_3;
+    constexpr glslang::EShTargetLanguageVersion TargetVersion = glslang::EShTargetSpv_1_6;
 
 	shader.setEnvInput(glslang::EShSourceGlsl, ShaderType, glslang::EShClientVulkan, ClientInputSemanticsVersion);
 	shader.setEnvClient(glslang::EShClientVulkan, VulkanClientVersion);
@@ -336,7 +328,7 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLan
     shader.setPreamble(preamble.c_str());
 	std::string PreprocessedGLSL;
 
-	if (!shader.preprocess(&Resources, DefaultVersion, ENoProfile, false, false, messages, &PreprocessedGLSL, Includer))
+	if (!shader.preprocess(&Resources, ClientInputSemanticsVersion, ENoProfile, false, false, messages, &PreprocessedGLSL, Includer))
 	{
 		string msg = string("GLSL Preprocessing failed: ") + shader.getInfoLog() + "\n" + shader.getInfoDebugLog();
 		throw std::runtime_error(msg);
@@ -348,7 +340,7 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const EShLan
 	shader.setStrings(&PreprocessedCStr, 1);
 
 	// ================ now parse the shader ================
-	if (!shader.parse(&Resources, DefaultVersion, false, messages))
+	if (!shader.parse(&Resources, ClientInputSemanticsVersion, false, messages))
 	{
 		string msg = string("GLSL Parsing failed: ") + shader.getInfoLog() + "\n" + shader.getInfoDebugLog();
 		throw std::runtime_error(msg);
