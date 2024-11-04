@@ -581,23 +581,9 @@ target_include_directories("${PROJECT_NAME}"
 )
 
 # ====================== Linking ====================
-if (APPLE)
-    # some apple-specific libraries
-    if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-	    find_library(SM_LIB ServiceManagement REQUIRED)
-		target_link_libraries("${PROJECT_NAME}" PUBLIC ${SM_LIB})
-    endif()
-
-    find_library(METAL_LIB Metal REQUIRED)
-    find_library(QZC_LIB QuartzCore REQUIRED)
-	find_library(ACCEL_LIB Accelerate REQUIRED)
-    find_library(CORETEXT_LIB CoreText REQUIRED)    # visionOS needs this for some reason   
-
-	target_link_libraries("${PROJECT_NAME}" PUBLIC ${METAL_LIB} ${QZC_LIB} ${ACCEL_LIB} ${CORETEXT_LIB} iconv)
-endif()
 
 if(LINUX)
-	target_link_libraries("${PROJECT_NAME}" PUBLILC atomic)  # need to explicitly link libatomic on linux
+	target_link_libraries("${PROJECT_NAME}" PRIVATE atomic)  # need to explicitly link libatomic on linux
 endif()
 
 if(WIN32)
