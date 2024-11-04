@@ -269,7 +269,7 @@ if (ANDROID)
 endif()
 
 # if on a platform other than windows or mac, ensure that an audio backend was found
-if (LINUX)
+if (LINUX AND NOT RAVENGINE_SERVER)
 	find_package(ALSA)
 	find_package(PulseAudio)                                    
 	if (NOT ALSA_FOUND AND NOT PulseAudio_FOUND)
