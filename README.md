@@ -76,7 +76,7 @@ endif()
 Then build with CMake as normal.
 Other notes:
    - Windows: 
-     - you will need to run your initial configure twice before building (known bug).
+     - You will need to run your initial configure twice before building (known bug).
      - If on an older OS (Windows 10), you'll need to clone recursive to get an updated version of DXC.
 
 ## Supported platforms
@@ -103,7 +103,7 @@ Hardware
 | GPU | - | Any with DX12, VK 1.3, or Metal 3 |
 | Disk | - | SSD w/ 40GB free space |
 
-Note that for end users the minimum system requirements are much lower
+Note that for end users the minimum system requirements are much lower.
 
 Software
 - macOS, iOS, tvOS, visionOS
@@ -140,4 +140,4 @@ Software
 
 
 ## Example programs
-View a respository with code samples here: [https://github.com/RavEngine/Samples](https://github.com/RavEngine/Samples)
+View a repository with code samples here: [https://github.com/RavEngine/Samples](https://github.com/RavEngine/Samples)
