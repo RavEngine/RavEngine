@@ -17,6 +17,7 @@ OPTION( BUILD_SHARED_LIBS "Build package with shared libraries." OFF)
 OPTION( RAVENGINE_BUILD_TESTS "Build tests" OFF)
 option( RAVENGINE_SERVER "Build as a headless server" ${RAVENGINE_BUILD_TESTS})
 option(RAVENGINE_MSVC_ITERATOR_DEBUG_LEVEL "Iterator debug level (MSVC only)" "0x0")
+option(RAVENGINE_PROFILE_ALL_BUILDS "If disabled, instrumentation is only available in the Profile configuration" OFF)
 
 # ban in-source builds
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
@@ -34,7 +35,10 @@ elseif(EMSCRIPTEN)
 	# required for higher memory, atomics, and threads
 	add_definitions(-pthread)
 	add_definitions(-fexceptions)
-	set(EM_LINK "-fexceptions" "-s MAX_WEBGL_VERSION=2" "-s MIN_WEBGL_VERSION=2" "-s FULL_ES3=1" "-s USE_WEBGPU" "-s GL_ASSERTIONS=1" "-s OFFSCREEN_FRAMEBUFFER=1" "-s OFFSCREENCANVAS_SUPPORT=1" "-s GL_DEBUG=1" "-s LLD_REPORT_UNDEFINED" "-s NO_DISABLE_EXCEPTION_CATCHING" "-s NO_DISABLE_EXCEPTION_THROWING" "-s PTHREAD_POOL_SIZE=4" "-s ASSERTIONS=1" "-s ALLOW_MEMORY_GROWTH=1" "-s MAXIMUM_MEMORY=4GB")
+
+	target_link_libraries("${PROJECT_NAME}" PUBLIC
+	"-fexceptions" "-s MAX_WEBGL_VERSION=2" "-s MIN_WEBGL_VERSION=2" "-s FULL_ES3=1" "-s USE_WEBGPU" "-s GL_ASSERTIONS=1" "-s OFFSCREEN_FRAMEBUFFER=1" "-s OFFSCREENCANVAS_SUPPORT=1" "-s GL_DEBUG=1" "-s LLD_REPORT_UNDEFINED" "-s NO_DISABLE_EXCEPTION_CATCHING" "-s NO_DISABLE_EXCEPTION_THROWING" "-s PTHREAD_POOL_SIZE=4" "-s ASSERTIONS=1" "-s ALLOW_MEMORY_GROWTH=1" "-s MAXIMUM_MEMORY=4GB"
+	)
 endif()
 
 # call this macro to add IPO to profile and release builds
@@ -161,15 +165,42 @@ else()
 	set(PROTOC_CMD "protoc" CACHE INTERNAL "")
 endif()
 
+# ========== Building engine ==============
+
+# get all sources for the library with glob
+if(APPLE)
+	# also need to compile Objective-C++ files
+	file(GLOB MM_SOURCES "src/*.mm")
+	set_source_files_properties(${MM_SOURCES} PROPERTIES
+		COMPILE_FLAGS "-x objective-c++ "
+	)
+endif()
+file(GLOB SOURCES "src/*.cpp" "src/*.hpp")
+file(GLOB_RECURSE NATVIS "deps/*.natvis")
+file(GLOB HEADERS "include/${PROJECT_NAME}/*.h" "include/${PROJECT_NAME}/*.hpp" )
+file(GLOB SHADERS
+    "shaders/*.glsl" "shaders/*.csh" "shaders/*.vsh" "shaders/*.fsh"
+    "materials/*.glsl" "materials/*.vsh" "materials/*.fsh" "materials/*.csh"
+    "tools/rvesc/*.glsl" "tools/rvesc/*.vsh" "tools/rvesc/*.fsh" "tools/rvesc/*.csh"
+)
+set_source_files_properties(${SHADERS} PROPERTIES HEADER_FILE_ONLY TRUE)	# prevent VS from compiling these
+
+# register the library
+add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} ${NATVIS} ${SHADERS})
+rve_enable_IPO(${PROJECT_NAME})
+target_compile_definitions(${PROJECT_NAME} PUBLIC RMLUI_USE_CUSTOM_RTTI=1)
+
 if (NOT RAVENGINE_SERVER)
 	set(DISABLE_RTTI_AND_EXCEPTIONS ON CACHE INTERNAL "")
 	add_subdirectory(deps/RmlUi-freetype EXCLUDE_FROM_ALL)
-	set(RML_LIB "RmlCore")
+	target_link_libraries("${PROJECT_NAME}" PRIVATE "RmlCore")
 endif()
 
 if (ANDROID)
 	set(ANDROID_FUNCTION_LEVEL_LINKING OFF CACHE INTERNAL "")
 endif()
+
+# ================ Dependencies ==================
 
 # no extra flags required
 add_subdirectory(deps/im3d-cmake EXCLUDE_FROM_ALL)
@@ -195,6 +226,11 @@ add_subdirectory(deps/cxxopts EXCLUDE_FROM_ALL)
 #set(TRACY_ENABLE $<IF:$<CONFIG:profile>,ON,OFF> CACHE INTERNAL "")
 set(TRACY_ENABLE ON)
 add_subdirectory(deps/tracy EXCLUDE_FROM_ALL)
+if (RAVENGINE_PROFILE_ALL_BUILDS)
+	target_link_libraries("${PROJECT_NAME}" PRIVATE TracyClient)
+else()
+	target_link_libraries("${PROJECT_NAME}" PRIVATE $<$<CONFIG:profile>:TracyClient>)
+endif()
 
 
 #SDL
@@ -220,9 +256,9 @@ if (NOT RAVENGINE_SERVER)
 	set(SDL_OPENGLES OFF CACHE INTERNAL "")
 	add_subdirectory(deps/SDL EXCLUDE_FROM_ALL)
 		if(SDL_STATIC)
-			set(SDL2STATIC_LIB 	"SDL3-static")
+			target_link_libraries("${PROJECT_NAME}" PUBLIC SDL3-static)
 		else()
-			set(SDL2STATIC_LIB 	"SDL3-shared")
+			target_link_libraries("${PROJECT_NAME}" PUBLIC SDL3-shared)
 		endif()
 endif()
 if (ANDROID)
@@ -269,7 +305,7 @@ set(SPIRV_SKIP_EXECUTABLES ON CACHE INTERNAL "")
 set(RGL_IDE_ROOT "RavEngine SDK/Libraries/RGL/")
 if (NOT RAVENGINE_SERVER)
 	add_subdirectory(deps/RGL)
-	set(RGL_LIB "RGL")
+	target_link_libraries("${PROJECT_NAME}" PUBLIC RGL)
 endif()
 
 if (NOT RVE_CROSSCOMP)
@@ -350,8 +386,8 @@ add_subdirectory(deps/assimp EXCLUDE_FROM_ALL)
 
 add_subdirectory(deps/meshoptimizer EXCLUDE_FROM_ALL)
 
-# steam audio
 if (NOT RAVENGINE_SERVER)
+	# steam audio
 	set(SA_BUILD_ZLIB OFF CACHE INTERNAL "")
 	set(ZLIB_LIBRARY zlibstatic CACHE INTERNAL "")
 	set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/deps/assimp/contrib/zlib" CACHE INTERNAL "")
@@ -360,15 +396,14 @@ if (NOT RAVENGINE_SERVER)
 		set(SA_BUILD_FLATC OFF CACHE INTERNAL "")
 	endif()
 	add_subdirectory(deps/SteamAudio-All EXCLUDE_FROM_ALL)
-	set(SA_LIB "phonon")
 	target_link_libraries(mysofa-static PRIVATE zlibstatic)
 	target_include_directories(mysofa-static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/assimp/contrib/zlib/")
+	target_link_libraries("${PROJECT_NAME}" PRIVATE phonon)
 
 	# resonance-audio
 	set(BUILD_RESONANCE_AUDIO_API ON CACHE INTERNAL "")
 	add_subdirectory(deps/resonance-audio EXCLUDE_FROM_ALL)
-	set(RESONANCE_LIB ResonanceAudioObj)
-	set(SADIE_LIB SadieHrtfsObj)
+	target_link_libraries("${PROJECT_NAME}" PRIVATE ResonanceAudioObj SadieHrtfsObj) 
 endif()
 
 # recast
@@ -454,40 +489,16 @@ if(WIN32 AND NOT RAVENGINE_SERVER)
 	set(BUILD_CONFORMANCE_TESTS OFF)
 	set(BUILD_WITH_SYSTEM_JSONCPP OFF)
 	add_subdirectory(deps/OpenXR-SDK)
-	set(OPENXR_LOADER openxr_loader)
+	target_include_directories(openxr_loader PRIVATE "deps/RGL/deps/Vulkan-Headers/include")
+	target_link_libraries("${PROJECT_NAME}" PUBLIC openxr_loader)
 endif()
 
 if(LINUX)
-	set(LibUUID_LIBRARIES "uuid")
+	target_link_libraries("${PROJECT_NAME}" PUBLIC uuid)
 elseif(ANDROID)
 	add_subdirectory(deps/android-uuid)
-	set(LibUUID_LIBRARIES "uuid-android")
+	target_link_libraries("${PROJECT_NAME}" PUBLIC uuid-android)
 endif()
-
-# ========== Building engine ==============
-
-# get all sources for the library with glob
-if(APPLE)
-	# also need to compile Objective-C++ files
-	file(GLOB MM_SOURCES "src/*.mm")
-	set_source_files_properties(${MM_SOURCES} PROPERTIES
-		COMPILE_FLAGS "-x objective-c++ "
-	)
-endif()
-file(GLOB SOURCES "src/*.cpp" "src/*.hpp")
-file(GLOB_RECURSE NATVIS "deps/*.natvis")
-file(GLOB HEADERS "include/${PROJECT_NAME}/*.h" "include/${PROJECT_NAME}/*.hpp" )
-file(GLOB SHADERS
-    "shaders/*.glsl" "shaders/*.csh" "shaders/*.vsh" "shaders/*.fsh"
-    "materials/*.glsl" "materials/*.vsh" "materials/*.fsh" "materials/*.csh"
-    "tools/rvesc/*.glsl" "tools/rvesc/*.vsh" "tools/rvesc/*.fsh" "tools/rvesc/*.csh"
-)
-set_source_files_properties(${SHADERS} PROPERTIES HEADER_FILE_ONLY TRUE)	# prevent VS from compiling these
-
-# register the library
-add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} ${NATVIS} ${SHADERS})
-rve_enable_IPO(${PROJECT_NAME})
-target_compile_definitions(${PROJECT_NAME} PUBLIC RMLUI_USE_CUSTOM_RTTI=1)
 
 # set server define
 if(RAVENGINE_SERVER)
@@ -549,25 +560,24 @@ target_include_directories("${PROJECT_NAME}"
 	PUBLIC 
 	"include/"
 	"shaders/"
-	"${DEPS_DIR}/physx/physx/include/" 
-	"${DEPS_DIR}/physx/pxshared/include/" 
-	"${DEPS_DIR}/physx/physx/snippets/"
-	"include/${PROJECT_NAME}/stduuid/"
-	"${DEPS_DIR}/physfs/src"
-	"${DEPS_DIR}/plf/"
-	"${DEPS_DIR}/parallel-hashmap/parallel_hashmap"
-	"${DEPS_DIR}/taskflow"
-	"${DEPS_DIR}/RmlUi-freetype/RmlUi/Include"
-	"${DEPS_DIR}/resonance-audio/resonance_audio/"
-	"${DEPS_DIR}/resonance-audio/platforms/"
-	"${DEPS_DIR}/resonance-audio/third_party/eigen"
-	"${DEPS_DIR}/resonance-audio/"
-	"${DEPS_DIR}/GameNetworkingSockets/GameNetworkingSockets/include"
-	"${DEPS_DIR}/date/include"
+	"deps/physx/physx/include/" 
+	"deps/physx/pxshared/include/" 
+	"deps/physx/physx/snippets/"
+	"deps/plf/"
+	"deps/parallel-hashmap/parallel_hashmap"
+	"deps/taskflow"
+	"deps/RmlUi-freetype/RmlUi/Include"
+	"deps/GameNetworkingSockets/GameNetworkingSockets/include"
+	"deps/date/include"
+	"deps/resonance-audio/resonance_audio/"
+	"deps/resonance-audio/platforms/"
 	PRIVATE
 	"include/${PROJECT_NAME}/"
-	"${DEPS_DIR}/miniz-cpp/"	
-	"${DEPS_DIR}/stbi"
+	"deps/miniz-cpp/"	
+	"deps/stbi"
+	"deps/resonance-audio/third_party/eigen"
+	"deps/physfs/src"
+	"deps/resonance-audio/"
 )
 
 # ====================== Linking ====================
@@ -575,6 +585,7 @@ if (APPLE)
     # some apple-specific libraries
     if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	    find_library(SM_LIB ServiceManagement REQUIRED)
+		target_link_libraries("${PROJECT_NAME}" PUBLIC ${SM_LIB})
     endif()
 
     find_library(METAL_LIB Metal REQUIRED)
@@ -582,19 +593,18 @@ if (APPLE)
 	find_library(ACCEL_LIB Accelerate REQUIRED)
     find_library(CORETEXT_LIB CoreText REQUIRED)    # visionOS needs this for some reason   
 
-    SET(ICONV_LIB "iconv")
-
+	target_link_libraries("${PROJECT_NAME}" PUBLIC ${METAL_LIB} ${QZC_LIB} ${ACCEL_LIB} ${CORETEXT_LIB} iconv)
 endif()
 
 if(LINUX)
-	set(ATOMIC_LIB "atomic") # need to explicitly link libatomic on linux
+	target_link_libraries("${PROJECT_NAME}" PUBLILC atomic)  # need to explicitly link libatomic on linux
 endif()
 
 if(WIN32)
-	set(DXGI_LIB "dxgi.lib")
-	set(WIN32_LIBS "Rpcrt4.lib")
+	target_link_libraries("${PROJECT_NAME}" PRIVATE Rpcrt4.lib) # UUID on windows
 endif()
 
+# non-conditional linkage
 target_link_libraries("${PROJECT_NAME}" 
     PRIVATE 
 	"PhysXExtensions"
@@ -614,47 +624,28 @@ target_link_libraries("${PROJECT_NAME}"
 	"SimulationController"
 	"im3d"
 	"physfs-static"
-	${RESONANCE_LIB}
-	${SADIE_LIB}
 	#"PhysXGPU"
-	${RML_LIB}
 	"libnyquist"
 	"GameNetworkingSockets_s"
 	"r8brain"
-	#$<$<CONFIG:profile>:TracyClient>
-	TracyClient
 	stb_image
+	Recast
+	Detour
+	DetourCrowd
+	ozz_geometry
+	ozz_options
+	ozz_animation_offline
 	PUBLIC
+	DebugUtils
 	"dr_wav"
 	"fmt"
-	${SA_LIB}
 	"effolkronium_random"
 	"glm"
 	"tweeny"
-	${SDL2STATIC_LIB}
-	${RGL_LIB}
-	"Recast"
-	"Detour"
-	"DetourCrowd"
-	"DebugUtils"
 	"concurrentqueue"
 	"ozz_animation"
-	"ozz_animation_offline"
 	"ozz_base"
-	"ozz_geometry"
-	"ozz_options"
-	${WIN32_LIBS}
-	${ICONV_LIB}
-	${SM_LIB}
-	${METAL_LIB}
-    ${CORETEXT_LIB}
-	${QZC_LIB}
-    ${ATOMIC_LIB}
-	${DXGI_LIB}
-	${EM_LINK}
-	${OPENXR_LOADER}
-	${ACCEL_LIB}
-	${LibUUID_LIBRARIES}
+	
 )
 
 # raspberry pi needs this set explicitly, incompatible with other targets 

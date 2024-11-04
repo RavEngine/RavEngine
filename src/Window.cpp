@@ -11,7 +11,7 @@
 
 #if _WIN32
 #include <shtypes.h>
-#include <ShellScalingApi.h>;
+#include <ShellScalingApi.h>
 #elif __APPLE__
 #include "AppleUtilities.h"
 #endif
