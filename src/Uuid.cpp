@@ -32,7 +32,7 @@ namespace RavEngine {
 	}
 	std::string RavEngine::uuids::uuid::to_string() const
 	{
-		char str[37] = {};
+		char str[38]{0};
 
 		auto uuid = data.data();
 
