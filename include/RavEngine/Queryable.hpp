@@ -26,7 +26,7 @@ struct Queryable{
 	constexpr q_qt_def;
 #endif
 	
-	inline static consteval const arraytype& GetQueryTypes(){
+	inline static constexpr const arraytype& GetQueryTypes(){
 #ifdef _MSC_VER
 		q_qt_def;
 #endif
@@ -43,7 +43,7 @@ struct QueryableDelta{
 	constexpr qb_qt_def;
 #endif
 		
-	inline static consteval const arraytype& GetQueryTypes(){
+	inline static constexpr const arraytype& GetQueryTypes(){
 #ifdef _MSC_VER
 		qb_qt_def;
 #endif
