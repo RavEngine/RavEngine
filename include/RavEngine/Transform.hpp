@@ -69,8 +69,7 @@ namespace RavEngine {
             return isTickDirty;
         }
         
-		Transform(Entity owner, const vector3& inpos, const quaternion& inrot, const vector3& inscale) : ComponentWithOwner(owner){
-            matrix = matrix4(1);
+		Transform(Entity owner, const vector3& inpos, const quaternion& inrot, const vector3& inscale) : ComponentWithOwner(owner), matrix(1){
 			SetLocalPosition(inpos);
 			SetLocalRotation(inrot);
 			SetLocalScale(inscale);

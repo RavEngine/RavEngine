@@ -36,9 +36,7 @@ struct AnimBlendTree : public IAnimGraphable{
 		float max_influence = 1;
 		
 		Node(){}
-		
-		Node(const Node& other) : state(other.state), graph_pos(other.graph_pos), max_influence(other.max_influence){}
-		
+				
 		template<typename T>
 		Node(Ref<T> s, const clamped_vec2& pos, float i = 1) : state(std::static_pointer_cast<IAnimGraphable>(s)), graph_pos(pos), max_influence(i){}
 		
