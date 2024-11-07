@@ -6,13 +6,13 @@
 namespace RavEngine{
 //to_array, which converts a std::tuple into std::array
 template<typename Tuple,typename VTuple = std::remove_reference_t<Tuple>,std::size_t... Indices>
-consteval inline std::array<std::common_type_t<std::tuple_element_t<Indices, VTuple>...>,sizeof...(Indices)>
+constexpr inline std::array<std::common_type_t<std::tuple_element_t<Indices, VTuple>...>,sizeof...(Indices)>
 to_array(Tuple&& tuple, std::index_sequence<Indices...>)
 {
     return { std::get<Indices>(std::forward<Tuple>(tuple))... };
 }
 template<typename Tuple, typename VTuple = std::remove_reference_t<Tuple>>
-consteval inline decltype(auto) to_array(Tuple&& tuple)
+constexpr inline decltype(auto) to_array(Tuple&& tuple)
 {
     return to_array(std::forward<Tuple>(tuple),std::make_index_sequence<std::tuple_size<VTuple>::value> {} );
 }
