@@ -2,6 +2,7 @@
 #include <ozz/animation/runtime/skeleton.h>
 #include <ozz/animation/offline/skeleton_builder.h>
 #include <string>
+#include <optional>
 #include "Vector.hpp"
 #include "mathtypes.hpp"
 #if !RVE_SERVER
