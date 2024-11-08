@@ -58,6 +58,8 @@ public:
 	 @param boneName name of the bone to find
 	 @return True if the skeleton has a bone by the name, false if not
 	 */
-	bool HasBone(const std::string& boneName) const;
+	bool HasBone(const std::string_view boneName) const;
+    
+    std::optional<uint16_t> IndexForBone(const std::string_view boneName) const;
 };
 }

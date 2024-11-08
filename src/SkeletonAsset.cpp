@@ -185,11 +185,15 @@ RavEngine::SkeletonAsset::~SkeletonAsset()
 }
 
 
-bool SkeletonAsset::HasBone(const std::string& boneName) const{
-	for (int i = 0; i < skeleton->num_joints(); i++) {
-		if (strcmp(skeleton->joint_names()[i], boneName.data()) == 0) {
-			return true;
-		}
-	}
-	return false;
+bool SkeletonAsset::HasBone(const std::string_view boneName) const{
+    return IndexForBone(boneName).has_value();
 }
+
+std::optional<uint16_t> SkeletonAsset::IndexForBone(const std::string_view boneName) const{
+    for (int i = 0; i < skeleton->num_joints(); i++) {
+        if (strncmp(skeleton->joint_names()[i], boneName.data(), boneName.size()) == 0) {
+            return i;
+        }
+    }
+    return {};
+};
