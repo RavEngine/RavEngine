@@ -94,71 +94,70 @@ void RavEngine::AnimatorComponent::Pause() {
 
 void AnimatorComponent::Tick(const Transform& t){
 	//skip calculation 
-	if(!isPlaying){
-		return;
-	}
-	
-    auto timeScale = GetApp()->GetCurrentFPSScale();
-    
-	auto currentTime = GetApp()->GetCurrentTime();
-	//if isBlending, need to calculate both states, and blend between them
-	if (isBlending){
-		
-		auto& fromState = states[stateBlend.from];
-		auto& toState = states[stateBlend.to];
-			
-		//advance playheads
-		if (isPlaying){
-			//update the tween
-			currentBlendingValue = stateBlend.currentTween.step((float)timeScale / stateBlend.currentTween.duration());
-		}
-		
-        auto& cref = *cache;
-		fromState.clip->Sample(currentTime, std::max(lastPlayTime,fromState.lastPlayTime), fromState.speed, fromState.isLooping, transforms, cref, skeleton->GetSkeleton().get());
-		bool toDone = toState.clip->Sample(currentTime, std::max(lastPlayTime,toState.lastPlayTime), toState.speed, toState.isLooping, transformsSecondaryBlending, cref, skeleton->GetSkeleton().get());
-		
-		//blend into output
-		ozz::animation::BlendingJob::Layer layers[2];
-		
-		//populate layers
-		layers[0].transform = ozz::make_span(transforms);
-		layers[0].weight = 1 - currentBlendingValue;
-		layers[1].transform = ozz::make_span(transformsSecondaryBlending);
-		layers[1].weight = currentBlendingValue;
-		
-		//when the tween is finished, isBlending = false
-		if (stateBlend.currentTween.progress() >= 1.0){
-			isBlending = false;
-			if (toDone) {
-				EndState(toState,stateBlend.from);
-			}
-		}
-		
-		ozz::animation::BlendingJob blend_job;
-		blend_job.threshold = 0.1f;			//TODO: make threshold configurable
-		blend_job.layers = layers;
-		blend_job.rest_pose = skeleton->GetSkeleton()->joint_rest_poses();
-		
-		blend_job.output = make_span(transforms);
-		if (!blend_job.Run()) {
-			Debug::Fatal("Blend job failed");
-		}
-	}
-	else{
-        if (states.contains(currentState)){
-            auto& state = states[currentState];
+    if(isPlaying){
+        
+        auto timeScale = GetApp()->GetCurrentFPSScale();
+        
+        auto currentTime = GetApp()->GetCurrentTime();
+        //if isBlending, need to calculate both states, and blend between them
+        if (isBlending){
+            
+            auto& fromState = states[stateBlend.from];
+            auto& toState = states[stateBlend.to];
+            
+            //advance playheads
+            if (isPlaying){
+                //update the tween
+                currentBlendingValue = stateBlend.currentTween.step((float)timeScale / stateBlend.currentTween.duration());
+            }
+            
             auto& cref = *cache;
-			if (state.clip->Sample(currentTime, std::max(lastPlayTime, state.lastPlayTime), state.speed, state.isLooping, transforms, cref, skeleton->GetSkeleton().get())) {
-				EndState(state,currentState);
-			}
+            fromState.clip->Sample(currentTime, std::max(lastPlayTime,fromState.lastPlayTime), fromState.speed, fromState.isLooping, transforms, cref, skeleton->GetSkeleton().get());
+            bool toDone = toState.clip->Sample(currentTime, std::max(lastPlayTime,toState.lastPlayTime), toState.speed, toState.isLooping, transformsSecondaryBlending, cref, skeleton->GetSkeleton().get());
+            
+            //blend into output
+            ozz::animation::BlendingJob::Layer layers[2];
+            
+            //populate layers
+            layers[0].transform = ozz::make_span(transforms);
+            layers[0].weight = 1 - currentBlendingValue;
+            layers[1].transform = ozz::make_span(transformsSecondaryBlending);
+            layers[1].weight = currentBlendingValue;
+            
+            //when the tween is finished, isBlending = false
+            if (stateBlend.currentTween.progress() >= 1.0){
+                isBlending = false;
+                if (toDone) {
+                    EndState(toState,stateBlend.from);
+                }
+            }
+            
+            ozz::animation::BlendingJob blend_job;
+            blend_job.threshold = 0.1f;			//TODO: make threshold configurable
+            blend_job.layers = layers;
+            blend_job.rest_pose = skeleton->GetSkeleton()->joint_rest_poses();
+            
+            blend_job.output = make_span(transforms);
+            if (!blend_job.Run()) {
+                Debug::Fatal("Blend job failed");
+            }
         }
         else{
-            //set all to skeleton bind pose
-			for(int i = 0; i < transforms.size(); i++){
-				transforms[i] = skeleton->GetSkeleton()->joint_rest_poses()[i];
-			}
+            if (states.contains(currentState)){
+                auto& state = states[currentState];
+                auto& cref = *cache;
+                if (state.clip->Sample(currentTime, std::max(lastPlayTime, state.lastPlayTime), state.speed, state.isLooping, transforms, cref, skeleton->GetSkeleton().get())) {
+                    EndState(state,currentState);
+                }
+            }
+            else{
+                //set all to skeleton bind pose
+                for(int i = 0; i < transforms.size(); i++){
+                    transforms[i] = skeleton->GetSkeleton()->joint_rest_poses()[i];
+                }
+            }
         }
-	}
+    }
 	
 	//convert from local space to model space
 	ozz::animation::LocalToModelJob job;
@@ -211,6 +210,11 @@ inline void RavEngine::AnimatorComponent::UpdateSkeletonData(Ref<SkeletonAsset> 
 	glm_pose.resize(n_joints);
 	local_pose.resize(n_joints);
 	skinningmats.resize(n_joints);
+    
+    //set all to skeleton bind pose
+    for(int i = 0; i < transforms.size(); i++){
+        transforms[i] = skeleton->GetSkeleton()->joint_rest_poses()[i];
+    }
 }
 
 

@@ -113,9 +113,7 @@ class AnimatorComponent : public IDebugRenderable, public Queryable<AnimatorComp
 class AnimatorComponent : public AutoCTTI, public Queryable<AnimatorComponent>
 #endif
 {
-protected:
-	double lastPlayTime = 0;
-	Ref<SkeletonAsset> skeleton;
+    Ref<SkeletonAsset> skeleton;
 public:
 	//a node in the state machine
 	struct State{
@@ -261,30 +259,33 @@ public:
 	void UpdateSocket(const std::string&, Transform&) const;
 
 protected:
-	locked_node_hashmap<id_t,State> states;
-	
-	struct StateBlend{
-		id_t from, to;
-		decltype(State::Transition::transition) currentTween;
-	} stateBlend;
-		
-	id_t currentState = 0;
-	
-	ozz::vector<ozz::math::SoaTransform> transforms, transformsSecondaryBlending;
+    double lastPlayTime = 0;
+    
+    locked_node_hashmap<id_t,State> states;
+    
+    struct StateBlend{
+        id_t from, to;
+        decltype(State::Transition::transition) currentTween;
+    } stateBlend;
+        
+    id_t currentState = 0;
+    
+    ozz::vector<ozz::math::SoaTransform> transforms, transformsSecondaryBlending;
     std::shared_ptr<ozz::animation::SamplingJob::Context> cache = std::make_shared<ozz::animation::SamplingJob::Context>();
-	ozz::vector<ozz::math::Float4x4> models;
+    ozz::vector<ozz::math::Float4x4> models;
     mutable ozz::vector<matrix4> glm_pose;
-	ozz::vector<matrix4> local_pose;
-	ozz::vector<matrix4> skinningmats;
-	
+    ozz::vector<matrix4> local_pose;
+    ozz::vector<matrix4> skinningmats;
+    
+    bool isPlaying : 1;
+    bool isBlending : 1;
+    float currentBlendingValue = 0;
+    
 	/**
 	 Update buffer sizes for current skeleton
 	 */
 	void UpdateSkeletonData(Ref<SkeletonAsset> sk);
-	
-	bool isPlaying : 1;
-	bool isBlending : 1;
-	float currentBlendingValue = 0;
+
 
 	inline void EndState(State& state, decltype(State::ID) nextState) {
 		state.DoEnd(nextState);
