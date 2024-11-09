@@ -93,13 +93,27 @@ void RavEngine::AnimatorComponent::Layer::Pause() {
 }
 
 void AnimatorComponent::Tick(const Transform& t){
-    //TODO: tick every layer
-    for(auto& layer : layers){
+    // tick every layer
+    static thread_local ozz::animation::BlendingJob::Layer blend_layers[kmax_layers];
+
+    for(auto [i, layer] : Enumerate(layers)){
         layer.Tick(skeleton);
+        
+        blend_layers[i].transform = ozz::make_span(layer.transforms);
+        blend_layers[i].weight = 1.0;   //TODO: make configurable
     }
     
     // blend layers, write to all_transforms
-    all_transforms = layers[0].transforms;
+    
+    ozz::animation::BlendingJob blend_job;
+    blend_job.threshold = 0.1f;            //TODO: make threshold configurable
+    blend_job.layers = ozz::span(blend_layers,layers.size());;
+    blend_job.rest_pose = skeleton->GetSkeleton()->joint_rest_poses();
+    
+    blend_job.output = make_span(all_transforms);
+    if (!blend_job.Run()) {
+        Debug::Fatal("Blend job failed");
+    }
     
     
     //convert from local space to model space
@@ -241,6 +255,9 @@ void RavEngine::AnimatorComponent::Layer::UpdateBuffers(const Ref<SkeletonAsset>
 }
 RavEngine::AnimatorComponent::Layer& RavEngine::AnimatorComponent::AddLayer(){
     auto& layer = layers.emplace_back();
+    
+    Debug::Assert(layers.size() <= kmax_layers, "An AnimatorComponent can have at most {} layers", kmax_layers);
+    
     layer.UpdateBuffers(skeleton);
     
     return layer;
@@ -298,7 +315,7 @@ bool AnimBlendTree::Node::Sample(float t, float start, float speed, bool looping
 bool AnimBlendTree::Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform> &output, ozz::animation::SamplingJob::Context &cache, const ozz::animation::Skeleton* skeleton) const{
 	//iterate though the nodes, sample all, and blend
 	//calculate the subtracks
-	ozz::animation::BlendingJob::Layer layers[kmax_nodes];
+	static thread_local ozz::animation::BlendingJob::Layer layers[kmax_nodes];
 	Debug::Assert(states.size() <= kmax_nodes, "An AnimBlendTree can have a maximum of {} nodes",kmax_nodes);
 	//stackarray(layers, ozz::animation::BlendingJob::Layer, states.size());
 	int index = 0;

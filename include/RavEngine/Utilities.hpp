@@ -3,6 +3,7 @@
 #include <sstream>
 #include <type_traits>
 #include <ranges>
+#include <functional>
 #if !RVE_SERVER
 #include <RGL/Types.hpp>
 #endif
@@ -59,6 +60,12 @@ using Random = effolkronium::random_static;
 auto Enumerate(const auto& data) {
     return data | std::views::transform([i = 0](const auto& value) mutable {
         return std::make_pair(i++, value);
+    });
+}
+
+auto Enumerate(auto& data) {
+    return data | std::views::transform([i = 0](auto&& value) mutable {
+        return std::make_pair(i++, std::reference_wrapper(value));
     });
 }
 

@@ -115,6 +115,8 @@ class AnimatorComponent : public AutoCTTI, public Queryable<AnimatorComponent>
 {
     Ref<SkeletonAsset> skeleton;
 public:
+    static constexpr uint16_t kmax_layers = 32;
+
 	//a node in the state machine
 	struct State{
 		friend class AnimatorComponent;
