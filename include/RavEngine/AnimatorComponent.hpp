@@ -14,6 +14,7 @@ namespace RavEngine{
 
 struct Transform;
 class SkeletonAsset;
+struct SkeletonMask;
 
 class clamped_vec2{
 	float x, y;
@@ -227,6 +228,7 @@ public:
         Layer(const Layer&) = delete; // no copy
         Layer(Layer&&) = default;   // movable
         Layer(){}
+        Layer(const Ref<SkeletonMask>& mask) : skeletonMask(mask){}
         /**
          Transitions to the new state. If the current state has a transition to the target state, that transition is played.
          Otherwise, the state machine simply jumps to the target state without a transition.
@@ -259,8 +261,16 @@ public:
             return currentState;
         }
         
-    private:
+        void SetSkeletonMask(Ref<SkeletonMask> mask) {
+            skeletonMask = mask;
+        }
         
+        auto& GetSkeletonMask() const{
+            return skeletonMask;
+        }
+        
+    private:
+        std::optional<Ref<SkeletonMask>> skeletonMask;
         double lastPlayTime = 0;
         
         locked_node_hashmap<id_t,State> states;

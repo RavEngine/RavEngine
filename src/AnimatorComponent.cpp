@@ -3,6 +3,7 @@
 #include <ozz/options/options.h>
 #include <ozz/animation/runtime/blending_job.h>
 #include <ozz/animation/runtime/local_to_model_job.h>
+#include "SkeletonMask.hpp"
 #include "Debug.hpp"
 #include "Transform.hpp"
 #include "SkeletonAsset.hpp"
@@ -101,6 +102,10 @@ void AnimatorComponent::Tick(const Transform& t){
         
         blend_layers[i].transform = ozz::make_span(layer.transforms);
         blend_layers[i].weight = 1.0;   //TODO: make configurable
+        if (auto mask = layer.GetSkeletonMask()){
+            Debug::Assert(mask.value()->GetNumPackedJoints() == skeleton->GetSkeleton()->num_soa_joints(), "SkeletonMask and Skeleton have different joint counts!");
+            blend_layers[i].joint_weights = ozz::span<const ozz::math::SimdFloat4>(mask.value()->mask.data(), mask.value()->mask.size());
+        }
     }
     
     // blend layers, write to all_transforms
