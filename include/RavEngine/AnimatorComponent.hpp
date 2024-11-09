@@ -219,28 +219,74 @@ public:
 	 */
 	AnimatorComponent(Ref<SkeletonAsset> sk);
 		
-	/**
-	 Transitions to the new state. If the current state has a transition to the target state, that transition is played.
-	 Otherwise, the state machine simply jumps to the target state without a transition.
-	 @param newState the state to switch to
-	 */
-    void Goto(id_t newState, bool skipTransition = false);
+    struct Layer{
+        friend class AnimatorComponent;
+        
+        Layer(const Layer&) = delete; // no copy
+        Layer(Layer&&) = default;   // movable
+        Layer(){}
+        /**
+         Transitions to the new state. If the current state has a transition to the target state, that transition is played.
+         Otherwise, the state machine simply jumps to the target state without a transition.
+         @param newState the state to switch to
+         */
+        void Goto(id_t newState, bool skipTransition = false);
+        
+        /**
+         Add a state to the state machine
+         @param state the state to insert
+         */
+        inline void InsertState(const State& state){
+            states.insert(std::make_pair(state.ID,state));
+        }
+        
+        /**
+         Begin playing this AnimatorController
+         @param resetPlayhead true if the time of this animator should be reset (for nonlooping animations), false to resume where paused (for looping animations)
+         */
+        void Play(float resetPlayhead = false);
+        
+        void Pause();
+        
+        void UpdateBuffers(const Ref<SkeletonAsset>& skeleton);
+        
+        /**
+        * @return the ID of the state the animator is currently playing
+        */
+        auto GetCurrentState() const{
+            return currentState;
+        }
+        
+    private:
+        
+        double lastPlayTime = 0;
+        
+        locked_node_hashmap<id_t,State> states;
+        
+        struct StateBlend{
+            id_t from, to;
+            decltype(State::Transition::transition) currentTween;
+        } stateBlend;
+            
+        id_t currentState = 0;
+        
+        bool isPlaying = false;
+        bool isBlending = false;
+        float currentBlendingValue = 0;
+        
+        inline void EndState(State& state, decltype(State::ID) nextState) {
+            state.DoEnd(nextState);
+            if (state.HasAutoTransition()) {
+                Goto(state.GetAutoTransitionID());
+            }
+        }
+        
+        void Tick(const Ref<SkeletonAsset>& skeleton);
+        
+        ozz::vector<ozz::math::SoaTransform> transforms, transformsSecondaryBlending;
+        std::shared_ptr<ozz::animation::SamplingJob::Context> cache = std::make_shared<ozz::animation::SamplingJob::Context>();
+    };
 	
-	/**
-	 Add a state to the state machine
-	 @param state the state to insert
-	 */
-    inline void InsertState(const State& state){
-		states.insert(std::make_pair(state.ID,state));
-	}
-	
-	/**
-	 Begin playing this AnimatorController
-	 @param resetPlayhead true if the time of this animator should be reset (for nonlooping animations), false to resume where paused (for looping animations)
-	 */
-    void Play(float resetPlayhead = false);
-	
-    void Pause();
 
 	/**
 	Process one frame of this animator.
@@ -259,49 +305,34 @@ public:
 	void UpdateSocket(const std::string&, Transform&) const;
 
 protected:
-    double lastPlayTime = 0;
     
-    locked_node_hashmap<id_t,State> states;
     
-    struct StateBlend{
-        id_t from, to;
-        decltype(State::Transition::transition) currentTween;
-    } stateBlend;
-        
-    id_t currentState = 0;
-    
-    ozz::vector<ozz::math::SoaTransform> transforms, transformsSecondaryBlending;
-    std::shared_ptr<ozz::animation::SamplingJob::Context> cache = std::make_shared<ozz::animation::SamplingJob::Context>();
-    ozz::vector<ozz::math::Float4x4> models;
     mutable ozz::vector<matrix4> glm_pose;
     ozz::vector<matrix4> local_pose;
     ozz::vector<matrix4> skinningmats;
-    
-    bool isPlaying : 1;
-    bool isBlending : 1;
-    float currentBlendingValue = 0;
+    ozz::vector<ozz::math::Float4x4> models;
+    ozz::vector<ozz::math::SoaTransform> all_transforms;
+
+    Vector<Layer> layers;
+
     
 	/**
 	 Update buffer sizes for current skeleton
 	 */
 	void UpdateSkeletonData(Ref<SkeletonAsset> sk);
 
-
-	inline void EndState(State& state, decltype(State::ID) nextState) {
-		state.DoEnd(nextState);
-		if (state.HasAutoTransition()) {
-			Goto(state.GetAutoTransitionID());
-		}
-	}
-
 public:
-	/**
-	* @return the ID of the state the animator is currently playing
-	*/
-	inline decltype(currentState) GetCurrentState() const{
-		return currentState;
-	}
-
+    
+    /**
+     Add a layer to the end
+     @return the created layer
+     */
+    Layer& AddLayer();
+    
+    Layer& GetLayerAtIndex(uint16_t index){
+        return layers.at(index);
+    };
+    
 	/**
 	 Get the current pose of the animation in world space
 	 @return vector of matrices representing the world-space transformations of every joint in the skeleton for the current animation frame

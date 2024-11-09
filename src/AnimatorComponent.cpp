@@ -28,11 +28,11 @@ Create an AnimatorComponent with a SkeletonAsset
 @param sk the skeleton asset
 */
 
-RavEngine::AnimatorComponent::AnimatorComponent(Ref<SkeletonAsset> sk) : isPlaying(false), isBlending(false) {
+RavEngine::AnimatorComponent::AnimatorComponent(Ref<SkeletonAsset> sk) {
 	UpdateSkeletonData(sk);
 }
 
-void RavEngine::AnimatorComponent::Goto(id_t newState, bool skipTransition) {
+void RavEngine::AnimatorComponent::Layer::Goto(id_t newState, bool skipTransition) {
 	auto prevState = currentState;
 	if (newState != currentState) {
 		states[currentState].DoEnd(newState);
@@ -71,7 +71,7 @@ Begin playing this AnimatorController
 @param resetPlayhead true if the time of this animator should be reset (for nonlooping animations), false to resume where paused (for looping animations)
 */
 
-void RavEngine::AnimatorComponent::Play(float resetPlayhead) {
+void RavEngine::AnimatorComponent::Layer::Play(float resetPlayhead) {
 	// need to maintain offset from previous play time
 	if (!isPlaying) {
 		if (resetPlayhead) {
@@ -84,7 +84,7 @@ void RavEngine::AnimatorComponent::Play(float resetPlayhead) {
 	}
 }
 
-void RavEngine::AnimatorComponent::Pause() {
+void RavEngine::AnimatorComponent::Layer::Pause() {
 	// record pause time so that resume begins in the correct place
 	if (isPlaying) {
 		lastPlayTime = GetApp()->GetCurrentTime();
@@ -93,7 +93,38 @@ void RavEngine::AnimatorComponent::Pause() {
 }
 
 void AnimatorComponent::Tick(const Transform& t){
-	//skip calculation 
+    //TODO: tick every layer
+    for(auto& layer : layers){
+        layer.Tick(skeleton);
+    }
+    
+    // blend layers, write to all_transforms
+    all_transforms = layers[0].transforms;
+    
+    
+    //convert from local space to model space
+    ozz::animation::LocalToModelJob job;
+    job.skeleton = skeleton->GetSkeleton().get();
+    job.input = ozz::make_span(all_transforms);
+    job.output = ozz::make_span(models);
+    
+    if (!job.Run()){
+        Debug::Fatal("local to model job failed");
+    }
+    
+    // create pose-bindpose skinning matrices
+    auto& pose = GetLocalPose();
+    auto& bindpose = skeleton->GetBindposes();
+    for(int i = 0; i < skinningmats.size(); i++){
+        skinningmats[i] = pose[i] * matrix4(bindpose[i]);
+    }
+    
+    // update world poses
+    GetPose(t);
+}
+
+void AnimatorComponent::Layer::Tick(const Ref<SkeletonAsset>& skeleton){
+	//skip calculation
     if(isPlaying){
         
         auto timeScale = GetApp()->GetCurrentFPSScale();
@@ -158,26 +189,7 @@ void AnimatorComponent::Tick(const Transform& t){
             }
         }
     }
-	
-	//convert from local space to model space
-	ozz::animation::LocalToModelJob job;
-	job.skeleton = skeleton->GetSkeleton().get();
-	job.input = ozz::make_span(transforms);
-	job.output = ozz::make_span(models);
-	
-	if (!job.Run()){
-		Debug::Fatal("local to model job failed");
-	}
-	
-	// create pose-bindpose skinning matrices
-	auto& pose = GetLocalPose();
-	auto& bindpose = skeleton->GetBindposes();
-	for(int i = 0; i < skinningmats.size(); i++){
-		skinningmats[i] = pose[i] * matrix4(bindpose[i]);
-	}
 
-	// update world poses
-	GetPose(t);
 }
 
 void AnimatorComponent::UpdateSocket(const std::string& name, Transform& t) const{
@@ -200,21 +212,38 @@ Update buffer sizes for current skeleton
 
 inline void RavEngine::AnimatorComponent::UpdateSkeletonData(Ref<SkeletonAsset> sk) {
 	skeleton = sk;
-	const auto n_joints_soa = skeleton->GetSkeleton()->num_soa_joints();
-	transforms.resize(n_joints_soa);
-	transformsSecondaryBlending.resize(n_joints_soa);
-
+    const auto n_joints_soa = skeleton->GetSkeleton()->num_soa_joints();
+    all_transforms.resize(n_joints_soa);
+    
 	const auto n_joints = skeleton->GetSkeleton()->num_joints();
-	models.resize(n_joints);
-	cache->Resize(n_joints);
+    models.resize(n_joints);
 	glm_pose.resize(n_joints);
 	local_pose.resize(n_joints);
 	skinningmats.resize(n_joints);
+    
+    for(auto& layer : layers){
+        layer.UpdateBuffers(sk);
+    }
+}
+
+void RavEngine::AnimatorComponent::Layer::UpdateBuffers(const Ref<SkeletonAsset>& skeleton){
+    const auto n_joints_soa = skeleton->GetSkeleton()->num_soa_joints();
+    transforms.resize(n_joints_soa);
+    transformsSecondaryBlending.resize(n_joints_soa);
+    
+    const auto n_joints = skeleton->GetSkeleton()->num_joints();
+    cache->Resize(n_joints);
     
     //set all to skeleton bind pose
     for(int i = 0; i < transforms.size(); i++){
         transforms[i] = skeleton->GetSkeleton()->joint_rest_poses()[i];
     }
+}
+RavEngine::AnimatorComponent::Layer& RavEngine::AnimatorComponent::AddLayer(){
+    auto& layer = layers.emplace_back();
+    layer.UpdateBuffers(skeleton);
+    
+    return layer;
 }
 
 
