@@ -269,9 +269,17 @@ public:
             return skeletonMask;
         }
         
+        void SetWeight(float w){
+            weight = w;
+        }
+        float GetWeight() const{
+            return weight;
+        }
+        
     private:
         std::optional<Ref<SkeletonMask>> skeletonMask;
         double lastPlayTime = 0;
+        float weight = 1;
         
         locked_node_hashmap<id_t,State> states;
         
