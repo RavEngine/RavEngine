@@ -96,23 +96,37 @@ void RavEngine::AnimatorComponent::Layer::Pause() {
 void AnimatorComponent::Tick(const Transform& t){
     // tick every layer
     static thread_local ozz::animation::BlendingJob::Layer blend_layers[kmax_layers];
-
-    for(auto [i, layer] : Enumerate(layers)){
-        layer.Tick(skeleton);
-        
-        blend_layers[i].transform = ozz::make_span(layer.transforms);
-        blend_layers[i].weight = layer.GetWeight();
-        if (auto mask = layer.GetSkeletonMask()){
-            Debug::Assert(mask.value()->GetNumPackedJoints() == skeleton->GetSkeleton()->num_soa_joints(), "SkeletonMask and Skeleton have different joint counts!");
-            blend_layers[i].joint_weights = ozz::span<const ozz::math::SimdFloat4>(mask.value()->mask.data(), mask.value()->mask.size());
+    static thread_local ozz::animation::BlendingJob::Layer additive_blend_layers[kmax_layers];
+    
+    auto setupLayers = [this]<bool isAdditive>(auto&& blend_layers){
+        uint16_t i = 0;
+        for(auto [layeridx, layer] : Enumerate(layers)){
+            if(layer.isAdditive != isAdditive)
+            {
+                continue;       // filter out the wrong type
+            }
+            layer.Tick(skeleton);
+            
+            blend_layers[i].transform = ozz::make_span(layer.transforms);
+            blend_layers[i].weight = layer.GetWeight();
+            if (auto mask = layer.GetSkeletonMask()){
+                Debug::Assert(mask.value()->GetNumPackedJoints() == skeleton->GetSkeleton()->num_soa_joints(), "SkeletonMask and Skeleton have different joint counts!");
+                blend_layers[i].joint_weights = ozz::span<const ozz::math::SimdFloat4>(mask.value()->mask.data(), mask.value()->mask.size());
+            }
+            i++;
         }
-    }
+        return i;
+    };
+    auto numLayers = setupLayers.operator()<false>(blend_layers);
+    auto numAdditiveLayers = setupLayers.operator()<true>(additive_blend_layers);
+    
     
     // blend layers, write to all_transforms
     
     ozz::animation::BlendingJob blend_job;
     blend_job.threshold = 0.1f;            //TODO: make threshold configurable
-    blend_job.layers = ozz::span(blend_layers,layers.size());;
+    blend_job.layers = ozz::span(blend_layers,numLayers);
+    blend_job.additive_layers = ozz::span(additive_blend_layers,numAdditiveLayers);
     blend_job.rest_pose = skeleton->GetSkeleton()->joint_rest_poses();
     
     blend_job.output = make_span(all_transforms);

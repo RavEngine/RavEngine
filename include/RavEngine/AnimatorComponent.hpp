@@ -276,10 +276,15 @@ public:
             return weight;
         }
         
+        bool SetAdditive(bool additive){
+            isAdditive = additive;
+        }
+        
     private:
         std::optional<Ref<SkeletonMask>> skeletonMask;
         double lastPlayTime = 0;
         float weight = 1;
+        bool isAdditive = false;
         
         locked_node_hashmap<id_t,State> states;
         
