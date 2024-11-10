@@ -12,11 +12,13 @@ SkeletonMask::SkeletonMask(uint16_t numBones_soa){
 }
 
 void SkeletonMask::SetMaskForJoint(uint16_t joint_idx, float value){
-    mask[joint_idx / 4][joint_idx % 4] = value;
+    float* vec = reinterpret_cast<float*>(&mask[joint_idx / 4]);
+    vec[joint_idx % 4] = value;
 }
 
 float SkeletonMask::GetMaskForJoint(uint16_t joint_idx) const{
-    return  mask[joint_idx / 4][joint_idx % 4];
+    const float* vec = reinterpret_cast<const float*>(&mask[joint_idx / 4]);
+    return  vec[joint_idx % 4];
 }
 
 }
