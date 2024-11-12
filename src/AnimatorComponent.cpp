@@ -32,13 +32,23 @@ Create an AnimatorComponent with a SkeletonAsset
 RavEngine::AnimatorComponent::AnimatorComponent(Ref<SkeletonAsset> sk) {
 	UpdateSkeletonData(sk);
 }
+RavEngine::AnimatorComponent::State& RavEngine::AnimatorComponent::Layer::GetStateForID(id_t id){
+    if (states.contains(id)){
+        return states.at(id);
+    }
+    else{
+        Debug::Fatal("State with ID {} is not in this layer.",id);
+    }
+}
 
 void RavEngine::AnimatorComponent::Layer::Goto(id_t newState, bool skipTransition) {
 	auto prevState = currentState;
 	if (newState != currentState) {
-		states[currentState].DoEnd(newState);
-	}
-	if (skipTransition || !(states.contains(newState) && states.at(currentState).exitTransitions.contains(newState))) {	//just jump to the new state
+        states.if_contains(currentState, [&newState](auto&& currentState){
+            currentState.DoEnd(newState);
+        });
+    }
+	if (skipTransition || !(states.contains(newState) && GetStateForID(currentState).exitTransitions.contains(newState))) {	//just jump to the new state
 		currentState = newState;
 	}
 	else {
@@ -47,11 +57,11 @@ void RavEngine::AnimatorComponent::Layer::Goto(id_t newState, bool skipTransitio
 		stateBlend.to = newState;
 
 		//copy time or reset time on target?
-		auto& ns = states.at(currentState).exitTransitions.at(newState);
+		auto& ns = GetStateForID(currentState).exitTransitions.at(newState);
 
 		switch (ns.type) {
 		case State::Transition::TimeMode::BeginNew:
-			states.at(newState).lastPlayTime = GetApp()->GetCurrentTime();
+			GetStateForID(newState).lastPlayTime = GetApp()->GetCurrentTime();
 			break;
 		default: break;
 		}
@@ -63,7 +73,7 @@ void RavEngine::AnimatorComponent::Layer::Goto(id_t newState, bool skipTransitio
 		isBlending = true;
 		currentState = newState;
 	}
-	states[currentState].DoBegin(prevState);
+	GetStateForID(currentState).DoBegin(prevState);
 }
 
 
@@ -166,8 +176,8 @@ void AnimatorComponent::Layer::Tick(const Ref<SkeletonAsset>& skeleton){
         //if isBlending, need to calculate both states, and blend between them
         if (isBlending){
             
-            auto& fromState = states[stateBlend.from];
-            auto& toState = states[stateBlend.to];
+            auto& fromState = GetStateForID(stateBlend.from);
+            auto& toState = GetStateForID(stateBlend.to);
             
             //advance playheads
             if (isPlaying){
@@ -208,7 +218,7 @@ void AnimatorComponent::Layer::Tick(const Ref<SkeletonAsset>& skeleton){
         }
         else{
             if (states.contains(currentState)){
-                auto& state = states[currentState];
+                auto& state = GetStateForID(currentState);
                 auto& cref = *cache;
                 if (state.clip->Sample(currentTime, std::max(lastPlayTime, state.lastPlayTime), state.speed, state.isLooping, transforms, cref, skeleton->GetSkeleton().get())) {
                     EndState(state,currentState);

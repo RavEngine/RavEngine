@@ -57,7 +57,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 @param id the identifier for the node. Recommended to create an enum to use here.
 	 @param node the node to insert into the tree.
 	 */
-    inline void InsertNode(uint8_t id, const Node& node){
+    inline void InsertNode(id_t id, const Node& node){
 		states[id].node = node;
 	}
 	
@@ -65,7 +65,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 Remove a node given an ID
 	 @param id the id to remove
 	 */
-    inline void DeleteNode(uint8_t id){
+    inline void DeleteNode(id_t id){
 		states.erase(id);
 	}
 	
@@ -75,7 +75,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 @returns node reference
 	 @throws if no node exists at id
 	 */
-    Node& GetNode(const uint8_t id){
+    Node& GetNode(const id_t id){
 		return states.at(id).node;
 	}
 	
@@ -86,7 +86,7 @@ struct AnimBlendTree : public IAnimGraphable{
     inline void Clear(){
 		states.clear();
 	}
-	
+    
 	/**
 	 Sample the animation curves in this tree
 	 @param t the time to sample
@@ -104,7 +104,7 @@ private:
 		ozz::vector<ozz::math::SoaTransform> locals;
 		Node node;
 	};
-	locked_node_hashmap<uint8_t,Sampler,SpinLock> states;
+	locked_node_hashmap<id_t,Sampler,SpinLock> states;
 	clamped_vec2 blend_pos;
 };
 
@@ -151,8 +151,6 @@ public:
 		* Construct a State
 		*/
         State(decltype(ID) ID, decltype(clip) clip, decltype(isLooping) il = true, decltype(speed) speed = 1) : ID(ID), clip(clip), isLooping(il), speed(speed) {}
-
-		State() {}
 
 	private:
 		bool hasAutoTransition = false;
@@ -285,7 +283,7 @@ public:
         double lastPlayTime = 0;
         float weight = 1;
         bool isAdditive = false;
-        
+        State& GetStateForID(id_t id);
         locked_node_hashmap<id_t,State,SpinLock> states;
         
         struct StateBlend{
