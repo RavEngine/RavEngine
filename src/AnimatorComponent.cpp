@@ -84,7 +84,7 @@ Begin playing this AnimatorController
 
 void RavEngine::AnimatorComponent::Layer::Play(float resetPlayhead) {
 	// need to maintain offset from previous play time
-	if (!isPlaying) {
+    if (!isPlaying || resetPlayhead) {
 		if (resetPlayhead) {
 			lastPlayTime = GetApp()->GetCurrentTime();
 		}
