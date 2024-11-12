@@ -100,16 +100,16 @@ void AnimatorComponent::Tick(const Transform& t){
     
     auto setupLayers = [this]<bool isAdditive>(auto&& blend_layers){
         uint16_t i = 0;
-        for(auto [layeridx, layer] : Enumerate(layers)){
-            if(layer.isAdditive != isAdditive)
+        for(auto& layer : layers){
+            if(layer->isAdditive != isAdditive)
             {
                 continue;       // filter out the wrong type
             }
-            layer.Tick(skeleton);
+            layer->Tick(skeleton);
             
-            blend_layers[i].transform = ozz::make_span(layer.transforms);
-            blend_layers[i].weight = layer.GetWeight();
-            if (auto mask = layer.GetSkeletonMask()){
+            blend_layers[i].transform = ozz::make_span(layer->transforms);
+            blend_layers[i].weight = layer->GetWeight();
+            if (auto mask = layer->GetSkeletonMask()){
                 Debug::Assert(mask.value()->GetNumPackedJoints() == skeleton->GetSkeleton()->num_soa_joints(), "SkeletonMask and Skeleton have different joint counts!");
                 blend_layers[i].joint_weights = ozz::span<const ozz::math::SimdFloat4>(mask.value()->mask.data(), mask.value()->mask.size());
             }
@@ -255,7 +255,7 @@ inline void RavEngine::AnimatorComponent::UpdateSkeletonData(Ref<SkeletonAsset> 
 	skinningmats.resize(n_joints);
     
     for(auto& layer : layers){
-        layer.UpdateBuffers(sk);
+        layer->UpdateBuffers(sk);
     }
 }
 
@@ -272,14 +272,14 @@ void RavEngine::AnimatorComponent::Layer::UpdateBuffers(const Ref<SkeletonAsset>
         transforms[i] = skeleton->GetSkeleton()->joint_rest_poses()[i];
     }
 }
-RavEngine::AnimatorComponent::Layer& RavEngine::AnimatorComponent::AddLayer(){
-    auto& layer = layers.emplace_back();
+RavEngine::AnimatorComponent::Layer* RavEngine::AnimatorComponent::AddLayer(){
+    auto& layer = layers.emplace_back(std::make_unique<Layer>());
     
     Debug::Assert(layers.size() <= kmax_layers, "An AnimatorComponent can have at most {} layers", kmax_layers);
     
-    layer.UpdateBuffers(skeleton);
+    layer->UpdateBuffers(skeleton);
     
-    return layer;
+    return layer.get();
 }
 
 

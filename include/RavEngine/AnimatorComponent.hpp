@@ -17,10 +17,10 @@ class SkeletonAsset;
 struct SkeletonMask;
 
 class clamped_vec2{
-	float x, y;
+	float x = 0, y = 0;
 public:
 	clamped_vec2(float ix, float iy) : x(std::clamp(ix,-1.0f,1.0f)), y(std::clamp(iy,-1.0f,1.0f)){}
-	clamped_vec2() : clamped_vec2(0,0){}
+	clamped_vec2(){}
 	
 	constexpr inline decltype(x) get_x() const{
 		return x;
@@ -121,7 +121,7 @@ public:
 	//a node in the state machine
 	struct State{
 		friend class AnimatorComponent;
-		unsigned short ID;
+		unsigned short ID = 0;
 		Ref<IAnimGraphable> clip;
 		bool isLooping = true;
 		float speed = 1;
@@ -132,7 +132,7 @@ public:
 			enum class TimeMode{
 				Blended = 0,	//the time from this state carries over to the target state
 				BeginNew = 1	//the target state's time is set to 0 when the transition begins
-			} type;
+			} type = TimeMode::Blended;
 			tweeny::tween<float> transition;
 		};
 		
@@ -286,10 +286,10 @@ public:
         float weight = 1;
         bool isAdditive = false;
         
-        locked_node_hashmap<id_t,State> states;
+        locked_node_hashmap<id_t,State,SpinLock> states;
         
         struct StateBlend{
-            id_t from, to;
+            id_t from = 0, to = 0;
             decltype(State::Transition::transition) currentTween;
         } stateBlend;
             
@@ -338,7 +338,7 @@ protected:
     ozz::vector<ozz::math::Float4x4> models;
     ozz::vector<ozz::math::SoaTransform> all_transforms;
 
-    Vector<Layer> layers;
+    Vector<std::unique_ptr<Layer>> layers;
 
     
 	/**
@@ -352,10 +352,10 @@ public:
      Add a layer to the end
      @return the created layer
      */
-    Layer& AddLayer();
+    Layer* AddLayer();
     
-    Layer& GetLayerAtIndex(uint16_t index){
-        return layers.at(index);
+    Layer* GetLayerAtIndex(uint16_t index){
+        return layers.at(index).get();
     };
     
 	/**

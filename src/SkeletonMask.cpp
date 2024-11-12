@@ -3,12 +3,12 @@
 #include "SkeletonAsset.hpp"
 
 namespace RavEngine{
-SkeletonMask::SkeletonMask(Ref<SkeletonAsset> asset) : SkeletonMask(asset->GetSkeleton()->num_soa_joints()){
+SkeletonMask::SkeletonMask(Ref<SkeletonAsset> asset, float defaultValue) : SkeletonMask(asset->GetSkeleton()->num_soa_joints(), defaultValue){
     
 }
 
-SkeletonMask::SkeletonMask(uint16_t numBones_soa){
-    mask.resize(numBones_soa, ozz::math::SimdFloat4{1,1,1,1});
+SkeletonMask::SkeletonMask(uint16_t numBones_soa, float defaultValue){
+    mask.resize(numBones_soa, ozz::math::SimdFloat4{ defaultValue,defaultValue,defaultValue,defaultValue });
 }
 
 void SkeletonMask::SetMaskForJoint(uint16_t joint_idx, float value){

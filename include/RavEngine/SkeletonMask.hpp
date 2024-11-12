@@ -5,13 +5,13 @@
 
 namespace RavEngine{
 
-struct SkeletonAsset;
+class SkeletonAsset;
 
 struct SkeletonMask{
     friend class AnimatorComponent;
     
-    SkeletonMask(Ref<SkeletonAsset> asset);
-    SkeletonMask(uint16_t numBones);
+    SkeletonMask(Ref<SkeletonAsset> asset, float defaultValue = 1);
+    SkeletonMask(uint16_t numBones, float defaultValue = 1);
     
     void SetMaskForJoint(uint16_t joint_idx, float value);
     
