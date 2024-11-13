@@ -202,3 +202,8 @@ bool AnimationClip::Sample(float t, float start, float speed, bool looping, ozz:
 	}
 	return allDone;
 }
+
+bool RavEngine::CustomSkeletonAnimation::Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>& locals, ozz::animation::SamplingJob::Context& cache, const ozz::animation::Skeleton* skeleton) const
+{
+	return mutateBonesHook(ozz::make_span(locals), skeleton, t, start, speed, looping);
+}

@@ -5,6 +5,7 @@
 #include <ozz/base/containers/vector.h>
 #include <ozz/animation/runtime/sampling_job.h>
 #include <ozz/base/memory/unique_ptr.h>
+#include "Function.hpp"
 
 namespace ozz::animation {
 	struct Skeleton;
@@ -60,6 +61,32 @@ public:
 	
 	float duration_seconds;
 	float tps;
+};
+
+class CustomSkeletonAnimation : public IAnimGraphable {
+	Function<bool(ozz::span<ozz::math::SoaTransform>, const ozz::animation::Skeleton*, float, float, float, bool)> mutateBonesHook;
+	bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingJob::Context& cache, const ozz::animation::Skeleton* skeleton) const override;
+public:
+	/**
+	* Provide a custom Callable that provides bone transformations. See CustomSkeletonAnimationFunction for parameters.
+	*
+	*/
+	CustomSkeletonAnimation(const decltype(mutateBonesHook)& hook) : mutateBonesHook(hook) {}
+};
+
+
+struct CustomSkeletonAnimationFunction {
+
+	/** Derive from this class to provide custom animations.
+	* @param transforms the bone transforms. Write changes here
+	* @param skeleton the skeleton representing the transforms.
+	* @param t the current time
+	* @param start the time the animation was last "Play"ed 
+	* @param speed the playback rate of the animation where 1.0 is normal speed
+	* @param looping whether the animation should loop
+	* @return true if the animation has completed, false otherwise.
+	*/
+	virtual bool operator()(ozz::span<ozz::math::SoaTransform> transforms, const ozz::animation::Skeleton* skeleton, float t, float start, float end, bool loop) = 0;
 };
 
 class AnimationAssetSegment : public IAnimGraphable{
