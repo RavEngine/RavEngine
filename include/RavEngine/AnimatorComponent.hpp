@@ -16,6 +16,8 @@ struct Transform;
 class SkeletonAsset;
 struct SkeletonMask;
 
+using anim_id_t = uint16_t;
+
 class clamped_vec2{
 	float x = 0, y = 0;
 public:
@@ -32,6 +34,7 @@ public:
 
 struct AnimBlendTree : public IAnimGraphable{
 	struct Node : public IAnimGraphable{
+
 		Ref<IAnimGraphable> state;
 		clamped_vec2 graph_pos;
 		float max_influence = 1;
@@ -57,7 +60,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 @param id the identifier for the node. Recommended to create an enum to use here.
 	 @param node the node to insert into the tree.
 	 */
-    inline void InsertNode(id_t id, const Node& node){
+    inline void InsertNode(anim_id_t id, const Node& node){
 		states[id].node = node;
 	}
 	
@@ -65,7 +68,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 Remove a node given an ID
 	 @param id the id to remove
 	 */
-    inline void DeleteNode(id_t id){
+    inline void DeleteNode(anim_id_t id){
 		states.erase(id);
 	}
 	
@@ -75,7 +78,7 @@ struct AnimBlendTree : public IAnimGraphable{
 	 @returns node reference
 	 @throws if no node exists at id
 	 */
-    Node& GetNode(const id_t id){
+    Node& GetNode(const anim_id_t id){
 		return states.at(id).node;
 	}
 	
@@ -104,7 +107,7 @@ private:
 		ozz::vector<ozz::math::SoaTransform> locals;
 		Node node;
 	};
-	locked_node_hashmap<id_t,Sampler,SpinLock> states;
+	locked_node_hashmap<anim_id_t,Sampler,SpinLock> states;
 	clamped_vec2 blend_pos;
 };
 
@@ -121,7 +124,7 @@ public:
 	//a node in the state machine
 	struct State{
 		friend class AnimatorComponent;
-		unsigned short ID = 0;
+		anim_id_t ID = 0;
 		Ref<IAnimGraphable> clip;
 		bool isLooping = true;
 		float speed = 1;
@@ -211,9 +214,7 @@ public:
 			return autoTransitionID;
 		}
 	};
-	
-	typedef decltype(State::ID) id_t;
-	
+		
 	/**
 	 Create an AnimatorComponent with a SkeletonAsset
 	 @param sk the skeleton asset
@@ -232,7 +233,7 @@ public:
          Otherwise, the state machine simply jumps to the target state without a transition.
          @param newState the state to switch to
          */
-        void Goto(id_t newState, bool skipTransition = false);
+        void Goto(anim_id_t newState, bool skipTransition = false);
         
         /**
          Add a state to the state machine
@@ -283,15 +284,15 @@ public:
         double lastPlayTime = 0;
         float weight = 1;
         bool isAdditive = false;
-        State& GetStateForID(id_t id);
-        locked_node_hashmap<id_t,State,SpinLock> states;
+        State& GetStateForID(anim_id_t id);
+        locked_node_hashmap<anim_id_t,State,SpinLock> states;
         
         struct StateBlend{
-            id_t from = 0, to = 0;
+            anim_id_t from = 0, to = 0;
             decltype(State::Transition::transition) currentTween;
         } stateBlend;
             
-        id_t currentState = 0;
+        anim_id_t currentState = 0;
         
         bool isPlaying = false;
         bool isBlending = false;

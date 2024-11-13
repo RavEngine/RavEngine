@@ -32,7 +32,7 @@ Create an AnimatorComponent with a SkeletonAsset
 RavEngine::AnimatorComponent::AnimatorComponent(Ref<SkeletonAsset> sk) {
 	UpdateSkeletonData(sk);
 }
-RavEngine::AnimatorComponent::State& RavEngine::AnimatorComponent::Layer::GetStateForID(id_t id){
+RavEngine::AnimatorComponent::State& RavEngine::AnimatorComponent::Layer::GetStateForID(anim_id_t id){
     if (states.contains(id)){
         return states.at(id);
     }
@@ -41,7 +41,7 @@ RavEngine::AnimatorComponent::State& RavEngine::AnimatorComponent::Layer::GetSta
     }
 }
 
-void RavEngine::AnimatorComponent::Layer::Goto(id_t newState, bool skipTransition) {
+void RavEngine::AnimatorComponent::Layer::Goto(anim_id_t newState, bool skipTransition) {
 	auto prevState = currentState;
 	if (newState != currentState) {
         states.if_contains(currentState, [&newState](auto&& currentState){
