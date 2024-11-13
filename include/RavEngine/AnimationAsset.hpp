@@ -6,6 +6,7 @@
 #include <ozz/animation/runtime/sampling_job.h>
 #include <ozz/base/memory/unique_ptr.h>
 #include "Function.hpp"
+#include "mathtypes.hpp"
 
 namespace ozz::animation {
 	struct Skeleton;
@@ -63,8 +64,23 @@ public:
 	float tps;
 };
 
+class BoneTransforms{
+    ozz::span<ozz::math::SoaTransform> transforms;
+public:
+    BoneTransforms(decltype(transforms) t) : transforms(t){}
+    
+    
+    struct SingleTransform{
+        quaternion rotation;
+        vector3 translation, scale;
+    };
+    
+    SingleTransform GetBone(uint32_t index) const;
+    void SetBone(uint32_t index, const SingleTransform&);
+};
+
 class CustomSkeletonAnimation : public IAnimGraphable {
-	Function<bool(ozz::span<ozz::math::SoaTransform>, const ozz::animation::Skeleton*, float, float, float, bool)> mutateBonesHook;
+	Function<bool(BoneTransforms, const ozz::animation::Skeleton*, float, float, float, bool)> mutateBonesHook;
 	bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingJob::Context& cache, const ozz::animation::Skeleton* skeleton) const override;
 public:
 	/**
@@ -73,7 +89,6 @@ public:
 	*/
 	CustomSkeletonAnimation(const decltype(mutateBonesHook)& hook) : mutateBonesHook(hook) {}
 };
-
 
 struct CustomSkeletonAnimationFunction {
 
@@ -86,7 +101,7 @@ struct CustomSkeletonAnimationFunction {
 	* @param looping whether the animation should loop
 	* @return true if the animation has completed, false otherwise.
 	*/
-	virtual bool operator()(ozz::span<ozz::math::SoaTransform> transforms, const ozz::animation::Skeleton* skeleton, float t, float start, float end, bool loop) = 0;
+	virtual bool operator()(BoneTransforms transforms, const ozz::animation::Skeleton* skeleton, float t, float start, float end, bool loop) = 0;
 };
 
 class AnimationAssetSegment : public IAnimGraphable{

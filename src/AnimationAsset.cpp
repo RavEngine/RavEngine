@@ -205,5 +205,51 @@ bool AnimationClip::Sample(float t, float start, float speed, bool looping, ozz:
 
 bool RavEngine::CustomSkeletonAnimation::Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>& locals, ozz::animation::SamplingJob::Context& cache, const ozz::animation::Skeleton* skeleton) const
 {
-	return mutateBonesHook(ozz::make_span(locals), skeleton, t, start, speed, looping);
+    return mutateBonesHook({ozz::make_span(locals)}, skeleton, t, start, speed, looping);
+}
+
+BoneTransforms::SingleTransform BoneTransforms::GetBone(uint32_t index) const{
+    auto slot = index / 4;
+    auto offset = index % 4;
+    
+    const auto& transformGroup = transforms[slot];
+    
+    return {
+        {
+            transformGroup.rotation.w[offset],
+            transformGroup.rotation.x[offset],
+            transformGroup.rotation.y[offset],
+            transformGroup.rotation.z[offset]
+        },
+        {
+            transformGroup.translation.x[offset],
+            transformGroup.translation.y[offset],
+            transformGroup.translation.z[offset]
+        },
+        {
+            transformGroup.scale.x[offset],
+            transformGroup.scale.y[offset],
+            transformGroup.scale.z[offset]
+        }
+    };
+}
+
+void BoneTransforms::SetBone(uint32_t index, const SingleTransform & t){
+    auto slot = index / 4;
+    auto offset = index % 4;
+    
+    auto& transformGroup = transforms[slot];
+    
+    transformGroup.translation.x[offset] = t.translation.x;
+    transformGroup.translation.y[offset] = t.translation.y;
+    transformGroup.translation.z[offset] = t.translation.z;
+    
+    transformGroup.scale.x[offset] = t.scale.x;
+    transformGroup.scale.y[offset] = t.scale.y;
+    transformGroup.scale.z[offset] = t.scale.z;
+    
+    transformGroup.rotation.w[offset] = t.rotation.w;
+    transformGroup.rotation.x[offset] = t.rotation.x;
+    transformGroup.rotation.y[offset] = t.rotation.y;
+    transformGroup.rotation.z[offset] = t.rotation.z;
 }
