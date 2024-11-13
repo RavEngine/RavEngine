@@ -213,23 +213,23 @@ BoneTransforms::SingleTransform BoneTransforms::GetBone(uint32_t index) const{
     auto offset = index % 4;
     
     const auto& transformGroup = transforms[slot];
-    
+        
     return {
         {
-            transformGroup.rotation.w[offset],
-            transformGroup.rotation.x[offset],
-            transformGroup.rotation.y[offset],
-            transformGroup.rotation.z[offset]
+            reinterpret_cast<const float*>(&transformGroup.rotation.w)[offset],
+            reinterpret_cast<const float*>(&transformGroup.rotation.x)[offset],
+            reinterpret_cast<const float*>(&transformGroup.rotation.y)[offset],
+            reinterpret_cast<const float*>(&transformGroup.rotation.z)[offset]
         },
         {
-            transformGroup.translation.x[offset],
-            transformGroup.translation.y[offset],
-            transformGroup.translation.z[offset]
+            reinterpret_cast<const float*>(&transformGroup.translation.x)[offset],
+            reinterpret_cast<const float*>(&transformGroup.translation.y)[offset],
+            reinterpret_cast<const float*>(&transformGroup.translation.z)[offset]
         },
         {
-            transformGroup.scale.x[offset],
-            transformGroup.scale.y[offset],
-            transformGroup.scale.z[offset]
+            reinterpret_cast<const float*>(&transformGroup.scale.x)[offset],
+            reinterpret_cast<const float*>(&transformGroup.scale.y)[offset],
+            reinterpret_cast<const float*>(&transformGroup.scale.z)[offset]
         }
     };
 }
@@ -240,16 +240,16 @@ void BoneTransforms::SetBone(uint32_t index, const SingleTransform & t){
     
     auto& transformGroup = transforms[slot];
     
-    transformGroup.translation.x[offset] = t.translation.x;
-    transformGroup.translation.y[offset] = t.translation.y;
-    transformGroup.translation.z[offset] = t.translation.z;
+    reinterpret_cast<float*>(&transformGroup.translation.x)[offset] = t.translation.x;
+    reinterpret_cast<float*>(&transformGroup.translation.y)[offset] = t.translation.y;
+    reinterpret_cast<float*>(&transformGroup.translation.z)[offset] = t.translation.z;
     
-    transformGroup.scale.x[offset] = t.scale.x;
-    transformGroup.scale.y[offset] = t.scale.y;
-    transformGroup.scale.z[offset] = t.scale.z;
+    reinterpret_cast<float*>(&transformGroup.scale.x)[offset] = t.scale.x;
+    reinterpret_cast<float*>(&transformGroup.scale.y)[offset] = t.scale.y;
+    reinterpret_cast<float*>(&transformGroup.scale.z)[offset] = t.scale.z;
     
-    transformGroup.rotation.w[offset] = t.rotation.w;
-    transformGroup.rotation.x[offset] = t.rotation.x;
-    transformGroup.rotation.y[offset] = t.rotation.y;
-    transformGroup.rotation.z[offset] = t.rotation.z;
+    reinterpret_cast<float*>(&transformGroup.rotation.w)[offset] = t.rotation.w;
+    reinterpret_cast<float*>(&transformGroup.rotation.x)[offset] = t.rotation.x;
+    reinterpret_cast<float*>(&transformGroup.rotation.y)[offset] = t.rotation.y;
+    reinterpret_cast<float*>(&transformGroup.rotation.z)[offset] = t.rotation.z;
 }
