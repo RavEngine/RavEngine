@@ -100,7 +100,7 @@ void main(){
 	    }
         #endif
 
-        outcolor += user_out.color * vec4(light.color,1) * light.intensity * ao;
+        outcolor += user_out.color * vec4(light.color * light.intensity,1) * vec4(ao,ao,ao,1);
         
     }
 
