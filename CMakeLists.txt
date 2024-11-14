@@ -212,6 +212,7 @@ add_subdirectory(deps/dr_wav EXCLUDE_FROM_ALL)
 add_subdirectory(deps/fmt EXCLUDE_FROM_ALL)
 add_subdirectory(deps/simdjson EXCLUDE_FROM_ALL)
 add_subdirectory(deps/stbi EXCLUDE_FROM_ALL)
+add_subdirectory(deps/DDS EXCLUDE_FROM_ALL)
 
 # randoms
 set(Random_BuildTests OFF CACHE INTERNAL "")
@@ -493,12 +494,14 @@ if(WIN32 AND NOT RAVENGINE_SERVER)
 	target_link_libraries("${PROJECT_NAME}" PUBLIC openxr_loader)
 endif()
 
+# UUID
 if(LINUX)
 	target_link_libraries("${PROJECT_NAME}" PUBLIC uuid)
 elseif(ANDROID)
 	add_subdirectory(deps/android-uuid)
 	target_link_libraries("${PROJECT_NAME}" PUBLIC uuid-android)
 endif()
+
 
 # set server define
 if(RAVENGINE_SERVER)
@@ -614,6 +617,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"libnyquist"
 	"GameNetworkingSockets_s"
 	"r8brain"
+	libDDS
 	stb_image
 	Recast
 	Detour
@@ -694,7 +698,7 @@ Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlott
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL3-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
 sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt;simdjson;TracyClient;stb_image;phonon_bundle;PffftObj;pf_conv_arch_avx2;\
 pf_conv_arch_avx;pf_conv_arch_sse4;pf_conv_arch_sse3;pf_conv_arch_dflt;pf_conv_dispatcher;pf_conv_arch_none;PFFASTCONV;PFDSP;SDL_uclibc;\
-glm_static;flatbuffers;meshoptimizer;
+glm_static;flatbuffers;meshoptimizer;libDDS;
 ")
 
 group_in("Tools" "rvesc;rvesc_resources;rvemc;rveskc;rve_importlib;rveac")
