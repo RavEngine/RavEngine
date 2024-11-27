@@ -105,7 +105,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 	RVE_PROFILE_SECTION(enc_sync_transforms,"Encode Sync Transforms");
     auto worldTransformBufferHost = worldOwning->renderData.worldTransforms.buffer;
     {
-        const auto hostSize = worldTransformBufferHost->getBufferSize() / worldTransformBufferHost->stride;
+        const uint32_t hostSize = worldTransformBufferHost->getBufferSize() / worldTransformBufferHost->stride;
         if (!(worldOwning->renderData.privateWorldTransforms) || worldOwning->renderData.privateWorldTransforms->getBufferSize() /  worldTransformBufferHost->stride != hostSize){
             if (worldOwning->renderData.privateWorldTransforms){
                 gcBuffers.enqueue(worldOwning->renderData.privateWorldTransforms);
