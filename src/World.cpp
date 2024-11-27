@@ -312,17 +312,6 @@ void World::setupRenderTasks(){
             auto newSize = closest_power_of(nEntities, 16);
             renderData.worldTransforms.resize(newSize);
             renderData.worldTransformsToSync.resize(newSize, true); // ensure the initial copy is included
-            if (renderData.privateWorldTransforms){
-                GetApp()->GetRenderEngine().gcBuffers.enqueue(renderData.privateWorldTransforms);
-            }
-            
-            renderData.privateWorldTransforms = GetApp()->GetDevice()->CreateBuffer({
-                newSize,
-                {.StorageBuffer = true},
-                sizeof(renderData.worldTransforms[0]),
-                RGL::BufferAccess::Private,
-                {.TransferDestination = true, .debugName = "World transform private buffer"}
-            });
         }
         nCreatedThisTick = 0;
     });
