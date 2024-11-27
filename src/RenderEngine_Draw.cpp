@@ -105,8 +105,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 	RVE_PROFILE_SECTION(enc_sync_transforms,"Encode Sync Transforms");
     auto worldTransformBufferHost = worldOwning->renderData.worldTransforms.buffer;
     {
-        const uint32_t hostSize = worldTransformBufferHost->getBufferSize() / worldTransformBufferHost->stride;
-        if (!(worldOwning->renderData.privateWorldTransforms) || worldOwning->renderData.privateWorldTransforms->getBufferSize() /  worldTransformBufferHost->stride != hostSize){
+        const uint32_t hostSize = worldTransformBufferHost->getBufferSize();
+        if (!(worldOwning->renderData.privateWorldTransforms) || worldOwning->renderData.privateWorldTransforms->getBufferSize() != hostSize){
             if (worldOwning->renderData.privateWorldTransforms){
                 gcBuffers.enqueue(worldOwning->renderData.privateWorldTransforms);
             }
@@ -114,7 +114,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
             worldOwning->renderData.privateWorldTransforms = device->CreateBuffer({
                 hostSize,
                 {.StorageBuffer = true},
-                worldTransformBufferHost->stride,
+                sizeof(std::byte),
                 RGL::BufferAccess::Private,
                 {.TransferDestination = true, .debugName = "World transform private buffer"}
             });
