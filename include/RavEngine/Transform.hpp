@@ -76,6 +76,8 @@ namespace RavEngine {
 		}
 		Transform(Entity owner) : Transform(owner, vector3(0, 0, 0), quaternion(1.0, 0.0, 0.0, 0.0), vector3(1, 1, 1)) {}
         
+        MOVE_NO_COPY(Transform);
+        
 		Transform& SetLocalPosition(const vector3&);
         Transform& SetWorldPosition(const vector3&);
         Transform& LocalTranslateDelta(const vector3&);

@@ -29,6 +29,8 @@ namespace RavEngine {
             SetMaterial(mat);
 		}
         
+        MOVE_NO_COPY(StaticMesh);
+        
 		virtual ~StaticMesh(){}
 		
 		inline auto GetMesh() const{

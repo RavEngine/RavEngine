@@ -36,6 +36,8 @@ namespace RavEngine {
 		} mode = Mode::Stream;
 
 		ParticleEmitter(Entity owner, uint32_t maxParticles, uint16_t sizeOfEachParticle, const Ref<ParticleUpdateMaterialInstance> updateMat, const ParticleRenderMaterialVariant& mat);
+        
+        MOVE_NO_COPY(ParticleEmitter);
 
 		void Destroy();
 

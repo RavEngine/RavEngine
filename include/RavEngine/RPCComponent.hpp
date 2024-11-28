@@ -19,6 +19,9 @@ namespace RavEngine {
 			Bidirectional
 		};
 		RPCComponent(Entity owner) : ComponentWithOwner(owner){}
+        
+        MOVE_NO_COPY(RPCComponent);
+        
         template<typename ... A>
         struct RPCMessage{
             static constexpr size_t bufsize = (RPCMsgUnpacker::TotalSerializedSize<A>() + ...) + RPCMsgUnpacker::header_size;

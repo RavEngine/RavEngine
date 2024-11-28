@@ -19,6 +19,8 @@ protected:
     bool tickInvalidated = true;    // trigger the world to update its parallel datastructure
     constexpr inline void invalidate(){tickInvalidated = true;}
 public:
+    //MOVE_NO_COPY(Light);
+    
     constexpr void SetColorRGBA(const decltype(color)& inColor) {
         invalidate();
         color = inColor;

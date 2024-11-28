@@ -119,6 +119,8 @@ class AnimatorComponent : public AutoCTTI, public Queryable<AnimatorComponent>
 {
     Ref<SkeletonAsset> skeleton;
 public:
+    
+    MOVE_NO_COPY(AnimatorComponent);
     static constexpr uint16_t kmax_layers = 32;
 
 	//a node in the state machine

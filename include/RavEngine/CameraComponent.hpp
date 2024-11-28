@@ -19,9 +19,7 @@ namespace RavEngine {
 
 		virtual ~CameraComponent() {}
         
-        CameraComponent(const CameraComponent&) = delete;   // no copy
-        CameraComponent(CameraComponent&&) = default;       // default move-construct and move-equals
-        CameraComponent& operator=(CameraComponent&&) = default;
+        MOVE_NO_COPY(CameraComponent);
 
 		/**
 		Enable / disable this camera

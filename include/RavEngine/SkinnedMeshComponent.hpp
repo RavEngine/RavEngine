@@ -35,6 +35,8 @@ public:
 	}
 #endif
 	
+    MOVE_NO_COPY(SkinnedMeshComponent);
+    
 	auto GetMesh() const{
 		return mesh;
 	}

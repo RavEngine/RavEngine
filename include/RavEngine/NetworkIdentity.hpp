@@ -18,6 +18,8 @@ namespace RavEngine {
 		NetworkIdentity(Entity owner, const uuids::uuid& id) : NetworkID(id),ComponentWithOwner(owner){
             // don't trigger spawn message
         }
+        
+        MOVE_NO_COPY(NetworkIdentity);
 		
         inline const decltype(NetworkID)& GetNetworkID() const{
 			return NetworkID;

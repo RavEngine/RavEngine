@@ -20,3 +20,5 @@ static constexpr inline bool PosIsValid(pos_t id){
 using e_clock_t = std::chrono::steady_clock;
 
 constexpr uint8_t MAX_CASCADES = SH_MAX_CASCADES;
+
+#define MOVE_NO_COPY(T)  T(const T&) = delete; T(T&&) = default; T& operator=(T&&) = default;

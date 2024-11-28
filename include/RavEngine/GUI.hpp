@@ -9,6 +9,7 @@
 #include "Function.hpp"
 #include "Ref.hpp"
 #include <RmlUi/Core/ElementDocument.h>
+#include "Types.hpp"
 
 namespace Rml {
 	class Context;
@@ -79,6 +80,8 @@ public:
 	 Construct a GUI document using the current screen size
 	 */
 	GUIComponent();
+    
+    MOVE_NO_COPY(GUIComponent);
 
 	/**
 	 Construct a GUI renderer with user-supplied size
