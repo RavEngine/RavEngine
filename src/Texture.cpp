@@ -1,5 +1,6 @@
 #if !RVE_SERVER
 #include "Texture.hpp"
+#include "Stream.hpp"
 #include "App.hpp"
 //#define STB_IMAGE_IMPLEMENTATION // don't define here, because rlottie & bimg define them
 #include <stb_image.h>
@@ -16,6 +17,8 @@ extern "C" {
     #include <dds/dds.h>
 }
 #endif
+#define DXGI_FORMAT int
+#include "../deps/RGL/deps/DirectXTK12/Src/DDS.h"
 
 using namespace std;
 using namespace RavEngine;
@@ -43,17 +46,77 @@ Texture::Texture(const std::string& name, uint16_t width, uint16_t height){
     auto bitmap = document->renderToBitmap(width,height);
     
     // give to backend
-    CreateTexture(width, height, { 
-        .mipLevels = 1, 
-        .numLayers = 1, 
-        .initialData = bitmap.data() 
+    CreateTexture(width, height, {
+        .mipLevels = 1,
+        .numLayers = 1,
+        .initialData = {reinterpret_cast<std::byte*>(bitmap.data()), bitmap.stride() * bitmap.width() * bitmap.height()}
+    });
+}
+
+void RavEngine::Texture::InitFromDDS(IStream& stream)
+{
+    stream.advance(strlen("DDS "));
+    DirectX::DDS_HEADER header;
+    stream.readT(&header);
+
+    std::string_view format{reinterpret_cast<char*>(&header.ddspf.fourCC),sizeof(header.ddspf.fourCC)};
+
+    RGL::TextureFormat dxtFormat;
+    if (format == "DXT1") {
+        dxtFormat = RGL::TextureFormat::BC1_RGB_Unorm;
+    }
+    else if (format == "DXT2") {
+        dxtFormat = RGL::TextureFormat::BC2_Unorm;
+    }
+    else if (format == "DXT3") {
+        dxtFormat = RGL::TextureFormat::BC3_Unorm;
+    }
+    else if (format == "DXT4") {
+        dxtFormat = RGL::TextureFormat::BC4_Unorm;
+    }
+    else if (format == "DXT5"){
+        dxtFormat = RGL::TextureFormat::BC5_Unorm;
+    }
+    else {
+        Debug::Fatal("Unsupported DDS Format: {}", format);
+    }
+
+    const auto headerEnd = stream.current_pos();
+    
+    auto totalData = stream.size() - headerEnd;
+
+    // if not a DX10 DDS, then the pixel data comes after
+    std::vector<std::byte> imageData;
+    imageData.resize(totalData);
+    stream.read(imageData);
+
+    Debug::Log("{}x{} {} ({} bytes)", header.width, header.height, format, imageData.size());
+
+
+    CreateTexture(header.width, header.height, {
+        .mipLevels = uint8_t(header.mipMapCount),
+        .numLayers = 1,
+        .initialData = imageData,
+        .format = dxtFormat
     });
 }
 
 
-
 RavEngine::Texture::Texture(const Filesystem::Path& pathOnDisk)
 {
+    Debug::Log("Loading {}",pathOnDisk.string());
+    FileStream stream(std::ifstream{ pathOnDisk, std::ios::binary });
+
+    // what kind of texture is this?
+    Array<std::byte,16> headerData;
+    stream.read(headerData);
+    stream.reset();
+    if (std::string_view{ reinterpret_cast<const char*>(headerData.data()),4 } == "DDS ") {
+        // this is a DDS
+        InitFromDDS(stream);
+        return;
+    }
+
 	int width, height, channels;
 	unsigned char* bytes = stbi_load(pathOnDisk.string().c_str(), &width, &height, &channels, 4);
     const char* failureReason = nullptr;
@@ -87,11 +150,13 @@ RavEngine::Texture::Texture(const Filesystem::Path& pathOnDisk)
 		Debug::Fatal("Cannot load texture from disk {}: {}", pathOnDisk.string().c_str(), failureReason);
 	}
 
-    load:
+load:
+    uint16_t numlayers = 1;
+    uint16_t numChannels = 4;	//TODO: allow n-channel textures
     CreateTexture(width, height, {
         .mipLevels = 1,
         .numLayers = 1,
-        .initialData = bytes
+        //.initialData = {reinterpret_cast<std::byte*>(bytes), width * height * numlayers * numChannels}
      });
     freer();
 }
@@ -140,11 +205,12 @@ Texture::Texture(const std::string& name){
 	
     load:
 	uint16_t numlayers = 1;
-	
+    uint16_t numChannels = 4;	//TODO: allow n-channel textures
+
     CreateTexture(width, height, {
         .mipLevels = 1, 
-        .numLayers = 1,
-        .initialData = bytes
+        .numLayers = numlayers,
+        //.initialData = {reinterpret_cast<std::byte*>(bytes), width * height * numlayers * numChannels}
     });
     freer();
 	
@@ -153,13 +219,10 @@ Texture::Texture(const std::string& name){
 
 void Texture::CreateTexture(int width, int height, const Config& config){
 
-	uint16_t numChannels = 4;	//TODO: allow n-channel textures
 	RGL::TextureFormat format = config.format;
 	
-	uint32_t uncompressed_size = width * height * numChannels * config.numLayers;
-
 	auto device = GetApp()->GetDevice();
-    if (config.initialData != nullptr){
+    if (config.initialData.data() != nullptr){
         texture = device->CreateTextureWithData({
             .usage = {.TransferDestination = true, .Sampled = true, .ColorAttachment = config.enableRenderTarget},
             .aspect = {.HasColor = true},
@@ -168,7 +231,7 @@ void Texture::CreateTexture(int width, int height, const Config& config){
             .mipLevels = config.mipLevels,
             .format = format,
             .debugName = config.debugName
-        }, { config.initialData,uncompressed_size });
+        }, { config.initialData.data(), config.initialData.size()});
     }
     else{
         texture = device->CreateTexture({
