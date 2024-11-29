@@ -2078,6 +2078,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		RVE_PROFILE_SECTION_END(allViews);
 		mainCommandBuffer->End();
 
+		frameCount++;
+
 		return mainCommandBuffer;
 	}
 }
