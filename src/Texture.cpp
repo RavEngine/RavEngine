@@ -129,22 +129,6 @@ RavEngine::Texture::Texture(const Filesystem::Path& pathOnDisk)
         failureReason = stbi_failure_reason();
     }
 
-    
-    // try loading as a DDS
-    {
-        auto dds = dds_load_from_file(pathOnDisk.string().c_str());
-        if (dds->pixels != nullptr) {
-            bytes = dds->pixels;
-            width = dds->header.width;
-            height = dds->header.height;
-            freer = [dds] {dds_image_free(dds); };
-            goto load;
-        }
-        else{
-            failureReason = "Failed to load DDS";
-        }
-    }
-
     // if we are here then nothing loaded the image
 	if (bytes == nullptr) {
 		Debug::Fatal("Cannot load texture from disk {}: {}", pathOnDisk.string().c_str(), failureReason);
@@ -156,7 +140,7 @@ load:
     CreateTexture(width, height, {
         .mipLevels = 1,
         .numLayers = 1,
-        //.initialData = {reinterpret_cast<std::byte*>(bytes), width * height * numlayers * numChannels}
+        .initialData = {reinterpret_cast<std::byte*>(bytes), size_t(width * height * numlayers * numChannels)}
      });
     freer();
 }
@@ -183,21 +167,6 @@ Texture::Texture(const std::string& name){
         failureReason = stbi_failure_reason();
     }
 
-    // try loading as a DDS
-    {
-        auto dds = dds_load_from_memory(reinterpret_cast<const char*>(data.data()), data.size());
-        if (dds->pixels != nullptr) {
-            bytes = dds->pixels;
-            width = dds->header.width;
-            height = dds->header.height;
-            freer = [dds] {dds_image_free(dds); };
-            goto load;
-        }
-        else {
-            failureReason = "Failed to load DDS";
-        }
-    }
-
     // if we are here then we failed to load the image
     if (bytes == nullptr) {
         Debug::Fatal("Cannot load texture {}: {}", name, failureReason);
@@ -210,7 +179,7 @@ Texture::Texture(const std::string& name){
     CreateTexture(width, height, {
         .mipLevels = 1, 
         .numLayers = numlayers,
-        //.initialData = {reinterpret_cast<std::byte*>(bytes), width * height * numlayers * numChannels}
+        .initialData = {reinterpret_cast<std::byte*>(bytes), size_t(width * height * numlayers * numChannels)}
     });
     freer();
 	

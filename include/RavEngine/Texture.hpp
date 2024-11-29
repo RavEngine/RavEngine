@@ -7,6 +7,7 @@
 #include <RGL/TextureFormat.hpp>
 #include "RenderTargetCollection.hpp"
 #include <span>
+#include <cstddef>
 
 namespace RavEngine{
 
