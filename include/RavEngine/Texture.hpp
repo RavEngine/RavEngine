@@ -6,8 +6,12 @@
 #include <RGL/Types.hpp>
 #include <RGL/TextureFormat.hpp>
 #include "RenderTargetCollection.hpp"
+#include <span>
+#include <cstddef>
 
 namespace RavEngine{
+
+struct IStream;
 
 class Texture {
 public:
@@ -41,7 +45,7 @@ public:
 		uint8_t mipLevels = 1;
 		int numLayers = 1;
 		bool enableRenderTarget = false;
-		const uint8_t* initialData = nullptr;
+		const std::span<std::byte> initialData;
 		RGL::TextureFormat format = RGL::TextureFormat::RGBA8_Unorm;
 		std::string_view debugName;
 	};
@@ -53,6 +57,8 @@ protected:
 	Texture(){}
 	
 	void CreateTexture(int width, int height, const Config& config);
+
+	void InitFromDDS(IStream&);
 };
 
 class RuntimeTexture : public Texture{

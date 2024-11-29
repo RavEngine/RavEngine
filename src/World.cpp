@@ -309,7 +309,7 @@ void World::setupRenderTasks(){
         auto nEntities = numEntities + std::min(nCreatedThisTick, 1);  // hack: if I don't add 1, then the pbr.vsh shader OOBs, not sure why
         auto currentBufferSize = renderData.worldTransforms.size();
         if (nEntities > currentBufferSize){
-            auto newSize = closest_power_of(nEntities, 16);
+            auto newSize = closest_power_of<entity_t>(nEntities, 16);
             renderData.worldTransforms.resize(newSize);
             renderData.worldTransformsToSync.resize(newSize, true); // ensure the initial copy is included
         }
@@ -498,7 +498,7 @@ void World::SetupPerEntityRenderData(entity_t localID){
     auto& renderLayers = renderData.renderLayers;
     auto& perObjectAttributes = renderData.perObjectAttributes;
     if (renderLayers.size() <= localID){
-        auto newSize = closest_power_of(localID+1, 2);
+        auto newSize = closest_power_of<entity_t>(localID+1, 2);
         renderLayers.resize(newSize);
         perObjectAttributes.resize(newSize);
     }

@@ -374,6 +374,24 @@ namespace RGL {
         case decltype(format)::RGBA16_Sfloat:  return DXGI_FORMAT_R16G16B16A16_FLOAT;
         case decltype(format)::RGBA32_Sfloat:  return DXGI_FORMAT_R32G32B32A32_FLOAT;
 
+        case decltype(format)::BC1_RGBA_SRGB:  return DXGI_FORMAT_BC1_UNORM_SRGB;
+        case decltype(format)::BC1_RGBA_Unorm:  return DXGI_FORMAT_BC1_UNORM;
+        case decltype(format)::BC1_RGB_SRGB:  return DXGI_FORMAT_BC1_UNORM_SRGB;
+        case decltype(format)::BC1_RGB_Unorm:  return DXGI_FORMAT_BC1_UNORM;
+
+        case decltype(format)::BC2_SRGB:  return DXGI_FORMAT_BC2_UNORM_SRGB;
+        case decltype(format)::BC2_Unorm:  return DXGI_FORMAT_BC2_UNORM;
+
+        case decltype(format)::BC3_SRGB:  return DXGI_FORMAT_BC3_UNORM_SRGB;
+        case decltype(format)::BC3_Unorm:  return DXGI_FORMAT_BC3_UNORM;
+
+        case decltype(format)::BC4_SRGB:  return DXGI_FORMAT_BC4_SNORM;
+        case decltype(format)::BC4_Unorm:  return DXGI_FORMAT_BC4_UNORM;
+
+        case decltype(format)::BC5_SRGB:  return DXGI_FORMAT_BC5_SNORM;
+        case decltype(format)::BC5_Unorm:  return DXGI_FORMAT_BC5_UNORM;
+        
+
         case decltype(format)::R8_Uint:  return DXGI_FORMAT_R8_UINT;
         case decltype(format)::R16_Float:  return DXGI_FORMAT_R16_FLOAT;
         case decltype(format)::R32_Uint:  return DXGI_FORMAT_R32_UINT;

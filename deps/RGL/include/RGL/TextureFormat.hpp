@@ -40,6 +40,23 @@ namespace RGL {
         R32_Uint,
         R32_Float,
 
+        BC1_RGB_Unorm,      // DXT1
+        BC1_RGB_SRGB,   
+        BC1_RGBA_Unorm, 
+        BC1_RGBA_SRGB,
+
+        BC2_Unorm,          // DXT2,
+        BC2_SRGB,
+
+        BC3_Unorm,          // DXT3
+        BC3_SRGB,
+
+        BC4_Unorm,          // DXT4
+        BC4_SRGB,
+
+        BC5_Unorm,          // DXT5
+        BC5_SRGB,
+
 		D32SFloat,			// 32 bit float
 		D24UnormS8Uint,		// 24 bit depth, 8 bit stencil
 	};

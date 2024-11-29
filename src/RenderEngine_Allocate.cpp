@@ -176,14 +176,19 @@ namespace RavEngine {
 
 	void RavEngine::RenderEngine::ReallocateVertexAllocationToSize(uint32_t newSize)
 	{
-		ReallocateGeneric(sharedVertexBuffer, currentVertexSize, newSize, vertexAllocatedList, vertexFreeList, sizeof(VertexNormalUV), { .StorageBuffer = true, .VertexBuffer = true }, "Shared Vertex Buffer");
+		ReallocateGeneric(sharedVertexBuffer, currentVertexSize, newSize, vertexAllocatedList, vertexFreeList, sizeof(VertexNormalUV), { .StorageBuffer = true, .VertexBuffer = true }, lastResizeFrameVB, "Shared Vertex Buffer");
 	}
 	void RenderEngine::ReallocateIndexAllocationToSize(uint32_t newSize)
 	{
-		ReallocateGeneric(sharedIndexBuffer, currentIndexSize, newSize, indexAllocatedList, indexFreeList, sizeof(uint32_t), {.IndexBuffer = true}, "Shared Index Buffer");
+		ReallocateGeneric(sharedIndexBuffer, currentIndexSize, newSize, indexAllocatedList, indexFreeList, sizeof(uint32_t), {.IndexBuffer = true}, lastResizeFrameIB, "Shared Index Buffer");
 	}
-	void RenderEngine::ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& targetBufferCurrentSize, uint32_t newSize, allocation_allocatedlist_t& allocatedList, allocation_freelist_t& freelist, uint32_t stride, RGL::BufferConfig::Type bufferType, const char* debugName)
+	void RenderEngine::ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& targetBufferCurrentSize, uint32_t newSize, allocation_allocatedlist_t& allocatedList, allocation_freelist_t& freelist, uint32_t stride, RGL::BufferConfig::Type bufferType, decltype(frameCount)& lastResizeFrame, const char* debugName)
 	{
+		// newsize is the minimum size needed to fit the new data and nothing more
+		// we want to over-allocate a bit in case more data is loaded
+		newSize = closest_power_of<float>(newSize, 1.5f);
+
+
 		auto oldBuffer = reallocBuffer;
 		// trash old buffer
 		reallocBuffer = device->CreateBuffer({
@@ -218,7 +223,10 @@ namespace RavEngine {
 			return;
 		}
 
-		gcBuffers.enqueue(oldBuffer);
+		if (lastResizeFrame != frameCount) {	// if they are equal, then this means a resize occurred on this frame. Therefore, we don't want to schedule deletion of the buffer
+			gcBuffers.enqueue(oldBuffer);
+		}
+		
 
 
 		// begin compaction
@@ -253,6 +261,7 @@ namespace RavEngine {
 		commandbuffer->Commit({ fence });
 		extendLastRange();
 		fence->Wait();
+		lastResizeFrame = frameCount;
 	}
 }
 #endif

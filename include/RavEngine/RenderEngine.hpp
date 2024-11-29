@@ -62,6 +62,8 @@ namespace RavEngine {
     class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterface, public duDebugDraw {
         friend class App;
 	private:
+		uint64_t frameCount = 0;
+		decltype(frameCount) lastResizeFrameVB = 0, lastResizeFrameIB = 0;
 
 		using dim = dim_t<uint32_t>;
 
@@ -299,7 +301,7 @@ namespace RavEngine {
 		
 		void ReallocateVertexAllocationToSize(uint32_t newSize);
 		void ReallocateIndexAllocationToSize(uint32_t newSize);
-		void ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& reallocBufferSize, uint32_t newSize, allocation_allocatedlist_t& allocatedList, allocation_freelist_t& freelist, uint32_t stride, RGL::BufferConfig::Type bufferType, const char* debugName = nullptr);
+		void ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& reallocBufferSize, uint32_t newSize, allocation_allocatedlist_t& allocatedList, allocation_freelist_t& freelist, uint32_t stride, RGL::BufferConfig::Type bufferType, decltype(frameCount)& lastResizeFrame, const char* debugName = nullptr);
 
 		SpinLock allocationLock;
 
