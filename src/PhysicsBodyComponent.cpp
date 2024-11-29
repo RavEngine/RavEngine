@@ -96,6 +96,7 @@ std::pair<vector3,quaternion> PhysicsBodyComponent::getDynamicsWorldPose() const
 }
 
 void PhysicsBodyComponent::setDynamicsWorldPose(const vector3& pos, const quaternion& quat) const{
+	setPoseNeedsSync = true;
 	rigidActor->getScene()->lockWrite();
 		rigidActor->setGlobalPose(PxTransform(convert(pos), convertQuat(quat)));
 	rigidActor->getScene()->unlockWrite();

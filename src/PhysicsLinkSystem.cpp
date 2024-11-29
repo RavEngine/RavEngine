@@ -14,9 +14,10 @@ using namespace RavEngine;
 
 void PhysicsLinkSystemRead::operator()(const RigidBodyDynamicComponent& rigid, Transform& transform) const{
     //physx requires reads and writes to be sequential
-    if (rigid.IsSleeping()){
+    if (rigid.IsSleeping() && !rigid.setPoseNeedsSync){
         return;
     }
+    rigid.setPoseNeedsSync = false;
     auto pose = rigid.getDynamicsWorldPose();
     transform.SetWorldPosition(pose.first);
     transform.SetWorldRotation(pose.second);

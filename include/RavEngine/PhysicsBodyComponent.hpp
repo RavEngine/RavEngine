@@ -43,6 +43,8 @@ public Queryable<PhysicsBodyComponent
         UnorderedSet<std::shared_ptr<PhysicsCallback>> receivers;
         Colony<std::shared_ptr<PhysicsCollider>> colliders;
         void CompleteConstruction();
+		friend class PhysicsLinkSystemRead;
+		mutable bool setPoseNeedsSync = false;
 	public:
 		using Queryable<PhysicsBodyComponent
 #if !RVE_SERVER

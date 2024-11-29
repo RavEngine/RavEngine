@@ -104,7 +104,7 @@ void RavEngine::Texture::InitFromDDS(IStream& stream)
 
 RavEngine::Texture::Texture(const Filesystem::Path& pathOnDisk)
 {
-    Debug::Log("Loading {}",pathOnDisk.string());
+    //Debug::Log("Loading {}",pathOnDisk.string());
     FileStream stream(std::ifstream{ pathOnDisk, std::ios::binary });
 
     // what kind of texture is this?
