@@ -241,7 +241,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						currentCount = buffer->getBufferSize() / stride;
 						gcBuffers.enqueue(buffer);
 					}
-					auto newSize = closest_power_of(neededSize, 2);
+					auto newSize = closest_power_of<uint32_t>(neededSize, 2);
 					if (newSize == 0) {
 						return;
 					}

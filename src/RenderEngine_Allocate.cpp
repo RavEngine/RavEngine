@@ -184,6 +184,11 @@ namespace RavEngine {
 	}
 	void RenderEngine::ReallocateGeneric(RGLBufferPtr& reallocBuffer, uint32_t& targetBufferCurrentSize, uint32_t newSize, allocation_allocatedlist_t& allocatedList, allocation_freelist_t& freelist, uint32_t stride, RGL::BufferConfig::Type bufferType, decltype(frameCount)& lastResizeFrame, const char* debugName)
 	{
+		// newsize is the minimum size needed to fit the new data and nothing more
+		// we want to over-allocate a bit in case more data is loaded
+		newSize = closest_power_of<float>(newSize, 1.5f);
+
+
 		auto oldBuffer = reallocBuffer;
 		// trash old buffer
 		reallocBuffer = device->CreateBuffer({

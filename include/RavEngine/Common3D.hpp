@@ -1,5 +1,6 @@
 #pragma once
 #include "mathtypes.hpp"
+#include <concepts>
 
 namespace RavEngine{
 typedef uint32_t color_t;
@@ -80,9 +81,21 @@ constexpr static inline void copyMat4(const T* input, U* output, int size = 16) 
  @param B the multiple base
  @return the closest multiple of B to x in the upwards direction. If x is already a multiple of B, returns x.
  */
-template<typename T>
-inline constexpr T closest_multiple_of(T x, T B) {
+template<std::integral T>
+inline constexpr T closest_multiple_of(T x, T B) 
+{
 	return ((x - 1) | (B - 1)) + 1;
+}
+
+/**
+ @param x the number to round
+ @param B the multiple base
+ @return the closest multiple of B to x in the upwards direction. If x is already a multiple of B, returns x.
+ */
+template<std::floating_point T>
+inline constexpr T closest_multiple_of(T numToRound, T multiple)
+{
+	return ((numToRound + multiple - 1) / multiple) * multiple;
 }
 
 /**
@@ -90,9 +103,11 @@ inline constexpr T closest_multiple_of(T x, T B) {
  @param p the power
  @return x rounded up to the nearest power of p
 */
-inline uint32_t closest_power_of(uint32_t x, uint32_t p) {
+template<typename T>
+inline T closest_power_of(T x, T p) {
 	return pow(p, ceil(log(x) / log(p)));
 }
+
 }
 
 /**
