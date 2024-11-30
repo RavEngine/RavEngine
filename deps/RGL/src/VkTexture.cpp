@@ -132,11 +132,11 @@ namespace RGL {
 
 		transitionImageLayout(vkImage, format, VK_IMAGE_LAYOUT_UNDEFINED, nativeFormat, owningDevice->device, owningDevice->commandPool, owningDevice->presentQueue, createdAspectVk);
 	}
-	TextureVk::TextureVk(decltype(owningDevice) owningDevice, const TextureConfig& config, untyped_span bytes) : TextureVk(owningDevice, config)
+	TextureVk::TextureVk(decltype(owningDevice) owningDevice, const TextureConfig& config, const TextureUploadData& bytes) : TextureVk(owningDevice, config)
 	{
 		// allocate a staging buffer for the texture
 		VkBuffer stagingBuffer = VK_NULL_HANDLE;
-		auto allocation = createBuffer(owningDevice.get(), bytes.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer);
+		auto allocation = createBuffer(owningDevice.get(), bytes.data.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer);
 
 		auto device = owningDevice->device;
 
@@ -144,7 +144,7 @@ namespace RGL {
 		// put the data in the buffer
 		void* data;
 		vmaMapMemory(owningDevice->vkallocator, allocation, &data);
-		memcpy(data, bytes.data(), bytes.size());
+		memcpy(data, bytes.data.data(), bytes.data.size());
 		vmaUnmapMemory(owningDevice->vkallocator, allocation);
 
 		format = RGL2VkTextureFormat(config.format);

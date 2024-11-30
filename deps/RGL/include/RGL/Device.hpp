@@ -30,6 +30,7 @@ namespace RGL {
 	};
 
 	struct TextureView;
+	struct TextureUploadData;
 
 	struct IDevice {
 		virtual ~IDevice() {}
@@ -49,7 +50,9 @@ namespace RGL {
 		virtual RGLShaderLibraryPtr CreateShaderLibraryFromPath(const std::filesystem::path&) = 0;
 
 		virtual RGLBufferPtr CreateBuffer(const BufferConfig&) = 0;
-		virtual RGLTexturePtr CreateTextureWithData(const TextureConfig&, untyped_span) = 0;
+
+
+		virtual RGLTexturePtr CreateTextureWithData(const TextureConfig&, const TextureUploadData&) = 0;
 		virtual RGLTexturePtr CreateTexture(const TextureConfig&) = 0;
         virtual RGLSamplerPtr CreateSampler(const SamplerConfig&) = 0;
 

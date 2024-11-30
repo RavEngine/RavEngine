@@ -274,9 +274,9 @@ namespace RGL {
         return std::make_shared<BufferD3D12>(shared_from_this(), config);
     }
 
-    RGLTexturePtr DeviceD3D12::CreateTextureWithData(const TextureConfig& config, untyped_span bytes)
+    RGLTexturePtr DeviceD3D12::CreateTextureWithData(const TextureConfig& config, const TextureUploadData&  data)
     {
-        return std::make_shared<TextureD3D12>(shared_from_this(), config, bytes);
+        return std::make_shared<TextureD3D12>(shared_from_this(), config, data);
     }
 
     RGLTexturePtr DeviceD3D12::CreateTexture(const TextureConfig& config)

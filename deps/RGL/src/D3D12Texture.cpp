@@ -50,14 +50,14 @@ namespace RGL {
 		PlaceInHeaps(owningDevice, format, config);
 		nativeState = nativeStateOverride;
 	}
-	TextureD3D12::TextureD3D12(decltype(owningDevice) owningDevice, const TextureConfig& config, untyped_span bytes) : TextureD3D12(owningDevice, config)
+	TextureD3D12::TextureD3D12(decltype(owningDevice) owningDevice, const TextureConfig& config, const TextureUploadData& bytes) : TextureD3D12(owningDevice, config)
 	{
 
 		DirectX::ResourceUploadBatch upload(owningDevice->device.Get());
 
 		upload.Begin();
 
-		D3D12_SUBRESOURCE_DATA initData = { bytes.data(), bytes.size() / config.height, bytes.size()};
+		D3D12_SUBRESOURCE_DATA initData = { bytes.data.data(), bytes.rowPitch, bytes.data.size()};
 		upload.Transition(texture.Get(),
 			nativeState,
 			D3D12_RESOURCE_STATE_COPY_DEST

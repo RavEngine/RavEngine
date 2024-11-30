@@ -5,6 +5,7 @@
 #include "Filesystem.hpp"
 #include <RGL/Types.hpp>
 #include <RGL/TextureFormat.hpp>
+#include <RGL/Texture.hpp>
 #include "RenderTargetCollection.hpp"
 #include <span>
 #include <cstddef>
@@ -45,7 +46,7 @@ public:
 		uint8_t mipLevels = 1;
 		int numLayers = 1;
 		bool enableRenderTarget = false;
-		const std::span<std::byte> initialData;
+		RGL::TextureUploadData initialData;
 		RGL::TextureFormat format = RGL::TextureFormat::RGBA8_Unorm;
 		std::string_view debugName;
 	};

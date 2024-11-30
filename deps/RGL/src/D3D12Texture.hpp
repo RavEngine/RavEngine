@@ -44,7 +44,7 @@ namespace RGL {
 
 		TextureD3D12(decltype(texture) image, const Dimension& size, decltype(rtvIDX), decltype(owningDevice));
 		TextureD3D12(decltype(texture) image, const TextureConfig& config, std::shared_ptr<IDevice> device, D3D12_RESOURCE_STATES nativeStateOverride = D3D12_RESOURCE_STATE_COMMON);	// for externally-managed rendertargets
-		TextureD3D12(decltype(owningDevice), const TextureConfig&, untyped_span bytes);
+		TextureD3D12(decltype(owningDevice), const TextureConfig&, const TextureUploadData&);
 		TextureD3D12(decltype(owningDevice), const TextureConfig&);
 
 		void PlaceInHeaps(const std::shared_ptr<RGL::DeviceD3D12>& owningDevice, DXGI_FORMAT format, const RGL::TextureConfig& config);

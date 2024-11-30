@@ -1,5 +1,6 @@
 #pragma once
 #include "Types.hpp"
+#include "Span.hpp"
 #include <cstdint>
 #include <limits>
 #include <string_view>
@@ -156,6 +157,13 @@ namespace RGL {
 	struct CustomTextureViewConfig {
 		uint32_t mip = 0;
 		uint32_t layer = 0;
+	};
+
+	struct TextureUploadData {
+		untyped_span data{nullptr, 0};
+		uint32_t rowPitch = 0;
+		TextureUploadData(const decltype(data)& data, const decltype(rowPitch) rowPitch) : data(data), rowPitch(rowPitch) {}
+		TextureUploadData() {};
 	};
 
 	class ITexture {

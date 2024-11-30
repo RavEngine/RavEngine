@@ -464,9 +464,9 @@ namespace RGL {
         return std::make_shared<BufferVk>(shared_from_this(), config);
     }
 
-    RGLTexturePtr DeviceVk::CreateTextureWithData(const TextureConfig& config, untyped_span bytes)
+    RGLTexturePtr DeviceVk::CreateTextureWithData(const TextureConfig& config, const TextureUploadData& data)
     {
-        return std::make_shared<TextureVk>(shared_from_this(), config, bytes);
+        return std::make_shared<TextureVk>(shared_from_this(), config, data);
     }
 
     RGLTexturePtr DeviceVk::CreateTexture(const TextureConfig& config)

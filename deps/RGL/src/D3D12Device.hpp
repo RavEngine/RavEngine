@@ -52,7 +52,7 @@ namespace RGL {
 		RGLShaderLibraryPtr CreateShaderLibraryFromPath(const std::filesystem::path&) final;
 
 		RGLBufferPtr CreateBuffer(const BufferConfig&) final;
-		RGLTexturePtr CreateTextureWithData(const TextureConfig&, untyped_span) final;
+		RGLTexturePtr CreateTextureWithData(const TextureConfig&, const TextureUploadData&) final;
 		RGLTexturePtr CreateTexture(const TextureConfig&) final;
 
 		RGLSamplerPtr CreateSampler(const SamplerConfig&) final;

@@ -70,7 +70,7 @@ static inline Rml::TextureHandle createTexture(uint32_t width, uint32_t height, 
 			.height = height,
 			.format = RGL::TextureFormat::RGBA8_Unorm
 		}, 
-		{ data, uncompressed_size }
+		{ {data, uncompressed_size}, uncompressed_size / height  }
 	);
 
 	return reinterpret_cast<Rml::TextureHandle>(new TextureHandleStruct{th});

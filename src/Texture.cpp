@@ -96,7 +96,7 @@ void RavEngine::Texture::InitFromDDS(IStream& stream)
     CreateTexture(header.width, header.height, {
         .mipLevels = uint8_t(header.mipMapCount),
         .numLayers = 1,
-        .initialData = imageData,
+        .initialData = {imageData, header.pitchOrLinearSize},
         .format = dxtFormat
     });
 }
@@ -137,10 +137,11 @@ RavEngine::Texture::Texture(const Filesystem::Path& pathOnDisk)
 load:
     uint16_t numlayers = 1;
     uint16_t numChannels = 4;	//TODO: allow n-channel textures
+    const uint32_t nBytes(width * height * numlayers * numChannels);
     CreateTexture(width, height, {
         .mipLevels = 1,
         .numLayers = 1,
-        .initialData = {reinterpret_cast<std::byte*>(bytes), size_t(width * height * numlayers * numChannels)}
+        .initialData = {{reinterpret_cast<std::byte*>(bytes), nBytes},nBytes/height}
      });
     freer();
 }
@@ -176,10 +177,11 @@ Texture::Texture(const std::string& name){
 	uint16_t numlayers = 1;
     uint16_t numChannels = 4;	//TODO: allow n-channel textures
 
+    const uint32_t nBytes(width * height * numlayers * numChannels);
     CreateTexture(width, height, {
         .mipLevels = 1, 
         .numLayers = numlayers,
-        .initialData = {reinterpret_cast<std::byte*>(bytes), size_t(width * height * numlayers * numChannels)}
+        .initialData = {{reinterpret_cast<std::byte*>(bytes), nBytes }, nBytes/height }
     });
     freer();
 	
@@ -191,7 +193,7 @@ void Texture::CreateTexture(int width, int height, const Config& config){
 	RGL::TextureFormat format = config.format;
 	
 	auto device = GetApp()->GetDevice();
-    if (config.initialData.data() != nullptr){
+    if (config.initialData.data.data() != nullptr){
         texture = device->CreateTextureWithData({
             .usage = {.TransferDestination = true, .Sampled = true, .ColorAttachment = config.enableRenderTarget},
             .aspect = {.HasColor = true},
@@ -200,7 +202,8 @@ void Texture::CreateTexture(int width, int height, const Config& config){
             .mipLevels = config.mipLevels,
             .format = format,
             .debugName = config.debugName
-        }, { config.initialData.data(), config.initialData.size()});
+            }, { {config.initialData.data.data(), uint32_t(config.initialData.data.size())}, config.initialData.rowPitch }
+        );
     }
     else{
         texture = device->CreateTexture({
