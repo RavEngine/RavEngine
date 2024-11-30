@@ -63,7 +63,7 @@ Dimension TextureMTL::GetSize() const{
     return size;
 }
 
-TextureMTL::TextureMTL(const std::shared_ptr<DeviceMTL> owningDevice, const TextureConfig& config, const untyped_span data) : TextureMTL(owningDevice, config){
+TextureMTL::TextureMTL(const std::shared_ptr<DeviceMTL> owningDevice, const TextureConfig& config, const TextureUploadData& data) : TextureMTL(owningDevice, config){
     
     
     MTLRegion region = {
@@ -75,7 +75,7 @@ TextureMTL::TextureMTL(const std::shared_ptr<DeviceMTL> owningDevice, const Text
     
     [texture replaceRegion:region
                 mipmapLevel:0
-                  withBytes:data.data()
+                  withBytes:data.data.data()
                 bytesPerRow:bytesPerRow];
 }
 

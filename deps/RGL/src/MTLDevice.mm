@@ -99,7 +99,7 @@ RGLFencePtr DeviceMTL::CreateFence(bool preSignaled) {
     return std::make_shared<FenceMTL>();
 }
 
-RGLTexturePtr DeviceMTL::CreateTextureWithData(const TextureConfig& config, untyped_span data){
+RGLTexturePtr DeviceMTL::CreateTextureWithData(const TextureConfig& config, const TextureUploadData& data){
     return std::make_shared<TextureMTL>(shared_from_this(), config, data);
 }
 

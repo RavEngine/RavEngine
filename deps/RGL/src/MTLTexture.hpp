@@ -20,7 +20,7 @@ struct TextureMTL : public ITexture{
     virtual ~TextureMTL();
     
     TextureMTL(decltype(drawable), const Dimension&);
-    TextureMTL(const std::shared_ptr<DeviceMTL>, const TextureConfig& config, const untyped_span);
+    TextureMTL(const std::shared_ptr<DeviceMTL>, const TextureConfig& config, const TextureUploadData&);
     TextureMTL(const std::shared_ptr<DeviceMTL>, const TextureConfig& config);
     
     Dimension GetSize() const;
