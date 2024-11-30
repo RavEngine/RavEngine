@@ -64,6 +64,8 @@ namespace RGL {
 		}
 
 		std::string debugName;
+
+		DXGI_FORMAT textureFormat = DXGI_FORMAT_UNKNOWN;
 	};
 
 	struct CustomTextureViewD3D12 : public ICustomTextureView {

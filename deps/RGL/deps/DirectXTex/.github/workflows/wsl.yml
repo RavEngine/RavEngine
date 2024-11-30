@@ -1,0 +1,59 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+#
+# https://go.microsoft.com/fwlink/?LinkId=248926
+
+name: 'CMake (WSL)'
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+    paths-ignore:
+      - '*.md'
+      - LICENSE
+      - '.nuget/*'
+      - build/*.cmd
+      - build/*.json
+      - build/*.props
+      - build/*.ps1
+      - build/*.targets
+      - build/*.yml
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        build_type: [x64-Debug-Linux, x64-Release-Linux]
+        gcc: [10, 11, 12]
+
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+    - uses: seanmiddleditch/gha-setup-ninja@96bed6edff20d1dd61ecff9b75cc519d516e6401 # v5
+
+    - uses: lukka/run-vcpkg@7d259227a1fb6471a0253dd5ab7419835228f7d7 # v11
+      with:
+        runVcpkgInstall: true
+        vcpkgJsonGlob: '**/build/vcpkg.json'
+        vcpkgGitCommitId: '${{ vars.VCPKG_COMMIT_ID }}'
+
+    - name: 'Configure CMake'
+      working-directory: ${{ github.workspace }}
+      run: >
+        cmake --preset=${{ matrix.build_type }} -DENABLE_OPENEXR_SUPPORT=ON -DENABLE_LIBJPEG_SUPPORT=ON -DENABLE_LIBPNG_SUPPORT=ON
+        -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_MANIFEST_DIR="${{ github.workspace }}/build"
+        -DVCPKG_TARGET_TRIPLET="x64-linux"
+
+      env:
+        CC: gcc-${{ matrix.gcc }}
+        CXX: g++-${{ matrix.gcc }}
+
+    - name: 'Build'
+      working-directory: ${{ github.workspace }}
+      run: cmake --build out/build/${{ matrix.build_type }}

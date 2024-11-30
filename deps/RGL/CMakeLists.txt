@@ -169,6 +169,11 @@ if(MSVC AND NOT RGL_DISABLE_DX)
 	set(BUILD_XAUDIO_WIN10 OFF CACHE INTERNAL "")
 	add_subdirectory("deps/DirectXTK12" EXCLUDE_FROM_ALL)
 
+	set(BUILD_TOOLS OFF)
+	set(BUILD_SAMPLE OFF)
+	set(BUILD_DX11 OFF)
+	add_subdirectory(deps/DirectXTex EXCLUDE_FROM_ALL)
+
 	target_include_directories(${PROJECT_NAME} PUBLIC "deps/DirectXTK12/Inc")
 
 	# PIX stuff
@@ -185,10 +190,12 @@ if(MSVC AND NOT RGL_DISABLE_DX)
 		d3dcompiler.lib
 		D3D12MemoryAllocator 
 		DirectXTK12
+		DirectXTex
 		$<$<NOT:$<CONFIG:release>>:WinPixEventRuntime>
 	)
 
 	set_target_properties(D3D12MemoryAllocator PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
+	set_target_properties(DirectXTex PROPERTIES FOLDER "${RGL_IDE_ROOT}/Libraries")
 
 	if (RGL_DX_USE_AGILITY)
 		set(AGILITY_SDK_MAJOR_VERSION "1")
