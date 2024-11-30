@@ -161,8 +161,7 @@ namespace RGL {
 
 	struct TextureUploadData {
 		untyped_span data{nullptr, 0};
-		uint32_t rowPitch = 0;
-		TextureUploadData(const decltype(data)& data, const decltype(rowPitch) rowPitch) : data(data), rowPitch(rowPitch) {}
+		TextureUploadData(const decltype(data)& data) : data(data) {}
 		TextureUploadData() {};
 	};
 

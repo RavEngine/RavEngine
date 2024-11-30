@@ -237,21 +237,21 @@ int App::run(int argc, char** argv) {
 		Texture::Manager::defaultTexture = make_shared<RuntimeTexture>(1, 1, Texture::Config{
 			.mipLevels = 1,
 			.numLayers = 1,
-			.initialData = {{reinterpret_cast<std::byte*>(data),sizeof(data)}, sizeof(data)}
+			.initialData = {{reinterpret_cast<std::byte*>(data),sizeof(data)}}
 			});
 		
 		uint8_t normalData[] = {256/2,256/2, 0xFF,0xFF};
 		Texture::Manager::defaultNormalTexture = New<RuntimeTexture>(1,1, Texture::Config{
 			.mipLevels = 1,
 			.numLayers = 1,
-			.initialData = {{reinterpret_cast<std::byte*>(normalData),sizeof(normalData)}, sizeof(normalData)}
+			.initialData = {{reinterpret_cast<std::byte*>(normalData),sizeof(normalData)}}
 		});
 
 		uint8_t zeroData[] = { 0,0,0,0 };
 		Texture::Manager::zeroTexture = New<RuntimeTexture>(1, 1, Texture::Config{
 			.mipLevels = 1,
 			.numLayers = 1,
-			.initialData = {{reinterpret_cast<std::byte*>(zeroData), sizeof(zeroData)}, sizeof(zeroData)}
+			.initialData = {{reinterpret_cast<std::byte*>(zeroData), sizeof(zeroData)}}
 		});
 	}
 #endif

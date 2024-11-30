@@ -49,7 +49,7 @@ Texture::Texture(const std::string& name, uint16_t width, uint16_t height){
     CreateTexture(width, height, {
         .mipLevels = 1,
         .numLayers = 1,
-        .initialData = {reinterpret_cast<std::byte*>(bitmap.data()), bitmap.stride() * bitmap.width() * bitmap.height()}
+        .initialData = {{reinterpret_cast<std::byte*>(bitmap.data()),width * height * 4 * sizeof(float)}}
     });
 }
 
@@ -90,13 +90,10 @@ void RavEngine::Texture::InitFromDDS(IStream& stream)
     imageData.resize(totalData);
     stream.read(imageData);
 
-    Debug::Log("{}x{} {} ({} bytes)", header.width, header.height, format, imageData.size());
-
-
     CreateTexture(header.width, header.height, {
         .mipLevels = uint8_t(header.mipMapCount),
         .numLayers = 1,
-        .initialData = {imageData, header.pitchOrLinearSize},
+        .initialData = {{imageData.data(),imageData.size()}},
         .format = dxtFormat
     });
 }
@@ -141,7 +138,7 @@ load:
     CreateTexture(width, height, {
         .mipLevels = 1,
         .numLayers = 1,
-        .initialData = {{reinterpret_cast<std::byte*>(bytes), nBytes},nBytes/height}
+        .initialData = {{reinterpret_cast<std::byte*>(bytes), nBytes}}
      });
     freer();
 }
@@ -181,7 +178,7 @@ Texture::Texture(const std::string& name){
     CreateTexture(width, height, {
         .mipLevels = 1, 
         .numLayers = numlayers,
-        .initialData = {{reinterpret_cast<std::byte*>(bytes), nBytes }, nBytes/height }
+        .initialData = {{reinterpret_cast<std::byte*>(bytes), nBytes }}
     });
     freer();
 	
@@ -202,7 +199,7 @@ void Texture::CreateTexture(int width, int height, const Config& config){
             .mipLevels = config.mipLevels,
             .format = format,
             .debugName = config.debugName
-            }, { {config.initialData.data.data(), uint32_t(config.initialData.data.size())}, config.initialData.rowPitch }
+            }, {{config.initialData.data.data(), uint32_t(config.initialData.data.size())}}
         );
     }
     else{
