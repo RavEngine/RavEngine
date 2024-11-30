@@ -13,12 +13,8 @@
 #include "RenderEngine.hpp"
 #include <RGL/Device.hpp>
 #include <RGL/Texture.hpp>
-extern "C" {
-    #include <dds/dds.h>
-}
 #endif
-#define DXGI_FORMAT int
-#include "../deps/RGL/deps/DirectXTK12/Src/DDS.h"
+#include <dds.hpp>
 
 using namespace std;
 using namespace RavEngine;
@@ -55,45 +51,30 @@ Texture::Texture(const std::string& name, uint16_t width, uint16_t height){
 
 void RavEngine::Texture::InitFromDDS(IStream& stream)
 {
-    stream.advance(strlen("DDS "));
-    DirectX::DDS_HEADER header;
-    stream.readT(&header);
+   
+    std::vector<std::byte> fileData;
+    fileData.resize(stream.size());
+    stream.read(fileData);
 
-    std::string_view format{reinterpret_cast<char*>(&header.ddspf.fourCC),sizeof(header.ddspf.fourCC)};
-
-    RGL::TextureFormat dxtFormat;
-    if (format == "DXT1") {
-        dxtFormat = RGL::TextureFormat::BC1_RGB_Unorm;
-    }
-    else if (format == "DXT2") {
-        dxtFormat = RGL::TextureFormat::BC2_Unorm;
-    }
-    else if (format == "DXT3") {
-        dxtFormat = RGL::TextureFormat::BC3_Unorm;
-    }
-    else if (format == "DXT4") {
-        dxtFormat = RGL::TextureFormat::BC4_Unorm;
-    }
-    else if (format == "DXT5"){
-        dxtFormat = RGL::TextureFormat::BC5_Unorm;
-    }
-    else {
-        Debug::Fatal("Unsupported DDS Format: {}", format);
+    dds::Image ddsImg;
+    auto result = dds::readImage(reinterpret_cast<uint8_t*>(fileData.data()),fileData.size(), &ddsImg);
+    if (result != dds::ReadResult::Success) {
+        Debug::Fatal("Cannot load DDS: {}", uint32_t(result));
     }
 
-    const auto headerEnd = stream.current_pos();
-    
-    auto totalData = stream.size() - headerEnd;
+    RGL::TextureFormat dxtFormat = RGL::TextureFormat::Undefined;
+    switch (ddsImg.format) {
+    case DXGI_FORMAT_BC1_UNORM: dxtFormat = RGL::TextureFormat::BC1_RGBA_Unorm;  break;
+    case DXGI_FORMAT_BC3_UNORM: dxtFormat = RGL::TextureFormat::BC3_Unorm; break;
+    case DXGI_FORMAT_BC5_UNORM: dxtFormat = RGL::TextureFormat::BC5_Unorm; break;
+    default:
+        Debug::Fatal("Invalid DDS format: {}", uint32_t(ddsImg.format));
+    }
 
-    // if not a DX10 DDS, then the pixel data comes after
-    std::vector<std::byte> imageData;
-    imageData.resize(totalData);
-    stream.read(imageData);
-
-    CreateTexture(header.width, header.height, {
-        .mipLevels = uint8_t(header.mipMapCount),
+    CreateTexture(ddsImg.width, ddsImg.height, {
+        .mipLevels = 1,
         .numLayers = 1,
-        .initialData = {{imageData.data(),imageData.size()}},
+        .initialData = {{ddsImg.mipmaps[0].data(),ddsImg.mipmaps[0].size()}},
         .format = dxtFormat
     });
 }
