@@ -1,0 +1,34 @@
+@PACKAGE_INIT@
+
+include(${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@-targets.cmake)
+include(CMakeFindDependencyMacro)
+
+set(BC_USE_OPENMP @BC_USE_OPENMP@)
+if(BC_USE_OPENMP)
+    find_dependency(OpenMP)
+endif()
+
+set(ENABLE_OPENEXR_SUPPORT @ENABLE_OPENEXR_SUPPORT@)
+if(ENABLE_OPENEXR_SUPPORT)
+    find_dependency(OpenEXR)
+endif()
+
+set(ENABLE_LIBJPEG_SUPPORT @ENABLE_LIBJPEG_SUPPORT@)
+if(ENABLE_LIBJPEG_SUPPORT)
+    find_dependency(JPEG)
+endif()
+
+set(ENABLE_LIBPNG_SUPPORT @ENABLE_LIBPNG_SUPPORT@)
+if(ENABLE_LIBPNG_SUPPORT)
+    find_dependency(PNG)
+endif()
+
+if(MINGW OR (NOT WIN32))
+    find_dependency(directx-headers)
+    find_dependency(directxmath)
+else()
+    find_package(directx-headers CONFIG QUIET)
+    find_package(directxmath CONFIG QUIET)
+endif()
+
+check_required_components("@PROJECT_NAME@")
