@@ -1979,6 +1979,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
     
         // sync the transient command buffer
         if (transientOffset > 0){
+			transientCommandBuffer->Reset();
             transientCommandBuffer->Begin();
             transientCommandBuffer->CopyBufferToBuffer({
                 .buffer = transientStagingBuffer,

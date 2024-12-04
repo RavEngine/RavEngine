@@ -1,7 +1,7 @@
-
 #if !RAVENGINE_SERVER
-
 #include "BufferedVRAMVector.hpp"
+#include <RGL/CommandBuffer.hpp>
+
 namespace RavEngine{
 bool BufferedVRAMVectorBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hostBuffer, RGLCommandBufferPtr transformSyncCommandBuffer, uint32_t elemSize, const Function<void(RGLBufferPtr)>& gcBuffersFn){
     uint32_t newPrivateSize = 0;
