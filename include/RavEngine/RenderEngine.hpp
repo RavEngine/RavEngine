@@ -69,8 +69,7 @@ namespace RavEngine {
 
 		RGLDevicePtr device;
 		RGLCommandQueuePtr mainCommandQueue;
-		RGLCommandBufferPtr mainCommandBuffer;
-        RGLCommandBufferPtr transformSyncCommandBuffer;
+		RGLCommandBufferPtr mainCommandBuffer, transformSyncCommandBuffer, transientCommandBuffer;
 
 		RGLTexturePtr dummyShadowmap, dummyCubemap;
 		RGLSamplerPtr textureSampler, shadowSampler, depthPyramidSampler;

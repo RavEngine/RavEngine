@@ -104,12 +104,17 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
     
 	RVE_PROFILE_SECTION(enc_sync_transforms,"Encode Sync Transforms");
     
-    worldOwning->renderData.worldTransforms.EncodeSync(device, transformSyncCommandBuffer, [this](RGLBufferPtr oldPrivateBuffer){
+    if (worldOwning->renderData.worldTransforms.EncodeSync(device, transformSyncCommandBuffer, [this](RGLBufferPtr oldPrivateBuffer){
         gcBuffers.enqueue(oldPrivateBuffer);
-    });
-    
-    auto worldTransformBufferHost = worldOwning->renderData.worldTransforms.GetHostBuffer().buffer;
-	
+    })){
+        transformSyncCommandBuffer->End();
+        RGL::CommitConfig config{
+
+        };
+        // this CB does not need to signal a fence because CBs on a given queue are guarenteed to complete before the next one begins
+        transformSyncCommandBuffer->Commit(config);
+    }
+    	
     auto worldTransformBuffer = worldOwning->renderData.worldTransforms.GetPrivateBuffer();
 
 	RVE_PROFILE_SECTION_END(enc_sync_transforms);
@@ -1971,6 +1976,22 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		}
 		RVE_PROFILE_SECTION_END(allViews);
 		mainCommandBuffer->End();
+    
+        // sync the transient command buffer
+        if (transientOffset > 0){
+            transientCommandBuffer->Begin();
+            transientCommandBuffer->CopyBufferToBuffer({
+                .buffer = transientStagingBuffer,
+                .offset = 0
+            }, {
+                .buffer = transientBuffer,
+                .offset = 0
+            }, transientOffset);
+            transientCommandBuffer->End();
+            transientCommandBuffer->Commit({});
+            transientCommandBuffer->BlockUntilCompleted();
+        }
+   
 
 		frameCount++;
 

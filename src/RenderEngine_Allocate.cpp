@@ -152,24 +152,9 @@ namespace RavEngine {
 			Debug::Fatal("Not enough space left in transient buffer");
 		}
 
-		// TODO: on unified memory systems, don't make a staging buffer
 		std::memcpy((char*)(transientStagingBuffer->GetMappedDataPtr()) + start,data.data(),data.size());
-		mainCommandBuffer->CopyBufferToBuffer(
-			{
-				.buffer = transientStagingBuffer,
-				.offset = start
-			},
-			{
-				.buffer = transientBuffer,
-				.offset = start
-			},
-			data.size()
-		);
 
 		transientOffset += data.size();
-
-        // Metal and Vulkan require that buffer offsets be multiples of 16
-        transientOffset = closest_multiple_of<decltype(transientOffset)>(transientOffset, 16);
 
 		return start;
 	}

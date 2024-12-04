@@ -3,7 +3,7 @@
 
 #include "BufferedVRAMVector.hpp"
 namespace RavEngine{
-void BufferedVRAMVectorBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hostBuffer, RGLCommandBufferPtr transformSyncCommandBuffer, uint32_t elemSize, const Function<void(RGLBufferPtr)>& gcBuffersFn){
+bool BufferedVRAMVectorBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hostBuffer, RGLCommandBufferPtr transformSyncCommandBuffer, uint32_t elemSize, const Function<void(RGLBufferPtr)>& gcBuffersFn){
     uint32_t newPrivateSize = 0;
     {
         const uint32_t hostSize = hostBuffer->getBufferSize();
@@ -101,17 +101,8 @@ void BufferedVRAMVectorBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hostBu
         if (gapCounter != 0) {
             endRange(uint32_t(syncTrackBuffer.size()));
         }
-
-        if (needsSync) {
-
-
-            transformSyncCommandBuffer->End();
-            RGL::CommitConfig config{
-
-            };
-            // this CB does not need to signal a fence because CBs on a given queue are guarenteed to complete before the next one begins
-            transformSyncCommandBuffer->Commit(config);
-        }
+        
+        return needsSync;
     }
 }
 }

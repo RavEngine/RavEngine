@@ -11,7 +11,7 @@ protected:
     RGLBufferPtr privateBuffer;
     std::vector<unsigned char> syncTrackingBuffer;
 
-    void EncodeSync(RGLDevicePtr device, RGLBufferPtr hostBuffer, RGLCommandBufferPtr commandBuffer, uint32_t elemSize, const Function<void(RGLBufferPtr)>& gcBuffersFn);
+    bool EncodeSync(RGLDevicePtr device, RGLBufferPtr hostBuffer, RGLCommandBufferPtr commandBuffer, uint32_t elemSize, const Function<void(RGLBufferPtr)>& gcBuffersFn);
 
 public:
     auto GetPrivateBuffer() const{
@@ -32,9 +32,10 @@ public:
     /**
      Encodes commands to sync the host buffer with the private buffer.
      @note This function may change the value returned by GetPrivateBuffer(). Do not call GetPrivateBuffer() until after calling EncodeSync.
+     @return true if commands were encoded
      */
-    void EncodeSync(RGLDevicePtr device, RGLCommandBufferPtr commandBuffer, const Function<void(RGLBufferPtr)>& gcBuffersFn){
-        BufferedVRAMVectorBase::EncodeSync(device, hostBuffer.buffer, commandBuffer, sizeof(T), gcBuffersFn);
+    bool EncodeSync(RGLDevicePtr device, RGLCommandBufferPtr commandBuffer, const Function<void(RGLBufferPtr)>& gcBuffersFn){
+        return BufferedVRAMVectorBase::EncodeSync(device, hostBuffer.buffer, commandBuffer, sizeof(T), gcBuffersFn);
     }
     
     void Resize(uint32_t newSize){
