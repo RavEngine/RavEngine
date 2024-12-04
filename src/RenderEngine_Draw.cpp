@@ -119,7 +119,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 	RVE_PROFILE_SECTION_END(enc_sync_transforms);
         
-        
+	if (transientSubmittedLastFrame) {
+		// cannot modify the transient staging buffer until this is done
+		transientCommandBuffer->BlockUntilCompleted();
+	}
 
 		// do skeletal operations
 		struct skeletalMeshPrepareResult {
@@ -1990,8 +1993,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
             }, transientOffset);
             transientCommandBuffer->End();
             transientCommandBuffer->Commit({});
-            transientCommandBuffer->BlockUntilCompleted();
+			transientSubmittedLastFrame = true;
         }
+		else {
+			transientSubmittedLastFrame = false;
+		}
    
 
 		frameCount++;
