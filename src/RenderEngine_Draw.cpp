@@ -103,120 +103,14 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
     mainCommandBuffer->Begin();
     
 	RVE_PROFILE_SECTION(enc_sync_transforms,"Encode Sync Transforms");
-    auto worldTransformBufferHost = worldOwning->renderData.worldTransforms.buffer;
-	{
-		uint32_t newPrivateSize = 0;
-		{
-			const uint32_t hostSize = worldTransformBufferHost->getBufferSize();
-			if (!(worldOwning->renderData.privateWorldTransforms) || worldOwning->renderData.privateWorldTransforms->getBufferSize() != hostSize) {
-				newPrivateSize = hostSize;
-			}
-		}
-
-
-		// sync transforms to GPU
-		{
-			int8_t gapCounter = 0;
-			uint32_t rangeBegin = 0;
-			bool needsSync = false;
-			auto& syncTrackBuffer = worldOwning->renderData.worldTransformsToSync;
-
-			auto beginCB = [&] {
-				if (!needsSync) {
-					transformSyncCommandBuffer->Reset();
-					transformSyncCommandBuffer->Begin();
-				}
-				needsSync = true;
-			};
-
-			if (newPrivateSize > 0) {
-				beginCB();
-				RGLBufferPtr oldBuffer;
-				if (worldOwning->renderData.privateWorldTransforms) {
-					oldBuffer = worldOwning->renderData.privateWorldTransforms;
-					gcBuffers.enqueue(oldBuffer);
-				}
-
-
-				worldOwning->renderData.privateWorldTransforms = device->CreateBuffer({
-					newPrivateSize,
-					{.StorageBuffer = true},
-					sizeof(std::byte),
-					RGL::BufferAccess::Private,
-					{.TransferDestination = true, .debugName = "World transform private buffer"}
-				});
-
-				if (oldBuffer) {
-					// copy the old data over
-					transformSyncCommandBuffer->CopyBufferToBuffer(
-						{
-							.buffer = oldBuffer,
-							.offset = 0,
-						},
-						{
-							.buffer = worldOwning->renderData.privateWorldTransforms,
-							.offset = 0,
-						},
-						oldBuffer->getBufferSize());
-				}
-			}
-
-			auto endRange = [&](uint32_t end) {
-				// this is the end of the range. add a command
-				//Debug::Log("Range: {} - {}", rangeBegin, i);
-				beginCB();
-				constexpr uint32_t elemSize = sizeof(worldOwning->renderData.worldTransforms[0]);
-				const auto bufferOffset = rangeBegin * elemSize;
-				const auto copySize = (end - rangeBegin) * elemSize;
-				transformSyncCommandBuffer->CopyBufferToBuffer(
-					{
-						.buffer = worldTransformBufferHost,
-						.offset = bufferOffset
-					},
-					{
-						.buffer = worldOwning->renderData.privateWorldTransforms,
-						.offset = bufferOffset
-					}, copySize);
-
-			};
-
-			for (uint32_t i = 0; i < syncTrackBuffer.size(); i++) {
-				auto& modified = syncTrackBuffer[i];
-
-				if (modified && gapCounter == 0) {
-					gapCounter = 2; // we can have gaps of up to 2 matrices before making a new range
-					rangeBegin = i;
-				}
-				if (!modified) {
-					auto prevValue = gapCounter;
-					gapCounter = std::max(0, gapCounter - 1);   // decrement
-					if (gapCounter == 0 && prevValue != 0) {
-						endRange(i);
-					}
-				}
-				if (modified) {
-					modified = false;
-				}
-			}
-
-			// if the loop ends and gapCounter != 0, then create another range
-			if (gapCounter != 0) {
-				endRange(uint32_t(syncTrackBuffer.size()));
-			}
-
-			if (needsSync) {
-
-
-				transformSyncCommandBuffer->End();
-				RGL::CommitConfig config{
-
-				};
-				// this CB does not need to signal a fence because CBs on a given queue are guarenteed to complete before the next one begins
-				transformSyncCommandBuffer->Commit(config);
-			}
-		}
-	}
-	auto worldTransformBuffer = worldOwning->renderData.privateWorldTransforms;
+    
+    worldOwning->renderData.worldTransforms.EncodeSync(device, transformSyncCommandBuffer, [this](RGLBufferPtr oldPrivateBuffer){
+        gcBuffers.enqueue(oldPrivateBuffer);
+    });
+    
+    auto worldTransformBufferHost = worldOwning->renderData.worldTransforms.GetHostBuffer().buffer;
+	
+    auto worldTransformBuffer = worldOwning->renderData.worldTransforms.GetPrivateBuffer();
 
 	RVE_PROFILE_SECTION_END(enc_sync_transforms);
         
@@ -362,10 +256,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			mainCommandBuffer->EndComputeDebugMarker();
 		};
 
-		auto tickParticles = [this, worldOwning]() {
+		auto tickParticles = [this, worldOwning, worldTransformBuffer]() {
 			mainCommandBuffer->BeginComputeDebugMarker("Particle Update");
 
-			worldOwning->Filter([this, worldOwning](ParticleEmitter& emitter, const Transform& transform) {
+            worldOwning->Filter([this, worldOwning, worldTransformBuffer](ParticleEmitter& emitter, const Transform& transform) {
 				// frozen particle systems are not ticked
 				if (emitter.GetFrozen()) {
 					return;
@@ -514,7 +408,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->BindComputeBuffer(emitter.spawnedThisFrameList, 1);
 					mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 2);
 					mainCommandBuffer->BindComputeBuffer(emitter.particleLifeBuffer, 3);
-					mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.worldTransforms.buffer, 4);
+					mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 4);
 
 					mainCommandBuffer->DispatchIndirect({
 						.indirectBuffer = emitter.indirectComputeBuffer,

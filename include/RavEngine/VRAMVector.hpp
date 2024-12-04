@@ -10,6 +10,7 @@ namespace RavEngine {
 		void TrashOldVector(RGLBufferPtr buffer);
         RGLDevicePtr owningDevice = nullptr;
         VRAMVectorBase();
+        RGLBufferPtr buffer = nullptr;
 	};
 
 	/**
@@ -18,7 +19,6 @@ namespace RavEngine {
 	*/
 	template<typename T, bool GPUWritable = false>
 	struct VRAMVector : public VRAMVectorBase {
-		RGLBufferPtr buffer = nullptr;
 		using size_type = uint32_t;
 		using index_type = uint32_t;
 
@@ -114,6 +114,10 @@ namespace RavEngine {
 		auto data() {
 			return static_cast<T*>(buffer->GetMappedDataPtr());
 		}
+        
+        auto data() const{
+            return static_cast<T*>(buffer->GetMappedDataPtr());
+        }
 
 		auto size() const {
 			return nValues;

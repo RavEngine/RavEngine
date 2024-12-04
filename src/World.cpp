@@ -307,11 +307,10 @@ void World::setupRenderTasks(){
         // to avoid an indirection, we assume all entities may have a transform
         // this wastes some VRAM
         auto nEntities = numEntities + std::min(nCreatedThisTick, 1);  // hack: if I don't add 1, then the pbr.vsh shader OOBs, not sure why
-        auto currentBufferSize = renderData.worldTransforms.size();
+        auto currentBufferSize = renderData.worldTransforms.Size();
         if (nEntities > currentBufferSize){
             auto newSize = closest_power_of<entity_t>(nEntities, 16);
-            renderData.worldTransforms.resize(newSize);
-            renderData.worldTransformsToSync.resize(newSize, true); // ensure the initial copy is included
+            renderData.worldTransforms.Resize(newSize);
         }
         nCreatedThisTick = 0;
     });
@@ -332,8 +331,7 @@ void World::setupRenderTasks(){
                     // write new matrix
                     auto owner = trns.GetOwner();
                     auto ownerIDInWorld = owner.GetID();
-                    renderData.worldTransforms[ownerIDInWorld] = trns.GetWorldMatrix();
-                    renderData.worldTransformsToSync[ownerIDInWorld] = true;    // signal that this was modified
+                    renderData.worldTransforms.SetValueAt(ownerIDInWorld,trns.GetWorldMatrix());
                 });
 
                 trns.ClearTickDirty();
@@ -370,7 +368,7 @@ void World::setupRenderTasks(){
             if (t.getTickDirty()) {
                 auto owner = t.GetOwner();
                 auto ownerIDInWorld = owner.GetID();
-                renderData.worldTransforms[ownerIDInWorld] = t.GetWorldMatrix();
+                renderData.worldTransforms.SetValueAt(ownerIDInWorld, t.GetWorldMatrix());
             }
         });
     });

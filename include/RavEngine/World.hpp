@@ -19,6 +19,7 @@
     #include "VRAMSparseSet.hpp"
     #include "BuiltinMaterials.hpp"
     #include "Light.hpp"
+    #include "BufferedVRAMVector.hpp"
 #else
     #include "Ref.hpp"
 #endif
@@ -358,9 +359,8 @@ namespace RavEngine {
             VRAMVector<perobject_t> perObjectAttributes{ 32 };
 
             // uses world-local ID
-            VRAMVector<matrix4> worldTransforms;
-            RGLBufferPtr privateWorldTransforms;
-            std::vector<unsigned char> worldTransformsToSync;
+            
+            BufferedVRAMVector<matrix4> worldTransforms;
 
             locked_node_hashmap<Ref<MaterialInstance>, MDIICommand, phmap::NullMutex> staticMeshRenderData;
             locked_node_hashmap<Ref<MaterialInstance>, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;
