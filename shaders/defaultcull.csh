@@ -214,37 +214,44 @@ void main() {
             float miplevel = ceil(log2(max(bbwidth, bbheight))) - 1;
             miplevel = max(0, miplevel);
 
-            // create the corners of the bounding box for sampling
-            vec2 ndcCorners[] = {
-                vec2(projected.minX, projected.maxY),      // top left
-                vec2(projected.maxX, projected.maxY),      // top right
-                vec2(projected.maxX, projected.minY),      // bottom right,
-                vec2(projected.minX, projected.minY),      // bottom left
-            };
-
+            const uint maxLevel = textureQueryLevels(sampler2D(depthPyramid, depthPyramidSampler));
             float minDepth = 1;
-            for(uint i = 0; i < ndcCorners.length(); i++){
-
-                ndcCorners[i] = (ndcCorners[i] + 1) * 0.5;      // transform from [-1,1] to [0,1]
-                ndcCorners[i].y = 1 - ndcCorners[i].y;          // flip Y because we access textures that way
-
-                //sample the depth pyramid at that specific level
-#if !defined(RGL_SL_MTL) && !defined(RGL_SL_WGSL)
-                float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i], miplevel).x;
-#else
-                // Metal and WebGPU do not have reduction samplers, so we need to emulate them in software
-                const ivec2 dim = textureSize(depthPyramid, int(miplevel)).xy;
-                const vec2 distance_one_pixel = 1.0f/dim;
-                const float depth_quad_a = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i], miplevel).x;
-                const float depth_quad_b = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i] + vec2(distance_one_pixel.x,0),miplevel).x;
-                const float depth_quad_c = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i] + vec2(0,distance_one_pixel.y),miplevel).x;
-                const float depth_quad_d = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i] + distance_one_pixel, miplevel).x;
-                float depth = min(min(depth_quad_a, depth_quad_b), min(depth_quad_c, depth_quad_d));
-                
-#endif
-                minDepth = min(minDepth, depth);
+            if (miplevel > maxLevel - 1){
+               minDepth = 0;            // lazy solution: assume it's visible
+                                        // TODO: actually fix this (object is larger than NDC)
             }
-            
+            else{
+                // create the corners of the bounding box for sampling
+                vec2 ndcCorners[] = {
+                    vec2(projected.minX, projected.maxY),      // top left
+                    vec2(projected.maxX, projected.maxY),      // top right
+                    vec2(projected.maxX, projected.minY),      // bottom right,
+                    vec2(projected.minX, projected.minY),      // bottom left
+                };
+
+                for(uint i = 0; i < ndcCorners.length(); i++){
+
+                    ndcCorners[i] = (ndcCorners[i] + 1) * 0.5;      // transform from [-1,1] to [0,1]
+                    ndcCorners[i].y = 1 - ndcCorners[i].y;          // flip Y because we access textures that way
+
+                    //sample the depth pyramid at that specific level
+    #if !defined(RGL_SL_MTL) && !defined(RGL_SL_WGSL)
+                    float depth = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i], miplevel).x;
+    #else
+                    // Metal and WebGPU do not have reduction samplers, so we need to emulate them in software
+                    const ivec2 dim = textureSize(depthPyramid, int(miplevel)).xy;
+                    const vec2 distance_one_pixel = 1.0f/dim;
+                    const float depth_quad_a = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i], miplevel).x;
+                    const float depth_quad_b = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i] + vec2(distance_one_pixel.x,0),miplevel).x;
+                    const float depth_quad_c = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i] + vec2(0,distance_one_pixel.y),miplevel).x;
+                    const float depth_quad_d = textureLod(sampler2D(depthPyramid, depthPyramidSampler), ndcCorners[i] + distance_one_pixel, miplevel).x;
+                    float depth = min(min(depth_quad_a, depth_quad_b), min(depth_quad_c, depth_quad_d));
+                    
+    #endif
+                    minDepth = min(minDepth, depth);
+                }
+                }
+      
             isOnCamera = isOnCamera && projected.referenceZ >= minDepth;
         }
     }

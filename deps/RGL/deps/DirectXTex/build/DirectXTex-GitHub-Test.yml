@@ -1,0 +1,149 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+#
+# https://go.microsoft.com/fwlink/?LinkId=248926
+
+# Builds the library and test suite.
+
+schedules:
+- cron: "30 3 * * *"
+  displayName: 'Nightly build'
+  branches:
+    include:
+    - main
+
+# GitHub Actions handles test suite for CI/PR
+trigger: none
+pr:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - build/DirectXTex-GitHub-Test.yml
+
+resources:
+  repositories:
+  - repository: self
+    type: git
+    ref: refs/heads/main
+  - repository: testRepo
+    name: walbourn/directxtextest
+    type: github
+    endpoint: microsoft
+    ref: refs/heads/main
+
+name: $(Year:yyyy).$(Month).$(DayOfMonth)$(Rev:.r)
+
+pool:
+  vmImage: windows-2019
+
+variables:
+  Codeql.Enabled: false
+  GUID_FEED: $(ADOFeedGUID)
+
+jobs:
+- job: DESKTOP_BUILD
+  displayName: 'Win32 Desktop for x64/x86'
+  timeoutInMinutes: 120
+  cancelTimeoutInMinutes: 1
+  steps:
+  - checkout: self
+    clean: true
+    fetchTags: false
+    fetchDepth: 1
+    path: 's'
+  - checkout: testRepo
+    displayName: Fetch Tests
+    clean: true
+    fetchTags: false
+    fetchDepth: 1
+    path: 's/Tests'
+  - task: NuGetToolInstaller@1
+    displayName: 'Use NuGet'
+  - task: NuGetCommand@2
+    displayName: NuGet restore tests
+    inputs:
+      solution: Tests/DirectXTex_Tests_Desktop_2019.sln
+      feedRestore: $(GUID_FEED)
+      includeNuGetOrg: false
+  - task: VSBuild@1
+    displayName: Build solution DirectXTex_Tests_Desktop_2019.sln 32dbg
+    inputs:
+      solution: Tests/DirectXTex_Tests_Desktop_2019.sln
+      vsVersion: 16.0
+      msbuildArgs: /p:PreferredToolArchitecture=x64
+      platform: x86
+      configuration: Debug
+  - task: VSBuild@1
+    displayName: Build solution DirectXTex_Tests_Desktop_2019.sln 32rel
+    inputs:
+      solution: Tests/DirectXTex_Tests_Desktop_2019.sln
+      vsVersion: 16.0
+      msbuildArgs: /p:PreferredToolArchitecture=x64
+      platform: x86
+      configuration: Release
+  - task: VSBuild@1
+    displayName: Build solution DirectXTex_Tests_Desktop_2019.sln 64dbg
+    inputs:
+      solution: Tests/DirectXTex_Tests_Desktop_2019.sln
+      vsVersion: 16.0
+      msbuildArgs: /p:PreferredToolArchitecture=x64
+      platform: x64
+      configuration: Debug
+  - task: VSBuild@1
+    displayName: Build solution DirectXTex_Tests_Desktop_2019.sln 64rel
+    inputs:
+      solution: Tests/DirectXTex_Tests_Desktop_2019.sln
+      vsVersion: 16.0
+      msbuildArgs: /p:PreferredToolArchitecture=x64
+      platform: x64
+      configuration: Release
+  - task: VSBuild@1
+    displayName: Build solution DirectXTex_Tests_Desktop_2019_Win10.sln 32dbg
+    inputs:
+      solution: Tests/DirectXTex_Tests_Desktop_2019_Win10.sln
+      vsVersion: 16.0
+      msbuildArgs: /p:PreferredToolArchitecture=x64
+      platform: x86
+      configuration: Debug
+  - task: VSBuild@1
+    displayName: Build solution DirectXTex_Tests_Desktop_2019_Win10.sln 32rel
+    inputs:
+      solution: Tests/DirectXTex_Tests_Desktop_2019_Win10.sln
+      vsVersion: 16.0
+      msbuildArgs: /p:PreferredToolArchitecture=x64
+      platform: x86
+      configuration: Release
+  - task: VSBuild@1
+    displayName: Build solution DirectXTex_Tests_Desktop_2019_Win10.sln 64dbg
+    inputs:
+      solution: Tests/DirectXTex_Tests_Desktop_2019_Win10.sln
+      vsVersion: 16.0
+      msbuildArgs: /p:PreferredToolArchitecture=x64
+      platform: x64
+      configuration: Debug
+  - task: VSBuild@1
+    displayName: Build solution DirectXTex_Tests_Desktop_2019_Win10.sln 64rel
+    inputs:
+      solution: Tests/DirectXTex_Tests_Desktop_2019_Win10.sln
+      vsVersion: 16.0
+      msbuildArgs: /p:PreferredToolArchitecture=x64
+      platform: x64
+      configuration: Release
+  - task: VSBuild@1
+    displayName: Build solution DirectXTex_Tests_Desktop_2019_Win10.sln arm64dbg
+    inputs:
+      solution: Tests/DirectXTex_Tests_Desktop_2019_Win10.sln
+      vsVersion: 16.0
+      msbuildArgs: /p:PreferredToolArchitecture=x64
+      platform: ARM64
+      configuration: Debug
+  - task: VSBuild@1
+    displayName: Build solution DirectXTex_Tests_Desktop_2019_Win10.sln arm64rel
+    inputs:
+      solution: Tests/DirectXTex_Tests_Desktop_2019_Win10.sln
+      vsVersion: 16.0
+      msbuildArgs: /p:PreferredToolArchitecture=x64
+      platform: ARM64
+      configuration: Release

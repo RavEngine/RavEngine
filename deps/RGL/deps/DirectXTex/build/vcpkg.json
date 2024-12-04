@@ -1,0 +1,13 @@
+{
+    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+    "dependencies": [
+      "directxmath",
+      "directx-headers",
+      {
+        "name": "openexr",
+        "platform": "linux | (windows & !arm64ec)"
+      },
+      "libpng",
+      "libjpeg-turbo"
+    ]
+}
