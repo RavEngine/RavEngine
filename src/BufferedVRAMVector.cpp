@@ -1,4 +1,4 @@
-#if !RAVENGINE_SERVER
+#if !RVE_SERVER
 #include "BufferedVRAMVector.hpp"
 #include <RGL/CommandBuffer.hpp>
 
