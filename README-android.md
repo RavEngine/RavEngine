@@ -1,7 +1,7 @@
 # Using RavEngine on Android
 For every platform except Android, RavEngine can create a ready-to-go IDE project which can build and run a complete game with a single click. Unfortunately, Android requires some additional manual effort to make work. 
 
-1. Download a copy of the[SDL Android Builder](https://github.com/Ravbug/sdl-android-builder) project and place it somewhere outside your game repository.
+1. Download a copy of the [SDL Android Builder](https://github.com/Ravbug/sdl-android-builder) project and place it somewhere outside your game repository.
 2. Symlink your game repository into the `sdl-android-builder/to-build` directory.
 3. Modify your game's root `CMakeLists.txt` to change the main executable target such that:
     - It is a shared library rather than an executable, via `add_library`
