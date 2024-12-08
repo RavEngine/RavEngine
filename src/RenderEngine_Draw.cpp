@@ -105,19 +105,19 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 	RVE_PROFILE_SECTION(enc_sync_transforms,"Encode Sync Transforms");
     
     // sync private buffers
+	bool transformSyncCommandBufferNeedsCommit = false;
     {
         auto gcbuffer = [this](RGLBufferPtr oldPrivateBuffer){
             gcBuffers.enqueue(oldPrivateBuffer);
         };
-		bool needsCommit = false;
-        worldOwning->renderData.worldTransforms.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, needsCommit);
+        worldOwning->renderData.worldTransforms.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
         // bitwise-or to prevent short-circuiting
-        worldOwning->renderData.directionalLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, needsCommit);
-        worldOwning->renderData.pointLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, needsCommit);
-        worldOwning->renderData.spotLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, needsCommit);
-        worldOwning->renderData.ambientLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, needsCommit);
+        worldOwning->renderData.directionalLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
+        worldOwning->renderData.pointLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
+        worldOwning->renderData.spotLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
+        worldOwning->renderData.ambientLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
         
-        if (needsCommit){
+        if (transformSyncCommandBufferNeedsCommit){
             transformSyncCommandBuffer->End();
             RGL::CommitConfig config{
 
@@ -2000,6 +2000,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
         }
 		else {
 			transientSubmittedLastFrame = false;
+		}
+
+		if (transformSyncCommandBufferNeedsCommit) {
+			transformSyncCommandBuffer->BlockUntilCompleted();
 		}
    
 
