@@ -385,7 +385,7 @@ void World::setupRenderTasks(){
                     auto rot = owner.GetTransform().WorldUp();
 
                     // use local ID here, no need for local-to-global translation
-                    auto& uploadData = renderData.directionalLightData.GetForSparseIndex(ptr->GetOwner(i));
+                    auto& uploadData = renderData.directionalLightData.GetForSparseIndexForWriting(ptr->GetOwner(i));
                     uploadData.direction = rot;
                 }
                 auto& lightdata = ptr->Get(i);
@@ -393,7 +393,7 @@ void World::setupRenderTasks(){
                     // update color data if it has changed
                     auto& color = lightdata.GetColorRGBA();
                     auto owner = ptr->GetOwner(i);
-                    auto& dirLightUploadData = renderData.directionalLightData.GetForSparseIndex(owner);
+                    auto& dirLightUploadData = renderData.directionalLightData.GetForSparseIndexForWriting(owner);
                     dirLightUploadData.color = {color.R, color.G, color.B};
                     dirLightUploadData.intensity = lightdata.GetIntensity();
                     dirLightUploadData.castsShadows = lightdata.CastsShadows();
@@ -416,15 +416,20 @@ void World::setupRenderTasks(){
             for(int i = 0; i < ptr->DenseSize(); i++){
                 auto owner = Entity(ptr->GetOwner(i),this);
                 auto& transform = owner.GetTransform();
+                auto& lightData = ptr->Get(i);
                 if (transform.isTickDirty){
                     // update transform data if it has changed
-                    renderData.spotLightData.GetForSparseIndex(ptr->GetOwner(i)).worldTransform = transform.GetWorldMatrix();
+                    auto& denseData = renderData.spotLightData.GetForSparseIndexForWriting(ptr->GetOwner(i));
+                    denseData.worldTransform = transform.GetWorldMatrix();
+                    
+                    const auto proj = lightData.CalcProjectionMatrix();
+                    const auto view = lightData.CalcViewMatrix(denseData.worldTransform);
+                    denseData.lightViewProj = view * proj;
                 }
-                if (ptr->Get(i).isInvalidated()){
+                if (lightData.isInvalidated()){
                     // update color data if it has changed
-                    auto& lightData = ptr->Get(i);
                     auto& colorData = lightData.GetColorRGBA();
-                    auto& denseData = renderData.spotLightData.GetForSparseIndex(ptr->GetOwner(i));
+                    auto& denseData = renderData.spotLightData.GetForSparseIndexForWriting(ptr->GetOwner(i));
                     denseData.coneAngle = lightData.GetConeAngle();
                     denseData.penumbraAngle = lightData.GetPenumbraAngle();
                     denseData.color = { colorData.R,colorData.G,colorData.B};
@@ -447,20 +452,22 @@ void World::setupRenderTasks(){
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
-                    renderData.pointLightData.GetForSparseIndex(ptr->GetOwner(i)).position = transform.GetWorldPosition();
+                    auto& gpudata = renderData.pointLightData.GetForSparseIndexForWriting(ptr->GetOwner(i));
+                    gpudata.position = transform.GetWorldPosition();
                 }
-                if (ptr->Get(i).isInvalidated()){
+                auto& lightData = ptr->Get(i);
+                if (lightData.isInvalidated()){
                     // update color data if it has changed
-                    auto& lightData = ptr->Get(i);
+                    
                     auto& colorData = lightData.GetColorRGBA();
-                    auto& denseData = renderData.pointLightData.GetForSparseIndex(ptr->GetOwner(i));
+                    auto& denseData = renderData.pointLightData.GetForSparseIndexForWriting(ptr->GetOwner(i));
                     denseData.color = { colorData.R,colorData.G,colorData.B};
                     denseData.intensity = lightData.GetIntensity();
                     denseData.castsShadows = lightData.CastsShadows();
                     denseData.shadowmapBindlessIndex = lightData.shadowData.mapCube->GetDefaultView().GetReadonlyBindlessTextureHandle();
                     denseData.shadowLayers = lightData.GetShadowLayers();
                     denseData.illuminationLayers = lightData.GetIlluminationLayers();
-                    ptr->Get(i).clearInvalidate();
+                    lightData.clearInvalidate();
                 }
                 // don't reset transform tickInvalidated here because the meshUpdater needs it after this
             }
@@ -473,7 +480,7 @@ void World::setupRenderTasks(){
                 auto ownerLocalId = ptr->GetOwner(i);
                 auto& light = ptr->Get(i);
                 auto& color = light.GetColorRGBA();
-                renderData.ambientLightData.GetForSparseIndex(ownerLocalId) = {{color.R, color.G, color.B}, light.GetIntensity(), light.GetIlluminationLayers()};
+                renderData.ambientLightData.GetForSparseIndexForWriting(ownerLocalId) = {{color.R, color.G, color.B}, light.GetIntensity(), light.GetIlluminationLayers()};
                 light.clearInvalidate();
             }
         }

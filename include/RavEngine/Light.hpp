@@ -140,6 +140,9 @@ public:
     
     SpotLight();
     
+    matrix4 CalcProjectionMatrix() const;
+    matrix4 CalcViewMatrix(const matrix4& worldTransform) const;
+    
 #if !RVE_SERVER
     struct ShadowMap {
         DepthPyramid pyramid;

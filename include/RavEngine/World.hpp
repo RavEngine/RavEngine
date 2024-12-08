@@ -345,13 +345,13 @@ namespace RavEngine {
         // data for the render engine
         struct RenderData{
             
-            VRAMSparseSet<entity_t, DirLightUploadData> directionalLightData;
+            BufferedVRAMSparseSet<entity_t, DirLightUploadData> directionalLightData;
             
-            VRAMSparseSet<entity_t, AmbientLightUploadData> ambientLightData;
+            BufferedVRAMSparseSet<entity_t, AmbientLightUploadData> ambientLightData;
             
-            VRAMSparseSet<entity_t, PointLightUploadData> pointLightData;
+            BufferedVRAMSparseSet<entity_t, PointLightUploadData> pointLightData;
              
-            VRAMSparseSet<entity_t, SpotLightDataUpload> spotLightData;
+            BufferedVRAMSparseSet<entity_t, SpotLightDataUpload> spotLightData;
             
             // uses world-local ID
             VRAMVector<renderlayer_t> renderLayers{32};
