@@ -60,11 +60,13 @@ void RavEngine::World::Tick(float scale) {
 
     PostTick(scale);
 
+#if !RVE_SERVER
     // run the render sync tasks
     RVE_PROFILE_SECTION(render, "Sync render data");
     auto& executor = GetApp()->executor;
     executor.run(renderTasks).wait();
     RVE_PROFILE_SECTION_END(render);
+#endif
 }
 
 
