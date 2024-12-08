@@ -1,9 +1,21 @@
 #if !RVE_SERVER
 #include "BufferedVRAMVector.hpp"
 #include <RGL/CommandBuffer.hpp>
+#include "Debug.hpp"
 
 namespace RavEngine{
-bool BufferedVRAMVectorBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hostBuffer, RGLCommandBufferPtr transformSyncCommandBuffer, uint32_t elemSize, const Function<void(RGLBufferPtr)>& gcBuffersFn){
+void BufferedVRAMStructureBase::InitializePrivateBuffer(RGLDevicePtr device, uint32_t size){
+    Debug::Assert(!privateBuffer, "Cannot be invoked after creation!");
+    privateBuffer = device->CreateBuffer({
+        size,
+        {.StorageBuffer = true},
+        sizeof(std::byte),
+        RGL::BufferAccess::Private,
+        {.TransferDestination = true, .debugName = "VRAM DS private buffer"}
+    });
+}
+
+bool BufferedVRAMStructureBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hostBuffer, RGLCommandBufferPtr transformSyncCommandBuffer, uint32_t elemSize, const Function<void(RGLBufferPtr)>& gcBuffersFn){
     uint32_t newPrivateSize = 0;
     {
         const uint32_t hostSize = hostBuffer->getBufferSize();
@@ -42,7 +54,7 @@ bool BufferedVRAMVectorBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hostBu
                 {.StorageBuffer = true},
                 sizeof(std::byte),
                 RGL::BufferAccess::Private,
-                {.TransferDestination = true, .debugName = "World transform private buffer"}
+                {.TransferDestination = true, .debugName = "VRAM DS private buffer"}
             });
 
             if (oldBuffer) {

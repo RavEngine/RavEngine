@@ -104,16 +104,28 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
     
 	RVE_PROFILE_SECTION(enc_sync_transforms,"Encode Sync Transforms");
     
-    if (worldOwning->renderData.worldTransforms.EncodeSync(device, transformSyncCommandBuffer, [this](RGLBufferPtr oldPrivateBuffer){
-        gcBuffers.enqueue(oldPrivateBuffer);
-    })){
-        transformSyncCommandBuffer->End();
-        RGL::CommitConfig config{
-
+    // sync private buffers
+    {
+        auto gcbuffer = [this](RGLBufferPtr oldPrivateBuffer){
+            gcBuffers.enqueue(oldPrivateBuffer);
         };
-        // this CB does not need to signal a fence because CBs on a given queue are guarenteed to complete before the next one begins
-        transformSyncCommandBuffer->Commit(config);
+        bool needsCommit = worldOwning->renderData.worldTransforms.EncodeSync(device, transformSyncCommandBuffer, gcbuffer);
+        // bitwise-or to prevent short-circuiting
+        needsCommit = needsCommit | worldOwning->renderData.directionalLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer);
+        needsCommit = needsCommit | worldOwning->renderData.pointLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer);
+        needsCommit = needsCommit | worldOwning->renderData.spotLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer);
+        needsCommit = needsCommit | worldOwning->renderData.ambientLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer);
+        
+        if (needsCommit){
+            transformSyncCommandBuffer->End();
+            RGL::CommitConfig config{
+
+            };
+            // this CB does not need to signal a fence because CBs on a given queue are guarenteed to complete before the next one begins
+            transformSyncCommandBuffer->Commit(config);
+        }
     }
+   
     	
     auto worldTransformBuffer = worldOwning->renderData.worldTransforms.GetPrivateBuffer();
 
@@ -592,8 +604,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->BeginCompute(clusterPopulatePipeline);
 						mainCommandBuffer->SetComputeBytes(ubo, 0);
 						mainCommandBuffer->BindComputeBuffer(lightClusterBuffer, 0);
-						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.pointLightData.GetDense().get_underlying().buffer, 1);
-						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.spotLightData.GetDense().get_underlying().buffer, 2);
+						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.pointLightData.GetPrivateBuffer(), 1);
+						mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.spotLightData.GetPrivateBuffer(), 2);
 
 						constexpr static auto threadGroupSize = 128;
 
@@ -932,11 +944,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 							mainCommandBuffer->UseResource(light.shadowData.shadowMap->GetDefaultView());
 						});
 
-						mainCommandBuffer->BindBuffer(worldOwning->renderData.ambientLightData.GetDense().get_underlying().buffer,12);
-						mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightData.GetDense().get_underlying().buffer,13);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData.ambientLightData.GetPrivateBuffer(),12);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightData.GetPrivateBuffer(),13);
 						mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
-						mainCommandBuffer->BindBuffer(worldOwning->renderData.pointLightData.GetDense().get_underlying().buffer, 15);
-						mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.GetDense().get_underlying().buffer, 17);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData.pointLightData.GetPrivateBuffer(), 15);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.GetPrivateBuffer(), 17);
                         mainCommandBuffer->BindBuffer(worldOwning->renderData.renderLayers.buffer, 28);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData.perObjectAttributes.buffer, 29);
 						mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
@@ -1033,11 +1045,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 						mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
 						if (isLit) {
-							mainCommandBuffer->BindBuffer(worldOwning->renderData.ambientLightData.GetDense().get_underlying().buffer, 12);
-							mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightData.GetDense().get_underlying().buffer, 13);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData.ambientLightData.GetPrivateBuffer(), 12);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightData.GetPrivateBuffer(), 13);
 							mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
-							mainCommandBuffer->BindBuffer(worldOwning->renderData.pointLightData.GetDense().get_underlying().buffer, 15);
-							mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.GetDense().get_underlying().buffer, 17);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData.pointLightData.GetPrivateBuffer(), 15);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.GetPrivateBuffer(), 17);
                             mainCommandBuffer->BindBuffer(worldOwning->renderData.renderLayers.buffer, 28);
 							mainCommandBuffer->BindBuffer(worldOwning->renderData.perObjectAttributes.buffer, 29);
 							mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
@@ -1182,7 +1194,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			}
 			mainCommandBuffer->BeginRenderDebugMarker("Render shadowmap");
 			for (uint32_t i = 0; i < lightStore.DenseSize(); i++) {
-				auto& light = lightStore.GetDense()[i];
+				auto& light = lightStore.GetHostDenseForWriting(i);
 				if (!light.castsShadows) {
 					continue;	// don't do anything if the light doesn't cast
 				}
@@ -1214,24 +1226,14 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		};
 
 		RVE_PROFILE_SECTION(encode_spot_shadows,"Render Encode Spot Shadows");
-		const auto spotlightShadowMapFunction = [](uint8_t index, RavEngine::World::SpotLightDataUpload& light, Entity owner) {
-
-			auto lightProj = RMath::perspectiveProjection<float>(light.coneAngle * 2, 1, 0.1, 100);
-
-			// -y is forward for spot lights, so we need to rotate to compensate
-			auto rotmat = glm::toMat4(quaternion(vector3(-3.14159265358 / 2, 0, 0)));
-			auto combinedMat = light.worldTransform * rotmat;
-
-			auto viewMat = glm::inverse(combinedMat);
+		const auto spotlightShadowMapFunction = [](uint8_t index, const RavEngine::World::SpotLightDataUpload& light, Entity owner) {
 
 			auto camPos = light.worldTransform * glm::vec4(0, 0, 0, 1);
-
 			auto& origLight = owner.GetComponent<SpotLight>();
-
-			light.lightViewProj = lightProj * viewMat;	// save this because the shader needs it
+            auto viewMat = origLight.CalcViewMatrix(light.worldTransform);
 
 			return lightViewProjResult{
-				.lightProj = lightProj,
+				.lightProj = light.lightViewProj,
 				.lightView = viewMat,
 				.camPos = camPos,
 				.depthPyramid = origLight.shadowData.pyramid,
@@ -1814,7 +1816,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			auto genPyramidForLight = [&generatePyramid,&worldOwning](auto&& lightStore, auto* lightType, uint32_t nMaps, auto&& getMapDataForIndex) -> void {
 				RVE_PROFILE_FN_N("genPyramidForLight");
 				for (uint32_t i = 0; i < lightStore.DenseSize(); i++) {
-					const auto& light = lightStore.GetDense()[i];
+					const auto& light = lightStore.GetAtDenseIndex(i);
 					auto sparseIdx = lightStore.GetSparseIndexForDense(i);
 					auto owner = Entity(sparseIdx, worldOwning.get());
 

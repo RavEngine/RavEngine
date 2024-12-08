@@ -63,6 +63,27 @@ RavEngine::DirectionalLight::DirectionalLight()
 #endif
 }
 
+matrix4 RavEngine::SpotLight::CalcProjectionMatrix() const{
+    matrix4 ret(1);
+#if !RVE_SERVER
+    ret = RMath::perspectiveProjection<float>(coneAngle * 2, 1, 0.1, 100);
+#endif
+    return ret;
+}
+
+
+matrix4 RavEngine::SpotLight::CalcViewMatrix(const matrix4& worldTransform) const{
+    matrix4 ret(1);
+#if !RVE_SERVER
+    // -y is forward for spot lights, so we need to rotate to compensate
+    const auto rotmat = glm::toMat4(quaternion(vector3(-3.14159265358 / 2, 0, 0)));
+    auto combinedMat = worldTransform * rotmat;
+
+    ret = glm::inverse(combinedMat);
+#endif
+    return ret;
+}
+
 RavEngine::SpotLight::SpotLight()
 {
 #if !RVE_SERVER
