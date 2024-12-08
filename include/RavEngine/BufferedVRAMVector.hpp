@@ -10,9 +10,10 @@ class BufferedVRAMStructureBase{
     
 protected:
     RGLBufferPtr privateBuffer;
+    std::string debugName;
     std::vector<unsigned char> syncTrackingBuffer;
 
-    bool EncodeSync(RGLDevicePtr device, RGLBufferPtr hostBuffer, RGLCommandBufferPtr commandBuffer, uint32_t elemSize, const Function<void(RGLBufferPtr)>& gcBuffersFn);
+    void EncodeSync(RGLDevicePtr device, RGLBufferPtr hostBuffer, RGLCommandBufferPtr commandBuffer, uint32_t elemSize, const Function<void(RGLBufferPtr)>& gcBuffersFn, bool& previousCommandResetCB);
     
     void InitializePrivateBuffer(RGLDevicePtr device, uint32_t size);
 
@@ -20,6 +21,8 @@ public:
     auto GetPrivateBuffer() const{
         return privateBuffer;
     }
+    BufferedVRAMStructureBase() {}
+    BufferedVRAMStructureBase(const std::string_view debugName) : debugName(debugName) {}
 };
 
 template<typename T>
@@ -27,6 +30,8 @@ class BufferedVRAMVector : public BufferedVRAMStructureBase{
     VRAMVector<T> hostBuffer;
     
 public:
+    BufferedVRAMVector() {}
+    BufferedVRAMVector(const std::string_view debugName) : BufferedVRAMStructureBase(debugName){}
     
     auto& GetHostBuffer() const{
         return hostBuffer;
@@ -37,8 +42,8 @@ public:
      @note This function may change the value returned by GetPrivateBuffer(). Do not call GetPrivateBuffer() until after calling EncodeSync.
      @return true if commands were encoded
      */
-    bool EncodeSync(RGLDevicePtr device, RGLCommandBufferPtr commandBuffer, const Function<void(RGLBufferPtr)>& gcBuffersFn){
-        return BufferedVRAMStructureBase::EncodeSync(device, GetHostBuffer().buffer, commandBuffer, sizeof(T), gcBuffersFn);
+    void EncodeSync(RGLDevicePtr device, RGLCommandBufferPtr commandBuffer, const Function<void(RGLBufferPtr)>& gcBuffersFn, bool& previousCommandResetCB){
+        BufferedVRAMStructureBase::EncodeSync(device, hostBuffer.buffer, commandBuffer, sizeof(T), gcBuffersFn,  previousCommandResetCB);
     }
     
     void Resize(uint32_t newSize){
@@ -75,6 +80,9 @@ class BufferedVRAMSparseSet : public BufferedVRAMStructureBase{
     
 public:
     
+    BufferedVRAMSparseSet() {}
+    BufferedVRAMSparseSet(const std::string_view debugName) : BufferedVRAMStructureBase(debugName) {}
+
     auto DenseSize() const{
         return sparseSet.DenseSize();
     }
@@ -118,11 +126,11 @@ public:
      @note This function may change the value returned by GetPrivateBuffer(). Do not call GetPrivateBuffer() until after calling EncodeSync.
      @return true if commands were encoded
      */
-    bool EncodeSync(RGLDevicePtr device, RGLCommandBufferPtr commandBuffer, const Function<void(RGLBufferPtr)>& gcBuffersFn){
+    void EncodeSync(RGLDevicePtr device, RGLCommandBufferPtr commandBuffer, const Function<void(RGLBufferPtr)>& gcBuffersFn, bool& previousCommandResetCB){
         if (privateBuffer == nullptr){
             InitializePrivateBuffer(device, 8 * sizeof(T));
         }
-        return BufferedVRAMStructureBase::EncodeSync(device, sparseSet.GetDense().get_underlying().buffer, commandBuffer, sizeof(T), gcBuffersFn);
+        BufferedVRAMStructureBase::EncodeSync(device, sparseSet.GetDense().get_underlying().buffer, commandBuffer, sizeof(T), gcBuffersFn, previousCommandResetCB);
     }
 };
 }

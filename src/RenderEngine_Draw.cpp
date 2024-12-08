@@ -109,12 +109,13 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
         auto gcbuffer = [this](RGLBufferPtr oldPrivateBuffer){
             gcBuffers.enqueue(oldPrivateBuffer);
         };
-        bool needsCommit = worldOwning->renderData.worldTransforms.EncodeSync(device, transformSyncCommandBuffer, gcbuffer);
+		bool needsCommit = false;
+        worldOwning->renderData.worldTransforms.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, needsCommit);
         // bitwise-or to prevent short-circuiting
-        needsCommit = needsCommit | worldOwning->renderData.directionalLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer);
-        needsCommit = needsCommit | worldOwning->renderData.pointLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer);
-        needsCommit = needsCommit | worldOwning->renderData.spotLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer);
-        needsCommit = needsCommit | worldOwning->renderData.ambientLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer);
+        worldOwning->renderData.directionalLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, needsCommit);
+        worldOwning->renderData.pointLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, needsCommit);
+        worldOwning->renderData.spotLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, needsCommit);
+        worldOwning->renderData.ambientLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, needsCommit);
         
         if (needsCommit){
             transformSyncCommandBuffer->End();

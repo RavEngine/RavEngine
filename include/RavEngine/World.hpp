@@ -345,13 +345,13 @@ namespace RavEngine {
         // data for the render engine
         struct RenderData{
             
-            BufferedVRAMSparseSet<entity_t, DirLightUploadData> directionalLightData;
+            BufferedVRAMSparseSet<entity_t, DirLightUploadData> directionalLightData{"Directional Light Private Buffer"};
             
-            BufferedVRAMSparseSet<entity_t, AmbientLightUploadData> ambientLightData;
+            BufferedVRAMSparseSet<entity_t, AmbientLightUploadData> ambientLightData{"Ambient Light Private Buffer"};
             
-            BufferedVRAMSparseSet<entity_t, PointLightUploadData> pointLightData;
+            BufferedVRAMSparseSet<entity_t, PointLightUploadData> pointLightData{"Point Light Private Buffer"};
              
-            BufferedVRAMSparseSet<entity_t, SpotLightDataUpload> spotLightData;
+            BufferedVRAMSparseSet<entity_t, SpotLightDataUpload> spotLightData{"Point Light Private Buffer"};
             
             // uses world-local ID
             VRAMVector<renderlayer_t> renderLayers{32};
@@ -360,7 +360,7 @@ namespace RavEngine {
 
             // uses world-local ID
             
-            BufferedVRAMVector<matrix4> worldTransforms;
+            BufferedVRAMVector<matrix4> worldTransforms{"World Transform Private Buffer"};
 
             locked_node_hashmap<Ref<MaterialInstance>, MDIICommand, phmap::NullMutex> staticMeshRenderData;
             locked_node_hashmap<Ref<MaterialInstance>, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;
