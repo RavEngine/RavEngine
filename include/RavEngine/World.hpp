@@ -1054,7 +1054,6 @@ namespace RavEngine {
 #if !RVE_SERVER
         tf::Taskflow renderTasks;
         tf::Taskflow audioTasks;
-        tf::Task renderTaskModule;
         tf::Task audioTaskModule;
 #endif
         tf::Taskflow ECSTasks;

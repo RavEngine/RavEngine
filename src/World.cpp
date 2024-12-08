@@ -59,6 +59,12 @@ void RavEngine::World::Tick(float scale) {
 	TickECS(scale);
 
     PostTick(scale);
+
+    // run the render sync tasks
+    RVE_PROFILE_SECTION(render, "Sync render data");
+    auto& executor = GetApp()->executor;
+    executor.run(renderTasks).wait();
+    RVE_PROFILE_SECTION_END(render);
 }
 
 
@@ -145,11 +151,6 @@ void World::SetupTaskGraph(){
     
     ECSTasks.name("ECS");
     ECSTaskModule = masterTasks.composed_of(ECSTasks).name("ECS");
-    
-    // ensure Systems run before rendering
-#if !RVE_SERVER
-    renderTaskModule.succeed(ECSTaskModule);
-#endif
     
     // process any dispatched coroutines
     auto updateAsyncIterators = ECSTasks.emplace([&]{
@@ -484,11 +485,7 @@ void World::setupRenderTasks(){
                 light.clearInvalidate();
             }
         }
-    }).name("Update Invalidated AmbLights");
-
-    
-    // attatch the renderTasks module to the masterTasks
-    renderTaskModule = masterTasks.composed_of(renderTasks).name("Render");
+    }).name("Update Invalidated AmbLights"); 
 }
 #endif
 

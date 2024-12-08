@@ -96,11 +96,14 @@ struct LightingType{
  */
 RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const std::span<RenderViewCollection> screenTargets, float guiScaleFactor) {
     transientOffset = 0;
+	RVE_PROFILE_FN_N("RenderEngine::Draw");
+
+	
     
-    RVE_PROFILE_FN_N("RenderEngine::Draw");
     DestroyUnusedResources();
     mainCommandBuffer->Reset();
     mainCommandBuffer->Begin();
+
     
 	RVE_PROFILE_SECTION(enc_sync_transforms,"Encode Sync Transforms");
     
