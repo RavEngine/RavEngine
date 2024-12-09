@@ -427,7 +427,7 @@ void World::setupRenderTasks(){
                     
                     const auto proj = lightData.CalcProjectionMatrix();
                     const auto view = lightData.CalcViewMatrix(denseData.worldTransform);
-                    denseData.lightViewProj = view * proj;
+                    denseData.lightViewProj = proj * view;
                 }
                 if (lightData.isInvalidated()){
                     // update color data if it has changed
