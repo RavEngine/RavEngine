@@ -283,6 +283,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		// cannot modify the transient staging buffer until this is done
 		transientCommandBuffer->BlockUntilCompleted();
 	}
+    uint32_t camIdx = 0; // used for selecting directional lights in the lit pass
 
 		// do skeletal operations
 		struct skeletalMeshPrepareResult {
@@ -700,7 +701,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			prepareSkeletalCullingBuffer();
 		}
 
-        auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult]<bool includeLighting = true, bool transparentMode = false>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers, const RenderTargetCollection* target){
+    auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &camIdx]<bool includeLighting = true, bool transparentMode = false>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers, const RenderTargetCollection* target){
 			RVE_PROFILE_FN_N("RenderFromPerspective");
             uint32_t particleBillboardMatrices = 0;
 
@@ -1053,7 +1054,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->EndCompute();
 				}
 				};
-			auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, particleBillboardMatrices, &lightDataOffset,&layers, &target](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
+            auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, particleBillboardMatrices, &lightDataOffset,&layers, &target, &camIdx](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
 				// do static meshes
 				RVE_PROFILE_FN_N("RenderTheRenderData");
 				mainCommandBuffer->SetViewport({
@@ -1099,7 +1100,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.GetPrivateBuffer(), 17);
                         mainCommandBuffer->BindBuffer(worldOwning->renderData.renderLayers.buffer, 28);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData.perObjectAttributes.buffer, 29);
-                        mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightPassVarying.GetPrivateBuffer(), 30);
+                        mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightPassVarying.GetPrivateBuffer(), 30, camIdx * sizeof(World::DirLightUploadDataPassVarying));
 						mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);
@@ -1164,7 +1165,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				}
 
 				// render particles
-                worldOwning->Filter([this, &viewproj, &particleBillboardMatrices, &currentLightingType, &pipelineSelectorFunction, &lightDataOffset, &worldOwning, &layers, &target](const ParticleEmitter& emitter, const Transform& t) {
+                worldOwning->Filter([this, &viewproj, &particleBillboardMatrices, &currentLightingType, &pipelineSelectorFunction, &lightDataOffset, &worldOwning, &layers, &target, &camIdx](const ParticleEmitter& emitter, const Transform& t) {
                     // check if the render layers match
                     auto renderLayers = worldOwning->renderData.renderLayers[emitter.GetOwner().GetID()];
                     if ((renderLayers & layers) == 0){
@@ -1182,7 +1183,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						return;
 					}
 
-					auto sharedParticleImpl = [this, &particleBillboardMatrices, &pipelineSelectorFunction, &worldOwning, &lightDataOffset, &target](const ParticleEmitter& emitter, auto&& materialInstance, Ref<ParticleRenderMaterial> material, RGLBufferPtr activeParticleIndexBuffer, bool isLit) {
+                    auto sharedParticleImpl = [this, &particleBillboardMatrices, &pipelineSelectorFunction, &worldOwning, &lightDataOffset, &target, &camIdx](const ParticleEmitter& emitter, auto&& materialInstance, Ref<ParticleRenderMaterial> material, RGLBufferPtr activeParticleIndexBuffer, bool isLit) {
 						auto pipeline = pipelineSelectorFunction(material);
 
 
@@ -1201,7 +1202,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 							mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.GetPrivateBuffer(), 17);
                             mainCommandBuffer->BindBuffer(worldOwning->renderData.renderLayers.buffer, 28);
 							mainCommandBuffer->BindBuffer(worldOwning->renderData.perObjectAttributes.buffer, 29);
-                            mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightPassVarying.GetPrivateBuffer(), 30);
+                            mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightPassVarying.GetPrivateBuffer(), 30,camIdx * sizeof(World::DirLightUploadDataPassVarying));
 							mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
 							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);
 							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);	// redundant on some backends, needed for DX
@@ -1352,11 +1353,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 				using lightadt_t = std::remove_reference_t<decltype(lightStore)>;
 
-				for (uint8_t i = 0; i < numShadowmaps; i++) {
-                    if (!shouldRendershadowmap(i, owner)){
+				for (uint8_t sm_i = 0; sm_i < numShadowmaps; sm_i++) {
+                    if (!shouldRendershadowmap(sm_i, owner)){
                         continue;
                     }
-					lightViewProjResult lightMats = genLightViewProjAtIndex(i, light, owner);
+					lightViewProjResult lightMats = genLightViewProjAtIndex(sm_i, i, light, owner);
 
 					auto lightSpaceMatrix = lightMats.lightProj * lightMats.lightView;
 
@@ -1375,7 +1376,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		};
 
 		RVE_PROFILE_SECTION(encode_spot_shadows,"Render Encode Spot Shadows");
-		const auto spotlightShadowMapFunction = [](uint8_t index, const RavEngine::World::SpotLightDataUpload& light, Entity owner) {
+		const auto spotlightShadowMapFunction = [](uint8_t index, uint32_t denseIdx, const RavEngine::World::SpotLightDataUpload& light, Entity owner) {
 
 			auto camPos = light.worldTransform * glm::vec4(0, 0, 0, 1);
 			auto& origLight = owner.GetComponent<SpotLight>();
@@ -1398,7 +1399,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		RVE_PROFILE_SECTION_END(encode_spot_shadows);
 
 		RVE_PROFILE_SECTION(encode_point_shadows, "Render Encode Point Shadows");
-		constexpr auto pointLightShadowmapFunction = [](uint8_t index, const RavEngine::World::PointLightUploadData& light, Entity owner) {
+		constexpr auto pointLightShadowmapFunction = [](uint8_t index, uint32_t denseIdx, const RavEngine::World::PointLightUploadData& light, Entity owner) {
 			auto lightProj = RMath::perspectiveProjection<float>(deg_to_rad(90), 1, 0.1, 100);
 
 			glm::mat4 viewMat;
@@ -1474,7 +1475,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			auto nextImgSize = view.pixelDimensions;
 			auto& target = view.collection;
 
-			auto renderLitPass_Impl = [this,&target, &renderFromPerspective,&renderLightShadowmap,&worldOwning]<bool transparentMode = false>(auto&& camData, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+            auto renderLitPass_Impl = [this,&target, &renderFromPerspective,&renderLightShadowmap,&worldOwning, &camIdx]<bool transparentMode = false>(auto&& camData, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				// directional light shadowmaps
                 
 
@@ -1483,18 +1484,15 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
                 
                     
-                    const auto dirlightShadowmapDataFunction = [&camData, &worldOwning](uint8_t index, const RavEngine::World::DirLightUploadData& light, Entity owner) {
+                    const auto dirlightShadowmapDataFunction = [&camData, &worldOwning, &camIdx](uint8_t index, uint32_t denseIdx, const RavEngine::World::DirLightUploadData& light, Entity owner) {
                         
                         auto& origLight = owner.GetComponent<DirectionalLight>();
-                        
-                        //TODO: get the correct dirLight and offset inside buffer
-                        uint32_t indexOffset = 0;
                         
                         const auto& hostdata = worldOwning->renderData.directionalLightPassVaryingHostOnly;
                         
 						return lightViewProjResult{
-                            .lightProj = hostdata[indexOffset].lightProj[index],
-                            .lightView = hostdata[indexOffset].lightview[index],
+                            .lightProj = hostdata[camIdx + denseIdx].lightProj[index],
+                            .lightView = hostdata[camIdx + denseIdx].lightview[index],
 							.camPos = camData.camPos,
 							.depthPyramid = origLight.shadowData.pyramid[index],
 							.shadowmapTexture = origLight.shadowData.shadowMap[index],
@@ -1924,6 +1922,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			RVE_PROFILE_SECTION(lit, "Encode Lit Pass Opaque");
 			for (const auto& camdata : view.camDatas) {
 				doPassWithCamData(camdata, renderLitPass);
+                camIdx++;
 			}
 			mainCommandBuffer->EndRenderDebugMarker();
 			RVE_PROFILE_SECTION_END(lit);
@@ -2024,7 +2023,6 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			}
 			mainCommandBuffer->EndRenderDebugMarker();
 			RVE_PROFILE_SECTION_END(forward);
-
 		}
 		RVE_PROFILE_SECTION_END(allViews);
 		mainCommandBuffer->End();
