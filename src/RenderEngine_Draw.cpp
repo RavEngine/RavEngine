@@ -110,15 +110,159 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
     // sync private buffers
 	bool transformSyncCommandBufferNeedsCommit = false;
     {
+        auto& wrd = worldOwning->renderData;
         auto gcbuffer = [this](RGLBufferPtr oldPrivateBuffer){
             gcBuffers.enqueue(oldPrivateBuffer);
         };
-        worldOwning->renderData.worldTransforms.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
+        wrd.worldTransforms.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
         // bitwise-or to prevent short-circuiting
-        worldOwning->renderData.directionalLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
-        worldOwning->renderData.pointLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
-        worldOwning->renderData.spotLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
-        worldOwning->renderData.ambientLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
+        wrd.directionalLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
+        wrd.pointLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
+        wrd.spotLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
+        wrd.ambientLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
+        
+        // directional light computations
+        uint32_t numVaryingElts = 0;
+        for(const auto& target : screenTargets){
+            numVaryingElts += target.camDatas.size();
+        }
+        wrd.directionalLightPassVarying.Resize(numVaryingElts);
+        if (wrd.directionalLightPassVaryingHostOnly.size() != numVaryingElts){
+            wrd.directionalLightPassVaryingHostOnly.resize(numVaryingElts);
+        }
+        uint32_t passIndex = 0;
+        for(const auto& target : screenTargets){
+            for(const auto& camData : target.camDatas){
+                // visit all the lights
+                for (uint32_t i = 0; i < wrd.directionalLightData.DenseSize(); i++) {
+                    auto& light = wrd.directionalLightData.GetHostDenseForWriting(i);
+                    if (!light.castsShadows) {
+                        continue;    // don't do anything if the light doesn't cast
+                    }
+                    auto sparseIdx = wrd.directionalLightData.GetSparseIndexForDense(i);
+                    auto owner = Entity(sparseIdx, worldOwning.get());
+                    const auto& origLight = owner.GetComponent<DirectionalLight>();
+                    
+                    // iterate the cascades
+                    for(uint32_t index = 0; index < origLight.numCascades; index++){
+                        
+#ifndef NDEBUG
+                        Debug::Assert(std::is_sorted(std::begin(origLight.shadowCascades), std::end(origLight.shadowCascades)),"Cascades must be in sorted order");
+#endif
+                        
+                        // CSM code adapted from https://learnopengl.com/Guest-Articles/2021/CSM
+                        constexpr static auto getFrustumCornersWorldSpace = [](const glm::mat4& proj, const glm::mat4& view)
+                        {
+                            const auto inv = glm::inverse(proj * view);
+                            uint8_t i = 0;
+                            Array<glm::vec4, 8> frustumCorners{ };
+                            for (unsigned int x = 0; x < 2; ++x)
+                            {
+                                for (unsigned int y = 0; y < 2; ++y)
+                                {
+                                    for (unsigned int z = 0; z < 2; ++z)
+                                    {
+                                        const glm::vec4 ndcpt(
+                                                              2.0f * x - 1.0f,
+                                                              2.0f * y - 1.0f,
+                                                              z,
+                                                              1.0f);
+                                        const glm::vec4 pt = inv * ndcpt;
+                                        frustumCorners.at(i++) = pt / pt.w;
+                                    }
+                                }
+                            }
+                            
+                            return frustumCorners;
+                        };
+                        
+                        // decide the near and far clips for the cascade
+                        float near = camData.zNearFar[0];
+                        float far = camData.zNearFar[1];
+                        if (index > 0){
+                            near = glm::mix(camData.zNearFar[0], camData.zNearFar[1], origLight.shadowCascades[index-1]);
+                        }
+                        const auto numCascades = std::min<uint8_t>(origLight.numCascades, origLight.shadowCascades.size());
+                        if (index < numCascades - 1){
+                            far = glm::mix(camData.zNearFar[0], camData.zNearFar[1], origLight.shadowCascades[index]);
+                        }
+                        
+                        //FIXME: the *1.5 is a hack. Without it, the matrices are not placed properly and the edges of the shadowmap cut into the view when the camera is not axis aligned in world space.
+                        const auto proj = RMath::perspectiveProjection(deg_to_rad(camData.fov * 1.5), float(camData.targetWidth/camData.targetHeight), near, far);
+                        
+                        auto corners = getFrustumCornersWorldSpace(proj, camData.viewOnly);
+                        
+                        glm::vec3 center(0, 0, 0);
+                        for (const auto& v : corners)
+                        {
+                            center += glm::vec3(v);
+                        }
+                        center /= corners.size();
+                        
+                        auto dirvec = light.direction;
+                        
+                        const auto lightView = glm::lookAt(
+                                                           center + dirvec,
+                                                           center,
+                                                           glm::vec3(0.0f, 1.0f, 0.0f)
+                                                           );
+                        
+                        float minX = std::numeric_limits<float>::max();
+                        float maxX = std::numeric_limits<float>::lowest();
+                        float minY = std::numeric_limits<float>::max();
+                        float maxY = std::numeric_limits<float>::lowest();
+                        float minZ = std::numeric_limits<float>::max();
+                        float maxZ = std::numeric_limits<float>::lowest();
+                        for (const auto& v : corners)
+                        {
+                            const auto trf = lightView * v;
+                            minX = std::min(minX, trf.x);
+                            maxX = std::max(maxX, trf.x);
+                            minY = std::min(minY, trf.y);
+                            maxY = std::max(maxY, trf.y);
+                            minZ = std::min(minZ, trf.z);
+                            maxZ = std::max(maxZ, trf.z);
+                        }
+                        
+                        // TODO: Tune this parameter according to the scene
+                        constexpr float zMult = 10.0f;
+                        if (minZ < 0)
+                        {
+                            minZ *= zMult;
+                        }
+                        else
+                        {
+                            minZ /= zMult;
+                        }
+                        if (maxZ < 0)
+                        {
+                            maxZ /= zMult;
+                        }
+                        else
+                        {
+                            maxZ *= zMult;
+                        }
+                        
+                        // calculate the proj centered on the camera
+                        auto centerX = (minX + maxX) / 2;
+                        
+                        auto lightProj = RMath::orthoProjection<float>(minX, maxX, minY, maxY, minZ, maxZ);
+                        
+                        const uint32_t varyingLightIndex = passIndex + i;
+                        
+                        wrd.directionalLightPassVarying.GetValueAtForWriting(varyingLightIndex).lightViewProj[index] = lightProj * lightView;
+                        wrd.directionalLightPassVaryingHostOnly[varyingLightIndex].lightview[index] = lightView;
+                        wrd.directionalLightPassVaryingHostOnly[varyingLightIndex].lightProj[index] = lightProj;
+                        
+                        light.cascadeDistances[index] = far;
+                    }
+                }
+                passIndex++;
+            }
+        }
+        
+        wrd.directionalLightPassVarying.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
+        
         
         if (transformSyncCommandBufferNeedsCommit){
             transformSyncCommandBuffer->End();
@@ -955,6 +1099,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.GetPrivateBuffer(), 17);
                         mainCommandBuffer->BindBuffer(worldOwning->renderData.renderLayers.buffer, 28);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData.perObjectAttributes.buffer, 29);
+                        mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightPassVarying.GetPrivateBuffer(), 30);
 						mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);
@@ -1056,6 +1201,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 							mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.GetPrivateBuffer(), 17);
                             mainCommandBuffer->BindBuffer(worldOwning->renderData.renderLayers.buffer, 28);
 							mainCommandBuffer->BindBuffer(worldOwning->renderData.perObjectAttributes.buffer, 29);
+                            mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightPassVarying.GetPrivateBuffer(), 30);
 							mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
 							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);
 							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);	// redundant on some backends, needed for DX
@@ -1184,7 +1330,6 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			glm::vec3 camPos = glm::vec3{ 0,0,0 };
 			DepthPyramid depthPyramid;
 			RGLTexturePtr shadowmapTexture;
-			glm::mat4 spillData;
 		};
 
 		// render shadowmaps only once per light
@@ -1198,7 +1343,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			}
 			mainCommandBuffer->BeginRenderDebugMarker("Render shadowmap");
 			for (uint32_t i = 0; i < lightStore.DenseSize(); i++) {
-				auto& light = lightStore.GetHostDenseForWriting(i);
+				auto& light = lightStore.GetAtDenseIndex(i);
 				if (!light.castsShadows) {
 					continue;	// don't do anything if the light doesn't cast
 				}
@@ -1242,7 +1387,6 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				.camPos = camPos,
 				.depthPyramid = origLight.shadowData.pyramid,
 				.shadowmapTexture = origLight.shadowData.shadowMap,
-				.spillData = light.lightViewProj
 			};
         };
         
@@ -1297,7 +1441,6 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				.camPos = camPos,
 				.depthPyramid = origLight.shadowData.cubePyramids[index],
 				.shadowmapTexture = origLight.shadowData.cubeShadowmaps[index],
-				.spillData = lightProj
 			};
 		};
 
@@ -1340,121 +1483,21 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->BeginRenderDebugMarker("Render Directional Lights");
                 
                     
-                    const auto dirlightShadowmapDataFunction = [&camData](uint8_t index, RavEngine::World::DirLightUploadData& light, Entity owner) {
+                    const auto dirlightShadowmapDataFunction = [&camData, &worldOwning](uint8_t index, const RavEngine::World::DirLightUploadData& light, Entity owner) {
                         
                         auto& origLight = owner.GetComponent<DirectionalLight>();
-    #ifndef NDEBUG
-                        Debug::Assert(std::is_sorted(std::begin(origLight.shadowCascades), std::end(origLight.shadowCascades)),"Cascades must be in sorted order");
-    #endif
                         
-                        // CSM code adapted from https://learnopengl.com/Guest-Articles/2021/CSM
-                        constexpr static auto getFrustumCornersWorldSpace = [](const glm::mat4& proj, const glm::mat4& view)
-                        {
-                            const auto inv = glm::inverse(proj * view);
-                            uint8_t i = 0;
-							Array<glm::vec4, 8> frustumCorners{ };
-                            for (unsigned int x = 0; x < 2; ++x)
-                            {
-                                for (unsigned int y = 0; y < 2; ++y)
-                                {
-                                    for (unsigned int z = 0; z < 2; ++z)
-                                    {
-										const glm::vec4 ndcpt(
-											2.0f * x - 1.0f,
-											2.0f * y - 1.0f,
-											z,
-											1.0f);
-                                        const glm::vec4 pt = inv * ndcpt;
-                                        frustumCorners.at(i++) = pt / pt.w;
-                                    }
-                                }
-                            }
-                            
-                            return frustumCorners;
-                        };
+                        //TODO: get the correct dirLight and offset inside buffer
+                        uint32_t indexOffset = 0;
                         
-                        // decide the near and far clips for the cascade
-                        float near = camData.zNearFar[0];
-                        float far = camData.zNearFar[1];
-                        if (index > 0){
-                            near = glm::mix(camData.zNearFar[0], camData.zNearFar[1], origLight.shadowCascades[index-1]);
-                        }
-                        const auto numCascades = std::min<uint8_t>(origLight.numCascades, origLight.shadowCascades.size());
-                        if (index < numCascades - 1){
-                            far = glm::mix(camData.zNearFar[0], camData.zNearFar[1], origLight.shadowCascades[index]);
-                        }
-                        
-                        //FIXME: the *1.5 is a hack. Without it, the matrices are not placed properly and the edges of the shadowmap cut into the view when the camera is not axis aligned in world space.
-                        const auto proj = RMath::perspectiveProjection(deg_to_rad(camData.fov * 1.5), float(camData.targetWidth/camData.targetHeight), near, far);
-                        
-                        auto corners = getFrustumCornersWorldSpace(proj, camData.viewOnly);
-                        
-                        glm::vec3 center(0, 0, 0);
-                        for (const auto& v : corners)
-                        {
-                            center += glm::vec3(v);
-                        }
-                        center /= corners.size();
-                        
-						auto dirvec = light.direction;
-                        
-                        const auto lightView = glm::lookAt(
-                            center + dirvec,
-                            center,
-                            glm::vec3(0.0f, 1.0f, 0.0f)
-                        );
-                        
-                        float minX = std::numeric_limits<float>::max();
-                        float maxX = std::numeric_limits<float>::lowest();
-                        float minY = std::numeric_limits<float>::max();
-                        float maxY = std::numeric_limits<float>::lowest();
-                        float minZ = std::numeric_limits<float>::max();
-                        float maxZ = std::numeric_limits<float>::lowest();
-                        for (const auto& v : corners)
-                        {
-                            const auto trf = lightView * v;
-                            minX = std::min(minX, trf.x);
-                            maxX = std::max(maxX, trf.x);
-                            minY = std::min(minY, trf.y);
-                            maxY = std::max(maxY, trf.y);
-                            minZ = std::min(minZ, trf.z);
-                            maxZ = std::max(maxZ, trf.z);
-                        }
-
-						// TODO: Tune this parameter according to the scene
-						constexpr float zMult = 10.0f;
-						if (minZ < 0)
-						{
-							minZ *= zMult;
-						}
-						else
-						{
-							minZ /= zMult;
-						}
-						if (maxZ < 0)
-						{
-							maxZ /= zMult;
-						}
-						else
-						{
-							maxZ *= zMult;
-						}
-
-						// calculate the proj centered on the camera
-						auto centerX = (minX + maxX) / 2;
-
-						auto lightProj = RMath::orthoProjection<float>(minX, maxX, minY, maxY, minZ, maxZ);
-
-						light.lightViewProj[index] = lightProj * lightView;	// remember this because the rendering also needs it
-                        light.cascadeDistances[index] = far;
+                        const auto& hostdata = worldOwning->renderData.directionalLightPassVaryingHostOnly;
                         
 						return lightViewProjResult{
-							.lightProj = lightProj,
-							.lightView = lightView,
+                            .lightProj = hostdata[indexOffset].lightProj[index],
+                            .lightView = hostdata[indexOffset].lightview[index],
 							.camPos = camData.camPos,
 							.depthPyramid = origLight.shadowData.pyramid[index],
 							.shadowmapTexture = origLight.shadowData.shadowMap[index],
-							.spillData = light.lightViewProj[index]
 						};
                     };
 

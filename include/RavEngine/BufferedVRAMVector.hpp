@@ -47,8 +47,10 @@ public:
     }
     
     void Resize(uint32_t newSize){
-        hostBuffer.resize(newSize);
-        syncTrackingBuffer.resize(newSize, true);   // ensure the initial copy is included
+        if (hostBuffer.size() != newSize){
+            hostBuffer.resize(newSize);
+            syncTrackingBuffer.resize(newSize, true);   // ensure the initial copy is included
+        }
     }
     
     auto Size() const{
@@ -62,6 +64,11 @@ public:
     void SetValueAt(uint32_t i, const T& value){
         hostBuffer[i] = value;
         syncTrackingBuffer[i] = true;    // signal that this was modified
+    }
+    
+    auto& GetValueAtForWriting(uint32_t i){
+        syncTrackingBuffer[i] = true;   // signal that this was modified
+        return hostBuffer[i];
     }
 };
 
