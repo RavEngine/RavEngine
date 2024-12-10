@@ -28,6 +28,8 @@ void PointLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) con
 
 
 void SpotLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
+    dbg.DrawSphere(tr.GetWorldMatrix(), debug_color, 1);
+    dbg.DrawArrow(tr.GetWorldPosition(), tr.GetWorldPosition() + -tr.WorldUp() * 2.f, debug_color);
 #ifndef NDEBUG
 	//dbg.DrawWireframeMesh(tr.GetWorldMatrix(), LightManager::spotLightMesh);
 #endif

@@ -233,6 +233,13 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
         );
         configBindingsCopy.push_back(
             {
+                .binding = 30,
+                .type = RGL::BindingType::StorageBuffer,
+                .stageFlags = RGL::BindingVisibility::Fragment
+            }
+        );
+        configBindingsCopy.push_back(
+            {
                 .binding = 1,
                 .count = 2048,
                 .isBindless = true,     // binding 0 set 1

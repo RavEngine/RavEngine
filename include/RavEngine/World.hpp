@@ -301,7 +301,6 @@ namespace RavEngine {
         };
     
         struct DirLightUploadData {
-            glm::mat4 lightViewProj[MAX_CASCADES];
             glm::vec3 color;
             glm::vec3 direction;
             float intensity;
@@ -311,6 +310,15 @@ namespace RavEngine {
             renderlayer_t shadowLayers;
             renderlayer_t illuminationLayers;
             uint32_t numCascades;
+        };
+        
+        struct DirLightUploadDataPassVarying{
+            glm::mat4 lightViewProj[MAX_CASCADES];
+        };
+        
+        struct DirLightUploadDataPassVaryingHostOnly{
+            glm::mat4 lightview[MAX_CASCADES];
+            glm::mat4 lightProj[MAX_CASCADES];
         };
         
         struct AmbientLightUploadData{
@@ -345,13 +353,17 @@ namespace RavEngine {
         // data for the render engine
         struct RenderData{
             
-            BufferedVRAMSparseSet<entity_t, DirLightUploadData> directionalLightData{"Directional Light Private Buffer"};
+            BufferedVRAMSparseSet<entity_t, DirLightUploadData> directionalLightData{"Directional Light Uniform Private Buffer"};
             
             BufferedVRAMSparseSet<entity_t, AmbientLightUploadData> ambientLightData{"Ambient Light Private Buffer"};
             
             BufferedVRAMSparseSet<entity_t, PointLightUploadData> pointLightData{"Point Light Private Buffer"};
              
             BufferedVRAMSparseSet<entity_t, SpotLightDataUpload> spotLightData{"Point Light Private Buffer"};
+            
+            BufferedVRAMVector<DirLightUploadDataPassVarying> directionalLightPassVarying{"Directional Light Pass Varying Buffer"};
+            
+            Vector<DirLightUploadDataPassVaryingHostOnly> directionalLightPassVaryingHostOnly;
             
             // uses world-local ID
             VRAMVector<renderlayer_t> renderLayers{32};

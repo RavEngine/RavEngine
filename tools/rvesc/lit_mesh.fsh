@@ -33,7 +33,6 @@ layout(scalar, binding = 12) readonly buffer ambientLightSSBO{
 };
 
 struct DirectionalLightData{
-    mat4 lightViewProj[SH_MAX_CASCADES];
     vec3 color;
     vec3 toLight;
     float intensity;
@@ -43,6 +42,10 @@ struct DirectionalLightData{
     uint shadowRenderLayers;
     uint illuminationLayers;
     uint numCascades;
+};
+
+struct DirectionalLightDataPassVarying{
+    mat4 lightViewProj[SH_MAX_CASCADES];
 };
 
 layout(scalar, binding = 13) readonly buffer dirLightSSBO{
@@ -69,6 +72,10 @@ layout(scalar, binding = 28) readonly buffer renderLayerSSBO{
 
 layout(scalar, binding = 29) readonly buffer perObjectAttributesSSBO{
     uint16_t perObjectFlags[];
+};
+
+layout(scalar, binding = 30) readonly buffer dirLightVaryingSSBO{
+    DirectionalLightDataPassVarying dirLightsVarying[];
 };
 
 layout(set = 1, binding = 0) uniform texture2D shadowMaps[];      // the bindless heap must be in set 1 binding 0
@@ -125,6 +132,7 @@ void main(){
         };
         
         if (recievesShadows && bool(light.castsShadows)){
+            DirectionalLightDataPassVarying passVarying = dirLightsVarying[i];
             vec4 viewSpace = engineConstants[0].viewOnly * vec4(worldPosition,1);
             float depthValue = abs(viewSpace.z);
             int cascadeCount = int(light.numCascades);
@@ -145,7 +153,7 @@ void main(){
             
             //layer = cascadeCount - layer - 1;
             
-             pcfFactor = pcfForShadow(worldPosition, light.lightViewProj[layer], shadowSampler, shadowMaps[light.shadowmapBindlessIndex[layer]]);
+             pcfFactor = pcfForShadow(worldPosition, passVarying.lightViewProj[layer], shadowSampler, shadowMaps[light.shadowmapBindlessIndex[layer]]);
             color = pallete[layer];
         }
         //outcolor += color;
