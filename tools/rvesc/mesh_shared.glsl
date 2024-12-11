@@ -9,6 +9,7 @@ layout(binding = 24, rgba8) uniform image2D mlabAccum1;
 layout(binding = 25, rgba8) uniform image2D mlabAccum2;
 layout(binding = 26, rgba8) uniform image2D mlabAccum3;
 layout(binding = 27, rgba16f) uniform image2D mlabDepth;
+layout(early_fragment_tests) in;
 #else
     layout(location = 0) out vec4 result;
 #endif
