@@ -1920,10 +1920,13 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			mainCommandBuffer->EndRendering();
 			
 			RVE_PROFILE_SECTION(lit, "Encode Lit Pass Opaque");
+			auto camIdxHere = camIdx;
 			for (const auto& camdata : view.camDatas) {
 				doPassWithCamData(camdata, renderLitPass);
                 camIdx++;
 			}
+
+			camIdx = camIdxHere;	// revert because we do another pass
 			mainCommandBuffer->EndRenderDebugMarker();
 			RVE_PROFILE_SECTION_END(lit);
 
@@ -1941,9 +1944,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			RVE_PROFILE_SECTION(littrans, "Encode Lit Pass Transparent");
 			for (const auto& camdata : view.camDatas) {
 				doPassWithCamData(camdata, renderLitPassTransparent);
+				camIdx++;
 			}
 			mainCommandBuffer->EndRenderDebugMarker();
 			RVE_PROFILE_SECTION_END(littrans);
+			camIdx = camIdxHere;
             
             if (VideoSettings.ssao){
 
