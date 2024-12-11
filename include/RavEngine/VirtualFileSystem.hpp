@@ -61,7 +61,7 @@ public:
         
         size_t length_read = ReadInto(ptrsize.ptr, datavec.data(), size);
         if (nullTerminate){
-            datavec.data()[size-1] = '\0';    //add null terminator
+            datavec.data()[size-1] = {'\0'};    //add null terminator
         }
         close(ptrsize.ptr);
     }

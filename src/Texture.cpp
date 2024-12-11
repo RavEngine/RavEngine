@@ -82,7 +82,6 @@ void RavEngine::Texture::InitFromDDS(IStream& stream)
 
 RavEngine::Texture::Texture(const Filesystem::Path& pathOnDisk)
 {
-    //Debug::Log("Loading {}",pathOnDisk.string());
     FileStream stream(std::ifstream{ pathOnDisk, std::ios::binary });
 
     // what kind of texture is this?
@@ -129,15 +128,29 @@ Texture::Texture(const std::string& name){
     
 	//read from resource
 	
-    RavEngine::Vector<uint8_t> data;
+    RavEngine::Vector<std::byte> data;
 	GetApp()->GetResources().FileContentsAt(("/textures/" + name).c_str(),data);
+    
+    
+    MemoryStream stream(data);
+
+    // what kind of texture is this?
+    Array<std::byte,16> headerData;
+    stream.read(headerData);
+    stream.reset();
+    if (std::string_view{ reinterpret_cast<const char*>(headerData.data()),4 } == "DDS ") {
+        // this is a DDS
+        InitFromDDS(stream);
+        return;
+    }
+    
     std::function<void()> freer;
     const char* failureReason = nullptr;
 	
 	int width = 0, height = 0,channels;
 	auto compressed_size = sizeof(stbi_uc) * data.size();
 	
-    unsigned char* bytes = stbi_load_from_memory(&data[0], Debug::AssertSize<int>(compressed_size), &width, &height, &channels, 4);
+    unsigned char* bytes = stbi_load_from_memory(reinterpret_cast<uint8_t*>(&data[0]), Debug::AssertSize<int>(compressed_size), &width, &height, &channels, 4);
 	if (bytes != nullptr){
         freer = [bytes] { stbi_image_free(bytes); };
         goto load;
