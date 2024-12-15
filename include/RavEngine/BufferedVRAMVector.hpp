@@ -97,9 +97,12 @@ public:
     template<typename ... A>
     void Emplace(index_t sparse_index, A&& ... args) {
         sparseSet.Emplace(sparse_index, std::forward<A>(args) ...);
+        ResizeIfNeeded();
+        syncTrackingBuffer[sparseSet.SparseToDense(sparse_index)] = true;   // mark modified
     }
     
     void EraseAtSparseIndex(index_t sparseIndex){
+        syncTrackingBuffer[sparseSet.SparseToDense(sparseIndex)] = true;   // mark modified
         sparseSet.EraseAtSparseIndex(sparseIndex);
     }
     
