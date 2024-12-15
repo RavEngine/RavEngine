@@ -278,8 +278,8 @@ namespace RavEngine {
         struct MDIICommand : public MDICommandBase {
             struct command {
                 WeakRef<MeshCollectionStatic> mesh;
-                using set_t = VRAMSparseSet<entity_t,entity_t>;
-                set_t entities;
+                using set_t = BufferedVRAMSparseSet<entity_t,entity_t>;
+                set_t entities{"Static Mesh Private Entities Buffer"};
                 command(decltype(mesh) mesh, set_t::index_type index, const set_t::value_type& first_value) : mesh(mesh) {
                     entities.Emplace(index, first_value);
                 }
@@ -291,8 +291,8 @@ namespace RavEngine {
             struct command {
                 WeakRef<MeshCollectionSkinned> mesh;
                 WeakRef<SkeletonAsset> skeleton;
-                using set_t = VRAMSparseSet<entity_t,entity_t>;
-                set_t entities;
+                using set_t = BufferedVRAMSparseSet<entity_t,entity_t>;
+                set_t entities{"SKinned Mesh Private Entities Buffer"};
                 command(decltype(mesh) mesh, decltype(skeleton) skeleton, set_t::index_type index, const set_t::value_type& first_value) : mesh(mesh), skeleton(skeleton) {
                     entities.Emplace(index, first_value);
                 }

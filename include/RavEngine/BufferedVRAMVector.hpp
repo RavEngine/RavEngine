@@ -70,6 +70,7 @@ public:
         syncTrackingBuffer[i] = true;   // signal that this was modified
         return hostBuffer[i];
     }
+
 };
 
 /**
@@ -86,6 +87,9 @@ class BufferedVRAMSparseSet : public BufferedVRAMStructureBase{
     }
     
 public:
+    
+    using index_type = decltype(sparseSet)::index_type;
+    using value_type = T;
     
     BufferedVRAMSparseSet() {}
     BufferedVRAMSparseSet(const std::string_view debugName) : BufferedVRAMStructureBase(debugName) {}
@@ -104,6 +108,14 @@ public:
     void EraseAtSparseIndex(index_t sparseIndex){
         syncTrackingBuffer[sparseSet.SparseToDense(sparseIndex)] = true;   // mark modified
         sparseSet.EraseAtSparseIndex(sparseIndex);
+    }
+    
+    const auto& GetReverseMap() const{
+        return sparseSet.reverse_map;
+    }
+    
+    bool HasForSparseIndex(index_type sparseIndex) const{
+        return sparseSet.HasForSparseIndex(sparseIndex);
     }
     
 //    const auto& GetHostDense() const{

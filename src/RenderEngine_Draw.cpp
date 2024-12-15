@@ -121,6 +121,18 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
         wrd.spotLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
         wrd.ambientLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
         
+        auto syncMeshData = [&](auto&& dataset){
+            for(auto& [mat, command] : dataset){
+                for(auto& draw : command.commands){
+                    draw.entities.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
+                }
+            }
+        };
+        
+        // MDIIcommands
+        syncMeshData(wrd.staticMeshRenderData);
+        syncMeshData(wrd.skinnedMeshRenderData);
+        
         // directional light computations
         uint32_t numVaryingElts = 0;
         for(const auto& target : screenTargets){
@@ -407,7 +419,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					// write joint transform matrices into buffer and update uniform offset
 					{
 						uint32_t object_id = 0;
-						for (const auto& ownerid : command.entities.reverse_map) {
+						for (const auto& ownerid : command.entities.GetReverseMap()) {
 							auto& animator = worldOwning->GetComponent<AnimatorComponent>(ownerid);
 							const auto& skinningMats = animator.GetSkinningMats();
 							std::copy(skinningMats.begin(), skinningMats.end(), (matbufMem.begin() + subo.boneReadOffset) + object_id * skinningMats.size());
@@ -892,7 +904,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						uint32_t lodsForThisMesh = 1;	// TODO: skinned meshes do not support LOD groups 
 
 						cubo.numObjects = command.entities.DenseSize();
-						mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
+						mainCommandBuffer->BindComputeBuffer(command.entities.GetPrivateBuffer(), 0);
 						mainCommandBuffer->BindComputeBuffer(mesh->lodDistances.buffer, 4);
 						cubo.radius = mesh->GetRadius();
 #if __APPLE__
@@ -1031,7 +1043,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 							uint32_t lodsForThisMesh = mesh->GetNumLods();
 
 							cubo.numObjects = command.entities.DenseSize();
-							mainCommandBuffer->BindComputeBuffer(command.entities.GetDense().get_underlying().buffer, 0);
+							mainCommandBuffer->BindComputeBuffer(command.entities.GetPrivateBuffer(), 0);
 							mainCommandBuffer->BindComputeBuffer(mesh->lodDistances.buffer, 4);
 							cubo.radius = mesh->GetRadius();
 							cubo.numLODs = lodsForThisMesh;
