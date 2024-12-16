@@ -1543,20 +1543,18 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				renderLitPass_Impl(camData, fullSizeViewport, fullSizeScissor, renderArea);
 			};
 
+			auto renderUnlitPass = [this, &target, &renderFromPerspective, &renderLightShadowmap, &worldOwning](auto&& camData, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
+				renderFromPerspective.template operator() < false > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitRenderPass, [](auto&& mat) {
+					return mat->GetMainRenderPipeline();
+					}, renderArea, { .Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers, & target);
+			};
+
 			auto renderLitPassTransparent = [&renderLitPass_Impl](auto&& camData, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
 				renderLitPass_Impl.template operator()<true>(camData, fullSizeViewport, fullSizeScissor, renderArea);
 			};
 
             auto renderFinalPass = [this, &target, &worldOwning, &view, &guiScaleFactor, &nextImgSize, &renderFromPerspective](auto&& camData, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
-                
-                //render unlits
-				RVE_PROFILE_SECTION(unlit, "Encode Unlit Opaques");
-                unlitRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
-                unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
-				renderFromPerspective.template operator() < false > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitRenderPass, [](auto&& mat) {
-                    return mat->GetMainRenderPipeline();
-                }, renderArea, {.Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers, &target);
-				RVE_PROFILE_SECTION_END(unlit);
+               
 
 				// render unlits with transparency
 				RVE_PROFILE_SECTION(unlittrans, "Encode Unlit Transparents");
@@ -1945,6 +1943,16 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			camIdx = camIdxHere;	// revert because we do another pass
 			mainCommandBuffer->EndRenderDebugMarker();
 			RVE_PROFILE_SECTION_END(lit);
+
+			//render unlits
+			// must be done before transparents because these write depth
+			unlitRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
+			unlitRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+			RVE_PROFILE_SECTION(unlit, "Encode Unlit Opaques");
+			for (const auto& camdata : view.camDatas) {
+				doPassWithCamData(camdata, renderUnlitPass);
+			}
+			RVE_PROFILE_SECTION_END(unlit);
 
 
             for(const auto& [i, tx] : Enumerate(target.mlabAccum)){
