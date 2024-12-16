@@ -501,22 +501,22 @@ void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
 void World::SetupPerEntityRenderData(entity_t localID){
     auto& renderLayers = renderData.renderLayers;
     auto& perObjectAttributes = renderData.perObjectAttributes;
-    if (renderLayers.size() <= localID){
+    if (renderLayers.Size() <= localID){
         auto newSize = closest_power_of<entity_t>(localID+1, 2);
-        renderLayers.resize(newSize);
-        perObjectAttributes.resize(newSize);
+        renderLayers.Resize(newSize);
+        perObjectAttributes.Resize(newSize);
     }
-    renderLayers[localID] = ALL_LAYERS;
-    perObjectAttributes[localID] = ALL_ATTRIBUTES;
+    renderLayers.SetValueAt(localID, ALL_LAYERS);
+    perObjectAttributes.SetValueAt(localID, ALL_ATTRIBUTES);
 }
 
 void World::SetEntityRenderlayer(entity_t localid, renderlayer_t layers){
-    renderData.renderLayers[localid] = layers;
+    renderData.renderLayers.SetValueAt(localid, layers);
 }
 
 void World::SetEntityAttributes(entity_t localid, perobject_t attributes)
 {
-    renderData.perObjectAttributes[localid] = attributes;
+    renderData.perObjectAttributes.SetValueAt(localid, attributes);
 }
 
 perobject_t World::GetEntityAttributes(entity_t localid)

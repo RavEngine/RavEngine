@@ -32,6 +32,9 @@ class BufferedVRAMVector : public BufferedVRAMStructureBase{
 public:
     BufferedVRAMVector() {}
     BufferedVRAMVector(const std::string_view debugName) : BufferedVRAMStructureBase(debugName){}
+    BufferedVRAMVector(uint32_t initialSize){
+        Resize(initialSize);
+    }
     
     auto& GetHostBuffer() const{
         return hostBuffer;

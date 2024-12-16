@@ -121,6 +121,9 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
         wrd.spotLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
         wrd.ambientLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
         
+        wrd.renderLayers.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
+        wrd.perObjectAttributes.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
+        
         auto syncMeshData = [&](auto&& dataset){
             for(auto& [mat, command] : dataset){
                 for(auto& draw : command.commands){
@@ -886,8 +889,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			mainCommandBuffer->BeginComputeDebugMarker("Cull Skinned Meshes");
 			mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
 			mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
-            mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.buffer, 5);
-			mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.perObjectAttributes.buffer, 6);
+            mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), 5);
+			mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.perObjectAttributes.GetPrivateBuffer(), 6);
 			for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
 				CullingUBO cubo{
 					.viewProj = viewproj,
@@ -1025,8 +1028,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 					mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
 					mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
-                    mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.buffer, 5);
-					mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.perObjectAttributes.buffer, 6);
+                    mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), 5);
+					mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.perObjectAttributes.GetPrivateBuffer(), 6);
 					CullingUBO cubo{
 						.viewProj = viewproj,
 						.camPos = camPos,
@@ -1110,8 +1113,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData.pointLightData.GetPrivateBuffer(), 15);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.GetPrivateBuffer(), 17);
-                        mainCommandBuffer->BindBuffer(worldOwning->renderData.renderLayers.buffer, 28);
-						mainCommandBuffer->BindBuffer(worldOwning->renderData.perObjectAttributes.buffer, 29);
+                        mainCommandBuffer->BindBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), 28);
+						mainCommandBuffer->BindBuffer(worldOwning->renderData.perObjectAttributes.GetPrivateBuffer(), 29);
                         mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightPassVarying.GetPrivateBuffer(), 30, camIdx * sizeof(World::DirLightUploadDataPassVarying));
 						mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);
@@ -1212,8 +1215,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 							mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
 							mainCommandBuffer->BindBuffer(worldOwning->renderData.pointLightData.GetPrivateBuffer(), 15);
 							mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.GetPrivateBuffer(), 17);
-                            mainCommandBuffer->BindBuffer(worldOwning->renderData.renderLayers.buffer, 28);
-							mainCommandBuffer->BindBuffer(worldOwning->renderData.perObjectAttributes.buffer, 29);
+                            mainCommandBuffer->BindBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), 28);
+							mainCommandBuffer->BindBuffer(worldOwning->renderData.perObjectAttributes.GetPrivateBuffer(), 29);
                             mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightPassVarying.GetPrivateBuffer(), 30,camIdx * sizeof(World::DirLightUploadDataPassVarying));
 							mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
 							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);

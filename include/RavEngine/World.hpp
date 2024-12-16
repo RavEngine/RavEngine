@@ -366,9 +366,9 @@ namespace RavEngine {
             Vector<DirLightUploadDataPassVaryingHostOnly> directionalLightPassVaryingHostOnly;
             
             // uses world-local ID
-            VRAMVector<renderlayer_t> renderLayers{32};
+            BufferedVRAMVector<renderlayer_t> renderLayers{32};
 
-            VRAMVector<perobject_t> perObjectAttributes{ 32 };
+            BufferedVRAMVector<perobject_t> perObjectAttributes{ 32 };
 
             // uses world-local ID
             
