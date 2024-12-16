@@ -128,6 +128,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
             for(auto& [mat, command] : dataset){
                 for(auto& draw : command.commands){
                     draw.entities.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
+                    draw.mesh.lock()->lodDistances.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
                 }
             }
         };
@@ -908,7 +909,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 						cubo.numObjects = command.entities.DenseSize();
 						mainCommandBuffer->BindComputeBuffer(command.entities.GetPrivateBuffer(), 0);
-						mainCommandBuffer->BindComputeBuffer(mesh->lodDistances.buffer, 4);
+						mainCommandBuffer->BindComputeBuffer(mesh->lodDistances.GetPrivateBuffer(), 4);
 						cubo.radius = mesh->GetRadius();
 #if __APPLE__
 						constexpr size_t byte_size = closest_multiple_of<ssize_t>(sizeof(cubo), 16);
@@ -1047,7 +1048,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 							cubo.numObjects = command.entities.DenseSize();
 							mainCommandBuffer->BindComputeBuffer(command.entities.GetPrivateBuffer(), 0);
-							mainCommandBuffer->BindComputeBuffer(mesh->lodDistances.buffer, 4);
+							mainCommandBuffer->BindComputeBuffer(mesh->lodDistances.GetPrivateBuffer(), 4);
 							cubo.radius = mesh->GetRadius();
 							cubo.numLODs = lodsForThisMesh;
 

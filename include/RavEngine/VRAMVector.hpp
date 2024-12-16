@@ -21,6 +21,7 @@ namespace RavEngine {
 	struct VRAMVector : public VRAMVectorBase {
 		using size_type = uint32_t;
 		using index_type = uint32_t;
+        using difference_type = uint32_t;
 
 		struct iterator {
 			T* data = nullptr;
@@ -39,6 +40,11 @@ namespace RavEngine {
 			T& operator*() {
 				return *(data);
 			}
+            
+            difference_type operator-(const iterator& other) const{
+                return data - other.data;
+            }
+        
 		};
 		struct const_iterator {
 			T* data = nullptr;

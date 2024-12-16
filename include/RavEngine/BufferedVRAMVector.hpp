@@ -56,6 +56,29 @@ public:
         }
     }
     
+    void push_back(const T& value){
+        hostBuffer.push_back(value);
+        syncTrackingBuffer.resize(hostBuffer.size(), true);
+    }
+    
+    void erase(const auto& it){
+        hostBuffer.erase(it);
+        auto index = it - hostBuffer.begin();
+        // elements have been shifted down, so mark all elements afterward as modified
+        for(auto it = syncTrackingBuffer.begin() + index; it != syncTrackingBuffer.end(); ++it){
+            *it = true;
+        }
+    }
+    
+    auto begin(){
+        return hostBuffer.begin();
+    }
+    
+    void reserve(uint32_t size){
+        hostBuffer.reserve(size);
+        syncTrackingBuffer.reserve(size);
+    }
+    
     auto Size() const{
         return hostBuffer.size();
     }

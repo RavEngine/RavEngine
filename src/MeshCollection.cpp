@@ -44,7 +44,7 @@ namespace RavEngine {
 	void MeshCollectionStatic::Resize(uint16_t size)
 	{
 		meshes.resize(size);
-		lodDistances.resize(size);
+		lodDistances.Resize(size);
 	}
 
 	float MeshCollectionStatic::GetRadius() const

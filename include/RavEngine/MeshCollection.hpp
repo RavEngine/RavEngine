@@ -2,7 +2,7 @@
 #if !RVE_SERVER
 #include "Ref.hpp"
 #include "DataStructures.hpp"
-#include "VRAMVector.hpp"
+#include "BufferedVRAMVector.hpp"
 #include "MeshAsset.hpp"
 #include "MeshAssetSkinned.hpp"
 
@@ -37,7 +37,7 @@ namespace RavEngine {
 		void Resize(uint16_t size);
 
 		auto GetNumLods() const {
-			return lodDistances.size();
+			return lodDistances.Size();
 		}
 
 		auto GetMeshForLOD(uint32_t i) const {
@@ -51,7 +51,7 @@ namespace RavEngine {
 		float GetRadius() const;
 
 	private:
-		VRAMVector<float> lodDistances;
+		BufferedVRAMVector<float> lodDistances;
 	};
 
 	struct MeshCollectionSkinned : protected MeshCollection<MeshAssetSkinned> {
@@ -67,7 +67,7 @@ namespace RavEngine {
 		MeshRange GetAllocation() const;
 
 	private:
-		VRAMVector<float> lodDistances;
+        BufferedVRAMVector<float> lodDistances;
 	};
 
 	struct MeshCollectionStaticManager : public GenericWeakReadThroughCache<std::string, MeshCollectionStatic> {};
