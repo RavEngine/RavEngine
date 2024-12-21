@@ -11,7 +11,7 @@ void BufferedVRAMStructureBase::InitializePrivateBuffer(RGLDevicePtr device, uin
         {.StorageBuffer = true},
         sizeof(std::byte),
         RGL::BufferAccess::Private,
-        {.TransferDestination = true, .debugName = debugName.data()}
+        {.TransferDestination = true, .Transfersource = true,  .debugName = debugName.data()}
     });
 }
 

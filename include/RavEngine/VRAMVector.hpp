@@ -75,6 +75,7 @@ namespace RavEngine {
 			sizeof(T),
 			RGL::BufferAccess::Shared,
 			{
+				.Transfersource = true,
 				.Writable = GPUWritable,
 				.debugName = "VRAMVector Buffer"
 			}

@@ -155,6 +155,7 @@ namespace RavEngine {
 		std::memcpy((char*)(transientStagingBuffer->GetMappedDataPtr()) + start,data.data(),data.size());
 
 		transientOffset += data.size();
+		transientOffset = closest_multiple_of<decltype(transientOffset)>(transientOffset, 16);	// vulkan requires this
 
 		return start;
 	}
