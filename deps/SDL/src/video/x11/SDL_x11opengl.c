@@ -24,6 +24,7 @@
 #ifdef SDL_VIDEO_DRIVER_X11
 
 #include "SDL_x11video.h"
+#include "SDL_x11xsync.h"
 
 // GLX implementation of SDL OpenGL support
 
@@ -608,6 +609,32 @@ static int X11_GL_GetAttributes(SDL_VideoDevice *_this, Display *display, int sc
     return i;
 }
 
+//get the first transparent Visual
+static XVisualInfo* X11_GL_GetTransparentVisualInfo(Display *display, int screen)
+{
+    XVisualInfo* visualinfo = NULL;
+    XVisualInfo vi_in;
+    int out_count = 0;
+
+    vi_in.screen = screen;
+    visualinfo = X11_XGetVisualInfo(display, VisualScreenMask, &vi_in, &out_count);
+    if (visualinfo != NULL) {
+        int i = 0;
+        for (i = 0; i < out_count; i++) {
+            XVisualInfo* v = &visualinfo[i];
+            Uint32 format = X11_GetPixelFormatFromVisualInfo(display, v);
+            if (SDL_ISPIXELFORMAT_ALPHA(format)) {
+                vi_in.screen = screen;
+                vi_in.visualid = v->visualid;
+                X11_XFree(visualinfo);
+                visualinfo = X11_XGetVisualInfo(display, VisualScreenMask | VisualIDMask, &vi_in, &out_count);
+                break;
+            }
+        }
+    }
+    return visualinfo;
+}
+
 XVisualInfo *X11_GL_GetVisual(SDL_VideoDevice *_this, Display *display, int screen, bool transparent)
 {
     // 64 seems nice.
@@ -663,6 +690,18 @@ XVisualInfo *X11_GL_GetVisual(SDL_VideoDevice *_this, Display *display, int scre
         if (!vinfo && (pvistypeattr != NULL)) {
             *pvistypeattr = None;
             vinfo = _this->gl_data->glXChooseVisual(display, screen, attribs);
+        }
+    }
+
+    if (transparent && vinfo) {
+        Uint32 format = X11_GetPixelFormatFromVisualInfo(display, vinfo);
+        if (!SDL_ISPIXELFORMAT_ALPHA(format)) {
+            // not transparent!
+            XVisualInfo* visualinfo = X11_GL_GetTransparentVisualInfo(display, screen);
+            if (visualinfo != NULL) {
+                X11_XFree(vinfo);
+                vinfo = visualinfo;
+            }
         }
     }
 
@@ -814,6 +853,26 @@ SDL_GLContext X11_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window *window)
                                                                                &fbcount);
                     }
 
+                    if (transparent && (framebuffer_config != NULL)) {
+                        int i;
+                        for (i = 0; i < fbcount; i++) {
+                            XVisualInfo* vinfo_temp = _this->gl_data->glXGetVisualFromFBConfig(display, framebuffer_config[i]);
+                            if ( vinfo_temp != NULL) {
+                                Uint32 format = X11_GetPixelFormatFromVisualInfo(display, vinfo_temp);
+                                if (SDL_ISPIXELFORMAT_ALPHA(format)) {
+                                    // found!
+                                    context = (SDL_GLContext)_this->gl_data->glXCreateContextAttribsARB(display,
+                                                                                                        framebuffer_config[i],
+                                                                                                        share_context, True, attribs);
+                                    X11_XFree(framebuffer_config);
+                                    framebuffer_config = NULL;
+                                    X11_XFree(vinfo_temp);
+                                    break;
+                                }
+                                X11_XFree(vinfo_temp);
+                            }
+                        }
+                    }
                     if (framebuffer_config) {
                         context = (SDL_GLContext)_this->gl_data->glXCreateContextAttribsARB(display,
                                                                              framebuffer_config[0],
@@ -1031,6 +1090,11 @@ bool X11_GL_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window)
     Display *display = data->videodata->display;
 
     _this->gl_data->glXSwapBuffers(display, data->xwindow);
+
+#ifdef SDL_VIDEO_DRIVER_X11_XSYNC
+    X11_HandlePresent(data->window);
+#endif /* SDL_VIDEO_DRIVER_X11_XSYNC */
+
     return true;
 }
 

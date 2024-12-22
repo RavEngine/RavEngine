@@ -740,10 +740,10 @@ int gxm_init(SDL_Renderer *renderer)
         colorVertexAttributes[0].format = SCE_GXM_ATTRIBUTE_FORMAT_F32;
         colorVertexAttributes[0].componentCount = 2; // (x, y)
         colorVertexAttributes[0].regIndex = sceGxmProgramParameterGetResourceIndex(paramColorPositionAttribute);
-        // color: 4 unsigned char  = 32 bits
+        // color: 4 floats = 4*32 bits
         colorVertexAttributes[1].streamIndex = 0;
         colorVertexAttributes[1].offset = 8; // (x, y) * 4 = 8 bytes
-        colorVertexAttributes[1].format = SCE_GXM_ATTRIBUTE_FORMAT_U8N;
+        colorVertexAttributes[1].format = SCE_GXM_ATTRIBUTE_FORMAT_F32;
         colorVertexAttributes[1].componentCount = 4; // (color)
         colorVertexAttributes[1].regIndex = sceGxmProgramParameterGetResourceIndex(paramColorColorAttribute);
         // 16 bit (short) indices
@@ -785,10 +785,10 @@ int gxm_init(SDL_Renderer *renderer)
         textureVertexAttributes[1].format = SCE_GXM_ATTRIBUTE_FORMAT_F32;
         textureVertexAttributes[1].componentCount = 2; // (u, v)
         textureVertexAttributes[1].regIndex = sceGxmProgramParameterGetResourceIndex(paramTextureTexcoordAttribute);
-        // r,g,b,a: 4 unsigned chars 32 bits
+        // r,g,b,a: 4 floats 4*32 bits
         textureVertexAttributes[2].streamIndex = 0;
         textureVertexAttributes[2].offset = 16; // (x, y, u, v) * 4 = 16 bytes
-        textureVertexAttributes[2].format = SCE_GXM_ATTRIBUTE_FORMAT_U8N;
+        textureVertexAttributes[2].format = SCE_GXM_ATTRIBUTE_FORMAT_F32;
         textureVertexAttributes[2].componentCount = 4; // (r, g, b, a)
         textureVertexAttributes[2].regIndex = sceGxmProgramParameterGetResourceIndex(paramTextureColorAttribute);
         // 16 bit (short) indices
@@ -1160,7 +1160,7 @@ void gxm_init_for_common_dialog(void)
     for (int i = 0; i < VITA_GXM_BUFFERS; i += 1) {
         buffer_for_common_dialog[i].displayData.wait_vblank = true;
         buffer_for_common_dialog[i].displayData.address = vita_mem_alloc(
-            SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW,
+            SCE_KERNEL_MEMBLOCK_TYPE_USER_MAIN_PHYCONT_NC_RW,
             4 * VITA_GXM_SCREEN_STRIDE * VITA_GXM_SCREEN_HEIGHT,
             SCE_GXM_COLOR_SURFACE_ALIGNMENT,
             SCE_GXM_MEMORY_ATTRIB_READ | SCE_GXM_MEMORY_ATTRIB_WRITE,

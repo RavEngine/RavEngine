@@ -43,9 +43,42 @@ typedef HRESULT (WINAPI *DwmSetWindowAttribute_t)(HWND hwnd, DWORD dwAttribute, 
 typedef HRESULT (WINAPI *DwmGetWindowAttribute_t)(HWND hwnd, DWORD dwAttribute, PVOID pvAttribute, DWORD cbAttribute);
 
 // Dark mode support
-#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
-#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
-#endif
+typedef enum {
+    UXTHEME_APPMODE_DEFAULT,
+    UXTHEME_APPMODE_ALLOW_DARK,
+    UXTHEME_APPMODE_FORCE_DARK,
+    UXTHEME_APPMODE_FORCE_LIGHT,
+    UXTHEME_APPMODE_MAX
+} UxthemePreferredAppMode;
+
+typedef enum {
+    WCA_UNDEFINED = 0,
+    WCA_USEDARKMODECOLORS = 26,
+    WCA_LAST = 27
+} WINDOWCOMPOSITIONATTRIB;
+
+typedef struct {
+    WINDOWCOMPOSITIONATTRIB Attrib;
+    PVOID pvData;
+    SIZE_T cbData;
+} WINDOWCOMPOSITIONATTRIBDATA;
+
+typedef struct {
+    ULONG dwOSVersionInfoSize;
+    ULONG dwMajorVersion;
+    ULONG dwMinorVersion;
+    ULONG dwBuildNumber;
+    ULONG dwPlatformId;
+    WCHAR szCSDVersion[128];
+} NT_OSVERSIONINFOW;
+
+typedef bool (WINAPI *ShouldAppsUseDarkMode_t)(void);
+typedef void (WINAPI *AllowDarkModeForWindow_t)(HWND, bool);
+typedef void (WINAPI *AllowDarkModeForApp_t)(bool);
+typedef void (WINAPI *RefreshImmersiveColorPolicyState_t)(void);
+typedef UxthemePreferredAppMode (WINAPI *SetPreferredAppMode_t)(UxthemePreferredAppMode);
+typedef BOOL (WINAPI *SetWindowCompositionAttribute_t)(HWND, const WINDOWCOMPOSITIONATTRIBDATA *);
+typedef void (NTAPI *RtlGetVersion_t)(NT_OSVERSIONINFOW *);
 
 // Corner rounding support  (Win 11+)
 #ifndef DWMWA_WINDOW_CORNER_PREFERENCE
@@ -204,6 +237,11 @@ static bool WIN_AdjustWindowRectWithStyle(SDL_Window *window, DWORD style, DWORD
         *width = window->floating.w;
         *height = window->floating.h;
         break;
+    case SDL_WINDOWRECT_PENDING:
+        SDL_RelativeToGlobalForWindow(window, window->pending.x, window->pending.y, x, y);
+        *width = window->pending.w;
+        *height = window->pending.h;
+        break;
     default:
         // Should never be here
         SDL_assert_release(false);
@@ -348,12 +386,6 @@ bool WIN_SetWindowPositionInternal(SDL_Window *window, UINT flags, SDL_WindowRec
     return result;
 }
 
-static void SDLCALL WIN_MouseRelativeModeCenterChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
-{
-    SDL_WindowData *data = (SDL_WindowData *)userdata;
-    data->mouse_relative_mode_center = SDL_GetStringBoolean(hint, true);
-}
-
 static SDL_WindowEraseBackgroundMode GetEraseBackgroundModeHint(void)
 {
     const char *hint = SDL_GetHint(SDL_HINT_WINDOWS_ERASE_BACKGROUND_MODE);
@@ -405,6 +437,16 @@ static bool SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwn
     data->dwma_border_color = DWMWA_COLOR_DEFAULT;
     data->hint_erase_background_mode = GetEraseBackgroundModeHint();
 
+
+    // WIN_WarpCursor() jitters by +1, and remote desktop warp wobble is +/- 1
+#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
+    LONG remote_desktop_adjustment = GetSystemMetrics(SM_REMOTESESSION) ? 2 : 0;
+    data->cursor_ctrlock_rect.left   = 0 - remote_desktop_adjustment;
+    data->cursor_ctrlock_rect.top    = 0;
+    data->cursor_ctrlock_rect.right  = 1 + remote_desktop_adjustment;
+    data->cursor_ctrlock_rect.bottom = 1;
+#endif
+
     if (SDL_GetHintBoolean("SDL_WINDOW_RETAIN_CONTENT", false)) {
         data->copybits_flag = 0;
     } else {
@@ -414,8 +456,6 @@ static bool SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwn
 #ifdef HIGHDPI_DEBUG
     SDL_Log("SetupWindowData: initialized data->scaling_dpi to %d", data->scaling_dpi);
 #endif
-
-    SDL_AddHintCallback(SDL_HINT_MOUSE_RELATIVE_MODE_CENTER, WIN_MouseRelativeModeCenterChanged, data);
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
     // Associate the data with the window
@@ -460,7 +500,7 @@ static bool SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwn
         }
         if (style & WS_THICKFRAME) {
             window->flags |= SDL_WINDOW_RESIZABLE;
-        } else {
+        } else if (!(style & WS_POPUP)) {
             window->flags &= ~SDL_WINDOW_RESIZABLE;
         }
 #ifdef WS_MAXIMIZE
@@ -588,7 +628,6 @@ static void CleanupWindowData(SDL_VideoDevice *_this, SDL_Window *window)
     SDL_WindowData *data = window->internal;
 
     if (data) {
-        SDL_RemoveHintCallback(SDL_HINT_MOUSE_RELATIVE_MODE_CENTER, WIN_MouseRelativeModeCenterChanged, data);
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
         if (data->drop_target) {
@@ -841,6 +880,9 @@ bool WIN_SetWindowIcon(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surface *
     mask_len = (icon->h * (icon->w + 7) / 8);
     icon_len = sizeof(BITMAPINFOHEADER) + icon->h * icon->w * sizeof(Uint32) + mask_len;
     icon_bmp = SDL_small_alloc(BYTE, icon_len, &isstack);
+    if (!icon_bmp) {
+        return false;
+    }
 
     // Write the BITMAPINFO header
     bmi = (BITMAPINFOHEADER *)icon_bmp;
@@ -898,10 +940,8 @@ bool WIN_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window *window)
         if (!(window->flags & (SDL_WINDOW_MAXIMIZED | SDL_WINDOW_MINIMIZED))) {
             WIN_ConstrainPopup(window);
             return WIN_SetWindowPositionInternal(window,
-                                                 window->internal->copybits_flag | SWP_NOZORDER | SWP_NOOWNERZORDER |
-                                                 SWP_NOACTIVATE, SDL_WINDOWRECT_FLOATING);
-        } else {
-            window->internal->floating_rect_pending = true;
+                                                 window->internal->copybits_flag | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOSIZE |
+                                                 SWP_NOACTIVATE, SDL_WINDOWRECT_PENDING);
         }
     } else {
         return SDL_UpdateFullscreenMode(window, SDL_FULLSCREEN_OP_ENTER, true);
@@ -913,9 +953,10 @@ bool WIN_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window *window)
 void WIN_SetWindowSize(SDL_VideoDevice *_this, SDL_Window *window)
 {
     if (!(window->flags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_MAXIMIZED))) {
-        WIN_SetWindowPositionInternal(window, window->internal->copybits_flag | SWP_NOMOVE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE, SDL_WINDOWRECT_FLOATING);
+        WIN_SetWindowPositionInternal(window, window->internal->copybits_flag | SWP_NOMOVE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE, SDL_WINDOWRECT_PENDING);
     } else {
-        window->internal->floating_rect_pending = true;
+        // Can't resize the window
+        window->last_size_pending = false;
     }
 }
 
@@ -1548,107 +1589,109 @@ static BOOL GetClientScreenRect(HWND hwnd, RECT *rect)
            ClientToScreen(hwnd, (LPPOINT)rect + 1); // POINT( right , bottom )
 }
 
+void WIN_UnclipCursorForWindow(SDL_Window *window) {
+    SDL_WindowData *data = window->internal;
+    RECT rect;
+    if (GetClipCursor(&rect) && SDL_memcmp(&rect, &data->cursor_clipped_rect, sizeof(rect)) == 0) {
+        ClipCursor(NULL);
+        SDL_zero(data->cursor_clipped_rect);
+    }
+}
+
 void WIN_UpdateClipCursor(SDL_Window *window)
 {
-    SDL_VideoDevice *videodevice = SDL_GetVideoDevice();
     SDL_WindowData *data = window->internal;
-    SDL_Mouse *mouse = SDL_GetMouse();
-    RECT rect, clipped_rect;
-
-    if (data->in_title_click || data->focus_click_pending) {
-        return;
-    }
-    if (data->skip_update_clipcursor) {
-        return;
-    }
-    if (!GetClipCursor(&clipped_rect)) {
+    if (data->in_title_click || data->focus_click_pending || data->skip_update_clipcursor) {
         return;
     }
 
-    if ((mouse->relative_mode || (window->flags & SDL_WINDOW_MOUSE_GRABBED) ||
-         (window->mouse_rect.w > 0 && window->mouse_rect.h > 0)) &&
-        (window->flags & SDL_WINDOW_INPUT_FOCUS)) {
-        if (mouse->relative_mode && !mouse->relative_mode_warp && data->mouse_relative_mode_center) {
-            if (GetClientScreenRect(data->hwnd, &rect)) {
-                // WIN_WarpCursor() jitters by +1, and remote desktop warp wobble is +/- 1
-                LONG remote_desktop_adjustment = GetSystemMetrics(SM_REMOTESESSION) ? 2 : 0;
-                LONG cx, cy;
+    SDL_Rect mouse_rect = window->mouse_rect;
+    bool win_mouse_rect = (mouse_rect.w > 0 && mouse_rect.h > 0);
+    bool win_have_focus = (window->flags & SDL_WINDOW_INPUT_FOCUS);
+    bool win_is_grabbed = (window->flags & SDL_WINDOW_MOUSE_GRABBED);
+    bool win_in_relmode = (window->flags & SDL_WINDOW_MOUSE_RELATIVE_MODE);
+    bool cursor_confine = win_in_relmode || win_is_grabbed || win_mouse_rect;
 
-                cx = (rect.left + rect.right) / 2;
-                cy = (rect.top + rect.bottom) / 2;
-
-                // Make an absurdly small clip rect
-                rect.left = cx - remote_desktop_adjustment;
-                rect.right = cx + 1 + remote_desktop_adjustment;
-                rect.top = cy;
-                rect.bottom = cy + 1;
-
-                if (SDL_memcmp(&rect, &clipped_rect, sizeof(rect)) != 0) {
-                    if (ClipCursor(&rect)) {
-                        data->cursor_clipped_rect = rect;
-                    }
-                }
-            }
-        } else {
-            if (GetClientScreenRect(data->hwnd, &rect)) {
-                if (window->mouse_rect.w > 0 && window->mouse_rect.h > 0) {
-                    SDL_Rect mouse_rect_win_client;
-                    RECT mouse_rect, intersection;
-
-                    // mouse_rect_win_client is the mouse rect in Windows client space
-                    mouse_rect_win_client = window->mouse_rect;
-
-                    // mouse_rect is the rect in Windows screen space
-                    mouse_rect.left = rect.left + mouse_rect_win_client.x;
-                    mouse_rect.top = rect.top + mouse_rect_win_client.y;
-                    mouse_rect.right = mouse_rect.left + mouse_rect_win_client.w;
-                    mouse_rect.bottom = mouse_rect.top + mouse_rect_win_client.h;
-                    if (IntersectRect(&intersection, &rect, &mouse_rect)) {
-                        SDL_memcpy(&rect, &intersection, sizeof(rect));
-                    } else if (window->flags & SDL_WINDOW_MOUSE_GRABBED) {
-                        // Mouse rect was invalid, just do the normal grab
-                    } else {
-                        SDL_zero(rect);
-                    }
-                }
-                if (SDL_memcmp(&rect, &clipped_rect, sizeof(rect)) != 0) {
-                    if (!WIN_IsRectEmpty(&rect)) {
-                        if (ClipCursor(&rect)) {
-                            data->cursor_clipped_rect = rect;
-                        }
-                    } else {
-                        ClipCursor(NULL);
-                        SDL_zero(data->cursor_clipped_rect);
-                    }
-                }
-            }
+    // This is verbatim translation of the old logic,
+    // but I don't quite get what it's trying to do.
+    // A clean-room implementation according to MSDN
+    // documentation of GetClipCursor is provided in
+    // a commented-out block below.
+    if (!win_have_focus || !cursor_confine) {
+        SDL_VideoDevice *videodevice = SDL_GetVideoDevice();
+        RECT current;
+        if (!GetClipCursor(&current)) {
+            return;
         }
-    } else {
-        bool unclip_cursor = false;
-
-        // If the cursor is clipped to the screen, clear the clip state
-        if (!videodevice ||
-            (clipped_rect.left == videodevice->desktop_bounds.x &&
-             clipped_rect.top == videodevice->desktop_bounds.y)) {
-            unclip_cursor = true;
-        } else {
+        if (videodevice && (
+            current.left != videodevice->desktop_bounds.x ||
+            current.top  != videodevice->desktop_bounds.y
+        )) {
             POINT first, second;
-
-            first.x = clipped_rect.left;
-            first.y = clipped_rect.top;
-            second.x = clipped_rect.right - 1;
-            second.y = clipped_rect.bottom - 1;
-            if (PtInRect(&data->cursor_clipped_rect, first) &&
-                PtInRect(&data->cursor_clipped_rect, second)) {
-                unclip_cursor = true;
+            first.x  = current.left;
+            first.y  = current.top;
+            second.x = current.right  - 1;
+            second.y = current.bottom - 1;
+            if (!PtInRect(&data->cursor_clipped_rect, first) ||
+                !PtInRect(&data->cursor_clipped_rect, second)) {
+                return;
             }
         }
-        if (unclip_cursor) {
-            ClipCursor(NULL);
-            SDL_zero(data->cursor_clipped_rect);
+        ClipCursor(NULL);
+        SDL_zero(data->cursor_clipped_rect);
+        return;
+    }
+
+    // if (!win_have_focus || !cursor_confine) {
+    //     RECT current;
+    //     SDL_VideoDevice *videodevice = SDL_GetVideoDevice();
+    //     if (GetClipCursor(&current) && (!videodevice ||
+    //         current.left   != videodevice->desktop_bounds.x ||
+    //         current.top    != videodevice->desktop_bounds.y ||
+    //         current.right  != videodevice->desktop_bounds.x + videodevice->desktop_bounds.w ||
+    //         current.bottom != videodevice->desktop_bounds.y + videodevice->desktop_bounds.h )) {
+    //         ClipCursor(NULL);
+    //         SDL_zero(data->cursor_clipped_rect);
+    //     }
+    //     return;
+    // }
+
+    SDL_Mouse *mouse = SDL_GetMouse();
+    bool lock_to_ctr = (mouse->relative_mode && mouse->relative_mode_center);
+
+    RECT client;
+    if (!GetClientScreenRect(data->hwnd, &client)) {
+        return;
+    }
+    
+    RECT target = client;
+    if (lock_to_ctr) {
+        LONG cx = (client.left + client.right ) / 2;
+        LONG cy = (client.top  + client.bottom) / 2;
+        target = data->cursor_ctrlock_rect;
+        target.left   += cx;
+        target.right  += cx;
+        target.top    += cy;
+        target.bottom += cy;
+    } else if (win_mouse_rect) {
+        RECT custom, overlap;
+        custom.left   = client.left + mouse_rect.x;
+        custom.top    = client.top  + mouse_rect.y;
+        custom.right  = client.left + mouse_rect.x + mouse_rect.w;
+        custom.bottom = client.top  + mouse_rect.y + mouse_rect.h;
+        if (IntersectRect(&overlap, &client, &custom)) {
+            target = overlap;
+        } else if (!win_is_grabbed) {
+            WIN_UnclipCursorForWindow(window);
+            return;
         }
     }
-    data->last_updated_clipcursor = SDL_GetTicks();
+
+    if (GetClipCursor(&client) && 
+        0 != SDL_memcmp(&target, &client, sizeof(client)) &&
+        ClipCursor(&target)) {
+        data->cursor_clipped_rect = target; // ClipCursor may fail if rect beyond screen
+    }
 }
 
 bool WIN_SetWindowHitTest(SDL_Window *window, bool enabled)
@@ -1788,16 +1831,16 @@ static STDMETHODIMP SDLDropTarget_DragEnter(SDLDropTarget *target,
                                             IDataObject *pDataObject, DWORD grfKeyState,
                                             POINTL pt, DWORD *pdwEffect)
 {
-    SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+    SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                  ". In DragEnter at %ld, %ld\n", pt.x, pt.y);
     *pdwEffect = DROPEFFECT_COPY;
     POINT pnt = { pt.x, pt.y };
     if (ScreenToClient(target->hwnd, &pnt)) {
-        SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+        SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                      ". In DragEnter at %ld, %ld => window %u at %ld, %ld\n", pt.x, pt.y, target->window->id, pnt.x, pnt.y);
         SDL_SendDropPosition(target->window, pnt.x, pnt.y);
     } else {
-        SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+        SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                      ". In DragEnter at %ld, %ld => nil, nil\n", pt.x, pt.y);
     }
     return S_OK;
@@ -1807,16 +1850,16 @@ static STDMETHODIMP SDLDropTarget_DragOver(SDLDropTarget *target,
                                            DWORD grfKeyState,
                                            POINTL pt, DWORD *pdwEffect)
 {
-    SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+    SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                  ". In DragOver at %ld, %ld\n", pt.x, pt.y);
     *pdwEffect = DROPEFFECT_COPY;
     POINT pnt = { pt.x, pt.y };
     if (ScreenToClient(target->hwnd, &pnt)) {
-        SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+        SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                      ". In DragOver at %ld, %ld => window %u at %ld, %ld\n", pt.x, pt.y, target->window->id, pnt.x, pnt.y);
         SDL_SendDropPosition(target->window, pnt.x, pnt.y);
     } else {
-        SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+        SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                      ". In DragOver at %ld, %ld => nil, nil\n", pt.x, pt.y);
     }
     return S_OK;
@@ -1824,7 +1867,7 @@ static STDMETHODIMP SDLDropTarget_DragOver(SDLDropTarget *target,
 
 static STDMETHODIMP SDLDropTarget_DragLeave(SDLDropTarget *target)
 {
-    SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+    SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                  ". In DragLeave\n");
     SDL_SendDropComplete(target->window);
     return S_OK;
@@ -1837,11 +1880,11 @@ static STDMETHODIMP SDLDropTarget_Drop(SDLDropTarget *target,
     *pdwEffect = DROPEFFECT_COPY;
     POINT pnt = { pt.x, pt.y };
     if (ScreenToClient(target->hwnd, &pnt)) {
-        SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+        SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                      ". In Drop at %ld, %ld => window %u at %ld, %ld\n", pt.x, pt.y, target->window->id, pnt.x, pnt.y);
         SDL_SendDropPosition(target->window, pnt.x, pnt.y);
     } else {
-        SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+        SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                      ". In Drop at %ld, %ld => nil, nil\n", pt.x, pt.y);
     }
 
@@ -1849,7 +1892,7 @@ static STDMETHODIMP SDLDropTarget_Drop(SDLDropTarget *target,
         IEnumFORMATETC *pEnumFormatEtc;
         HRESULT hres;
         hres = pDataObject->lpVtbl->EnumFormatEtc(pDataObject, DATADIR_GET, &pEnumFormatEtc);
-        SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+        SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                      ". In Drop for EnumFormatEtc, HRESULT is %08lx\n", hres);
         if (hres == S_OK) {
             FORMATETC fetc;
@@ -1857,10 +1900,10 @@ static STDMETHODIMP SDLDropTarget_Drop(SDLDropTarget *target,
                 char name[257] = { 0 };
                 const char *cfnm = SDLGetClipboardFormatName(fetc.cfFormat, name, 256);
                 if (cfnm) {
-                    SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                    SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                                  ". In Drop, Supported format is %08x, '%s'\n", fetc.cfFormat, cfnm);
                 } else {
-                    SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                    SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                                  ". In Drop, Supported format is %08x, Predefined\n", fetc.cfFormat);
                 }
             }
@@ -1876,18 +1919,18 @@ static STDMETHODIMP SDLDropTarget_Drop(SDLDropTarget *target,
         fetc.tymed = TYMED_HGLOBAL;
         const char *format_mime = "text/uri-list";
         if (SUCCEEDED(pDataObject->lpVtbl->QueryGetData(pDataObject, &fetc))) {
-            SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+            SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                          ". In Drop File for QueryGetData, format %08x '%s', success\n",
                          fetc.cfFormat, format_mime);
             STGMEDIUM med;
             HRESULT hres = pDataObject->lpVtbl->GetData(pDataObject, &fetc, &med);
-            SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+            SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                          ". In Drop File for      GetData, format %08x '%s', HRESULT is %08lx\n",
                          fetc.cfFormat, format_mime, hres);
             if (SUCCEEDED(hres)) {
                 const size_t bsize = GlobalSize(med.hGlobal);
                 const void *buffer = (void *)GlobalLock(med.hGlobal);
-                SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                              ". In Drop File for   GlobalLock, format %08x '%s', memory (%lu) %p\n",
                              fetc.cfFormat, format_mime, (unsigned long)bsize, buffer);
                 if (buffer) {
@@ -1898,7 +1941,7 @@ static STDMETHODIMP SDLDropTarget_Drop(SDLDropTarget *target,
                     char *token = SDL_strtok_r(text, "\r\n", &saveptr);
                     while (token != NULL) {
                         if (SDL_URIToLocal(token, token) >= 0) {
-                            SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                            SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                                          ". In Drop File, file (%lu of %lu) '%s'\n",
                                          (unsigned long)SDL_strlen(token), (unsigned long)bsize, token);
                             SDL_SendDropFile(target->window, NULL, token);
@@ -1924,18 +1967,18 @@ static STDMETHODIMP SDLDropTarget_Drop(SDLDropTarget *target,
         fetc.tymed = TYMED_HGLOBAL;
         const char *format_mime = "text/plain;charset=utf-8";
         if (SUCCEEDED(pDataObject->lpVtbl->QueryGetData(pDataObject, &fetc))) {
-            SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+            SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                          ". In Drop Text for QueryGetData, format %08x '%s', success\n",
                          fetc.cfFormat, format_mime);
             STGMEDIUM med;
             HRESULT hres = pDataObject->lpVtbl->GetData(pDataObject, &fetc, &med);
-            SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+            SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                          ". In Drop Text for      GetData, format %08x '%s', HRESULT is %08lx\n",
                          fetc.cfFormat, format_mime, hres);
             if (SUCCEEDED(hres)) {
                 const size_t bsize = GlobalSize(med.hGlobal);
                 const void *buffer = (void *)GlobalLock(med.hGlobal);
-                SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                              ". In Drop Text for   GlobalLock, format %08x '%s', memory (%lu) %p\n",
                              fetc.cfFormat, format_mime, (unsigned long)bsize, buffer);
                 if (buffer) {
@@ -1945,7 +1988,7 @@ static STDMETHODIMP SDLDropTarget_Drop(SDLDropTarget *target,
                     char *saveptr = NULL;
                     char *token = SDL_strtok_r(text, "\r\n", &saveptr);
                     while (token != NULL) {
-                        SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                        SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                                      ". In Drop Text, text (%lu of %lu) '%s'\n",
                                      (unsigned long)SDL_strlen(token), (unsigned long)bsize, token);
                         SDL_SendDropText(target->window, (char *)token);
@@ -1970,25 +2013,25 @@ static STDMETHODIMP SDLDropTarget_Drop(SDLDropTarget *target,
         fetc.tymed = TYMED_HGLOBAL;
         const char *format_mime = "CF_UNICODETEXT";
         if (SUCCEEDED(pDataObject->lpVtbl->QueryGetData(pDataObject, &fetc))) {
-            SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+            SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                          ". In Drop Text for QueryGetData, format %08x '%s', success\n",
                          fetc.cfFormat, format_mime);
             STGMEDIUM med;
             HRESULT hres = pDataObject->lpVtbl->GetData(pDataObject, &fetc, &med);
-            SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+            SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                          ". In Drop Text for      GetData, format %08x '%s', HRESULT is %08lx\n",
                          fetc.cfFormat, format_mime, hres);
             if (SUCCEEDED(hres)) {
                 const size_t bsize = GlobalSize(med.hGlobal);
                 const void *buffer = (void *)GlobalLock(med.hGlobal);
-                SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                              ". In Drop Text for   GlobalLock, format %08x '%s', memory (%lu) %p\n",
                              fetc.cfFormat, format_mime, (unsigned long)bsize, buffer);
                 if (buffer) {
                     buffer = WIN_StringToUTF8((const wchar_t *)buffer);
                     if (buffer) {
                         const size_t lbuffer = SDL_strlen((const char *)buffer);
-                        SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                        SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                                      ". In Drop Text for StringToUTF8, format %08x '%s', memory (%lu) %p\n",
                                      fetc.cfFormat, format_mime, (unsigned long)lbuffer, buffer);
                         char *text = (char *)SDL_malloc(lbuffer + sizeof(Uint32));
@@ -1997,7 +2040,7 @@ static STDMETHODIMP SDLDropTarget_Drop(SDLDropTarget *target,
                         char *saveptr = NULL;
                         char *token = SDL_strtok_r(text, "\r\n", &saveptr);
                         while (token != NULL) {
-                            SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                            SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                                          ". In Drop Text, text (%lu of %lu) '%s'\n",
                                          (unsigned long)SDL_strlen(token), (unsigned long)lbuffer, token);
                             SDL_SendDropText(target->window, (char *)token);
@@ -2024,18 +2067,18 @@ static STDMETHODIMP SDLDropTarget_Drop(SDLDropTarget *target,
         fetc.tymed = TYMED_HGLOBAL;
         const char *format_mime = "CF_TEXT";
         if (SUCCEEDED(pDataObject->lpVtbl->QueryGetData(pDataObject, &fetc))) {
-            SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+            SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                          ". In Drop Text for QueryGetData, format %08x '%s', success\n",
                          fetc.cfFormat, format_mime);
             STGMEDIUM med;
             HRESULT hres = pDataObject->lpVtbl->GetData(pDataObject, &fetc, &med);
-            SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+            SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                          ". In Drop Text for      GetData, format %08x '%s', HRESULT is %08lx\n",
                          fetc.cfFormat, format_mime, hres);
             if (SUCCEEDED(hres)) {
                 const size_t bsize = GlobalSize(med.hGlobal);
                 const void *buffer = (void *)GlobalLock(med.hGlobal);
-                SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                              ". In Drop Text for   GlobalLock, format %08x '%s', memory (%lu) %p\n",
                              fetc.cfFormat, format_mime, (unsigned long)bsize, buffer);
                 if (buffer) {
@@ -2045,7 +2088,7 @@ static STDMETHODIMP SDLDropTarget_Drop(SDLDropTarget *target,
                     char *saveptr = NULL;
                     char *token = SDL_strtok_r(text, "\r\n", &saveptr);
                     while (token != NULL) {
-                        SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                        SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                                      ". In Drop Text, text (%lu of %lu) '%s'\n",
                                      (unsigned long)SDL_strlen(token), (unsigned long)bsize, token);
                         SDL_SendDropText(target->window, (char *)token);
@@ -2070,18 +2113,18 @@ static STDMETHODIMP SDLDropTarget_Drop(SDLDropTarget *target,
         fetc.tymed = TYMED_HGLOBAL;
         const char *format_mime = "CF_HDROP";
         if (SUCCEEDED(pDataObject->lpVtbl->QueryGetData(pDataObject, &fetc))) {
-            SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+            SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                          ". In Drop File for QueryGetData, format %08x '%s', success\n",
                          fetc.cfFormat, format_mime);
             STGMEDIUM med;
             HRESULT hres = pDataObject->lpVtbl->GetData(pDataObject, &fetc, &med);
-            SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+            SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                          ". In Drop File for      GetData, format %08x '%s', HRESULT is %08lx\n",
                          fetc.cfFormat, format_mime, hres);
             if (SUCCEEDED(hres)) {
                 const size_t bsize = GlobalSize(med.hGlobal);
                 HDROP drop = (HDROP)GlobalLock(med.hGlobal);
-                SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                              ". In Drop File for   GlobalLock, format %08x '%s', memory (%lu) %p\n",
                              fetc.cfFormat, format_mime, (unsigned long)bsize, drop);
                 UINT count = DragQueryFile(drop, 0xFFFFFFFF, NULL, 0);
@@ -2091,7 +2134,7 @@ static STDMETHODIMP SDLDropTarget_Drop(SDLDropTarget *target,
                     if (buffer) {
                         if (DragQueryFile(drop, i, buffer, size)) {
                             char *file = WIN_StringToUTF8(buffer);
-                            SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                            SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                                          ". In Drop File, file (%lu of %lu) '%s'\n",
                                          (unsigned long)SDL_strlen(file), (unsigned long)bsize, file);
                             SDL_SendDropFile(target->window, NULL, file);
@@ -2137,7 +2180,7 @@ void WIN_AcceptDragAndDrop(SDL_Window *window, bool accept)
                 data->drop_target = drop_target;
                 SDLDropTarget_AddRef(drop_target);
                 RegisterDragDrop(data->hwnd, (LPDROPTARGET)drop_target);
-                SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                              ". In Accept Drag and Drop, window %u, enabled Full OLE IDropTarget\n",
                              window->id);
             }
@@ -2145,13 +2188,13 @@ void WIN_AcceptDragAndDrop(SDL_Window *window, bool accept)
             RevokeDragDrop(data->hwnd);
             SDLDropTarget_Release(data->drop_target);
             data->drop_target = NULL;
-            SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+            SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                          ". In Accept Drag and Drop, window %u, disabled Full OLE IDropTarget\n",
                          window->id);
         }
     } else {
         DragAcceptFiles(data->hwnd, accept ? TRUE : FALSE);
-        SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+        SDL_LogTrace(SDL_LOG_CATEGORY_INPUT,
                      ". In Accept Drag and Drop, window %u, %s Fallback WM_DROPFILES\n",
                      window->id, (accept ? "enabled" : "disabled"));
     }
@@ -2223,16 +2266,70 @@ bool WIN_SetWindowFocusable(SDL_VideoDevice *_this, SDL_Window *window, bool foc
 
 void WIN_UpdateDarkModeForHWND(HWND hwnd)
 {
-    SDL_SharedObject *handle = SDL_LoadObject("dwmapi.dll");
-    if (handle) {
-        DwmSetWindowAttribute_t DwmSetWindowAttributeFunc = (DwmSetWindowAttribute_t)SDL_LoadFunction(handle, "DwmSetWindowAttribute");
-        if (DwmSetWindowAttributeFunc) {
-            // FIXME: Do we need to traverse children?
-            BOOL value = (SDL_GetSystemTheme() == SDL_SYSTEM_THEME_DARK) ? TRUE : FALSE;
-            DwmSetWindowAttributeFunc(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
-        }
-        SDL_UnloadObject(handle);
+#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
+    SDL_SharedObject *ntdll = SDL_LoadObject("ntdll.dll");
+    if (!ntdll) {
+        return;
     }
+    // There is no function to get Windows build number, so let's get it here via RtlGetVersion
+    RtlGetVersion_t RtlGetVersionFunc = (RtlGetVersion_t)SDL_LoadFunction(ntdll, "RtlGetVersion");
+    NT_OSVERSIONINFOW os_info;
+    os_info.dwOSVersionInfoSize = sizeof(NT_OSVERSIONINFOW);
+    os_info.dwBuildNumber = 0;
+    if (RtlGetVersionFunc) {
+        RtlGetVersionFunc(&os_info);
+    }
+    SDL_UnloadObject(ntdll);
+    os_info.dwBuildNumber &= ~0xF0000000;
+    if (os_info.dwBuildNumber < 17763) {
+        // Too old to support dark mode
+        return;
+    }
+    SDL_SharedObject *uxtheme = SDL_LoadObject("uxtheme.dll");
+    if (!uxtheme) {
+        return;
+    }
+    RefreshImmersiveColorPolicyState_t RefreshImmersiveColorPolicyStateFunc = (RefreshImmersiveColorPolicyState_t)SDL_LoadFunction(uxtheme, MAKEINTRESOURCEA(104));
+    ShouldAppsUseDarkMode_t ShouldAppsUseDarkModeFunc = (ShouldAppsUseDarkMode_t)SDL_LoadFunction(uxtheme, MAKEINTRESOURCEA(132));
+    AllowDarkModeForWindow_t AllowDarkModeForWindowFunc = (AllowDarkModeForWindow_t)SDL_LoadFunction(uxtheme, MAKEINTRESOURCEA(133));
+    if (os_info.dwBuildNumber < 18362) {
+        AllowDarkModeForApp_t AllowDarkModeForAppFunc = (AllowDarkModeForApp_t)SDL_LoadFunction(uxtheme, MAKEINTRESOURCEA(135));
+        if (AllowDarkModeForAppFunc) {
+            AllowDarkModeForAppFunc(true);
+        }
+    } else {
+        SetPreferredAppMode_t SetPreferredAppModeFunc = (SetPreferredAppMode_t)SDL_LoadFunction(uxtheme, MAKEINTRESOURCEA(135));
+        if (SetPreferredAppModeFunc) {
+            SetPreferredAppModeFunc(UXTHEME_APPMODE_ALLOW_DARK);
+        }
+    }
+    if (RefreshImmersiveColorPolicyStateFunc) {
+        RefreshImmersiveColorPolicyStateFunc();
+    }
+    if (AllowDarkModeForWindowFunc) {
+        AllowDarkModeForWindowFunc(hwnd, true);
+    }
+    BOOL value;
+    // Check dark mode using ShouldAppsUseDarkMode, but use SDL_GetSystemTheme as a fallback
+    if (ShouldAppsUseDarkModeFunc) {
+        value = ShouldAppsUseDarkModeFunc() ? TRUE : FALSE;
+    } else {
+        value = (SDL_GetSystemTheme() == SDL_SYSTEM_THEME_DARK) ? TRUE : FALSE;
+    }
+    SDL_UnloadObject(uxtheme);
+    if (os_info.dwBuildNumber < 18362) {
+        SetProp(hwnd, TEXT("UseImmersiveDarkModeColors"), SDL_reinterpret_cast(HANDLE, SDL_static_cast(INT_PTR, value)));
+    } else {
+        HMODULE user32 = GetModuleHandle(TEXT("user32.dll"));
+        if (user32) {
+            SetWindowCompositionAttribute_t SetWindowCompositionAttributeFunc = (SetWindowCompositionAttribute_t)GetProcAddress(user32, "SetWindowCompositionAttribute");
+            if (SetWindowCompositionAttributeFunc) {
+                WINDOWCOMPOSITIONATTRIBDATA data = { WCA_USEDARKMODECOLORS, &value, sizeof(value) };
+                SetWindowCompositionAttributeFunc(hwnd, &data);
+            }
+        }
+    }
+#endif
 }
 
 bool WIN_SetWindowParent(SDL_VideoDevice *_this, SDL_Window *window, SDL_Window *parent)

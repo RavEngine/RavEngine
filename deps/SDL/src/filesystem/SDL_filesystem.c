@@ -89,6 +89,9 @@ bool SDL_CreateDirectory(const char *path)
                 }
                 #else
                 const bool issep = (ch == '/');
+                if (issep && ((ptr - parents) == 0)) {
+                    continue; // it's just the root directory, skip it.
+                }
                 #endif
 
                 if (issep) {
@@ -492,10 +495,13 @@ const char *SDL_GetUserFolder(SDL_Folder folder)
 
 char *SDL_GetPrefPath(const char *org, const char *app)
 {
-    char *path = SDL_SYS_GetPrefPath(org, app);
-    return path;
+    return SDL_SYS_GetPrefPath(org, app);
 }
 
+char *SDL_GetCurrentDirectory(void)
+{
+    return SDL_SYS_GetCurrentDirectory();
+}
 
 void SDL_InitFilesystem(void)
 {

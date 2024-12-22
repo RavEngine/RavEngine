@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,20 +19,21 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef SDL_ngagewindow_h
-#define SDL_ngagewindow_h
+#include "SDL_internal.h"
 
-#include "../SDL_sysvideo.h"
+#ifndef SDL_x11xsync_h_
+#define SDL_x11xsync_h_
 
-#include "SDL_ngagevideo.h"
+#ifdef SDL_VIDEO_DRIVER_X11_XSYNC
 
-typedef struct
-{
-    SDL_Window *sdl_window;
+extern void X11_InitXsync(SDL_VideoDevice *_this);
+extern int X11_XsyncIsInitialized(void);
+int X11_InitResizeSync(SDL_Window *window);
+void X11_TermResizeSync(SDL_Window *window);
+void X11_HandleSyncRequest(SDL_Window *window, XClientMessageEvent *event);
+void X11_HandleConfigure(SDL_Window *window, XConfigureEvent *event);
+void X11_HandlePresent(SDL_Window *window);
 
-} NGAGE_Window;
+#endif /* SDL_VIDEO_DRIVER_X11_XSYNC */
 
-extern int NGAGE_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props);
-extern void NGAGE_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window);
-
-#endif // SDL_ngagewindow
+#endif /* SDL_x11xsync_h_ */

@@ -23,6 +23,26 @@
  * # CategoryError
  *
  * Simple error message routines for SDL.
+ *
+ * Most apps will interface with these APIs in exactly one function: when
+ * almost any SDL function call reports failure, you can get a human-readable
+ * string of the problem from SDL_GetError().
+ *
+ * These strings are maintained per-thread, and apps are welcome to set their
+ * own errors, which is popular when building libraries on top of SDL for
+ * other apps to consume. These strings are set by calling SDL_SetError().
+ *
+ * A common usage pattern is to have a function that returns true for success
+ * and false for failure, and do this when something fails:
+ *
+ * ```c
+ * if (something_went_wrong) {
+ *    return SDL_SetError("The thing broke in this specific way: %d", errcode);
+ * }
+ * ```
+ *
+ * It's also common to just return `false` in this case if the failing thing
+ * is known to call SDL_SetError(), so errors simply propagate through.
  */
 
 #ifndef SDL_error_h_
@@ -58,12 +78,34 @@ extern "C" {
  *            any.
  * \returns false.
  *
- * \since This function is available since SDL 3.0.0.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.1.3.
  *
  * \sa SDL_ClearError
  * \sa SDL_GetError
+ * \sa SDL_SetErrorV
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_SetError(SDL_PRINTF_FORMAT_STRING const char *fmt, ...) SDL_PRINTF_VARARG_FUNC(1);
+
+/**
+ * Set the SDL error message for the current thread.
+ *
+ * Calling this function will replace any previous error message that was set.
+ *
+ * \param fmt a printf()-style message format string.
+ * \param ap a variable argument list.
+ * \returns false.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.1.6.
+ *
+ * \sa SDL_ClearError
+ * \sa SDL_GetError
+ * \sa SDL_SetError
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_SetErrorV(SDL_PRINTF_FORMAT_STRING const char *fmt, va_list ap) SDL_PRINTF_VARARG_FUNCV(1);
 
 /**
  * Set an error indicating that memory allocation failed.
@@ -72,7 +114,9 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetError(SDL_PRINTF_FORMAT_STRING const cha
  *
  * \returns false.
  *
- * \since This function is available since SDL 3.0.0.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.1.3.
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_OutOfMemory(void);
 
@@ -104,7 +148,9 @@ extern SDL_DECLSPEC bool SDLCALL SDL_OutOfMemory(void);
  *          or an empty string if there hasn't been an error message set since
  *          the last call to SDL_ClearError().
  *
- * \since This function is available since SDL 3.0.0.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.1.3.
  *
  * \sa SDL_ClearError
  * \sa SDL_SetError
@@ -116,7 +162,9 @@ extern SDL_DECLSPEC const char * SDLCALL SDL_GetError(void);
  *
  * \returns true.
  *
- * \since This function is available since SDL 3.0.0.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.1.3.
  *
  * \sa SDL_GetError
  * \sa SDL_SetError
@@ -130,8 +178,43 @@ extern SDL_DECLSPEC bool SDLCALL SDL_ClearError(void);
  *  Private error reporting function - used internally.
  */
 /* @{ */
+
+/**
+ * A macro to standardize error reporting on unsupported operations.
+ *
+ * This simply calls SDL_SetError() with a standardized error string, for
+ * convenience, consistency, and clarity.
+ *
+ * \threadsafety It is safe to call this macro from any thread.
+ *
+ * \since This macro is available since SDL 3.1.3.
+ */
 #define SDL_Unsupported()               SDL_SetError("That operation is not supported")
+
+/**
+ * A macro to standardize error reporting on unsupported operations.
+ *
+ * This simply calls SDL_SetError() with a standardized error string, for
+ * convenience, consistency, and clarity.
+ *
+ * A common usage pattern inside SDL is this:
+ *
+ * ```c
+ * bool MyFunction(const char *str) {
+ *     if (!str) {
+ *         return SDL_InvalidParamError("str");  // returns false.
+ *     }
+ *     DoSomething(str);
+ *     return true;
+ * }
+ * ```
+ *
+ * \threadsafety It is safe to call this macro from any thread.
+ *
+ * \since This macro is available since SDL 3.1.3.
+ */
 #define SDL_InvalidParamError(param)    SDL_SetError("Parameter '%s' is invalid", (param))
+
 /* @} *//* Internal error functions */
 
 /* Ends C function definitions when using C++ */

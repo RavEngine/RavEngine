@@ -32,7 +32,7 @@
 #define SDL_JOYSTICK_HIDAPI_PS4
 #define SDL_JOYSTICK_HIDAPI_PS5
 #define SDL_JOYSTICK_HIDAPI_STADIA
-#define SDL_JOYSTICK_HIDAPI_STEAM // Simple support for BLE Steam Controller, hint is disabled by default
+#define SDL_JOYSTICK_HIDAPI_STEAM
 #define SDL_JOYSTICK_HIDAPI_STEAMDECK
 #define SDL_JOYSTICK_HIDAPI_SWITCH
 #define SDL_JOYSTICK_HIDAPI_WII
@@ -85,6 +85,7 @@ typedef struct SDL_HIDAPI_Device
     bool is_bluetooth;
     SDL_JoystickType joystick_type;
     SDL_GamepadType type;
+    int steam_virtual_gamepad_slot;
 
     struct SDL_HIDAPI_DeviceDriver *driver;
     void *context;
@@ -158,6 +159,12 @@ extern bool HIDAPI_IsDeviceTypePresent(SDL_GamepadType type);
 
 // Return true if a HID device is present and supported as a joystick
 extern bool HIDAPI_IsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name);
+
+// Return the name of a connected device, which should be freed with SDL_free(), or NULL if it's not available
+extern char *HIDAPI_GetDeviceProductName(Uint16 vendor_id, Uint16 product_id);
+
+// Return the manufacturer of a connected device, which should be freed with SDL_free(), or NULL if it's not available
+extern char *HIDAPI_GetDeviceManufacturerName(Uint16 vendor_id, Uint16 product_id);
 
 // Return the type of a joystick if it's present and supported
 extern SDL_JoystickType HIDAPI_GetJoystickTypeFromGUID(SDL_GUID guid);

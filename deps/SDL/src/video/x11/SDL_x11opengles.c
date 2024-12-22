@@ -25,6 +25,7 @@
 #include "SDL_x11video.h"
 #include "SDL_x11opengles.h"
 #include "SDL_x11opengl.h"
+#include "SDL_x11xsync.h"
 
 // EGL implementation of SDL OpenGL support
 
@@ -59,9 +60,9 @@ XVisualInfo *X11_GLES_GetVisual(SDL_VideoDevice *_this, Display *display, int sc
 {
 
     XVisualInfo *egl_visualinfo = NULL;
-    EGLint visual_id;
+    EGLint visual_id = 0;
     XVisualInfo vi_in;
-    int out_count;
+    int out_count = 0;
 
     if (!_this->egl_data) {
         // The EGL library wasn't loaded, SDL_GetError() should have info
@@ -71,8 +72,24 @@ XVisualInfo *X11_GLES_GetVisual(SDL_VideoDevice *_this, Display *display, int sc
     if (_this->egl_data->eglGetConfigAttrib(_this->egl_data->egl_display,
                                             _this->egl_data->egl_config,
                                             EGL_NATIVE_VISUAL_ID,
-                                            &visual_id) == EGL_FALSE ||
-        !visual_id) {
+                                            &visual_id) == EGL_FALSE) {
+        visual_id = 0;
+    }
+    if (visual_id != 0) {
+        vi_in.screen = screen;
+        vi_in.visualid = visual_id;
+        egl_visualinfo = X11_XGetVisualInfo(display, VisualScreenMask | VisualIDMask, &vi_in, &out_count);
+        if (transparent && egl_visualinfo) {
+            Uint32 format = X11_GetPixelFormatFromVisualInfo(display, egl_visualinfo);
+            if (!SDL_ISPIXELFORMAT_ALPHA(format)) {
+                // not transparent!
+                X11_XFree(egl_visualinfo);
+                egl_visualinfo = NULL;
+            }
+        }
+    }
+    
+    if(!egl_visualinfo) {
         // Use the default visual when all else fails
         vi_in.screen = screen;
         egl_visualinfo = X11_XGetVisualInfo(display,
@@ -95,12 +112,7 @@ XVisualInfo *X11_GLES_GetVisual(SDL_VideoDevice *_this, Display *display, int sc
                 }
             }
         }
-    } else {
-        vi_in.screen = screen;
-        vi_in.visualid = visual_id;
-        egl_visualinfo = X11_XGetVisualInfo(display, VisualScreenMask | VisualIDMask, &vi_in, &out_count);
     }
-
     return egl_visualinfo;
 }
 
@@ -123,7 +135,18 @@ SDL_EGLSurface X11_GLES_GetEGLSurface(SDL_VideoDevice *_this, SDL_Window *window
     return data->egl_surface;
 }
 
-SDL_EGL_SwapWindow_impl(X11)
+bool X11_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window)
+{
+    const bool ret = SDL_EGL_SwapBuffers(_this, window->internal->egl_surface);                       \
+
+#ifdef SDL_VIDEO_DRIVER_X11_XSYNC
+    X11_HandlePresent(window);
+#endif /* SDL_VIDEO_DRIVER_X11_XSYNC */
+
+    return ret;
+}
+
 SDL_EGL_MakeCurrent_impl(X11)
 
 #endif // SDL_VIDEO_DRIVER_X11 && SDL_VIDEO_OPENGL_EGL
+

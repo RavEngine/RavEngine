@@ -125,7 +125,7 @@ typedef struct
     D3D11_FILTER scaleMode;
     D3D11_Shader shader;
     const float *YCbCr_matrix;
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     // YV12 texture support
     bool yuv;
     ID3D11Texture2D *mainTextureU;
@@ -307,10 +307,9 @@ static void D3D11_DestroyTexture(SDL_Renderer *renderer, SDL_Texture *texture);
 static void D3D11_ReleaseAll(SDL_Renderer *renderer)
 {
     D3D11_RenderData *data = (D3D11_RenderData *)renderer->internal;
-    SDL_Texture *texture = NULL;
 
     // Release all textures
-    for (texture = renderer->textures; texture; texture = texture->next) {
+    for (SDL_Texture *texture = renderer->textures; texture; texture = texture->next) {
         D3D11_DestroyTexture(renderer, texture);
     }
 
@@ -336,7 +335,7 @@ static void D3D11_ReleaseAll(SDL_Renderer *renderer)
                 SAFE_RELEASE(data->blendModes[i].blendState);
             }
             SDL_free(data->blendModes);
-
+            data->blendModes = NULL;
             data->blendModesCount = 0;
         }
         for (i = 0; i < SDL_arraysize(data->pixelShaders); ++i) {
@@ -982,37 +981,6 @@ static void D3D11_ReleaseMainRenderTargetView(SDL_Renderer *renderer)
     SAFE_RELEASE(data->mainRenderTargetView);
 }
 
-static HRESULT D3D11_UpdateForWindowSizeChange(SDL_Renderer *renderer);
-
-static HRESULT D3D11_HandleDeviceLost(SDL_Renderer *renderer)
-{
-    HRESULT result = S_OK;
-
-    D3D11_ReleaseAll(renderer);
-
-    result = D3D11_CreateDeviceResources(renderer);
-    if (FAILED(result)) {
-        // D3D11_CreateDeviceResources will set the SDL error
-        return result;
-    }
-
-    result = D3D11_UpdateForWindowSizeChange(renderer);
-    if (FAILED(result)) {
-        // D3D11_UpdateForWindowSizeChange will set the SDL error
-        return result;
-    }
-
-    // Let the application know that the device has been reset
-    {
-        SDL_Event event;
-        event.type = SDL_EVENT_RENDER_DEVICE_RESET;
-        event.common.timestamp = 0;
-        SDL_PushEvent(&event);
-    }
-
-    return S_OK;
-}
-
 // Initialize all resources that change when the window's size changes.
 static HRESULT D3D11_CreateWindowSizeDependentResources(SDL_Renderer *renderer)
 {
@@ -1043,15 +1011,7 @@ static HRESULT D3D11_CreateWindowSizeDependentResources(SDL_Renderer *renderer)
                                               w, h,
                                               DXGI_FORMAT_UNKNOWN,
                                               0);
-        if (result == DXGI_ERROR_DEVICE_REMOVED) {
-            // If the device was removed for any reason, a new device and swap chain will need to be created.
-            D3D11_HandleDeviceLost(renderer);
-
-            /* Everything is set up now. Do not continue execution of this method. HandleDeviceLost will reenter this method
-             * and correctly set up the new device.
-             */
-            goto done;
-        } else if (FAILED(result)) {
+        if (FAILED(result)) {
             WIN_SetErrorFromHRESULT(SDL_COMPOSE_ERROR("IDXGISwapChain::ResizeBuffers"), result);
             goto done;
         }
@@ -1108,6 +1068,30 @@ done:
     return result;
 }
 
+static bool D3D11_HandleDeviceLost(SDL_Renderer *renderer)
+{
+    bool recovered = false;
+
+    D3D11_ReleaseAll(renderer);
+
+    if (SUCCEEDED(D3D11_CreateDeviceResources(renderer)) &&
+        SUCCEEDED(D3D11_CreateWindowSizeDependentResources(renderer))) {
+        recovered = true;
+    } else {
+        SDL_LogError(SDL_LOG_CATEGORY_RENDER, "Renderer couldn't recover from device lost: %s\n", SDL_GetError());
+        D3D11_ReleaseAll(renderer);
+    }
+
+    // Let the application know that the device has been reset or lost
+    SDL_Event event;
+    SDL_zero(event);
+    event.type = recovered ? SDL_EVENT_RENDER_DEVICE_RESET : SDL_EVENT_RENDER_DEVICE_LOST;
+    event.render.windowID = SDL_GetWindowID(SDL_GetRenderWindow(renderer));
+    SDL_PushEvent(&event);
+
+    return recovered;
+}
+
 // This method is called when the window's size changes.
 static HRESULT D3D11_UpdateForWindowSizeChange(SDL_Renderer *renderer)
 {
@@ -1161,6 +1145,10 @@ static bool D3D11_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SD
     DXGI_FORMAT textureFormat = SDLPixelFormatToDXGITextureFormat(texture->format, renderer->output_colorspace);
     D3D11_TEXTURE2D_DESC textureDesc;
     D3D11_SHADER_RESOURCE_VIEW_DESC resourceViewDesc;
+
+    if (!rendererData->d3dDevice) {
+        return SDL_SetError("Device lost and couldn't be recovered");
+    }
 
     if (textureFormat == DXGI_FORMAT_UNKNOWN) {
         return SDL_SetError("%s, An unsupported SDL pixel format (0x%x) was specified",
@@ -1227,7 +1215,7 @@ static bool D3D11_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SD
         }
     }
     SDL_SetPointerProperty(SDL_GetTextureProperties(texture), SDL_PROP_TEXTURE_D3D11_TEXTURE_POINTER, textureData->mainTexture);
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     if (texture->format == SDL_PIXELFORMAT_YV12 ||
         texture->format == SDL_PIXELFORMAT_IYUV) {
         textureData->yuv = true;
@@ -1301,7 +1289,7 @@ static bool D3D11_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SD
     if (FAILED(result)) {
         return WIN_SetErrorFromHRESULT(SDL_COMPOSE_ERROR("ID3D11Device1::CreateShaderResourceView"), result);
     }
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     if (textureData->yuv) {
         result = ID3D11Device_CreateShaderResourceView(rendererData->d3dDevice,
                                                        (ID3D11Resource *)textureData->mainTextureU,
@@ -1370,7 +1358,7 @@ static void D3D11_DestroyTexture(SDL_Renderer *renderer,
     SAFE_RELEASE(data->mainTextureResourceView);
     SAFE_RELEASE(data->mainTextureRenderTargetView);
     SAFE_RELEASE(data->stagingTexture);
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     SAFE_RELEASE(data->mainTextureU);
     SAFE_RELEASE(data->mainTextureResourceViewU);
     SAFE_RELEASE(data->mainTextureV);
@@ -1485,7 +1473,7 @@ static bool D3D11_UpdateTextureInternal(D3D11_RenderData *rendererData, ID3D11Te
     return true;
 }
 
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
 static bool D3D11_UpdateTextureNV(SDL_Renderer *renderer, SDL_Texture *texture,
                                  const SDL_Rect *rect,
                                  const Uint8 *Yplane, int Ypitch,
@@ -1509,7 +1497,7 @@ static bool D3D11_UpdateTexture(SDL_Renderer *renderer, SDL_Texture *texture,
         return SDL_SetError("Texture is not currently available");
     }
 
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     if (textureData->nv12) {
         const Uint8 *Yplane = (const Uint8 *)srcPixels;
         const Uint8 *UVplane = Yplane + rect->h * srcPitch;
@@ -1537,7 +1525,7 @@ static bool D3D11_UpdateTexture(SDL_Renderer *renderer, SDL_Texture *texture,
     return true;
 }
 
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
 static bool D3D11_UpdateTextureYUV(SDL_Renderer *renderer, SDL_Texture *texture,
                                   const SDL_Rect *rect,
                                   const Uint8 *Yplane, int Ypitch,
@@ -1689,7 +1677,7 @@ static bool D3D11_LockTexture(SDL_Renderer *renderer, SDL_Texture *texture,
     if (!textureData) {
         return SDL_SetError("Texture is not currently available");
     }
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     if (textureData->yuv || textureData->nv12) {
         // It's more efficient to upload directly...
         if (!textureData->pixels) {
@@ -1766,7 +1754,7 @@ static void D3D11_UnlockTexture(SDL_Renderer *renderer, SDL_Texture *texture)
     if (!textureData) {
         return;
     }
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     if (textureData->yuv || textureData->nv12) {
         const SDL_Rect *rect = &textureData->locked_rect;
         void *pixels =
@@ -2345,7 +2333,7 @@ static bool D3D11_SetCopyState(SDL_Renderer *renderer, const SDL_RenderCommand *
     default:
         return SDL_SetError("Unknown scale mode: %d\n", textureData->scaleMode);
     }
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     if (textureData->yuv) {
         ID3D11ShaderResourceView *shaderResources[3];
 
@@ -2394,6 +2382,10 @@ static bool D3D11_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd
 {
     D3D11_RenderData *rendererData = (D3D11_RenderData *)renderer->internal;
     const int viewportRotation = D3D11_GetRotationForCurrentRenderTarget(renderer);
+
+    if (!rendererData->d3dDevice) {
+        return SDL_SetError("Device lost and couldn't be recovered");
+    }
 
     if (rendererData->pixelSizeChanged) {
         D3D11_UpdateForWindowSizeChange(renderer);
@@ -2613,6 +2605,10 @@ static bool D3D11_RenderPresent(SDL_Renderer *renderer)
     HRESULT result;
     DXGI_PRESENT_PARAMETERS parameters;
 
+    if (!data->d3dDevice) {
+        return SDL_SetError("Device lost and couldn't be recovered");
+    }
+
     SDL_zero(parameters);
 
     /* The application may optionally specify "dirty" or "scroll"
@@ -2634,10 +2630,15 @@ static bool D3D11_RenderPresent(SDL_Renderer *renderer)
          * must recreate all device resources.
          */
         if (result == DXGI_ERROR_DEVICE_REMOVED) {
-            D3D11_HandleDeviceLost(renderer);
+            if (D3D11_HandleDeviceLost(renderer)) {
+                SDL_SetError("Present failed, device lost");
+            } else {
+                // Recovering from device lost failed, error is already set
+            }
         } else if (result == DXGI_ERROR_INVALID_CALL) {
             // We probably went through a fullscreen <-> windowed transition
             D3D11_CreateWindowSizeDependentResources(renderer);
+            WIN_SetErrorFromHRESULT(SDL_COMPOSE_ERROR("IDXGISwapChain::Present"), result);
         } else {
             WIN_SetErrorFromHRESULT(SDL_COMPOSE_ERROR("IDXGISwapChain::Present"), result);
         }
@@ -2692,7 +2693,7 @@ static bool D3D11_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL
     renderer->SupportsBlendMode = D3D11_SupportsBlendMode;
     renderer->CreateTexture = D3D11_CreateTexture;
     renderer->UpdateTexture = D3D11_UpdateTexture;
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     renderer->UpdateTextureYUV = D3D11_UpdateTextureYUV;
     renderer->UpdateTextureNV = D3D11_UpdateTextureNV;
 #endif

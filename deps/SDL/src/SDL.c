@@ -55,6 +55,10 @@
 #include "video/SDL_surface_c.h"
 #include "video/SDL_video_c.h"
 #include "filesystem/SDL_filesystem_c.h"
+#include "file/SDL_asyncio_c.h"
+#ifdef SDL_PLATFORM_ANDROID
+#include "core/android/SDL_android.h"
+#endif
 
 #define SDL_INIT_EVERYTHING ~0U
 
@@ -179,6 +183,7 @@ static bool SDL_MainIsReady = false;
 #else
 static bool SDL_MainIsReady = true;
 #endif
+static SDL_ThreadID SDL_MainThreadID = 0;
 static bool SDL_bInMainQuit = false;
 static Uint8 SDL_SubsystemRefCount[32];
 
@@ -246,15 +251,47 @@ static bool SDL_InitOrIncrementSubsystem(Uint32 subsystem)
 void SDL_SetMainReady(void)
 {
     SDL_MainIsReady = true;
+
+    if (SDL_MainThreadID == 0) {
+        SDL_MainThreadID = SDL_GetCurrentThreadID();
+    }
+}
+
+bool SDL_IsMainThread(void)
+{
+    if (SDL_MainThreadID == 0) {
+        // Not initialized yet?
+        return true;
+    }
+    if (SDL_MainThreadID == SDL_GetCurrentThreadID()) {
+        return true;
+    }
+    return false;
 }
 
 // Initialize all the subsystems that require initialization before threads start
 void SDL_InitMainThread(void)
 {
+    static bool done_info = false;
+
     SDL_InitTLSData();
     SDL_InitEnvironment();
     SDL_InitTicks();
     SDL_InitFilesystem();
+
+    if (!done_info) {
+        const char *value;
+
+        value = SDL_GetAppMetadataProperty(SDL_PROP_APP_METADATA_NAME_STRING);
+        SDL_LogInfo(SDL_LOG_CATEGORY_SYSTEM, "App name: %s", value ? value : "<unspecified>");
+        value = SDL_GetAppMetadataProperty(SDL_PROP_APP_METADATA_VERSION_STRING);
+        SDL_LogInfo(SDL_LOG_CATEGORY_SYSTEM, "App version: %s", value ? value : "<unspecified>");
+        value = SDL_GetAppMetadataProperty(SDL_PROP_APP_METADATA_IDENTIFIER_STRING);
+        SDL_LogInfo(SDL_LOG_CATEGORY_SYSTEM, "App ID: %s", value ? value : "<unspecified>");
+        SDL_LogInfo(SDL_LOG_CATEGORY_SYSTEM, "SDL revision: %s", SDL_REVISION);
+
+        done_info = true;
+    }
 }
 
 static void SDL_QuitMainThread(void)
@@ -309,6 +346,11 @@ bool SDL_InitSubSystem(SDL_InitFlags flags)
             if (!SDL_InitOrIncrementSubsystem(SDL_INIT_EVENTS)) {
                 goto quit_and_error;
             }
+
+            // We initialize video on the main thread
+            // On Apple platforms this is a requirement.
+            // On other platforms, this is the definition.
+            SDL_MainThreadID = SDL_GetCurrentThreadID();
 
             SDL_IncrementSubsystemRefCount(SDL_INIT_VIDEO);
             if (!SDL_VideoInit(NULL)) {
@@ -606,6 +648,7 @@ void SDL_Quit(void)
 #endif
 
     SDL_QuitTimers();
+    SDL_QuitAsyncIO();
 
     SDL_SetObjectsInvalid();
     SDL_AssertionsQuit();
@@ -643,7 +686,9 @@ const char *SDL_GetRevision(void)
 // Get the name of the platform
 const char *SDL_GetPlatform(void)
 {
-#if defined(SDL_PLATFORM_AIX)
+#if defined(SDL_PLATFORM_PRIVATE)
+    return SDL_PLATFORM_PRIVATE_NAME;
+#elif defined(SDL_PLATFORM_AIX)
     return "AIX";
 #elif defined(SDL_PLATFORM_ANDROID)
     return "Android";
@@ -697,8 +742,6 @@ const char *SDL_GetPlatform(void)
     return "PlayStation Portable";
 #elif defined(SDL_PLATFORM_VITA)
     return "PlayStation Vita";
-#elif defined(SDL_PLATFORM_NGAGE)
-    return "Nokia N-Gage";
 #elif defined(SDL_PLATFORM_3DS)
     return "Nintendo 3DS";
 #elif defined(__managarm__)
@@ -711,7 +754,6 @@ const char *SDL_GetPlatform(void)
 bool SDL_IsTablet(void)
 {
 #ifdef SDL_PLATFORM_ANDROID
-    extern bool SDL_IsAndroidTablet(void);
     return SDL_IsAndroidTablet();
 #elif defined(SDL_PLATFORM_IOS)
     extern bool SDL_IsIPad(void);
@@ -724,7 +766,6 @@ bool SDL_IsTablet(void)
 bool SDL_IsTV(void)
 {
 #ifdef SDL_PLATFORM_ANDROID
-    extern bool SDL_IsAndroidTV(void);
     return SDL_IsAndroidTV();
 #elif defined(SDL_PLATFORM_IOS)
     extern bool SDL_IsAppleTV(void);
@@ -732,6 +773,44 @@ bool SDL_IsTV(void)
 #else
     return false;
 #endif
+}
+
+static SDL_Sandbox SDL_DetectSandbox(void)
+{
+#if defined(SDL_PLATFORM_LINUX)
+    if (access("/.flatpak-info", F_OK) == 0) {
+        return SDL_SANDBOX_FLATPAK;
+    }
+
+    /* For Snap, we check multiple variables because they might be set for
+     * unrelated reasons. This is the same thing WebKitGTK does. */
+    if (SDL_getenv("SNAP") && SDL_getenv("SNAP_NAME") && SDL_getenv("SNAP_REVISION")) {
+        return SDL_SANDBOX_SNAP;
+    }
+
+    if (access("/run/host/container-manager", F_OK) == 0) {
+        return SDL_SANDBOX_UNKNOWN_CONTAINER;
+    }
+
+#elif defined(SDL_PLATFORM_MACOS)
+    if (SDL_getenv("APP_SANDBOX_CONTAINER_ID")) {
+        return SDL_SANDBOX_MACOS;
+    }
+#endif
+
+    return SDL_SANDBOX_NONE;
+}
+
+SDL_Sandbox SDL_GetSandbox(void)
+{
+    static SDL_Sandbox sandbox;
+    static bool sandbox_initialized;
+
+    if (!sandbox_initialized) {
+        sandbox = SDL_DetectSandbox();
+        sandbox_initialized = true;
+    }
+    return sandbox;
 }
 
 #ifdef SDL_PLATFORM_WIN32

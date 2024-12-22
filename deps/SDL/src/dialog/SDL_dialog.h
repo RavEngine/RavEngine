@@ -19,18 +19,4 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "SDL_internal.h"
-
-extern bool SDL_NGAGE_CreateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window *window, SDL_PixelFormat *format, void **pixels, int *pitch);
-extern bool SDL_NGAGE_UpdateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window *window, const SDL_Rect *rects, int numrects);
-extern void SDL_NGAGE_DestroyWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window *window);
-
-/****************************************************************************/
-// Runtime
-/****************************************************************************/
-
-class NGAGE_Runtime
-{
-  public:
-    IMPORT_C static void GetScreenInfo(TScreenInfoV01 &screenInfo2);
-};
+void SDL_SYS_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_DialogFileCallback callback, void *userdata, SDL_PropertiesID props);

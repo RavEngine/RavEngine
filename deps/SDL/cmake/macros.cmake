@@ -299,8 +299,8 @@ function(check_linker_supports_version_file VAR)
     set(LINKER_SUPPORTS_VERSION_SCRIPT FALSE)
   else()
     cmake_push_check_state(RESET)
-    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/dummy.sym" "n_0 {\n global:\n  func;\n local: *;\n};\n")
-    list(APPEND CMAKE_REQUIRED_LINK_OPTIONS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/dummy.sym")
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/dummy.sym" "n_0 {\n global:\n  func;\n local: *;\n};\n")
+    list(APPEND CMAKE_REQUIRED_LINK_OPTIONS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/dummy.sym")
     check_c_source_compiles("int func(void) {return 0;} int main(int argc,char*argv[]){(void)argc;(void)argv;return func();}" LINKER_SUPPORTS_VERSION_SCRIPT FAIL_REGEX "(unsupported|syntax error|unrecognized option)")
     cmake_pop_check_state()
   endif()
@@ -394,11 +394,21 @@ function(SDL_PrintSummary)
     message(STATUS "")
   endif()
 
-  if(UNIX AND NOT (ANDROID OR APPLE OR EMSCRIPTEN))
+  if(UNIX AND NOT (ANDROID OR APPLE OR EMSCRIPTEN OR HAIKU OR RISCOS))
     if(NOT (HAVE_X11 OR HAVE_WAYLAND))
-      message(STATUS "SDL is being built without a X11 or wayland video driver.")
-      message(STATUS "The library will not be able to create windows on most unix environments.")
-      message(STATUS "")
+      if(NOT SDL_UNIX_CONSOLE_BUILD)
+        message(FATAL_ERROR
+          "SDL could not find X11 or Wayland development libraries on your system. "
+          "This means SDL will not be able to create windows on a typical unix operating system. "
+          "Most likely, this is not wanted."
+          "\n"
+          "On Linux, install the packages listed at "
+          "https://github.com/libsdl-org/SDL/blob/main/docs/README-linux.md#build-dependencies "
+          "\n"
+          "If you really don't need desktop windows, the documentation tells you how to skip this check. "
+          "https://github.com/libsdl-org/SDL/blob/main/docs/README-cmake.md#cmake-fails-to-build-without-x11-or-wayland-support\n"
+        )
+      endif()
     endif()
   endif()
 endfunction()

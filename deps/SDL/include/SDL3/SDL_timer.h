@@ -38,16 +38,137 @@ extern "C" {
 #endif
 
 /* SDL time constants */
+
+/**
+ * Number of milliseconds in a second.
+ *
+ * This is always 1000.
+ *
+ * \since This macro is available since SDL 3.1.3.
+ */
 #define SDL_MS_PER_SECOND   1000
+
+/**
+ * Number of microseconds in a second.
+ *
+ * This is always 1000000.
+ *
+ * \since This macro is available since SDL 3.1.3.
+ */
 #define SDL_US_PER_SECOND   1000000
+
+/**
+ * Number of nanoseconds in a second.
+ *
+ * This is always 1000000000.
+ *
+ * \since This macro is available since SDL 3.1.3.
+ */
 #define SDL_NS_PER_SECOND   1000000000LL
+
+/**
+ * Number of nanoseconds in a millisecond.
+ *
+ * This is always 1000000.
+ *
+ * \since This macro is available since SDL 3.1.3.
+ */
 #define SDL_NS_PER_MS       1000000
+
+/**
+ * Number of nanoseconds in a microsecond.
+ *
+ * This is always 1000.
+ *
+ * \since This macro is available since SDL 3.1.3.
+ */
 #define SDL_NS_PER_US       1000
+
+/**
+ * Convert seconds to nanoseconds.
+ *
+ * This only converts whole numbers, not fractional seconds.
+ *
+ * \param S the number of seconds to convert.
+ * \returns S, expressed in nanoseconds.
+ *
+ * \threadsafety It is safe to call this macro from any thread.
+ *
+ * \since This macro is available since SDL 3.1.3.
+ */
 #define SDL_SECONDS_TO_NS(S)    (((Uint64)(S)) * SDL_NS_PER_SECOND)
+
+/**
+ * Convert nanoseconds to seconds.
+ *
+ * This performs a division, so the results can be dramatically different if
+ * `NS` is an integer or floating point value.
+ *
+ * \param NS the number of nanoseconds to convert.
+ * \returns NS, expressed in seconds.
+ *
+ * \threadsafety It is safe to call this macro from any thread.
+ *
+ * \since This macro is available since SDL 3.1.3.
+ */
 #define SDL_NS_TO_SECONDS(NS)   ((NS) / SDL_NS_PER_SECOND)
+
+/**
+ * Convert milliseconds to nanoseconds.
+ *
+ * This only converts whole numbers, not fractional milliseconds.
+ *
+ * \param MS the number of milliseconds to convert.
+ * \returns MS, expressed in nanoseconds.
+ *
+ * \threadsafety It is safe to call this macro from any thread.
+ *
+ * \since This macro is available since SDL 3.1.3.
+ */
 #define SDL_MS_TO_NS(MS)        (((Uint64)(MS)) * SDL_NS_PER_MS)
+
+/**
+ * Convert nanoseconds to milliseconds.
+ *
+ * This performs a division, so the results can be dramatically different if
+ * `NS` is an integer or floating point value.
+ *
+ * \param NS the number of nanoseconds to convert.
+ * \returns NS, expressed in milliseconds.
+ *
+ * \threadsafety It is safe to call this macro from any thread.
+ *
+ * \since This macro is available since SDL 3.1.3.
+ */
 #define SDL_NS_TO_MS(NS)        ((NS) / SDL_NS_PER_MS)
+
+/**
+ * Convert microseconds to nanoseconds.
+ *
+ * This only converts whole numbers, not fractional microseconds.
+ *
+ * \param US the number of microseconds to convert.
+ * \returns US, expressed in nanoseconds.
+ *
+ * \threadsafety It is safe to call this macro from any thread.
+ *
+ * \since This macro is available since SDL 3.1.3.
+ */
 #define SDL_US_TO_NS(US)        (((Uint64)(US)) * SDL_NS_PER_US)
+
+/**
+ * Convert nanoseconds to microseconds.
+ *
+ * This performs a division, so the results can be dramatically different if
+ * `NS` is an integer or floating point value.
+ *
+ * \param NS the number of nanoseconds to convert.
+ * \returns NS, expressed in microseconds.
+ *
+ * \threadsafety It is safe to call this macro from any thread.
+ *
+ * \since This macro is available since SDL 3.1.3.
+ */
 #define SDL_NS_TO_US(NS)        ((NS) / SDL_NS_PER_US)
 
 /**
@@ -56,7 +177,9 @@ extern "C" {
  * \returns an unsigned 64-bit value representing the number of milliseconds
  *          since the SDL library initialized.
  *
- * \since This function is available since SDL 3.0.0.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.1.3.
  */
 extern SDL_DECLSPEC Uint64 SDLCALL SDL_GetTicks(void);
 
@@ -66,7 +189,9 @@ extern SDL_DECLSPEC Uint64 SDLCALL SDL_GetTicks(void);
  * \returns an unsigned 64-bit value representing the number of nanoseconds
  *          since the SDL library initialized.
  *
- * \since This function is available since SDL 3.0.0.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.1.3.
  */
 extern SDL_DECLSPEC Uint64 SDLCALL SDL_GetTicksNS(void);
 
@@ -81,7 +206,9 @@ extern SDL_DECLSPEC Uint64 SDLCALL SDL_GetTicksNS(void);
  *
  * \returns the current counter value.
  *
- * \since This function is available since SDL 3.0.0.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.1.3.
  *
  * \sa SDL_GetPerformanceFrequency
  */
@@ -92,7 +219,9 @@ extern SDL_DECLSPEC Uint64 SDLCALL SDL_GetPerformanceCounter(void);
  *
  * \returns a platform-specific count per second.
  *
- * \since This function is available since SDL 3.0.0.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.1.3.
  *
  * \sa SDL_GetPerformanceCounter
  */
@@ -107,9 +236,26 @@ extern SDL_DECLSPEC Uint64 SDLCALL SDL_GetPerformanceFrequency(void);
  *
  * \param ms the number of milliseconds to delay.
  *
- * \since This function is available since SDL 3.0.0.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.1.3.
  */
 extern SDL_DECLSPEC void SDLCALL SDL_Delay(Uint32 ms);
+
+/**
+ * Wait a specified number of nanoseconds before returning.
+ *
+ * This function waits a specified number of nanoseconds before returning. It
+ * waits at least the specified time, but possibly longer due to OS
+ * scheduling.
+ *
+ * \param ns the number of nanoseconds to delay.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.1.3.
+ */
+extern SDL_DECLSPEC void SDLCALL SDL_DelayNS(Uint64 ns);
 
 /**
  * Wait a specified number of nanoseconds before returning.
@@ -120,14 +266,16 @@ extern SDL_DECLSPEC void SDLCALL SDL_Delay(Uint32 ms);
  *
  * \param ns the number of nanoseconds to delay.
  *
- * \since This function is available since SDL 3.0.0.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.1.6.
  */
-extern SDL_DECLSPEC void SDLCALL SDL_DelayNS(Uint64 ns);
+extern SDL_DECLSPEC void SDLCALL SDL_DelayPrecise(Uint64 ns);
 
 /**
  * Definition of the timer ID type.
  *
- * \since This datatype is available since SDL 3.0.0.
+ * \since This datatype is available since SDL 3.1.3.
  */
 typedef Uint32 SDL_TimerID;
 
@@ -151,7 +299,7 @@ typedef Uint32 SDL_TimerID;
  *               thread; the application is responsible for locking resources
  *               the callback touches that need to be protected.
  *
- * \since This datatype is available since SDL 3.0.0.
+ * \since This datatype is available since SDL 3.1.3.
  *
  * \sa SDL_AddTimer
  */
@@ -186,7 +334,7 @@ typedef Uint32 (SDLCALL *SDL_TimerCallback)(void *userdata, SDL_TimerID timerID,
  *
  * \threadsafety It is safe to call this function from any thread.
  *
- * \since This function is available since SDL 3.0.0.
+ * \since This function is available since SDL 3.1.3.
  *
  * \sa SDL_AddTimerNS
  * \sa SDL_RemoveTimer
@@ -213,7 +361,7 @@ extern SDL_DECLSPEC SDL_TimerID SDLCALL SDL_AddTimer(Uint32 interval, SDL_TimerC
  *               thread; the application is responsible for locking resources
  *               the callback touches that need to be protected.
  *
- * \since This datatype is available since SDL 3.0.0.
+ * \since This datatype is available since SDL 3.1.3.
  *
  * \sa SDL_AddTimerNS
  */
@@ -248,7 +396,7 @@ typedef Uint64 (SDLCALL *SDL_NSTimerCallback)(void *userdata, SDL_TimerID timerI
  *
  * \threadsafety It is safe to call this function from any thread.
  *
- * \since This function is available since SDL 3.0.0.
+ * \since This function is available since SDL 3.1.3.
  *
  * \sa SDL_AddTimer
  * \sa SDL_RemoveTimer
@@ -262,7 +410,9 @@ extern SDL_DECLSPEC SDL_TimerID SDLCALL SDL_AddTimerNS(Uint64 interval, SDL_NSTi
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
- * \since This function is available since SDL 3.0.0.
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.1.3.
  *
  * \sa SDL_AddTimer
  */

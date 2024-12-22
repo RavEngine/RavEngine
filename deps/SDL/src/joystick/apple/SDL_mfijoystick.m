@@ -392,7 +392,8 @@ static bool IOS_AddMFIJoystickDevice(SDL_JoystickDeviceItem *device, GCControlle
     device->is_switch_joyconL = IsControllerSwitchJoyConL(controller);
     device->is_switch_joyconR = IsControllerSwitchJoyConR(controller);
 #ifdef SDL_JOYSTICK_HIDAPI
-    if ((device->is_xbox && HIDAPI_IsDeviceTypePresent(SDL_GAMEPAD_TYPE_XBOXONE)) ||
+    if ((device->is_xbox && (HIDAPI_IsDeviceTypePresent(SDL_GAMEPAD_TYPE_XBOXONE) ||
+                             HIDAPI_IsDeviceTypePresent(SDL_GAMEPAD_TYPE_XBOX360))) ||
         (device->is_ps4 && HIDAPI_IsDeviceTypePresent(SDL_GAMEPAD_TYPE_PS4)) ||
         (device->is_ps5 && HIDAPI_IsDeviceTypePresent(SDL_GAMEPAD_TYPE_PS5)) ||
         (device->is_switch_pro && HIDAPI_IsDeviceTypePresent(SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO)) ||
@@ -404,6 +405,10 @@ static bool IOS_AddMFIJoystickDevice(SDL_JoystickDeviceItem *device, GCControlle
         return false;
     }
 #endif
+    if (device->is_xbox && SDL_strncmp(name, "GamePad-", 8) == 0) {
+        // This is a Steam Virtual Gamepad, which isn't supported by GCController
+        return false;
+    }
     CheckControllerSiriRemote(controller, &device->is_siri_remote);
 
     if (device->is_siri_remote && !SDL_GetHintBoolean(SDL_HINT_TV_REMOTE_AS_JOYSTICK, true)) {
@@ -490,6 +495,10 @@ static bool IOS_AddMFIJoystickDevice(SDL_JoystickDeviceItem *device, GCControlle
 #endif
     } else {
         // We don't know how to get input events from this device
+        return false;
+    }
+
+    if (SDL_ShouldIgnoreJoystick(vendor, product, 0, name)) {
         return false;
     }
 
@@ -660,10 +669,6 @@ static bool IOS_AddMFIJoystickDevice(SDL_JoystickDeviceItem *device, GCControlle
         signature = device->button_mask;
     }
     device->guid = SDL_CreateJoystickGUID(SDL_HARDWARE_BUS_BLUETOOTH, vendor, product, signature, NULL, name, 'm', subtype);
-
-    if (SDL_ShouldIgnoreJoystick(name, device->guid)) {
-        return false;
-    }
 
     /* This will be set when the first button press of the controller is
      * detected. */

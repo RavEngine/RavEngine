@@ -82,30 +82,31 @@ typedef struct
     // Get absolute mouse coordinates. (x) and (y) are never NULL and set to zero before call.
     SDL_MouseButtonFlags (*GetGlobalMouseState)(float *x, float *y);
 
+    // Platform-specific system mouse transform
+    void (*ApplySystemScale)(void *internal, Uint64 timestamp, SDL_Window *window, SDL_MouseID mouseID, float *x, float *y);
+    void *system_scale_data;
+
     // Data common to all mice
     SDL_Window *focus;
     float x;
     float y;
-    float xdelta;
-    float ydelta;
+    float x_accu;
+    float y_accu;
     float last_x, last_y; // the last reported x and y coordinates
     bool has_position;
     bool relative_mode;
-    bool relative_mode_warp;
     bool relative_mode_warp_motion;
     bool relative_mode_cursor_visible;
+    bool relative_mode_center;
     bool warp_emulation_hint;
     bool warp_emulation_active;
     bool warp_emulation_prohibited;
     Uint64 last_center_warp_time_ns;
-    int relative_mode_clip_interval;
     bool enable_normal_speed_scale;
     float normal_speed_scale;
     bool enable_relative_speed_scale;
     float relative_speed_scale;
     bool enable_relative_system_scale;
-    int num_system_scale_values;
-    float *system_scale_values;
     Uint32 double_click_time;
     int double_click_radius;
     bool touch_mouse_events;
@@ -156,14 +157,14 @@ extern SDL_Mouse *SDL_GetMouse(void);
 // Set the default mouse cursor
 extern void SDL_SetDefaultCursor(SDL_Cursor *cursor);
 
+// Get the preferred default system cursor
+extern SDL_SystemCursor SDL_GetDefaultSystemCursor(void);
+
 // Set the mouse focus window
 extern void SDL_SetMouseFocus(SDL_Window *window);
 
 // Update the mouse capture window
 extern bool SDL_UpdateMouseCapture(bool force_release);
-
-// You can set either a single scale, or a set of {speed, scale} values in sorted order
-extern bool SDL_SetMouseSystemScale(int num_values, const float *values);
 
 // Send a mouse motion event
 extern void SDL_SendMouseMotion(Uint64 timestamp, SDL_Window *window, SDL_MouseID mouseID, bool relative, float x, float y);

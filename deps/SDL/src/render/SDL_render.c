@@ -23,6 +23,7 @@
 // The SDL 2D rendering system
 
 #include "SDL_sysrender.h"
+#include "SDL_render_debug_font.h"
 #include "software/SDL_render_sw_c.h"
 #include "../video/SDL_pixels_c.h"
 #include "../video/SDL_video_c.h"
@@ -106,10 +107,6 @@ this should probably be removed at some point in the future.  --ryan. */
 
 #ifndef SDL_RENDER_DISABLED
 static const SDL_RenderDriver *render_drivers[] = {
-// Temporarily list the GPU renderer first so we get testing feedback
-#ifdef SDL_VIDEO_RENDER_GPU
-    &GPU_RenderDriver,
-#endif
 #ifdef SDL_VIDEO_RENDER_D3D11
     &D3D11_RenderDriver,
 #endif
@@ -139,6 +136,9 @@ static const SDL_RenderDriver *render_drivers[] = {
 #endif
 #ifdef SDL_VIDEO_RENDER_VULKAN
     &VULKAN_RenderDriver,
+#endif
+#ifdef SDL_VIDEO_RENDER_GPU
+    &GPU_RenderDriver,
 #endif
 #ifdef SDL_VIDEO_RENDER_SW
     &SW_RenderDriver,
@@ -1450,7 +1450,7 @@ SDL_Texture *SDL_CreateTextureWithProperties(SDL_Renderer *renderer, SDL_Propert
         renderer->textures = texture;
 
         if (SDL_ISPIXELFORMAT_FOURCC(texture->format)) {
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
             texture->yuv = SDL_SW_CreateYUVTexture(texture->format, texture->colorspace, w, h);
 #else
             SDL_SetError("SDL not built with YUV support");
@@ -1811,13 +1811,13 @@ bool SDL_GetTextureColorMod(SDL_Texture *texture, Uint8 *r, Uint8 *g, Uint8 *b)
     }
 
     if (r) {
-        *r = (Uint8)(fR * 255.0f);
+        *r = (Uint8)SDL_roundf(SDL_clamp(fR, 0.0f, 1.0f) * 255.0f);
     }
     if (g) {
-        *g = (Uint8)(fG * 255.0f);
+        *g = (Uint8)SDL_roundf(SDL_clamp(fG, 0.0f, 1.0f) * 255.0f);
     }
     if (b) {
-        *b = (Uint8)(fB * 255.0f);
+        *b = (Uint8)SDL_roundf(SDL_clamp(fB, 0.0f, 1.0f) * 255.0f);
     }
     return true;
 }
@@ -1882,7 +1882,7 @@ bool SDL_GetTextureAlphaMod(SDL_Texture *texture, Uint8 *alpha)
     }
 
     if (alpha) {
-        *alpha = (Uint8)(fA * 255.0f);
+        *alpha = (Uint8)SDL_roundf(SDL_clamp(fA, 0.0f, 1.0f) * 255.0f);
     }
     return true;
 }
@@ -1971,7 +1971,7 @@ bool SDL_GetTextureScaleMode(SDL_Texture *texture, SDL_ScaleMode *scaleMode)
     return true;
 }
 
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
 static bool SDL_UpdateTextureYUV(SDL_Texture *texture, const SDL_Rect *rect,
                                 const void *pixels, int pitch)
 {
@@ -2083,7 +2083,7 @@ bool SDL_UpdateTexture(SDL_Texture *texture, const SDL_Rect *rect, const void *p
 
     if (real_rect.w == 0 || real_rect.h == 0) {
         return true; // nothing to do.
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     } else if (texture->yuv) {
         return SDL_UpdateTextureYUV(texture, &real_rect, pixels, pitch);
 #endif
@@ -2098,7 +2098,7 @@ bool SDL_UpdateTexture(SDL_Texture *texture, const SDL_Rect *rect, const void *p
     }
 }
 
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
 static bool SDL_UpdateTextureYUVPlanar(SDL_Texture *texture, const SDL_Rect *rect,
                                       const Uint8 *Yplane, int Ypitch,
                                       const Uint8 *Uplane, int Upitch,
@@ -2207,7 +2207,7 @@ bool SDL_UpdateYUVTexture(SDL_Texture *texture, const SDL_Rect *rect,
                          const Uint8 *Uplane, int Upitch,
                          const Uint8 *Vplane, int Vpitch)
 {
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     SDL_Renderer *renderer;
     SDL_Rect real_rect;
 
@@ -2273,7 +2273,7 @@ bool SDL_UpdateNVTexture(SDL_Texture *texture, const SDL_Rect *rect,
                         const Uint8 *Yplane, int Ypitch,
                         const Uint8 *UVplane, int UVpitch)
 {
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     SDL_Renderer *renderer;
     SDL_Rect real_rect;
 
@@ -2329,7 +2329,7 @@ bool SDL_UpdateNVTexture(SDL_Texture *texture, const SDL_Rect *rect,
 #endif
 }
 
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
 static bool SDL_LockTextureYUV(SDL_Texture *texture, const SDL_Rect *rect,
                               void **pixels, int *pitch)
 {
@@ -2366,7 +2366,7 @@ bool SDL_LockTexture(SDL_Texture *texture, const SDL_Rect *rect, void **pixels, 
         rect = &full_rect;
     }
 
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     if (texture->yuv) {
         if (!FlushRenderCommandsIfTextureNeeded(texture)) {
             return false;
@@ -2418,7 +2418,7 @@ bool SDL_LockTextureToSurface(SDL_Texture *texture, const SDL_Rect *rect, SDL_Su
     return true;
 }
 
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
 static void SDL_UnlockTextureYUV(SDL_Texture *texture)
 {
     SDL_Texture *native = texture->native;
@@ -2467,7 +2467,7 @@ void SDL_UnlockTexture(SDL_Texture *texture)
     if (texture->access != SDL_TEXTUREACCESS_STREAMING) {
         return;
     }
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     if (texture->yuv) {
         SDL_UnlockTextureYUV(texture);
     } else
@@ -2788,6 +2788,29 @@ static void SDL_RenderLogicalPresentation(SDL_Renderer *renderer)
     }
 }
 
+static bool SDL_RenderVectorFromWindow(SDL_Renderer *renderer, float window_dx, float window_dy, float *restrict dx, float *restrict dy)
+{
+    // Convert from window coordinates to pixels within the window
+    window_dx *= renderer->dpi_scale.x;
+    window_dy *= renderer->dpi_scale.y;
+
+    // Convert from pixels within the window to pixels within the view
+    if (renderer->logical_presentation_mode != SDL_LOGICAL_PRESENTATION_DISABLED) {
+        const SDL_FRect *src = &renderer->logical_src_rect;
+        const SDL_FRect *dst = &renderer->logical_dst_rect;
+        window_dx = (window_dx * src->w) / dst->w;
+        window_dy = (window_dy * src->h) / dst->h;
+    }
+
+    const SDL_RenderViewState *view = &renderer->main_view;
+    window_dx /= view->scale.x;
+    window_dy /= view->scale.y;
+
+    *dx = window_dx;
+    *dy = window_dy;
+    return true;
+}
+
 bool SDL_RenderCoordinatesFromWindow(SDL_Renderer *renderer, float window_x, float window_y, float *x, float *y)
 {
     float render_x, render_y;
@@ -2856,37 +2879,7 @@ bool SDL_ConvertEventToRenderCoordinates(SDL_Renderer *renderer, SDL_Event *even
         SDL_Window *window = SDL_GetWindowFromID(event->motion.windowID);
         if (window == renderer->window) {
             SDL_RenderCoordinatesFromWindow(renderer, event->motion.x, event->motion.y, &event->motion.x, &event->motion.y);
-
-            if (event->motion.xrel != 0.0f) {
-                // Convert from window coordinates to pixels within the window
-                float scale = renderer->dpi_scale.x;
-
-                // Convert from pixels within the window to pixels within the view
-                if (renderer->logical_presentation_mode != SDL_LOGICAL_PRESENTATION_DISABLED) {
-                    const SDL_FRect *src = &renderer->logical_src_rect;
-                    const SDL_FRect *dst = &renderer->logical_dst_rect;
-                    scale = (scale * src->w) / dst->w;
-                }
-
-                // Convert from pixels within the view to render coordinates
-                scale = (scale / renderer->main_view.scale.x);
-                event->motion.xrel *= scale;
-            }
-            if (event->motion.yrel != 0.0f) {
-                // Convert from window coordinates to pixels within the window
-                float scale = renderer->dpi_scale.y;
-
-                // Convert from pixels within the window to pixels within the view
-                if (renderer->logical_presentation_mode != SDL_LOGICAL_PRESENTATION_DISABLED) {
-                    const SDL_FRect *src = &renderer->logical_src_rect;
-                    const SDL_FRect *dst = &renderer->logical_dst_rect;
-                    scale = (scale * src->h) / dst->h;
-                }
-
-                // Convert from pixels within the view to render coordinates
-                scale = (scale / renderer->main_view.scale.y);
-                event->motion.yrel *= scale;
-            }
+            SDL_RenderVectorFromWindow(renderer, event->motion.xrel, event->motion.yrel, &event->motion.xrel, &event->motion.yrel);
         }
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
                event->type == SDL_EVENT_MOUSE_BUTTON_UP) {
@@ -2912,6 +2905,7 @@ bool SDL_ConvertEventToRenderCoordinates(SDL_Renderer *renderer, SDL_Event *even
                 return false;
             }
             SDL_RenderCoordinatesFromWindow(renderer, event->tfinger.x * w, event->tfinger.y * h, &event->tfinger.x, &event->tfinger.y);
+            SDL_RenderVectorFromWindow(renderer, event->tfinger.dx * w, event->tfinger.dy * h, &event->tfinger.dx, &event->tfinger.dy);
         }
     } else if (event->type == SDL_EVENT_PEN_MOTION) {
         SDL_Window *window = SDL_GetWindowFromID(event->pmotion.windowID);
@@ -3005,8 +2999,8 @@ bool SDL_RenderViewportSet(SDL_Renderer *renderer)
 static void GetRenderViewportSize(SDL_Renderer *renderer, SDL_FRect *rect)
 {
     const SDL_RenderViewState *view = renderer->view;
-    const float scale_x = view->current_scale.x;
-    const float scale_y = view->current_scale.y;
+    const float scale_x = view->logical_scale.x;
+    const float scale_y = view->logical_scale.y;
 
     rect->x = 0.0f;
     rect->y = 0.0f;
@@ -3578,8 +3572,7 @@ bool SDL_RenderLines(SDL_Renderer *renderer, const SDL_FPoint *points, int count
         bool isstack1;
         bool isstack2;
         float *xy = SDL_small_alloc(float, 4 * 2 * count, &isstack1);
-        int *indices = SDL_small_alloc(int,
-                                       (4) * 3 * (count - 1) + (2) * 3 * (count), &isstack2);
+        int *indices = SDL_small_alloc(int, (4) * 3 * (count - 1) + (2) * 3 * (count), &isstack2);
 
         if (xy && indices) {
             int i;
@@ -3917,6 +3910,123 @@ bool SDL_RenderTexture(SDL_Renderer *renderer, SDL_Texture *texture, const SDL_F
     texture->last_command_generation = renderer->render_command_generation;
 
     return SDL_RenderTextureInternal(renderer, texture, &real_srcrect, &real_dstrect);
+}
+
+bool SDL_RenderTextureAffine(SDL_Renderer *renderer, SDL_Texture *texture,
+    const SDL_FRect *srcrect, const SDL_FPoint *origin, const SDL_FPoint *right, const SDL_FPoint *down)
+{
+    SDL_FRect real_srcrect;
+    SDL_FRect real_dstrect;
+    bool result;
+
+    CHECK_RENDERER_MAGIC(renderer, false);
+    CHECK_TEXTURE_MAGIC(texture, false);
+
+    if (renderer != texture->renderer) {
+        return SDL_SetError("Texture was not created with this renderer");
+    }
+    if (!renderer->QueueCopyEx && !renderer->QueueGeometry) {
+        return SDL_SetError("Renderer does not support RenderCopyEx");
+    }
+
+#if DONT_DRAW_WHILE_HIDDEN
+    // Don't draw while we're hidden
+    if (renderer->hidden) {
+        return true;
+    }
+#endif
+
+    real_srcrect.x = 0.0f;
+    real_srcrect.y = 0.0f;
+    real_srcrect.w = (float)texture->w;
+    real_srcrect.h = (float)texture->h;
+    if (srcrect) {
+        if (!SDL_GetRectIntersectionFloat(srcrect, &real_srcrect, &real_srcrect)) {
+            return true;
+        }
+    }
+
+    GetRenderViewportSize(renderer, &real_dstrect);
+
+    if (texture->native) {
+        texture = texture->native;
+    }
+
+    texture->last_command_generation = renderer->render_command_generation;
+
+    const float scale_x = renderer->view->current_scale.x;
+    const float scale_y = renderer->view->current_scale.y;
+
+    {
+        float xy[8];
+        const int xy_stride = 2 * sizeof(float);
+        float uv[8];
+        const int uv_stride = 2 * sizeof(float);
+        const int num_vertices = 4;
+        const int *indices = rect_index_order;
+        const int num_indices = 6;
+        const int size_indices = 4;
+
+        float minu = real_srcrect.x / texture->w;
+        float minv = real_srcrect.y / texture->h;
+        float maxu = (real_srcrect.x + real_srcrect.w) / texture->w;
+        float maxv = (real_srcrect.y + real_srcrect.h) / texture->h;
+
+        uv[0] = minu;
+        uv[1] = minv;
+        uv[2] = maxu;
+        uv[3] = minv;
+        uv[4] = maxu;
+        uv[5] = maxv;
+        uv[6] = minu;
+        uv[7] = maxv;
+
+        // (minx, miny)
+        if (origin) {
+            xy[0] = origin->x;
+            xy[1] = origin->y;
+        } else {
+            xy[0] = real_dstrect.x;
+            xy[1] = real_dstrect.y;
+        }
+
+        // (maxx, miny)
+        if (right) {
+            xy[2] = right->x;
+            xy[3] = right->y;
+        } else {
+            xy[2] = real_dstrect.x + real_dstrect.w;
+            xy[3] = real_dstrect.y;
+        }
+
+        // (minx, maxy)
+        if (down) {
+            xy[6] = down->x;
+            xy[7] = down->y;
+        } else {
+            xy[6] = real_dstrect.x;
+            xy[7] = real_dstrect.y + real_dstrect.h;
+        }
+
+        // (maxx, maxy)
+        if (origin || right || down) {
+            xy[4] = xy[2] + xy[6] - xy[0];
+            xy[5] = xy[3] + xy[7] - xy[1];
+        } else {
+            xy[4] = real_dstrect.x + real_dstrect.w;
+            xy[5] = real_dstrect.y + real_dstrect.h;
+        }
+
+        result = QueueCmdGeometry(
+            renderer, texture,
+            xy, xy_stride,
+            &texture->color, 0 /* color_stride */,
+            uv, uv_stride,
+            num_vertices, indices, num_indices, size_indices,
+            scale_x, scale_y, SDL_TEXTURE_ADDRESS_CLAMP
+        );
+    }
+    return result;
 }
 
 bool SDL_RenderTextureRotated(SDL_Renderer *renderer, SDL_Texture *texture,
@@ -4264,15 +4374,28 @@ bool SDL_RenderTexture9Grid(SDL_Renderer *renderer, SDL_Texture *texture, const 
     }
 
     if (scale <= 0.0f || scale == 1.0f) {
-        dst_left_width = left_width;
-        dst_right_width = right_width;
-        dst_top_height = top_height;
-        dst_bottom_height = bottom_height;
+        dst_left_width = SDL_ceilf(left_width);
+        dst_right_width = SDL_ceilf(right_width);
+        dst_top_height = SDL_ceilf(top_height);
+        dst_bottom_height = SDL_ceilf(bottom_height);
     } else {
-        dst_left_width = (left_width * scale);
-        dst_right_width = (right_width * scale);
-        dst_top_height = (top_height * scale);
-        dst_bottom_height = (bottom_height * scale);
+        dst_left_width = SDL_ceilf(left_width * scale);
+        dst_right_width = SDL_ceilf(right_width * scale);
+        dst_top_height = SDL_ceilf(top_height * scale);
+        dst_bottom_height = SDL_ceilf(bottom_height * scale);
+    }
+
+    // Center
+    curr_src.x = srcrect->x + left_width;
+    curr_src.y = srcrect->y + top_height;
+    curr_src.w = srcrect->w - left_width - right_width;
+    curr_src.h = srcrect->h - top_height - bottom_height;
+    curr_dst.x = dstrect->x + dst_left_width;
+    curr_dst.y = dstrect->y + dst_top_height;
+    curr_dst.w = dstrect->w - dst_left_width - dst_right_width;
+    curr_dst.h = dstrect->h - dst_top_height - dst_bottom_height;
+    if (!SDL_RenderTexture(renderer, texture, &curr_src, &curr_dst)) {
+        return false;
     }
 
     // Upper-left corner
@@ -4353,19 +4476,6 @@ bool SDL_RenderTexture9Grid(SDL_Renderer *renderer, SDL_Texture *texture, const 
         return false;
     }
 
-    // Center
-    curr_src.x = srcrect->x + left_width;
-    curr_src.y = srcrect->y + top_height;
-    curr_src.w = srcrect->w - left_width - right_width;
-    curr_src.h = srcrect->h - top_height - bottom_height;
-    curr_dst.x = dstrect->x + dst_left_width;
-    curr_dst.y = dstrect->y + dst_top_height;
-    curr_dst.w = dstrect->w - dst_left_width - dst_right_width;
-    curr_dst.h = dstrect->h - dst_top_height - dst_bottom_height;
-    if (!SDL_RenderTexture(renderer, texture, &curr_src, &curr_dst)) {
-        return false;
-    }
-
     return true;
 }
 
@@ -4389,7 +4499,7 @@ bool SDL_RenderGeometry(SDL_Renderer *renderer,
 }
 
 #ifdef SDL_VIDEO_RENDER_SW
-static bool remap_one_indice(
+static int remap_one_indice(
     int prev,
     int k,
     SDL_Texture *texture,
@@ -4427,7 +4537,7 @@ static bool remap_one_indice(
     return prev;
 }
 
-static bool remap_indices(
+static int remap_indices(
     int prev[3],
     int k,
     SDL_Texture *texture,
@@ -4948,7 +5058,7 @@ static void SDL_SimulateRenderVSync(SDL_Renderer *renderer)
     elapsed = (now - renderer->last_present);
     if (elapsed < interval) {
         Uint64 duration = (interval - elapsed);
-        SDL_DelayNS(duration);
+        SDL_DelayPrecise(duration);
         now = SDL_GetTicksNS();
     }
 
@@ -5032,7 +5142,7 @@ static void SDL_DestroyTextureInternal(SDL_Texture *texture, bool is_destroying)
     if (texture->native) {
         SDL_DestroyTextureInternal(texture->native, is_destroying);
     }
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     if (texture->yuv) {
         SDL_SW_DestroyYUVTexture(texture->yuv);
     }
@@ -5072,6 +5182,7 @@ static void SDL_DiscardAllCommands(SDL_Renderer *renderer)
     renderer->render_commands_pool = NULL;
     renderer->render_commands_tail = NULL;
     renderer->render_commands = NULL;
+    renderer->vertex_data_used = 0;
 
     while (cmd) {
         SDL_RenderCommand *next = cmd->next;
@@ -5097,6 +5208,11 @@ void SDL_DestroyRendererWithoutFreeing(SDL_Renderer *renderer)
     }
 
     SDL_DiscardAllCommands(renderer);
+
+    if (renderer->debug_char_texture_atlas) {
+        SDL_DestroyTexture(renderer->debug_char_texture_atlas);
+        renderer->debug_char_texture_atlas = NULL;
+    }
 
     // Free existing textures for this renderer
     while (renderer->textures) {
@@ -5346,4 +5462,150 @@ bool SDL_GetRenderVSync(SDL_Renderer *renderer, int *vsync)
         *vsync = (int)SDL_GetNumberProperty(SDL_GetRendererProperties(renderer), SDL_PROP_RENDERER_VSYNC_NUMBER, 0);
     }
     return true;
+}
+
+
+#define SDL_DEBUG_FONT_GLYPHS_PER_ROW 14
+
+static bool CreateDebugTextAtlas(SDL_Renderer *renderer)
+{
+    SDL_assert(renderer->debug_char_texture_atlas == NULL);  // don't double-create it!
+
+    const int charWidth = SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE;
+    const int charHeight = SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE;
+
+    // actually make each glyph two pixels taller/wider, to prevent scaling artifacts.
+    const int rows = (SDL_DEBUG_FONT_NUM_GLYPHS / SDL_DEBUG_FONT_GLYPHS_PER_ROW) + 1;
+    SDL_Surface *atlas = SDL_CreateSurface((charWidth + 2) * SDL_DEBUG_FONT_GLYPHS_PER_ROW, rows * (charHeight + 2), SDL_PIXELFORMAT_RGBA8888);
+    if (!atlas) {
+        return false;
+    }
+
+    const int pitch = atlas->pitch;
+    SDL_memset(atlas->pixels, '\0', atlas->h * atlas->pitch);
+
+    int column = 0;
+    int row = 0;
+    for (int glyph = 0; glyph < SDL_DEBUG_FONT_NUM_GLYPHS; glyph++) {
+        // find top-left of this glyph in destination surface. The +2's account for glyph padding.
+        Uint8 *linepos = (((Uint8 *)atlas->pixels) + ((row * (charHeight + 2) + 1) * pitch)) + ((column * (charWidth + 2) + 1) * sizeof (Uint32));
+        const Uint8 *charpos = SDL_RenderDebugTextFontData + (glyph * 8);
+
+        // Draw the glyph to the surface...
+        for (int iy = 0; iy < charHeight; iy++) {
+            Uint32 *curpos = (Uint32 *)linepos;
+            for (int ix = 0; ix < charWidth; ix++) {
+                if ((*charpos) & (1 << ix)) {
+                    *curpos = 0xffffffff;
+                } else {
+                    *curpos = 0;
+                }
+                ++curpos;
+            }
+            linepos += pitch;
+            ++charpos;
+        }
+
+        // move to next position (and if too far, start the next row).
+        column++;
+        if (column >= SDL_DEBUG_FONT_GLYPHS_PER_ROW) {
+            row++;
+            column = 0;
+        }
+    }
+
+    SDL_assert((row < rows) || ((row == rows) && (column == 0)));  // make sure we didn't overflow the surface.
+
+    // Convert temp surface into texture
+    SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, atlas);
+    if (texture) {
+        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+        renderer->debug_char_texture_atlas = texture;
+    }
+    SDL_DestroySurface(atlas);
+
+    return texture != NULL;
+}
+
+static bool DrawDebugCharacter(SDL_Renderer *renderer, float x, float y, Uint32 c)
+{
+    SDL_assert(renderer->debug_char_texture_atlas != NULL);   // should have been created by now!
+
+    const int charWidth = SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE;
+    const int charHeight = SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE;
+
+    // Character index in cache
+    Uint32 ci = c;
+    if ((ci <= 32) || ((ci >= 127) && (ci <= 160))) {
+        return true;  // these are just completely blank chars, don't bother doing anything.
+    } else if (ci >= SDL_DEBUG_FONT_NUM_GLYPHS) {
+        ci = SDL_DEBUG_FONT_NUM_GLYPHS - 1;  // use our "not a valid/supported character" glyph.
+    } else if (ci < 127) {
+        ci -= 33;     // adjust for the 33 blank glyphs at the start
+    } else {
+        ci -= 67;     // adjust for the 33 blank glyphs at the start AND the 34 gap in the middle.
+    }
+
+    const float src_x = (float) (((ci % SDL_DEBUG_FONT_GLYPHS_PER_ROW) * (charWidth + 2)) + 1);
+    const float src_y = (float) (((ci / SDL_DEBUG_FONT_GLYPHS_PER_ROW) * (charHeight + 2)) + 1);
+
+    // Draw texture onto destination
+    const SDL_FRect srect = { src_x, src_y, (float) charWidth, (float) charHeight };
+    const SDL_FRect drect = { x, y, (float) charWidth, (float) charHeight };
+    return SDL_RenderTexture(renderer, renderer->debug_char_texture_atlas, &srect, &drect);
+}
+
+bool SDL_RenderDebugText(SDL_Renderer *renderer, float x, float y, const char *s)
+{
+    CHECK_RENDERER_MAGIC(renderer, false);
+
+    // Allocate a texture atlas for this renderer if needed.
+    if (!renderer->debug_char_texture_atlas) {
+        if (!CreateDebugTextAtlas(renderer)) {
+            return false;
+        }
+    }
+
+    bool result = true;
+
+    Uint8 r, g, b, a;
+    result &= SDL_GetRenderDrawColor(renderer, &r, &g, &b, &a);
+    result &= SDL_SetTextureColorMod(renderer->debug_char_texture_atlas, r, g, b);
+    result &= SDL_SetTextureAlphaMod(renderer->debug_char_texture_atlas, a);
+
+    float curx = x;
+    Uint32 ch;
+
+    while (result && ((ch = SDL_StepUTF8(&s, NULL)) != 0)) {
+        result &= DrawDebugCharacter(renderer, curx, y, ch);
+        curx += SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE;
+    }
+
+    return result;
+}
+
+bool SDL_RenderDebugTextFormat(SDL_Renderer *renderer, float x, float y, SDL_PRINTF_FORMAT_STRING const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+
+    // fast path to avoid unnecessary allocation and copy. If you're going through the dynapi, there's a good chance
+    // you _always_ hit this path, since it probably had to process varargs before calling into the jumptable.
+    if (SDL_strcmp(fmt, "%s") == 0) {
+        const char *str = va_arg(ap, const char *);
+        va_end(ap);
+        return SDL_RenderDebugText(renderer, x, y, str);
+    }
+
+    char *str = NULL;
+    const int rc = SDL_vasprintf(&str, fmt, ap);
+    va_end(ap);
+
+    if (rc == -1) {
+        return false;
+    }
+
+    const bool retval = SDL_RenderDebugText(renderer, x, y, str);
+    SDL_free(str);
+    return retval;
 }

@@ -62,7 +62,9 @@ static SDL_Cursor *Emscripten_CreateCursorFromString(const char *cursor_str, boo
 
 static SDL_Cursor *Emscripten_CreateDefaultCursor(void)
 {
-    return Emscripten_CreateCursorFromString("default", false);
+    SDL_SystemCursor id = SDL_GetDefaultSystemCursor();
+    const char *cursor_name = SDL_GetCSSCursorName(id, NULL);
+    return Emscripten_CreateCursorFromString(cursor_name, false);
 }
 
 EM_JS_DEPS(sdlmouse, "$stringToUTF8,$UTF8ToString");
@@ -94,7 +96,7 @@ static SDL_Cursor *Emscripten_CreateCursor(SDL_Surface *surface, int hot_x, int 
 
         var image = ctx.createImageData(w, h);
         var data = image.data;
-        var src = pixels >> 2;
+        var src = pixels / 4;
 
         var data32 = new Int32Array(data.buffer);
         data32.set(HEAP32.subarray(src, src + data32.length));

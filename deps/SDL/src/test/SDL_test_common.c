@@ -834,6 +834,9 @@ static void SDLTest_PrintWindowFlag(char *text, size_t maxlen, SDL_WindowFlags f
     case SDL_WINDOW_OPENGL:
         SDL_snprintfcat(text, maxlen, "OPENGL");
         break;
+    case SDL_WINDOW_OCCLUDED:
+        SDL_snprintfcat(text, maxlen, "OCCLUDED");
+        break;
     case SDL_WINDOW_HIDDEN:
         SDL_snprintfcat(text, maxlen, "HIDDEN");
         break;
@@ -861,11 +864,17 @@ static void SDLTest_PrintWindowFlag(char *text, size_t maxlen, SDL_WindowFlags f
     case SDL_WINDOW_EXTERNAL:
         SDL_snprintfcat(text, maxlen, "EXTERNAL");
         break;
+    case SDL_WINDOW_MODAL:
+        SDL_snprintfcat(text, maxlen, "MODAL");
+        break;
     case SDL_WINDOW_HIGH_PIXEL_DENSITY:
         SDL_snprintfcat(text, maxlen, "HIGH_PIXEL_DENSITY");
         break;
     case SDL_WINDOW_MOUSE_CAPTURE:
         SDL_snprintfcat(text, maxlen, "MOUSE_CAPTURE");
+        break;
+    case SDL_WINDOW_MOUSE_RELATIVE_MODE:
+        SDL_snprintfcat(text, maxlen, "MOUSE_RELATIVE_MODE");
         break;
     case SDL_WINDOW_ALWAYS_ON_TOP:
         SDL_snprintfcat(text, maxlen, "ALWAYS_ON_TOP");
@@ -891,6 +900,9 @@ static void SDLTest_PrintWindowFlag(char *text, size_t maxlen, SDL_WindowFlags f
     case SDL_WINDOW_TRANSPARENT:
         SDL_snprintfcat(text, maxlen, "TRANSPARENT");
         break;
+    case SDL_WINDOW_NOT_FOCUSABLE:
+        SDL_snprintfcat(text, maxlen, "NOT_FOCUSABLE");
+        break;
     default:
         SDL_snprintfcat(text, maxlen, "0x%16.16" SDL_PRIx64, flag);
         break;
@@ -902,6 +914,7 @@ static void SDLTest_PrintWindowFlags(char *text, size_t maxlen, SDL_WindowFlags 
     const SDL_WindowFlags window_flags[] = {
         SDL_WINDOW_FULLSCREEN,
         SDL_WINDOW_OPENGL,
+        SDL_WINDOW_OCCLUDED,
         SDL_WINDOW_HIDDEN,
         SDL_WINDOW_BORDERLESS,
         SDL_WINDOW_RESIZABLE,
@@ -911,8 +924,10 @@ static void SDLTest_PrintWindowFlags(char *text, size_t maxlen, SDL_WindowFlags 
         SDL_WINDOW_INPUT_FOCUS,
         SDL_WINDOW_MOUSE_FOCUS,
         SDL_WINDOW_EXTERNAL,
+        SDL_WINDOW_MODAL,
         SDL_WINDOW_HIGH_PIXEL_DENSITY,
         SDL_WINDOW_MOUSE_CAPTURE,
+        SDL_WINDOW_MOUSE_RELATIVE_MODE,
         SDL_WINDOW_ALWAYS_ON_TOP,
         SDL_WINDOW_UTILITY,
         SDL_WINDOW_TOOLTIP,
@@ -920,7 +935,8 @@ static void SDLTest_PrintWindowFlags(char *text, size_t maxlen, SDL_WindowFlags 
         SDL_WINDOW_KEYBOARD_GRABBED,
         SDL_WINDOW_VULKAN,
         SDL_WINDOW_METAL,
-        SDL_WINDOW_TRANSPARENT
+        SDL_WINDOW_TRANSPARENT,
+        SDL_WINDOW_NOT_FOCUSABLE
     };
 
     int i;
@@ -1743,6 +1759,10 @@ void SDLTest_PrintEvent(const SDL_Event *event)
         SDL_Log("SDL EVENT: Keyboard: text editing \"%s\" in window %" SDL_PRIu32,
                 event->edit.text, event->edit.windowID);
         break;
+    case SDL_EVENT_TEXT_EDITING_CANDIDATES:
+        SDL_Log("SDL EVENT: Keyboard: text editing candidates in window %" SDL_PRIu32,
+                event->edit.windowID);
+        break;
     case SDL_EVENT_TEXT_INPUT:
         SDL_Log("SDL EVENT: Keyboard: text input \"%s\" in window %" SDL_PRIu32,
                 event->text.text, event->text.windowID);
@@ -1785,6 +1805,12 @@ void SDLTest_PrintEvent(const SDL_Event *event)
     case SDL_EVENT_JOYSTICK_REMOVED:
         SDL_Log("SDL EVENT: Joystick %" SDL_PRIu32 " removed",
                 event->jdevice.which);
+        break;
+    case SDL_EVENT_JOYSTICK_AXIS_MOTION:
+        SDL_Log("SDL EVENT: Joystick %" SDL_PRIu32 " axis %d value: %d",
+                event->jaxis.which,
+                event->jaxis.axis,
+                event->jaxis.value);
         break;
     case SDL_EVENT_JOYSTICK_BALL_MOTION:
         SDL_Log("SDL EVENT: Joystick %" SDL_PRIs32 ": ball %d moved by %d,%d",
@@ -1834,12 +1860,20 @@ void SDLTest_PrintEvent(const SDL_Event *event)
         SDL_Log("SDL EVENT: Joystick %" SDL_PRIu32 ": button %d released",
                 event->jbutton.which, event->jbutton.button);
         break;
+    case SDL_EVENT_JOYSTICK_BATTERY_UPDATED:
+        SDL_Log("SDL EVENT: Joystick %" SDL_PRIu32 ": battery at %d percent",
+                event->jbattery.which, event->jbattery.percent);
+        break;
     case SDL_EVENT_GAMEPAD_ADDED:
         SDL_Log("SDL EVENT: Gamepad %" SDL_PRIu32 " attached",
                 event->gdevice.which);
         break;
     case SDL_EVENT_GAMEPAD_REMOVED:
         SDL_Log("SDL EVENT: Gamepad %" SDL_PRIu32 " removed",
+                event->gdevice.which);
+        break;
+    case SDL_EVENT_GAMEPAD_REMAPPED:
+        SDL_Log("SDL EVENT: Gamepad %" SDL_PRIu32 " mapping changed",
                 event->gdevice.which);
         break;
     case SDL_EVENT_GAMEPAD_AXIS_MOTION:
@@ -1880,11 +1914,14 @@ void SDLTest_PrintEvent(const SDL_Event *event)
                 event->tfinger.dx, event->tfinger.dy, event->tfinger.pressure);
         break;
 
-    case SDL_EVENT_RENDER_DEVICE_RESET:
-        SDL_Log("SDL EVENT: render device reset");
-        break;
     case SDL_EVENT_RENDER_TARGETS_RESET:
-        SDL_Log("SDL EVENT: render targets reset");
+        SDL_Log("SDL EVENT: render targets reset in window %" SDL_PRIu32, event->render.windowID);
+        break;
+    case SDL_EVENT_RENDER_DEVICE_RESET:
+        SDL_Log("SDL EVENT: render device reset in window %" SDL_PRIu32, event->render.windowID);
+        break;
+    case SDL_EVENT_RENDER_DEVICE_LOST:
+        SDL_Log("SDL EVENT: render device lost in window %" SDL_PRIu32, event->render.windowID);
         break;
 
     case SDL_EVENT_TERMINATING:
@@ -1920,6 +1957,76 @@ void SDLTest_PrintEvent(const SDL_Event *event)
     case SDL_EVENT_DROP_COMPLETE:
         SDL_Log("SDL EVENT: Drag and drop ending");
         break;
+    case SDL_EVENT_AUDIO_DEVICE_ADDED:
+        SDL_Log("SDL EVENT: Audio %s device %" SDL_PRIu32 " available",
+                event->adevice.recording ? "recording" : "playback",
+                event->adevice.which);
+        break;
+    case SDL_EVENT_AUDIO_DEVICE_REMOVED:
+        SDL_Log("SDL EVENT: Audio %s device %" SDL_PRIu32 " removed",
+                event->adevice.recording ? "recording" : "playback",
+                event->adevice.which);
+        break;
+    case SDL_EVENT_AUDIO_DEVICE_FORMAT_CHANGED:
+        SDL_Log("SDL EVENT: Audio %s device %" SDL_PRIu32 " format changed",
+                event->adevice.recording ? "recording" : "playback",
+                event->adevice.which);
+        break;
+    case SDL_EVENT_CAMERA_DEVICE_ADDED:
+        SDL_Log("SDL EVENT: Camera device %" SDL_PRIu32 " available",
+                event->cdevice.which);
+        break;
+    case SDL_EVENT_CAMERA_DEVICE_REMOVED:
+        SDL_Log("SDL EVENT: Camera device %" SDL_PRIu32 " removed",
+                event->cdevice.which);
+        break;
+    case SDL_EVENT_CAMERA_DEVICE_APPROVED:
+        SDL_Log("SDL EVENT: Camera device %" SDL_PRIu32 " permission granted",
+                event->cdevice.which);
+        break;
+    case SDL_EVENT_CAMERA_DEVICE_DENIED:
+        SDL_Log("SDL EVENT: Camera device %" SDL_PRIu32 " permission denied",
+                event->cdevice.which);
+        break;
+    case SDL_EVENT_SENSOR_UPDATE:
+        SDL_Log("SDL EVENT: Sensor update for %" SDL_PRIu32,
+                event->sensor.which);
+        break;
+    case SDL_EVENT_PEN_PROXIMITY_IN:
+        SDL_Log("SDL EVENT: Pen %" SDL_PRIu32 " entered proximity",
+                event->pproximity.which);
+        break;
+    case SDL_EVENT_PEN_PROXIMITY_OUT:
+        SDL_Log("SDL EVENT: Pen %" SDL_PRIu32 " left proximity",
+                event->ptouch.which);
+        break;
+    case SDL_EVENT_PEN_DOWN:
+        SDL_Log("SDL EVENT: Pen %" SDL_PRIu32 " touched down at %g,%g",
+                event->ptouch.which, event->ptouch.x, event->ptouch.y);
+        break;
+    case SDL_EVENT_PEN_UP:
+        SDL_Log("SDL EVENT: Pen %" SDL_PRIu32 " lifted off at %g,%g",
+                event->ptouch.which, event->ptouch.x, event->ptouch.y);
+        break;
+    case SDL_EVENT_PEN_BUTTON_DOWN:
+        SDL_Log("SDL EVENT: Pen %" SDL_PRIu32 " button %d pressed at %g,%g",
+                event->pbutton.which, event->pbutton.button, event->pbutton.x, event->pbutton.y);
+        break;
+    case SDL_EVENT_PEN_BUTTON_UP:
+        SDL_Log("SDL EVENT: Pen %" SDL_PRIu32 " button %d released at %g,%g",
+                event->pbutton.which, event->pbutton.button, event->pbutton.x, event->pbutton.y);
+        break;
+    case SDL_EVENT_PEN_MOTION:
+        SDL_Log("SDL EVENT: Pen %" SDL_PRIu32 " moved to %g,%g",
+                event->pmotion.which, event->pmotion.x, event->pmotion.y);
+        break;
+    case SDL_EVENT_PEN_AXIS:
+        SDL_Log("SDL EVENT: Pen %" SDL_PRIu32 " axis %d changed to %.2f",
+                event->paxis.which, event->paxis.axis, event->paxis.value);
+        break;
+    case SDL_EVENT_LOCALE_CHANGED:
+        SDL_Log("SDL EVENT: Locale changed");
+        break;
     case SDL_EVENT_QUIT:
         SDL_Log("SDL EVENT: Quit requested");
         break;
@@ -1927,7 +2034,7 @@ void SDLTest_PrintEvent(const SDL_Event *event)
         SDL_Log("SDL EVENT: User event %" SDL_PRIs32, event->user.code);
         break;
     default:
-        SDL_Log("Unknown event 0x%4.4" SDL_PRIu32, event->type);
+        SDL_Log("Unknown event 0x%4.4" SDL_PRIx32, event->type);
         break;
     }
 }
@@ -2113,8 +2220,11 @@ SDL_AppResult SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const
     int i;
 
     if (state->verbose & VERBOSE_EVENT) {
-        if (((event->type != SDL_EVENT_MOUSE_MOTION) &&
-             (event->type != SDL_EVENT_FINGER_MOTION)) ||
+        if ((event->type != SDL_EVENT_MOUSE_MOTION &&
+             event->type != SDL_EVENT_FINGER_MOTION &&
+             event->type != SDL_EVENT_PEN_MOTION &&
+             event->type != SDL_EVENT_PEN_AXIS &&
+             event->type != SDL_EVENT_JOYSTICK_AXIS_MOTION) ||
             (state->verbose & VERBOSE_MOTION)) {
             SDLTest_PrintEvent(event);
         }
@@ -2363,10 +2473,16 @@ SDL_AppResult SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const
                 SDL_Window *window = SDL_GetWindowFromEvent(event);
                 if (window) {
                     SDL_WindowFlags flags = SDL_GetWindowFlags(window);
+                    if (!(flags & SDL_WINDOW_RESIZABLE)) {
+                        SDL_SetWindowResizable(window, true);
+                    }
                     if (flags & SDL_WINDOW_MAXIMIZED) {
                         SDL_RestoreWindow(window);
                     } else {
                         SDL_MaximizeWindow(window);
+                    }
+                    if (!(flags & SDL_WINDOW_RESIZABLE)) {
+                        SDL_SetWindowResizable(window, false);
                     }
                 }
             }

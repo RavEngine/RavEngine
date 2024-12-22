@@ -1254,7 +1254,8 @@ bool SDL_BlitSurfaceUncheckedScaled(SDL_Surface *src, const SDL_Rect *srcrect, S
     if (scaleMode == SDL_SCALEMODE_NEAREST) {
         if (!(src->map.info.flags & complex_copy_flags) &&
             src->format == dst->format &&
-            !SDL_ISPIXELFORMAT_INDEXED(src->format)) {
+            !SDL_ISPIXELFORMAT_INDEXED(src->format) &&
+            SDL_BYTESPERPIXEL(src->format) <= 4) {
             return SDL_SoftStretch(src, srcrect, dst, dstrect, SDL_SCALEMODE_NEAREST);
         } else if (SDL_BITSPERPIXEL(src->format) < 8) {
             // Scaling bitmap not yet supported, convert to RGBA for blit
@@ -1722,7 +1723,7 @@ bool SDL_LockSurface(SDL_Surface *surface)
     }
 
     if (!surface->locked) {
-#if SDL_HAVE_RLE
+#ifdef SDL_HAVE_RLE
         // Perform the lock
         if (surface->internal_flags & SDL_INTERNAL_SURFACE_RLEACCEL) {
             SDL_UnRLESurface(surface, true);
@@ -1753,7 +1754,7 @@ void SDL_UnlockSurface(SDL_Surface *surface)
         return;
     }
 
-#if SDL_HAVE_RLE
+#ifdef SDL_HAVE_RLE
     // Update RLE encoded surface with new data
     if (surface->internal_flags & SDL_INTERNAL_SURFACE_RLEACCEL) {
         surface->internal_flags &= ~SDL_INTERNAL_SURFACE_RLEACCEL; // stop lying
@@ -1786,6 +1787,9 @@ static bool SDL_FlipSurfaceHorizontal(SDL_Surface *surface)
     bpp = SDL_BYTESPERPIXEL(surface->format);
     row = (Uint8 *)surface->pixels;
     tmp = SDL_small_alloc(Uint8, surface->pitch, &isstack);
+    if (!tmp) {
+        return false;
+    }
     for (i = surface->h; i--; ) {
         a = row;
         b = a + (surface->w - 1) * bpp;
@@ -1815,6 +1819,9 @@ static bool SDL_FlipSurfaceVertical(SDL_Surface *surface)
     a = (Uint8 *)surface->pixels;
     b = a + (surface->h - 1) * surface->pitch;
     tmp = SDL_small_alloc(Uint8, surface->pitch, &isstack);
+    if (!tmp) {
+        return false;
+    }
     for (i = surface->h / 2; i--; ) {
         SDL_memcpy(tmp, a, surface->pitch);
         SDL_memcpy(a, b, surface->pitch);
@@ -2270,7 +2277,7 @@ bool SDL_ConvertPixelsAndColorspace(int width, int height,
         dst_colorspace = SDL_GetDefaultColorspaceForFormat(dst_format);
     }
 
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     if (SDL_ISPIXELFORMAT_FOURCC(src_format) && SDL_ISPIXELFORMAT_FOURCC(dst_format)) {
         return SDL_ConvertPixels_YUV_to_YUV(width, height, src_format, src_colorspace, src_properties, src, src_pitch, dst_format, dst_colorspace, dst_properties, dst, dst_pitch);
     } else if (SDL_ISPIXELFORMAT_FOURCC(src_format)) {
@@ -2591,6 +2598,7 @@ bool SDL_ClearSurface(SDL_Surface *surface, float r, float g, float b, float a)
             goto done;
         }
         SDL_SetSurfaceColorspace(tmp, surface->colorspace);
+        SDL_SetSurfaceBlendMode(tmp, SDL_BLENDMODE_NONE);
 
         float *pixels = (float *)tmp->pixels;
         pixels[0] = r;
@@ -2953,7 +2961,7 @@ void SDL_DestroySurface(SDL_Surface *surface)
     while (surface->locked > 0) {
         SDL_UnlockSurface(surface);
     }
-#if SDL_HAVE_RLE
+#ifdef SDL_HAVE_RLE
     if (surface->internal_flags & SDL_INTERNAL_SURFACE_RLEACCEL) {
         SDL_UnRLESurface(surface, false);
     }

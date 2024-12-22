@@ -38,6 +38,7 @@
 #include "SDL_x11xinput2.h"
 #include "SDL_x11messagebox.h"
 #include "SDL_x11shape.h"
+#include "SDL_x11xsync.h"
 
 #ifdef SDL_VIDEO_OPENGL_EGL
 #include "SDL_x11opengles.h"
@@ -49,8 +50,6 @@ static void X11_VideoQuit(SDL_VideoDevice *_this);
 
 // X11 driver bootstrap functions
 
-static int (*orig_x11_errhandler)(Display *, XErrorEvent *) = NULL;
-
 static void X11_DeleteDevice(SDL_VideoDevice *device)
 {
     SDL_VideoData *data = device->internal;
@@ -58,7 +57,6 @@ static void X11_DeleteDevice(SDL_VideoDevice *device)
         device->Vulkan_UnloadLibrary(device);
     }
     if (data->display) {
-        X11_XSetErrorHandler(orig_x11_errhandler);
         X11_XCloseDisplay(data->display);
     }
     if (data->request_display) {
@@ -72,33 +70,6 @@ static void X11_DeleteDevice(SDL_VideoDevice *device)
     SDL_free(device);
 
     SDL_X11_UnloadSymbols();
-}
-
-// An error handler to reset the vidmode and then call the default handler.
-static bool safety_net_triggered = false;
-static int X11_SafetyNetErrHandler(Display *d, XErrorEvent *e)
-{
-    SDL_VideoDevice *device = NULL;
-    // if we trigger an error in our error handler, don't try again.
-    if (!safety_net_triggered) {
-        safety_net_triggered = true;
-        device = SDL_GetVideoDevice();
-        if (device) {
-            int i;
-            for (i = 0; i < device->num_displays; i++) {
-                SDL_VideoDisplay *display = device->displays[i];
-                if (SDL_GetCurrentDisplayMode(display->id) != SDL_GetDesktopDisplayMode(display->id)) {
-                    X11_SetDisplayMode(device, display, &display->desktop_mode);
-                }
-            }
-        }
-    }
-
-    if (orig_x11_errhandler) {
-        return orig_x11_errhandler(d, e); // probably terminate.
-    }
-
-    return 0;
 }
 
 static bool X11_IsXWayland(Display *d)
@@ -163,10 +134,6 @@ static SDL_VideoDevice *X11_CreateDevice(void)
 #ifdef X11_DEBUG
     X11_XSynchronize(data->display, True);
 #endif
-
-    // Hook up an X11 error handler to recover the desktop resolution.
-    safety_net_triggered = false;
-    orig_x11_errhandler = X11_XSetErrorHandler(X11_SafetyNetErrHandler);
 
     /* Steam Deck will have an on-screen keyboard, so check their environment
      * variable so we can make use of SDL_StartTextInput.
@@ -403,6 +370,7 @@ static bool X11_VideoInit(SDL_VideoDevice *_this)
     GET_ATOM(_NET_WM_STATE_ABOVE);
     GET_ATOM(_NET_WM_STATE_SKIP_TASKBAR);
     GET_ATOM(_NET_WM_STATE_SKIP_PAGER);
+    GET_ATOM(_NET_WM_MOVERESIZE);
     GET_ATOM(_NET_WM_STATE_MODAL);
     GET_ATOM(_NET_WM_ALLOWED_ACTIONS);
     GET_ATOM(_NET_WM_ACTION_FULLSCREEN);
@@ -410,6 +378,8 @@ static bool X11_VideoInit(SDL_VideoDevice *_this)
     GET_ATOM(_NET_WM_ICON_NAME);
     GET_ATOM(_NET_WM_ICON);
     GET_ATOM(_NET_WM_PING);
+    GET_ATOM(_NET_WM_SYNC_REQUEST);
+    GET_ATOM(_NET_WM_SYNC_REQUEST_COUNTER);
     GET_ATOM(_NET_WM_WINDOW_OPACITY);
     GET_ATOM(_NET_WM_USER_TIME);
     GET_ATOM(_NET_ACTIVE_WINDOW);
@@ -420,7 +390,11 @@ static bool X11_VideoInit(SDL_VideoDevice *_this)
     GET_ATOM(CLIPBOARD);
     GET_ATOM(INCR);
     GET_ATOM(SDL_SELECTION);
+    GET_ATOM(TARGETS);
+    GET_ATOM(SDL_FORMATS);
+    GET_ATOM(XdndAware);
     GET_ATOM(XdndEnter);
+    GET_ATOM(XdndLeave);
     GET_ATOM(XdndPosition);
     GET_ATOM(XdndStatus);
     GET_ATOM(XdndTypeList);
@@ -448,6 +422,10 @@ static bool X11_VideoInit(SDL_VideoDevice *_this)
 #endif // SDL_VIDEO_DRIVER_X11_XFIXES
 
     X11_InitXsettings(_this);
+
+#ifdef SDL_VIDEO_DRIVER_X11_XSYNC
+    X11_InitXsync(_this);
+#endif /* SDL_VIDEO_DRIVER_X11_XSYNC */
 
 #ifndef X_HAVE_UTF8_STRING
 #warning X server does not support UTF8_STRING, a feature introduced in 2000! This is likely to become a hard error in a future libSDL3.

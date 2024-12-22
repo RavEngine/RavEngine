@@ -46,6 +46,11 @@
  *   not defined whether or not it goes into the global symbol namespace for
  *   the application. If it does and it conflicts with symbols in your code or
  *   other shared libraries, you will not get the results you expect. :)
+ * - Once a library is unloaded, all pointers into it obtained through
+ *   SDL_LoadFunction() become invalid, even if the library is later reloaded.
+ *   Don't unload a library if you plan to use these pointers in the future.
+ *   Notably: beware of giving one of these pointers to atexit(), since it may
+ *   call that pointer after the library unloads.
  */
 
 #ifndef SDL_loadso_h_
@@ -63,7 +68,7 @@ extern "C" {
 /**
  * An opaque datatype that represents a loaded shared object.
  *
- * \since This datatype is available since SDL 3.0.0.
+ * \since This datatype is available since SDL 3.1.3.
  *
  * \sa SDL_LoadObject
  * \sa SDL_LoadFunction
@@ -80,7 +85,7 @@ typedef struct SDL_SharedObject SDL_SharedObject;
  *
  * \threadsafety It is safe to call this function from any thread.
  *
- * \since This function is available since SDL 3.0.0.
+ * \since This function is available since SDL 3.1.3.
  *
  * \sa SDL_LoadFunction
  * \sa SDL_UnloadObject
@@ -109,7 +114,7 @@ extern SDL_DECLSPEC SDL_SharedObject * SDLCALL SDL_LoadObject(const char *sofile
  *
  * \threadsafety It is safe to call this function from any thread.
  *
- * \since This function is available since SDL 3.0.0.
+ * \since This function is available since SDL 3.1.3.
  *
  * \sa SDL_LoadObject
  */
@@ -125,7 +130,7 @@ extern SDL_DECLSPEC SDL_FunctionPointer SDLCALL SDL_LoadFunction(SDL_SharedObjec
  *
  * \threadsafety It is safe to call this function from any thread.
  *
- * \since This function is available since SDL 3.0.0.
+ * \since This function is available since SDL 3.1.3.
  *
  * \sa SDL_LoadObject
  */

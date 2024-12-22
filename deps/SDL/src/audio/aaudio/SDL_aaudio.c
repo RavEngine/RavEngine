@@ -298,7 +298,6 @@ static bool BuildAAudioStream(SDL_AudioDevice *device)
 #endif
 
     aaudio_format_t format;
-#ifdef SET_AUDIO_FORMAT
     if ((device->spec.format == SDL_AUDIO_S32) && (SDL_GetAndroidSDKVersion() >= 31)) {
         format = AAUDIO_FORMAT_PCM_I32;
     } else if (device->spec.format == SDL_AUDIO_F32) {
@@ -308,7 +307,6 @@ static bool BuildAAudioStream(SDL_AudioDevice *device)
     }
     ctx.AAudioStreamBuilder_setFormat(builder, format);
     ctx.AAudioStreamBuilder_setSampleRate(builder, device->spec.freq);
-#endif
     ctx.AAudioStreamBuilder_setChannelCount(builder, device->spec.channels);
 
     const aaudio_direction_t direction = (recording ? AAUDIO_DIRECTION_INPUT : AAUDIO_DIRECTION_OUTPUT);
@@ -316,13 +314,16 @@ static bool BuildAAudioStream(SDL_AudioDevice *device)
     ctx.AAudioStreamBuilder_setErrorCallback(builder, AAUDIO_errorCallback, device);
     ctx.AAudioStreamBuilder_setDataCallback(builder, AAUDIO_dataCallback, device);
     // Some devices have flat sounding audio when low latency mode is enabled, but this is a better experience for most people
-    if (SDL_GetHintBoolean("SDL_ANDROID_LOW_LATENCY_AUDIO", true)) {
+    if (SDL_GetHintBoolean(SDL_HINT_ANDROID_LOW_LATENCY_AUDIO, true)) {
+        SDL_Log("Low latency audio enabled\n");
         ctx.AAudioStreamBuilder_setPerformanceMode(builder, AAUDIO_PERFORMANCE_MODE_LOW_LATENCY);
+    } else {
+        SDL_Log("Low latency audio disabled\n");
     }
 
-    LOGI("AAudio Try to open %u hz %u bit %u channels %s samples %u",
-         device->spec.freq, SDL_AUDIO_BITSIZE(device->spec.format),
-         device->spec.channels, SDL_AUDIO_ISBIGENDIAN(device->spec.format) ? "BE" : "LE", device->sample_frames);
+    LOGI("AAudio Try to open %u hz %s %u channels samples %u",
+         device->spec.freq, SDL_GetAudioFormatName(device->spec.format),
+         device->spec.channels, device->sample_frames);
 
     res = ctx.AAudioStreamBuilder_openStream(builder, &hidden->stream);
     if (res != AAUDIO_OK) {
@@ -354,8 +355,9 @@ static bool BuildAAudioStream(SDL_AudioDevice *device)
 
     SDL_UpdatedAudioDeviceFormat(device);
 
-    // Allocate a double buffered mixing buffer
-    hidden->num_buffers = 2;
+    // Allocate a triple buffered mixing buffer
+    // Two buffers can be in the process of being filled while the third is being read
+    hidden->num_buffers = 3;
     hidden->mixbuf_bytes = (hidden->num_buffers * device->buffer_size);
     hidden->mixbuf = (Uint8 *)SDL_aligned_alloc(SDL_GetSIMDAlignment(), hidden->mixbuf_bytes);
     if (!hidden->mixbuf) {
@@ -370,9 +372,9 @@ static bool BuildAAudioStream(SDL_AudioDevice *device)
         return false;
     }
 
-    LOGI("AAudio Actually opened %u hz %u bit %u channels %s samples %u, buffers %d",
-         device->spec.freq, SDL_AUDIO_BITSIZE(device->spec.format),
-         device->spec.channels, SDL_AUDIO_ISBIGENDIAN(device->spec.format) ? "BE" : "LE", device->sample_frames, hidden->num_buffers);
+    LOGI("AAudio Actually opened %u hz %s %u channels samples %u, buffers %d",
+         device->spec.freq, SDL_GetAudioFormatName(device->spec.format),
+         device->spec.channels, device->sample_frames, hidden->num_buffers);
 
     res = ctx.AAudioStream_requestStart(hidden->stream);
     if (res != AAUDIO_OK) {

@@ -60,7 +60,6 @@
 #include "../core/linux/SDL_udev.h"
 #ifdef SDL_USE_LIBUDEV
 #include <poll.h>
-#include "../core/linux/SDL_sandbox.h"
 #endif
 
 #ifdef HAVE_INOTIFY
@@ -1144,7 +1143,7 @@ int SDL_hid_init(void)
         SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
                      "udev disabled by SDL_HINT_HIDAPI_UDEV");
         linux_enumeration_method = ENUMERATION_FALLBACK;
-    } else if (SDL_DetectSandbox() != SDL_SANDBOX_NONE) {
+    } else if (SDL_GetSandbox() != SDL_SANDBOX_NONE) {
         SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
                      "Container detected, disabling HIDAPI udev integration");
         linux_enumeration_method = ENUMERATION_FALLBACK;
@@ -1243,7 +1242,7 @@ int SDL_hid_init(void)
         return -1;
     }
 
-#ifdef SDL_PLATFORM_MACOS
+#if defined(SDL_PLATFORM_MACOS) && !defined(SDL_HIDAPI_DISABLED)
     hid_darwin_set_open_exclusive(0);
 #endif
 

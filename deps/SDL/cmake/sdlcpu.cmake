@@ -61,13 +61,21 @@ const char *arch_${known_arch} = \"INFO<${known_arch}=\" ARCH_${known_arch} \">\
 
   set(src_arch_detect "${src_vars}
 int main(int argc, char *argv[]) {
-  (void)argv;
   int result = 0;
+  (void)argv;
 ${src_main}
   return result;
 }")
 
-  set(path_src_arch_detect "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/CMakeTmp/SDL_detect_arch.c")
+  if(CMAKE_C_COMPILER)
+    set(ext ".c")
+  elseif(CMAKE_CXX_COMPILER)
+    set(ext ".cpp")
+  else()
+    enable_language(C)
+    set(ext ".c")
+  endif()
+  set(path_src_arch_detect "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/CMakeTmp/SDL_detect_arch${ext}")
   file(WRITE "${path_src_arch_detect}" "${src_arch_detect}")
   set(path_dir_arch_detect "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/CMakeTmp/SDL_detect_arch")
   set(path_bin_arch_detect "${path_dir_arch_detect}/bin")

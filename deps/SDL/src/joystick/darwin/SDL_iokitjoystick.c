@@ -475,6 +475,11 @@ static bool GetDeviceInfo(IOHIDDeviceRef hidDevice, recDevice *pDevice)
         CFNumberGetValue(refCF, kCFNumberSInt32Type, &version);
     }
 
+    if (SDL_IsJoystickXboxOne(vendor, product)) {
+        // We can't actually use this API for Xbox controllers
+        return false;
+    }
+
     // get device name
     refCF = IOHIDDeviceGetProperty(hidDevice, CFSTR(kIOHIDManufacturerKey));
     if ((!refCF) || (!CFStringGetCString(refCF, manufacturer_string, sizeof(manufacturer_string), kCFStringEncodingUTF8))) {
@@ -488,6 +493,10 @@ static bool GetDeviceInfo(IOHIDDeviceRef hidDevice, recDevice *pDevice)
     if (name) {
         SDL_strlcpy(pDevice->product, name, sizeof(pDevice->product));
         SDL_free(name);
+    }
+
+    if (SDL_ShouldIgnoreJoystick(vendor, product, version, pDevice->product)) {
+        return false;
     }
 
     if (SDL_JoystickHandledByAnotherDriver(&SDL_DARWIN_JoystickDriver, vendor, product, version, pDevice->product)) {
@@ -546,11 +555,6 @@ static void JoystickDeviceWasAddedCallback(void *ctx, IOReturn res, void *sender
     if (!GetDeviceInfo(ioHIDDeviceObject, device)) {
         FreeDevice(device);
         return; // not a device we care about, probably.
-    }
-
-    if (SDL_ShouldIgnoreJoystick(device->product, device->guid)) {
-        FreeDevice(device);
-        return;
     }
 
     // Get notified when this device is disconnected.
