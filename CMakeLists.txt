@@ -19,6 +19,12 @@ option( RAVENGINE_SERVER "Build as a headless server" ${RAVENGINE_BUILD_TESTS})
 option(RAVENGINE_MSVC_ITERATOR_DEBUG_LEVEL "Iterator debug level (MSVC only)" "0x0")
 option(RAVENGINE_PROFILE_ALL_BUILDS "If disabled, instrumentation is only available in the Profile configuration" OFF)
 
+if (NOT RAVENGINE_ASSETS_DIR)
+	set(RAVENGINE_ASSETS_DIR "${CMAKE_BINARY_DIR}" CACHE FILEPATH "")
+else()
+	message("RAVENGINE_ASSETS_DIR overridden to ${RAVENGINE_ASSETS_DIR}")
+endif()
+
 # ban in-source builds
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 

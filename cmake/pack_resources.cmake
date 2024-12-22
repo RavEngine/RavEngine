@@ -261,7 +261,7 @@ function(pack_resources)
 	set_source_files_properties(${ARGS_SOUNDS} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "audio.wav")
 	source_group("Shaders" FILES ${all_shader_sources})
 
-	set(outpack "${CMAKE_BINARY_DIR}/${ARGS_TARGET}.rvedata")
+	set(outpack "${RAVENGINE_ASSETS_DIR}/${ARGS_TARGET}.rvedata")
 
 	# allow inserting into the mac / ios resource bundle
 	set_target_properties(${ARGS_TARGET} PROPERTIES 
