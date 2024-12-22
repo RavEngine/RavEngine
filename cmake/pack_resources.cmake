@@ -282,7 +282,7 @@ function(pack_resources)
 		POST_BUILD 
 		OUTPUT "${outpack}"
 		DEPENDS ${assets}
-		COMMENT "Packing resources for ${ARGS_TARGET}"
+		COMMENT "Packing resources for ${ARGS_TARGET} to ${outpack}"
 		COMMAND ${CMAKE_COMMAND} -E tar "cfv" "${outpack}" --format=zip "${CMAKE_CURRENT_BINARY_DIR}/${ARGS_TARGET}"
 		VERBATIM
 	)

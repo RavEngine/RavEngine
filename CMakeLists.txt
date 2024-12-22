@@ -23,6 +23,10 @@ if (NOT RAVENGINE_ASSETS_DIR)
 	set(RAVENGINE_ASSETS_DIR "${CMAKE_BINARY_DIR}" CACHE FILEPATH "")
 else()
 	message("RAVENGINE_ASSETS_DIR overridden to ${RAVENGINE_ASSETS_DIR}")
+	file(MAKE_DIRECTORY "${RAVENGINE_ASSETS_DIR}")
+#	if (NOT ASSETS_DIR_MADE)
+#		message(FATAL_ERROR "Failed to create directory ${RAVENGINE_ASSETS_DIR}")
+#	endif()
 endif()
 
 # ban in-source builds
