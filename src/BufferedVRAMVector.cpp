@@ -2,6 +2,8 @@
 #include "BufferedVRAMVector.hpp"
 #include <RGL/CommandBuffer.hpp>
 #include "Debug.hpp"
+#include "App.hpp"
+#include "RenderEngine.hpp"
 
 namespace RavEngine{
 void BufferedVRAMStructureBase::InitializePrivateBuffer(RGLDevicePtr device, uint32_t size){
@@ -13,6 +15,11 @@ void BufferedVRAMStructureBase::InitializePrivateBuffer(RGLDevicePtr device, uin
         RGL::BufferAccess::Private,
         {.TransferDestination = true, .Transfersource = true,  .debugName = debugName.data()}
     });
+}
+
+BufferedVRAMStructureBase::~BufferedVRAMStructureBase()
+{
+    GetApp()->GetRenderEngine().gcBuffers.enqueue(privateBuffer);
 }
 
 void BufferedVRAMStructureBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hostBuffer, RGLCommandBufferPtr transformSyncCommandBuffer, uint32_t elemSize, const Function<void(RGLBufferPtr)>& gcBuffersFn, bool& needsSync){

@@ -5,6 +5,7 @@
 #include <fstream>
 #include <cmrc/cmrc.hpp>
 #include <fmt/format.h>
+#include <span>
 
 CMRC_DECLARE(rvesc_resources);
 

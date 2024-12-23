@@ -29,6 +29,10 @@ namespace RGL {
 
 	BufferD3D12::BufferD3D12(decltype(owningDevice) device, const BufferConfig& config) : owningDevice(device), myType(config.type), accessType(config.access)
 	{
+        if (config.options.debugName) {
+            debugName = config.options.debugName;
+        }
+
         const auto size_bytes = config.nElements * config.stride;
         mappedMemory.size = size_bytes;
         if (config.type.IndexBuffer) {

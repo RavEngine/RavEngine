@@ -823,7 +823,8 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		   {.VertexBuffer = true},
 		   sizeof(Vertex2D),
 		   vertices,
-		   RGL::BufferAccess::Private
+		   RGL::BufferAccess::Private,
+			{.debugName = "Screen Triangle Vertex Bufer"}
 		});
 	screenTriVerts->SetBufferData(vertices);
 
@@ -838,7 +839,8 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		{.VertexBuffer = true},
 		sizeof(ParticleQuadVert),
 		quadVerts,
-		RGL::BufferAccess::Private
+		RGL::BufferAccess::Private,
+		{.debugName = "Quad Vertex Bufer"}
 	});
 	quadVertBuffer->SetBufferData(quadVerts);
 

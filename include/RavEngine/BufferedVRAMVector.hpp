@@ -3,6 +3,7 @@
 #include <RGL/Types.hpp>
 #include "Function.hpp"
 #include "VRAMSparseSet.hpp"
+#include "Types.hpp"
 
 namespace RavEngine{
 
@@ -23,6 +24,10 @@ public:
     }
     BufferedVRAMStructureBase() {}
     BufferedVRAMStructureBase(const std::string_view debugName) : debugName(debugName) {}
+
+    ~BufferedVRAMStructureBase();
+
+    MOVE_NO_COPY(BufferedVRAMStructureBase);
 };
 
 template<typename T>
@@ -35,6 +40,10 @@ public:
     BufferedVRAMVector(uint32_t initialSize){
         Resize(initialSize);
     }
+
+    MOVE_NO_COPY(BufferedVRAMVector);
+
+    virtual ~BufferedVRAMVector(){ }
     
     auto& GetHostBuffer() const{
         return hostBuffer;
@@ -119,6 +128,9 @@ public:
     
     BufferedVRAMSparseSet() {}
     BufferedVRAMSparseSet(const std::string_view debugName) : BufferedVRAMStructureBase(debugName) {}
+    virtual ~BufferedVRAMSparseSet() {}
+
+    MOVE_NO_COPY(BufferedVRAMSparseSet);
 
     auto DenseSize() const{
         return sparseSet.DenseSize();

@@ -148,14 +148,16 @@ Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices,
 		 uint32_t(num_vertices),
 		{.VertexBuffer = true},
 		sizeof(Rml::Vertex),
-		RGL::BufferAccess::Private
+		RGL::BufferAccess::Private,
+		{.debugName = "RML Compiled Vertex Bufer"}
 	});
 
 	auto ibuf = device->CreateBuffer({
 		 uint32_t(num_indices),
 		{.IndexBuffer = true},
 		sizeof(int),
-		RGL::BufferAccess::Private
+		RGL::BufferAccess::Private,
+		{.debugName = "RML Compiled Index Bufer"}
 	});
 
 	// first half is for vertex data, second half is for index data
