@@ -94,6 +94,10 @@ namespace RavEngine {
 			return shadowRenderPipeline;
 		}
 
+		auto GetDepthPrepassPipeline() const {
+			return shadowRenderPipeline;
+		}
+
 	private:
 		OpacityMode opacityMode = OpacityMode::Opaque;
 		RGLRenderPipelinePtr userRenderPipeline, shadowRenderPipeline;

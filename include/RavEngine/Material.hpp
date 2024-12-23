@@ -83,8 +83,12 @@ namespace RavEngine {
 			return shadowRenderPipeline;
 		}
 
+		auto GetDepthPrepassPipeline() const {
+			return depthPrepassPipeline;
+		}
+
 	protected:
-		RGLRenderPipelinePtr renderPipeline, shadowRenderPipeline;
+		RGLRenderPipelinePtr renderPipeline, shadowRenderPipeline, depthPrepassPipeline;
 		RGLPipelineLayoutPtr pipelineLayout;
 		OpacityMode opacityMode;
 
@@ -128,6 +132,7 @@ namespace RavEngine {
 
 		RGLRenderPipelinePtr GetShadowRenderPipeline() const;
 		RGLRenderPipelinePtr GetMainRenderPipeline()const;
+		RGLRenderPipelinePtr GetDepthPrepassPipeline() const;
 
 		const MaterialVariant* operator->() const {
 			return this;

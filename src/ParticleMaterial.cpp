@@ -72,6 +72,8 @@ namespace RavEngine {
 
 			auto layout = device->CreatePipelineLayout(rpl);
 
+			bool hasDepthPrepass = config.opacityMode == OpacityMode::Opaque;
+
 			RGL::RenderPipelineDescriptor rpd{
 				.stages = {
 					{
@@ -99,13 +101,23 @@ namespace RavEngine {
 					.depthFormat = RGL::TextureFormat::D32SFloat,
 					.depthTestEnabled = config.zTestEnabled,
 					.depthWriteEnabled = IsTransparent() ? false : config.zWriteEnabled,
-					.depthFunction = RGL::DepthCompareFunction::Greater,
+					.depthFunction = hasDepthPrepass ? RGL::DepthCompareFunction::Equal : RGL::DepthCompareFunction::Greater,
 				},
 				.pipelineLayout = layout
 			};
 
 			userRenderPipeline = device->CreateRenderPipeline(rpd);
+			if (hasDepthPrepass) {
+				const auto sh_name = Format("{}_fsh_depthonly", particleFS);
+				rpd.stages[1].shaderModule = LoadShaderByFilename(sh_name, device);
+			}
+			else {
+				rpd.stages.pop_back();
+			}
+
 			rpd.colorBlendConfig.attachments.clear();					// no color attachments for shadow mode
+
+			rpd.depthStencilConfig.depthFunction = RGL::DepthCompareFunction::Greater;
 			shadowRenderPipeline = device->CreateRenderPipeline(rpd);
 		}
 	}

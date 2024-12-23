@@ -507,6 +507,16 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		}
 	});
 
+	depthPrepassRenderPass = RGL::CreateRenderPass({
+		.attachments = {},
+		.depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+			.format = RGL::TextureFormat::D32SFloat,
+			.loadOp = RGL::LoadAccessOperation::Load,
+			.storeOp = RGL::StoreAccessOperation::Store,
+			.clearColor = depthClearColor
+		}
+	});
+
 	dummyShadowmap = device->CreateTexture({
 		.usage = {.TransferDestination = true,  .Sampled = true,},
 		.aspect = {.HasDepth = true },

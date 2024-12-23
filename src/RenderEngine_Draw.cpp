@@ -717,7 +717,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			prepareSkeletalCullingBuffer();
 		}
 
-    auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &camIdx]<bool includeLighting = true, bool transparentMode = false>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers, const RenderTargetCollection* target){
+    auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &camIdx]<bool includeLighting = true, bool transparentMode = false, bool runCulling = true>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers, const RenderTargetCollection* target){
 			RVE_PROFILE_FN_N("RenderFromPerspective");
             uint32_t particleBillboardMatrices = 0;
 
@@ -832,13 +832,52 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				}
 				};
 
-			
+			constexpr static auto filterRenderData = [](LightingType lightingFilter, auto& materialInstance) {
+				bool shouldKeep = false;
+
+				std::visit(CaseAnalysis{
+					[lightingFilter, &shouldKeep](const Ref<LitMaterial>& mat) {
+						if (lightingFilter.Lit) {
+							shouldKeep = true;
+						}
+					},
+					[lightingFilter, &shouldKeep](const Ref<UnlitMaterial>& mat) {
+						if (lightingFilter.Unlit) {
+							shouldKeep = true;
+						}
+					} }
+				, materialInstance->GetMat()->variant);
+
+				// transparency vs opaque 
+				std::visit([&shouldKeep, &lightingFilter](auto&& mat) {
+					if (
+						(mat->IsTransparent() && lightingFilter.Transparent)
+						|| (!mat->IsTransparent() && lightingFilter.Opaque)
+						) {
+						// if it was not set to true earlier, then do nothing
+					}
+					else {
+						shouldKeep = false;
+					}
+					}, materialInstance->GetMat()->variant);
+
+				return shouldKeep;
+				};
+
 
             auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning, &reallocBuffer, layers, lightingFilter](matrix4 viewproj, const DepthPyramid pyramid) {
 				RVE_PROFILE_FN_N("Cull Skeletal Meshes");
 			// first reset the indirect buffers
 				uint32_t skeletalVertexOffset = 0;
 			for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
+
+				bool shouldKeep = filterRenderData(lightingFilter, materialInstance);
+
+
+				// is this the correct material type? if not, skip
+				if (!shouldKeep) {
+					continue;
+				}
 
 				uint32_t total_entities = 0;
 				for (const auto& command : drawcommand.commands) {
@@ -893,6 +932,13 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
             mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), 5);
 			mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.perObjectAttributes.GetPrivateBuffer(), 6);
 			for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
+				bool shouldKeep = filterRenderData(lightingFilter, materialInstance);
+
+				// is this the correct material type? if not, skip
+				if (!shouldKeep) {
+					continue;
+				}
+
 				CullingUBO cubo{
 					.viewProj = viewproj,
 					.indirectBufferOffset = 0,
@@ -930,38 +976,6 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			}
 			mainCommandBuffer->EndComputeDebugMarker();
 			mainCommandBuffer->EndCompute();
-			};
-
-			constexpr static auto filterRenderData = [](LightingType lightingFilter, auto& materialInstance) {
-				bool shouldKeep = false;
-
-				std::visit(CaseAnalysis{
-					[lightingFilter, &shouldKeep](const Ref<LitMaterial>& mat) {
-						if (lightingFilter.Lit) {
-							shouldKeep = true;
-						}
-					},
-					[lightingFilter, &shouldKeep](const Ref<UnlitMaterial>& mat) {
-						if (lightingFilter.Unlit) {
-							shouldKeep = true;
-						}
-					} }
-				, materialInstance->GetMat()->variant);
-
-				// transparency vs opaque 
-				std::visit([&shouldKeep, &lightingFilter](auto&& mat) {
-					if (
-						(mat->IsTransparent() && lightingFilter.Transparent)
-						|| (!mat->IsTransparent() && lightingFilter.Opaque)
-						) {
-						// if it was not set to true earlier, then do nothing
-					}
-					else {
-						shouldKeep = false;
-					}
-					}, materialInstance->GetMat()->variant);
-
-				return shouldKeep;
 			};
 
 
@@ -1321,11 +1335,13 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			};
 
 			// do culling operations
-			mainCommandBuffer->BeginComputeDebugMarker("Cull Static Meshes");
-			cullTheRenderData(worldOwning->renderData.staticMeshRenderData);
-			mainCommandBuffer->EndComputeDebugMarker();
-			if (skeletalPrepareResult.skeletalMeshesExist) {
-				cullSkeletalMeshes(viewproj, pyramid);
+			if constexpr (runCulling) {
+				mainCommandBuffer->BeginComputeDebugMarker("Cull Static Meshes");
+				cullTheRenderData(worldOwning->renderData.staticMeshRenderData);
+				mainCommandBuffer->EndComputeDebugMarker();
+				if (skeletalPrepareResult.skeletalMeshesExist) {
+					cullSkeletalMeshes(viewproj, pyramid);
+				}
 			}
 
 
@@ -1528,11 +1544,18 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					);
 					mainCommandBuffer->EndRenderDebugMarker();
 					RVE_PROFILE_SECTION_END(dirShadow);
+
+					// render depth prepass
+					mainCommandBuffer->BeginRenderDebugMarker("Lit Opaque Depth Prepass");
+					renderFromPerspective.template operator() < true, transparentMode, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, depthPrepassRenderPass, [](auto&& mat) {
+						return mat->GetDepthPrepassPipeline();
+						}, renderArea, { .Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, &target);
+					mainCommandBuffer->EndRenderDebugMarker();
 				}
 
-				// render all the static meshes
+				// render with shading
 
-				renderFromPerspective.template operator()<true, transparentMode>(camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, transparentMode ? litTransparentPass : litRenderPass, [](auto&& mat) {
+				renderFromPerspective.template operator()<true, transparentMode, transparentMode>(camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, transparentMode ? litTransparentPass : litRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
                 }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, &target);
 
@@ -1544,7 +1567,15 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			};
 
 			auto renderUnlitPass = [this, &target, &renderFromPerspective, &renderLightShadowmap, &worldOwning](auto&& camData, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
-				renderFromPerspective.template operator() < false > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitRenderPass, [](auto&& mat) {
+				// render depth prepass
+				mainCommandBuffer->BeginRenderDebugMarker("Unlit Opaque Depth Prepass");
+				renderFromPerspective.template operator() < false, false, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, depthPrepassRenderPass, [](auto&& mat) {
+					return mat->GetDepthPrepassPipeline();
+					}, renderArea, { .Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers, & target);
+				mainCommandBuffer->EndRenderDebugMarker();
+
+				// render color
+				renderFromPerspective.template operator() < false, false, false> (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
 					}, renderArea, { .Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers, & target);
 			};
@@ -1922,6 +1953,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		
 
 			// lit pass
+			depthPrepassRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+
 			litRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
 			litRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 

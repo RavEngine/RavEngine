@@ -64,6 +64,8 @@ namespace RavEngine {
 
         pipelineLayout = device->CreatePipelineLayout(pld);
 
+        bool hasDepthPrepass = config.opacityMode == OpacityMode::Opaque && !config.verbatimConfig;
+
         auto vertexConfigCopy = config.vertConfig;
         if (!config.verbatimConfig) {
             // must have the entity ID buffer
@@ -104,7 +106,7 @@ namespace RavEngine {
                 .depthFormat = RGL::TextureFormat::D32SFloat,
                 .depthTestEnabled = config.depthTestEnabled,
                 .depthWriteEnabled = IsTransparent() ? false : config.depthWriteEnabled,
-                .depthFunction = config.depthCompareFunction,
+                .depthFunction = hasDepthPrepass? RGL::DepthCompareFunction::Equal : config.depthCompareFunction,
             },
             .pipelineLayout = pipelineLayout,
         };
@@ -112,7 +114,7 @@ namespace RavEngine {
         renderPipeline = device->CreateRenderPipeline(rpd);
 
         // invert some settings for the shadow pipeline
-        if (config.opacityMode == OpacityMode::Opaque && !config.verbatimConfig) {
+        if (hasDepthPrepass) {
             const auto sh_name = Format("{}_fsh_depthonly", fsh_name);
             rpd.stages[1].shaderModule = LoadShaderByFilename(sh_name, device);  // use the shadow variant
         }
@@ -120,8 +122,12 @@ namespace RavEngine {
             rpd.stages.pop_back();  // no fragment shader
         }
 
-        rpd.rasterizerConfig.windingOrder = RGL::WindingOrder::Clockwise;   // backface shadows
         rpd.colorBlendConfig.attachments.clear();                           // only write to depth
+        rpd.depthStencilConfig.depthFunction = config.depthCompareFunction; // use real depth compare function
+
+        depthPrepassPipeline = device->CreateRenderPipeline(rpd);
+
+        rpd.rasterizerConfig.windingOrder = RGL::WindingOrder::Clockwise;   // backface shadows
         rpd.rasterizerConfig.depthClampEnable = true;                       // clamp out-of-view fragments
         shadowRenderPipeline = device->CreateRenderPipeline(rpd);
     }
@@ -365,6 +371,21 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
             },
             [&pipeline](const Ref<UnlitMaterial>& m) {
                 pipeline = m->GetMainRenderPipeline();
+            } }, variant);
+
+        return pipeline;
+    }
+
+    RGLRenderPipelinePtr RavEngine::MaterialVariant::GetDepthPrepassPipeline() const
+    {
+        RGLRenderPipelinePtr pipeline;
+
+        std::visit(CaseAnalysis{
+            [&pipeline](const Ref<LitMaterial>& m) {
+                pipeline = m->GetDepthPrepassPipeline();
+            },
+            [&pipeline](const Ref<UnlitMaterial>& m) {
+                pipeline = m->GetDepthPrepassPipeline();
             } }, variant);
 
         return pipeline;

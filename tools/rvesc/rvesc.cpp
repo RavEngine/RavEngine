@@ -10,11 +10,13 @@ CMRC_DECLARE(rvesc_resources);
 
 using namespace std;
 
+std::filesystem::path shaderName; 
+
 void immediatewindow_print(const std::string& str) {
 	std::cout << str << std::endl;
 }
 
-#define FATAL(reason) {std::cerr << "rvesc error: " << reason << std::endl; return 1;}
+#define FATAL(reason) {std::cerr << fmt::format("rvesc error ({}): {}", shaderName.string(), reason) << std::endl; return 1;}
 
 int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem::path& outfile, const std::vector<std::filesystem::path>& includeDirs, const std::span<std::string> extraDefines, librglc::API targetAPI, bool debug) {
 	simdjson::ondemand::parser parser;
@@ -235,6 +237,8 @@ int main(int argc, char** argv) {
 	catch (exception& e) {
 		FATAL("no input file")
 	}
+	shaderName = inputFile;
+
 	std::filesystem::path outputFile;
 	try {
 		outputFile = args["output"].as<decltype(outputFile)>();

@@ -11,11 +11,13 @@ void main(){
   UnlitOut user_out = frag();
   vec4 outcolor = user_out.color;
 
-  #if RVE_TRANSPARENT
-    beginInvocationInterlockARB();
-    writeTransparency(outcolor);
-    endInvocationInterlockARB();
- #else
-    result = outcolor;
+  #if !RVE_DEPTHONLY 
+      #if RVE_TRANSPARENT
+        beginInvocationInterlockARB();
+        writeTransparency(outcolor);
+        endInvocationInterlockARB();
+     #else
+        result = outcolor;
+      #endif
   #endif
 }
