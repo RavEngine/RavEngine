@@ -11,7 +11,9 @@ layout(binding = 26, rgba8) uniform image2D mlabAccum3;
 layout(binding = 27, rgba16f) uniform image2D mlabDepth;
 layout(early_fragment_tests) in;
 #else
+    #if !RVE_DEPTHONLY 
     layout(location = 0) out vec4 result;
+    #endif
 #endif
 
 // adapted from: https://github.com/HanetakaChou/MultiLayerAlphaBlending/

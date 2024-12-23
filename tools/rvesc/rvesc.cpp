@@ -16,7 +16,7 @@ void immediatewindow_print(const std::string& str) {
 
 #define FATAL(reason) {std::cerr << "rvesc error: " << reason << std::endl; return 1;}
 
-int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem::path& outfile, const std::vector<std::filesystem::path>& includeDirs, librglc::API targetAPI, bool debug) {
+int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem::path& outfile, const std::vector<std::filesystem::path>& includeDirs, const std::span<std::string> extraDefines, librglc::API targetAPI, bool debug) {
 	simdjson::ondemand::parser parser;
 
 	auto json = simdjson::padded_string::load(in_desc_file.string());
@@ -161,6 +161,9 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 			defines.push_back(std::string(str.get_string().value()));
 		}
 	}
+	for (const auto& def : extraDefines) {
+		defines.push_back(def);
+	}
 
 
 	{
@@ -173,9 +176,6 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 			}
 		}
 	}
-
-
-
 
 	try {
 		auto result = librglc::CompileString(full_shader, targetAPI, inputStage, {
@@ -211,6 +211,7 @@ int main(int argc, char** argv) {
 		("a,api", "Target API", cxxopts::value<string>())
 		("s,stage", "Shader stage", cxxopts::value<std::string>())
 		("i,include", "Include paths", cxxopts::value<std::vector<filesystem::path>>())
+		("v,define", "Additional defines", cxxopts::value<std::vector<std::string>>())
 		("h,help", "Show help menu")
 		;
 
@@ -246,6 +247,14 @@ int main(int argc, char** argv) {
 	std::vector<filesystem::path> includepaths;
 	try {
 		includepaths = args["include"].as<decltype(includepaths)>();
+	}
+	catch (exception& e) {
+	}
+
+	// get defines
+	std::vector<std::string> extraDefines;
+	try {
+		extraDefines = args["define"].as<decltype(extraDefines)>();
 	}
 	catch (exception& e) {
 	}
@@ -290,5 +299,5 @@ int main(int argc, char** argv) {
 	}
 
 
-	return do_compile(inputFile, outputFile, includepaths, api, debug);;
+	return do_compile(inputFile, outputFile, includepaths, extraDefines, api, debug);;
 }

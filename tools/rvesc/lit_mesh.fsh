@@ -249,12 +249,13 @@ void main(){
     // add the emissive component
     outcolor += vec4(user_out.emissiveColor,0);  // don't want to add emissivity to the alpha channel
 
-    #if RVE_TRANSPARENT
-        beginInvocationInterlockARB();
-        writeTransparency(outcolor);
-        endInvocationInterlockARB();
-    #else
-        result = outcolor;
+    #if !RVE_DEPTHONLY 
+        #if RVE_TRANSPARENT
+            beginInvocationInterlockARB();
+            writeTransparency(outcolor);
+            endInvocationInterlockARB();
+        #else
+            result = outcolor;
+        #endif
     #endif
-
 }

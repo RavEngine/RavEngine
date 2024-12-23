@@ -42,46 +42,42 @@ macro(shader_compile infile stage api extension binary)
 	endif()
 endmacro()
 
-macro(rvesc_compile_shader infile shaderfile api extension)
+macro(rvesc_compile_shader infile shaderfile api extension outputfilename extraflags)
 	set(shader_inc_dir "${eng_dir}/shaders")	
-	set(outname "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${name_only}.${extension}")
+	set(outname "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/${api}/${outputfilename}.${extension}")
 	
 	get_filename_component(desc_dir "${infile}" DIRECTORY )
 	
 	set(shaderfilepath  "${desc_dir}/${shaderfile}")
+
+	separate_arguments(sh_extraflags_sep UNIX_COMMAND ${extraflags})
 	
 	add_custom_command(
 		PRE_BUILD
 		OUTPUT "${outname}"
 		DEPENDS "${infile}" GNS_Deps "${RVESC_PATH}" "${shaderfilepath}"
-		COMMAND ${RVESC_PATH} -f "${infile}" -o "${outname}" --api ${api} --include "${shader_inc_dir}" --debug 
+		COMMAND ${RVESC_PATH} -f "${infile}" -o "${outname}" --api ${api} --include "${shader_inc_dir}" ${sh_extraflags_sep} --debug 
 	)
 
 endmacro()
 
-macro(rvesc_compile descfile shader_target)
+function(rvesc_compile descfile shader_target inshadername outputfilename extraflags)
 
-	set(bindir "${shader_target}_ShaderIntermediate")
-
-	file(READ "${descfile}" desc_STR)
-	string(JSON inshadername GET "${desc_STR}" shader)
-	
+	set(bindir "${shader_target}_ShaderIntermediate")	
 		
-	get_filename_component(name_only ${descfile} NAME_WE)
-
 	if(RGL_VK_AVAILABLE)
-		rvesc_compile_shader("${descfile}" "${inshadername}" "Vulkan" "spv")
+		rvesc_compile_shader("${descfile}" "${inshadername}" "Vulkan" "spv" "${outputfilename}" ${extraflags})
 		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${outname})
 	endif()
 	if (RGL_WEBGPU_AVAILABLE)
-		rvesc_compile_shader("${descfile}" "${inshadername}" "WebGPU" "wgsl")
+		rvesc_compile_shader("${descfile}" "${inshadername}" "WebGPU" "wgsl" "${outputfilename}" ${extraflags})
 		set_property(GLOBAL APPEND PROPERTY ALL_SHADERS ${outname})
 	endif()
 	if(RGL_DX12_AVAILABLE)
-		rvesc_compile_shader("${descfile}" "${inshadername}" "Direct3D12" "hlsl")
+		rvesc_compile_shader("${descfile}" "${inshadername}" "Direct3D12" "hlsl" "${outputfilename}" ${extraflags})
 		string(JSON stage GET "${desc_STR}" stage)
 		
-		set(finalrootpath "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/Direct3D12/${name_only}")
+		set(finalrootpath "${CMAKE_CURRENT_BINARY_DIR}/${bindir}/Direct3D12/${outputfilename}")
 		
 		if (stage MATCHES "vertex")
 			set(dxc_type "Vertex")
@@ -113,7 +109,7 @@ macro(rvesc_compile descfile shader_target)
 	endif()
 	
 	if(RGL_MTL_AVAILABLE)
-		rvesc_compile_shader("${descfile}" "${inshadername}" "Metal" "metal")
+		rvesc_compile_shader("${descfile}" "${inshadername}" "Metal" "metal" "${outputfilename}" ${extraflags})
 		set_source_files_properties(${outname} PROPERTIES 
 			GENERATED TRUE
 			HEADER_FILE_ONLY OFF
@@ -134,10 +130,28 @@ macro(rvesc_compile descfile shader_target)
 		XCODE_EXPLICIT_FILE_TYPE "sourcecode.glsl"
 	)
 
-endmacro()
+endfunction()
 
 function(rvesc_compile_meta infile shader_target)
-	rvesc_compile("${infile}" ${shader_target})
+	file(READ "${infile}" desc_STR)
+	string(JSON inshadername GET "${desc_STR}" shader)
+
+	get_filename_component(sh_name_only ${infile} NAME_WE)
+	rvesc_compile("${infile}" "${shader_target}" "${inshadername}" "${sh_name_only}" " ")
+
+	# extra cases
+	# Depth-only variants: If type is mesh, and not transparent, and is a fragment shader
+	string(JSON instage GET "${desc_STR}" stage)
+	string(JSON intype GET "${desc_STR}" type)
+	string(JSON inopacity ERROR_VARIABLE nofound GET "${desc_STR}" opacity)
+
+
+	if (instage MATCHES "fragment" AND intype MATCHES "mesh" AND NOT (inopacity MATCHES "transparent"))
+		message("${infile} needs depth-only variants")
+
+		rvesc_compile("${infile}" "${shader_target}" "${inshadername}" "${sh_name_only}_depthonly" "--define \"RVE_DEPTHONLY 1\"")
+	endif()
+
 endfunction()
 
 function(declare_shader infile shader_target)
