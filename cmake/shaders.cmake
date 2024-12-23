@@ -136,6 +136,10 @@ macro(rvesc_compile descfile shader_target)
 
 endmacro()
 
+function(rvesc_compile_meta infile shader_target)
+	rvesc_compile("${infile}" ${shader_target})
+endfunction()
+
 function(declare_shader infile shader_target)
 	if (RAVENGINE_SERVER)
 		return()
@@ -144,7 +148,7 @@ function(declare_shader infile shader_target)
 	get_filename_component(shader_ext ${infile} EXT)
 	
 	if (shader_ext MATCHES "json")
-		rvesc_compile("${infile}" ${shader_target})
+		rvesc_compile_meta("${infile}" ${shader_target})
 		return()
 	endif()
 

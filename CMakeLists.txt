@@ -193,10 +193,13 @@ file(GLOB SHADERS
     "materials/*.glsl" "materials/*.vsh" "materials/*.fsh" "materials/*.csh"
     "tools/rvesc/*.glsl" "tools/rvesc/*.vsh" "tools/rvesc/*.fsh" "tools/rvesc/*.csh"
 )
-set_source_files_properties(${SHADERS} PROPERTIES HEADER_FILE_ONLY TRUE)	# prevent VS from compiling these
+file(GLOB RVE_CMAKES "cmake/*.cmake")
+set_source_files_properties(${SHADERS} ${RVE_CMAKES} PROPERTIES HEADER_FILE_ONLY TRUE)	# prevent VS from compiling these
+source_group("CMake" FILES ${RVE_CMAKES})
+
 
 # register the library
-add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} ${NATVIS} ${SHADERS})
+add_library("${PROJECT_NAME}" ${HEADERS} ${SOURCES} ${MM_SOURCES} ${NATVIS} ${SHADERS} ${RVE_CMAKES})
 rve_enable_IPO(${PROJECT_NAME})
 target_compile_definitions(${PROJECT_NAME} PUBLIC RMLUI_USE_CUSTOM_RTTI=1)
 
