@@ -147,8 +147,6 @@ function(rvesc_compile_meta infile shader_target)
 
 
 	if (instage MATCHES "fragment" AND intype MATCHES "mesh" AND NOT (inopacity MATCHES "transparent"))
-		message("${infile} needs depth-only variants")
-
 		rvesc_compile("${infile}" "${shader_target}" "${inshadername}" "${sh_name_only}_depthonly" "--define \"RVE_DEPTHONLY 1\"")
 	endif()
 

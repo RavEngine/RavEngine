@@ -112,7 +112,14 @@ namespace RavEngine {
         renderPipeline = device->CreateRenderPipeline(rpd);
 
         // invert some settings for the shadow pipeline
-        rpd.stages.pop_back();  // no fragment shader
+        if (config.opacityMode == OpacityMode::Opaque && !config.verbatimConfig) {
+            const auto sh_name = Format("{}_fsh_depthonly", fsh_name);
+            rpd.stages[1].shaderModule = LoadShaderByFilename(sh_name, device);  // use the shadow variant
+        }
+        else {
+            rpd.stages.pop_back();  // no fragment shader
+        }
+
         rpd.rasterizerConfig.windingOrder = RGL::WindingOrder::Clockwise;   // backface shadows
         rpd.colorBlendConfig.attachments.clear();                           // only write to depth
         rpd.rasterizerConfig.depthClampEnable = true;                       // clamp out-of-view fragments
