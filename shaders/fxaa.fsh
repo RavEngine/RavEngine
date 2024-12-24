@@ -8,7 +8,7 @@
 #define FXAA_SUBPIX_SHIFT (1.0/4.0)
 
 layout(push_constant, std430) uniform UniformBufferObject{
-    ivec2 targetDim;
+    ivec4 targetDim;
 } ubo;
 
 layout(binding = 0) uniform texture2D srcTexture;
@@ -18,7 +18,7 @@ layout(location = 0) out vec4 outcolor;
 
 
 void main(){
-    ivec2 srcResolution = ubo.targetDim;
+    ivec2 srcResolution = ubo.targetDim.zw;
     vec2 uv2 = gl_FragCoord.xy / srcResolution;
     vec2 rcpFrame = 1./srcResolution;
 

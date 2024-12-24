@@ -2,7 +2,7 @@
 // adapted from: https://learnopengl.com/Guest-Articles/2022/Phys.-Based-Bloom
 
 layout(push_constant, std430) uniform UniformBufferObject{
-    ivec2 targetDim;
+    ivec4 targetDim;
 } ubo;
 
 layout(binding = 0) uniform texture2D srcTexture;
@@ -14,7 +14,7 @@ void main()
 {
     vec3 downsample = vec3(0,0,0);
     vec2 srcResolution = textureSize(srcTexture,0).xy;
-    vec2 texCoord = gl_FragCoord.xy / ubo.targetDim;
+    vec2 texCoord = gl_FragCoord.xy / ubo.targetDim.zw;
     vec2 srcTexelSize = 1.0 / srcResolution;
     float x = srcTexelSize.x;
     float y = srcTexelSize.y;

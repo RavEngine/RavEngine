@@ -1651,6 +1651,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                 uint32_t totalPostFXRendered = 0;
                 RGL::TextureView currentInput = target.lightingTexture->GetDefaultView();
                 RGL::TextureView altInput = target.lightingScratchTexture->GetDefaultView();
+				mainCommandBuffer->BeginRenderDebugMarker("Post processing");
                 
                 for(const auto& effect : camData.postProcessingEffects->effects){
                     if (!effect->enabled){
@@ -1660,7 +1661,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                     effect->Preamble({ int(fullSizeViewport.width), int(fullSizeViewport.height) });
                     for(const auto pass : effect->passes){
 						BasePushConstantUBO baseUbo{
-							.dim = {fullSizeViewport.width, fullSizeViewport.height}
+							.dim = {0,0, fullSizeViewport.width, fullSizeViewport.height}
 						};
 						bool isUsingFinalOutput = pass->outputConfiguration == PostProcessOutput::EngineColor;
 
@@ -1672,23 +1673,23 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						else {
 							activePass->SetAttachmentTexture(0, pass->outputBinding);
 							auto size = pass->GetUserDefinedOutputSize();
-							baseUbo.dim = { size.width, size.height };
+							baseUbo.dim = {0,0, size.width, size.height };
 						}
                         mainCommandBuffer->BeginRendering(activePass);
                         mainCommandBuffer->BindRenderPipeline(pass->GetEffect()->GetPipeline());
 						mainCommandBuffer->SetViewport({
 							.x = 0,
 							.y = 0,
-							.width = float(baseUbo.dim.x),
-							.height = float(baseUbo.dim.y),
+							.width = float(baseUbo.dim.z),
+							.height = float(baseUbo.dim.w),
 						});
 						mainCommandBuffer->SetScissor({
 							.offset = {
 								0,0
 							},
 							.extent = {
-								uint32_t(baseUbo.dim.x), 
-								uint32_t(baseUbo.dim.y)
+								uint32_t(baseUbo.dim.z), 
+								uint32_t(baseUbo.dim.w)
 							}
 						});
 						{
@@ -1731,6 +1732,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						}
                     }
                 }
+
+				mainCommandBuffer->EndRenderDebugMarker();
                 
 				RVE_PROFILE_SECTION_END(postfx);
                 auto blitSource = totalPostFXRendered % 2 == 0 ? target.lightingTexture->GetDefaultView() : target.lightingScratchTexture->GetDefaultView();

@@ -42,7 +42,7 @@ struct PostProcessInstanceConfig {
 };
 
 struct BasePushConstantUBO{
-    glm::ivec2 dim;
+    glm::ivec4 dim;
 };
 
 struct ScreenEffectInternalConfig {

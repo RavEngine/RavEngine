@@ -2,7 +2,7 @@
 // adapted from: https://learnopengl.com/Guest-Articles/2022/Phys.-Based-Bloom
 
 layout(push_constant, std430) uniform UniformBufferObject{
-    ivec2 targetDim;
+    ivec4 targetDim;
     float bloomStrength;
 } ubo;
 
