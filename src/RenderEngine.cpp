@@ -612,29 +612,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		glm::vec2 pos;
 	};
 
-	// copy shader
-	auto lightToFbFSH = LoadShaderByFilename("light_to_fb_fsh",device);
-	auto lightToFbVSH = LoadShaderByFilename("light_to_fb_vsh",device);
-
-	auto lightToFBPipelineLayout = device->CreatePipelineLayout({
-		.bindings = {
-				{
-				.binding = 0,
-				.type = RGL::BindingType::Sampler,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			{
-				.binding = 1,
-				.type = RGL::BindingType::SampledImage,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-		},
-		.constants = {
-			{
-				sizeof(LightToFBUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)
-			}
-		}
-	});
 
 	auto debugPipelineLayout = device->CreatePipelineLayout({
 		.constants = {
@@ -663,62 +640,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				}
 		}
 	});
-
-    lightToFBRenderPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
-			.stages = {
-				{
-					.type = RGL::ShaderStageDesc::Type::Vertex,
-					.shaderModule = lightToFbVSH,
-				},
-				{
-					.type = RGL::ShaderStageDesc::Type::Fragment,
-					.shaderModule = lightToFbFSH,
-				}
-			},
-			.vertexConfig = {
-				.vertexBindings = {
-					{
-						.binding = 0,
-						.stride = sizeof(Vertex2D),
-					},
-				},
-				.attributeDescs = {
-					{
-						.location = 0,
-						.binding = 0,
-						.offset = 0,
-						.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
-					},
-				}
-			},
-			.inputAssembly = {
-				.topology = RGL::PrimitiveTopology::TriangleList,
-			},
-			.viewport = {
-				.width = width,
-				.height = height
-			},
-			.scissor = {
-				.extent = {width, height}
-			},
-			.rasterizerConfig = {
-				.windingOrder = RGL::WindingOrder::Counterclockwise,
-			},
-			.colorBlendConfig = {
-				.attachments = {
-					{
-						.format = RGL::TextureFormat::BGRA8_Unorm
-					},
-				}
-            },
-			.depthStencilConfig = {
-				.depthFormat = RGL::TextureFormat::D32SFloat,
-				.depthTestEnabled = true,
-				.depthWriteEnabled = false,
-				.depthFunction = RGL::DepthCompareFunction::Greater,
-			},
-            .pipelineLayout = lightToFBPipelineLayout,
-		});
 
 	auto guiVSH = LoadShaderByFilename("gui_vsh", device);
 	auto guiFSH = LoadShaderByFilename("gui_fsh", device);

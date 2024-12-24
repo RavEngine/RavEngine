@@ -77,7 +77,7 @@ namespace RavEngine {
 		RGLSamplerPtr textureSampler, shadowSampler, depthPyramidSampler;
 		RGLRenderPassPtr litRenderPass, unlitRenderPass, depthPrepassRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, ssaoPass, litTransparentPass, unlitTransparentPass, transparentClearPass, transparencyApplyPass;
 
-		RGLRenderPipelinePtr lightToFBRenderPipeline, depthPyramidCopyPipeline,
+		RGLRenderPipelinePtr depthPyramidCopyPipeline,
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, ssaoPipeline, transparencyApplyPipeline;
 		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline, clusterBuildGridPipeline, clusterPopulatePipeline;
 		RGLBufferPtr screenTriVerts,
