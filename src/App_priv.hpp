@@ -15,6 +15,7 @@
     #include <RGL/Swapchain.hpp>
     #include <RGL/CommandBuffer.hpp>
     #include "OpenXRIntegration.hpp"
+	#include "BuiltinTonemap.hpp"
 #endif
 #include <algorithm>
 #include "MeshAsset.hpp"
@@ -169,6 +170,8 @@ int App::run(int argc, char** argv) {
 		device = RGL::IDevice::CreateSystemDefaultDevice();
 
 		Renderer = std::make_unique<RenderEngine>(config, device);
+		Renderer->dummyTonemap = New<DummyTonemapInstance>(New<DummyTonemap>());
+
 
 		window->InitSwapchain(device, Renderer->mainCommandQueue);
 

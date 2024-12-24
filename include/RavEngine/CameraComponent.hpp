@@ -7,6 +7,7 @@
 #include "RenderTargetCollection.hpp"
 #include "PostProcess.hpp"
 #include "Array.hpp"
+#include "Tonemap.hpp"
 
 namespace RavEngine {
 	class RenderEngine;
@@ -124,6 +125,8 @@ namespace RavEngine {
         Ref<RenderTexture> target;  // if unset, renders to the screen
         
         PostProcessEffectStack postProcessingEffects;
+
+		Ref<TonemapPassInstance> tonemap;
 
 	protected:
         Mode projection = Mode::Perspective;

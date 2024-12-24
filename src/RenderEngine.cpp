@@ -48,6 +48,7 @@
 #include "MeshAsset.hpp"
 #include "Texture.hpp"
 #include "Profile.hpp"
+#include "BuiltinTonemap.hpp"
 
 #ifdef __APPLE__
 	#include "AppleUtilities.h"
@@ -325,6 +326,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.reductionMode = RGL::SamplerReductionMode::Minimum,
     });
     
+	
 
     std::array<float, 4> depthClearColor = {0,0,0,0};
 	// create render passes
@@ -1631,8 +1633,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		},
 		.pipelineLayout = particleKillLayout
 	});
-
-
 }
 
 RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim size, bool createDepth)

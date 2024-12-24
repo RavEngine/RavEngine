@@ -42,6 +42,7 @@ namespace RavEngine {
     class World;
 	struct MeshAsset;
 	struct GUIComponent;
+	struct DummyTonemapInstance;
 
 	namespace Clustered {
 		constexpr static uint32_t gridSizeX = 12;
@@ -88,6 +89,8 @@ namespace RavEngine {
 		struct PyramidCopyUBO {
 			uint32_t size;
 		};
+
+		Ref<DummyTonemapInstance> dummyTonemap;
 
 #pragma pack(push, 1)
 		struct GridBuildUBO {

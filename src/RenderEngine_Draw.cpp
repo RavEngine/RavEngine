@@ -24,6 +24,8 @@
 #include "CaseAnalysis.hpp"
 #include "Profile.hpp"
 #include "MeshCollection.hpp"
+#include "Tonemap.hpp"
+#include "BuiltinTonemap.hpp"
 
 #undef near		// for some INSANE reason, Microsoft defines these words and they leak into here only on ARM targets
 #undef far
@@ -1742,10 +1744,15 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					.viewRect = viewRect
 				};
 
+				// does the camera have a tonemapper set?
+
+				Ref<TonemapPassInstance> tonemap = dummyTonemap;
+				auto tonemapMaterial = tonemap->GetEffect();
+
 				mainCommandBuffer->BeginRendering(finalRenderPass);
-				mainCommandBuffer->BeginRenderDebugMarker("Blit");
+				mainCommandBuffer->BeginRenderDebugMarker("Tonemap");
 				// start with the results of lighting
-				mainCommandBuffer->BindRenderPipeline(lightToFBRenderPipeline);
+				mainCommandBuffer->BindRenderPipeline(lightToFBRenderPipeline);	// tonemapMaterial->GetPipeline()
 				mainCommandBuffer->SetViewport(fullSizeViewport);
 				mainCommandBuffer->SetScissor(fullSizeScissor);
 				mainCommandBuffer->SetVertexBuffer(screenTriVerts);
