@@ -402,7 +402,7 @@ void App::Tick(){
             
             auto viewportOverride = camera.viewportOverride;
             
-            return RenderViewCollection::camData{ viewProj, projOnly, viewOnly, camPos,{camera.nearClip, camera.farClip} ,viewportOverride, camera.renderLayers, camera.FOV, width, height, &camera.postProcessingEffects};
+            return RenderViewCollection::camData{ viewProj, projOnly, viewOnly, camPos,{camera.nearClip, camera.farClip} ,viewportOverride, camera.renderLayers, camera.FOV, width, height, &camera.postProcessingEffects, camera.tonemap.get()};
         };
         std::vector<RenderViewCollection> allViews;
         for(const auto& camera : *allCameras){

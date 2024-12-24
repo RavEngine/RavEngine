@@ -1749,13 +1749,21 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 				// does the camera have a tonemapper set?
 
-				Ref<TonemapPassInstance> tonemap = dummyTonemap;
-				auto tonemapMaterial = tonemap->GetEffect();
+				const TonemapPassInstance* tonemapPass = nullptr;
+				if (tonemapPass = static_cast<const TonemapPassInstance*>(camData.tonemap)) {
+					// we got a tonemap, continue
+				}
+				else {
+					// use the dummy tonemap
+					tonemapPass = dummyTonemap.get();
+				}
+
+				auto tonemapMaterial = tonemapPass->GetEffect();
 
 				mainCommandBuffer->BeginRendering(finalRenderPass);
 				mainCommandBuffer->BeginRenderDebugMarker("Tonemap");
 				// start with the results of lighting
-				mainCommandBuffer->BindRenderPipeline(lightToFBRenderPipeline);	// tonemapMaterial->GetPipeline()
+				mainCommandBuffer->BindRenderPipeline(tonemapMaterial->GetPipeline());
 				mainCommandBuffer->SetViewport(fullSizeViewport);
 				mainCommandBuffer->SetScissor(fullSizeScissor);
 				mainCommandBuffer->SetVertexBuffer(screenTriVerts);

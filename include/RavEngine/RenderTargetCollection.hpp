@@ -39,6 +39,7 @@ namespace RavEngine{
             float fov;
             uint32_t targetWidth, targetHeight;
             const PostProcessEffectStack* postProcessingEffects = nullptr;
+			const void* tonemap = nullptr;	// because we can't forward declare 'using's 
 		};
 		Vector<camData> camDatas;
 		dim_t<int> pixelDimensions;
