@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #include "PostProcess.hpp"
 #include "RenderEngine.hpp"
 
@@ -8,3 +9,4 @@ namespace RavEngine {
 		}) {
 	}
 }
+#endif

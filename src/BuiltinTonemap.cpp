@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #include "BuiltinTonemap.hpp"
 
 static std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> basicBindings{
@@ -53,3 +54,4 @@ namespace RavEngine {
     {
     }
 }
+#endif

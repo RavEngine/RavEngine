@@ -3,7 +3,7 @@
 #include <RGL/Types.hpp>
 #include <RGL/Texture.hpp>
 
-#include "ScreenEFfect.hpp"
+#include "ScreenEffect.hpp"
 #include "App.hpp"
 #include "RenderEngine.hpp"
 #include "Common3D.hpp"
