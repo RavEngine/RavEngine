@@ -11,10 +11,11 @@
 
 namespace RavEngine{
 
-PostProcessPassInstance::~PostProcessPassInstance() = default;
-PostProcessPassInstance::PostProcessPassInstance(Ref<PostProcessPass> effect, const PostProcessInstanceConfig& config) : effect(effect), inputConfiguration(config.inputconfiguration), outputConfiguration(config.outputConfiguration), clearOutputBeforeRendering(config.clearOutputBeforeRendering){}
-
-PostProcessPass::PostProcessPass(const std::string_view name, const PostProcessConfig& config){
+PostProcessPass::PostProcessPass(const std::string_view name, const ScreenEffectConfig& config) : ScreenEffectBase(name, config, {
+    .outputFormat = RenderEngine::colorTexFormat
+}) {
+}
+ScreenEffectBase::ScreenEffectBase(const std::string_view name, const ScreenEffectConfig & config, const ScreenEffectInternalConfig& internalConfig) {
     auto device = GetApp()->GetDevice();
     auto defaultVSH = GetApp()->GetRenderEngine().GetDefaultPostEffectVSH();
         
@@ -64,7 +65,7 @@ PostProcessPass::PostProcessPass(const std::string_view name, const PostProcessC
         .colorBlendConfig = {
             .attachments = {
                 {
-                    .format = RenderEngine::colorTexFormat,
+                    .format = internalConfig.outputFormat,
                     .sourceColorBlendFactor = config.sourceColorBlendFactor,
                     .destinationColorBlendFactor = config.destinationColorBlendFactor,
                     .blendEnabled = true

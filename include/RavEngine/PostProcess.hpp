@@ -27,7 +27,7 @@ enum class PostProcessOutput : uint8_t{
 constexpr static uint8_t nPostProcessTextureInputs = 8;
 constexpr static uint8_t nPostProcessSamplerInputs = nPostProcessTextureInputs + 1;
 
-struct PostProcessConfig{
+struct ScreenEffectConfig{
     std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> bindings;
     uint8_t pushConstantSize = 0;       // only 128 bytes of total push constant space are allowed
     RGL::BlendFactor
@@ -45,19 +45,29 @@ struct BasePushConstantUBO{
     glm::ivec2 dim;
 };
 
-struct PostProcessPass{
-    PostProcessPass(const std::string_view name, const PostProcessConfig& config = {});
-    
-    const auto GetPipeline() const{
+struct ScreenEffectInternalConfig {
+    const RGL::TextureFormat outputFormat;
+};
+
+struct ScreenEffectBase {
+    ScreenEffectBase(const std::string_view name, const ScreenEffectConfig& config, const ScreenEffectInternalConfig& internalConfig);
+
+    const auto GetPipeline() const {
         return pipeline;
     }
 private:
     RGLRenderPipelinePtr pipeline;
 };
 
+struct PostProcessPass : public ScreenEffectBase{
+    PostProcessPass(const std::string_view name, const ScreenEffectConfig& config = {});
+    
+
+};
+
 struct PostProcessPassInstance{
-    PostProcessPassInstance(Ref<PostProcessPass> effect, const PostProcessInstanceConfig& config );
-    ~PostProcessPassInstance();
+    PostProcessPassInstance(Ref<PostProcessPass> effect, const PostProcessInstanceConfig& config ) : effect(effect), inputConfiguration(config.inputconfiguration), outputConfiguration(config.outputConfiguration), clearOutputBeforeRendering(config.clearOutputBeforeRendering) {};
+    ~PostProcessPassInstance() = default;
 
     virtual const RGL::untyped_span GetPushConstantData() const{
         return {nullptr,0};     // return nullptr if you do not have additional push constants
