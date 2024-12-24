@@ -26,6 +26,13 @@ namespace RavEngine {
             .debugName = name.data()
         });
 	}
+    DepthPyramid::~DepthPyramid()
+    {
+        auto app = GetApp();
+        if (app) {
+            app->GetRenderEngine().gcTextures.enqueue(pyramidTexture);
+        }
+    }
 }
 
 #endif

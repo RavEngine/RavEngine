@@ -19,7 +19,9 @@ void BufferedVRAMStructureBase::InitializePrivateBuffer(RGLDevicePtr device, uin
 
 BufferedVRAMStructureBase::~BufferedVRAMStructureBase()
 {
-    GetApp()->GetRenderEngine().gcBuffers.enqueue(privateBuffer);
+    if (auto app = GetApp()) {
+        app->GetRenderEngine().gcBuffers.enqueue(privateBuffer);
+    }
 }
 
 void BufferedVRAMStructureBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hostBuffer, RGLCommandBufferPtr transformSyncCommandBuffer, uint32_t elemSize, const Function<void(RGLBufferPtr)>& gcBuffersFn, bool& needsSync){
