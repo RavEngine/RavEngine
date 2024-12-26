@@ -2025,65 +2025,6 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			RVE_PROFILE_SECTION_END(littrans);
 			camIdx = camIdxHere;
             
-            if (VideoSettings.ssao){
-
-				stackarray(offsets, uint32_t, view.camDatas.size());
-				uint32_t offset_index = 0;
-
-				auto renderSSAOPass = [this, &target, &nextImgSize, &worldOwning, &offsets, &offset_index](auto&& camData, auto&& fullsizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
-
-					ssaoUBO pushConstants{
-						.viewProj = camData.viewProj,
-						.viewRect = {0,0, nextImgSize.width, nextImgSize.height},
-						.viewRegion = {renderArea.offset[0], renderArea.offset[1], renderArea.extent[0], renderArea.extent[1]}
-					};
-
-					mainCommandBuffer->SetViewport(fullsizeViewport);
-					mainCommandBuffer->SetScissor(renderArea);
-
-					mainCommandBuffer->SetVertexBuffer(screenTriVerts);
-					mainCommandBuffer->SetFragmentBytes(pushConstants,0);
-					mainCommandBuffer->BindBuffer(transientBuffer, 7, offsets[offset_index]);
-					mainCommandBuffer->Draw(3);
-				};
-
-				ssaoPass->SetAttachmentTexture(0, view.collection.ssaoTexture->GetDefaultView());
-
-				// because vulkan doesn't allow vkcmdcopybuffer inside of a render pass for some reason
-				{
-					uint32_t i = 0;
-					for (const auto& camdata : view.camDatas) {
-						struct ssaoSpill {
-							glm::mat4 projOnly;
-							glm::mat4 invProj;
-							glm::mat4 viewOnly;
-						} constants
-						{
-							.projOnly = camdata.projOnly,
-							.invProj = glm::inverse(camdata.projOnly),
-							.viewOnly = camdata.viewOnly
-						};
-						auto offset = WriteTransient(constants);
-						offsets[i] = offset;
-						i++;
-					}
-				}
-
-				mainCommandBuffer->BeginRendering(ssaoPass);
-				mainCommandBuffer->BindRenderPipeline(ssaoPipeline);
-				mainCommandBuffer->BeginRenderDebugMarker("SSAO");
-				mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-				mainCommandBuffer->SetFragmentTexture(view.collection.depthStencil->GetDefaultView(), 1);
-				mainCommandBuffer->BindBuffer(ssaoSamplesBuffer, 8);
-
-                for (const auto& camdata : view.camDatas) {
-					doPassWithCamData(camdata, renderSSAOPass);
-					offset_index++;
-                }
-				mainCommandBuffer->EndRendering();
-				mainCommandBuffer->EndRenderDebugMarker();
-            }
-
 			
 			// final render pass
 			RVE_PROFILE_SECTION(forward, "Render Encode Forward Pass");

@@ -1136,38 +1136,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		   },
 		});
     defaultPostEffectVSH = LoadShaderByFilename("defaultpostprocess_vsh", device);
-    
-    
-    auto ssaoLayout = device->CreatePipelineLayout({
-        .bindings = {
-            {
-                .binding = 0,
-                .type = RGL::BindingType::Sampler,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-            {
-                .binding = 1,
-                .type = RGL::BindingType::SampledImage,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-            {
-                .binding = 2,
-                .type = RGL::BindingType::SampledImage,
-                .stageFlags = RGL::BindingVisibility::Fragment,
-            },
-			{
-				.binding = 7,
-				.type = RGL::BindingType::StorageBuffer,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-			 {
-				.binding = 8,
-				.type = RGL::BindingType::StorageBuffer,
-				.stageFlags = RGL::BindingVisibility::Fragment,
-			},
-        },
-		.constants = {{sizeof(ssaoUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex | RGL::StageVisibility::Fragment)}}
-    });
+   
 
 	auto transparencyApplyLayout = device->CreatePipelineLayout({
 		.bindings = {
@@ -1256,89 +1225,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			},
 		},
 	});
-    
-    ssaoPass = RGL::CreateRenderPass({
-        .attachments = {
-            {
-                .format = ssaoFormat,
-                .loadOp = RGL::LoadAccessOperation::Clear,
-                .storeOp = RGL::StoreAccessOperation::Store,
-            },
-        },
-    });
-    
-    ssaoPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
-        .stages = {
-                {
-                    .type = RGL::ShaderStageDesc::Type::Vertex,
-                    .shaderModule = LoadShaderByFilename("ssao_vsh", device),
-                },
-                {
-                    .type = RGL::ShaderStageDesc::Type::Fragment,
-                    .shaderModule = LoadShaderByFilename("ssao_fsh", device),
-                }
-        },
-        .vertexConfig = {
-            .vertexBindings = {
-                {
-                    .binding = 0,
-                    .stride = sizeof(Vertex2D),
-                },
-            },
-            .attributeDescs = {
-                {
-                    .location = 0,
-                    .binding = 0,
-                    .offset = 0,
-                    .format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
-                },
-            }
-        },
-        .inputAssembly = {
-            .topology = RGL::PrimitiveTopology::TriangleList,
-        },
-        .rasterizerConfig = {
-            .windingOrder = RGL::WindingOrder::Counterclockwise,
-        },
-        .colorBlendConfig = {
-            .attachments = {
-                {
-                    .format = ssaoFormat
-                },
-            }
-        },
-        .depthStencilConfig = {
-            .depthTestEnabled = false,
-            .depthWriteEnabled = false,
-        },
-        .pipelineLayout = ssaoLayout,
-    });
-
-	ssaoSamplesBuffer = device->CreateBuffer({
-		64,
-		{.StorageBuffer = true },
-		sizeof(glm::vec3),
-		RGL::BufferAccess::Private,
-		{.TransferDestination = true, .PixelShaderResource = true, .debugName = "Transient Buffer" }
-		}
-	);
-	
-	std::vector<glm::vec3> samples;
-	constexpr static auto nsamples = 8;
-	samples.reserve(nsamples);
-	for (uint32_t i = 0; i < nsamples; i++) {
-		glm::vec3 sample{
-			Random::get<float>(-1,1),
-			Random::get<float>(-1,1),
-			Random::get<float>(0,1)
-		};
-
-		float scale = (float)i / nsamples;
-		scale = lerp(0.1f, 1.0f, scale * scale);
-		sample *= scale;
-		samples.push_back(sample);
-	}
-	ssaoSamplesBuffer->SetBufferData({ samples.data(), nsamples * sizeof(samples[0]) });
 
 	auto navDebugLayout = device->CreatePipelineLayout({
 		.constants = {{sizeof(navDebugUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Vertex)}}
@@ -1578,17 +1464,6 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
         collection.depthPyramid = {static_cast<uint16_t>(dim)};
         
     }
-    
-    collection.ssaoTexture = device->CreateTexture({
-        .usage = {.Sampled = true, .ColorAttachment = true },
-        .aspect = {.HasColor = true },
-        .width = width,
-        .height = height,
-        .format = ssaoFormat,
-        .initialLayout = RGL::ResourceLayout::Undefined,
-        .debugName = "SSAO gbuffer"
-        }
-    );
 
     RGL::TextureConfig lightingConfig{
         .usage = {.Sampled = true, .ColorAttachment = true },

@@ -75,13 +75,13 @@ namespace RavEngine {
 
 		RGLTexturePtr dummyShadowmap, dummyCubemap;
 		RGLSamplerPtr textureSampler, shadowSampler, depthPyramidSampler;
-		RGLRenderPassPtr litRenderPass, unlitRenderPass, depthPrepassRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, ssaoPass, litTransparentPass, unlitTransparentPass, transparentClearPass, transparencyApplyPass;
+		RGLRenderPassPtr litRenderPass, unlitRenderPass, depthPrepassRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, litTransparentPass, unlitTransparentPass, transparentClearPass, transparencyApplyPass;
 
 		RGLRenderPipelinePtr depthPyramidCopyPipeline,
-			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, ssaoPipeline, transparencyApplyPipeline;
+			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, transparencyApplyPipeline;
 		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline, clusterBuildGridPipeline, clusterPopulatePipeline;
 		RGLBufferPtr screenTriVerts,
-			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, ssaoSamplesBuffer, quadVertBuffer, lightClusterBuffer, debugRenderBufferUpload;
+			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, quadVertBuffer, lightClusterBuffer, debugRenderBufferUpload;
 		uint32_t debugRenderBufferSize = 0, debugRenderBufferOffset = 0;
 
 		constexpr static uint32_t initialVerts = 1024, initialIndices = 1536;
@@ -119,27 +119,12 @@ namespace RavEngine {
                 
 		constexpr static RGL::TextureFormat
 			colorTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
-			ssaoFormat = RGL::TextureFormat::R32_Float,
 			depthFormat = RGL::TextureFormat::D32SFloat;
-
-        struct ssaoUBO{
-            glm::mat4 viewProj;
-			glm::ivec4 viewRect;		// for the whole screen
-			glm::ivec4 viewRegion;   // for the virtual screen
-			float radius = 0.5;
-			float bias = 0.025;
-			float power = 1;
-        };
 
 		struct navDebugUBO {
 			glm::mat4 model;
 			glm::mat4 viewProj;
 		} currentNavState;
-        
-		struct AmbientLightUBO {
-			glm::ivec4 viewRect;
-			uint32_t ssaoEnabled;
-		};
 
 		struct LightToFBUBO {
 			glm::ivec4 viewRect;
@@ -214,7 +199,6 @@ namespace RavEngine {
 		
 		static struct vs {
 			bool vsync = true;
-            const bool ssao = false;
 		} VideoSettings;
 
 		void SyncVideoSettings();
