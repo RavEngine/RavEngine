@@ -119,6 +119,9 @@ namespace RavEngine {
                 
 		constexpr static RGL::TextureFormat
 			colorTexFormat = RGL::TextureFormat::RGBA16_Sfloat,
+			radianceFormat = RGL::TextureFormat::RGBA16_Sfloat,
+			albedoFormat = RGL::TextureFormat::RGBA16_Sfloat,
+			viewSpaceNormalTextureFormat = RGL::TextureFormat::RGBA16_Sfloat,
 			depthFormat = RGL::TextureFormat::D32SFloat;
 
 		struct navDebugUBO {

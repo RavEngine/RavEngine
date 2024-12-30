@@ -22,6 +22,18 @@ struct LitOutput{
 #include "lit_mesh_shared.glsl"
 #include "mesh_shared.glsl"
 
+#if !RVE_DEPTHONLY && !RVE_TRANSPARENT
+#define RVE_EXTRAOUTPUT 1
+#else
+#define RVE_EXTRAOUTPUT 0
+#endif
+
+#if RVE_EXTRAOUTPUT
+layout(location = 1) out vec4 outRadiance;
+layout(location = 2) out vec4 outAlbedo;
+layout(location = 3) out vec4 outViewSpaceNormal;
+#endif
+
 struct AmbientLightData{
     vec3 color;
     float intensity;
@@ -84,7 +96,14 @@ layout(set = 2, binding = 0) uniform textureCube pointShadowMaps[];    // we ali
 void main(){
 
     LitOutput user_out = frag();
+    #if RVE_EXTRAOUTPUT
+    outAlbedo = user_out.color;
+    outViewSpaceNormal = vec4(user_out.normal,0);
+    #endif
+
     vec4 outcolor = vec4(0); // NV: these don't default-init to 0
+
+    vec3 radiance = vec3(0);
     
     const uint entityRenderLayer = entityRenderLayers[varyingEntityID];
     const uint16_t attributeBitmask = perObjectFlags[varyingEntityID];
@@ -120,6 +139,7 @@ void main(){
         }
         
         vec3 lightResult = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, light.toLight, 1, light.color * light.intensity);
+        radiance += lightResult;
         float pcfFactor = 1;
         
         vec4 color = vec4(0);
@@ -189,6 +209,7 @@ void main(){
         float dist = distance(worldPosition, light.position);
 
         vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, getLightAttenuation(dist),  light.color * light.intensity);
+        radiance += result;
         float pcfFactor = 1;
 
         if (recievesShadows && bool(light.castsShadows)){
@@ -235,7 +256,7 @@ void main(){
 	    float pixelAngle = dot(-forward,toLight);   
 
         vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, getLightAttenuation(dist),  light.color * light.intensity);
-
+        radiance += result;
         float pcfFactor = 1;
         if (recievesShadows && bool(light.castsShadows)){
             pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);
@@ -257,5 +278,9 @@ void main(){
         #else
             result = outcolor;
         #endif
+    #endif
+
+    #if RVE_EXTRAOUTPUT
+    outRadiance = vec4(radiance,0);
     #endif
 }

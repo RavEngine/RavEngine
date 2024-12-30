@@ -337,6 +337,21 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				   .loadOp = RGL::LoadAccessOperation::Load,
 				   .storeOp = RGL::StoreAccessOperation::Store,
 			   },
+			   {
+				   .format = radianceFormat,
+				   .loadOp = RGL::LoadAccessOperation::Load,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+			   {
+				   .format = albedoFormat,
+				   .loadOp = RGL::LoadAccessOperation::Load,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+			   {
+				   .format = viewSpaceNormalTextureFormat,
+				   .loadOp = RGL::LoadAccessOperation::Load,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
 		   },
 		   .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
 			   .format = RGL::TextureFormat::D32SFloat,
@@ -351,6 +366,21 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		   .attachments = {
 			   {
 				   .format = colorTexFormat,
+				   .loadOp = RGL::LoadAccessOperation::Clear,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+			   {
+				   .format = radianceFormat,
+				   .loadOp = RGL::LoadAccessOperation::Clear,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+			   {
+				   .format = albedoFormat,
+				   .loadOp = RGL::LoadAccessOperation::Clear,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+			   {
+				   .format = viewSpaceNormalTextureFormat,
 				   .loadOp = RGL::LoadAccessOperation::Clear,
 				   .storeOp = RGL::StoreAccessOperation::Store,
 			   },
@@ -1479,6 +1509,26 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
     lightingConfig.debugName = "Lighting texture Swap 2";
     collection.lightingScratchTexture = device->CreateTexture(lightingConfig);
 
+	collection.radianceTexture = device->CreateTexture({
+		.usage = {.Sampled = true, .ColorAttachment = true },
+			.aspect = {.HasColor = true },
+			.width = width,
+			.height = height,
+			.format = radianceFormat,
+			.initialLayout = RGL::ResourceLayout::Undefined,
+			.debugName = "Radiance Texture"
+	});
+
+	collection.viewSpaceNormalsTexture = device->CreateTexture({
+		.usage = {.Sampled = true, .ColorAttachment = true },
+			.aspect = {.HasColor = true },
+			.width = width,
+			.height = height,
+			.format = viewSpaceNormalTextureFormat,
+			.initialLayout = RGL::ResourceLayout::Undefined,
+			.debugName = "View Space Normals Texture"
+		});
+
     for(const auto& [i, format] : Enumerate(RenderTargetCollection::formats)){
         collection.mlabAccum[i] = device->CreateTexture({
             .usage = {.Sampled = true, .Storage = true, .ColorAttachment = true },
@@ -1510,6 +1560,8 @@ void RavEngine::RenderEngine::ResizeRenderTargetCollection(RenderTargetCollectio
     gcTextures.enqueue(collection.depthPyramid.pyramidTexture);
     gcTextures.enqueue(collection.lightingScratchTexture);
     gcTextures.enqueue(collection.mlabDepth);
+    gcTextures.enqueue(collection.radianceTexture);
+    gcTextures.enqueue(collection.viewSpaceNormalsTexture);
     
     for(const auto tx : collection.mlabAccum){
         gcTextures.enqueue(tx);

@@ -1974,9 +1974,15 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			depthPrepassRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
 			litRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
+			litRenderPass->SetAttachmentTexture(1, target.radianceTexture->GetDefaultView());
+			litRenderPass->SetAttachmentTexture(2, target.lightingScratchTexture->GetDefaultView());
+			litRenderPass->SetAttachmentTexture(3, target.viewSpaceNormalsTexture->GetDefaultView());
 			litRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
 			litClearRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
+			litClearRenderPass->SetAttachmentTexture(1, target.radianceTexture->GetDefaultView());
+			litClearRenderPass->SetAttachmentTexture(2, target.lightingScratchTexture->GetDefaultView());
+			litClearRenderPass->SetAttachmentTexture(3, target.viewSpaceNormalsTexture->GetDefaultView());
 			litClearRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
 			mainCommandBuffer->BeginRenderDebugMarker("Lit Pass Opaque");

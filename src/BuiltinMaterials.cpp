@@ -56,6 +56,15 @@ STATIC(RavEngine::defaultColorBlendConfig) {
                 {
                     .format = RenderEngine::colorTexFormat
                 },
+                {
+                    .format = RenderEngine::radianceFormat
+                },
+                {
+                    .format = RenderEngine::albedoFormat
+                },
+                 {
+                    .format = RenderEngine::viewSpaceNormalTextureFormat
+                },
     }
 };
 
