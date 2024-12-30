@@ -22,6 +22,9 @@ struct LitOutput{
 #include "lit_mesh_shared.glsl"
 #include "mesh_shared.glsl"
 
+#include "enginedata.glsl"
+#include "make_engine_data.glsl"
+
 #if !RVE_DEPTHONLY && !RVE_TRANSPARENT
 #define RVE_EXTRAOUTPUT 1
 #else
@@ -98,7 +101,10 @@ void main(){
     LitOutput user_out = frag();
     #if RVE_EXTRAOUTPUT
     outAlbedo = user_out.color;
-    outViewSpaceNormal = vec4(user_out.normal,0);
+
+    // normals are in world space
+    EngineData data = make_engine_data(engineConstants[0]);
+    outViewSpaceNormal = normalize(data.viewOnly * vec4(user_out.normal,1));
     #endif
 
     vec4 outcolor = vec4(0); // NV: these don't default-init to 0
