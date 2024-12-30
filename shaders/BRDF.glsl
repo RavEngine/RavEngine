@@ -49,7 +49,7 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
  @param attenuation: falloff - use 1.0 for directional lights, and ( 1.0 / (dist * dist)) for point sources, where dist is the distance from the light to the pixel
  @param lightColor: color of the light
 */
-vec3 CalculateLightRadiance(vec3 Normal, vec3 camPos, vec3 WorldPos, vec3 albedo, float metallic, float roughness, vec3 L, float attenuation, vec3 lightColor){
+vec3 CalculateLightRadiance(vec3 Normal, vec3 camPos, vec3 WorldPos, vec3 albedo, float metallic, float roughness, vec3 L, float attenuation, vec3 lightColor, out vec3 radiance){
     vec3 N = normalize(Normal);
     vec3 V = normalize(camPos - WorldPos);
 
@@ -58,7 +58,7 @@ vec3 CalculateLightRadiance(vec3 Normal, vec3 camPos, vec3 WorldPos, vec3 albedo
 
     // adapted from https://learnopengl.com/PBR/Lighting
     vec3 H = normalize(V + L);
-    vec3 radiance     = lightColor * attenuation;        
+    radiance     = lightColor * attenuation;        
     
     // cook-torrance brdf
     float NDF = DistributionGGX(N, H, roughness);        
@@ -76,6 +76,8 @@ vec3 CalculateLightRadiance(vec3 Normal, vec3 camPos, vec3 WorldPos, vec3 albedo
     // add to outgoing radiance Lo
     float NdotL = max(dot(N, L), 0.0);                
     vec3 Lo = (kD * albedo / PI + specular) * radiance * NdotL; 
+
+    radiance *= NdotL;
 
     return Lo;
 }

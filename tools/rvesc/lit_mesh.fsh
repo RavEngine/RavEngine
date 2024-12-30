@@ -144,8 +144,8 @@ void main(){
             continue;
         }
         
-        vec3 lightResult = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, light.toLight, 1, light.color * light.intensity);
-        radiance += lightResult;
+        vec3 rad;
+        vec3 lightResult = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, light.toLight, 1, light.color * light.intensity, rad);
         float pcfFactor = 1;
         
         vec4 color = vec4(0);
@@ -180,6 +180,7 @@ void main(){
             //layer = cascadeCount - layer - 1;
             
              pcfFactor = pcfForShadow(worldPosition, passVarying.lightViewProj[layer], shadowSampler, shadowMaps[light.shadowmapBindlessIndex[layer]]);
+             radiance += rad * pcfFactor;
             color = pallete[layer];
         }
         //outcolor += color;
@@ -214,8 +215,8 @@ void main(){
 
         float dist = distance(worldPosition, light.position);
 
-        vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, getLightAttenuation(dist),  light.color * light.intensity);
-        radiance += result;
+        vec3 rad;
+        vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, getLightAttenuation(dist),  light.color * light.intensity, rad);
         float pcfFactor = 1;
 
         if (recievesShadows && bool(light.castsShadows)){
@@ -233,6 +234,8 @@ void main(){
             float dbDistance = z / projectedDistance;
 
             pcfFactor = texture(samplerCubeShadow(pointShadowMaps[light.shadowmapBindlessIndex], shadowSampler), vec4(shadowDir, dbDistance)).r;
+
+            radiance += rad * pcfFactor;
         }
 
         outcolor += vec4(result * user_out.ao * pcfFactor,0);
@@ -261,11 +264,12 @@ void main(){
 
 	    float pixelAngle = dot(-forward,toLight);   
 
-        vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, getLightAttenuation(dist),  light.color * light.intensity);
-        radiance += result;
+        vec3 rad;
+        vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, getLightAttenuation(dist),  light.color * light.intensity, rad);
         float pcfFactor = 1;
         if (recievesShadows && bool(light.castsShadows)){
             pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);
+            radiance += rad * pcfFactor;
         }
 
         pcfFactor = pcfFactor * (int(pixelAngle > coneDotFactor));
