@@ -78,7 +78,7 @@ namespace RavEngine {
 		RGLRenderPassPtr litRenderPass, unlitRenderPass, depthPrepassRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, litTransparentPass, unlitTransparentPass, transparentClearPass, transparencyApplyPass, ssgiPass;
 
 		RGLRenderPipelinePtr depthPyramidCopyPipeline,
-			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, transparencyApplyPipeline, ssgipipeline;
+			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, transparencyApplyPipeline, ssgipipeline, ssgiDownsamplePipeline, ssgiUpsamplePipeline;
 		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline, clusterBuildGridPipeline, clusterPopulatePipeline;
 		RGLBufferPtr screenTriVerts,
 			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, quadVertBuffer, lightClusterBuffer, debugRenderBufferUpload;
@@ -106,12 +106,22 @@ namespace RavEngine {
 			glm::mat4 viewMat;
 			uint32_t pointLightCount, spotLightCount;
 		};
+
+		struct DownsampleUBO {
+			glm::uvec4 targetDim;
+			float filterRadius;
+		};
+
+		struct UpsampleUBO {
+			glm::uvec4 targetDim;
+		};
         
         RGLShaderLibraryPtr defaultPostEffectVSH;
 
 		friend class Material;
     public:
 		static constexpr RGL::TextureFormat depthPyramidFormat = RGL::TextureFormat::R32_Float;
+		constexpr static uint32_t maxssgimips = 4;
 
         auto GetDefaultPostEffectVSH() const{
             return defaultPostEffectVSH;

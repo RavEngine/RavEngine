@@ -1573,22 +1573,48 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->SetFragmentTexture(target.radianceTexture->GetDefaultView(), 3);
 
 					auto size = target.ssgiOutputTexture->GetSize();
-
-					SSGIUBO ssgiubo{
-						.projection = camData.projOnly,
-						.invProj = glm::inverse(camData.projOnly),
-						.outputDim = {size.width, size.height},
-						.sampleCount = 4,
-						.sampleRadius = 4.0,
-						.sliceCount = 4,
-						.hitThickness = 0.5,
-					};
-					mainCommandBuffer->SetFragmentBytes(ssgiubo, 0);
+					{
+						SSGIUBO ssgiubo{
+							.projection = camData.projOnly,
+							.invProj = glm::inverse(camData.projOnly),
+							.outputDim = {size.width, size.height},
+							.sampleCount = 4,
+							.sampleRadius = 4.0,
+							.sliceCount = 4,
+							.hitThickness = 0.5,
+						};
+						mainCommandBuffer->SetFragmentBytes(ssgiubo, 0);
+					}
 
 					mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 					mainCommandBuffer->Draw(3);
-
 					mainCommandBuffer->EndRendering();
+
+					// downscale + upscale
+					const uint32_t numMips = std::min<uint32_t>(std::log2(std::min(size.width, size.height)), maxssgimips);
+					for (int i = 1; i < numMips; i++) {
+						ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(i));
+
+						mainCommandBuffer->BeginRendering(ssgiPass);
+						mainCommandBuffer->BindRenderPipeline(ssgiDownsamplePipeline);
+						mainCommandBuffer->SetFragmentSampler(textureSampler, 1);
+						mainCommandBuffer->SetFragmentTexture(target.ssgiOutputTexture->GetViewForMip(i-1), 0);
+
+						size.width /= 2;
+						size.height /= 2;
+
+						DownsampleUBO ubo{
+							.targetDim = {size.width, size.height, 0, 0},
+							.filterRadius = 0.005f
+						};
+						mainCommandBuffer->SetFragmentBytes(ubo, 0);
+
+						mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+						mainCommandBuffer->Draw(3);
+
+						mainCommandBuffer->EndRendering();
+					}
+
 
 
 					mainCommandBuffer->EndRenderDebugMarker();
