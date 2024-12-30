@@ -1561,6 +1561,36 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					return mat->GetMainRenderPipeline();
                 }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, &target);
 
+				if (!transparentMode) {
+					mainCommandBuffer->BeginRenderDebugMarker("SSGI");
+
+					ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetDefaultView());
+					mainCommandBuffer->BeginRendering(ssgiPass);
+					mainCommandBuffer->BindRenderPipeline(ssgipipeline);
+					mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+					mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 1);
+					mainCommandBuffer->SetFragmentTexture(target.viewSpaceNormalsTexture->GetDefaultView(), 2);
+					mainCommandBuffer->SetFragmentTexture(target.radianceTexture->GetDefaultView(), 3);
+
+					SSGIUBO ssgiubo{
+						.projection = camData.projOnly,
+						.invProj = glm::inverse(camData.projOnly),
+						.sampleCount = 4,
+						.sampleRadius = 4.0,
+						.sliceCount = 4,
+						.hitThickness = 0.5,
+					};
+					mainCommandBuffer->SetFragmentBytes(ssgiubo, 0);
+
+					mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+					mainCommandBuffer->Draw(3);
+
+					mainCommandBuffer->EndRendering();
+
+
+					mainCommandBuffer->EndRenderDebugMarker();
+				}
+
 				
 			};
 

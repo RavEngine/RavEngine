@@ -1470,6 +1470,107 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		},
 		.pipelineLayout = particleKillLayout
 	});
+
+	ssgiPass = RGL::CreateRenderPass(
+		{
+		   .attachments = {
+			   {
+				   .format = colorTexFormat,					// outputs here
+				   .loadOp = RGL::LoadAccessOperation::Clear,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+		   },
+		   .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+			   .format = RGL::TextureFormat::D32SFloat,
+			   .loadOp = RGL::LoadAccessOperation::Clear,
+			   .storeOp = RGL::StoreAccessOperation::Store,
+			   .clearColor = depthClearColor
+		   }
+		}
+	);
+
+	const auto ssgiLayout = device->CreatePipelineLayout({
+		.bindings = {
+			{
+				.binding = 0,
+				.type = RGL::BindingType::Sampler,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 1,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 2,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 3,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+		},
+		.constants = {{sizeof(SSGIUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Fragment)}} 
+	});
+
+	ssgipipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
+		.stages = {
+				{
+					.type = RGL::ShaderStageDesc::Type::Vertex,
+					.shaderModule = LoadShaderByFilename("ssgi_ao_vsh", device),
+				},
+				{
+					.type = RGL::ShaderStageDesc::Type::Fragment,
+					.shaderModule = LoadShaderByFilename("ssgi_ao_fsh", device),
+				}
+		},
+		.vertexConfig = {
+			.vertexBindings = {
+				{
+					.binding = 0,
+					.stride = sizeof(Vertex2D),
+				},
+			},
+			.attributeDescs = {
+				{
+					.location = 0,
+					.binding = 0,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+				},
+			}
+		},
+		.inputAssembly = {
+			.topology = RGL::PrimitiveTopology::TriangleList,
+		},
+		.rasterizerConfig = {
+			.windingOrder = RGL::WindingOrder::Counterclockwise,
+		},
+		.colorBlendConfig = {
+			.attachments = {
+				{
+					.format = colorTexFormat,
+				},
+			}
+		},
+		.depthStencilConfig = {
+			.depthTestEnabled = false,
+			.depthWriteEnabled = false,
+		},
+		.pipelineLayout = ssgiLayout,
+	});
+
+	transparencyApplyPass = RGL::CreateRenderPass({
+		.attachments = {
+			{
+				.format = colorTexFormat,
+				.loadOp = RGL::LoadAccessOperation::Load,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			},
+		},
+	});
 }
 
 RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim size, bool createDepth)
@@ -1529,6 +1630,16 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 			.debugName = "View Space Normals Texture"
 		});
 
+	collection.ssgiOutputTexture = device->CreateTexture({
+		.usage = {.Sampled = true, .ColorAttachment = true },
+			.aspect = {.HasColor = true },
+			.width = width,
+			.height = height,
+			.format = ssgiOutputFormat,
+			.initialLayout = RGL::ResourceLayout::Undefined,
+			.debugName = "View Space Normals Texture"
+		});
+
     for(const auto& [i, format] : Enumerate(RenderTargetCollection::formats)){
         collection.mlabAccum[i] = device->CreateTexture({
             .usage = {.Sampled = true, .Storage = true, .ColorAttachment = true },
@@ -1562,6 +1673,7 @@ void RavEngine::RenderEngine::ResizeRenderTargetCollection(RenderTargetCollectio
     gcTextures.enqueue(collection.mlabDepth);
     gcTextures.enqueue(collection.radianceTexture);
     gcTextures.enqueue(collection.viewSpaceNormalsTexture);
+    gcTextures.enqueue(collection.ssgiOutputTexture);
     
     for(const auto tx : collection.mlabAccum){
         gcTextures.enqueue(tx);

@@ -75,10 +75,10 @@ namespace RavEngine {
 
 		RGLTexturePtr dummyShadowmap, dummyCubemap;
 		RGLSamplerPtr textureSampler, shadowSampler, depthPyramidSampler;
-		RGLRenderPassPtr litRenderPass, unlitRenderPass, depthPrepassRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, litTransparentPass, unlitTransparentPass, transparentClearPass, transparencyApplyPass;
+		RGLRenderPassPtr litRenderPass, unlitRenderPass, depthPrepassRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, litTransparentPass, unlitTransparentPass, transparentClearPass, transparencyApplyPass, ssgiPass;
 
 		RGLRenderPipelinePtr depthPyramidCopyPipeline,
-			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, transparencyApplyPipeline;
+			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, transparencyApplyPipeline, ssgipipeline;
 		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline, clusterBuildGridPipeline, clusterPopulatePipeline;
 		RGLBufferPtr screenTriVerts,
 			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, quadVertBuffer, lightClusterBuffer, debugRenderBufferUpload;
@@ -122,6 +122,7 @@ namespace RavEngine {
 			radianceFormat = RGL::TextureFormat::RGBA16_Sfloat,
 			albedoFormat = RGL::TextureFormat::RGBA16_Sfloat,
 			viewSpaceNormalTextureFormat = RGL::TextureFormat::RGBA16_Sfloat,
+			ssgiOutputFormat = RGL::TextureFormat::RGBA16_Sfloat,
 			depthFormat = RGL::TextureFormat::D32SFloat;
 
 		struct navDebugUBO {
@@ -148,6 +149,15 @@ namespace RavEngine {
 			uint32_t boneReadOffset = 0;
 			uint32_t vertexWriteOffset = 0;
 			uint32_t vertexReadOffset = 0;
+		};
+
+		struct SSGIUBO {
+			glm::mat4 projection;
+			glm::mat4 invProj;
+			float sampleCount;
+			float sampleRadius;
+			float sliceCount;
+			float hitThickness;
 		};
 
 		struct JointInfluence {

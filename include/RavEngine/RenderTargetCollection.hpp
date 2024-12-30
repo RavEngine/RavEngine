@@ -17,7 +17,7 @@ namespace RavEngine{
 	};
 
 	struct RenderTargetCollection {
-		RGLTexturePtr depthStencil, lightingTexture, lightingScratchTexture, mlabDepth, radianceTexture, viewSpaceNormalsTexture;
+		RGLTexturePtr depthStencil, lightingTexture, lightingScratchTexture, mlabDepth, radianceTexture, viewSpaceNormalsTexture, ssgiOutputTexture;
         
         std::array<RGLTexturePtr, 4> mlabAccum;
         constexpr static std::array<RGL::TextureFormat, 4> formats = {RGL::TextureFormat::RGBA16_Sfloat, RGL::TextureFormat::RGBA8_Unorm, RGL::TextureFormat::RGBA8_Unorm, RGL::TextureFormat::RGBA8_Unorm};

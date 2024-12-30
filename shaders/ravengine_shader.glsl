@@ -13,6 +13,12 @@ vec3 ComputeWorldSpacePos(vec2 positionNDC, float depth, mat4 invViewProj){
 	return (hpositionWS / hpositionWS.w).xyz;
 }
 
+vec3 ComputeViewSpacePos(vec2 positionNDC, float depth, mat4 invProj){
+	vec4 positionCS = ComputeClipSpacePosition(positionNDC, depth);
+	vec4 hpositionVS = invProj * positionCS;
+	return (hpositionVS / hpositionVS.w).xyz;
+}
+
 float pcfForShadow(vec3 pixelWorldPos, mat4 lightViewProj, sampler shadowSampler, texture2D t_depthshadow){
 	vec4 sampledPos = vec4(pixelWorldPos,1);
 	sampledPos = lightViewProj * sampledPos;    // where is this on the light
