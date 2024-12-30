@@ -1591,6 +1591,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->EndRendering();
 
 					// downscale + upscale
+					mainCommandBuffer->BeginRenderDebugMarker("Downsample");
 					const uint32_t numMips = std::min<uint32_t>(std::log2(std::min(size.width, size.height)), maxssgimips);
 					for (int i = 1; i < numMips; i++) {
 						ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(i));
@@ -1613,8 +1614,31 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 						mainCommandBuffer->EndRendering();
 					}
+					mainCommandBuffer->EndRenderDebugMarker();
+					mainCommandBuffer->BeginRenderDebugMarker("Upsample");
+					for (int i = numMips-1; i > 0; i--) {
+						ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(i-1));
 
+						mainCommandBuffer->BeginRendering(ssgiPass);
+						mainCommandBuffer->BindRenderPipeline(ssgiUpsamplePipeline);
+						mainCommandBuffer->SetFragmentSampler(textureSampler, 1);
+						mainCommandBuffer->SetFragmentTexture(target.ssgiOutputTexture->GetViewForMip(i), 0);
 
+						size.width *= 2;
+						size.height *= 2;
+
+						UpsampleUBO ubo{
+							.targetDim = {0,0,size.width, size.height},
+							.filterRadius = 0.005
+						};
+						mainCommandBuffer->SetFragmentBytes(ubo, 0);
+
+						mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+						mainCommandBuffer->Draw(3);
+
+						mainCommandBuffer->EndRendering();
+					}
+					mainCommandBuffer->EndRenderDebugMarker();
 
 					mainCommandBuffer->EndRenderDebugMarker();
 				}

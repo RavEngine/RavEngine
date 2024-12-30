@@ -1642,7 +1642,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 					.stageFlags = RGL::BindingVisibility::Fragment,
 				},
 			},
-			.constants = {{sizeof(DownsampleUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Fragment)}}
+			.constants = {{sizeof(UpsampleUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Fragment)}}
 			});
 
 		ssgiUpsamplePipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
