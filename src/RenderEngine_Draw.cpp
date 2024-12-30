@@ -1604,8 +1604,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						size.height /= 2;
 
 						DownsampleUBO ubo{
-							.targetDim = {size.width, size.height, 0, 0},
-							.filterRadius = 0.005f
+							.targetDim = {0,0,size.width, size.height},
 						};
 						mainCommandBuffer->SetFragmentBytes(ubo, 0);
 

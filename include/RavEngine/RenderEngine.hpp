@@ -109,11 +109,11 @@ namespace RavEngine {
 
 		struct DownsampleUBO {
 			glm::uvec4 targetDim;
-			float filterRadius;
 		};
 
 		struct UpsampleUBO {
 			glm::uvec4 targetDim;
+			float filterRadius;
 		};
         
         RGLShaderLibraryPtr defaultPostEffectVSH;

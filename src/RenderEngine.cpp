@@ -1587,7 +1587,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 					},
 					{
 						.type = RGL::ShaderStageDesc::Type::Fragment,
-						.shaderModule = LoadShaderByFilename("bloom_downsample_fsh", device),
+						.shaderModule = LoadShaderByFilename("ssgi_downsample_fsh", device),
 					}
 			},
 			.vertexConfig = {
@@ -1653,7 +1653,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 					},
 					{
 						.type = RGL::ShaderStageDesc::Type::Fragment,
-						.shaderModule = LoadShaderByFilename("bloom_upsample_fsh", device),
+						.shaderModule = LoadShaderByFilename("ssgi_upsample_fsh", device),
 					}
 			},
 			.vertexConfig = {
