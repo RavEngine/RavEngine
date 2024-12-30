@@ -287,6 +287,6 @@ void main(){
     #endif
 
     #if RVE_EXTRAOUTPUT
-    outRadiance = vec4(radiance,0);
+    outRadiance = vec4(radiance,uintBitsToFloat(entityRenderLayer));
     #endif
 }
