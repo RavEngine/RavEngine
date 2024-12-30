@@ -13,6 +13,7 @@ layout(location = 0) out vec4 fragColor;
 layout(push_constant, scalar) uniform UniformBufferObject{
     mat4 projection;
     mat4 invProj;
+    ivec2 outputSize;
 	float sampleCount;
     float sampleRadius;
     float sliceCount;
@@ -45,7 +46,7 @@ uint updateSectors(float minHorizon, float maxHorizon, uint outBitfield) {
 
 // get indirect lighting and ambient occlusion
 vec4 getVisibility() {
-    ivec2 screenSize = textureSize(screenDepth, 0);
+    ivec2 screenSize = ubo.outputSize;
 
     vec2 fragUV = gl_FragCoord.xy / vec2(screenSize.x, screenSize.y);
 

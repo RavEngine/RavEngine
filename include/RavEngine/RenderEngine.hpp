@@ -154,6 +154,7 @@ namespace RavEngine {
 		struct SSGIUBO {
 			glm::mat4 projection;
 			glm::mat4 invProj;
+			glm::ivec2 outputDim;
 			float sampleCount;
 			float sampleRadius;
 			float sliceCount;

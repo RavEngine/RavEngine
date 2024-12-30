@@ -1572,9 +1572,12 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->SetFragmentTexture(target.viewSpaceNormalsTexture->GetDefaultView(), 2);
 					mainCommandBuffer->SetFragmentTexture(target.radianceTexture->GetDefaultView(), 3);
 
+					auto size = target.ssgiOutputTexture->GetSize();
+
 					SSGIUBO ssgiubo{
 						.projection = camData.projOnly,
 						.invProj = glm::inverse(camData.projOnly),
+						.outputDim = {size.width, size.height},
 						.sampleCount = 4,
 						.sampleRadius = 4.0,
 						.sliceCount = 4,

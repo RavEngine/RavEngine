@@ -1630,14 +1630,20 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 			.debugName = "View Space Normals Texture"
 		});
 
+	constexpr static uint32_t maxssgiRes = 1024;
+
+	const auto ratio = float(height) / width;
+	const auto ssgiResWidth = std::min(maxssgiRes, width / 2);
+	const auto ssgiResHeight = uint32_t(ssgiResWidth * ratio);
+
 	collection.ssgiOutputTexture = device->CreateTexture({
 		.usage = {.Sampled = true, .ColorAttachment = true },
 			.aspect = {.HasColor = true },
-			.width = width,
-			.height = height,
+			.width = ssgiResWidth,
+			.height = ssgiResHeight,
 			.format = ssgiOutputFormat,
 			.initialLayout = RGL::ResourceLayout::Undefined,
-			.debugName = "View Space Normals Texture"
+			.debugName = "SSGI Output Texture"
 		});
 
     for(const auto& [i, format] : Enumerate(RenderTargetCollection::formats)){
