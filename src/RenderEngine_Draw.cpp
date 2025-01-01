@@ -1592,20 +1592,21 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->Draw(3);
 					mainCommandBuffer->EndRendering();
 
-					// first, upsample the AO from mip 1 to mip 0
-					mainCommandBuffer->BeginRenderDebugMarker("Upsample AO");
+					// dealing with the results
+					// first, downsample AO and GI one step
 					{
-						ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(0));
+						ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(2));
 
 						mainCommandBuffer->BeginRendering(ssgiPass);
-						mainCommandBuffer->BindRenderPipeline(aoUpsamplePipeline);
+						mainCommandBuffer->BindRenderPipeline(ssgiDownsamplePipeline);
 						mainCommandBuffer->SetFragmentSampler(textureSampler, 1);
 						mainCommandBuffer->SetFragmentTexture(target.ssgiOutputTexture->GetViewForMip(1), 0);
 
+						size.width /= 2;
+						size.height /= 2;
 
-						UpsampleUBO ubo{
-							.targetDim = {0,0,size.width * 2, size.height * 2},
-							.filterRadius = 0.005
+						DownsampleUBO ubo{
+							.targetDim = {0,0,size.width, size.height},
 						};
 						mainCommandBuffer->SetFragmentBytes(ubo, 0);
 
@@ -1614,12 +1615,40 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 						mainCommandBuffer->EndRendering();
 					}
+
+					// next, upsample the AO from mip 2 to mip 0
+					mainCommandBuffer->BeginRenderDebugMarker("Upsample AO");
+					{
+						for (int i = 2; i >= 1; i--) {
+							ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(i-1));
+
+							mainCommandBuffer->BeginRendering(ssgiPass);
+							mainCommandBuffer->BindRenderPipeline(aoUpsamplePipeline);
+							mainCommandBuffer->SetFragmentSampler(textureSampler, 1);
+							mainCommandBuffer->SetFragmentTexture(target.ssgiOutputTexture->GetViewForMip(i), 0);
+
+							size.width *= 2;
+							size.height *= 2;
+
+							UpsampleUBO ubo{
+								.targetDim = {0,0,size.width, size.height},
+								.filterRadius = 0.005
+							};
+							mainCommandBuffer->SetFragmentBytes(ubo, 0);
+
+							mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+							mainCommandBuffer->Draw(3);
+
+							mainCommandBuffer->EndRendering();
+						}
+					}
+
 					mainCommandBuffer->EndRenderDebugMarker();
 
-					// downscale + upscale GI
+					// downscale AO + GI the rest of the way upscale 
 					mainCommandBuffer->BeginRenderDebugMarker("Downsample");
 					const uint32_t numMips = std::min<uint32_t>(std::log2(std::min(size.width, size.height)), maxssgimips);
-					for (int i = 2; i < numMips; i++) {
+					for (int i = 3; i < numMips; i++) {
 						ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(i));
 
 						mainCommandBuffer->BeginRendering(ssgiPass);
