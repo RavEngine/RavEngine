@@ -1564,8 +1564,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				if (!transparentMode) {
 					mainCommandBuffer->BeginRenderDebugMarker("SSGI");
 
-					ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(1));	// not rendering to base mip
-					mainCommandBuffer->BeginRendering(ssgiPass);
+					ssgiPassClear->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(1));	// not rendering to base mip
+					ssgiPassClear->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+					ssgiPassNoClear->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+
+					mainCommandBuffer->BeginRendering(ssgiPassClear);
 					mainCommandBuffer->BindRenderPipeline(ssgipipeline);
 					mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
 					mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 1);
@@ -1595,9 +1598,9 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					// dealing with the results
 					// first, downsample AO and GI one step
 					{
-						ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(2));
+						ssgiPassClear->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(2));
 
-						mainCommandBuffer->BeginRendering(ssgiPass);
+						mainCommandBuffer->BeginRendering(ssgiPassClear);
 						mainCommandBuffer->BindRenderPipeline(ssgiDownsamplePipeline);
 						mainCommandBuffer->SetFragmentSampler(textureSampler, 1);
 						mainCommandBuffer->SetFragmentTexture(target.ssgiOutputTexture->GetViewForMip(1), 0);
@@ -1620,9 +1623,9 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->BeginRenderDebugMarker("Upsample AO");
 					{
 						for (int i = 2; i >= 1; i--) {
-							ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(i-1));
+							ssgiPassNoClear->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(i-1));
 
-							mainCommandBuffer->BeginRendering(ssgiPass);
+							mainCommandBuffer->BeginRendering(ssgiPassNoClear);
 							mainCommandBuffer->BindRenderPipeline(aoUpsamplePipeline);
 							mainCommandBuffer->SetFragmentSampler(textureSampler, 1);
 							mainCommandBuffer->SetFragmentTexture(target.ssgiOutputTexture->GetViewForMip(i), 0);
@@ -1648,10 +1651,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					// downscale AO + GI the rest of the way upscale 
 					mainCommandBuffer->BeginRenderDebugMarker("Downsample");
 					const uint32_t numMips = std::min<uint32_t>(std::log2(std::min(size.width, size.height)), maxssgimips);
-					for (int i = 3; i < numMips; i++) {
-						ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(i));
+					for (int i = 2; i < numMips; i++) {
+						ssgiPassClear->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(i));
 
-						mainCommandBuffer->BeginRendering(ssgiPass);
+						mainCommandBuffer->BeginRendering(ssgiPassClear);
 						mainCommandBuffer->BindRenderPipeline(ssgiDownsamplePipeline);
 						mainCommandBuffer->SetFragmentSampler(textureSampler, 1);
 						mainCommandBuffer->SetFragmentTexture(target.ssgiOutputTexture->GetViewForMip(i-1), 0);
@@ -1671,11 +1674,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					}
 					mainCommandBuffer->EndRenderDebugMarker();
 					mainCommandBuffer->BeginRenderDebugMarker("Upsample");
-					for (int i = numMips-1; i > 1; i--) {
-						ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(i-1));
+					for (int i = numMips-1; i > 0; i--) {
+						ssgiPassNoClear->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(i-1));
 
-						mainCommandBuffer->BeginRendering(ssgiPass);
-						mainCommandBuffer->BindRenderPipeline(ssgiUpsamplePipeline);
+						mainCommandBuffer->BeginRendering(ssgiPassNoClear);
+						mainCommandBuffer->BindRenderPipeline(i == 1 ? ssgiUpsamplePipleineFinalStep : ssgiUpsamplePipeline);
 						mainCommandBuffer->SetFragmentSampler(textureSampler, 1);
 						mainCommandBuffer->SetFragmentTexture(target.ssgiOutputTexture->GetViewForMip(i), 0);
 

@@ -168,7 +168,7 @@ namespace RGL {
 
 	void CommandBufferVk::setPushConstantData(const RGL::untyped_span& data, const uint32_t& offset)
 	{
-		Assert(data.size() <= 128, "Push constant data size must be no more than 128 bytes");
+		//Assert(data.size() <= 128, "Push constant data size must be no more than 128 bytes");
 		CmdSetPushConstantData cmd{
 			// size must be a multiple of 4
 			// need to get a little extra space for safety

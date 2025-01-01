@@ -1408,18 +1408,36 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.pipelineLayout = particleKillLayout
 	});
 
-	ssgiPass = RGL::CreateRenderPass(
+	ssgiPassClear = RGL::CreateRenderPass(
+			{
+			   .attachments = {
+				   {
+					   .format = colorTexFormat,					// outputs here
+					   .loadOp = RGL::LoadAccessOperation::Clear,
+					   .storeOp = RGL::StoreAccessOperation::Store,
+				   },
+			   },
+			   .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+				   .format = RGL::TextureFormat::D32SFloat,
+				   .loadOp = RGL::LoadAccessOperation::Load,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+				   .clearColor = depthClearColor
+			   }
+			}
+		);
+
+	ssgiPassNoClear = RGL::CreateRenderPass(
 		{
 		   .attachments = {
 			   {
 				   .format = colorTexFormat,					// outputs here
-				   .loadOp = RGL::LoadAccessOperation::Clear,
+				   .loadOp = RGL::LoadAccessOperation::Load,
 				   .storeOp = RGL::StoreAccessOperation::Store,
 			   },
 		   },
 		   .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
 			   .format = RGL::TextureFormat::D32SFloat,
-			   .loadOp = RGL::LoadAccessOperation::Clear,
+			   .loadOp = RGL::LoadAccessOperation::Load,
 			   .storeOp = RGL::StoreAccessOperation::Store,
 			   .clearColor = depthClearColor
 		   }
@@ -1643,6 +1661,8 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		ssgiUpsamplePipleineFinalStep = device->CreateRenderPipeline(ssgiupsample_rpd);
 
 		ssgiupsample_rpd.stages[1].shaderModule = LoadShaderByFilename("ao_upsample_fsh", device);	// doesn't matter this is additive because the previous data will be 0
+		ssgiupsample_rpd.colorBlendConfig.attachments[0].colorWriteMask = RGL::ColorWriteMask::Alpha;	// don't touch RGB
+		ssgiupsample_rpd.colorBlendConfig.attachments[0].blendEnabled = false;
 
 		aoUpsamplePipeline = device->CreateRenderPipeline(ssgiupsample_rpd);
 	}

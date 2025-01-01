@@ -84,7 +84,7 @@ namespace RGL {
 		};
 
 		struct CmdSetPushConstantData {
-			std::byte data[128]{ };
+			std::byte data[256]{ };
 			uint32_t size = 0;
 			uint32_t offset = 0;
 		};
