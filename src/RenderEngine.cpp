@@ -1651,12 +1651,13 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.attachments = {
 					{
 						.format = ssgiOutputFormat,
-						.destinationColorBlendFactor = RGL::BlendFactor::One,	// additive blend, because we don't want to replace the AO
-						.destinationAlphaBlendFactor = RGL::BlendFactor::One,
-						.blendEnabled = true
+						//.destinationColorBlendFactor = RGL::BlendFactor::One,	// additive blend, because we don't want to replace the AO
+						//.destinationAlphaBlendFactor = RGL::BlendFactor::One,
+						//.blendEnabled = true
 					},
 				}
 		};
+		ssgiupsample_rpd.colorBlendConfig.attachments[0].colorWriteMask = RGL::ColorWriteMask::RGB;
 
 		ssgiUpsamplePipleineFinalStep = device->CreateRenderPipeline(ssgiupsample_rpd);
 

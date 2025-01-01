@@ -1562,38 +1562,44 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                 }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, &target);
 
 				if (!transparentMode) {
+
+					constexpr auto divFacForMip = [](uint32_t mip) {
+						return std::pow(2, mip);
+					};
+					const auto size = target.ssgiOutputTexture->GetSize();
+
 					mainCommandBuffer->BeginRenderDebugMarker("SSGI");
-
-					ssgiPassClear->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(1));	// not rendering to base mip
-					ssgiPassClear->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
-					ssgiPassNoClear->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
-
-					mainCommandBuffer->BeginRendering(ssgiPassClear);
-					mainCommandBuffer->BindRenderPipeline(ssgipipeline);
-					mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-					mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 1);
-					mainCommandBuffer->SetFragmentTexture(target.viewSpaceNormalsTexture->GetDefaultView(), 2);
-					mainCommandBuffer->SetFragmentTexture(target.radianceTexture->GetDefaultView(), 3);
-
-					auto size = target.ssgiOutputTexture->GetSize();
-					size.width /= 2;
-					size.height /= 2;
 					{
-						SSGIUBO ssgiubo{
-							.projection = camData.projOnly,
-							.invProj = glm::inverse(camData.projOnly),
-							.outputDim = {size.width, size.height},
-							.sampleCount = 4,
-							.sampleRadius = 4.0,
-							.sliceCount = 4,
-							.hitThickness = 0.5,
-						};
-						mainCommandBuffer->SetFragmentBytes(ssgiubo, 0);
-					}
+						ssgiPassClear->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(1));	// not rendering to base mip
+						ssgiPassClear->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+						ssgiPassNoClear->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
-					mainCommandBuffer->SetVertexBuffer(screenTriVerts);
-					mainCommandBuffer->Draw(3);
-					mainCommandBuffer->EndRendering();
+						mainCommandBuffer->BeginRendering(ssgiPassClear);
+						mainCommandBuffer->BindRenderPipeline(ssgipipeline);
+						mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+						mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 1);
+						mainCommandBuffer->SetFragmentTexture(target.viewSpaceNormalsTexture->GetDefaultView(), 2);
+						mainCommandBuffer->SetFragmentTexture(target.radianceTexture->GetDefaultView(), 3);
+
+						const auto divFac = divFacForMip(1);
+						{
+							SSGIUBO ssgiubo{
+								.projection = camData.projOnly,
+								.invProj = glm::inverse(camData.projOnly),
+								.outputDim = {size.width / divFac, size.height / divFac},
+								.sampleCount = 4,
+								.sampleRadius = 4.0,
+								.sliceCount = 4,
+								.hitThickness = 0.5,
+							};
+							mainCommandBuffer->SetFragmentBytes(ssgiubo, 0);
+						}
+
+						mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+						mainCommandBuffer->Draw(3);
+						mainCommandBuffer->EndRendering();
+					}
+					
 
 					// dealing with the results
 					// first, downsample AO and GI one step
@@ -1605,11 +1611,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->SetFragmentSampler(textureSampler, 1);
 						mainCommandBuffer->SetFragmentTexture(target.ssgiOutputTexture->GetViewForMip(1), 0);
 
-						size.width /= 2;
-						size.height /= 2;
+						const auto divFac = divFacForMip(2);
 
 						DownsampleUBO ubo{
-							.targetDim = {0,0,size.width, size.height},
+							.targetDim = {0,0,size.width / divFac, size.height / divFac},
 						};
 						mainCommandBuffer->SetFragmentBytes(ubo, 0);
 
@@ -1630,11 +1635,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 							mainCommandBuffer->SetFragmentSampler(textureSampler, 1);
 							mainCommandBuffer->SetFragmentTexture(target.ssgiOutputTexture->GetViewForMip(i), 0);
 
-							size.width *= 2;
-							size.height *= 2;
+							const auto divFac = divFacForMip(i-1);
 
 							UpsampleUBO ubo{
-								.targetDim = {0,0,size.width, size.height},
+								.targetDim = {0,0,size.width / divFac, size.height / divFac},
 								.filterRadius = 0.005
 							};
 							mainCommandBuffer->SetFragmentBytes(ubo, 0);
@@ -1651,7 +1655,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					// downscale AO + GI the rest of the way upscale 
 					mainCommandBuffer->BeginRenderDebugMarker("Downsample");
 					const uint32_t numMips = std::min<uint32_t>(std::log2(std::min(size.width, size.height)), maxssgimips);
-					for (int i = 2; i < numMips; i++) {
+					for (int i = 3; i < numMips; i++) {
 						ssgiPassClear->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(i));
 
 						mainCommandBuffer->BeginRendering(ssgiPassClear);
@@ -1659,11 +1663,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->SetFragmentSampler(textureSampler, 1);
 						mainCommandBuffer->SetFragmentTexture(target.ssgiOutputTexture->GetViewForMip(i-1), 0);
 
-						size.width /= 2;
-						size.height /= 2;
+						const auto divFac = divFacForMip(i);
 
 						DownsampleUBO ubo{
-							.targetDim = {0,0,size.width, size.height},
+							.targetDim = {0,0,size.width / divFac, size.height / divFac},
 						};
 						mainCommandBuffer->SetFragmentBytes(ubo, 0);
 
@@ -1682,11 +1685,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->SetFragmentSampler(textureSampler, 1);
 						mainCommandBuffer->SetFragmentTexture(target.ssgiOutputTexture->GetViewForMip(i), 0);
 
-						size.width *= 2;
-						size.height *= 2;
+						const auto divFac = divFacForMip(i-1);
 
 						UpsampleUBO ubo{
-							.targetDim = {0,0,size.width, size.height},
+							.targetDim = {0,0,size.width / divFac, size.height / divFac},
 							.filterRadius = 0.005
 						};
 						mainCommandBuffer->SetFragmentBytes(ubo, 0);

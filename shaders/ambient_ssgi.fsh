@@ -30,16 +30,18 @@ void main(){
 
     uint entityRenderLayer = floatBitsToUint(texture(sampler2D(radianceTex,g_sampler), uv).a);
 
-    const vec3 existingColor = texture(sampler2D(albedoTex, g_sampler), uv).rgb;
+    const vec3 albedo = texture(sampler2D(albedoTex, g_sampler), uv).rgb;
 
-    
+    vec4 giao = texture(sampler2D(giSSAO, g_sampler), uv);
+
 #if RVE_SSAO
-    const float ao = texture(sampler2D(giSSAO, g_sampler), uv).a;
+    const float ao = giao.a;
 #else
     const float ao = 1;
 #endif
 
-    vec3 lightcolor = vec3(0);
+    // ambient lights and AO
+    vec3 ambientcontrib = vec3(0);
     for(uint i = 0; i < ubo.ambientLightCount; i++){
         AmbientLightData light = ambientLights[i];
         
@@ -47,8 +49,11 @@ void main(){
             continue;
         }
 
-        lightcolor += existingColor * (light.color * light.intensity) * vec3(ao);
+        ambientcontrib += albedo * (light.color * light.intensity) * vec3(ao);
     }
 
-    outcolor = vec4(lightcolor,1);
+    // Global illumination
+    vec3 gicontrib = albedo * giao.rgb;
+
+    outcolor = vec4(ambientcontrib + gicontrib,1);
 }
