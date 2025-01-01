@@ -118,6 +118,7 @@ void main(){
     // compute lighting based on the results of the user's function
 
     // ambient lights
+    #if !RVE_EXTRAOUTPUT        // ambient is applied later if running in opaque-lit
     for(uint i = 0; i < engineConstants[0].ambientLightCount; i++){
         AmbientLightData light = ambientLights[i];
         
@@ -133,8 +134,8 @@ void main(){
         #endif
 
         outcolor += user_out.color * vec4(light.color * light.intensity,1) * vec4(ao,ao,ao,1);
-        
     }
+    #endif
 
     // directional lights
     for(uint i = 0; i < engineConstants[0].directionalLightCount; i++){

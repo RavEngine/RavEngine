@@ -75,10 +75,10 @@ namespace RavEngine {
 
 		RGLTexturePtr dummyShadowmap, dummyCubemap;
 		RGLSamplerPtr textureSampler, shadowSampler, depthPyramidSampler;
-		RGLRenderPassPtr litRenderPass, unlitRenderPass, depthPrepassRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, litTransparentPass, unlitTransparentPass, transparentClearPass, transparencyApplyPass, ssgiPass;
+		RGLRenderPassPtr litRenderPass, unlitRenderPass, depthPrepassRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, litTransparentPass, unlitTransparentPass, transparentClearPass, transparencyApplyPass, ssgiPass, ssgiAmbientApplyPass;
 
 		RGLRenderPipelinePtr depthPyramidCopyPipeline,
-			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, transparencyApplyPipeline, ssgipipeline, ssgiDownsamplePipeline, ssgiUpsamplePipeline;
+			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, transparencyApplyPipeline, ssgipipeline, ssgiDownsamplePipeline, ssgiUpsamplePipeline, ambientSSGIApplyPipeline;
 		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline, clusterBuildGridPipeline, clusterPopulatePipeline;
 		RGLBufferPtr screenTriVerts,
 			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, quadVertBuffer, lightClusterBuffer, debugRenderBufferUpload;
@@ -114,6 +114,10 @@ namespace RavEngine {
 		struct UpsampleUBO {
 			glm::uvec4 targetDim;
 			float filterRadius;
+		};
+
+		struct AmbientSSGIApplyUBO {
+			uint32_t ambientLightCount = 0;
 		};
         
         RGLShaderLibraryPtr defaultPostEffectVSH;

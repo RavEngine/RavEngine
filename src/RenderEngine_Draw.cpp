@@ -1641,9 +1641,33 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->EndRenderDebugMarker();
 
 					mainCommandBuffer->EndRenderDebugMarker();
-				}
 
-				
+					// ambient and SSGI
+					ssgiAmbientApplyPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
+					ssgiAmbientApplyPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+
+					mainCommandBuffer->BeginRenderDebugMarker("Ambient + GI");
+					mainCommandBuffer->BeginRendering(ssgiAmbientApplyPass);
+					mainCommandBuffer->BindRenderPipeline(ambientSSGIApplyPipeline);
+
+					mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+					mainCommandBuffer->SetFragmentTexture(target.lightingScratchTexture->GetDefaultView(), 1);	// albedo color
+					mainCommandBuffer->SetFragmentTexture(target.radianceTexture->GetDefaultView(), 2);	
+					mainCommandBuffer->SetFragmentTexture(target.ssgiOutputTexture->GetDefaultView(), 3);
+
+					AmbientSSGIApplyUBO ubo{
+						.ambientLightCount = worldOwning->renderData.ambientLightData.DenseSize()
+					};
+					mainCommandBuffer->SetFragmentBytes(ubo, 0);
+
+					mainCommandBuffer->BindBuffer(worldOwning->renderData.ambientLightData.GetPrivateBuffer(), 10);
+
+					mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+					mainCommandBuffer->Draw(3);
+
+					mainCommandBuffer->EndRendering();
+					mainCommandBuffer->EndRenderDebugMarker();
+				}
 			};
 
             auto renderLitPass = [&renderLitPass_Impl](auto&& camData, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {

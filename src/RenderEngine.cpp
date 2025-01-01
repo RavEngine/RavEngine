@@ -573,69 +573,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 
 	// create lighting render pipelines
 	constexpr static uint32_t width = 640, height = 480;
-	auto createLightingPipeline = [this, device](RGLShaderLibraryPtr vsh, RGLShaderLibraryPtr fsh, uint32_t vertexStride, uint32_t instanceStride, const std::vector<RGL::RenderPipelineDescriptor::VertexConfig::VertexAttributeDesc>& vertexAttributeDesc, RGLPipelineLayoutPtr layout, RGL::WindingOrder windingorder = RGL::WindingOrder::Counterclockwise) {
-
-		RGL::RenderPipelineDescriptor::VertexConfig vertConfig{
-			.vertexBindings = {
-				{
-					.binding = 0,
-					.stride = vertexStride,
-				},
-				{
-					.binding = 1,
-					.stride = instanceStride,
-					.inputRate = RGL::InputRate::Instance
-				}
-			},
-			.attributeDescs = vertexAttributeDesc
-		};
-
-		RGL::RenderPipelineDescriptor rpd{
-			.stages = {
-				{
-					.type = RGL::ShaderStageDesc::Type::Vertex,
-					.shaderModule = vsh,
-				},
-				{
-					.type = RGL::ShaderStageDesc::Type::Fragment,
-					.shaderModule = fsh,
-				}
-			},
-			.vertexConfig = vertConfig,
-			.inputAssembly = {
-				.topology = RGL::PrimitiveTopology::TriangleList,
-			},
-			.viewport = {
-				.width = width,
-				.height = height
-			},
-			.scissor = {
-				.extent = {width, height}
-			},
-			.rasterizerConfig = {
-				.windingOrder = windingorder,
-			},
-			.colorBlendConfig = {
-				.attachments = {
-					{
-						.format = colorTexFormat,
-						.destinationColorBlendFactor = RGL::BlendFactor::One,
-						.destinationAlphaBlendFactor = RGL::BlendFactor::One,
-						.blendEnabled = true
-					},
-				}
-			},
-			.depthStencilConfig = {
-				.depthFormat = RGL::TextureFormat::D32SFloat,
-				.depthTestEnabled = true,
-				.depthWriteEnabled = false,
-				.depthFunction = RGL::DepthCompareFunction::Less,
-			},
-			.pipelineLayout = layout,
-		};
-
-		return device->CreateRenderPipeline(rpd);
-	};
 
 	// data needed for lights
 	struct Vertex2D {
@@ -1701,6 +1638,105 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				.storeOp = RGL::StoreAccessOperation::Store,
 			},
 		},
+	});
+
+	auto ambientSSGIApplyLayout = device->CreatePipelineLayout({
+			.bindings = {
+				{
+					.binding = 0,
+					.type = RGL::BindingType::Sampler,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+				},
+				{
+					.binding = 1,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+				},
+				{
+					.binding = 2,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+				},
+				{
+					.binding = 3,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+				},
+				{
+					.binding = 10,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+				},
+			},
+			.constants = {{sizeof(AmbientSSGIApplyUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Fragment)}}
+	});
+
+	ambientSSGIApplyPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
+			.stages = {
+					{
+						.type = RGL::ShaderStageDesc::Type::Vertex,
+						.shaderModule = LoadShaderByFilename("ambient_ssgi_vsh", device),
+					},
+					{
+						.type = RGL::ShaderStageDesc::Type::Fragment,
+						.shaderModule = LoadShaderByFilename("ambient_ssgi_fsh", device),
+					}
+			},
+			.vertexConfig = {
+				.vertexBindings = {
+					{
+						.binding = 0,
+						.stride = sizeof(Vertex2D),
+					},
+				},
+				.attributeDescs = {
+					{
+						.location = 0,
+						.binding = 0,
+						.offset = 0,
+						.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+					},
+				}
+			},
+			.inputAssembly = {
+				.topology = RGL::PrimitiveTopology::TriangleList,
+			},
+			.rasterizerConfig = {
+				.windingOrder = RGL::WindingOrder::Counterclockwise,
+			},
+			.colorBlendConfig = {
+				.attachments = {
+					{
+						.format = colorTexFormat,
+						.destinationColorBlendFactor = RGL::BlendFactor::One,	// additive blend
+						.destinationAlphaBlendFactor = RGL::BlendFactor::One,
+						.blendEnabled = true
+					},
+				}
+			},
+			.depthStencilConfig = {
+				.depthFormat = depthFormat,
+				.depthTestEnabled = true,
+				.depthWriteEnabled = false,
+				.depthFunction = RGL::DepthCompareFunction::Greater
+			},
+			.pipelineLayout = ambientSSGIApplyLayout,
+		});
+
+	ssgiAmbientApplyPass = RGL::CreateRenderPass({
+		.attachments = {
+			{
+				.format = colorTexFormat,
+				.loadOp = RGL::LoadAccessOperation::Load,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			},
+		},
+		.depthAttachment = {{
+			.format = RGL::TextureFormat::D32SFloat,
+			.loadOp = RGL::LoadAccessOperation::Load,
+			.storeOp = RGL::StoreAccessOperation::Store,
+			.clearColor = depthClearColor
+		}}
 	});
 }
 
