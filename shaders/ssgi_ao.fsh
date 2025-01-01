@@ -111,7 +111,7 @@ vec4 getVisibility() {
     visibility /= ubo.sliceCount;
     lighting /= ubo.sliceCount;
 
-    return vec4(lighting, visibility);
+    return vec4(lighting, min(1,visibility));   // pin AO to 1
 }
 
 void main() {

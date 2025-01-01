@@ -1564,7 +1564,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				if (!transparentMode) {
 					mainCommandBuffer->BeginRenderDebugMarker("SSGI");
 
-					ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetDefaultView());
+					ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(1));	// not rendering to base mip
 					mainCommandBuffer->BeginRendering(ssgiPass);
 					mainCommandBuffer->BindRenderPipeline(ssgipipeline);
 					mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
@@ -1573,6 +1573,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->SetFragmentTexture(target.radianceTexture->GetDefaultView(), 3);
 
 					auto size = target.ssgiOutputTexture->GetSize();
+					size.width /= 2;
+					size.height /= 2;
 					{
 						SSGIUBO ssgiubo{
 							.projection = camData.projOnly,
@@ -1590,10 +1592,34 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->Draw(3);
 					mainCommandBuffer->EndRendering();
 
-					// downscale + upscale
+					// first, upsample the AO from mip 1 to mip 0
+					mainCommandBuffer->BeginRenderDebugMarker("Upsample AO");
+					{
+						ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(0));
+
+						mainCommandBuffer->BeginRendering(ssgiPass);
+						mainCommandBuffer->BindRenderPipeline(aoUpsamplePipeline);
+						mainCommandBuffer->SetFragmentSampler(textureSampler, 1);
+						mainCommandBuffer->SetFragmentTexture(target.ssgiOutputTexture->GetViewForMip(1), 0);
+
+
+						UpsampleUBO ubo{
+							.targetDim = {0,0,size.width * 2, size.height * 2},
+							.filterRadius = 0.005
+						};
+						mainCommandBuffer->SetFragmentBytes(ubo, 0);
+
+						mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+						mainCommandBuffer->Draw(3);
+
+						mainCommandBuffer->EndRendering();
+					}
+					mainCommandBuffer->EndRenderDebugMarker();
+
+					// downscale + upscale GI
 					mainCommandBuffer->BeginRenderDebugMarker("Downsample");
 					const uint32_t numMips = std::min<uint32_t>(std::log2(std::min(size.width, size.height)), maxssgimips);
-					for (int i = 1; i < numMips; i++) {
+					for (int i = 2; i < numMips; i++) {
 						ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(i));
 
 						mainCommandBuffer->BeginRendering(ssgiPass);
@@ -1616,7 +1642,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					}
 					mainCommandBuffer->EndRenderDebugMarker();
 					mainCommandBuffer->BeginRenderDebugMarker("Upsample");
-					for (int i = numMips-1; i > 0; i--) {
+					for (int i = numMips-1; i > 1; i--) {
 						ssgiPass->SetAttachmentTexture(0, target.ssgiOutputTexture->GetViewForMip(i-1));
 
 						mainCommandBuffer->BeginRendering(ssgiPass);

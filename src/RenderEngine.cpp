@@ -1582,7 +1582,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.constants = {{sizeof(UpsampleUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Fragment)}}
 			});
 
-		ssgiUpsamplePipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
+		RGL::RenderPipelineDescriptor ssgiupsample_rpd{
 			.stages = {
 					{
 						.type = RGL::ShaderStageDesc::Type::Vertex,
@@ -1627,7 +1627,24 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				.depthWriteEnabled = false,
 			},
 			.pipelineLayout = upscaleLayout,
-			});
+		};
+		ssgiUpsamplePipeline = device->CreateRenderPipeline(ssgiupsample_rpd);
+		ssgiupsample_rpd.colorBlendConfig = {
+			.attachments = {
+					{
+						.format = ssgiOutputFormat,
+						.destinationColorBlendFactor = RGL::BlendFactor::One,	// additive blend, because we don't want to replace the AO
+						.destinationAlphaBlendFactor = RGL::BlendFactor::One,
+						.blendEnabled = true
+					},
+				}
+		};
+
+		ssgiUpsamplePipleineFinalStep = device->CreateRenderPipeline(ssgiupsample_rpd);
+
+		ssgiupsample_rpd.stages[1].shaderModule = LoadShaderByFilename("ao_upsample_fsh", device);	// doesn't matter this is additive because the previous data will be 0
+
+		aoUpsamplePipeline = device->CreateRenderPipeline(ssgiupsample_rpd);
 	}
 
 	transparencyApplyPass = RGL::CreateRenderPass({
@@ -1800,8 +1817,11 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 	constexpr static uint32_t maxssgiRes = 1024;
 
 	const auto ratio = float(height) / width;
-	const auto ssgiResWidth = std::min(maxssgiRes, width / 2);
-	const auto ssgiResHeight = uint32_t(ssgiResWidth * ratio);
+	auto ssgiResWidth = std::min(maxssgiRes, width / 2);
+	auto ssgiResHeight = uint32_t(ssgiResWidth * ratio);
+
+	ssgiResWidth *= 2;
+	ssgiResHeight *= 2;
 
 	collection.ssgiOutputTexture = device->CreateTexture({
 		.usage = {.Sampled = true, .ColorAttachment = true },

@@ -126,14 +126,7 @@ void main(){
             continue;
         }
 
-        float ao = 1;
-        #if 0
-        if (ubo.ssao_enabled > 0){
-		    ao = texture(sampler2D(t_ssao, g_sampler), texcoord).r;
-	    }
-        #endif
-
-        outcolor += user_out.color * vec4(light.color * light.intensity,1) * vec4(ao,ao,ao,1);
+        outcolor += user_out.color * vec4(light.color * light.intensity,1);
     }
     #endif
 

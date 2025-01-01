@@ -22,6 +22,7 @@ layout(scalar, binding = 10) readonly buffer ambientLightSSBO{
     AmbientLightData ambientLights[];
 };
 
+#define RVE_SSAO 1
 
 void main(){
     ivec2 texSize = textureSize(radianceTex,0);
@@ -31,6 +32,13 @@ void main(){
 
     const vec3 existingColor = texture(sampler2D(albedoTex, g_sampler), uv).rgb;
 
+    
+#if RVE_SSAO
+    const float ao = texture(sampler2D(giSSAO, g_sampler), uv).a;
+#else
+    const float ao = 1;
+#endif
+
     vec3 lightcolor = vec3(0);
     for(uint i = 0; i < ubo.ambientLightCount; i++){
         AmbientLightData light = ambientLights[i];
@@ -39,14 +47,7 @@ void main(){
             continue;
         }
 
-        float ao = 1;
-        #if 0
-        if (ubo.ssao_enabled > 0){
-            ao = texture(sampler2D(t_ssao, g_sampler), texcoord).r;
-        }
-        #endif
-
-        lightcolor += existingColor * (light.color * light.intensity) * vec3(ao,ao,ao);
+        lightcolor += existingColor * (light.color * light.intensity) * vec3(ao);
     }
 
     outcolor = vec4(lightcolor,1);
