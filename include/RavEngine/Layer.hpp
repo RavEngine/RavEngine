@@ -11,4 +11,11 @@ namespace RavEngine{
     constexpr perobject_t CastsShadowsBit = 1 << 2;
     constexpr perobject_t RecievesShadowsBit = 1 << 3;
     constexpr perobject_t ALL_ATTRIBUTES = std::numeric_limits<decltype(ALL_ATTRIBUTES)>::max();
+
+
+    struct IndirectLightingSettings {
+        float ssaoStrength = 1;
+        bool SSAOEnabled = true;
+        bool SSGIEnabled = true;
+    };
 }

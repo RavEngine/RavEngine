@@ -40,8 +40,7 @@ namespace RavEngine{
             uint32_t targetWidth, targetHeight;
             const PostProcessEffectStack* postProcessingEffects = nullptr;
 			const void* tonemap = nullptr;	// because we can't forward declare 'using's 
-			bool ssaoEnabled = true;
-			bool ssgiEnabled = true;
+			IndirectLightingSettings indirectSettings;
 		};
 		Vector<camData> camDatas;
 		dim_t<int> pixelDimensions;

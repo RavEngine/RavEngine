@@ -4,7 +4,6 @@
 #include "Entity.hpp"
 #include "Transform.hpp"
 #include "ComponentWithOwner.hpp"
-#include "RenderTargetCollection.hpp"
 #include "PostProcess.hpp"
 #include "Array.hpp"
 #include "Tonemap.hpp"
@@ -127,9 +126,8 @@ namespace RavEngine {
         PostProcessEffectStack postProcessingEffects;
 
 		Ref<TonemapPassInstance> tonemap;
-
-		bool SSAOEnabled = true;
-		bool SSGIEnabled = true;
+		IndirectLightingSettings indirectLightingSettings;
+		
 
 	protected:
         Mode projection = Mode::Perspective;

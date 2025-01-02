@@ -118,6 +118,7 @@ namespace RavEngine {
 
 		struct AmbientSSGIApplyUBO {
 			uint32_t ambientLightCount = 0;
+			float ssaoStrength = 1;
 			uint32_t options = 0;
 			static constexpr uint32_t SSAOBIT = 1, SSGIBIT = 1 << 1;
 		};

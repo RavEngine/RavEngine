@@ -1562,7 +1562,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                 }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, &target);
 
 				if (!transparentMode) {
-					if (camData.ssaoEnabled || camData.ssgiEnabled) {
+					if (camData.indirectSettings.SSAOEnabled || camData.indirectSettings.SSGIEnabled) {
 						constexpr auto divFacForMip = [](uint32_t mip) {
 							return std::pow(2, mip);
 							};
@@ -1625,7 +1625,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						}
 
 						// next, upsample the AO from mip 2 to mip 0
-						if (camData.ssaoEnabled)
+						if (camData.indirectSettings.SSAOEnabled)
 						{
 							mainCommandBuffer->BeginRenderDebugMarker("Upsample AO");
 							for (int i = 2; i >= 1; i--) {
@@ -1654,7 +1654,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 
 						// downscale AO + GI the rest of the way upscale 
-						if (camData.ssgiEnabled) {
+						if (camData.indirectSettings.SSGIEnabled) {
 							mainCommandBuffer->BeginRenderDebugMarker("Downsample");
 							const uint32_t numMips = std::min<uint32_t>(std::log2(std::min(size.width, size.height)), maxssgimips);
 							for (int i = 3; i < numMips; i++) {
@@ -1719,12 +1719,13 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->SetFragmentTexture(target.ssgiOutputTexture->GetDefaultView(), 3);
 
 					AmbientSSGIApplyUBO ubo{
-						.ambientLightCount = worldOwning->renderData.ambientLightData.DenseSize()
+						.ambientLightCount = worldOwning->renderData.ambientLightData.DenseSize(),
+						.ssaoStrength = camData.indirectSettings.ssaoStrength,
 					};
-					if (camData.ssaoEnabled) {
+					if (camData.indirectSettings.SSAOEnabled) {
 						ubo.options |= AmbientSSGIApplyUBO::SSAOBIT;
 					}
-					if (camData.ssgiEnabled) {
+					if (camData.indirectSettings.SSGIEnabled) {
 						ubo.options |= AmbientSSGIApplyUBO::SSGIBIT;
 					}
 					mainCommandBuffer->SetFragmentBytes(ubo, 0);

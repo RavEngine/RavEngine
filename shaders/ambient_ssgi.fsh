@@ -2,6 +2,7 @@
 
 layout(push_constant, scalar) uniform UniformBufferObject{
     uint ambientLightCount;
+    float ssaoStrength;
     uint options;
 } ubo;
 
@@ -39,10 +40,14 @@ void main(){
     vec4 giao = texture(sampler2D(giSSAO, g_sampler), uv);
 
 #if RVE_SSAO
-    const float ao = ssaoEnabled ? giao.a : 1;
+    float ao = ssaoEnabled ? giao.a : 1;
 #else
-    const float ao = 1;
+    float ao = 1;
 #endif
+
+    if (ssaoEnabled){
+        ao = pow(ao,ubo.ssaoStrength);
+    }
 
     // ambient lights and AO
     vec3 ambientcontrib = vec3(0);
