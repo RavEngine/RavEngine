@@ -113,13 +113,6 @@ namespace RavEngine {
         renderlayer_t renderLayers = ALL_LAYERS;
 
 		ViewportOverride viewportOverride;
-
-
-		enum class DisplayMode : uint8_t {
-			Exclusive,		
-			Splitscreen			// incompatible with render textures
-		} mode = DisplayMode::Exclusive;
-
 		
         Ref<RenderTexture> target;  // if unset, renders to the screen
         
