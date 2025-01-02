@@ -128,6 +128,9 @@ namespace RavEngine {
 
 		Ref<TonemapPassInstance> tonemap;
 
+		bool SSAOEnabled = true;
+		bool SSGIEnabled = true;
+
 	protected:
         Mode projection = Mode::Perspective;
 		bool active = false;

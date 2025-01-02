@@ -2,6 +2,7 @@
 
 layout(push_constant, scalar) uniform UniformBufferObject{
     uint ambientLightCount;
+    uint options;
 } ubo;
 
 struct AmbientLightData{
@@ -25,6 +26,9 @@ layout(scalar, binding = 10) readonly buffer ambientLightSSBO{
 #define RVE_SSAO 1
 
 void main(){
+    bool ssaoEnabled = bool(ubo.options & (1));
+    bool ssgiEnabled = bool(ubo.options & (1 << 1));
+
     ivec2 texSize = textureSize(radianceTex,0);
     vec2 uv = gl_FragCoord.xy / texSize;
 
@@ -35,7 +39,7 @@ void main(){
     vec4 giao = texture(sampler2D(giSSAO, g_sampler), uv);
 
 #if RVE_SSAO
-    const float ao = giao.a;
+    const float ao = ssaoEnabled ? giao.a : 1;
 #else
     const float ao = 1;
 #endif
@@ -53,7 +57,7 @@ void main(){
     }
 
     // Global illumination
-    vec3 gicontrib = albedo * giao.rgb;
+    vec3 gicontrib =  ssgiEnabled ? (albedo * giao.rgb) : vec3(0);
 
     outcolor = vec4(ambientcontrib + gicontrib,1);
 }
