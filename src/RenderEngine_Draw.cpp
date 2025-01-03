@@ -1936,7 +1936,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 				auto tonemapMaterial = tonemapPass->GetEffect();
 
-				mainCommandBuffer->BeginRendering(finalRenderPass);
+                finalRenderPassNoDepth->SetAttachmentTexture(0, target.finalFramebuffer->GetDefaultView());
+				mainCommandBuffer->BeginRendering(finalRenderPassNoDepth);
 				mainCommandBuffer->BeginRenderDebugMarker("Tonemap");
 				// start with the results of lighting
 				mainCommandBuffer->BindRenderPipeline(tonemapMaterial->GetPipeline());

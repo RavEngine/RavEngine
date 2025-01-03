@@ -58,7 +58,7 @@ MeshParticleVertexOut mesh_particle_vert(uint particleID, ParticleMatrices matri
 
     vec4 vert = inModel * vec4(inPosition, 1);
 
-    vs_out.localPosition = data_pos;
+    vs_out.localPosition = vert.xyz;
 
     return vs_out;
 

@@ -513,6 +513,16 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.storeOp = RGL::StoreAccessOperation::Store,
 		}
 	});
+    
+    finalRenderPassNoDepth = RGL::CreateRenderPass({
+        .attachments = {
+            {
+                .format = RGL::TextureFormat::BGRA8_Unorm,
+                .loadOp = RGL::LoadAccessOperation::Load,
+                .storeOp = RGL::StoreAccessOperation::Store,
+            },
+        },
+    });
 
 	finalClearRenderPass = RGL::CreateRenderPass({
 		.attachments = {
@@ -1513,6 +1523,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.depthStencilConfig = {
 			.depthTestEnabled = false,
 			.depthWriteEnabled = false,
+            .depthFormat = depthFormat
 		},
 		.pipelineLayout = ssgiLayout,
 	});
@@ -1577,6 +1588,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.depthStencilConfig = {
 				.depthTestEnabled = false,
 				.depthWriteEnabled = false,
+                .depthFormat = depthFormat
 			},
 			.pipelineLayout = downscaleLayout,
 			});
@@ -1643,6 +1655,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.depthStencilConfig = {
 				.depthTestEnabled = false,
 				.depthWriteEnabled = false,
+                .depthFormat = depthFormat
 			},
 			.pipelineLayout = upscaleLayout,
 		};
