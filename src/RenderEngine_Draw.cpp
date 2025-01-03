@@ -1197,6 +1197,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				}
 
 				// render particles
+				mainCommandBuffer->BeginRenderDebugMarker("Render Particles");
                 worldOwning->Filter([this, &viewproj, &particleBillboardMatrices, &currentLightingType, &pipelineSelectorFunction, &lightDataOffset, &worldOwning, &layers, &target, &camIdx](const ParticleEmitter& emitter, const Transform& t) {
                     // check if the render layers match
                     auto renderLayers = worldOwning->renderData.renderLayers[emitter.GetOwner().GetID()];
@@ -1333,7 +1334,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 							}
 						}, emitter.GetRenderMaterial());
 					});
-				
+				mainCommandBuffer->EndRenderDebugMarker();
 			};
 
 			// do culling operations

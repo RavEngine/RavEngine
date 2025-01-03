@@ -1521,9 +1521,9 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			}
 		},
 		.depthStencilConfig = {
+			.depthFormat = depthFormat,
 			.depthTestEnabled = false,
 			.depthWriteEnabled = false,
-            .depthFormat = depthFormat
 		},
 		.pipelineLayout = ssgiLayout,
 	});
@@ -1586,9 +1586,9 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				}
 			},
 			.depthStencilConfig = {
+				.depthFormat = depthFormat,
 				.depthTestEnabled = false,
 				.depthWriteEnabled = false,
-                .depthFormat = depthFormat
 			},
 			.pipelineLayout = downscaleLayout,
 			});
@@ -1653,9 +1653,9 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				}
 			},
 			.depthStencilConfig = {
+				.depthFormat = depthFormat,
 				.depthTestEnabled = false,
 				.depthWriteEnabled = false,
-                .depthFormat = depthFormat
 			},
 			.pipelineLayout = upscaleLayout,
 		};
