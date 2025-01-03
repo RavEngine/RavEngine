@@ -45,6 +45,10 @@ void main(){
 
     vec4 worldPos = vec4(user_out.localPosition, 1);
 
+    inTBN[0] = inTangent;
+	inTBN[1] = inBitangent;
+	inTBN[2] = inNormal;
+
     gl_Position = matrixData[0].viewProj * worldPos;
     clipSpaceZ = gl_Position.z;
     worldPosition = worldPos.xyz;

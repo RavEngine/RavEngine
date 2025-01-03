@@ -102,7 +102,11 @@ void main(){
     // normals are in local space
     // but we need them in world space
     mat4 entityModelMtx = model[varyingEntityID];
-    const vec3 worldNormal = mat3(entityModelMtx) * user_out.normal;
+
+    const mat3 TBN = mat3(inTBN[0],inTBN[1],inTBN[2]);
+    const vec3 objectSpaceNormal = TBN * user_out.normal;
+
+    const vec3 worldNormal = mat3(entityModelMtx) * objectSpaceNormal;
 
     #if RVE_EXTRAOUTPUT
         outAlbedo = user_out.color;

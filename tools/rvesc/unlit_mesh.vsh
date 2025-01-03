@@ -37,6 +37,10 @@ void main(){
     
     vec4 worldPos = entity.modelMtx * vec4(user_out.localPosition, 1);
 
+    inTBN[0] = inTangent;
+	inTBN[1] = inBitangent;
+	inTBN[2] = inNormal;
+
     gl_Position = data.viewProj * worldPos;
     clipSpaceZ = gl_Position.z;
     varyingEntityID = inEntityID;

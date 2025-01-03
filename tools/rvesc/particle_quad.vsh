@@ -37,7 +37,7 @@ void main(){
 #else
     ParticleVertexOut user_out = vert(particleData[particle], matrixData[0], inPos);
 #endif
-    
+
     vec4 worldPos = vec4(user_out.localPosition, 1);
     gl_Position = matrixData[0].viewProj * worldPos;
     clipSpaceZ = gl_Position.z;
