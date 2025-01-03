@@ -6,7 +6,7 @@
 #include "lit_mesh_shared.glsl"
 
 struct UnlitVertexOut{
-    vec4 position;
+    vec3 localPosition;
 };
 
 struct EntityIn
@@ -20,7 +20,6 @@ struct EntityIn
 #include "%s"
 
 layout(location = ENTITY_INPUT_LOCATION) in uint inEntityID;
-layout(std430, binding = MODEL_MATRIX_BINDING) readonly buffer modelMatrixBuffer{mat4 model[];};
 
 #define VARYINGDIR out
 #include "mesh_varyings.glsl"
@@ -35,8 +34,10 @@ void main(){
     EngineData data = make_engine_data(engineConstants[0]);
 
     UnlitVertexOut user_out = vert(entity,data);
+    
+    vec4 worldPos = entity.modelMtx * vec4(user_out.localPosition, 1);
 
-    gl_Position = user_out.position;
+    gl_Position = data.viewProj * worldPos;
     clipSpaceZ = gl_Position.z;
     varyingEntityID = inEntityID;
 }

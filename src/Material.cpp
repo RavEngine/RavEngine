@@ -47,7 +47,7 @@ namespace RavEngine {
                 {
                     .binding = MODEL_MATRIX_BINDING,
                     .type = RGL::BindingType::StorageBuffer,
-                    .stageFlags = RGL::BindingVisibility::Vertex
+                    .stageFlags = RGL::BindingVisibility::VertexFragment
                 }
             );
         }

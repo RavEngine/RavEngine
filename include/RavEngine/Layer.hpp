@@ -16,6 +16,6 @@ namespace RavEngine{
     struct IndirectLightingSettings {
         float ssaoStrength = 1;
         bool SSAOEnabled = true;
-        bool SSGIEnabled = true;
+        bool SSGIEnabled = false;
     };
 }

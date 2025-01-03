@@ -3,6 +3,7 @@
 #include "App.hpp"
 #include "Texture.hpp"
 #include <RGL/Texture.hpp>
+#include <ravengine_shader_defs.h>
 
 namespace RavEngine {
 	const RGL::RenderPipelineDescriptor::VertexConfig quadVertexConfig{
@@ -30,6 +31,12 @@ namespace RavEngine {
 		{
 			RGL::PipelineLayoutDescriptor rpl = {
 				.bindings = {
+					{
+						.binding = MODEL_MATRIX_BINDING,
+						.type = RGL::BindingType::StorageBuffer,
+						.stageFlags = RGL::BindingVisibility::VertexFragment,
+						.writable = false,
+					},
 					{
 						.binding = particleDataBufferBinding,
 						.type = RGL::BindingType::StorageBuffer,

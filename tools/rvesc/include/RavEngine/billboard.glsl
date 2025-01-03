@@ -1,7 +1,6 @@
 
 struct BillboardVertexResult{
-    vec4 position;
-    vec3 worldPosition;
+    vec3 localPosition;
     vec2 uv;
 };
 
@@ -30,9 +29,7 @@ BillboardVertexResult billboard_vert(uint particleID, ParticleMatrices matrices,
 
     vec3 rotated_quad = billboardmtx * vec3(inVertex * data_scale,0);
 
-    vec4 vert = vec4(data_pos + rotated_quad,1);
-
-    vert = matrices.viewProj * vert;
+    vec3 vert = data_pos + rotated_quad;
 
     vec2 cellDim = (spritesheetDim / vec2(numSprites)) / spritesheetDim;  // [0,1] for a single frame
 
@@ -55,8 +52,7 @@ BillboardVertexResult billboard_vert(uint particleID, ParticleMatrices matrices,
 
     uv += (vec2(col,row));
 
-    v_out.position = vert;
-    v_out.worldPosition = data_pos + rotated_quad;
+    v_out.localPosition = vert;
     v_out.uv = uv;
 
     return v_out;

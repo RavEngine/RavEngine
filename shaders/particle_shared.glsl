@@ -1,4 +1,3 @@
 struct ParticleVertexOut{
-    vec4 position;
-    vec3 worldPosition;
+    vec3 localPosition;
 };

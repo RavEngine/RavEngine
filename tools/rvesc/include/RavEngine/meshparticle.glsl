@@ -2,8 +2,7 @@
 #include "RavEngine/quat.glsl"
 
 struct MeshParticleVertexOut{
-    vec4 position;
-    vec3 worldPosition;
+    vec3 localPosition;
     vec3 T;
     vec3 B;
     vec3 N;
@@ -59,10 +58,7 @@ MeshParticleVertexOut mesh_particle_vert(uint particleID, ParticleMatrices matri
 
     vec4 vert = inModel * vec4(inPosition, 1);
 
-    vec4 finalPos = matrices.viewProj * vert;
-
-    vs_out.position = finalPos;
-    vs_out.worldPosition = data_pos;
+    vs_out.localPosition = data_pos;
 
     return vs_out;
 

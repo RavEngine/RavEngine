@@ -99,12 +99,17 @@ layout(set = 2, binding = 0) uniform textureCube pointShadowMaps[];    // we ali
 void main(){
 
     LitOutput user_out = frag();
-    #if RVE_EXTRAOUTPUT
-    outAlbedo = user_out.color;
+    // normals are in local space
+    // but we need them in world space
+    mat4 entityModelMtx = model[varyingEntityID];
+    const vec3 worldNormal = mat3(entityModelMtx) * user_out.normal;
 
-    // normals are in world space
-    EngineData data = make_engine_data(engineConstants[0]);
-    outViewSpaceNormal = normalize(data.viewOnly * vec4(user_out.normal,1));
+    #if RVE_EXTRAOUTPUT
+        outAlbedo = user_out.color;
+
+        // this part needs them in view space
+        EngineData data = make_engine_data(engineConstants[0]);
+        outViewSpaceNormal = vec4(mat3(data.viewOnly) * worldNormal,1);
     #endif
 
     vec4 outcolor = vec4(0); // NV: these don't default-init to 0
@@ -139,7 +144,7 @@ void main(){
         }
         
         vec3 rad;
-        vec3 lightResult = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, light.toLight, 1, light.color * light.intensity, rad);
+        vec3 lightResult = CalculateLightRadiance(worldNormal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, light.toLight, 1, light.color * light.intensity, rad);
         float pcfFactor = 1;
         
         vec4 color = vec4(0);
@@ -210,7 +215,7 @@ void main(){
         float dist = distance(worldPosition, light.position);
 
         vec3 rad;
-        vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, getLightAttenuation(dist),  light.color * light.intensity, rad);
+        vec3 result = CalculateLightRadiance(worldNormal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, getLightAttenuation(dist),  light.color * light.intensity, rad);
         float pcfFactor = 1;
 
         if (recievesShadows && bool(light.castsShadows)){
@@ -259,7 +264,7 @@ void main(){
 	    float pixelAngle = dot(-forward,toLight);   
 
         vec3 rad;
-        vec3 result = CalculateLightRadiance(user_out.normal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, getLightAttenuation(dist),  light.color * light.intensity, rad);
+        vec3 result = CalculateLightRadiance(worldNormal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, getLightAttenuation(dist),  light.color * light.intensity, rad);
         float pcfFactor = 1;
         if (recievesShadows && bool(light.castsShadows)){
             pcfFactor = pcfForShadow(worldPosition, light.lightViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndex]);

@@ -43,9 +43,11 @@ void main(){
     ParticleVertexOut user_out = vert(particleData[particle], matrixData[0]);
 #endif
 
-    gl_Position = user_out.position;
+    vec4 worldPos = vec4(user_out.localPosition, 1);
+
+    gl_Position = matrixData[0].viewProj * worldPos;
     clipSpaceZ = gl_Position.z;
-    worldPosition = user_out.worldPosition;
+    worldPosition = worldPos.xyz;
     viewPosition = (engineConstants[0].viewOnly * vec4(worldPosition,1)).xyz;
     varyingEntityID = emitterState[0].emitterOwnerID;
 }

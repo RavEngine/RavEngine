@@ -10,6 +10,9 @@ struct EngineData_Internal{
     float zNear;
     float zFar;
 };
+#define MODEL_MATRIX_BINDING 10
+
+layout(std430, binding = MODEL_MATRIX_BINDING) readonly buffer modelMatrixBuffer{mat4 model[];};
 
 layout(scalar, binding = 11) readonly buffer lightAuxDataSSBO{
     EngineData_Internal engineConstants[];
