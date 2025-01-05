@@ -120,6 +120,7 @@ namespace RavEngine {
     void Window::QueueGetNextSwapchainImage(RGL::SwapchainPresentConfig& presentConfig){
         // queue up the next swapchain image as soon as possible,
         // it will become avaiable in the background
+        swapchainFence->Wait();
         swapchain->GetNextImage(&presentConfig.imageIndex);
     }
 	Window::SwapchainResult Window::BlockGetNextSwapchainImage(const RGL::SwapchainPresentConfig& presentConfig)

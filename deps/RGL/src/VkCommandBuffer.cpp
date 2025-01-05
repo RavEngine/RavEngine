@@ -46,6 +46,7 @@ namespace RGL {
 
 	void RGL::CommandBufferVk::Reset()
 	{
+		vkWaitForFences(owningQueue->owningDevice->device, 1, &internalFence, VK_TRUE, INT_MAX);
 		VK_CHECK(vkResetCommandBuffer(commandBuffer, 0));
 		vkResetFences(owningQueue->owningDevice->device, 1, &internalFence);
 	}
