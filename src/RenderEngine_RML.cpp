@@ -287,4 +287,18 @@ void RenderEngine::SetTransform(const Rml::Matrix4f* transform){
 	currentGUIMatrix = glm::make_mat4(data);
 	Debug::Fatal("Local transformations not supported yet");
 }
+bool RavEngine::RenderEngine::LogMessage(Rml::Log::Type type, const Rml::String& message)
+{
+	switch (type) {
+	case Rml::Log::Type::LT_ERROR:
+	case Rml::Log::Type::LT_ASSERT:
+		Debug::Fatal(message);
+		break;
+	default:
+		Debug::Log(message);
+		break;
+	}
+
+	return true;
+}
 #endif

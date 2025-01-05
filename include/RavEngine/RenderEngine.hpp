@@ -266,6 +266,8 @@ namespace RavEngine {
 		/// Called by RmlUi when it wants to set the current transform matrix to a new matrix.
 		void SetTransform(const Rml::Matrix4f* transform) override;
 
+		bool LogMessage(Rml::Log::Type type, const Rml::String& message) override;
+
 #ifndef NDEBUG
 		static std::optional<GUIComponent> debuggerContext;
 		void InitDebugger() const;
