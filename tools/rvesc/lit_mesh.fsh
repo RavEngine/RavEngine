@@ -67,7 +67,6 @@ layout(scalar, binding = 13) readonly buffer dirLightSSBO{
     DirectionalLightData dirLights[];
 };
 
-layout(binding = 14) uniform sampler shadowSampler;
 
 layout(scalar, binding = 15) readonly buffer pointLightSSBO{
     PointLight pointLights[];
@@ -93,8 +92,11 @@ layout(scalar, binding = 30) readonly buffer dirLightVaryingSSBO{
     DirectionalLightDataPassVarying dirLightsVarying[];
 };
 
+#if !RVE_DEPTHONLY  // depth only calculation does not do shadow reads
+layout(binding = 14) uniform sampler shadowSampler;
 layout(set = 1, binding = 0) uniform texture2D shadowMaps[];      // the bindless heap must be in set 1 binding 0
 layout(set = 2, binding = 0) uniform textureCube pointShadowMaps[];    // we alias these because everything goes into the one heap
+#endif
 
 void main(){
 
@@ -120,6 +122,9 @@ void main(){
 
     vec3 radiance = vec3(0);
     
+
+#if !RVE_DEPTHONLY
+
     const uint entityRenderLayer = entityRenderLayers[varyingEntityID];
     const uint16_t attributeBitmask = perObjectFlags[varyingEntityID];
     const bool recievesShadows = bool(attributeBitmask & (1 << 3));
@@ -283,7 +288,6 @@ void main(){
     // add the emissive component
     outcolor += vec4(user_out.emissiveColor,0);  // don't want to add emissivity to the alpha channel
 
-    #if !RVE_DEPTHONLY 
         #if RVE_TRANSPARENT
             beginInvocationInterlockARB();
             writeTransparency(outcolor);
@@ -291,8 +295,8 @@ void main(){
         #else
             result = outcolor;
         #endif
-    #endif
 
+#endif // RVE_DEPTHONLY
     #if RVE_EXTRAOUTPUT
     outRadiance = vec4(radiance,uintBitsToFloat(entityRenderLayer));
     #endif
