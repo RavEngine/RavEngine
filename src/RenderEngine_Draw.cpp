@@ -1113,6 +1113,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 					// this is always needed
 					mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
+						
+					mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);	// VVL complains if we don't always bind these
+					mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);
+					mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
+
 
 					if constexpr (includeLighting) {
 						// make textures resident and put them in the right format
@@ -1127,15 +1132,13 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 						mainCommandBuffer->BindBuffer(worldOwning->renderData.ambientLightData.GetPrivateBuffer(),12);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightData.GetPrivateBuffer(),13);
-						mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData.pointLightData.GetPrivateBuffer(), 15);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.GetPrivateBuffer(), 17);
                         mainCommandBuffer->BindBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), 28);
 						mainCommandBuffer->BindBuffer(worldOwning->renderData.perObjectAttributes.GetPrivateBuffer(), 29);
                         mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightPassVarying.GetPrivateBuffer(), 30, camIdx * sizeof(World::DirLightUploadDataPassVarying));
 						mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
-						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);
-						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);
+						
 					}
                     if constexpr(transparentMode){
                         assert(target != nullptr); // no target provided!
