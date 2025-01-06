@@ -146,7 +146,7 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 	auto name = std::filesystem::relative(infile, in_desc_file.parent_path());
 	//const auto normalized = name.lexically_normal().string();
 
-	const auto fullTemplatePath = std::filesystem::current_path() / shaderTemplateName;
+	const auto fullTemplatePath = std::filesystem::path(__FILE__).parent_path() / shaderTemplateName;
 
 	std::vector<char> buffer(shaderTemplate.size() + infile.string().length(), 0);
 	snprintf(buffer.data(), buffer.size(), shaderTemplate.data(), infile.string().c_str());
