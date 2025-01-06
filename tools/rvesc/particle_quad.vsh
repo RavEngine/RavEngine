@@ -41,6 +41,10 @@ void main(){
     vec4 worldPos = vec4(user_out.localPosition, 1);
     gl_Position = matrixData[0].viewProj * worldPos;
     clipSpaceZ = gl_Position.z;
+    
+    inTBN[0] = vec3(1,0,0);
+    inTBN[1] = vec3(0,1,0);
+    inTBN[2] = vec3(0,0,1);
 
     worldPosition = worldPos.xyz;
     viewPosition = (engineConstants[0].viewOnly * vec4(worldPosition,1)).xyz;

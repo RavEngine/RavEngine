@@ -153,7 +153,7 @@ jobs:
               sudo add-apt-repository ppa:ubuntu-toolchain-r/test
               sudo apt-get update -y
               sudo apt remove build-essential -y
-              sudo apt-get install cmake g++-13 gcc-13 ninja-build libwayland-dev libxkbcommon-dev libasound2-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends
+              sudo apt-get install cmake g++-13 gcc-13 ninja-build uuid-dev libwayland-dev libxkbcommon-dev libasound2-dev libvulkan-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-glx0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-randr0-dev libxrandr-dev libxxf86vm-dev mesa-common-dev -y --no-install-recommends
       - name: Configure
         run: |
             mkdir -p build && cd build
