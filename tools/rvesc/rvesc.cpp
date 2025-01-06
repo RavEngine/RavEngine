@@ -146,10 +146,12 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 	auto name = std::filesystem::relative(infile, in_desc_file.parent_path());
 	//const auto normalized = name.lexically_normal().string();
 
+	const auto fullTemplatePath = std::filesystem::current_path() / shaderTemplateName;
 
 	std::vector<char> buffer(shaderTemplate.size() + infile.string().length(), 0);
 	snprintf(buffer.data(), buffer.size(), shaderTemplate.data(), infile.string().c_str());
 	std::string full_shader = buffer.data();
+	//full_shader = std::format("#line 1 \"{}\"\n", fullTemplatePath.generic_string()) + full_shader;
 
 	// get the defines
 	simdjson::ondemand::array array;
@@ -181,7 +183,7 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 	}
 
 	try {
-		auto result = librglc::CompileString(full_shader, targetAPI, inputStage, {
+		auto result = librglc::CompileString(full_shader, fullTemplatePath.generic_string(), targetAPI, inputStage, {
 			.include_paths = includeDirs, 
 			.defines = defines,
 			.outputBinary = targetAPI == librglc::API::Vulkan, 

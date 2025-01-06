@@ -85,10 +85,11 @@ namespace librglc {
 		return config.outputBinary ? result.data.binaryData : result.data.sourceData;
 	}
 
-	std::string CompileString(const std::string_view source, API toAPI, ShaderStage input_stage, const Config& config)
+	std::string CompileString(const std::string_view source, const std::string_view sourceFileName, API toAPI, ShaderStage input_stage, const Config& config)
 	{
 		MemoryCompileTask task{
 			.source = std::string(source),
+			.sourceFileName = std::string(sourceFileName),
 			.stage = rgl2shadert(input_stage),
 			.includePaths = config.include_paths,
 		};

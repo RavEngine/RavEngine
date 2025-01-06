@@ -44,6 +44,7 @@ struct FileCompileTask{
 
 struct MemoryCompileTask {
 	const std::string source;
+	const std::string sourceFileName;
 	const ShaderStage stage;
 	const std::vector<std::filesystem::path> includePaths;	// optional
 };

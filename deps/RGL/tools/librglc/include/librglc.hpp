@@ -30,6 +30,6 @@ namespace librglc {
         std::string entrypointOutputName = "main";
 	};
 
-	std::string CompileString(const std::string_view source, API toAPI, ShaderStage input_stage, const Config& config);
+	std::string CompileString(const std::string_view source, const std::string_view sourceFileName, API toAPI, ShaderStage input_stage, const Config& config);
 	std::string CompileFile(const std::filesystem::path source, API toAPI, ShaderStage input_stage, const Config& config);
 }
