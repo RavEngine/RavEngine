@@ -236,10 +236,10 @@ namespace RGL {
 		createdAspectVk = rgl2vkAspectFlags(config.aspect);
 
 		if (config.debugName.data() != nullptr) {
-			owningDevice->SetDebugNameForResource((void*)vkImage, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, config.debugName.data());
-			owningDevice->SetDebugNameForResource((void*)vkImageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, config.debugName.data());
+			owningDevice->SetDebugNameForResource((void*)vkImage, VK_OBJECT_TYPE_IMAGE, config.debugName.data());
+			owningDevice->SetDebugNameForResource((void*)vkImageView, VK_OBJECT_TYPE_IMAGE_VIEW, config.debugName.data());
 			for (int i = 0; i < mipViews.size(); i++) {
-				owningDevice->SetDebugNameForResource((void*)mipViews[i].texture.vk.view, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, config.debugName.data());
+				owningDevice->SetDebugNameForResource((void*)mipViews[i].texture.vk.view, VK_OBJECT_TYPE_IMAGE_VIEW, config.debugName.data());
 			}
 			debugName = config.debugName;
 		}

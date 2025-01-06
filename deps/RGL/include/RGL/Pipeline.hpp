@@ -262,6 +262,8 @@ namespace RGL {
 
 		// list of what states are dynamic (TODO)
 		RGLPipelineLayoutPtr pipelineLayout;
+
+		std::string debugName;
 	};
 
 	struct ComputePipelineDescriptor {

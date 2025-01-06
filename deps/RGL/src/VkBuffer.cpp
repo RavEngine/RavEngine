@@ -53,7 +53,7 @@ namespace RGL {
         allocation = createBuffer(owningDevice.get(), config.nElements * config.stride, usage, memprop, buffer);
 
         if (config.options.debugName) {
-            owningDevice->SetDebugNameForResource((void*)buffer, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, config.options.debugName);
+            owningDevice->SetDebugNameForResource((void*)buffer, VK_OBJECT_TYPE_BUFFER, config.options.debugName);
 #ifndef NDEBUG
             debugName = config.options.debugName;
 #endif

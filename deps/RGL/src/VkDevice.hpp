@@ -29,14 +29,13 @@ namespace RGL {
         VmaAllocator_T* vkallocator;
 		PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = nullptr;	// device-tied extension function
 
-		PFN_vkDebugMarkerSetObjectNameEXT rgl_vkSetDebugUtilsObjectNameEXT = nullptr;
 		PFN_vkCmdEndDebugUtilsLabelEXT rgl_vkCmdEndDebugUtilsLabelEXT = nullptr;
 		PFN_vkCmdBeginDebugUtilsLabelEXT rgl_vkCmdBeginDebugUtilsLabelEXT = nullptr;
 
 		virtual ~DeviceVk();
 		DeviceVk(decltype(physicalDevice) physicalDevice);
 
-		void SetDebugNameForResource(void* resource, VkDebugReportObjectTypeEXT type, const char* debugName);
+		void SetDebugNameForResource(void* resource, VkObjectType type, const char* debugName);
 
 		// IDevice
 		std::string GetBrandString() final;

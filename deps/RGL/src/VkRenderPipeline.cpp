@@ -258,6 +258,11 @@ namespace RGL {
             
         };
         VK_CHECK(vkCreateGraphicsPipelines(owningDevice->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
+
+        if (desc.debugName != "") {
+            owningDevice->SetDebugNameForResource((void*)graphicsPipeline, VK_OBJECT_TYPE_PIPELINE, desc.debugName.c_str());
+        }
+
 	}
     RenderPipelineVk::~RenderPipelineVk()
     {

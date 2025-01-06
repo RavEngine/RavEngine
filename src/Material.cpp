@@ -109,6 +109,7 @@ namespace RavEngine {
                 .depthFunction = hasDepthPrepass? RGL::DepthCompareFunction::Equal : config.depthCompareFunction,
             },
             .pipelineLayout = pipelineLayout,
+            .debugName = Format("Material {}, {}",vsh_name, fsh_name)
         };
 
         renderPipeline = device->CreateRenderPipeline(rpd);
@@ -125,10 +126,12 @@ namespace RavEngine {
         rpd.colorBlendConfig.attachments.clear();                           // only write to depth
         rpd.depthStencilConfig.depthFunction = config.depthCompareFunction; // use real depth compare function
 
+        rpd.debugName = Format("Material {} {} (Depth Prepass)", fsh_name, vsh_name);
         depthPrepassPipeline = device->CreateRenderPipeline(rpd);
 
         rpd.rasterizerConfig.windingOrder = RGL::WindingOrder::Clockwise;   // backface shadows
         rpd.rasterizerConfig.depthClampEnable = true;                       // clamp out-of-view fragments
+        rpd.debugName = Format("Material {} {} (Shadow)", fsh_name, vsh_name);
         shadowRenderPipeline = device->CreateRenderPipeline(rpd);
     }
 

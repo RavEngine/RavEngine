@@ -365,7 +365,7 @@ namespace RGL {
         };
         VK_CHECK(vkCreateDescriptorPool(device, &poolCreate, nullptr, &globalDescriptorPool));
 #if !__ANDROID__
-        SetDebugNameForResource(globalDescriptorPool, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT, "Bindless descriptor pool");
+        SetDebugNameForResource(globalDescriptorPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL, "Bindless descriptor pool");
 #endif
 
         VkDescriptorSetAllocateInfo setAllocInfo{
@@ -379,18 +379,19 @@ namespace RGL {
         VK_CHECK(vkAllocateDescriptorSets(device, &setAllocInfo, &globalDescriptorSet));// we don't need to manually destroy the descriptor set
     }
 
-    void DeviceVk::SetDebugNameForResource(void* resource, VkDebugReportObjectTypeEXT type, const char* debugName)
+    void DeviceVk::SetDebugNameForResource(void* resource, VkObjectType type, const char* debugName)
     {
 #ifndef NDEBUG
-        VkDebugMarkerObjectNameInfoEXT objectName{
-           .sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT,
-           .pNext = nullptr,
-           .objectType = type,
-           .object = reinterpret_cast<uint64_t>(resource),
-           .pObjectName = debugName
+
+        VkDebugUtilsObjectNameInfoEXT objectName{
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+            .pNext = nullptr,
+            .objectType = type,
+            .objectHandle = reinterpret_cast<uint64_t>(resource),
+            .pObjectName = debugName
         };
-        if (rgl_vkSetDebugUtilsObjectNameEXT) {
-            VK_CHECK(this->rgl_vkSetDebugUtilsObjectNameEXT(this->device, &objectName));
+        if (vkSetDebugUtilsObjectNameEXT) {
+            VK_CHECK(vkSetDebugUtilsObjectNameEXT(this->device, &objectName));
         }
 #endif
     }
