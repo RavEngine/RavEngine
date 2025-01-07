@@ -254,12 +254,13 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const std::s
 	//determine the stage
 	glslang::TShader shader(ShaderType);
 
-	std::vector<const char*> strings;
 	if (enableInclude) {
 		preamble += "\n#extension GL_GOOGLE_include_directive : enable\n#extension GL_EXT_scalar_block_layout : enable\n";
 	}
 
-	strings.push_back(source.data());
+	const char* strings[] = {
+		source.data()
+	};
 
 	int lengths[] = {
 		source.size()
@@ -271,7 +272,7 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const std::s
 
 	//set the associated strings
 	//shader.setStrings(strings.data(), strings.size());
-	shader.setStringsWithLengthsAndNames(strings.data(), lengths, names,strings.size());
+	shader.setStringsWithLengthsAndNames(strings, lengths, names,std::size(strings));
     
     // remap push constants to uniform buffer
 	if (performWebGPUModifications) {
@@ -334,23 +335,10 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const std::s
 		Includer.pushExternalLocalDirectory(path.string());
 	}
 
-    shader.setPreamble(preamble.c_str());
-	std::string PreprocessedGLSL;
-
-	if (!shader.preprocess(&Resources, ClientInputSemanticsVersion, ENoProfile, false, false, messages, &PreprocessedGLSL, Includer))
-	{
-		string msg = string("GLSL Preprocessing failed: ") + shader.getInfoLog() + "\n" + shader.getInfoDebugLog();
-		throw std::runtime_error(msg);
-	}
-
-	// update the stored strings (is the original set necessary?)
-	const char* PreprocessedCStr = PreprocessedGLSL.c_str();
-    
-	shader.setStrings(&PreprocessedCStr, 1);
+	shader.setPreamble(preamble.c_str());
 
 	// ================ now parse the shader ================
-	if (!shader.parse(&Resources, ClientInputSemanticsVersion, false, messages))
-	{
+	if (!shader.parse(&Resources, ClientInputSemanticsVersion, ECoreProfile, false, false, messages, Includer)){
 		string msg = string("GLSL Parsing failed: ") + shader.getInfoLog() + "\n" + shader.getInfoDebugLog();
 		throw std::runtime_error(msg);
 	}
@@ -375,8 +363,8 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const std::s
 	spvOptions.disableOptimizer = debug;
 	spvOptions.stripDebugInfo = !debug;
 	if (debug) {
-		spvOptions.emitNonSemanticShaderDebugInfo = true;
-		spvOptions.emitNonSemanticShaderDebugSource = true;
+		spvOptions.emitNonSemanticShaderDebugInfo = false;
+		spvOptions.emitNonSemanticShaderDebugSource = false;
 	}
     auto& intermediate = *program.getIntermediate(ShaderType);
     

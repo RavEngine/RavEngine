@@ -148,8 +148,8 @@ int do_compile(const std::filesystem::path& in_desc_file, const std::filesystem:
 
 	const auto fullTemplatePath = std::filesystem::path(__FILE__).parent_path() / shaderTemplateName;
 
-	std::vector<char> buffer(shaderTemplate.size() + infile.string().length(), 0);
-	snprintf(buffer.data(), buffer.size(), shaderTemplate.data(), infile.string().c_str());
+	std::vector<char> buffer(shaderTemplate.size() + infile.generic_string().length(), 0);
+	snprintf(buffer.data(), buffer.size(), shaderTemplate.data(), infile.generic_string().c_str());
 	std::string full_shader = buffer.data();
 	//full_shader = std::format("#line 1 \"{}\"\n", fullTemplatePath.generic_string()) + full_shader;
 
