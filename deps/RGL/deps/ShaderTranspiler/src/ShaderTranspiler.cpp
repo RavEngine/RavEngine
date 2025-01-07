@@ -272,6 +272,7 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const std::s
 
 	//set the associated strings
 	//shader.setStrings(strings.data(), strings.size());
+	shader.addSourceText(source.data(), source.size());
 	shader.setStringsWithLengthsAndNames(strings, lengths, names,std::size(strings));
     
     // remap push constants to uniform buffer
@@ -363,7 +364,7 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const std::s
 	spvOptions.disableOptimizer = debug;
 	spvOptions.stripDebugInfo = !debug;
 	if (debug) {
-		spvOptions.emitNonSemanticShaderDebugInfo = false;
+		spvOptions.emitNonSemanticShaderDebugInfo = false;		// having these on breaks renderdoc debugging
 		spvOptions.emitNonSemanticShaderDebugSource = false;
 	}
     auto& intermediate = *program.getIntermediate(ShaderType);
