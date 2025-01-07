@@ -263,7 +263,7 @@ const CompileGLSLResult CompileGLSL(const std::string_view& source, const std::s
 	};
 
 	int lengths[] = {
-		source.size()
+		int(source.size())
 	};
 
 	const char* names[] = {
