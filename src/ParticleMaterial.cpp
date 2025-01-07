@@ -110,12 +110,14 @@ namespace RavEngine {
 					.depthWriteEnabled = IsTransparent() ? false : config.zWriteEnabled,
 					.depthFunction = hasDepthPrepass ? RGL::DepthCompareFunction::Equal : RGL::DepthCompareFunction::Greater,
 				},
-				.pipelineLayout = layout
+				.pipelineLayout = layout,
+				.debugName = Format("ParticleMaterial {} {}",particleVS, particleFS),
 			};
 
 			userRenderPipeline = device->CreateRenderPipeline(rpd);
 			if (hasDepthPrepass) {
 				const auto sh_name = Format("{}_fsh_depthonly", particleFS);
+				rpd.debugName = Format("ParticleMaterial DepthOnly {} {}", particleVS, particleFS);
 				rpd.stages[1].shaderModule = LoadShaderByFilename(sh_name, device);
 			}
 			else {
@@ -123,7 +125,7 @@ namespace RavEngine {
 			}
 
 			rpd.colorBlendConfig.attachments.clear();					// no color attachments for shadow mode
-
+			rpd.debugName = Format("ParticleMaterial Shadow {}", particleVS);
 			rpd.depthStencilConfig.depthFunction = RGL::DepthCompareFunction::Greater;
 			shadowRenderPipeline = device->CreateRenderPipeline(rpd);
 		}
