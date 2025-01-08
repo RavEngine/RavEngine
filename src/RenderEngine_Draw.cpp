@@ -912,18 +912,17 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 							}
 							meshID++;
 						}
-
-						mainCommandBuffer->CopyBufferToBuffer(
-							{
-								.buffer = drawcommand.indirectStagingBuffer,
-								.offset = 0
-							},
-						{
-							.buffer = drawcommand.indirectBuffer,
-							.offset = 0
-						}, drawcommand.indirectStagingBuffer->getBufferSize()
-						);
 					}
+					mainCommandBuffer->CopyBufferToBuffer(
+						{
+							.buffer = drawcommand.indirectStagingBuffer,
+							.offset = 0
+						},
+							{
+								.buffer = drawcommand.indirectBuffer,
+								.offset = 0
+							}, drawcommand.indirectStagingBuffer->getBufferSize()
+					);
 				}
 
 				// the culling shader will decide for each draw if the draw should exist (and set its instance count to 1 from 0).
@@ -943,11 +942,13 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						.camPos = camPos,
 						.numCubos = 0,
 						.cameraRenderLayers = layers,
-						.singleInstanceModeAndShadowMode = (lightingFilter.FilterLightBlockers ? (1 << 1) : 0u),
+						.singleInstanceModeAndShadowMode = 1u | (lightingFilter.FilterLightBlockers ? (1 << 1) : 0u),
 					};
 
 					for (const auto& command : drawcommand.commands) {
-						globalCubo.numCubos += command.entities.DenseSize(); // one draw per entity for skinned meshes
+						if (auto mesh = command.mesh.lock()) {
+							globalCubo.numCubos += mesh->GetNumLods();
+						}
 					}
 
 					reallocBuffer(drawcommand.cuboBuffer, globalCubo.numCubos, sizeof(CullingUBOinstance), RGL::BufferAccess::Private, { .StorageBuffer = true, }, { .Writable = false, .debugName = "CUBO Private buffer" });
@@ -974,8 +975,6 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 								drawcommand.cuboStagingBuffer->UpdateBufferData(cubo, i * sizeof(CullingUBOinstance));
 								i++;
-
-								mainCommandBuffer->SetComputeBytes(cubo, 0);
 
 								cubo.indirectBufferOffset += lodsForThisMesh;
 								cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
