@@ -253,6 +253,8 @@ namespace RGL {
 		void SetFragmentSampler(RGLSamplerPtr sampler, uint32_t index) final;
 		void SetComputeSampler(RGLSamplerPtr sampler, uint32_t index) final;
 
+		void BindBindlessBufferDescriptorSet(uint32_t set_idx) final;
+
 		void SetVertexTexture(const TextureView& texture, uint32_t index) final;
 		void SetFragmentTexture(const TextureView& texture, uint32_t index) final;
 		void SetComputeTexture(const TextureView& texture, uint32_t index) final;

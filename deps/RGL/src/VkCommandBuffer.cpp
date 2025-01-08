@@ -209,6 +209,9 @@ namespace RGL {
 	{
 		EncodeCommand(CmdSetSampler{ sampler, index, true });
 	}
+	void CommandBufferVk::BindBindlessBufferDescriptorSet(uint32_t set_idx)
+	{
+	}
 	void CommandBufferVk::SetVertexTexture(const TextureView& texture, uint32_t index)
 	{
 		SetFragmentTexture(texture, index);

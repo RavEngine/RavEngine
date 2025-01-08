@@ -93,6 +93,8 @@ namespace RGL {
 		void Draw(uint32_t nVertices, const DrawInstancedConfig & = {}) final;
 		void DrawIndexed(uint32_t nIndices, const DrawIndexedInstancedConfig & = {}) final;
 
+		void BindBindlessBufferDescriptorSet(uint32_t set_idx) final;
+
 		void SetViewport(const Viewport&) final;
 		void SetScissor(const Rect&) final;
 

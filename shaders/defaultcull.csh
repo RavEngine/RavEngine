@@ -52,7 +52,9 @@ layout(scalar, binding = 6) readonly buffer perObjectSSBO{
 layout(binding = 7) uniform texture2D depthPyramid;
 layout(binding = 8) uniform sampler depthPyramidSampler;
 
-layout(set = 3, binding = 0) readonly buffer BoneMatricesBlock { uvec4 bonematrices[]; } bonematricesblocks[];
+layout(set = 3, binding = 0) buffer idOutputBlock { uint entityIDsToRender[]; } idOutputArray[];
+layout(set = 4, binding = 0) buffer indirectOutputBlock { IndirectCommand indirectBuffer[]; } indirectOutputArray[];
+layout(set = 5, binding = 0) readonly buffer lodDistanceBlock { float lodDistanceBuffer[]; } loadDistanceArray[];
 
 // adapted from: https://gist.github.com/XProger/6d1fd465c823bba7138b638691831288
 // Computes signed distance between a point and a plane

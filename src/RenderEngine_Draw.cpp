@@ -1105,6 +1105,9 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
 					mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), 5);
 					mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.perObjectAttributes.GetPrivateBuffer(), 6);
+					mainCommandBuffer->BindBindlessBufferDescriptorSet(3);
+					mainCommandBuffer->BindBindlessBufferDescriptorSet(4);
+					mainCommandBuffer->BindBindlessBufferDescriptorSet(5);
 					mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 7);
 					mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 8);
 					mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
@@ -1224,7 +1227,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->ExecuteIndirectIndexed({
 						.indirectBuffer = drawcommand.indirectBuffer,
 						.nDraws = uint32_t(drawcommand.indirectBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand))	// the number of structs in the buffer
-						});
+					});
 				}
 
 				// render particles

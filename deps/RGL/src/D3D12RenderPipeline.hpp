@@ -52,12 +52,12 @@ namespace RGL {
 
 		
 
-		std::unordered_map<uint32_t, bufferBindInfo> bufferBindingToRootSlot;
+		std::unordered_map<textureBindingKey, bufferBindInfo> bufferBindingToRootSlot;
 		std::unordered_map<textureBindingKey, textureBindInfo> textureBindingToRootSlot;
 		std::unordered_map < uint32_t, uint32_t> samplerBindingtoRootSlot;
 
-		auto slotForBufferIdx(uint32_t bindingPos) {
-			return bufferBindingToRootSlot.at(bindingPos).slot;
+		auto slotForBufferIdx(uint32_t bindingPos, bool isBindless = false) {
+			return bufferBindingToRootSlot.at({ bindingPos, isBindless? bindingPos : 0u }).slot;
 		}
 
 		auto slotForSamplerIdx(uint32_t bindingPos) {

@@ -227,6 +227,37 @@ namespace RGL {
                     rootParameters.emplace_back().InitAsDescriptorTable(1, &range);
                 }
                 break;
+                case decltype(item.type)::StorageBuffer:
+                case decltype(item.type)::UniformBuffer:
+                {
+                    if (item.isBindless) {
+                        if (item.writable) {
+                            auto& range = ranges.emplace_back(D3D12_DESCRIPTOR_RANGE1{
+                               .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+                               .NumDescriptors = item.count,
+                                .BaseShaderRegister = 0,
+                                .RegisterSpace = item.binding,
+                               .Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE,
+                               .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
+                             });
+                            bufferBindingToRootSlot[{item.binding, item.binding}] = { uint32_t(rootParameters.size()), true };
+                            rootParameters.emplace_back().InitAsDescriptorTable(1, &range);
+                        }
+                        else {
+                            auto& range = ranges.emplace_back(D3D12_DESCRIPTOR_RANGE1{
+                                .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+                                .NumDescriptors = item.count,
+                                .BaseShaderRegister = 0,
+                                .RegisterSpace = item.binding,
+                                .Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE,
+                                .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND,
+                            });
+                            bufferBindingToRootSlot[{item.binding, item.isBindless ? item.binding : 0u}] = { uint32_t(rootParameters.size()), false };
+                            rootParameters.emplace_back().InitAsDescriptorTable(1, &range);
+                        }
+                    }
+                }
+                break;
                 }
             }
         }
@@ -236,13 +267,15 @@ namespace RGL {
             switch (item.type) {
             case decltype(item.type)::StorageBuffer:
             case decltype(item.type)::UniformBuffer:
-                if (item.writable){
-                    bufferBindingToRootSlot[item.binding] = { static_cast<uint32_t>(rootParameters.size()), true };
-                    rootParameters.emplace_back().InitAsUnorderedAccessView(item.binding, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE);
-                }
-                else {
-                    bufferBindingToRootSlot[item.binding] = { static_cast<uint32_t>(rootParameters.size()), false };
-                    rootParameters.emplace_back().InitAsShaderResourceView(item.binding, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE);
+                if (!item.isBindless) {
+                    if (item.writable) {
+                        bufferBindingToRootSlot[{item.binding, 0}] = { static_cast<uint32_t>(rootParameters.size()), true };
+                        rootParameters.emplace_back().InitAsUnorderedAccessView(item.binding, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE);
+                    }
+                    else {
+                        bufferBindingToRootSlot[{item.binding, 0}] = { static_cast<uint32_t>(rootParameters.size()), false };
+                        rootParameters.emplace_back().InitAsShaderResourceView(item.binding, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE);
+                    }
                 }
                 break;
 
