@@ -6,6 +6,7 @@
 #include "D3D12TrackedResource.hpp"
 #include <directx/d3dx12.h>
 #include <memory>
+#include <limits>
 
 namespace RGL {
 	struct DeviceD3D12;
@@ -56,8 +57,8 @@ namespace RGL {
 
 		virtual ~BufferD3D12();
 
-		uint32_t GetReadonlyBindlessGPUHandle() const;
-		uint32_t GetReadwriteBindlessGPUHandle() const;
+		uint32_t GetReadonlyBindlessGPUHandle() const final;
+		uint32_t GetReadwriteBindlessGPUHandle() const final;
 
 		ID3D12Resource* GetResource() const final {
 			return buffer.Get();

@@ -4,6 +4,7 @@
 #include <memory>
 #include <span>
 #include <volk.h>
+#include <limits>
 #ifndef NDEBUG
 #include <string>
 #endif
@@ -38,8 +39,8 @@ namespace RGL {
         
 		void* GetMappedDataPtr() final;
 
-		uint32_t GetReadonlyBindlessGPUHandle() const;
-		uint32_t GetReadwriteBindlessGPUHandle() const;
+		uint32_t GetReadonlyBindlessGPUHandle() const final;
+		uint32_t GetReadwriteBindlessGPUHandle() const final;
 
 #ifndef NDEBUG
 		std::string debugName;
