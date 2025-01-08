@@ -870,7 +870,61 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
             auto cullSkeletalMeshes = [this, &worldTransformBuffer, &worldOwning, &reallocBuffer, layers, lightingFilter, &camPos](matrix4 viewproj, const DepthPyramid pyramid) {
 				RVE_PROFILE_FN_N("Cull Skeletal Meshes");
 				// first reset the indirect buffers
-					uint32_t skeletalVertexOffset = 0;
+				uint32_t skeletalVertexOffset = 0;
+				for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
+
+					bool shouldKeep = filterRenderData(lightingFilter, materialInstance);
+
+
+					// is this the correct material type? if not, skip
+					if (!shouldKeep) {
+						continue;
+					}
+
+					uint32_t total_entities = 0;
+					for (const auto& command : drawcommand.commands) {
+						total_entities += command.entities.DenseSize();
+					}
+
+					reallocBuffer(drawcommand.indirectStagingBuffer, total_entities, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "Indirect Staging Buffer" });
+
+					for (const auto& command : drawcommand.commands) {
+						uint32_t meshID = 0;
+
+						const auto nEntitiesInThisCommand = command.entities.DenseSize();
+						RGL::IndirectIndexedCommand initData;
+						if (auto mesh = command.mesh.lock()) {
+							Debug::Assert(mesh->GetNumLods() == 1, "Skeletal meshes cannot have more than 1 LOD currently");
+							for (uint32_t i = 0; i < nEntitiesInThisCommand; i++) {
+								for (uint32_t lodID = 0; lodID < mesh->GetNumLods(); lodID++) {
+									const auto indexRange = mesh->GetAllocation().indexRange;
+									initData = {
+										.indexCount = uint32_t(mesh->GetNumIndices()),
+										.instanceCount = 0,
+										.indexStart = uint32_t((indexRange->start) / sizeof(uint32_t)),
+										.baseVertex = skeletalVertexOffset,
+										.baseInstance = i
+									};
+									drawcommand.indirectStagingBuffer->UpdateBufferData(initData, ((meshID * mesh->GetNumLods() + lodID + i)) * sizeof(RGL::IndirectIndexedCommand));
+									//TODO: this increment needs to account for the LOD size
+									skeletalVertexOffset += mesh->GetNumVerts();
+								}
+							}
+							meshID++;
+						}
+
+						mainCommandBuffer->CopyBufferToBuffer(
+							{
+								.buffer = drawcommand.indirectStagingBuffer,
+								.offset = 0
+							},
+						{
+							.buffer = drawcommand.indirectBuffer,
+							.offset = 0
+						}, drawcommand.indirectStagingBuffer->getBufferSize()
+						);
+					}
+				}
 
 				// the culling shader will decide for each draw if the draw should exist (and set its instance count to 1 from 0).
 
