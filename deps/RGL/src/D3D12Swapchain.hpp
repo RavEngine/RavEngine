@@ -19,14 +19,14 @@ namespace RGL {
 		const std::shared_ptr<DeviceD3D12> owningDevice;
 		Microsoft::WRL::ComPtr<ID3D12Resource> backbuffers[g_NumFrames];
 		std::vector<TextureD3D12> backbufferTextures;
-		D3D12DynamicDescriptorHeap::index_t rtvIndices[g_NumFrames];
+		D3D12DynamicDescriptorHeap<0>::index_t rtvIndices[g_NumFrames];
 
 		bool tearingSupported = false;
 		bool initialized = false;
 
 		SwapchainD3D12(decltype(owningDevice), std::shared_ptr<SurfaceD3D12>, int width, int height, std::shared_ptr<CommandQueueD3D12> presentQueue);
 		void UpdateRenderTargetViews(Microsoft::WRL::ComPtr<ID3D12Device2> device,
-			Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain, D3D12DynamicDescriptorHeap& descriptorHeap);
+			Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain, D3D12DynamicDescriptorHeap<2048>& descriptorHeap);
 
 
 
