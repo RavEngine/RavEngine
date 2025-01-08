@@ -49,6 +49,8 @@ namespace RGL {
            VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
            VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
            VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME,
+           VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
+           VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME,
 #if !__ANDROID__    // only 5% of android devices have this extension so we have to go without it
            VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
 #endif
@@ -173,9 +175,14 @@ namespace RGL {
             };
             queueCreateInfos.push_back(queueCreateInfo);
         }
+        VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT lib_features{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT,
+            .pNext = nullptr
+        };
+
         VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT fse_features{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT,
-            .pNext = nullptr
+            .pNext = &lib_features
         };
         VkPhysicalDeviceVulkan13Features vulkan1_3Features{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
@@ -221,6 +228,9 @@ namespace RGL {
         }
         if (fse_features.fragmentShaderPixelInterlock == VK_FALSE) {
             FatalError("Cannot init - Fragment Shader Interlock is not supported");
+        }
+        if (lib_features.graphicsPipelineLibrary == VK_FALSE) {
+            FatalError("Cannot init - Graphics Pipeline Library is not supported");
         }
 
         VkDeviceCreateInfo deviceCreateInfo{
@@ -407,7 +417,9 @@ namespace RGL {
     RGL::DeviceVk::~DeviceVk() {
 
         vkDestroyDescriptorPool(device, globalTextureDescriptorPool, VK_NULL_HANDLE);
+        vkDestroyDescriptorPool(device, globalBufferDescriptorPool, VK_NULL_HANDLE);
         vkDestroyDescriptorSetLayout(device, globalTextureDescriptorSetLayout, VK_NULL_HANDLE);
+        vkDestroyDescriptorSetLayout(device, globalBufferDescriptorSetLayout, VK_NULL_HANDLE);
         vmaDestroyAllocator(vkallocator);
         vkDestroyCommandPool(device, commandPool, nullptr);
         vkDestroyDevice(device, nullptr);

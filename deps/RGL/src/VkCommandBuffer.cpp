@@ -211,9 +211,9 @@ namespace RGL {
 	}
 	void CommandBufferVk::BindBindlessBufferDescriptorSet(uint32_t set_idx)
 	{
-		EncodeCommand(CmdBindlessSetTexture{
+		EncodeCommand(CmdBindlessSetBuffer{
 			.set = owningQueue->owningDevice->globalBufferDescriptorSet,
-			.binding = set_idx
+			.setIndex = set_idx
 		});
 	}
 	void CommandBufferVk::SetVertexTexture(const TextureView& texture, uint32_t index)
@@ -722,6 +722,24 @@ namespace RGL {
 					activeLayout->layout,
 					1,		// first set index
 					std::size(sets),		// number of sets
+					sets,
+					0,
+					nullptr
+				);
+			},
+			[this](const CmdBindlessSetBuffer& arg) {
+				bool isCompute = currentRenderPipeline ? false : true;
+				auto activeLayout = isCompute ? currentComputePipeline->pipelineLayout : currentRenderPipeline->pipelineLayout;
+
+				VkDescriptorSet sets[] = {
+					arg.set,
+				};
+
+				vkCmdBindDescriptorSets(commandBuffer,
+					isCompute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
+					activeLayout->layout,
+					arg.setIndex,						// first set index
+					std::size(sets),					// number of sets
 					sets,
 					0,
 					nullptr
