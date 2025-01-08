@@ -259,7 +259,7 @@ namespace RGL {
 
 		if (config.usage.Sampled) {
 			// make a descriptor for the global descriptor buffer and put it in the buffer
-			globalDescriptorIndex = owningDevice->globalDescriptorFreeList.Allocate();
+			globalDescriptorIndex = owningDevice->globalTextureDescriptorFreeList.Allocate();
 
 			VkDescriptorImageInfo imginfo{
 				.sampler = VK_NULL_HANDLE,
@@ -270,7 +270,7 @@ namespace RGL {
 			VkWriteDescriptorSet bindlessDescriptorWrite{
 				.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 				.pNext = nullptr,
-				.dstSet = owningDevice->globalDescriptorSet,
+				.dstSet = owningDevice->globalTextureDescriptorSet,
 				.dstBinding = 0,							// bindless is always at binding 0 set N
 				.dstArrayElement = globalDescriptorIndex,
 				.descriptorCount = 1,
@@ -300,7 +300,7 @@ namespace RGL {
 			vmaFreeMemory(owningDevice->vkallocator, alloc);
 			alloc = VK_NULL_HANDLE;
 
-			owningDevice->globalDescriptorFreeList.Deallocate(globalDescriptorIndex);
+			owningDevice->globalTextureDescriptorFreeList.Deallocate(globalDescriptorIndex);
 		}
 	}
 	TextureView TextureVk::GetDefaultView() const

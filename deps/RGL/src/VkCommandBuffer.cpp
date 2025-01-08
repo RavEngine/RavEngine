@@ -211,6 +211,10 @@ namespace RGL {
 	}
 	void CommandBufferVk::BindBindlessBufferDescriptorSet(uint32_t set_idx)
 	{
+		EncodeCommand(CmdBindlessSetTexture{
+			.set = owningQueue->owningDevice->globalBufferDescriptorSet,
+			.binding = set_idx
+		});
 	}
 	void CommandBufferVk::SetVertexTexture(const TextureView& texture, uint32_t index)
 	{

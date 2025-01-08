@@ -309,7 +309,8 @@ namespace RGL {
 
         // setup push constants
         const auto nconstants = desc.constants.size();
-        stackarray(pushconstants, VkPushConstantRange, nconstants);
+        std::vector<VkPushConstantRange> pushconstants;
+        pushconstants.resize(nconstants);
 
         for (int i = 0; i < nconstants; i++) {
             const auto flags = rgl2vkstageflags(desc.constants[i].visibility);
@@ -324,7 +325,7 @@ namespace RGL {
         setLayouts[0] = descriptorSetLayout;
         if (bindlessNeeded) {
             for (uint32_t i = 1; i < nBindless + 1; i++) {
-                setLayouts[i] = owningDevice->globalDescriptorSetLayout;
+                setLayouts[i] = owningDevice->globalTextureDescriptorSetLayout;
             }
         }
 
@@ -335,7 +336,7 @@ namespace RGL {
             .setLayoutCount = nLayouts,   
             .pSetLayouts = setLayouts,
             .pushConstantRangeCount = static_cast<uint32_t>(nconstants),
-            .pPushConstantRanges = pushconstants
+            .pPushConstantRanges = pushconstants.data()
         };
         VK_CHECK(vkCreatePipelineLayout(owningDevice->device, &pipelineLayoutInfo, nullptr, &layout));
     }

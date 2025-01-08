@@ -22,6 +22,9 @@ namespace RGL {
 		MutableSpan mappedMemory;
 		size_t stride = 0;
 
+		constexpr static uint32_t unallocated = std::numeric_limits<uint32_t>::max();
+		uint32_t globalDescriptorIndex = unallocated;
+
 		BufferVk(decltype(owningDevice), const BufferConfig&);
 		virtual ~BufferVk();
 
