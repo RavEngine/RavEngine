@@ -871,68 +871,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				RVE_PROFILE_FN_N("Cull Skeletal Meshes");
 				// first reset the indirect buffers
 					uint32_t skeletalVertexOffset = 0;
-				for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
-
-					bool shouldKeep = filterRenderData(lightingFilter, materialInstance);
-
-
-					// is this the correct material type? if not, skip
-					if (!shouldKeep) {
-						continue;
-					}
-
-					uint32_t total_entities = 0;
-					for (const auto& command : drawcommand.commands) {
-						total_entities += command.entities.DenseSize();
-					}
-
-					reallocBuffer(drawcommand.indirectStagingBuffer, total_entities, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, { .StorageBuffer = true }, { .Transfersource = true, .Writable = false,.debugName = "Indirect Staging Buffer" });
-
-					for (const auto& command : drawcommand.commands) {
-						uint32_t meshID = 0;
-
-						const auto nEntitiesInThisCommand = command.entities.DenseSize();
-						RGL::IndirectIndexedCommand initData;
-						if (auto mesh = command.mesh.lock()) {
-							Debug::Assert(mesh->GetNumLods() == 1, "Skeletal meshes cannot have more than 1 LOD currently");
-							for(uint32_t i = 0; i < nEntitiesInThisCommand; i++){
-								for (uint32_t lodID = 0; lodID < mesh->GetNumLods(); lodID++) {
-									const auto indexRange = mesh->GetAllocation().indexRange;
-									initData = {
-										.indexCount = uint32_t(mesh->GetNumIndices()),
-										.instanceCount = 0,
-										.indexStart = uint32_t((indexRange->start) / sizeof(uint32_t)),
-										.baseVertex = skeletalVertexOffset,
-										.baseInstance = i
-									};
-									drawcommand.indirectStagingBuffer->UpdateBufferData(initData, ((meshID * mesh->GetNumLods() + lodID + i)) * sizeof(RGL::IndirectIndexedCommand));
-									//TODO: this increment needs to account for the LOD size
-									skeletalVertexOffset += mesh->GetNumVerts();
-								}
-							}
-							meshID++;
-						}
-
-						mainCommandBuffer->CopyBufferToBuffer(
-							{
-								.buffer = drawcommand.indirectStagingBuffer,
-								.offset = 0
-							},
-							{
-								.buffer = drawcommand.indirectBuffer,
-								.offset = 0
-							}, drawcommand.indirectStagingBuffer->getBufferSize()
-						);
-					}
-				}
 
 				// the culling shader will decide for each draw if the draw should exist (and set its instance count to 1 from 0).
 
 				mainCommandBuffer->BeginComputeDebugMarker("Cull Skinned Meshes");
-				mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
-				mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
-				mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), 5);
-				mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.perObjectAttributes.GetPrivateBuffer(), 6);
+				
 				for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
 					bool shouldKeep = filterRenderData(lightingFilter, materialInstance);
 
@@ -949,35 +892,68 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						.singleInstanceModeAndShadowMode = (lightingFilter.FilterLightBlockers ? (1 << 1) : 0u),
 					};
 
+					for (const auto& command : drawcommand.commands) {
+						globalCubo.numCubos += command.entities.DenseSize(); // one draw per entity for skinned meshes
+					}
+
+					reallocBuffer(drawcommand.cuboBuffer, globalCubo.numCubos, sizeof(CullingUBOinstance), RGL::BufferAccess::Private, { .StorageBuffer = true, }, { .Writable = false, .debugName = "CUBO Private buffer" });
+					reallocBuffer(drawcommand.cuboStagingBuffer, globalCubo.numCubos, sizeof(CullingUBOinstance), RGL::BufferAccess::Shared, { .StorageBuffer = true, }, { .Writable = false, .debugName = "CUBO Shard buffer" });
+
+
 					CullingUBOinstance cubo{
 						.indirectBufferOffset = 0,
 						.numLODs = 1,
 					};
-					for (auto& command : drawcommand.commands) {
-						mainCommandBuffer->BindComputeBuffer(drawcommand.cullingBuffer, 2);
-						mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 3);
+					{
+						uint32_t i = 0;
+						for (auto& command : drawcommand.commands) {
 
-						if (auto mesh = command.mesh.lock()) {
-							uint32_t lodsForThisMesh = 1;	// TODO: skinned meshes do not support LOD groups 
+							if (auto mesh = command.mesh.lock()) {
+								uint32_t lodsForThisMesh = 1;	// TODO: skinned meshes do not support LOD groups 
 
-							cubo.numObjects = command.entities.DenseSize();
-							mainCommandBuffer->BindComputeBuffer(command.entities.GetPrivateBuffer(), 0);
-							mainCommandBuffer->BindComputeBuffer(mesh->lodDistances.GetPrivateBuffer(), 4);
-							cubo.radius = mesh->GetRadius();
+								cubo.numObjects = command.entities.DenseSize();
+								cubo.radius = mesh->GetRadius();
+								cubo.idOutputBufferBindlessHandle = drawcommand.cullingBuffer->GetReadwriteBindlessGPUHandle();
+								cubo.indirectOutputBufferBindlessHandle = drawcommand.indirectBuffer->GetReadwriteBindlessGPUHandle();
+								cubo.lodDistanceBufferBindlessHandle = mesh->lodDistances.GetPrivateBuffer()->GetReadonlyBindlessGPUHandle();
+								cubo.entityIDInputBufferBindlessHandle = command.entities.GetPrivateBuffer()->GetReadonlyBindlessGPUHandle();
 
-							mainCommandBuffer->SetComputeBytes(cubo, 0);
+								drawcommand.cuboStagingBuffer->UpdateBufferData(cubo, i * sizeof(CullingUBOinstance));
+								i++;
 
-							mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 7);
-							mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 8);
-							mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
-							cubo.indirectBufferOffset += lodsForThisMesh;
-							cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
+								mainCommandBuffer->SetComputeBytes(cubo, 0);
+
+								cubo.indirectBufferOffset += lodsForThisMesh;
+								cubo.cullingBufferOffset += lodsForThisMesh * command.entities.DenseSize();
+							}
 						}
 					}
+					mainCommandBuffer->CopyBufferToBuffer(
+						{
+							.buffer = drawcommand.cuboStagingBuffer
+						},
+						{
+							.buffer = drawcommand.cuboBuffer
+						},
+						drawcommand.cuboBuffer->getBufferSize());
 
+					mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
+					mainCommandBuffer->BindComputeBuffer(drawcommand.cuboBuffer, 0);
+					mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
+					mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), 5);
+					mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.perObjectAttributes.GetPrivateBuffer(), 6);
+					mainCommandBuffer->BindBindlessBufferDescriptorSet(3);
+					mainCommandBuffer->BindBindlessBufferDescriptorSet(4);
+					mainCommandBuffer->BindBindlessBufferDescriptorSet(5);
+					mainCommandBuffer->BindBindlessBufferDescriptorSet(6);
+
+					mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 7);
+					mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 8);
+					mainCommandBuffer->SetComputeBytes(globalCubo, 0);
+					mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
+					mainCommandBuffer->EndCompute();
 				}
 				mainCommandBuffer->EndComputeDebugMarker();
-				mainCommandBuffer->EndCompute();
 			};
 
 
