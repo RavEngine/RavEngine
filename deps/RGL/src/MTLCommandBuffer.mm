@@ -320,6 +320,11 @@ void CommandBufferMTL::SetComputeTexture(const TextureView& view, uint32_t index
     [currentComputeCommandEncoder setTexture:texture atIndex:index];
 }
 
+void CommandBufferMTL::BindBindlessBufferDescriptorSet(uint32_t set_idx) {
+    [currentCommandEncoder setVertexBuffer:owningQueue->owningDevice->globalBufferBuffer offset:0 atIndex:set_idx];;
+}
+
+
 void CommandBufferMTL::CopyBufferToTexture(RGLBufferPtr source, uint32_t size, const TextureDestConfig& dest){
     auto blitencoder = [currentCommandBuffer blitCommandEncoder];
     
@@ -444,3 +449,4 @@ void CommandBufferMTL::BlockUntilCompleted()
 
 }
 #endif
+

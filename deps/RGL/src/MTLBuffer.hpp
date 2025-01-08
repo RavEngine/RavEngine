@@ -12,6 +12,7 @@ namespace RGL{
         MutableSpan data;
         uint32_t stride = 0;
         uint32_t mode;
+        uint32_t globalIndex = 0;
         BufferMTL(decltype(owningDevice), const BufferConfig&);
         
         //IBuffer
@@ -23,6 +24,9 @@ namespace RGL{
         void* GetMappedDataPtr() final;
         
         void SignalRangeChanged(const Range&) final;
-        virtual ~BufferMTL(){}
+        virtual ~BufferMTL();
+        
+        uint32_t GetReadonlyBindlessGPUHandle() const final;
+        uint32_t GetReadwriteBindlessGPUHandle() const final;
     };
 }
