@@ -2,31 +2,34 @@
 #extension GL_EXT_shader_8bit_storage : enable
 #extension GL_EXT_shader_16bit_storage : enable
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
-layout(push_constant, std430) uniform UniformBufferObject{
-	mat4 viewProj;
-    vec3 camPos;
-	uint indirectBufferOffset;			// needs to be like this because of padding / alignment
+
+struct CUBO{
+    uint indirectBufferOffset;			// needs to be like this because of padding / alignment
 	uint numObjects;
 	uint cullingBufferOffset;
     float radius;
-    uint isSingleInstanceModeAndShadowMode; // LSB is single instance mode, bit 2 is shadow mode
     uint numLODs;
+    uint idOutputBufferBindlessHandle;
+    uint indirectOutputBufferBindlessHandle;
+    uint lodDistanceBufferBindlessHandle;
+};
+
+layout(push_constant, scalar) uniform UniformBufferObject{
+	mat4 viewProj;
+    vec3 camPos;
+    uint numCubos;
     uint cameraRenderLayers;
+    uint isSingleInstanceModeAndShadowMode; // LSB is single instance mode, bit 2 is shadow mode
 } ubo;
 
-layout(std430, binding = 0) readonly buffer idBuffer
+layout(std430, binding = 0) readonly buffer cuboBuffer
 {
-	uint entityIDs[];
+	CUBO cubos[];
 };
 
 layout(std430, binding = 1) readonly buffer modelMatrixBuffer
 {
 	mat4 modelBuffer[];
-};
-
-layout(std430, binding = 2) buffer idOutputBuffer
-{
-	uint entityIDsToRender[];
 };
 
 
@@ -36,15 +39,6 @@ struct IndirectCommand {
 	uint indexStart;
 	uint baseVertex;
 	uint baseInstance;
-};
-
-layout(std430, binding = 3) buffer drawcallBuffer
-{
-	IndirectCommand indirectBuffer[];
-};
-
-layout(std430, binding = 4) readonly buffer lodDistanceSSBO{
-    float lodDistanceBuffer[];
 };
 
 layout(scalar, binding = 5) readonly buffer renderLayerSSBO{
@@ -58,7 +52,7 @@ layout(scalar, binding = 6) readonly buffer perObjectSSBO{
 layout(binding = 7) uniform texture2D depthPyramid;
 layout(binding = 8) uniform sampler depthPyramidSampler;
 
-
+layout(set = 3, binding = 0) readonly buffer BoneMatricesBlock { uvec4 bonematrices[]; } bonematricesblocks[];
 
 // adapted from: https://gist.github.com/XProger/6d1fd465c823bba7138b638691831288
 // Computes signed distance between a point and a plane
@@ -148,11 +142,22 @@ ClipBoundingBoxResult projectWorldSpaceSphere(vec3 center, float r, mat4 viewPro
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main() {
-	// bail
+    #if 0
+    uint cuboInstance = ~0;
+    {
+        uint runningTotal = 0;
+        for(int i = 0; i < ubo.numCubos; i++){
+            runningTotal += cubos[i].numObjects;
+            if (gl_GlobalInvocationID.x < runningTotal){
+                cuboInstance = i;
+                break;
+            }
+        }
+        if (cuboInstance == ~0){
+            return; 	// outside the range, bail
+        }
+    }
 	const uint currentEntity = gl_GlobalInvocationID.x;
-	if (currentEntity >= ubo.numObjects) {
-		return;
-	}
 
 	const uint entityID = entityIDs[currentEntity];
     
@@ -292,5 +297,6 @@ void main() {
         uint cullingSingleObjectModeOffset = gl_GlobalInvocationID.x * isSingleInstanceMode; 
 		entityIDsToRender[idx + idxLODOffset + cullingSingleObjectModeOffset] = entityID;
 	}
+    #endif
 
 }

@@ -35,6 +35,9 @@ namespace RGL {
         
 		void* GetMappedDataPtr() final;
 
+		uint32_t GetReadonlyBindlessGPUHandle() const;
+		uint32_t GetReadwriteBindlessGPUHandle() const;
+
 #ifndef NDEBUG
 		std::string debugName;
 #endif

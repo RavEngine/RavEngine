@@ -18,6 +18,7 @@ namespace RGL {
 		const RGL::BufferAccess accessType;
 		bool isWritable = false;
 		bool canBeTransitioned = true;
+		uint32_t srvIdx = 0, uavIdx = std::numeric_limits<uint32_t>::max();
 		std::string debugName;
 
 		const std::shared_ptr<DeviceD3D12> owningDevice;
@@ -54,6 +55,9 @@ namespace RGL {
         void SignalRangeChanged(const Range&) final;
 
 		virtual ~BufferD3D12();
+
+		uint32_t GetReadonlyBindlessGPUHandle() const;
+		uint32_t GetReadwriteBindlessGPUHandle() const;
 
 		ID3D12Resource* GetResource() const final {
 			return buffer.Get();

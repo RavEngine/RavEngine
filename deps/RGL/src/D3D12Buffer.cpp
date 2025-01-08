@@ -103,6 +103,38 @@ namespace RGL {
 
         vertexBufferView.BufferLocation = buffer->GetGPUVirtualAddress();
         indexBufferView.BufferLocation = vertexBufferView.BufferLocation;   //NOTE: if this is made a union, check this
+
+        // add it to the SRV heap 
+        srvIdx = owningDevice->CBV_SRV_UAVHeap->AllocateSingle();
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {
+            .Format = DXGI_FORMAT_R32_TYPELESS,
+            .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
+            .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+            .Buffer = {
+                .FirstElement = 0,
+                .NumElements = size_bytes / sizeof(uint32_t),
+                .StructureByteStride = 0,
+                .Flags = D3D12_BUFFER_SRV_FLAG_RAW
+            },
+
+        };
+        owningDevice->device->CreateShaderResourceView(buffer.Get(), &srvDesc, owningDevice->CBV_SRV_UAVHeap->GetCpuHandle(srvIdx));
+
+        if (config.options.Writable) {
+            uavIdx = owningDevice->CBV_SRV_UAVHeap->AllocateSingle();
+            D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {
+                .Format = DXGI_FORMAT_R32_TYPELESS,
+                .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
+                .Buffer = {
+                   .FirstElement = 0,
+                   .NumElements = size_bytes / sizeof(uint32_t),
+                   .StructureByteStride = 0,
+                   .CounterOffsetInBytes = 0,
+                   .Flags = D3D12_BUFFER_UAV_FLAG_RAW
+                }
+            };
+            owningDevice->device->CreateUnorderedAccessView(buffer.Get(), nullptr, &uavDesc, owningDevice->CBV_SRV_UAVHeap->GetCpuHandle(uavIdx));
+        }
 		
 	}
 	void BufferD3D12::MapMemory()
@@ -223,6 +255,23 @@ namespace RGL {
         if (mappedMemory.data != nullptr) {
             UnmapMemory();
         }
+        // release descriptors
+        owningDevice->CBV_SRV_UAVHeap->DeallocateSingle(srvIdx);
+        if (uavIdx != std::numeric_limits<decltype(uavIdx)>::max()) {
+            owningDevice->CBV_SRV_UAVHeap->DeallocateSingle(uavIdx);
+        }
+    }
+
+    uint32_t BufferD3D12::GetReadonlyBindlessGPUHandle() const
+    {
+        
+        return srvIdx;
+    }
+
+    uint32_t BufferD3D12::GetReadwriteBindlessGPUHandle() const
+    {
+       
+        return uavIdx;
     }
 }
 #endif

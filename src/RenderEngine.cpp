@@ -696,16 +696,15 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.pipelineLayout = guiPipelineLayout,
 		});
 
-	//TODO: on unified memory systems, don't make a staging buffer, and mark the transientBuffer as shared
 	transientBuffer = device->CreateBuffer({
-		65535,
+		65536,
 		{.StorageBuffer = true},
 		sizeof(char),
 		RGL::BufferAccess::Private,
 		{.TransferDestination = true, .PixelShaderResource = true, .debugName = "Transient Buffer" }
 	});
 	transientStagingBuffer = device->CreateBuffer({
-		65535,
+		65536,
 		{.StorageBuffer = true},
 		sizeof(char),
 		RGL::BufferAccess::Shared,
@@ -930,24 +929,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				},
 				{
 					.binding = 1,
-					.type = RGL::BindingType::StorageBuffer,
-					.stageFlags = RGL::BindingVisibility::Compute,
-					.writable = false
-				},
-				{
-					.binding = 2,
-					.type = RGL::BindingType::StorageBuffer,
-					.stageFlags = RGL::BindingVisibility::Compute,
-					.writable = true
-				},
-				{
-					.binding = 3,
-					.type = RGL::BindingType::StorageBuffer,
-					.stageFlags = RGL::BindingVisibility::Compute,
-					.writable = true
-				},
-				{
-					.binding = 4,
 					.type = RGL::BindingType::StorageBuffer,
 					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = false

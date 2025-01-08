@@ -117,6 +117,18 @@ namespace RGL {
         return mappedMemory.data;
     }
 
+    uint32_t BufferVk::GetReadonlyBindlessGPUHandle() const
+    {
+        FatalError("not implemented");
+        return 0;
+    }
+
+    uint32_t BufferVk::GetReadwriteBindlessGPUHandle() const
+    {
+        FatalError("not implemented");
+        return 0;
+    }
+
     void BufferVk::MapMemory() {
         vmaMapMemory(owningDevice->vkallocator, allocation, &mappedMemory.data);
     }
