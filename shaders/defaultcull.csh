@@ -2,6 +2,7 @@
 #extension GL_EXT_shader_8bit_storage : enable
 #extension GL_EXT_shader_16bit_storage : enable
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
+#extension GL_EXT_nonuniform_qualifier : enable
 
 struct CUBO{
     uint indirectBufferOffset;			// needs to be like this because of padding / alignment
@@ -10,6 +11,7 @@ struct CUBO{
     float radius;
     uint numLODs;
     uint idOutputBufferBindlessHandle;
+    uint entityIDInputBufferBindlessHandle;
     uint indirectOutputBufferBindlessHandle;
     uint lodDistanceBufferBindlessHandle;
 };
@@ -22,7 +24,7 @@ layout(push_constant, scalar) uniform UniformBufferObject{
     uint isSingleInstanceModeAndShadowMode; // LSB is single instance mode, bit 2 is shadow mode
 } ubo;
 
-layout(std430, binding = 0) readonly buffer cuboBuffer
+layout(scalar, binding = 0) readonly buffer cuboBuffer
 {
 	CUBO cubos[];
 };
@@ -31,7 +33,6 @@ layout(std430, binding = 1) readonly buffer modelMatrixBuffer
 {
 	mat4 modelBuffer[];
 };
-
 
 struct IndirectCommand {
 	uint indexCount;
@@ -52,9 +53,10 @@ layout(scalar, binding = 6) readonly buffer perObjectSSBO{
 layout(binding = 7) uniform texture2D depthPyramid;
 layout(binding = 8) uniform sampler depthPyramidSampler;
 
-layout(set = 3, binding = 0) buffer idOutputBlock { uint entityIDsToRender[]; } idOutputArray[];
-layout(set = 4, binding = 0) buffer indirectOutputBlock { IndirectCommand indirectBuffer[]; } indirectOutputArray[];
-layout(set = 5, binding = 0) readonly buffer lodDistanceBlock { float lodDistanceBuffer[]; } loadDistanceArray[];
+layout(set = 3, binding = 0) buffer idOutputBlock { uint entityIDsToRender[]; } idOutputBufferArray[];
+layout(set = 4, binding = 0) buffer indirectOutputBlock { IndirectCommand indirectBuffer[]; } indirectOutputBufferArray[];
+layout(set = 5, binding = 0) readonly buffer lodDistanceBlock { float lodDistanceBuffer[]; } loadDistanceBufferArray[];
+layout(set = 6, binding = 0) readonly buffer entityIDBlock { uint entityIDBuffer[]; } entityIDBufferArray[];
 
 // adapted from: https://gist.github.com/XProger/6d1fd465c823bba7138b638691831288
 // Computes signed distance between a point and a plane
@@ -144,11 +146,12 @@ ClipBoundingBoxResult projectWorldSpaceSphere(vec3 center, float r, mat4 viewPro
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    #if 0
+  
     uint cuboInstance = ~0;
+    uint runningTotal = 0;
+    const uint numCubos = ubo.numCubos;
     {
-        uint runningTotal = 0;
-        for(int i = 0; i < ubo.numCubos; i++){
+        for(int i = 0; i < numCubos; i++){
             runningTotal += cubos[i].numObjects;
             if (gl_GlobalInvocationID.x < runningTotal){
                 cuboInstance = i;
@@ -159,10 +162,14 @@ void main() {
             return; 	// outside the range, bail
         }
     }
-	const uint currentEntity = gl_GlobalInvocationID.x;
+    CUBO cubo = cubos[cuboInstance];
+    const uint countBase = runningTotal - cubo.numObjects; 
 
-	const uint entityID = entityIDs[currentEntity];
-    
+	const uint currentEntity = gl_GlobalInvocationID.x - countBase;
+
+	const uint entityID = entityIDBufferArray[cubo.entityIDInputBufferBindlessHandle].entityIDBuffer[currentEntity];
+
+
     // is this entity part of a camera layer? if not, bail
     if ((ubo.cameraRenderLayers & renderLayerBuffer[entityID]) == 0){
         return;
@@ -172,6 +179,7 @@ void main() {
     const bool skipFrustumCulling = !bool(attributeBitmask & 1);    // if the bit is set, then frustum culling is enabled
     const bool skipOcclusionCulling = !bool(attributeBitmask & (1 << 1));
     const bool castsShadows = bool(attributeBitmask & (1 << 2));
+
 
     const int isSingleInstanceMode = int(bool(ubo.isSingleInstanceModeAndShadowMode & 1));
     const bool isShadowMode = bool(ubo.isSingleInstanceModeAndShadowMode & (1 << 1));
@@ -191,9 +199,9 @@ void main() {
     // Determine the new sphere using the input transformation.
     // we use the largest of the resulting unit vectors.
     vec3 radvecs[] = {
-        vec3(0,0,ubo.radius),
-        vec3(0,ubo.radius,0),
-        vec3(ubo.radius,0,0)
+        vec3(0,0,cubo.radius),
+        vec3(0,cubo.radius,0),
+        vec3(cubo.radius,0,0)
     };
     
     float radius = 0;
@@ -268,18 +276,18 @@ void main() {
         // check 2: what LOD am I in
         uint lodID = 0;	
 
-        if (ubo.numLODs > 1){       // if there's only one answer, skip doing any of this
+        if (cubo.numLODs > 1){       // if there's only one answer, skip doing any of this
 
             const vec3 worldSpacePos = (model * vec4(0,0,0,1)).xyz;
             float distFromCamera = distSquared(worldSpacePos, ubo.camPos);
 
-            float currentBest = lodDistanceBuffer[0];
+            float currentBest = loadDistanceBufferArray[cubo.lodDistanceBufferBindlessHandle].lodDistanceBuffer[0];
 
-            for(uint i = 0; i < ubo.numLODs; i++){
+            for(uint i = 0; i < cubo.numLODs; i++){
                 // the LOD distances may not be in sorted order.
                 // to select a LOD, we use "price is right" rules.
                 // we use squared distance here.
-                float minDisplayableDistForThisLOD = lodDistanceBuffer[i];
+                float minDisplayableDistForThisLOD = loadDistanceBufferArray[cubo.lodDistanceBufferBindlessHandle].lodDistanceBuffer[i];
                 minDisplayableDistForThisLOD *= minDisplayableDistForThisLOD;   // on host side, these are not expressed in squared distanecs
 
                 // to use a LOD, the distance must be > the LOD's min distance
@@ -293,12 +301,12 @@ void main() {
         }
 
         // atomic-increment the instance count and write the entity ID into the output ID buffer based on the previous value of the instance count
-		uint idx = atomicAdd(indirectBuffer[ubo.indirectBufferOffset + lodID + isSingleInstanceMode * gl_GlobalInvocationID.x].instanceCount,1);
-		uint idxLODOffset = ubo.numObjects * lodID + ubo.cullingBufferOffset;
+		const uint indirectBufferIdx = cubo.indirectBufferOffset + lodID + isSingleInstanceMode * currentEntity;
+        uint idx = atomicAdd(indirectOutputBufferArray[cubo.indirectOutputBufferBindlessHandle].indirectBuffer[indirectBufferIdx].instanceCount,1);
+		uint idxLODOffset = cubo.numObjects * lodID + cubo.cullingBufferOffset;
 
-        uint cullingSingleObjectModeOffset = gl_GlobalInvocationID.x * isSingleInstanceMode; 
-		entityIDsToRender[idx + idxLODOffset + cullingSingleObjectModeOffset] = entityID;
+        const uint cullingSingleObjectModeOffset = currentEntity * isSingleInstanceMode; 
+        const uint entityIDidx = idx + idxLODOffset + cullingSingleObjectModeOffset;
+	    idOutputBufferArray[cubo.idOutputBufferBindlessHandle].entityIDsToRender[entityIDidx] = entityID;
 	}
-    #endif
-
 }

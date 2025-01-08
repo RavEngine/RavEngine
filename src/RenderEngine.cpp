@@ -975,6 +975,13 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = false
 				},
+				{
+					.binding = 6,
+					.isBindless = true,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
+					.writable = false
+				},
 				
 			},
 			.constants = {{ sizeof(CullingUBO), 0, RGL::StageVisibility::Compute}}

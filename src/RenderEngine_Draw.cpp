@@ -1079,8 +1079,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 								cubo.radius = mesh->GetRadius();
 								cubo.numLODs = lodsForThisMesh;
 								cubo.idOutputBufferBindlessHandle = drawcommand.cullingBuffer->GetReadwriteBindlessGPUHandle();
-								cubo.indirectOutputBufferBindlessHandle = drawcommand.cullingBuffer->GetReadwriteBindlessGPUHandle();
+								cubo.indirectOutputBufferBindlessHandle = drawcommand.indirectBuffer->GetReadwriteBindlessGPUHandle();
 								cubo.lodDistanceBufferBindlessHandle = mesh->lodDistances.GetPrivateBuffer()->GetReadonlyBindlessGPUHandle();
+								cubo.entityIDInputBufferBindlessHandle = command.entities.GetPrivateBuffer()->GetReadonlyBindlessGPUHandle();
+
 
 								drawcommand.cuboStagingBuffer->UpdateBufferData(cubo, i * sizeof(CullingUBOinstance));
 								i++;
@@ -1108,12 +1110,14 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->BindBindlessBufferDescriptorSet(3);
 					mainCommandBuffer->BindBindlessBufferDescriptorSet(4);
 					mainCommandBuffer->BindBindlessBufferDescriptorSet(5);
+					mainCommandBuffer->BindBindlessBufferDescriptorSet(6);
 					mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 7);
 					mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 8);
-					mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 					mainCommandBuffer->SetComputeBytes(globalCubo, 0);
+					mainCommandBuffer->DispatchCompute((cubo.numObjects + 63) / 64, 1, 1, 64, 1, 1);
 
 					mainCommandBuffer->EndCompute();
+
 
 					RVE_PROFILE_SECTION_END(dispatchcull);
 				}

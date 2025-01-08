@@ -189,9 +189,10 @@ namespace RavEngine {
 			uint32_t cullingBufferOffset = 0;
             float radius = 0;
 			uint32_t numLODs = 0;
-			uint32_t idOutputBufferBindlessHandle;
-			uint32_t indirectOutputBufferBindlessHandle;
-			uint32_t lodDistanceBufferBindlessHandle;
+			uint32_t idOutputBufferBindlessHandle = 0;
+			uint32_t entityIDInputBufferBindlessHandle = 0;
+			uint32_t indirectOutputBufferBindlessHandle = 0;
+			uint32_t lodDistanceBufferBindlessHandle = 0;
 		};
 
 		struct CullingUBO {
