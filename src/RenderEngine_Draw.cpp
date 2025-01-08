@@ -1114,7 +1114,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 7);
 					mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 8);
 					mainCommandBuffer->SetComputeBytes(globalCubo, 0);
-					mainCommandBuffer->DispatchCompute((cubo.numObjects + 63) / 64, 1, 1, 64, 1, 1);
+					mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 
 					mainCommandBuffer->EndCompute();
 
