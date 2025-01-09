@@ -378,6 +378,8 @@ namespace RavEngine {
             locked_node_hashmap<Ref<MaterialInstance>, MDIICommand, phmap::NullMutex> staticMeshRenderData;
             locked_node_hashmap<Ref<MaterialInstance>, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;
 
+            RGLBufferPtr cuboBuffer;
+
             SharedBufferPool stagingBufferPool;
         };
 
