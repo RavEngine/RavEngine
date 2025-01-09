@@ -54,6 +54,22 @@ namespace librglc {
                 .descSet = 2,
                 .deviceStorage = true
             },
+            {
+                .descSet = 3,
+                .deviceStorage = true
+            },
+            {
+                .descSet = 4,
+                .deviceStorage = true
+            },
+            {
+                .descSet = 5,
+                .deviceStorage = true
+            },
+            {
+                .descSet = 6,
+                .deviceStorage = true
+            },
         };
 		if (toAPI == API::Vulkan) {
 			opt.version = 15;

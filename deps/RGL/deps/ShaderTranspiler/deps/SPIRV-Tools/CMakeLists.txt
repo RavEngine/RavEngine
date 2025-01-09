@@ -345,9 +345,9 @@ endif()
 add_subdirectory(source)
 add_subdirectory(tools)
 
-add_subdirectory(test)
+#add_subdirectory(test)
 if (SPIRV_SKIP_EXAMPLES)
-add_subdirectory(examples)
+#add_subdirectory(examples)
 endif()
 
 if(ENABLE_SPIRV_TOOLS_INSTALL)

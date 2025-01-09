@@ -564,7 +564,8 @@ Bitset ParsedIR::get_buffer_block_type_flags(const SPIRType &type) const
 Bitset ParsedIR::get_buffer_block_flags(const SPIRVariable &var) const
 {
 	auto &type = get<SPIRType>(var.basetype);
-	assert(type.basetype == SPIRType::Struct);
+	if (type.basetype != SPIRType::Struct)
+		SPIRV_CROSS_THROW("Cannot get buffer block flags for non-buffer variable.");
 
 	// Some flags like non-writable, non-readable are actually found
 	// as member decorations. If all members have a decoration set, propagate
@@ -783,6 +784,8 @@ uint32_t ParsedIR::get_member_decoration(TypeID id, uint32_t index, Decoration d
 		return dec.stream;
 	case DecorationSpecId:
 		return dec.spec_id;
+	case DecorationMatrixStride:
+		return dec.matrix_stride;
 	case DecorationIndex:
 		return dec.index;
 	default:
@@ -925,6 +928,8 @@ void ParsedIR::reset_all_of_type(Types type)
 
 void ParsedIR::add_typed_id(Types type, ID id)
 {
+	assert(id < ids.size());
+
 	if (loop_iteration_depth_hard != 0)
 		SPIRV_CROSS_THROW("Cannot add typed ID while looping over it.");
 
@@ -1027,6 +1032,8 @@ ParsedIR::LoopLock &ParsedIR::LoopLock::operator=(LoopLock &&other) SPIRV_CROSS_
 
 void ParsedIR::make_constant_null(uint32_t id, uint32_t type, bool add_to_typed_id_set)
 {
+	assert(id < ids.size());
+
 	auto &constant_type = get<SPIRType>(type);
 
 	if (constant_type.pointer)
