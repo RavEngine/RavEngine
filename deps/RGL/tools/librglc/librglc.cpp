@@ -48,27 +48,33 @@ namespace librglc {
         opt.mtlDeviceAddressSettings = {
             {
                 .descSet = 1,
-                .deviceStorage = true
+                .deviceStorage = true,
+                .type = Options::BindlessSettings::Type::SampledImage,
             },
             {
                 .descSet = 2,
-                .deviceStorage = true
+                .deviceStorage = true,
+                .type = Options::BindlessSettings::Type::SampledImage,
             },
             {
                 .descSet = 3,
-                .deviceStorage = true
+                .deviceStorage = true,
+                .type = Options::BindlessSettings::Type::Buffer,
             },
             {
                 .descSet = 4,
-                .deviceStorage = true
+                .deviceStorage = true,
+                .type = Options::BindlessSettings::Type::Buffer,
             },
             {
                 .descSet = 5,
-                .deviceStorage = true
+                .deviceStorage = true,
+                .type = Options::BindlessSettings::Type::Buffer,
             },
             {
                 .descSet = 6,
-                .deviceStorage = true
+                .deviceStorage = true,
+                .type = Options::BindlessSettings::Type::Buffer,
             },
         };
 		if (toAPI == API::Vulkan) {
@@ -80,7 +86,7 @@ namespace librglc {
             opt.preambleContent = "#define RGL_SL_DX 1";
 		}
 		else if (toAPI == API::Metal) {
-			opt.version = 31;
+			opt.version = 32;
             opt.pushConstantSettings.firstIndex = MTL_FIRST_BUFFER;    // the [[stage_input]] consumes slot 0, extra vertex buffers consume the next slots
             opt.preambleContent = "#define RGL_SL_MTL 1";
 		}
