@@ -933,6 +933,12 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = false
 				},
+		{
+					.binding = DefaultCullBindings::renderLayer,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
+					.writable = false
+				},
                 {
                     .binding = DefaultCullBindings::perObject,
                     .type = RGL::BindingType::StorageBuffer,
