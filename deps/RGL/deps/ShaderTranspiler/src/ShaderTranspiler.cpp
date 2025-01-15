@@ -9,6 +9,7 @@
 #include <spirv_reflect.h>
 #include <iostream>
 #include <sstream>
+#include <utility>
 #if ST_ENABLE_WGSL
 #include <tint/tint.h>
 #endif
@@ -641,6 +642,16 @@ IMResult SPIRVtoMSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMod
     options.argument_buffers_tier = spirv_cross::CompilerMSL::Options::ArgumentBuffersTier::Tier2;
 	msl.set_msl_options(options);
     
+    constexpr auto rgl2sc = [](Options::BindlessSettings::Type type) -> spirv_cross::SPIRType::BaseType{
+        switch(type){
+            case decltype(type)::SampledImage: return spirv_cross::SPIRType::SampledImage;
+            case decltype(type)::Buffer: return spirv_cross::SPIRType::Unknown;
+            default:
+                throw std::runtime_error("rgl2sc: invalid type");
+                //std::unreachable();
+        }
+    };
+    
     // bindless stuff
     for(const auto& setting : opt.mtlDeviceAddressSettings){
         //msl.set_argument_buffer_device_address_space(setting.descSet, setting.deviceStorage);
@@ -648,8 +659,9 @@ IMResult SPIRVtoMSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMod
         newBinding.stage = model;
         newBinding.desc_set = setting.descSet;
         newBinding.binding = 0;
-        newBinding.basetype = spirv_cross::SPIRType::SampledImage;
+        newBinding.basetype = rgl2sc(setting.type);
         newBinding.msl_texture = setting.descSet;
+        newBinding.msl_buffer = setting.descSet;
         msl.add_msl_resource_binding( newBinding );
     }
     

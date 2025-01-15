@@ -172,6 +172,7 @@ void CommandBufferMTL::BindRenderPipeline(RGLRenderPipelinePtr pipelineIn){
 }
 
 void CommandBufferMTL::BeginCompute(RGLComputePipelinePtr pipelineIn){
+    isRender = false;
     currentComputeCommandEncoder = [currentCommandBuffer computeCommandEncoder];
     [currentComputeCommandEncoder setComputePipelineState:std::static_pointer_cast<ComputePipelineMTL>(pipelineIn)->pipelineState];
 }
@@ -185,6 +186,7 @@ void CommandBufferMTL::DispatchCompute(uint32_t threadsX, uint32_t threadsY, uin
 }
 
 void CommandBufferMTL::BeginRendering(RGLRenderPassPtr renderPass){
+    isRender = true;
     auto casted = std::static_pointer_cast<RenderPassMTL>(renderPass);
     currentCommandEncoder = [currentCommandBuffer renderCommandEncoderWithDescriptor:casted->renderPassDescriptor];
 }
@@ -320,6 +322,16 @@ void CommandBufferMTL::SetComputeTexture(const TextureView& view, uint32_t index
     [currentComputeCommandEncoder setTexture:texture atIndex:index];
 }
 
+void CommandBufferMTL::BindBindlessBufferDescriptorSet(uint32_t set_idx) {
+    if (isRender){
+        [currentCommandEncoder setVertexBuffer:owningQueue->owningDevice->globalBufferBuffer offset:0 atIndex:set_idx];;
+    }
+    else{
+        [currentComputeCommandEncoder setBuffer:owningQueue->owningDevice->globalBufferBuffer offset:0 atIndex:set_idx];;
+    }
+}
+
+
 void CommandBufferMTL::CopyBufferToTexture(RGLBufferPtr source, uint32_t size, const TextureDestConfig& dest){
     auto blitencoder = [currentCommandBuffer blitCommandEncoder];
     
@@ -444,3 +456,4 @@ void CommandBufferMTL::BlockUntilCompleted()
 
 }
 #endif
+

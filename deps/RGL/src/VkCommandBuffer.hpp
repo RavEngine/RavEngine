@@ -177,6 +177,11 @@ namespace RGL {
 			const uint32_t binding;
 		};
 
+		struct CmdBindlessSetBuffer {
+			const VkDescriptorSet set;
+			const uint32_t setIndex;
+		};
+
 		struct CmdCopyTextureToTexture {
 			TextureCopyConfig from, to;
 			uint32_t fromMip, fromLayer, toMip, toLayer;
@@ -207,7 +212,8 @@ namespace RGL {
 			CmdSetScissor,
 			CmdCopyBufferToBuffer,
 			CmdCopyBuffertoTexture,
-			CmdBindlessSetTexture
+			CmdBindlessSetTexture,
+			CmdBindlessSetBuffer
 		>
 		> renderCommands;
 
@@ -252,6 +258,8 @@ namespace RGL {
 		void SetVertexSampler(RGLSamplerPtr sampler, uint32_t index) final;
 		void SetFragmentSampler(RGLSamplerPtr sampler, uint32_t index) final;
 		void SetComputeSampler(RGLSamplerPtr sampler, uint32_t index) final;
+
+		void BindBindlessBufferDescriptorSet(uint32_t set_idx) final;
 
 		void SetVertexTexture(const TextureView& texture, uint32_t index) final;
 		void SetFragmentTexture(const TextureView& texture, uint32_t index) final;

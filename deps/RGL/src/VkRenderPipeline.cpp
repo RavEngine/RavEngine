@@ -59,7 +59,6 @@ namespace RGL {
 	{
         std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
         shaderStages.reserve(desc.stages.size());
-
         for (const auto& stage : desc.stages) {
             auto smodule = std::static_pointer_cast<ShaderLibraryVk>(stage.shaderModule);
             shaderStages.push_back(VkPipelineShaderStageCreateInfo{
@@ -273,16 +272,12 @@ namespace RGL {
     {
         std::vector<VkDescriptorSetLayoutBinding> layoutbindings;
         layoutbindings.reserve(desc.bindings.size());        
-
-        bool bindlessNeeded = false;
-        uint32_t nBindless = 0;
-
+        uint32_t maxBindlessSet = 0;
         for (const auto& binding : desc.bindings) {
             const auto type = static_cast<VkDescriptorType>(binding.type);
             const auto stageFlags = static_cast<VkShaderStageFlags>(binding.stageFlags);
             if (binding.isBindless) {
-                bindlessNeeded = true;
-                nBindless++;
+                maxBindlessSet = std::max(maxBindlessSet, binding.binding);
                 continue;
             }
             layoutbindings.push_back(
@@ -307,9 +302,29 @@ namespace RGL {
         // create the descriptor set layout
         VK_CHECK(vkCreateDescriptorSetLayout(owningDevice->device, &layoutInfo, nullptr, &descriptorSetLayout));
 
+        std::vector<VkDescriptorSetLayout> setLayouts;
+        setLayouts.resize(maxBindlessSet + 1, VK_NULL_HANDLE);
+        setLayouts[0] = descriptorSetLayout;
+
+        for (const auto& binding : desc.bindings) {
+            const auto type = static_cast<VkDescriptorType>(binding.type);
+            const auto stageFlags = static_cast<VkShaderStageFlags>(binding.stageFlags);
+            if (binding.isBindless) {
+                switch (binding.type) {
+                case RGL::BindingType::SampledImage:
+                    setLayouts[binding.binding] = (owningDevice->globalTextureDescriptorSetLayout);
+                    break;
+                case RGL::BindingType::StorageBuffer:
+                    setLayouts[binding.binding] = owningDevice->globalBufferDescriptorSetLayout;
+                    break;
+                }
+            }
+        }
+
         // setup push constants
         const auto nconstants = desc.constants.size();
-        stackarray(pushconstants, VkPushConstantRange, nconstants);
+        std::vector<VkPushConstantRange> pushconstants;
+        pushconstants.resize(nconstants);
 
         for (int i = 0; i < nconstants; i++) {
             const auto flags = rgl2vkstageflags(desc.constants[i].visibility);
@@ -318,24 +333,15 @@ namespace RGL {
             pushconstants[i].size = desc.constants[i].size_bytes;
             pushconstants[i].stageFlags = flags;
         }
-
-        uint32_t nLayouts = bindlessNeeded ? nBindless + 1 : 1;
-        stackarray(setLayouts, VkDescriptorSetLayout, nLayouts);
-        setLayouts[0] = descriptorSetLayout;
-        if (bindlessNeeded) {
-            for (uint32_t i = 1; i < nBindless + 1; i++) {
-                setLayouts[i] = owningDevice->globalDescriptorSetLayout;
-            }
-        }
-
+      
 
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .flags = 0,
-            .setLayoutCount = nLayouts,   
-            .pSetLayouts = setLayouts,
+            .setLayoutCount = uint32_t(setLayouts.size()),
+            .pSetLayouts = setLayouts.data(),
             .pushConstantRangeCount = static_cast<uint32_t>(nconstants),
-            .pPushConstantRanges = pushconstants
+            .pPushConstantRanges = pushconstants.data()
         };
         VK_CHECK(vkCreatePipelineLayout(owningDevice->device, &pipelineLayoutInfo, nullptr, &layout));
     }

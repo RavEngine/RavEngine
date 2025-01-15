@@ -121,6 +121,10 @@ struct Options{
     struct BindlessSettings {
         uint32_t descSet = 0;
         bool deviceStorage = false;
+        enum class Type : uint8_t{
+            SampledImage,
+            Buffer
+        } type;
     };
     std::vector<BindlessSettings> mtlDeviceAddressSettings;
     

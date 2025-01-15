@@ -61,6 +61,32 @@ namespace RGL {
 
         mappedMemory.size = config.nElements * config.stride;
         stride = config.stride;
+
+        if (config.type.StorageBuffer) {
+            // make a descriptor for the global descriptor buffer and put it in the buffer
+            globalDescriptorIndex = owningDevice->globalBufferDescriptorFreeList.Allocate();
+
+            VkDescriptorBufferInfo bufferInfo{
+                .buffer = buffer,
+                .offset = 0,
+                .range = config.nElements * config.stride
+            };
+
+            VkWriteDescriptorSet bindlessDescriptorWrite{
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .pNext = nullptr,
+                .dstSet = owningDevice->globalBufferDescriptorSet,
+                .dstBinding = 0,							// bindless is always at binding 0 set N
+                .dstArrayElement = globalDescriptorIndex,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .pImageInfo = nullptr,
+                .pBufferInfo = &bufferInfo,
+                .pTexelBufferView = nullptr
+            };
+
+            vkUpdateDescriptorSets(owningDevice->device, 1, &bindlessDescriptorWrite, 0, nullptr);
+        }
 	}
 
     BufferVk::~BufferVk() {
@@ -69,6 +95,10 @@ namespace RGL {
         }
         vkDestroyBuffer(owningDevice->device, buffer, nullptr);
         vmaFreeMemory(owningDevice->vkallocator, allocation);
+
+        if (globalDescriptorIndex != unallocated) {
+            owningDevice->globalBufferDescriptorFreeList.Deallocate(globalDescriptorIndex);
+        }
     }
 
     void BufferVk::SetBufferData(untyped_span data, decltype(BufferConfig::nElements) offset) {
@@ -115,6 +145,16 @@ namespace RGL {
     void* BufferVk::GetMappedDataPtr()
     {
         return mappedMemory.data;
+    }
+
+    uint32_t BufferVk::GetReadonlyBindlessGPUHandle() const
+    {
+        return globalDescriptorIndex;
+    }
+
+    uint32_t BufferVk::GetReadwriteBindlessGPUHandle() const
+    {
+        return globalDescriptorIndex;
     }
 
     void BufferVk::MapMemory() {

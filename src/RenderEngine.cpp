@@ -696,16 +696,15 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.pipelineLayout = guiPipelineLayout,
 		});
 
-	//TODO: on unified memory systems, don't make a staging buffer, and mark the transientBuffer as shared
 	transientBuffer = device->CreateBuffer({
-		65535,
+		65536,
 		{.StorageBuffer = true},
 		sizeof(char),
 		RGL::BufferAccess::Private,
 		{.TransferDestination = true, .PixelShaderResource = true, .debugName = "Transient Buffer" }
 	});
 	transientStagingBuffer = device->CreateBuffer({
-		65535,
+		65536,
 		{.StorageBuffer = true},
 		sizeof(char),
 		RGL::BufferAccess::Shared,
@@ -923,57 +922,67 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	auto defaultCullingLayout = device->CreatePipelineLayout({
 		.bindings = {
 				{
-					.binding = 0,
+                    .binding = DefaultCullBindings::Cubo,
 					.type = RGL::BindingType::StorageBuffer,
 					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = false
 				},
 				{
-					.binding = 1,
+                    .binding = DefaultCullBindings::modelMatrix,
 					.type = RGL::BindingType::StorageBuffer,
 					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = false
 				},
-				{
-					.binding = 2,
+		{
+					.binding = DefaultCullBindings::renderLayer,
 					.type = RGL::BindingType::StorageBuffer,
 					.stageFlags = RGL::BindingVisibility::Compute,
-					.writable = true
+					.writable = false
+				},
+                {
+                    .binding = DefaultCullBindings::perObject,
+                    .type = RGL::BindingType::StorageBuffer,
+                    .stageFlags = RGL::BindingVisibility::Compute,
+                    .writable = false
+                },
+				{
+					.binding = DefaultCullBindings::depthPyramid,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Compute,
+				},
+				{
+					.binding = DefaultCullBindings::depthPyramidSamplerBinding,
+					.type = RGL::BindingType::Sampler,
+					.stageFlags = RGL::BindingVisibility::Compute,
 				},
 				{
 					.binding = 3,
+					.isBindless = true,
 					.type = RGL::BindingType::StorageBuffer,
 					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = true
 				},
 				{
 					.binding = 4,
+					.isBindless = true,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
+					.writable = true
+				},
+				{
+					.binding = 5,
+					.isBindless = true,
 					.type = RGL::BindingType::StorageBuffer,
 					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = false
 				},
-                {
-                    .binding = 5,
-                    .type = RGL::BindingType::StorageBuffer,
-                    .stageFlags = RGL::BindingVisibility::Compute,
-                    .writable = false
-                },
 				{
 					.binding = 6,
+					.isBindless = true,
 					.type = RGL::BindingType::StorageBuffer,
 					.stageFlags = RGL::BindingVisibility::Compute,
+					.writable = false
 				},
-				{
-					.binding = 7,
-					.type = RGL::BindingType::SampledImage,
-					.stageFlags = RGL::BindingVisibility::Compute,
-				},
-				{
-					.binding = 8,
-					.type = RGL::BindingType::Sampler,
-					.stageFlags = RGL::BindingVisibility::Compute,
-				},
-				
 				
 			},
 			.constants = {{ sizeof(CullingUBO), 0, RGL::StageVisibility::Compute}}

@@ -19,6 +19,14 @@ BufferMTL::BufferMTL(decltype(owningDevice) owningDevice, const BufferConfig& co
     
     data.size = config.nElements * config.stride;
     stride = config.stride;
+    
+    // add to the bindless heap
+    globalIndex = owningDevice->bufferFreelist.Allocate();
+    [owningDevice->globalBufferEncoder setBuffer:buffer offset:0 atIndex:globalIndex];
+}
+
+BufferMTL::~BufferMTL(){
+    owningDevice->bufferFreelist.Deallocate(globalIndex);
 }
 
 void BufferMTL::MapMemory(){
@@ -74,6 +82,14 @@ decltype(BufferConfig::nElements) BufferMTL::getBufferSize() const{
 
 void* BufferMTL::GetMappedDataPtr() {
     return data.data;
+}
+
+uint32_t BufferMTL::GetReadonlyBindlessGPUHandle() const{
+    return globalIndex;
+}
+
+uint32_t BufferMTL::GetReadwriteBindlessGPUHandle() const{
+    return globalIndex;
 }
 
 void BufferMTL::SignalRangeChanged(const Range & range){

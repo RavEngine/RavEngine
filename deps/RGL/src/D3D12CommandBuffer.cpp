@@ -294,6 +294,22 @@ namespace RGL {
 			commandList->SetComputeRootDescriptorTable(textureSlot.slot, heap->GetGpuHandle(textureSlot.isUAV ? thisTexture.uavIDX : thisTexture.srvIDX));
 		}
 	}
+
+	void CommandBufferD3D12::BindBindlessBufferDescriptorSet(uint32_t set_idx)
+	{
+		bool isGraphics = (bool)currentRenderPipeline;
+		const auto pipelineLayout = isGraphics ? currentRenderPipeline->pipelineLayout : currentComputePipeline->pipelineLayout;
+		const auto slot = pipelineLayout->slotForBufferIdx(set_idx, true);
+		auto& heap = owningQueue->owningDevice->CBV_SRV_UAVHeap;
+
+		if (isGraphics) {
+			commandList->SetGraphicsRootDescriptorTable(slot, heap->GetFirstGpuHandle());
+		}
+		else {
+			commandList->SetComputeRootDescriptorTable(slot, heap->GetFirstGpuHandle());
+		}
+	}
+
 	void CommandBufferD3D12::SetComputeTexture(const TextureView& texture, uint32_t index)
 	{
 		SetFragmentTexture(texture, index);
@@ -316,6 +332,7 @@ namespace RGL {
 	{
 		commandList->DrawIndexedInstanced(nIndices, config.nInstances, config.firstIndex, config.startVertex, config.firstInstance);
 	}
+
 	void CommandBufferD3D12::SetViewport(const Viewport& viewport)
 	{
 		D3D12_VIEWPORT m_Viewport{

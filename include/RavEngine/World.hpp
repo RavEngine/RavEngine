@@ -20,6 +20,7 @@
     #include "BuiltinMaterials.hpp"
     #include "Light.hpp"
     #include "BufferedVRAMVector.hpp"
+    #include "BufferPool.hpp"
 #else
     #include "Ref.hpp"
 #endif
@@ -271,7 +272,7 @@ namespace RavEngine {
         friend class RenderEngine;
         // renderer-friendly representation of static meshes
         struct MDICommandBase {
-            RGLBufferPtr indirectBuffer, cullingBuffer, indirectStagingBuffer;
+            RGLBufferPtr indirectBuffer, cullingBuffer, indirectStagingBuffer, cuboBuffer, cuboStagingBuffer;
             ~MDICommandBase();
         };
 
@@ -376,6 +377,10 @@ namespace RavEngine {
 
             locked_node_hashmap<Ref<MaterialInstance>, MDIICommand, phmap::NullMutex> staticMeshRenderData;
             locked_node_hashmap<Ref<MaterialInstance>, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;
+
+            RGLBufferPtr cuboBuffer;
+
+            SharedBufferPool stagingBufferPool;
         };
 
         RenderData renderData;

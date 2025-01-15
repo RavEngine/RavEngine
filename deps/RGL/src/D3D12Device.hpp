@@ -31,7 +31,9 @@ namespace RGL {
 
 		Microsoft::WRL::ComPtr<ID3D12CommandSignature> multidrawSignature, multidrawIndexedSignature, dispatchIndirectSignature;
 
-		std::optional<D3D12DynamicDescriptorHeap> RTVHeap, DSVHeap, CBV_SRV_UAVHeap, SamplerHeap;
+		std::optional<D3D12DynamicDescriptorHeap<2048>> RTVHeap, DSVHeap;
+		std::optional<D3D12DynamicDescriptorHeap<65536>> CBV_SRV_UAVHeap;
+		std::optional<D3D12DynamicDescriptorHeap<2048>> SamplerHeap;
 
 		DeviceD3D12(decltype(adapter) adapter);
 		virtual ~DeviceD3D12();

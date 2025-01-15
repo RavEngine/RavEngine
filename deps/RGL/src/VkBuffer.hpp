@@ -4,6 +4,7 @@
 #include <memory>
 #include <span>
 #include <volk.h>
+#include <limits>
 #ifndef NDEBUG
 #include <string>
 #endif
@@ -22,6 +23,9 @@ namespace RGL {
 		MutableSpan mappedMemory;
 		size_t stride = 0;
 
+		constexpr static uint32_t unallocated = std::numeric_limits<uint32_t>::max();
+		uint32_t globalDescriptorIndex = unallocated;
+
 		BufferVk(decltype(owningDevice), const BufferConfig&);
 		virtual ~BufferVk();
 
@@ -34,6 +38,9 @@ namespace RGL {
         void SignalRangeChanged(const Range&) final;
         
 		void* GetMappedDataPtr() final;
+
+		uint32_t GetReadonlyBindlessGPUHandle() const final;
+		uint32_t GetReadwriteBindlessGPUHandle() const final;
 
 #ifndef NDEBUG
 		std::string debugName;

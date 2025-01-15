@@ -75,5 +75,8 @@ namespace RGL {
         virtual decltype(BufferConfig::nElements) getBufferSize() const = 0;
 
 		virtual void* GetMappedDataPtr() = 0;
+
+		virtual uint32_t GetReadonlyBindlessGPUHandle() const = 0;
+		virtual uint32_t GetReadwriteBindlessGPUHandle() const = 0;
 	};
 }
