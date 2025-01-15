@@ -83,6 +83,8 @@ struct BufferMTL;
         void EndComputeDebugMarker() final;
 
         void BlockUntilCompleted() final;
+    private:
+        bool isRender = false;
     };
 
 }

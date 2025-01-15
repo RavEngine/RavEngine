@@ -42,16 +42,16 @@ struct IndirectCommand {
 	uint baseInstance;
 };
 
-layout(scalar, binding = 5) readonly buffer renderLayerSSBO{
+layout(scalar, binding = 2) readonly buffer renderLayerSSBO{
     uint renderLayerBuffer[];
 };
 
-layout(scalar, binding = 6) readonly buffer perObjectSSBO{
+layout(scalar, binding = 7) readonly buffer perObjectSSBO{
     uint16_t perObjectFlags[];
 };
 
-layout(binding = 7) uniform texture2D depthPyramid;
-layout(binding = 8) uniform sampler depthPyramidSampler;
+layout(binding = 8) uniform texture2D depthPyramid;
+layout(binding = 9) uniform sampler depthPyramidSampler;
 
 layout(set = 3, binding = 0) buffer idOutputBlock { uint entityIDsToRender[]; } idOutputBufferArray[];
 layout(set = 4, binding = 0) buffer indirectOutputBlock { IndirectCommand indirectBuffer[]; } indirectOutputBufferArray[];

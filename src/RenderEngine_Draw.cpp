@@ -991,17 +991,17 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						drawcommand.cuboBuffer->getBufferSize());
 
 					mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
-					mainCommandBuffer->BindComputeBuffer(drawcommand.cuboBuffer, 0);
-					mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
-					mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), 5);
-					mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.perObjectAttributes.GetPrivateBuffer(), 6);
+					mainCommandBuffer->BindComputeBuffer(drawcommand.cuboBuffer, DefaultCullBindings::Cubo);
+					mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, DefaultCullBindings::modelMatrix);
+                    mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), DefaultCullBindings::renderLayer);
+					mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.perObjectAttributes.GetPrivateBuffer(), DefaultCullBindings::perObject);
 					mainCommandBuffer->BindBindlessBufferDescriptorSet(3);
 					mainCommandBuffer->BindBindlessBufferDescriptorSet(4);
 					mainCommandBuffer->BindBindlessBufferDescriptorSet(5);
 					mainCommandBuffer->BindBindlessBufferDescriptorSet(6);
 
-					mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 7);
-					mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 8);
+                    mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), DefaultCullBindings::depthPyramid);
+                    mainCommandBuffer->SetComputeSampler(depthPyramidSampler, DefaultCullBindings::depthPyramidSamplerBinding);
 					mainCommandBuffer->SetComputeBytes(globalCubo, 0);
 					mainCommandBuffer->DispatchCompute(std::ceil(cubo.numObjects / 64.f), 1, 1, 64, 1, 1);
 					mainCommandBuffer->EndCompute();
@@ -1149,16 +1149,16 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					worldOwning->renderData.cuboBuffer->getBufferSize());
 
 				mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
-				mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.cuboBuffer, 0);
-				mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 1);
-				mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), 5);
-				mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.perObjectAttributes.GetPrivateBuffer(), 6);
+                mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.cuboBuffer, DefaultCullBindings::Cubo);
+                mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, DefaultCullBindings::modelMatrix);
+				mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), DefaultCullBindings::renderLayer);
+				mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.perObjectAttributes.GetPrivateBuffer(), DefaultCullBindings::perObject);
 				mainCommandBuffer->BindBindlessBufferDescriptorSet(3);
 				mainCommandBuffer->BindBindlessBufferDescriptorSet(4);
 				mainCommandBuffer->BindBindlessBufferDescriptorSet(5);
 				mainCommandBuffer->BindBindlessBufferDescriptorSet(6);
-				mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), 7);
-				mainCommandBuffer->SetComputeSampler(depthPyramidSampler, 8);
+                mainCommandBuffer->SetComputeTexture(pyramid.pyramidTexture->GetDefaultView(), DefaultCullBindings::depthPyramid);
+                mainCommandBuffer->SetComputeSampler(depthPyramidSampler, DefaultCullBindings::depthPyramidSamplerBinding);
 				mainCommandBuffer->SetComputeBytes(globalCubo, 0);
 				mainCommandBuffer->DispatchCompute(std::ceil(totalEntities / 64.f), 1, 1, 64, 1, 1);
 

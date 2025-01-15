@@ -91,6 +91,15 @@ namespace RavEngine {
 		};
 
 		Ref<DummyTonemapInstance> dummyTonemap;
+        
+        enum DefaultCullBindings : uint32_t{
+            Cubo = 0,
+            modelMatrix = 1,
+            renderLayer = 2,
+            perObject = 7,
+            depthPyramid = 8,
+            depthPyramidSamplerBinding = 9,
+        };
 
 #pragma pack(push, 1)
 		struct GridBuildUBO {

@@ -43,7 +43,7 @@ DeviceMTL::DeviceMTL(decltype(device) device)  : device(device){
     
     // create the arugment encoder for bindless rendering
     createArgEncoder(MTLDataTypeTexture, 2048, globalTextureEncoder, globalTextureBuffer);
-    createArgEncoder(MTLDataTypeTexture, 2048, globalBufferEncoder, globalBufferBuffer);
+    createArgEncoder(MTLDataTypePointer, 2048, globalBufferEncoder, globalBufferBuffer);
 }
 
 std::string DeviceMTL::GetBrandString() {

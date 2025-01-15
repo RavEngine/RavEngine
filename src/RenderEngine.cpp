@@ -922,35 +922,30 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	auto defaultCullingLayout = device->CreatePipelineLayout({
 		.bindings = {
 				{
-					.binding = 0,
+                    .binding = DefaultCullBindings::Cubo,
 					.type = RGL::BindingType::StorageBuffer,
 					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = false
 				},
 				{
-					.binding = 1,
+                    .binding = DefaultCullBindings::modelMatrix,
 					.type = RGL::BindingType::StorageBuffer,
 					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = false
 				},
                 {
-                    .binding = 5,
+                    .binding = DefaultCullBindings::perObject,
                     .type = RGL::BindingType::StorageBuffer,
                     .stageFlags = RGL::BindingVisibility::Compute,
                     .writable = false
                 },
 				{
-					.binding = 6,
-					.type = RGL::BindingType::StorageBuffer,
-					.stageFlags = RGL::BindingVisibility::Compute,
-				},
-				{
-					.binding = 7,
+					.binding = DefaultCullBindings::depthPyramid,
 					.type = RGL::BindingType::SampledImage,
 					.stageFlags = RGL::BindingVisibility::Compute,
 				},
 				{
-					.binding = 8,
+					.binding = DefaultCullBindings::depthPyramidSamplerBinding,
 					.type = RGL::BindingType::Sampler,
 					.stageFlags = RGL::BindingVisibility::Compute,
 				},
