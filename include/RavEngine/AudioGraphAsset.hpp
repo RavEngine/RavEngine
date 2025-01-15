@@ -4,6 +4,9 @@
 
 namespace RavEngine{
 
+/**
+Derive from this class to create custom audio filter layers
+*/
 struct AudioFilterLayer {
     virtual void process(const PlanarSampleBufferInlineView&, PlanarSampleBufferInlineView&) = 0;
 };
@@ -27,8 +30,7 @@ struct AudioGainFilterLayer : public AudioFilterLayer {
 };
 
 /**
-* Represents an audio effect graph processor. For a list of 
-* nodes, see https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API
+Represents an audio effect stack. Effects are processed in insertion order, with the results of Effect N passed as the input to Effect N+1.
 */
 class AudioGraphAsset{
    

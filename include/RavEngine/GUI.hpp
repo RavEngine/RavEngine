@@ -17,6 +17,9 @@ namespace Rml {
 }
 
 namespace RavEngine{
+/**
+* For putting interactive UI in a scene.
+*/
 class GUIComponent : public AutoCTTI{
 protected:
 	friend class RenderEngine;

@@ -7,7 +7,13 @@ struct _IPLScene_t;
 namespace RavEngine {
 	class MeshAsset;
 
+	/**
+	An asset that enables sound reverbation modeling based on geometry data.
+	*/
 	struct AudioMeshAsset {
+		/**
+		@note mesh must have a host-memory copy of the geometry data (not the default)
+		*/
 		AudioMeshAsset(Ref<MeshAsset> mesh);
 		~AudioMeshAsset();
 		auto GetRadius() const {
