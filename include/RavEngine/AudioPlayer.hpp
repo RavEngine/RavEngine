@@ -22,7 +22,7 @@ struct AudioSourceBase;
 struct AudioSnapshot;
 struct AudioDataProvider;
 /**
- Is responsible for making the buffers generated in the Audio Engine class come out your speakers
+ Engine class that plays audio
  */
 class AudioPlayer{
 #if !RVE_SERVER

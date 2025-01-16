@@ -11,6 +11,10 @@
 namespace RavEngine{
 class MeshAsset;
 class CameraComponent;
+/**
+Represents a light-emitting object. Lights can be constrained to specific objects with layers. 
+By default, lights will illuminate objects on any layer. 
+*/
 class Light : public Queryable<Light,IDebugRenderable>, public IDebugRenderable {
     ColorRGBA color{1,1,1,1};
 	float Intensity = 1.0;
@@ -42,6 +46,10 @@ public:
         tickInvalidated = false;
     }
     
+    /**
+    Set the layers that this light will illuminate. If a bit is unset, that layer is not illuminated.
+    @param layers illumination bitmask
+    */
     constexpr void SetIlluminationLayers(renderlayer_t layers){
         invalidate();
         illuminationLayers = layers;
@@ -51,6 +59,10 @@ public:
     }
 };
 
+/**
+Represents a light that can cast shadows. Lights can be constrained to shadow specific objects with layers. 
+By default, lights will cast shadows from objects on any layer.
+*/
 struct ShadowLightBase : public Light {
 private:
 	bool doesCastShadow = false;
@@ -62,6 +74,10 @@ public:
 		invalidate();
 		doesCastShadow = casts;
 	}
+    /**
+    Set the layers that this light will shadow. If a bit is unset, that layer is not shadowed.
+    @param layers shadow bitmask
+    */
     constexpr void SetShadowLayers(renderlayer_t layers){
         invalidate();
         shadowLayers = layers;
@@ -72,6 +88,9 @@ public:
     }
 };
 
+/**
+A light that additively affects the whole scene. This is the only light type that is affected by SSAO. Useful for faking indirect light.
+*/
 struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 	using light_t = AmbientLight;
 	using QueryableDelta<Light,AmbientLight>::GetQueryTypes;
@@ -83,6 +102,9 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 
 };
 
+/**
+A light that affects the entire scene by sending parallel rays. This is useful for modelling the sun.
+*/
 struct DirectionalLight : public ShadowLightBase, public QueryableDelta<QueryableDelta<Light,ShadowLightBase>,DirectionalLight>{
 	using light_t = DirectionalLight;
 	using QueryableDelta<QueryableDelta<Light,ShadowLightBase>,DirectionalLight>::GetQueryTypes;
@@ -102,6 +124,9 @@ struct DirectionalLight : public ShadowLightBase, public QueryableDelta<Queryabl
 
 };
 
+/**
+A light that emits rays omnidirectionally from a single point. This is useful for modelling lightbulbs.
+*/
 struct PointLight : public ShadowLightBase, public QueryableDelta<QueryableDelta<Light, ShadowLightBase>,PointLight>{
 	using light_t = PointLight;
 	using QueryableDelta<QueryableDelta<Light, ShadowLightBase>,PointLight>::GetQueryTypes;
@@ -128,6 +153,9 @@ private:
 	}
 };
 
+/**
+A light that emits rays from a sigle point, constrained to a cone. This is useful for modeling flashlights.
+*/
 class SpotLight : public ShadowLightBase, public QueryableDelta<QueryableDelta<Light,ShadowLightBase>,SpotLight>{
     //light properties
     float coneAngle = 45.0;    // in degrees

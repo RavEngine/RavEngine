@@ -21,10 +21,13 @@ namespace RavEngine{
 
 	class SkeletonAsset;
 
+/**
+* A node in an animation graph.
+*/
 struct IAnimGraphable{
 	/**
 	 Sample the animation curves
-	 @param t the time to sample
+	 @param t the time to sample (same units as @code GetCurrentTime() @endcode)
 	 @param output the vector to write the output transforms to
 	 @param cache a sampling cache, modified when used
 	 @return true if the clip has ended, false otherwise
@@ -37,10 +40,19 @@ struct IAnimGraphable{
 						const ozz::animation::Skeleton* skeleton) const = 0;
 	
 	
+	/**
+	* Executes the SamplingJob directly. Used for when a sampling result is needed in @code Sample @endcode.
+	* @param t the time to sample (same units as @code GetCurrentTime() @endcode)
+	* @param anim the ozz animation to sample
+	* @param cache the cache context to use for sampling
+	* @param locals the vector to write the model-space bone transforms
+	*/
     void SampleDirect(float t, const ozz::animation::Animation* anim, ozz::animation::SamplingJob::Context& cache, ozz::vector<ozz::math::SoaTransform>& locals) const;
 };
 
-
+/**
+* Represents a pre-computed animation track
+*/
 class AnimationAsset : public IAnimGraphable{
 	//duration
 	//clip data
@@ -56,6 +68,9 @@ public:
 	 */
 	bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingJob::Context& cache, const ozz::animation::Skeleton* skeleton) const override;
 	
+	/**
+	* @return the Ozz animation object
+	*/
 	constexpr inline const decltype(anim)& GetAnim() const{
 		return anim;
 	}
@@ -79,13 +94,16 @@ public:
     void SetBone(uint32_t index, const SingleTransform&);
 };
 
+/**
+* An animation tree node that enables games to provide code-driven animation
+*/
 class CustomSkeletonAnimation : public IAnimGraphable {
 	Function<bool(BoneTransforms, const ozz::animation::Skeleton*, float, float, float, bool)> mutateBonesHook;
 	bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingJob::Context& cache, const ozz::animation::Skeleton* skeleton) const override;
 public:
 	/**
 	* Provide a custom Callable that provides bone transformations. See CustomSkeletonAnimationFunction for parameters.
-	*
+	* @param hook the function to call to provide bone data
 	*/
 	CustomSkeletonAnimation(const decltype(mutateBonesHook)& hook) : mutateBonesHook(hook) {}
 };
@@ -104,6 +122,9 @@ struct CustomSkeletonAnimationFunction {
 	virtual bool operator()(BoneTransforms transforms, const ozz::animation::Skeleton* skeleton, float t, float start, float end, bool loop) = 0;
 };
 
+/**
+* Represents a subclip within a larger animation asset. The closest analogue to other engines is the customizable animation clip ranges in the Unity animation importer.
+*/
 class AnimationAssetSegment : public IAnimGraphable{
 public:
 	float start_ticks, end_ticks;

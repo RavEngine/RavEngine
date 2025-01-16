@@ -18,6 +18,9 @@ struct SkeletonMask;
 
 using anim_id_t = uint16_t;
 
+/**
+* A 2-component float vector that clamps its members to [-1,1]
+*/
 class clamped_vec2{
 	float x = 0, y = 0;
 public:
@@ -32,6 +35,10 @@ public:
 	}
 };
 
+/**
+* Blend trees enable blending by arranging graphable nodes in a 2D plane with a movable control point. 
+* Influence is defined as the distance from the node to the control point. 
+*/
 struct AnimBlendTree : public IAnimGraphable{
 	struct Node : public IAnimGraphable{
 
@@ -82,10 +89,16 @@ struct AnimBlendTree : public IAnimGraphable{
 		return states.at(id).node;
 	}
 	
+	/**
+	* @return true if there are no nodes in the blend tree
+	*/
     inline bool IsEmpty() const{
 		return states.empty();
 	}
 	
+	/**
+	* Remove all nodes from the tree
+	*/
     inline void Clear(){
 		states.clear();
 	}
@@ -98,6 +111,10 @@ struct AnimBlendTree : public IAnimGraphable{
 	 */
 	bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingJob::Context& cache, const ozz::animation::Skeleton* skeleton) const override;
 	
+	/**
+	* Move the control point
+	* @param newPos the position of the control point
+	*/
     constexpr inline void SetBlendPos(const clamped_vec2& newPos){
 		blend_pos = newPos;
 	}
