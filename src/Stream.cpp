@@ -14,6 +14,7 @@ namespace RavEngine {
 		}
 
 		advance(nBytesToRead);
+		return { nBytesToRead, IStreamStatus::Success };
 	}
 
 	void MemoryStream::reset()

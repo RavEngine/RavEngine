@@ -40,8 +40,9 @@ namespace RavEngine {
                 
         std::optional<Entity> CreateEntity(ctti_t id, World* world){
             std::optional<Entity> value;
-			NetworkedObjects.if_contains(id, [&](const func_t& fn) {
-				value.emplace(fn(world));
+			NetworkedObjects.if_contains(id, [&](const auto& fn) {
+				Entity entity = fn(world);
+				value.emplace(entity);
 			});
             return value;
         }

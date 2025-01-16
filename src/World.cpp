@@ -184,7 +184,7 @@ void World::SetupTaskGraph(){
 	}).name("PhysX Execute");
     
     auto read = EmplaceSystem<PhysicsLinkSystemRead>();
-    auto write = EmplaceSystem<PhysicsLinkSystemWrite>();
+    auto write = EmplaceSerialSystem<PhysicsLinkSystemWrite>();
     RunPhysics.precede(read.second);
     RunPhysics.succeed(write.second);
 	

@@ -1007,7 +1007,7 @@ namespace RavEngine {
                     
                     auto ptr = &ecsRangeSizes[CTTI<T>()];
                     
-                    FuncModeCopy<T,polymorphic> fm{T(args...)};
+                    FuncModeCopy<T,polymorphic> fm{T(std::forward<Args>(args)...)};
                     
                     auto fd = GenFilterData<A...>(fm);
                     
@@ -1020,9 +1020,21 @@ namespace RavEngine {
                         *ptr = static_cast<pos_t>(setptr->DenseSize());
                     }).name(Format("{} range update",type_name<T>()));
                     
-                    auto do_task = ECSTasks.for_each_index(pos_t(0),std::ref(*ptr),pos_t(1),[this,fom](auto i) mutable{
-                        FilterOne<A...>(fom,i);
-                    }).name(Format("{}",type_name<T>().data()));
+                    tf::Task do_task;
+                    if constexpr (isSerial) {
+                        do_task = ECSTasks.emplace([this, ptr, fom] {
+                            for (pos_t i = 0; i < std::ref(*ptr); i++) {
+                                FilterOne<A...>(fom, i);
+                            }
+                        });
+                    }
+                    else {
+                        do_task = ECSTasks.for_each_index(pos_t(0), std::ref(*ptr), pos_t(1), [this, fom](auto i) mutable {
+                            FilterOne<A...>(fom, i);
+                            });
+                    }
+                    do_task.name(Format("{}", type_name<T>().data()));
+                    
                     range_update.precede(do_task);
                     
                     auto pair = std::make_pair(range_update,do_task);
@@ -1031,8 +1043,8 @@ namespace RavEngine {
                     
                     return pair;
                     
-                }(std::type_identity<argtypes_noref>{},args...);
-            }(std::type_identity<argtypes>{},args...);
+                }(std::type_identity<argtypes_noref>{},std::forward<Args>(args)...);
+            }(std::type_identity<argtypes>{}, std::forward<Args>(args)...);
         }
         
         template<bool isSerial, bool polymorphic,typename T, typename interval_t, typename ... Args>
@@ -1065,27 +1077,27 @@ namespace RavEngine {
             
             tPair.second.succeed(uPair.second);
         }
-        
-        /**
-            Instantiate a parallel system. T is the class/struct type of the system.
-          @param args values to pass to the system constructor
-         */
-        template<typename T, typename ... Args>
-        inline auto EmplaceSystem(Args&& ... args){
-            return EmplaceSystemGeneric<false, false,T>(args...);
-        }
-
+     
         /**
             Remove a system from the world by type.
          */
         template<typename T>
-        inline void RemoveSystem() {
+        void RemoveSystem() {
             auto& tpair = typeToSystem.at(CTTI<T>());
             ECSTasks.erase(tpair.first);
             ECSTasks.erase(tpair.second);
             typeToSystem.erase(CTTI<T>());
         }
         
+        /**
+         Instantiate a parallel system. T is the class/struct type of the system.
+         @param args values to pass to the system constructor
+        */
+        template<typename T, typename ... Args>
+        auto EmplaceSystem(Args&& ... args) {
+            return EmplaceSystemGeneric<false, false, T>(std::forward<Args>(args)...);
+        }
+
         /**
             Instantiate a parallel system that runs on an interval. T is the class/struct type of the system.
          @note The interval is is not a guarentee. I the engine is running too slowly to satisfy the interval, it will be called on a best-effort basis.
@@ -1094,7 +1106,7 @@ namespace RavEngine {
          */
         template<typename T, typename interval_t, typename ... Args>
         inline void EmplaceTimedSystem(const interval_t interval, Args&& ... args){
-            EmplaceTimedSystemGeneric<false, false,T>(interval,args...);
+            EmplaceTimedSystemGeneric<false, false,T>(interval, std::forward<Args>(args)...);
         }
         
         /**
@@ -1103,7 +1115,7 @@ namespace RavEngine {
          */
         template<typename T, typename ... Args>
         inline auto EmplacePolymorphicSystem(Args&& ... args){
-            return EmplaceSystemGeneric<false,true,T>(args...);
+            return EmplaceSystemGeneric<false,true,T>(std::forward<Args>(args)...);
         }
         
         /**
@@ -1113,7 +1125,46 @@ namespace RavEngine {
          */
         template<typename T, typename interval_t, typename ... Args>
         inline void EmplacePolymorphicTimedSystem(const interval_t interval, Args&& ... args){
-            EmplaceTimedSystemGeneric<false, true,T>(interval,args...);
+            EmplaceTimedSystemGeneric<true, true,T>(interval, std::forward<Args>(args)...);
+        }
+
+        /**
+        Instantiate a parallel system. T is the class/struct type of the system.
+        @param args values to pass to the system constructor
+       */
+        template<typename T, typename ... Args>
+        auto EmplaceSerialSystem(Args&& ... args) {
+            return EmplaceSystemGeneric<true, false, T>(std::forward<Args>(args)...);
+        }
+
+        /**
+            Instantiate a parallel system that runs on an interval. T is the class/struct type of the system.
+         @note The interval is is not a guarentee. I the engine is running too slowly to satisfy the interval, it will be called on a best-effort basis.
+         @param interval the frequency of execution of the system.
+          @param args values to pass to the system constructor
+         */
+        template<typename T, typename interval_t, typename ... Args>
+        inline void EmplaceSerialTimedSystem(const interval_t interval, Args&& ... args) {
+            EmplaceTimedSystemGeneric<true, false, T>(interval, std::forward<Args>(args)...);
+        }
+
+        /**
+         Instantiate a parallel system that performs polymorphic queries to get component data. T is the class/struct type of the system.
+         @param args values to pass to the system constructor
+         */
+        template<typename T, typename ... Args>
+        inline auto EmplaceSerialPolymorphicSystem(Args&& ... args) {
+            return EmplaceSystemGeneric<true, true, T>(std::forward<Args>(args)...);
+        }
+
+        /**
+         Instantiate a parallel system that performs polymorphic queries to get component data, and runs on an interval. T is the class/struct type of the system.
+         @note The interval is is not a guarentee. I the engine is running too slowly to satisfy the interval, it will be called on a best-effort basis.
+         @param args values to pass to the system constructor
+         */
+        template<typename T, typename interval_t, typename ... Args>
+        inline void EmplaceSerialPolymorphicTimedSystem(const interval_t interval, Args&& ... args) {
+            EmplaceTimedSystemGeneric<true, true, T>(interval, std::forward<Args>(args)...);
         }
         
 	private:

@@ -7,6 +7,7 @@
 #include "Debug.hpp"
 #include "Transform.hpp"
 #include "SkeletonAsset.hpp"
+#include <utility>
 
 using namespace RavEngine;
 using namespace std;
@@ -38,6 +39,7 @@ RavEngine::AnimatorComponent::State& RavEngine::AnimatorComponent::Layer::GetSta
     }
     else{
         Debug::Fatal("State with ID {} is not in this layer.",id);
+        std::unreachable();
     }
 }
 
