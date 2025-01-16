@@ -30,6 +30,7 @@
 #include "Format.hpp"
 #include "Queue.hpp"
 #include "Layer.hpp"
+#include "Profile.hpp"
 
 namespace RavEngine {
 	struct Entity;
@@ -51,6 +52,7 @@ namespace RavEngine {
     struct AudioMeshComponent;
     struct MeshCollectionStatic;
     struct MeshCollectionSkinned;
+    class World;
 
     template <typename T, typename... Ts>
     struct Index;
@@ -92,6 +94,16 @@ namespace RavEngine {
 
     public:
         enum { value = sizeof(test<T>(0)) == sizeof(YesType) };
+    };
+
+    template<typename T>
+    concept SystemHasBefore = requires(T&& a) {
+        a.before((World*)nullptr);
+    };
+
+    template<typename T>
+    concept SystemHasAfter = requires(T && a) {
+        a.after((World*)nullptr);
     };
 
 	class World : public std::enable_shared_from_this<World> {
@@ -1023,8 +1035,15 @@ namespace RavEngine {
                     tf::Task do_task;
                     if constexpr (isSerial) {
                         do_task = ECSTasks.emplace([this, ptr, fom] {
+                            RVE_PROFILE_FN_N(type_name<T>().data());
+                            if constexpr (SystemHasBefore<T>) {
+                                fom.fm.f.before(this);
+                            }
                             for (pos_t i = 0; i < std::ref(*ptr); i++) {
                                 FilterOne<A...>(fom, i);
+                            }
+                            if constexpr (SystemHasAfter<T>) {
+                                fom.fm.f.after(this);
                             }
                         });
                     }
@@ -1034,6 +1053,13 @@ namespace RavEngine {
                             });
                     }
                     do_task.name(Format("{}", type_name<T>().data()));
+
+                    if constexpr (SystemHasBefore<T>) {
+                        /*auto beforeTask = ECSTasks.emplace([fom] {
+                            fom.fn.f.before(this);
+                        }).name(Format("{}::before()", type_name<T>().data());
+                        */
+                    }
                     
                     range_update.precede(do_task);
                     
@@ -1223,6 +1249,7 @@ namespace RavEngine {
 	protected:
         
 		//physics system
+        friend class PhysicsLinkSystemWrite;
 		std::unique_ptr<PhysicsSolver> Solver;
 		
 		//fire-and-forget audio

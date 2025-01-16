@@ -16,13 +16,17 @@ namespace RavEngine {
 	struct RigidBodyStaticComponent;
 	struct RigidBodyDynamicComponent;
 	struct Transform;
+	class World;
 
 	/**
 	 This System copies the Entity's transform to the physics simulation transform.
 	 It must run after any transform modifications in other systems, ideally at the end of the pipeline.
 	 */
 	class PhysicsLinkSystemWrite : public AutoCTTI{
-	public:		
+	public:
+		void before(World*) const;
+		void after(World*) const;
+
 		void operator()(const RigidBodyStaticComponent&, const Transform&) const;
 	};
 

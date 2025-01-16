@@ -180,6 +180,7 @@ void World::SetupTaskGraph(){
 	auto physicsRootTask = ECSTasks.emplace([] {}).name("PhysicsRootTask");
 
 	auto RunPhysics = ECSTasks.emplace([this]{
+        RVE_PROFILE_FN_N("PhysX Tick");
 		Solver->Tick(GetCurrentFPSScale());
 	}).name("PhysX Execute");
     

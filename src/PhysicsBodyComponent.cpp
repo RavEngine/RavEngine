@@ -272,6 +272,12 @@ void PhysicsBodyComponent::OnTriggerExit(PhysicsBodyComponent& other){
 	}
 }
 
+void RavEngine::PhysicsBodyComponent::setDynamicsWorldPoseNoLock(const vector3& pos, const quaternion& quat) const
+{
+	setPoseNeedsSync = true;
+	rigidActor->setGlobalPose(PxTransform(convert(pos), convertQuat(quat)));
+}
+
 void RigidBodyDynamicComponent::SetMass(decimalType mass){
 	static_cast<PxRigidDynamic*>(rigidActor)->setMass(mass);
 }

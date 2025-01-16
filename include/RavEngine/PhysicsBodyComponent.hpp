@@ -44,6 +44,7 @@ public Queryable<PhysicsBodyComponent
         Colony<std::shared_ptr<PhysicsCollider>> colliders;
         void CompleteConstruction();
 		friend class PhysicsLinkSystemRead;
+		friend class PhysicsLinkSystemWrite;
 		mutable bool setPoseNeedsSync = false;
 	public:
 		using Queryable<PhysicsBodyComponent
@@ -220,6 +221,8 @@ public Queryable<PhysicsBodyComponent
                 func();
             }
         }
+	private:
+		void setDynamicsWorldPoseNoLock(const vector3& worldpos, const quaternion& worldrot) const;
 	};
 
 	class RigidBodyDynamicComponent : public PhysicsBodyComponent, public QueryableDelta<PhysicsBodyComponent,RigidBodyDynamicComponent> {
