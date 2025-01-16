@@ -913,12 +913,31 @@ namespace RavEngine {
         void SetupPerEntityRenderData(entity_t);
     public:
         
+        /**
+         Specify render layers for an entity
+         @param globalid the entity ID
+         @param layers the render layer bitmask
+         */
         void SetEntityRenderlayer(entity_t globalid, renderlayer_t layers);
 
+        /**
+         Specify per-object rendering attributes
+         @param globalid the entity ID
+         @param layers the attribute bitmask
+         */
         void SetEntityAttributes(entity_t globalid, perobject_t attributes);
 
+        /**
+         @param globalid the entity ID
+         @return the per-object rendering attributes bitmask
+         */
         perobject_t GetEntityAttributes(entity_t globalid);
         
+        /**
+         Add an entity of type @code T @endcode to the world. Invokes the @code Create @endcode function of T.
+         @param args parameters to pass to @code Create @endcode
+         @return a handle to the constructed entity.
+         */
         template<typename T, typename ... A>
         inline T Instantiate(A&& ... args){
             auto id = CreateEntity();
@@ -933,11 +952,19 @@ namespace RavEngine {
             return en;
         }
         
+        /**
+         Iterate the world, invoking a function for all entities with the requested components
+         @param f the function to invoke. The parameters of @code f @endcode are the types used to query the scene
+         */
         template<typename func>
         inline void Filter(func&& f){
             FilterGeneric(FuncMode<func, false>{ f });
         }
         
+        /**
+         Iterate the world, invoking a function for all entities with the requested components via a polymoprhic query.
+         @param f the function to invoke. The parameters of @code f @endcode are the types used to query the scene
+         */
         template<typename func>
         inline void FilterPolymorphic(func&& f){
             FilterGeneric(FuncMode<func, true>{ f });
@@ -960,7 +987,7 @@ namespace RavEngine {
         
     private:
       
-        template<bool polymorphic, typename T, typename ... Args>
+        template<bool isSerial, bool polymorphic, typename T, typename ... Args>
         inline std::pair<tf::Task,tf::Task> EmplaceSystemGeneric(Args&& ... args){
             
             using argtypes = functor_args_t<T>;
@@ -1008,9 +1035,9 @@ namespace RavEngine {
             }(std::type_identity<argtypes>{},args...);
         }
         
-        template< bool polymorphic,typename T, typename interval_t, typename ... Args>
+        template<bool isSerial, bool polymorphic,typename T, typename interval_t, typename ... Args>
         inline void EmplaceTimedSystemGeneric(const interval_t interval, Args&& ... args){
-            auto task = EmplaceSystemGeneric<polymorphic,T>(args...);
+            auto task = EmplaceSystemGeneric<isSerial, polymorphic,T>(args...);
             
             auto c_interval = std::chrono::duration_cast<decltype(TimedSystemEntry::interval)>(interval);
             auto ts = &timedSystemRecords[CTTI<T>()];
@@ -1027,6 +1054,9 @@ namespace RavEngine {
         }
         
     public:
+        /**
+         Specify a dependency. T depends on U
+         */
         template<typename T, typename U>
         inline void CreateDependency(){
             // T depends on (runs after) U
@@ -1036,11 +1066,18 @@ namespace RavEngine {
             tPair.second.succeed(uPair.second);
         }
         
+        /**
+            Instantiate a parallel system. T is the class/struct type of the system.
+          @param args values to pass to the system constructor
+         */
         template<typename T, typename ... Args>
         inline auto EmplaceSystem(Args&& ... args){
-            return EmplaceSystemGeneric<false,T>(args...);
+            return EmplaceSystemGeneric<false, false,T>(args...);
         }
 
+        /**
+            Remove a system from the world by type.
+         */
         template<typename T>
         inline void RemoveSystem() {
             auto& tpair = typeToSystem.at(CTTI<T>());
@@ -1049,19 +1086,34 @@ namespace RavEngine {
             typeToSystem.erase(CTTI<T>());
         }
         
+        /**
+            Instantiate a parallel system that runs on an interval. T is the class/struct type of the system.
+         @note The interval is is not a guarentee. I the engine is running too slowly to satisfy the interval, it will be called on a best-effort basis.
+         @param interval the frequency of execution of the system.
+          @param args values to pass to the system constructor
+         */
         template<typename T, typename interval_t, typename ... Args>
         inline void EmplaceTimedSystem(const interval_t interval, Args&& ... args){
-            EmplaceTimedSystemGeneric<false,T>(interval,args...);
+            EmplaceTimedSystemGeneric<false, false,T>(interval,args...);
         }
         
+        /**
+         Instantiate a parallel system that performs polymorphic queries to get component data. T is the class/struct type of the system.
+         @param args values to pass to the system constructor
+         */
         template<typename T, typename ... Args>
         inline auto EmplacePolymorphicSystem(Args&& ... args){
-            return EmplaceSystemGeneric<true,T>(args...);
+            return EmplaceSystemGeneric<false,true,T>(args...);
         }
         
+        /**
+         Instantiate a parallel system that performs polymorphic queries to get component data, and runs on an interval. T is the class/struct type of the system.
+         @note The interval is is not a guarentee. I the engine is running too slowly to satisfy the interval, it will be called on a best-effort basis.
+         @param args values to pass to the system constructor
+         */
         template<typename T, typename interval_t, typename ... Args>
         inline void EmplacePolymorphicTimedSystem(const interval_t interval, Args&& ... args){
-            EmplaceTimedSystemGeneric<true,T>(interval,args...);
+            EmplaceTimedSystemGeneric<false, true,T>(interval,args...);
         }
         
 	private:
@@ -1151,7 +1203,9 @@ namespace RavEngine {
 		
     public:
 
-        // returns the "first" of a component type
+        /**
+         @return the "first" of a component type. Do not make assumptions regarding ordering of components.
+         */
         template<typename T>
         inline T& GetComponent(){
             return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->GetFirst();
@@ -1160,24 +1214,30 @@ namespace RavEngine {
 		std::string_view worldID{ worldIDbuf,id_size };
 		std::atomic<bool> newFrame = false;
 
+        /**
+         @return the current tick scale factor. If the engine is running above expected speed, this value will be (0,1). If the engine is running below expected speed, this value will be > 1.
+         */
 		inline float GetCurrentFPSScale() const {
 			return currentFPSScale;
 		}
         
+        /**
+         Log the task graph in graphivz format.
+         */
         inline void ExportTaskGraph(std::ostream& out){
             masterTasks.dump(out);
         }
 				
 		/**
-		* Initializes the physics-related Systems.
-		* @return true if the systems were loaded, false if they were not loaded because they are already loaded
+		Initializes the physics-related Systems.
+		@return true if the systems were loaded, false if they were not loaded because they are already loaded
 		*/
 		bool InitPhysics();
 		
 		/**
-		* Evaluate the world given a scale factor. One tick = 1/GetApp()->EvalNormal
-		* @param the tick fraction to evaluate
-		* @note the GameplayStatics CurrentWorld is ticked automatically in the App
+		Evaluate the world given a scale factor. One tick = 1/GetApp()->EvalNormal
+		@param the tick fraction to evaluate
+		@note the GameplayStatics CurrentWorld is ticked automatically in the App
 		*/
 		void Tick(float);
 
@@ -1193,8 +1253,8 @@ namespace RavEngine {
 		}
 
 		/**
-		* Constructor that takes a custom skybox. This constructor will bypass loading the default skybox.
-		* @param sk the skybox to use
+		Constructor that takes a custom skybox. This constructor will bypass loading the default skybox.
+		@param sk the skybox to use
 		*/
 		World(const decltype(skybox)& sk) : World() {
 			skybox = sk;
@@ -1233,6 +1293,10 @@ namespace RavEngine {
          */
         void DispatchAsync(const Function<void(void)>& func, double delaySeconds);
         
+        /**
+         @return the internal data structure storing all components of a given type.
+         @note Do not assume ordering of components within the structure.
+         */
         template<typename T>
         inline auto GetAllComponentsOfType(){
             EntitySparseSet<T>* ret = nullptr;
