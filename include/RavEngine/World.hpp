@@ -1046,12 +1046,12 @@ namespace RavEngine {
                             if constexpr (SystemHasAfter<T>) {
                                 fom.fm.f.after(this);
                             }
-                        });
+                        }).name(Format("{} serial", type_name<T>().data()));
                     }
                     else {
                         do_task = ECSTasks.for_each_index(pos_t(0), std::ref(*ptr), pos_t(1), [this, fom](auto i) mutable {
                             FilterOne<A...>(fom, i);
-                            });
+                            }).name(Format("{}", type_name<T>().data()));
                         if constexpr (SystemHasBefore<T>) {
                             before.emplace(ECSTasks.emplace([fom, this] {
                                 fom.fm.f.before(this);
@@ -1066,7 +1066,6 @@ namespace RavEngine {
                             do_task.precede(after);
                         }
                     }
-                    do_task.name(Format("{}", type_name<T>().data()));
                     
                     range_update.precede(do_task);
                     
@@ -1138,8 +1137,14 @@ namespace RavEngine {
         template<typename T>
         void RemoveSystem() {
             auto& tpair = typeToSystem.at(CTTI<T>());
-            ECSTasks.erase(tpair.first);
-            ECSTasks.erase(tpair.second);
+            ECSTasks.erase(tpair.rangeUpdate);
+            ECSTasks.erase(tpair.do_task);
+            if (auto before = tpair.preHook) {
+                ECSTasks.erase(before.value());
+            }
+            if (auto after = tpair.postHook) {
+                ECSTasks.erase(after.value());
+            }
             typeToSystem.erase(CTTI<T>());
         }
         
