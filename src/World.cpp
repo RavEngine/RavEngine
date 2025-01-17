@@ -186,11 +186,11 @@ void World::SetupTaskGraph(){
     
     auto read = EmplaceSystem<PhysicsLinkSystemRead>();
     auto write = EmplaceSerialSystem<PhysicsLinkSystemWrite>();
-    RunPhysics.precede(read.second);
-    RunPhysics.succeed(write.second);
+    RunPhysics.precede(read.do_task);
+    RunPhysics.succeed(write.do_task);
 	
-    physicsRootTask.precede(read.first,write.first);
-	read.second.succeed(RunPhysics);	// if checkRunPhysics returns a 1, it goes here anyways.
+    physicsRootTask.precede(read.rangeUpdate,write.rangeUpdate);
+	read.do_task.succeed(RunPhysics);	// if checkRunPhysics returns a 1, it goes here anyways.
     
 #if !RVE_SERVER
         // setup audio tasks

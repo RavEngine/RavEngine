@@ -1000,7 +1000,7 @@ namespace RavEngine {
     private:
       
         template<bool isSerial, bool polymorphic, typename T, typename ... Args>
-        inline std::pair<tf::Task,tf::Task> EmplaceSystemGeneric(Args&& ... args){
+        inline auto EmplaceSystemGeneric(Args&& ... args){
             
             using argtypes = functor_args_t<T>;
             
@@ -1033,6 +1033,7 @@ namespace RavEngine {
                     }).name(Format("{} range update",type_name<T>()));
                     
                     tf::Task do_task;
+                    std::optional<tf::Task> before, after;
                     if constexpr (isSerial) {
                         do_task = ECSTasks.emplace([this, ptr, fom] {
                             RVE_PROFILE_FN_N(type_name<T>().data());
@@ -1051,23 +1052,34 @@ namespace RavEngine {
                         do_task = ECSTasks.for_each_index(pos_t(0), std::ref(*ptr), pos_t(1), [this, fom](auto i) mutable {
                             FilterOne<A...>(fom, i);
                             });
+                        if constexpr (SystemHasBefore<T>) {
+                            before.emplace(ECSTasks.emplace([fom, this] {
+                                fom.fm.f.before(this);
+                            }).name(Format("{}::before()", type_name<T>().data())));
+                            range_update.precede(before);
+                            do_task.succeed(before);
+                        }
+                        if constexpr (SystemHasAfter<T>) {
+                            after.emplace(ECSTasks.emplace([fom, this] {
+                                fom.fm.f.after(this);
+                            }).name(Format("{}::after()", type_name<T>().data())));
+                            do_task.precede(after);
+                        }
                     }
                     do_task.name(Format("{}", type_name<T>().data()));
-
-                    if constexpr (SystemHasBefore<T>) {
-                        /*auto beforeTask = ECSTasks.emplace([fom] {
-                            fom.fn.f.before(this);
-                        }).name(Format("{}::before()", type_name<T>().data());
-                        */
-                    }
                     
                     range_update.precede(do_task);
                     
-                    auto pair = std::make_pair(range_update,do_task);
+                    SystemTasks tasks{
+                        .rangeUpdate = range_update,
+                        .do_task = do_task,
+                        .preHook = before,
+                        .postHook = after
+                    };
                     
-                    typeToSystem[CTTI<T>()] = pair;
+                    typeToSystem[CTTI<T>()] = tasks;
                     
-                    return pair;
+                    return tasks;
                     
                 }(std::type_identity<argtypes_noref>{},std::forward<Args>(args)...);
             }(std::type_identity<argtypes>{}, std::forward<Args>(args)...);
@@ -1088,7 +1100,7 @@ namespace RavEngine {
                 }
                 return 1;
             }).name("Check time");
-            condition.precede(task.first);
+            condition.precede(task.rangeUpdate);
         }
         
     public:
@@ -1100,8 +1112,24 @@ namespace RavEngine {
             // T depends on (runs after) U
             auto& tPair = typeToSystem.at(CTTI<T>());
             auto& uPair = typeToSystem.at(CTTI<U>());
+
+            tf::Task dependecyRoot;
+            if (auto postHook = uPair.postHook) {
+                dependecyRoot = postHook.value();
+            }
+            else {
+                dependecyRoot = uPair.do_task;
+            }
+
+            tf::Task dependencyLeaf;
+            if (auto preHook = tPair.preHook) {
+                dependencyLeaf = preHook.value();
+            }
+            else {
+                dependencyLeaf = tPair.do_task;
+            }
             
-            tPair.second.succeed(uPair.second);
+            dependencyLeaf.succeed(dependecyRoot);
         }
      
         /**
@@ -1131,8 +1159,8 @@ namespace RavEngine {
           @param args values to pass to the system constructor
          */
         template<typename T, typename interval_t, typename ... Args>
-        inline void EmplaceTimedSystem(const interval_t interval, Args&& ... args){
-            EmplaceTimedSystemGeneric<false, false,T>(interval, std::forward<Args>(args)...);
+        auto EmplaceTimedSystem(const interval_t interval, Args&& ... args){
+            return EmplaceTimedSystemGeneric<false, false,T>(interval, std::forward<Args>(args)...);
         }
         
         /**
@@ -1140,7 +1168,7 @@ namespace RavEngine {
          @param args values to pass to the system constructor
          */
         template<typename T, typename ... Args>
-        inline auto EmplacePolymorphicSystem(Args&& ... args){
+        auto EmplacePolymorphicSystem(Args&& ... args){
             return EmplaceSystemGeneric<false,true,T>(std::forward<Args>(args)...);
         }
         
@@ -1150,8 +1178,8 @@ namespace RavEngine {
          @param args values to pass to the system constructor
          */
         template<typename T, typename interval_t, typename ... Args>
-        inline void EmplacePolymorphicTimedSystem(const interval_t interval, Args&& ... args){
-            EmplaceTimedSystemGeneric<true, true,T>(interval, std::forward<Args>(args)...);
+        auto EmplacePolymorphicTimedSystem(const interval_t interval, Args&& ... args){
+            return EmplaceTimedSystemGeneric<true, true,T>(interval, std::forward<Args>(args)...);
         }
 
         /**
@@ -1170,8 +1198,8 @@ namespace RavEngine {
           @param args values to pass to the system constructor
          */
         template<typename T, typename interval_t, typename ... Args>
-        inline void EmplaceSerialTimedSystem(const interval_t interval, Args&& ... args) {
-            EmplaceTimedSystemGeneric<true, false, T>(interval, std::forward<Args>(args)...);
+        auto EmplaceSerialTimedSystem(const interval_t interval, Args&& ... args) {
+            return EmplaceTimedSystemGeneric<true, false, T>(interval, std::forward<Args>(args)...);
         }
 
         /**
@@ -1179,7 +1207,7 @@ namespace RavEngine {
          @param args values to pass to the system constructor
          */
         template<typename T, typename ... Args>
-        inline auto EmplaceSerialPolymorphicSystem(Args&& ... args) {
+        auto EmplaceSerialPolymorphicSystem(Args&& ... args) {
             return EmplaceSystemGeneric<true, true, T>(std::forward<Args>(args)...);
         }
 
@@ -1189,8 +1217,8 @@ namespace RavEngine {
          @param args values to pass to the system constructor
          */
         template<typename T, typename interval_t, typename ... Args>
-        inline void EmplaceSerialPolymorphicTimedSystem(const interval_t interval, Args&& ... args) {
-            EmplaceTimedSystemGeneric<true, true, T>(interval, std::forward<Args>(args)...);
+        auto EmplaceSerialPolymorphicTimedSystem(const interval_t interval, Args&& ... args) {
+            return EmplaceTimedSystemGeneric<true, true, T>(interval, std::forward<Args>(args)...);
         }
         
 	private:
@@ -1225,7 +1253,12 @@ namespace RavEngine {
         };
         UnorderedNodeMap<ctti_t, TimedSystemEntry> timedSystemRecords;
         UnorderedNodeMap<ctti_t, pos_t> ecsRangeSizes;
-        UnorderedMap<ctti_t, std::pair<tf::Task,tf::Task>> typeToSystem;
+
+        struct SystemTasks {
+            tf::Task rangeUpdate, do_task;
+            std::optional<tf::Task>preHook, postHook;
+        };
+        UnorderedMap<ctti_t, SystemTasks> typeToSystem;
         				
 		void SetupTaskGraph();
 		
