@@ -365,14 +365,14 @@ void RavEngine::AudioPlayer::PerformAudioTickPreamble()
     // copy out the destroyed sources
     destroyedSources.clear();
     {
-        entity_t id = INVALID_ENTITY;
+        entity_id_t id = INVALID_ENTITY;
         while (lockedworld->destroyedAudioSources.try_dequeue(id)) {
             destroyedSources.push_back(id);
         }
     }
     destroyedMeshComponents.clear();
     {
-        entity_t id = INVALID_ENTITY;
+        entity_id_t id = INVALID_ENTITY;
         while (lockedworld->destroyedAudioSources.try_dequeue(id)) {
             destroyedMeshComponents.push_back(id);
         }

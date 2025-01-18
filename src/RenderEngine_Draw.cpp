@@ -158,8 +158,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                         continue;    // don't do anything if the light doesn't cast
                     }
                     auto sparseIdx = wrd.directionalLightData.GetSparseIndexForDense(i);
-                    auto owner = Entity(sparseIdx, worldOwning.get());
-                    const auto& origLight = owner.GetComponent<DirectionalLight>();
+                    
+                    const auto& origLight = worldOwning->GetComponent<DirectionalLight>({sparseIdx, worldOwning->VersionForEntity(sparseIdx)});
                     
                     // iterate the cascades
                     for(uint32_t index = 0; index < origLight.numCascades; index++){
@@ -426,7 +426,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					{
 						uint32_t object_id = 0;
 						for (const auto& ownerid : command.entities.GetReverseMap()) {
-							auto& animator = worldOwning->GetComponent<AnimatorComponent>(ownerid);
+                            auto& animator = worldOwning->GetComponent<AnimatorComponent>({ownerid, worldOwning->VersionForEntity(ownerid)});
 							const auto& skinningMats = animator.GetSkinningMats();
 							std::copy(skinningMats.begin(), skinningMats.end(), (matbufMem.begin() + subo.boneReadOffset) + object_id * skinningMats.size());
 							object_id++;
@@ -1280,13 +1280,13 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				mainCommandBuffer->BeginRenderDebugMarker("Render Particles");
                 worldOwning->Filter([this, &viewproj, &particleBillboardMatrices, &currentLightingType, &pipelineSelectorFunction, &lightDataOffset, &worldOwning, &layers, &target, &camIdx, &worldTransformBuffer](const ParticleEmitter& emitter, const Transform& t) {
                     // check if the render layers match
-                    auto renderLayers = worldOwning->renderData.renderLayers[emitter.GetOwner().GetID()];
+                    auto renderLayers = worldOwning->renderData.renderLayers[emitter.GetOwner().GetID().id];
                     if ((renderLayers & layers) == 0){
                         return;
                     }
 
 					// check if casting shadows
-                    auto attributes = worldOwning->renderData.perObjectAttributes[emitter.GetOwner().GetID()];
+                    auto attributes = worldOwning->renderData.perObjectAttributes[emitter.GetOwner().GetID().id];
 					const bool shouldConsider = !currentLightingType.FilterLightBlockers || (currentLightingType.FilterLightBlockers && (attributes & CastsShadowsBit));
 					if (!shouldConsider) {
 						return;
@@ -1464,7 +1464,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					continue;	// don't do anything if the light doesn't cast
 				}
 				auto sparseIdx = lightStore.GetSparseIndexForDense(i);
-				auto owner = Entity(sparseIdx, worldOwning.get());
+                auto owner = Entity({sparseIdx, worldOwning->VersionForEntity(sparseIdx)}, worldOwning.get());
 
 				using lightadt_t = std::remove_reference_t<decltype(lightStore)>;
 
@@ -2184,7 +2184,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				for (uint32_t i = 0; i < lightStore.DenseSize(); i++) {
 					const auto& light = lightStore.GetAtDenseIndex(i);
 					auto sparseIdx = lightStore.GetSparseIndexForDense(i);
-					auto owner = Entity(sparseIdx, worldOwning.get());
+                    auto owner = Entity({sparseIdx, worldOwning->VersionForEntity(sparseIdx)}, worldOwning.get());
 
 					using LightType = std::remove_pointer_t<decltype(lightType)>;
 

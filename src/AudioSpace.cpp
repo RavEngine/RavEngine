@@ -26,7 +26,7 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
     auto state = audioPlayer->GetSteamAudioState();
 
     SteamAudioEffects effects;
-    auto it = steamAudioData.find(owningEntity);
+    auto it = steamAudioData.find(owningEntity.id);
     if (it == steamAudioData.end()) {
         IPLBinauralEffectSettings effectSettings{};
         effectSettings.hrtf = state.hrtf;
@@ -40,7 +40,7 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
         };
         iplDirectEffectCreate(state.context, &settings, &directEffectSettings, &effects.directEffect);
 
-        steamAudioData.emplace(owningEntity, effects);
+        steamAudioData.emplace(entity_id_t(owningEntity.id), effects);
     }
     else {
         effects = it->second;
@@ -96,7 +96,7 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
 
 }
 
-void RavEngine::SimpleAudioSpace::RoomData::DeleteAudioDataForEntity(entity_t entity)
+void RavEngine::SimpleAudioSpace::RoomData::DeleteAudioDataForEntity(entity_id_t entity)
 {
     steamAudioData.if_contains(entity, [this](SteamAudioEffects& effects) {
         DestroyEffects(effects);
@@ -189,7 +189,7 @@ void RavEngine::GeometryAudioSpace::RoomData::ConsiderAudioSource(const vector3&
     // if not in-radius, but previously was in-radius, then destroy associated steam audio data 
 
     SteamAudioSourceConfig sourceData;
-    auto it = steamAudioSourceData.find(owningEntity);
+    auto it = steamAudioSourceData.find(owningEntity.id);
     if (it == steamAudioSourceData.end()) {
 
         // out of range, and wasn't in range before. Skip
@@ -233,14 +233,14 @@ void RavEngine::GeometryAudioSpace::RoomData::ConsiderAudioSource(const vector3&
         iplBinauralEffectCreate(state.context, &settings, &effectSettings, &sourceData.binauralEffect);
 
 
-        it = steamAudioSourceData.emplace(owningEntity, sourceData).first;
+        it = steamAudioSourceData.emplace(entity_id_t(owningEntity.id), sourceData).first;
     }
     else {
         if (!inRange) {
             // destroy data and bail
             iplSourceRemove(sourceData.source,steamAudioSimulator);
             DestroySteamAudioSourceConfig(sourceData);
-            steamAudioSourceData.erase(owningEntity);
+            steamAudioSourceData.erase(owningEntity.id);
             return;
         }
         else {
@@ -328,7 +328,7 @@ void RavEngine::GeometryAudioSpace::RoomData::ConsiderMesh(Ref<AudioMeshAsset> m
     bool inRange = glm::distance(vector3(meshPos), roomPos) <= mesh->GetRadius() + meshRadius;
 
     SteamAudioMeshConfig meshConfig;
-    auto it = steamAudioMeshData.find(ownerID);
+    auto it = steamAudioMeshData.find(ownerID.id);
     if (it == steamAudioMeshData.end()) {
         // not in range, and wasn't in range before? bail
         if (!inRange) {
@@ -346,13 +346,13 @@ void RavEngine::GeometryAudioSpace::RoomData::ConsiderMesh(Ref<AudioMeshAsset> m
         memcpy(meshSettings.transform.elements, glm::value_ptr(transformInRoomSpace), sizeof(transformInRoomSpace));
 
         iplInstancedMeshCreate(rootScene, &meshSettings, &meshConfig.instancedMesh);
-        steamAudioMeshData.emplace(ownerID, meshConfig);
+        steamAudioMeshData.emplace(entity_id_t(ownerID.id), meshConfig);
     }
     else {
         if (!inRange) {
             // was in range but no longer is. Destroy its data
             DestroySteamAudioMeshConfig(it->second);
-            steamAudioMeshData.erase(ownerID);
+            steamAudioMeshData.erase(entity_id_t(ownerID.id));
             return;
         }
 
@@ -377,7 +377,7 @@ void RavEngine::GeometryAudioSpace::RoomData::ConsiderMesh(Ref<AudioMeshAsset> m
 
 void RavEngine::GeometryAudioSpace::RoomData::RenderAudioSource(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer, entity_t sourceOwningEntity, PlanarSampleBufferInlineView monoSourceData, const matrix4& invListenerTransform)
 {
-    auto it = steamAudioSourceData.find(sourceOwningEntity);
+    auto it = steamAudioSourceData.find(sourceOwningEntity.id);
     if (it == steamAudioSourceData.end()) {
         // something invalid has happend!
         Debug::Fatal("Attempting to render source that was not calculated in CalculateRoom()");
@@ -433,14 +433,14 @@ void RavEngine::GeometryAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuff
     
 }
 
-void RavEngine::GeometryAudioSpace::RoomData::DeleteAudioDataForEntity(entity_t entity) {
+void RavEngine::GeometryAudioSpace::RoomData::DeleteAudioDataForEntity(entity_id_t entity) {
     steamAudioSourceData.if_contains(entity, [this](SteamAudioSourceConfig& effects) {
         DestroySteamAudioSourceConfig(effects);
     });
     steamAudioSourceData.erase(entity);
 }
 
-void RavEngine::GeometryAudioSpace::RoomData::DeleteMeshDataForEntity(entity_t entity)
+void RavEngine::GeometryAudioSpace::RoomData::DeleteMeshDataForEntity(entity_id_t entity)
 {
     steamAudioMeshData.if_contains(entity, [this](SteamAudioMeshConfig& effects) {
         DestroySteamAudioMeshConfig(effects);

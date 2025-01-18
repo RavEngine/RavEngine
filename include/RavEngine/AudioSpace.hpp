@@ -57,7 +57,7 @@ public:
         );
 
         // internal use only. Called when an audio source component is destroyed
-        void DeleteAudioDataForEntity(entity_t entity);
+        void DeleteAudioDataForEntity(entity_id_t entity);
 
         RoomData();
         ~RoomData();
@@ -76,7 +76,7 @@ public:
 
         void DestroyEffects(SteamAudioEffects&);
 
-        locked_hashmap<entity_t, SteamAudioEffects,SpinLock> steamAudioData;
+        locked_hashmap<entity_id_t, SteamAudioEffects,SpinLock> steamAudioData;
 
         SingleAudioRenderBuffer workingBuffers;
         SingleAudioRenderBufferNoScratch accumulationBuffer;
@@ -156,8 +156,8 @@ public:
         );
 
         // internal use only. Called when an audio source component is destroyed
-        void DeleteAudioDataForEntity(entity_t entity);
-        void DeleteMeshDataForEntity(entity_t entity);
+        void DeleteAudioDataForEntity(entity_id_t entity);
+        void DeleteMeshDataForEntity(entity_id_t entity);
     private:
         float sourceRadius = 10, meshRadius = 10;
 
@@ -172,7 +172,7 @@ public:
         // must be called when destroying a SteamAudioSourceConfig
         void DestroySteamAudioSourceConfig(SteamAudioSourceConfig&);
 
-        locked_hashmap<entity_t, SteamAudioSourceConfig, SpinLock> steamAudioSourceData;
+        locked_hashmap<entity_id_t, SteamAudioSourceConfig, SpinLock> steamAudioSourceData;
 
         struct SteamAudioMeshConfig {
             _IPLInstancedMesh_t* instancedMesh = nullptr;
@@ -183,7 +183,7 @@ public:
         // must be called when destroying a SteamAudioMeshConfig
         void DestroySteamAudioMeshConfig(SteamAudioMeshConfig&);
 
-        locked_hashmap<entity_t, SteamAudioMeshConfig, SpinLock> steamAudioMeshData;
+        locked_hashmap<entity_id_t, SteamAudioMeshConfig, SpinLock> steamAudioMeshData;
 
         _IPLSimulator_t* steamAudioSimulator = nullptr;
         _IPLScene_t* rootScene = nullptr;
@@ -260,14 +260,14 @@ private:
         ~RoomData();
     private:
         vraudio::ResonanceAudioApi* audioEngine = nullptr;
-        UnorderedMap<entity_t, vraudio::ResonanceAudioApi::SourceId> sourceMap;
+        UnorderedMap<entity_id_t, vraudio::ResonanceAudioApi::SourceId> sourceMap;
         SingleAudioRenderBuffer workingBuffers;
 
         void ConsiderAudioSource(const PlanarSampleBufferInlineView& monoSourceData, const vector3& worldPos, const quaternion& worldRot, const matrix4& invRoomTransform, entity_t ownerID, const vector3& roomHalfExts);
 
         void RenderSpace(PlanarSampleBufferInlineView& outBuffer, PlanarSampleBufferInlineView& scratchBuffer, const vector3& listenerPosRoomSpace, const quaternion& listenerRotRoomSpace, const vector3& roomHalfExts, const RoomProperties& roomProperties);
 
-        void DeleteAudioDataForEntity(entity_t entity);
+        void DeleteAudioDataForEntity(entity_id_t entity);
     };
     
     Ref<RoomData> roomData;

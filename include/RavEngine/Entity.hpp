@@ -10,7 +10,7 @@ struct Transform;
 
 struct Entity : public AutoCTTI{
     World* world = nullptr;
-    entity_t id = INVALID_ENTITY;
+    entity_t id = {INVALID_ENTITY};
     
     Entity(entity_t id, World* owner) : id(id), world(owner){}
     Entity(const Entity&) = default;
@@ -55,7 +55,7 @@ struct Entity : public AutoCTTI{
     
     void Destroy(){
         world->DestroyEntity(id);
-        id = INVALID_ENTITY;
+        id = {INVALID_ENTITY};
     }
 
     World* GetWorld() const {
@@ -86,7 +86,7 @@ namespace std{
     template<>
     struct hash<RavEngine::Entity>{
         inline size_t operator()(const RavEngine::Entity& entity) const {
-            return (size_t(entity.GetID()) << sizeof(entity_t)) | (uint32_t(uintptr_t(entity.GetWorld())));
+            return (size_t(entity.GetID().id) << sizeof(entity_t)) | (uint32_t(uintptr_t(entity.GetWorld())));
         }
     };
 }

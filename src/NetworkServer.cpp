@@ -286,7 +286,7 @@ void RavEngine::NetworkServer::OnRPC(const std::string_view& cmd, HSteamNetConne
 		
             Debug::Warning("Got RPC for {} but it has not been tracked, ids = ",id.to_string());
             for (const auto& [id,entity] : NetworkIdentities) {
-                Debug::Warning(" - UUID = {}, id = {}", id.to_string(), entity.id);
+                Debug::Warning(" - UUID = {}, id = {}", id.to_string(), entity_id_t(entity.id.id));
             }
 	}
 }

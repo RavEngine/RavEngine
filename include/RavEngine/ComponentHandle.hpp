@@ -13,7 +13,7 @@ namespace RavEngine{
         }
         
         inline void reset(){
-            owner = Entity(INVALID_ENTITY, nullptr);
+            owner = Entity({INVALID_ENTITY}, nullptr);
         }
         
         inline bool IsValid() const{
@@ -24,8 +24,8 @@ namespace RavEngine{
             return owner;
         }
         
-        inline entity_t get_id() const{
-            return GetOwner().id;
+        inline auto get_id() const{
+            return GetOwner().id.id;
         }
     };
     
@@ -34,7 +34,7 @@ namespace RavEngine{
         ComponentHandle(decltype(owner) owner) : ComponentHandleBase(owner){
             //assert(owner.HasComponent<T>());
         }
-        ComponentHandle() : ComponentHandleBase({INVALID_ENTITY, nullptr}){}
+        ComponentHandle() : ComponentHandleBase({{INVALID_ENTITY}, nullptr}){}
         ComponentHandle(Entity* owner) : ComponentHandleBase(*owner){}
                 
         inline T* operator->(){
@@ -101,14 +101,14 @@ namespace std{
     template<typename T>
     struct hash<RavEngine::ComponentHandle<T>>{
         inline size_t operator()(const RavEngine::ComponentHandle<T>& ch) const{
-            return ch.GetOwner().id;
+            return ch.GetOwner().id.id;
         }
     };
 
 template<typename T>
 struct hash<RavEngine::PolymorphicComponentHandle<T>>{
     inline size_t operator()(const RavEngine::PolymorphicComponentHandle<T>& ch) const{
-        return ch.GetOwner().id ^ ch.full_type_id;
+        return ch.GetOwner().id.id ^ ch.full_type_id;
     }
 };
 }
