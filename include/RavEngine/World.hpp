@@ -405,6 +405,20 @@ namespace RavEngine {
 #endif
         
     public:
+        /**
+         @return the internal "Version" of the entity. This is for detecting use-after-destroy bugs.
+         */
+        auto VersionForEntity(entity_id_t id) const{
+            return versions.at(id);
+        }
+        
+        /**
+         @return true if the entity handle has the correct version (is not stale), false otherwise.
+         */
+        bool CorrectVersion(entity_t id) const{
+            return id.version == VersionForEntity(id.id);
+        }
+        
         struct PolymorphicIndirection{
             struct elt{
                 Function<void*(entity_t)> getfn;
@@ -649,20 +663,6 @@ namespace RavEngine {
             else{
                 return ptr->Emplace(local_id.id,std::forward<A>(args)...);
             }
-        }
-        
-        /**
-         @return the internal "Version" of the entity. This is for detecting use-after-destroy bugs.
-         */
-        auto VersionForEntity(entity_id_t id) const{
-            return versions.at(id);
-        }
-        
-        /**
-         @return true if the entity handle has the correct version (is not stale), false otherwise.
-         */
-        bool CorrectVersion(entity_t id) const{
-            return id.version == VersionForEntity(id.id);
         }
 
         template<typename T>
