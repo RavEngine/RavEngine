@@ -5,9 +5,10 @@
 #include "cluster_defs.h"
 
 using entity_id_t = uint32_t;
+constexpr entity_id_t INVALID_ENTITY = std::numeric_limits<decltype(INVALID_ENTITY)>::max();
 
 struct EntityHandle{
-    entity_id_t id : 24 = 0;
+    entity_id_t id : 24 = INVALID_ENTITY;
     uint8_t version = 0;
     
     bool operator==(const EntityHandle& other) const{
@@ -17,7 +18,6 @@ struct EntityHandle{
 
 using entity_t = EntityHandle;
 using pos_t = uint32_t;
-constexpr entity_id_t INVALID_ENTITY = std::numeric_limits<decltype(INVALID_ENTITY)>::max();
 constexpr pos_t INVALID_INDEX = std::numeric_limits<decltype(INVALID_INDEX)>::max();
 
 static constexpr inline bool EntityIsValid(entity_id_t id){

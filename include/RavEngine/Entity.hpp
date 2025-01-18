@@ -57,6 +57,10 @@ struct Entity : public AutoCTTI{
         world->DestroyEntity(id);
         id = {INVALID_ENTITY};
     }
+    
+    bool IsValid() const{
+        return EntityIsValid(id) && world != nullptr;
+    }
 
     World* GetWorld() const {
         return world;

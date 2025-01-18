@@ -17,7 +17,7 @@ namespace RavEngine{
         }
         
         inline bool IsValid() const{
-            return EntityIsValid(owner.id);
+            return owner.IsValid();
         }
         
         inline decltype(owner) GetOwner() const{
