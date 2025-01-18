@@ -111,7 +111,7 @@ namespace RavEngine {
 		friend class App;
         friend class PhysicsBodyComponent;
         Queue<entity_id_t> available;
-        Vector<uint8_t> versions{64, 0};
+        Vector<uint8_t> versions;
         pos_t numEntities = 0;
         ConcurrentQueue<entity_id_t> destroyedAudioSources, destroyedMeshSources;
 
@@ -650,28 +650,42 @@ namespace RavEngine {
                 return ptr->Emplace(local_id.id,std::forward<A>(args)...);
             }
         }
-
-        template<typename T>
-        inline T& GetComponent(entity_t local_id) {
-            return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->GetComponent(local_id.id);
-        }
         
+        /**
+         @return the internal "Version" of the entity. This is for detecting use-after-destroy bugs.
+         */
         auto VersionForEntity(entity_id_t id) const{
             return versions.at(id);
         }
         
+        /**
+         @return true if the entity handle has the correct version (is not stale), false otherwise.
+         */
+        bool CorrectVersion(entity_t id) const{
+            return id.version == VersionForEntity(id.id);
+        }
+
+        template<typename T>
+        inline T& GetComponent(entity_t local_id) {
+            assert(CorrectVersion(local_id));
+            return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->GetComponent(local_id.id);
+        }
+        
         template<typename T>
         inline auto GetAllComponentsPolymorphic(entity_t local_id){
+            assert(CorrectVersion(local_id));
             return polymorphicQueryMap.at(CTTI<T>()).GetForEntity(local_id.id).template GetAll<T>();
         }
 
         template<typename T>
         inline bool HasComponent(entity_t local_id) {
+            assert(CorrectVersion(local_id));
             return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->HasComponent(local_id.id);
         }
         
         template<typename T>
         inline bool HasComponentOfBase(entity_t local_id){
+            assert(CorrectVersion(local_id));
             return polymorphicQueryMap.at(CTTI<T>()).HasForEntity(local_id);
         }
 

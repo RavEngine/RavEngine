@@ -16,6 +16,8 @@ struct EntityHandle{
     }
 };
 
+static_assert(sizeof(EntityHandle) == sizeof(entity_id_t), "EntityHandle is the wrong size!");
+
 using entity_t = EntityHandle;
 using pos_t = uint32_t;
 constexpr pos_t INVALID_INDEX = std::numeric_limits<decltype(INVALID_INDEX)>::max();
