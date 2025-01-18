@@ -190,14 +190,13 @@ int main(int argc, char** argv) {
         {"Test_AddDel",&Test_AddDel},
         {"Test_SpawnDestroy",&Test_SpawnDestroy},
     };
-#if 0
-	if (argc < 2){
-		cerr << "No test provided - use ctest" << endl;
-		return -1;
-	}
-#endif
-    //auto test = argv[1];
-    auto test = "Test_SpawnDestroy";
+
+    if (argc < 2){
+        cerr << "No test provided - use ctest" << endl;
+        return -1;
+    }
+
+    auto test = argv[1];
     if (tests.find(test) != tests.end()) {
         RavEngine::App app;
         return tests.at(test)();
