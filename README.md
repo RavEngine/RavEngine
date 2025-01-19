@@ -107,7 +107,7 @@ Note that for end users the minimum system requirements are much lower.
 
 Software
 - macOS, iOS, tvOS, visionOS
-   - Xcode 15.3+
+   - Xcode 16.2+
    - CMake
 - Windows
    - Visual Studio 2022 or later with the "Desktop Development in C++" and "Game Development in C++" modules
@@ -116,7 +116,7 @@ Software
 - Android
    - Android Studio 4.2 or later with NDK 27 or later
    - Host requirements:
-      - macOS host: Xcode 15.3+
+      - macOS host: Xcode 16.2+
 	  - Windows Host: Visual Studio 2022 with the "Desktop Development in C++" and "Game Development in C++" modules
       - Linux host: clang 16 or later (recommended) or gcc 13 or later
    - The [SDL Android Builder](https://github.com/Ravbug/sdl-android-builder/) wrapper project
@@ -124,7 +124,7 @@ Software
    - Latest [emsdk](https://github.com/emscripten-core/emsdk)
    - CMake
    - Host requirements:
-      - macOS: Xcode 15.3+
+      - macOS: Xcode 16.2+
       - Windows: Visual Studio 2022 with the "Desktop Development in C++" and "Game Development in C++" modules
       - Linux: clang 16 or later (recommended) or gcc 13 or later 
 - Linux
