@@ -24,7 +24,7 @@ namespace RavEngine {
 		bool IsInRoom = RMath::pointInAABB(roomSpacePos, roomHalfExts);
 
 
-		auto it = sourceMap.find(ownerID);
+		auto it = sourceMap.find(ownerID.id);
 		vraudio::ResonanceAudioApi::SourceId src;
 		if (it == sourceMap.end()) {
 			if (!IsInRoom) {
@@ -33,7 +33,7 @@ namespace RavEngine {
 			}
 
 			src = audioEngine->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralLowQuality);
-			sourceMap.emplace(ownerID, src);
+			sourceMap.emplace(entity_id_t(ownerID.id), src);
 		}
 		else {
 			src = it->second;
@@ -41,7 +41,7 @@ namespace RavEngine {
 				// not in the room, but was before. Destroy source and bail
 				audioEngine->DestroySource(src);
 				
-				sourceMap.erase(ownerID);
+				sourceMap.erase(ownerID.id);
 				return;
 			}
 		}
@@ -104,7 +104,7 @@ namespace RavEngine {
 		AudioGraphComposed::Render(outBuffer, scratchBuffer, nchannels); // process graph
 	}
 
-	void BoxReverbationAudioSpace::RoomData::DeleteAudioDataForEntity(entity_t id) {
+	void BoxReverbationAudioSpace::RoomData::DeleteAudioDataForEntity(entity_id_t id) {
 		auto it = sourceMap.find(id);
 		if (it != sourceMap.end()) {
 			audioEngine->DestroySource(it->second);

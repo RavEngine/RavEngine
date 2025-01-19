@@ -225,7 +225,7 @@ void World::SetupTaskGraph(){
             };
             for (const auto& source : instantaneousToPlay) {
                 if (checkFunc(source)) {
-                    destroyedAudioSources.enqueue(source.fakeOwner.id);
+                    destroyedAudioSources.enqueue(source.fakeOwner.id.id);
                     instantaneousAudioSourceFreeList.ReturnID(source.fakeOwner.id);    // expired sources return their IDs
                 }
             }
@@ -313,7 +313,7 @@ void World::setupRenderTasks(){
         auto nEntities = numEntities + std::min(nCreatedThisTick, 1);  // hack: if I don't add 1, then the pbr.vsh shader OOBs, not sure why
         auto currentBufferSize = renderData.worldTransforms.Size();
         if (nEntities > currentBufferSize){
-            auto newSize = closest_power_of<entity_t>(nEntities, 16);
+            auto newSize = closest_power_of<entity_id_t>(nEntities, 16);
             renderData.worldTransforms.Resize(newSize);
         }
         nCreatedThisTick = 0;
@@ -335,7 +335,7 @@ void World::setupRenderTasks(){
                     // write new matrix
                     auto owner = trns.GetOwner();
                     auto ownerIDInWorld = owner.GetID();
-                    renderData.worldTransforms.SetValueAt(ownerIDInWorld,trns.GetWorldMatrix());
+                    renderData.worldTransforms.SetValueAt(ownerIDInWorld.id,trns.GetWorldMatrix());
                 });
 
                 trns.ClearTickDirty();
@@ -372,7 +372,7 @@ void World::setupRenderTasks(){
             if (t.getTickDirty()) {
                 auto owner = t.GetOwner();
                 auto ownerIDInWorld = owner.GetID();
-                renderData.worldTransforms.SetValueAt(ownerIDInWorld, t.GetWorldMatrix());
+                renderData.worldTransforms.SetValueAt(ownerIDInWorld.id, t.GetWorldMatrix());
             }
         });
     });
@@ -381,8 +381,9 @@ void World::setupRenderTasks(){
     
     auto updateInvalidatedDirs = renderTasks.emplace([this]{
         if (auto ptr = GetAllComponentsOfType<DirectionalLight>()){
-            for(int i = 0; i < ptr->DenseSize(); i++){
-                auto owner = Entity(ptr->GetOwner(i),this);
+            for(entity_id_t i = 0; i < ptr->DenseSize(); i++){
+                auto ownerID = ptr->GetOwner(i);
+                auto owner = Entity({ownerID, VersionForEntity(ownerID)},this);
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
@@ -392,7 +393,7 @@ void World::setupRenderTasks(){
                     auto& uploadData = renderData.directionalLightData.GetForSparseIndexForWriting(ptr->GetOwner(i));
                     uploadData.direction = rot;
                 }
-                auto& lightdata = ptr->Get(i);
+                auto& lightdata = ptr->Get({i});
                 if (lightdata.isInvalidated()) {
                     // update color data if it has changed
                     auto& color = lightdata.GetColorRGBA();
@@ -417,10 +418,11 @@ void World::setupRenderTasks(){
     
     auto updateInvalidatedSpots = renderTasks.emplace([this]{
         if (auto ptr = GetAllComponentsOfType<SpotLight>()){
-            for(int i = 0; i < ptr->DenseSize(); i++){
-                auto owner = Entity(ptr->GetOwner(i),this);
+            for(entity_id_t i = 0; i < ptr->DenseSize(); i++){
+                auto ownerID = ptr->GetOwner(i);
+                auto owner = Entity({ownerID, VersionForEntity(ownerID)},this);
                 auto& transform = owner.GetTransform();
-                auto& lightData = ptr->Get(i);
+                auto& lightData = ptr->Get({i});
                 if (transform.isTickDirty){
                     // update transform data if it has changed
                     auto& denseData = renderData.spotLightData.GetForSparseIndexForWriting(ptr->GetOwner(i));
@@ -451,15 +453,16 @@ void World::setupRenderTasks(){
     
     auto updateInvalidatedPoints = renderTasks.emplace([this]{
         if (auto ptr = GetAllComponentsOfType<PointLight>()){
-            for(int i = 0; i < ptr->DenseSize(); i++){
-                auto owner = Entity(ptr->GetOwner(i),this);
+            for(entity_id_t i = 0; i < ptr->DenseSize(); i++){
+                auto ownerID = ptr->GetOwner(i);
+                auto owner = Entity({ownerID, VersionForEntity(ownerID)},this);
                 auto& transform = owner.GetTransform();
                 if (transform.isTickDirty){
                     // update transform data if it has changed
                     auto& gpudata = renderData.pointLightData.GetForSparseIndexForWriting(ptr->GetOwner(i));
                     gpudata.position = transform.GetWorldPosition();
                 }
-                auto& lightData = ptr->Get(i);
+                auto& lightData = ptr->Get({i});
                 if (lightData.isInvalidated()){
                     // update color data if it has changed
                     
@@ -480,9 +483,9 @@ void World::setupRenderTasks(){
     
     auto updateInvalidatedAmbients = renderTasks.emplace([this]{
         if(auto ptr = GetAllComponentsOfType<AmbientLight>()){
-            for(int i = 0; i < ptr->DenseSize(); i++){
+            for(entity_id_t i = 0; i < ptr->DenseSize(); i++){
                 auto ownerLocalId = ptr->GetOwner(i);
-                auto& light = ptr->Get(i);
+                auto& light = ptr->Get({i});
                 auto& color = light.GetColorRGBA();
                 renderData.ambientLightData.GetForSparseIndexForWriting(ownerLocalId) = {{color.R, color.G, color.B}, light.GetIntensity(), light.GetIlluminationLayers()};
                 light.clearInvalidate();
@@ -502,27 +505,27 @@ void World::DispatchAsync(const Function<void ()>& func, double delaySeconds){
 void World::SetupPerEntityRenderData(entity_t localID){
     auto& renderLayers = renderData.renderLayers;
     auto& perObjectAttributes = renderData.perObjectAttributes;
-    if (renderLayers.Size() <= localID){
-        auto newSize = closest_power_of<entity_t>(localID+1, 2);
+    if (renderLayers.Size() <= localID.id){
+        auto newSize = closest_power_of<entity_id_t>(localID.id+1, 2);
         renderLayers.Resize(newSize);
         perObjectAttributes.Resize(newSize);
     }
-    renderLayers.SetValueAt(localID, ALL_LAYERS);
-    perObjectAttributes.SetValueAt(localID, ALL_ATTRIBUTES);
+    renderLayers.SetValueAt(localID.id, ALL_LAYERS);
+    perObjectAttributes.SetValueAt(localID.id, ALL_ATTRIBUTES);
 }
 
 void World::SetEntityRenderlayer(entity_t localid, renderlayer_t layers){
-    renderData.renderLayers.SetValueAt(localid, layers);
+    renderData.renderLayers.SetValueAt(localid.id, layers);
 }
 
 void World::SetEntityAttributes(entity_t localid, perobject_t attributes)
 {
-    renderData.perObjectAttributes.SetValueAt(localid, attributes);
+    renderData.perObjectAttributes.SetValueAt(localid.id, attributes);
 }
 
 perobject_t World::GetEntityAttributes(entity_t localid)
 {
-    return renderData.perObjectAttributes[localid];
+    return renderData.perObjectAttributes[localid.id];
 }
 
 void DestroyMeshRenderDataGeneric(const auto& mesh, auto material, auto&& renderData, entity_t local_id, auto&& iteratorComparator){
@@ -534,8 +537,8 @@ void DestroyMeshRenderDataGeneric(const auto& mesh, auto material, auto&& render
         auto it = std::find_if(data.commands.begin(), data.commands.end(), [&](auto& other) {
             return iteratorComparator(other);
         });
-        if (it != data.commands.end() && (*it).entities.HasForSparseIndex(local_id)) {
-            (*it).entities.EraseAtSparseIndex(local_id);
+        if (it != data.commands.end() && (*it).entities.HasForSparseIndex(local_id.id)) {
+            (*it).entities.EraseAtSparseIndex(local_id.id);
             // if empty, remove from the larger container
             if ((*it).entities.DenseSize() == 0) {
                 data.commands.erase(it);
@@ -567,7 +570,7 @@ void updateMeshMaterialGeneric(auto&& renderData, entity_t localID, auto oldMat,
     for (auto& command : set.commands) {
         found = comparator(command);
         if (found) {
-            command.entities.Emplace(localID,localID);
+            command.entities.Emplace(localID.id,entity_id_t(localID.id));
             break;
         }
     }
@@ -591,7 +594,7 @@ void RavEngine::World::updateStaticMeshMaterial(entity_t localId, Ref<MaterialIn
             return cmpMesh == mesh;
         },
         [mesh, localId](auto&& commands){
-            commands.emplace(mesh, localId, localId);
+            commands.emplace(mesh, localId.id, localId.id);
         }
     );
 }
@@ -609,7 +612,7 @@ void RavEngine::World::updateSkinnedMeshMaterial(entity_t localId, Ref<MaterialI
             return cmpMesh == mesh && command.skeleton.lock() == skeleton;
         },
         [mesh, &skeleton, localId](auto&& commands){
-            commands.emplace(mesh, skeleton, localId, localId);
+            commands.emplace(mesh, skeleton, localId.id, localId.id);
         }
     );
 }
@@ -657,12 +660,18 @@ void World::SkinnedMeshChangedVisibility(const SkinnedMeshComponent* mesh){
 entity_t World::CreateEntity(){
     entity_t id;
     if (available.size() > 0){
-        id = available.front();
+        id.id = available.front();
         available.pop();
+        id.version = versions[id.id];
     }
     else{
-        id = numEntities++;
+        id.id = numEntities++;
         nCreatedThisTick++;
+        if (id.id >= versions.size()){
+            versions.resize(closest_power_of<entity_id_t>(id.id + 1, 2));
+            versions[id.id] = 0;
+        }
+        id.version = 0;
     }
     return id;
 }
@@ -675,9 +684,9 @@ World::~World() {
     });
 #endif
 
-    for(entity_t i = 0; i < numEntities; i++){
+    for(entity_id_t i = 0; i < numEntities; i++){
         if (EntityIsValid(i)){
-            DestroyEntity(i); // destroy takes a local ID
+            DestroyEntity({i, VersionForEntity(i)}); // destroy takes a local ID
         }
     }
 

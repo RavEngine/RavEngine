@@ -1,5 +1,6 @@
 #pragma once
 #include <string_view>
+#include "Types.hpp"
 
 #if __has_include(<format>)
 #include <format>
@@ -8,6 +9,18 @@
 #include <fmt/format.h>
 #define fmt_src fmt
 #endif
+
+template <>
+struct fmt_src::formatter<EntityHandle> {
+    
+    constexpr auto parse(fmt_src::format_parse_context& ctx) {
+        return ctx.begin();
+    }
+    
+    auto format(const EntityHandle& id, fmt_src::format_context& ctx) const {
+        return fmt_src::format_to(ctx.out(), "{}", entity_id_t(id.id));
+    }
+};
 
 namespace RavEngine{
 

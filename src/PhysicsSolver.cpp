@@ -60,9 +60,13 @@ void PhysicsSolver::onContact(const physx::PxContactPairHeader& pairHeader, cons
         if(pairHeader.actors[0]->userData == nullptr || pairHeader.actors[1]->userData == nullptr){
             continue;
         }
+        
+        entity_t id1, id2;
+        memcpy(&id1,&pairHeader.actors[0]->userData, sizeof(id1));
+        memcpy(&id2,&pairHeader.actors[1]->userData, sizeof(id2));
 
-        Entity actor1_e(entity_t(uintptr_t(pairHeader.actors[0]->userData)),owner);
-        Entity actor2_e(entity_t(uintptr_t(pairHeader.actors[1]->userData)), owner);
+        Entity actor1_e(id1,owner);
+        Entity actor2_e(id2, owner);
         
         auto& actor1 = actor1_e.GetAllComponentsPolymorphic<PhysicsBodyComponent>()[0];
         auto& actor2 = actor2_e.GetAllComponentsPolymorphic<PhysicsBodyComponent>()[0];
@@ -115,8 +119,12 @@ void PhysicsSolver::onTrigger(physx::PxTriggerPair* pairs, physx::PxU32 count)
             continue;
         }
         
-        Entity other_e(entity_t(uintptr_t(cp.otherActor->userData)),owner);
-        Entity trigger_e(entity_t(uintptr_t(cp.triggerActor->userData)), owner);
+        entity_t id1, id2;
+        memcpy(&id1,&cp.otherActor->userData, sizeof(id1));
+        memcpy(&id2,&cp.triggerActor->userData, sizeof(id2));
+        
+        Entity other_e(id1,owner);
+        Entity trigger_e(id2, owner);
         
     
         auto& other = other_e.GetAllComponentsPolymorphic<PhysicsBodyComponent>()[0];
@@ -288,7 +296,9 @@ PhysicsSolver::RaycastHit::RaycastHit(const physx::PxRaycastBuffer& hit, World* 
     hitDistance(hit.block.distance) {
 
     if (hit.hasBlock) {
-        hitObject = {entity_t(uintptr_t(hit.block.actor->userData)),owner};
+        entity_t id;
+        memcpy(&id, &hit.block.actor->userData, sizeof(id));
+        hitObject = {id,owner};
     }
 }
 

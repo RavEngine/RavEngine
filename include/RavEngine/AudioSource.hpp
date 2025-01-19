@@ -197,7 +197,7 @@ struct InstantaneousAudioSource : public AudioSourceBase{
 
 struct InstantaneousAudioSourceToPlay {
     InstantaneousAudioSource source;
-    Entity fakeOwner{INVALID_ENTITY, nullptr};
+    Entity fakeOwner{{INVALID_ENTITY}, nullptr};
     InstantaneousAudioSourceToPlay(const InstantaneousAudioSource& source, entity_t fakeOwner) :
         source(source), fakeOwner(fakeOwner,nullptr) {}
 };

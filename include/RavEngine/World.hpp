@@ -110,12 +110,13 @@ namespace RavEngine {
 		friend class AudioPlayer;
 		friend class App;
         friend class PhysicsBodyComponent;
-        Queue<entity_t> available;
-        entity_t numEntities = 0;
-        ConcurrentQueue<entity_t> destroyedAudioSources, destroyedMeshSources;
+        Queue<entity_id_t> available;
+        Vector<uint8_t> versions;
+        pos_t numEntities = 0;
+        ConcurrentQueue<entity_id_t> destroyedAudioSources, destroyedMeshSources;
 
         class InstantaneousAudioSourceFreeList {
-            entity_t nextID = INVALID_ENTITY - 1;
+            entity_t nextID = {INVALID_ENTITY - 1};
             ConcurrentQueue<entity_t> freeList;
         public:
             auto GetNextID() {
@@ -125,7 +126,7 @@ namespace RavEngine {
                 }
                 else {
                     id = nextID;
-                    nextID--;
+                    nextID.id--;
                 }
                 return id;
             }
@@ -140,15 +141,15 @@ namespace RavEngine {
         template<typename T>
         class EntitySparseSet{
             unordered_vector<T> dense_set;
-            UnorderedVector<entity_t> aux_set;
-            Vector<entity_t> sparse_set{INVALID_ENTITY};
+            UnorderedVector<entity_id_t> aux_set;
+            Vector<entity_id_t> sparse_set{INVALID_ENTITY};
             
         public:
             
             using const_iterator = typename decltype(dense_set)::const_iterator_type;
             
             template<typename ... A>
-            inline T& Emplace(entity_t local_id, A&& ... args){
+            inline T& Emplace(entity_id_t local_id, A&& ... args){
                 auto& ret = dense_set.emplace(std::forward<A>(args)...);
                 aux_set.emplace(local_id);
                 if (local_id >= sparse_set.size()){
@@ -159,7 +160,7 @@ namespace RavEngine {
                 return ret;
             }
             
-            inline void Destroy(entity_t local_id){
+            inline void Destroy(entity_id_t local_id){
                 assert(local_id < sparse_set.size());
                 assert(HasComponent(local_id)); // Cannot destroy a component on an entity that does not have one!
                 // call the destructor
@@ -179,13 +180,13 @@ namespace RavEngine {
                 sparse_set[local_id] = INVALID_INDEX;
             }
 
-            inline T& GetComponent(entity_t local_id){
+            inline T& GetComponent(entity_id_t local_id){
                 assert(HasComponent(local_id));
                 return dense_set[sparse_set[local_id]];
             }
             
             inline auto SparseToDense(entity_t local_id){
-                return sparse_set[local_id];
+                return sparse_set[local_id.id];
             }
             
             inline T& GetFirst(){
@@ -193,7 +194,7 @@ namespace RavEngine {
                 return dense_set[0];
             }
             
-            inline bool HasComponent(entity_t local_id) const{
+            inline bool HasComponent(entity_id_t local_id) const{
                 return local_id < sparse_set.size() && sparse_set[local_id] != INVALID_ENTITY;
             }
             
@@ -214,11 +215,11 @@ namespace RavEngine {
             }
             
             // get by dense index, not by entity ID
-            T& Get(entity_t idx){
+            T& Get(entity_id_t idx){
                 return dense_set[idx];
             }
             
-            auto GetOwner(entity_t idx) const{
+            auto GetOwner(entity_id_t idx) const{
                 return aux_set[idx];
             }
             
@@ -259,7 +260,7 @@ namespace RavEngine {
             AnySparseSet(T* discard) :
                 _impl_destroyFn([](AnySparseSet* thisptr, entity_t local_id, World* wptr){
                     auto ptr = thisptr->GetSet<T>();
-                    if (ptr->HasComponent(local_id)){
+                    if (ptr->HasComponent(local_id.id)){
                         wptr->DestroyComponent<T>(local_id);
                     }
                 }),
@@ -291,7 +292,7 @@ namespace RavEngine {
         struct MDIICommand : public MDICommandBase {
             struct command {
                 WeakRef<MeshCollectionStatic> mesh;
-                using set_t = BufferedVRAMSparseSet<entity_t,entity_t>;
+                using set_t = BufferedVRAMSparseSet<entity_id_t,entity_id_t>;
                 set_t entities{"Static Mesh Private Entities Buffer"};
                 command(decltype(mesh) mesh, set_t::index_type index, const set_t::value_type& first_value) : mesh(mesh) {
                     entities.Emplace(index, first_value);
@@ -304,7 +305,7 @@ namespace RavEngine {
             struct command {
                 WeakRef<MeshCollectionSkinned> mesh;
                 WeakRef<SkeletonAsset> skeleton;
-                using set_t = BufferedVRAMSparseSet<entity_t,entity_t>;
+                using set_t = BufferedVRAMSparseSet<entity_id_t,entity_id_t>;
                 set_t entities{"SKinned Mesh Private Entities Buffer"};
                 command(decltype(mesh) mesh, decltype(skeleton) skeleton, set_t::index_type index, const set_t::value_type& first_value) : mesh(mesh), skeleton(skeleton) {
                     entities.Emplace(index, first_value);
@@ -366,13 +367,13 @@ namespace RavEngine {
         // data for the render engine
         struct RenderData{
             
-            BufferedVRAMSparseSet<entity_t, DirLightUploadData> directionalLightData{"Directional Light Uniform Private Buffer"};
+            BufferedVRAMSparseSet<entity_id_t, DirLightUploadData> directionalLightData{"Directional Light Uniform Private Buffer"};
             
-            BufferedVRAMSparseSet<entity_t, AmbientLightUploadData> ambientLightData{"Ambient Light Private Buffer"};
+            BufferedVRAMSparseSet<entity_id_t, AmbientLightUploadData> ambientLightData{"Ambient Light Private Buffer"};
             
-            BufferedVRAMSparseSet<entity_t, PointLightUploadData> pointLightData{"Point Light Private Buffer"};
+            BufferedVRAMSparseSet<entity_id_t, PointLightUploadData> pointLightData{"Point Light Private Buffer"};
              
-            BufferedVRAMSparseSet<entity_t, SpotLightDataUpload> spotLightData{"Point Light Private Buffer"};
+            BufferedVRAMSparseSet<entity_id_t, SpotLightDataUpload> spotLightData{"Point Light Private Buffer"};
             
             BufferedVRAMVector<DirLightUploadDataPassVarying> directionalLightPassVarying{"Directional Light Pass Varying Buffer"};
             
@@ -404,6 +405,20 @@ namespace RavEngine {
 #endif
         
     public:
+        /**
+         @return the internal "Version" of the entity. This is for detecting use-after-destroy bugs.
+         */
+        auto VersionForEntity(entity_id_t id) const{
+            return versions.at(id);
+        }
+        
+        /**
+         @return true if the entity handle has the correct version (is not stale), false otherwise.
+         */
+        bool CorrectVersion(entity_t id) const{
+            return id.version == VersionForEntity(id.id);
+        }
+        
         struct PolymorphicIndirection{
             struct elt{
                 Function<void*(entity_t)> getfn;
@@ -412,7 +427,7 @@ namespace RavEngine {
                 elt(World* world, T* discard) : full_id(CTTI<T>()){
                     auto setptr = world->componentMap.at(CTTI<T>()).template GetSet<T>();
                     getfn = [setptr](entity_t local_id) -> void*{
-                        auto& thevalue = setptr->GetComponent(local_id);
+                        auto& thevalue = setptr->GetComponent(local_id.id);
                         return &(thevalue);
                     };
                 }
@@ -427,7 +442,7 @@ namespace RavEngine {
                 }
             };
             UnorderedVector<elt> elts;
-            entity_t owner = INVALID_ENTITY;
+            entity_t owner = {INVALID_ENTITY};
             World* world = nullptr;
             
             template<typename T>
@@ -493,19 +508,20 @@ namespace RavEngine {
         class SparseSetForPolymorphic{
             using U = PolymorphicIndirection;
             unordered_vector<U> dense_set;
-            Vector<entity_t> sparse_set{INVALID_ENTITY};
+            Vector<entity_id_t> sparse_set{INVALID_ENTITY};
             
         public:
             
             using const_iterator = typename decltype(dense_set)::const_iterator_type;
             
             template<typename T>
-            inline void Emplace(entity_t local_id, World* world){
+            inline void Emplace(entity_t local_id_in, World* world){
+                auto local_id = local_id_in.id;
                 //if a record for this does not exist, create it
                 if (!HasForEntity(local_id)){
-                    dense_set.emplace(local_id,world);
+                    dense_set.emplace(local_id_in,world);
                     if (local_id >= sparse_set.size()){
-                        sparse_set.resize(closest_multiple_of<entity_t>(local_id+1,2),INVALID_ENTITY);  //ensure there is enough space for this id
+                        sparse_set.resize(closest_multiple_of<entity_id_t>(local_id+1,2),INVALID_ENTITY);  //ensure there is enough space for this id
                     }
                     sparse_set[local_id] = static_cast<decltype(sparse_set)::value_type>(dense_set.size()-1);
                 }
@@ -515,7 +531,7 @@ namespace RavEngine {
             }
             
             template<typename T>
-            inline void Destroy(entity_t local_id){
+            inline void Destroy(entity_id_t local_id){
                 // get the record, then call erase on it
                 assert(HasForEntity(local_id));
                 GetForEntity(local_id).erase<T>();
@@ -527,29 +543,29 @@ namespace RavEngine {
 
                    if (denseidx < dense_set.size()) {    // did a move happen during this deletion?
                        auto ownerOfMoved = dense_set[denseidx].owner;
-                       sparse_set[ownerOfMoved] = denseidx;
+                       sparse_set[ownerOfMoved.id] = denseidx;
                    }
                    sparse_set[local_id] = INVALID_INDEX;
                }
             }
 
-            inline U& GetForEntity(entity_t local_id){
+            inline U& GetForEntity(entity_id_t local_id){
                 assert(HasForEntity(local_id));
                 return dense_set[sparse_set[local_id]];
             }
 
-            inline auto SparseToDense(entity_t local_id){
+            inline auto SparseToDense(entity_id_t local_id){
                 return sparse_set[local_id];
             }
 
-            inline entity_t GetOwnerForDenseIdx(entity_t dense_idx) {
+            inline auto GetOwnerForDenseIdx(entity_id_t dense_idx) {
                 assert(dense_idx < dense_set.size());
                 // get the indirection object which is storing the owner
                 return dense_set[dense_idx].owner;
             }
 
             
-            inline bool HasForEntity(entity_t local_id) const{
+            inline bool HasForEntity(entity_id_t local_id) const{
                 return local_id < sparse_set.size() && sparse_set[local_id] != INVALID_ENTITY;
             }
             
@@ -570,7 +586,7 @@ namespace RavEngine {
             }
             
             // get by dense index, not by entity ID
-            U& Get(entity_t idx){
+            U& Get(entity_id_t idx){
                 return dense_set[idx];
             }
             
@@ -598,7 +614,8 @@ namespace RavEngine {
                 pair.second.destroyFn(local_id,this);
             }
             // unset localToGlobal
-            available.push(local_id);
+            available.push(local_id.id);
+            versions[local_id.id]++;       // we increment it here so that if we have a use-after free, it's detected before the ID is recycled
         }
         
         template<typename T>
@@ -628,44 +645,48 @@ namespace RavEngine {
 #if !RVE_SERVER
             // if it's a light, register it in the container
             if constexpr (std::is_same_v<T, DirectionalLight>){
-                renderData.directionalLightData.Emplace(local_id);
+                renderData.directionalLightData.Emplace(local_id.id);
             }
             else if constexpr (std::is_same_v<T, AmbientLight>){
-                renderData.ambientLightData.Emplace(local_id);
+                renderData.ambientLightData.Emplace(local_id.id);
             }
             else if constexpr (std::is_same_v<T, PointLight>){
-                renderData.pointLightData.Emplace(local_id);
+                renderData.pointLightData.Emplace(local_id.id);
             }
             else if constexpr (std::is_same_v<T, SpotLight>){
-                renderData.spotLightData.Emplace(local_id);
+                renderData.spotLightData.Emplace(local_id.id);
             }
 #endif
             //detect if T constructor's first argument is an Entity, if it is, then we need to pass that before args (pass local_id again)
             if constexpr(std::is_constructible<T,Entity, A...>::value || (sizeof ... (A) == 0 && std::is_constructible<T,Entity>::value)){
-                return ptr->Emplace(local_id, EntityRedir{this,local_id}, std::forward<A>(args)...);
+                return ptr->Emplace(local_id.id, EntityRedir{this,local_id}, std::forward<A>(args)...);
             }
             else{
-                return ptr->Emplace(local_id,std::forward<A>(args)...);
+                return ptr->Emplace(local_id.id,std::forward<A>(args)...);
             }
         }
 
         template<typename T>
         inline T& GetComponent(entity_t local_id) {
-            return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->GetComponent(local_id);
+            assert(CorrectVersion(local_id));
+            return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->GetComponent(local_id.id);
         }
         
         template<typename T>
         inline auto GetAllComponentsPolymorphic(entity_t local_id){
-            return polymorphicQueryMap.at(CTTI<T>()).GetForEntity(local_id).template GetAll<T>();
+            assert(CorrectVersion(local_id));
+            return polymorphicQueryMap.at(CTTI<T>()).GetForEntity(local_id.id).template GetAll<T>();
         }
 
         template<typename T>
         inline bool HasComponent(entity_t local_id) {
-            return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->HasComponent(local_id);
+            assert(CorrectVersion(local_id));
+            return componentMap.at(RavEngine::CTTI<T>()).template GetSet<T>()->HasComponent(local_id.id);
         }
         
         template<typename T>
         inline bool HasComponentOfBase(entity_t local_id){
+            assert(CorrectVersion(local_id));
             return polymorphicQueryMap.at(CTTI<T>()).HasForEntity(local_id);
         }
 
@@ -679,42 +700,42 @@ namespace RavEngine {
 
             if constexpr (std::is_same_v<T, StaticMesh>) {
                 // remove the entry from the render data structure
-                auto& comp = setptr->GetComponent(local_id);
+                auto& comp = setptr->GetComponent(local_id.id);
                 DestroyStaticMeshRenderData(comp, local_id);
             }
             else if constexpr (std::is_same_v<T, SkinnedMeshComponent>) {
-                auto& comp = setptr->GetComponent(local_id);
+                auto& comp = setptr->GetComponent(local_id.id);
                 DestroySkinnedMeshRenderData(comp, local_id);
             }
 #if !RVE_SERVER
             // if it's a light, register it in the container
             if constexpr (std::is_same_v<T, DirectionalLight>){
-                renderData.directionalLightData.EraseAtSparseIndex(local_id);
+                renderData.directionalLightData.EraseAtSparseIndex(local_id.id);
             }
             else if constexpr (std::is_same_v<T, AmbientLight>){
-                renderData.ambientLightData.EraseAtSparseIndex(local_id);
+                renderData.ambientLightData.EraseAtSparseIndex(local_id.id);
             }
             else if constexpr (std::is_same_v<T, PointLight>){
-                renderData.pointLightData.EraseAtSparseIndex(local_id);
+                renderData.pointLightData.EraseAtSparseIndex(local_id.id);
             }
             else if constexpr (std::is_same_v<T, SpotLight>){
-                renderData.spotLightData.EraseAtSparseIndex(local_id);
+                renderData.spotLightData.EraseAtSparseIndex(local_id.id);
             }
             else if constexpr (std::is_same_v<T, AudioSourceComponent>) {
-                destroyedAudioSources.enqueue(local_id);
+                destroyedAudioSources.enqueue(local_id.id);
             }
             else if constexpr (std::is_same_v<T, AudioMeshComponent>) {
-                destroyedMeshSources.enqueue(local_id);
+                destroyedMeshSources.enqueue(local_id.id);
             }
 #endif
             
-            setptr->Destroy(local_id);
+            setptr->Destroy(local_id.id);
             // does this component have alternate query types
             if constexpr (HasQueryTypes<T>::value) {
                 // polymorphic recordkeep
                 const auto ids = T::GetQueryTypes();
                 for (const auto id : ids) {
-                    polymorphicQueryMap[id].template Destroy<T>(local_id);
+                    polymorphicQueryMap[id].template Destroy<T>(local_id.id);
                 }
             }
         }
@@ -726,7 +747,7 @@ namespace RavEngine {
         }
         
         template<typename T, bool isPolymorphic = false>
-        inline void FilterValidityCheck(entity_t id, void* set, bool& satisfies) const{
+        inline void FilterValidityCheck(entity_id_t id, void* set, bool& satisfies) const{
             // in this order so that the first one the entity does not have aborts the rest of them
             if constexpr (!isPolymorphic) {
                 satisfies = satisfies && static_cast<EntitySparseSet<T>*>(set)->HasComponent(id);
@@ -737,18 +758,18 @@ namespace RavEngine {
         }
         
         template<typename T>
-        inline T& FilterComponentGet(entity_t idx, void* ptr){
+        inline T& FilterComponentGet(entity_id_t idx, void* ptr){
             return static_cast<EntitySparseSet<T>*>(ptr)->GetComponent(idx);
         }
 
         template<typename T>
-        inline auto FilterComponentBaseMultiGet(entity_t idx, void* ptr) {
+        inline auto FilterComponentBaseMultiGet(entity_id_t idx, void* ptr) {
             auto& c_ptr = static_cast<SparseSetForPolymorphic*>(ptr)->GetForEntity(idx);
             return c_ptr.template GetAll<T>();
         }
         
         template<typename T>
-        inline T& FilterComponentGetDirect(entity_t denseidx, void* ptr){
+        inline T& FilterComponentGetDirect(entity_id_t denseidx, void* ptr){
             return static_cast<EntitySparseSet<T>*>(ptr)->Get(denseidx);
         }
        
@@ -813,7 +834,7 @@ namespace RavEngine {
         };
 
         template< bool isPolymorphic, typename ... A>
-        bool DoesEntitySatisfyFilter(entity_t owner, const auto& pointerArray) {
+        bool DoesEntitySatisfyFilter(entity_id_t owner, const auto& pointerArray) {
             bool satisfies = true;
             uint32_t i = 0;
             ((FilterValidityCheck<A, isPolymorphic>(owner, pointerArray[i], satisfies), i++), ...);
@@ -821,7 +842,7 @@ namespace RavEngine {
         }
                 
         template<typename ... A, typename filterone_t>
-        inline void FilterOne(filterone_t& fom, entity_t i){
+        inline void FilterOne(filterone_t& fom, entity_id_t i){
             using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
             if constexpr(filterone_t::nTypes() == 1){
                 if constexpr(!filterone_t::isPolymorphic()){
@@ -837,12 +858,12 @@ namespace RavEngine {
                 }
             }
             else{
-                entity_t owner;
+                entity_id_t owner;
                 if constexpr (!filterone_t::isPolymorphic()) {
                     owner = static_cast<EntitySparseSet<primary_t>*>(fom.ptrs[0])->GetOwner(i);
                 }
                 else {
-                    owner = static_cast<SparseSetForPolymorphic*>(fom.ptrs[0])->GetOwnerForDenseIdx(i);
+                    owner = static_cast<SparseSetForPolymorphic*>(fom.ptrs[0])->GetOwnerForDenseIdx(i).id;
                 }
                 if (EntityIsValid(owner)){
                     bool satisfies = DoesEntitySatisfyFilter<filterone_t::isPolymorphic(), A...>(owner, fom.ptrs);
@@ -914,7 +935,7 @@ namespace RavEngine {
                     auto fd = GenFilterData<A...>(fm);
                     auto mainFilter = fd.getMainFilter();
                     FilterOneMode fom(fm, fd.ptrs);
-                    for (entity_t i = 0; i < mainFilter->DenseSize(); i++) {
+                    for (entity_id_t i = 0; i < mainFilter->DenseSize(); i++) {
                         FilterOne<A...>(fom, i);
                     }
                 }(std::type_identity<argtypes_noref>{});

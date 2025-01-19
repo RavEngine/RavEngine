@@ -168,6 +168,18 @@ int Test_SpawnDestroy(){
        assert(fcount == (entities.size() - (iend - ibegin)));
    }
     
+    // test versioning
+    auto gm = w.Instantiate<RavEngine::Entity>();
+    gm.EmplaceComponent<IntComponent>(0);
+    
+    assert(w.CorrectVersion(gm.id));   // entity was not destroyed, so version is fine
+    auto cpy = gm;
+    gm.Destroy();   // gm's ID is set to invalid, but cpy's is not
+    assert(not w.CorrectVersion(cpy.id)); // this handle is stale because the entity was destroyed
+    
+    gm =  w.Instantiate<RavEngine::Entity>();
+    assert(w.CorrectVersion(gm.id));   // entity was recycled, so version is fine
+    
     return 0;
 }
 
@@ -178,12 +190,12 @@ int main(int argc, char** argv) {
         {"Test_AddDel",&Test_AddDel},
         {"Test_SpawnDestroy",&Test_SpawnDestroy},
     };
-	    
-	if (argc < 2){
-		cerr << "No test provided - use ctest" << endl;
-		return -1;
-	}
-	
+
+    if (argc < 2){
+        cerr << "No test provided - use ctest" << endl;
+        return -1;
+    }
+
     auto test = argv[1];
     if (tests.find(test) != tests.end()) {
         RavEngine::App app;

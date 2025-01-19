@@ -54,7 +54,7 @@ class AudioPlayer{
     tf::Future<void> taskflowFuture;
     
     void SetupAudioTaskGraph();
-    std::vector<entity_t> destroyedSources, destroyedMeshComponents;
+    std::vector<entity_id_t> destroyedSources, destroyedMeshComponents;
 
     decltype(AudioSnapshot::dataProviders.begin()) dataProvidersBegin, dataProvidersEnd;
     decltype(AudioSnapshot::ambientSources.begin()) ambientSourcesBegin, ambientSourcesEnd;
