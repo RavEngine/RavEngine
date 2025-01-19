@@ -296,7 +296,9 @@ PhysicsSolver::RaycastHit::RaycastHit(const physx::PxRaycastBuffer& hit, World* 
     hitDistance(hit.block.distance) {
 
     if (hit.hasBlock) {
-        hitObject = {entity_t(uintptr_t(hit.block.actor->userData)),owner};
+        entity_t id;
+        memcpy(&id, &hit.block.actor->userData, sizeof(id));
+        hitObject = {id,owner};
     }
 }
 
