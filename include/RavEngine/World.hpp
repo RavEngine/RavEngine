@@ -465,7 +465,7 @@ namespace RavEngine {
                 return elts.empty();
             }
             
-            PolymorphicIndirection(entity_id_t owner, World* world) : owner(owner), world(world){}
+            PolymorphicIndirection(entity_t owner, World* world) : owner(owner), world(world){}
             
             /**
              Because there are multiple, one cannot simply "get" here.
@@ -515,10 +515,11 @@ namespace RavEngine {
             using const_iterator = typename decltype(dense_set)::const_iterator_type;
             
             template<typename T>
-            inline void Emplace(entity_id_t local_id, World* world){
+            inline void Emplace(entity_t local_id_in, World* world){
+                auto local_id = local_id_in.id;
                 //if a record for this does not exist, create it
                 if (!HasForEntity(local_id)){
-                    dense_set.emplace(local_id,world);
+                    dense_set.emplace(local_id_in,world);
                     if (local_id >= sparse_set.size()){
                         sparse_set.resize(closest_multiple_of<entity_id_t>(local_id+1,2),INVALID_ENTITY);  //ensure there is enough space for this id
                     }
@@ -638,7 +639,7 @@ namespace RavEngine {
                 // polymorphic recordkeep
                 const auto ids = T::GetQueryTypes();
                 for(const auto id : ids){
-                    polymorphicQueryMap[id].template Emplace<T>(local_id.id, this);
+                    polymorphicQueryMap[id].template Emplace<T>(local_id, this);
                 }
             }
 #if !RVE_SERVER

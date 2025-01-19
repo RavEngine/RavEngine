@@ -9,7 +9,7 @@ constexpr entity_id_t INVALID_ENTITY = std::numeric_limits<decltype(INVALID_ENTI
 
 struct EntityHandle{
     entity_id_t id : 24 = INVALID_ENTITY;
-    uint8_t version : 8 = 0;
+    entity_id_t version : 8 = 0;            // MSVC makes the struct the wrong size if we don't do this
     
     bool operator==(const EntityHandle& other) const{
         return id == other.id && version == other.version;
