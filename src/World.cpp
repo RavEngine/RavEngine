@@ -52,6 +52,9 @@ static inline void SetEmpty(typename World::EntitySparseSet<T>::const_iterator& 
 
 void RavEngine::World::Tick(float scale) {
     RVE_PROFILE_FN;
+    if (graphWasModified) {
+        CheckSystems();
+    }
 
     PreTick(scale);
 	
@@ -718,4 +721,8 @@ RavEngine::World::MDICommandBase::~MDICommandBase()
 }
 #endif
 
+void World::CheckSystems() {
 
+
+    graphWasModified = false;
+}

@@ -1017,12 +1017,12 @@ namespace RavEngine {
         
 		constexpr static uint8_t id_size = 8;
 		Ref<Skybox> skybox;
-        
     private:
-      
+        bool graphWasModified = false;
+
         template<bool isSerial, bool polymorphic, typename T, typename ... Args>
         inline auto EmplaceSystemGeneric(Args&& ... args){
-            
+            graphWasModified = true;
             using argtypes = functor_args_t<T>;
             
             return
@@ -1096,9 +1096,10 @@ namespace RavEngine {
                         .preHook = before,
                         .postHook = after
                     };
+
+                    typeToName[CTTI<T>()] = type_name<T>();
                     
-                    typeToSystem[CTTI<T>()] = tasks;
-                    
+                    typeToSystem[CTTI<T>()] = tasks;                    
                     return tasks;
                     
                 }(std::type_identity<argtypes_noref>{},std::forward<Args>(args)...);
@@ -1122,6 +1123,8 @@ namespace RavEngine {
             }).name("Check time");
             condition.precede(task.rangeUpdate);
         }
+
+        void CheckSystems();
         
     public:
         /**
@@ -1150,6 +1153,7 @@ namespace RavEngine {
             }
             
             dependencyLeaf.succeed(dependecyRoot);
+            graphWasModified = true;
         }
      
         /**
@@ -1167,6 +1171,8 @@ namespace RavEngine {
                 ECSTasks.erase(after.value());
             }
             typeToSystem.erase(CTTI<T>());
+
+            // graphWasModified is not set to true here, because removing systems cannot introduce new hazards to an already-safe graph.
         }
         
         /**
@@ -1283,8 +1289,11 @@ namespace RavEngine {
         struct SystemTasks {
             tf::Task rangeUpdate, do_task;
             std::optional<tf::Task>preHook, postHook;
+            std::vector<ctti_t> readDependencies;
+            std::vector<ctti_t> writeDependencies;
         };
         UnorderedMap<ctti_t, SystemTasks> typeToSystem;
+        UnorderedMap<ctti_t, std::string_view> typeToName;
         				
 		void SetupTaskGraph();
 		
