@@ -1099,26 +1099,18 @@ namespace RavEngine {
 
                     typeToName[CTTI<T>()] = type_name<T>();
                     // enter parameter types into tracking structure
-                    auto enterType = []<typename ... A2>(auto&& reads, auto&& writes, auto&& typeToName, A2&& ... _args) {
-
-                        auto inner = [&reads, &writes,&typeToName]<typename T>(T && val) mutable{
-                            using rpT = std::remove_reference_t<T>;
-                            if constexpr (std::is_const_v<rpT>) {
-                                reads.push_back(CTTI<rpT>());
-                            }
-                            else {
-                                writes.push_back(CTTI<rpT>());
-                            }
-                            //typeToName[CTTI<T>()] = type_name<T>();
-                        };
-                        //enterType(reads, writes, typeToName, others...);
-                        (inner(std::forward<A2>(_args)), ...);
+                    constexpr static auto enterType = []<typename pT>(std::vector<ctti_t>&reads, std::vector<ctti_t>&writes, auto & typeToName) {
+                        using rpT = std::remove_reference_t<pT>;
+                        constexpr auto name = type_name<rpT>();
+                        typeToName[CTTI<rpT>()] = name;
+                        if constexpr (std::is_const_v<rpT>) {
+                            reads.push_back(CTTI<rpT>());
+                        }
+                        else {
+                            writes.push_back(CTTI<rpT>());
+                        }
                     };
-                    enterType(tasks.readDependencies, tasks.writeDependencies, typeToName, args...);
-
-                    if constexpr (sizeof ... (args) > 0) {
-                        printf("here");
-                    }
+                    (enterType.operator()<Ts>(tasks.readDependencies, tasks.writeDependencies, typeToName), ...);
                     
                     typeToSystem[CTTI<T>()] = tasks;                    
                     return tasks;
