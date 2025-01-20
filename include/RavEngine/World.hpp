@@ -1098,6 +1098,27 @@ namespace RavEngine {
                     };
 
                     typeToName[CTTI<T>()] = type_name<T>();
+                    // enter parameter types into tracking structure
+                    auto enterType = []<typename ... A2>(auto&& reads, auto&& writes, auto&& typeToName, A2&& ... _args) {
+
+                        auto inner = [&reads, &writes,&typeToName]<typename T>(T && val) mutable{
+                            using rpT = std::remove_reference_t<T>;
+                            if constexpr (std::is_const_v<rpT>) {
+                                reads.push_back(CTTI<rpT>());
+                            }
+                            else {
+                                writes.push_back(CTTI<rpT>());
+                            }
+                            //typeToName[CTTI<T>()] = type_name<T>();
+                        };
+                        //enterType(reads, writes, typeToName, others...);
+                        (inner(std::forward<A2>(_args)), ...);
+                    };
+                    enterType(tasks.readDependencies, tasks.writeDependencies, typeToName, args...);
+
+                    if constexpr (sizeof ... (args) > 0) {
+                        printf("here");
+                    }
                     
                     typeToSystem[CTTI<T>()] = tasks;                    
                     return tasks;
