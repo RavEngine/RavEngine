@@ -722,7 +722,85 @@ RavEngine::World::MDICommandBase::~MDICommandBase()
 #endif
 
 void World::CheckSystems() {
+#if 0
+    auto findTaskOwner = [this](const tf::Task& task) -> std::optional<ctti_t> {
+        for (const auto& [type, task] : typeToSystem) {
+            if (task.do_task == task 
+                || task.postHook == task
+                || task.preHook == task
+                || task.rangeUpdate == task
+                ) {
+                return type;
+            }
+    
+        }
+        return {};
+    };
+#endif
 
+    auto checkTask = [this](const SystemTasks& task1, const SystemTasks& task2) {
+        // check task1 subtree
+        bool dependencyExists = false;
+        task1.rangeUpdate.for_each_successor([&task2,&dependencyExists](tf::Task successor1) {
+            // are any of Task 2's tasks in Task 1's subtree?
+            if (successor1 == task2.do_task) {
+                dependencyExists = true;
+            }
+        });
+
+        // check task2 subtree
+        task2.rangeUpdate.for_each_successor([&task1, &dependencyExists](tf::Task successor2) {
+            if (successor2 == task1.do_task) {
+                dependencyExists = true;
+            }
+        });
+
+        // if there is a dependency, then we know these two systems
+        // cannot run at the same time, so we don't need to check them.
+        if (dependencyExists) {
+            return;
+        }
+
+        // if there is not a dependency, then these systems could execute
+        // in parallel so we must check them.
+
+        // check 1: do the queries overlap (can the systems operate on the same entities at the same time). 
+        // If they do not, then these systems are safe to run in parallel.
+        // A overlaps with B if all of the component types in A's query are in B's query and A does not have query types unique to it
+        auto checkOverlap = [](const SystemTasks& A, const SystemTasks& B) -> bool {
+            uint32_t overlapCount = 0;
+            for (const auto id : A.readDependencies) {
+                if (std::find(B.readDependencies.begin(), B.readDependencies.end(), id) != B.readDependencies.end()) {
+                    overlapCount++;
+                }
+                if (std::find(B.writeDependencies.begin(), B.writeDependencies.end(), id) != B.writeDependencies.end()) {
+                    overlapCount++;
+                }
+            }
+            if (overlapCount == A.readDependencies.size() + A.writeDependencies.size()) {
+                // overlap detected!
+                return true;
+            }
+            return false;
+        };
+        bool overlap = checkOverlap(task1, task2) || checkOverlap(task2, task1);
+
+        // if there's no overlap, these are fine to run in parallel.
+        if (!overlap) {
+            return;
+        }
+
+        // check 2: For the overlap, is one system reading to a component type that the other is writing to?
+    };
+
+    for (const auto& [type,task] : typeToSystem) {
+        for (const auto& [type2, task2] : typeToSystem) {
+            if (type == type2) {
+                continue;
+            }
+            checkTask(task, task2);
+        }
+    }
 
     graphWasModified = false;
 }
