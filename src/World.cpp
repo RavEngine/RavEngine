@@ -37,6 +37,7 @@
     #include "Transform.hpp"
 #endif
 #include "PhysicsBodyComponent.hpp"
+#include "CaseAnalysis.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -737,8 +738,12 @@ void World::CheckSystems() {
         return {};
     };
 #endif
+    struct CheckTaskPassed {};
+    struct CheckTaskHooksFailure{};
+    struct CheckTasksQueryFailure { ctti_t conflict; };
+    using CheckTaskResult = std::variant<CheckTaskPassed, CheckTaskHooksFailure, CheckTasksQueryFailure>;
 
-    auto checkTask = [this](const SystemTasks& task1, const SystemTasks& task2) -> std::optional<ctti_t> {
+    auto checkTask = [this](const SystemTasks& task1, const SystemTasks& task2) -> CheckTaskResult {
         // check task1 subtree
         bool dependencyExists = false;
         task1.rangeUpdate.for_each_successor([&task2,&dependencyExists](tf::Task successor1) {
@@ -758,11 +763,17 @@ void World::CheckSystems() {
         // if there is a dependency, then we know these two systems
         // cannot run at the same time, so we don't need to check them.
         if (dependencyExists) {
-            return {};
+            return CheckTaskPassed{};
         }
 
         // if there is not a dependency, then these systems could execute
         // in parallel so we must check them.
+
+        // check 0: does one of the systems have a pre or post hook? if it does, this situation
+        // is unsafe because the hooks have arbitrary world access.
+        if (task1.preHook.has_value() || task1.postHook.has_value() || task2.preHook.has_value() || task2.postHook.has_value()) {
+            return CheckTaskHooksFailure{};
+        }
 
         // check 1: do the queries overlap (can the systems operate on the same entities at the same time). 
         // If they do not, then these systems are safe to run in parallel.
@@ -799,7 +810,7 @@ void World::CheckSystems() {
 
         // if there's no overlap, these are fine to run in parallel.
         if (!overlap) {
-            return {};
+            return CheckTaskPassed{};
         }
 
         // check 2: For the overlap, is B reading or writing a component type that A is writing to?
@@ -818,12 +829,12 @@ void World::CheckSystems() {
         auto res_b = checkWriteOverlap(task2, task1);
 
         if (auto id = res_a) {
-            return id;
+            return CheckTasksQueryFailure{ id.value()};
         }
         if (auto id = res_b) {
-            return id;
+            return CheckTasksQueryFailure{id.value()};
         }
-        return {};
+        return CheckTaskPassed{};
     };
 
     for (const auto& [type,task] : typeToSystem) {
@@ -833,12 +844,22 @@ void World::CheckSystems() {
             if (type == type2) {
                 continue;
             }
-            if (auto conflict = checkTask(task, task2)) {
-                ExportTaskGraph(std::cout);
-               
-                auto typeName = typeToName.at(conflict.value());
-                Debug::Fatal("{} and {} access {} in an unsafe way!", sysName1, sysName2, typeName);
-            }
+            auto result = checkTask(task, task2);
+
+            std::visit(
+                CaseAnalysis{
+                    [](const CheckTaskPassed&) {},
+                    [&sysName1,&sysName2](const CheckTaskHooksFailure&) {
+                        Debug::Fatal("{} and {} require an explicit dependency because one or both contains a pre or post hook", sysName1, sysName2);
+                    },
+                    [this,&sysName1,&sysName2](const CheckTasksQueryFailure& info) {
+                        ExportTaskGraph(std::cout);
+                        auto typeName = typeToName.at(info.conflict);
+                        Debug::Fatal("{} and {} access {} in an unsafe way!", sysName1, sysName2, typeName);
+                    },
+                },
+                result);
+
         }
     }
 

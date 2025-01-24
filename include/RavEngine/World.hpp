@@ -1078,14 +1078,14 @@ namespace RavEngine {
                             before.emplace(ECSTasks.emplace([fom, this] {
                                 fom.fm.f.before(this);
                             }).name(Format("{}::before()", type_name<T>().data())));
-                            range_update.precede(before);
-                            do_task.succeed(before);
+                            range_update.precede(before.value());
+                            do_task.succeed(before.value());
                         }
                         if constexpr (SystemHasAfter<T>) {
                             after.emplace(ECSTasks.emplace([fom, this] {
                                 fom.fm.f.after(this);
                             }).name(Format("{}::after()", type_name<T>().data())));
-                            do_task.precede(after);
+                            do_task.precede(after.value());
                         }
                     }
                     

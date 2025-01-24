@@ -273,6 +273,32 @@ int Test_CheckGraph() {
             return 1;
         }
     }
+    {
+        World w;
+        struct Test4System1 {
+            void operator()(const Foo&) {}
+            void before(World* w) const {}
+        };
+        struct Test4System2 {
+            void operator()(const Bar&) {}
+            void after(World* w) const {}
+        };
+
+        w.EmplaceSystem<Test4System1>();
+        w.EmplaceSystem<Test4System2>();
+
+        bool caughtProblem = false;
+        try {
+            w.Tick(1);
+        }
+        catch (std::exception& e) {
+            caughtProblem = true;
+        }
+        if (!caughtProblem) {
+            cout << "CheckGraph pre-post-hook did not catch this problem when it should have" << std::endl;
+            return 1;
+        }
+    }
 
     return 0;
 }
