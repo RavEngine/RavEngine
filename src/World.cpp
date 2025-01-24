@@ -767,16 +767,28 @@ void World::CheckSystems() {
         // check 1: do the queries overlap (can the systems operate on the same entities at the same time). 
         // If they do not, then these systems are safe to run in parallel.
         // A overlaps with B if all of the component types in A's query are in B's query and A does not have query types unique to it
-        auto checkOverlap = [](const SystemTasks& A, const SystemTasks& B) -> bool {
+        auto checkOverlap = [this](const SystemTasks& A, const SystemTasks& B) -> bool {
             uint32_t overlapCount = 0;
-            for (const auto id : A.readDependencies) {
-                if (std::find(B.readDependencies.begin(), B.readDependencies.end(), id) != B.readDependencies.end()) {
-                    overlapCount++;
+            UnorderedSet<ctti_t> alreadyTested;
+            const auto testSet = [&alreadyTested,&overlapCount,&B, this](auto&& dependencies) {
+                for (const auto id : dependencies) {  
+                    const auto lookingFor = typeToName.at(id);
+                    auto testDeplist = [&alreadyTested,&overlapCount](auto&& dependenciesList, ctti_t id) {
+                        if (std::find(dependenciesList.begin(), dependenciesList.end(), id) != dependenciesList.end()) {
+                            if (not alreadyTested.contains(id)) {
+                                //continue;
+                                overlapCount++;
+                                alreadyTested.insert(id);
+                            }
+                        }
+                    };
+                    testDeplist(B.readDependencies, id);
+                    testDeplist(B.writeDependencies, id);
                 }
-                if (std::find(B.writeDependencies.begin(), B.writeDependencies.end(), id) != B.writeDependencies.end()) {
-                    overlapCount++;
-                }
-            }
+            };
+            testSet(A.readDependencies);
+            testSet(A.writeDependencies);
+            
             if (overlapCount == A.readDependencies.size() + A.writeDependencies.size()) {
                 // overlap detected!
                 return true;

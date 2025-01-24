@@ -1,3 +1,4 @@
+#define RVE_TESTING_ACCESS 1
 #include <RavEngine/CTTI.hpp>
 #include <RavEngine/World.hpp>
 #include <RavEngine/Entity.hpp>
@@ -190,22 +191,22 @@ int Test_CheckGraph() {
     {
         World w;
 
-        struct System1 {
+        struct Test1System1 {
             void operator()(const Foo&, const Bar&, const C&) {
 
             }
         };
 
-        struct System2 {
+        struct Test1System2 {
             void operator()(const Foo&, const Bar&, const C&) {
 
             }
         };
 
-        static_assert(CTTI<System1>() != CTTI<System2>(), "Different type names produce the same ID!");
+        static_assert(CTTI<Test1System1>() != CTTI<Test1System2>(), "Different type names produce the same ID!");
 
-        w.EmplaceSystem<System1>();
-        w.EmplaceSystem<System2>();
+        w.EmplaceSystem<Test1System1>();
+        w.EmplaceSystem<Test1System2>();
         try {
             w.Tick(1);
         }
@@ -217,20 +218,48 @@ int Test_CheckGraph() {
     }
     {
         World w;
+        struct Test3System1 {
+            void operator()(const Bar&) {}
+        };
+        struct Test3System2 {
+            void operator()(Bar&) {}
+        };
+        w.EmplaceSystem<Test3System1>();
+        w.EmplaceSystem<Test3System2>();
+
+        static_assert(CTTI<const Bar&>() == CTTI<Bar&>(), "Const ref and non-const ref have different IDs");
+        static_assert(CTTI<const Bar>() != CTTI<Bar>(), "Const value and non-const value have the same IDs");
+        static_assert(CTTI<Bar&>() != CTTI<Bar>(), "Reference and value have the same ID");
+
+        const auto& tasks1 = w.getTypeToSystem().at(CTTI<Test3System1>());
+        const auto& tasks2 = w.getTypeToSystem().at(CTTI<Test3System2>());
+
+        if (tasks1.readDependencies[0] != tasks2.writeDependencies[0]) {
+            cout << "Different IDs generated for the same type!" << std::endl;
+            return 1;
+        }
+    }
+    {
+        World w;
         // these are unsafe A is wholly contained within B and there is a read-write conflict
-        struct System1{
-            void operator()(const Foo&, Bar&) {
+        struct Test2System1{
+            void operator()(const Foo&, Bar&) {             // 1 read, 1 write
 
             }
         };
 
-        struct System2 {
-            void operator()(const Foo&, const Bar&, const C&) {
+        struct Test2System2 {
+            void operator()(const Foo&, const Bar&, const C&) { // 3 reads
 
             }
         };
-        w.EmplaceSystem<System1>();
-        w.EmplaceSystem<System2>();
+        static_assert(CTTI<Test2System1>() != CTTI<Test2System2>(), "Different type names produce the same ID!");
+
+        w.EmplaceSystem<Test2System1>();
+        w.EmplaceSystem<Test2System2>();
+
+        auto type1 = CTTI<Test2System1>();
+        auto type2 = CTTI<Test2System2>();
         
         bool caughtProblem = false;
         try {

@@ -24,6 +24,7 @@
 #else
     #include "Ref.hpp"
 #endif
+#include "Debug.hpp"
 #include "Function.hpp"
 #include "Utilities.hpp"
 #include "CallableTraits.hpp"
@@ -1096,15 +1097,21 @@ namespace RavEngine {
                         .preHook = before,
                         .postHook = after
                     };
-
+                    if (typeToName.contains(CTTI<T>())) {
+                        Debug::Fatal("System {}/{} has already been loaded!",CTTI<T>(),type_name<T>());
+                    };
                     typeToName[CTTI<T>()] = type_name<T>();
                     // enter parameter types into tracking structure
                     constexpr static auto enterType = []<typename pT>(std::vector<ctti_t>&reads, std::vector<ctti_t>&writes, auto & typeToName) {
                         using rpT = std::remove_reference_t<pT>;
                         constexpr auto name = type_name<rpT>();
+                        constexpr auto name_system = type_name<T>();
                         constexpr auto id = CTTI<rpT>();
-                        typeToName[CTTI<rpT>()] = name;
+                        typeToName[id] = name;
                         if constexpr (std::is_const_v<rpT>) {
+                            using nc_rpT = std::remove_const_t<rpT>;
+                            constexpr auto id = CTTI<nc_rpT>();
+                            typeToName[id] = name;
                             reads.push_back(id);
                         }
                         else {
@@ -1267,6 +1274,9 @@ namespace RavEngine {
             return EmplaceTimedSystemGeneric<true, true, T>(interval, std::forward<Args>(args)...);
         }
         
+        const auto& getTypeToSystem() const {
+            return typeToSystem;
+        }
 	private:
 		std::atomic<bool> isRendering = false;
         char worldIDbuf [id_size]{0};
