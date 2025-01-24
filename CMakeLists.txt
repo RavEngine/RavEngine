@@ -770,6 +770,7 @@ if (RAVENGINE_BUILD_TESTS)
 		test("Test_UUID" "${PROJECT_NAME}_TestBasics")
 		test("Test_AddDel" "${PROJECT_NAME}_TestBasics")
 		test("Test_SpawnDestroy" "${PROJECT_NAME}_TestBasics")
+		test("Test_CheckGraph" "${PROJECT_NAME}_TestBasics")
 	endif()
 
 	# dummy app

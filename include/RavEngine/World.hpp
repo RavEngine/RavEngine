@@ -1102,12 +1102,13 @@ namespace RavEngine {
                     constexpr static auto enterType = []<typename pT>(std::vector<ctti_t>&reads, std::vector<ctti_t>&writes, auto & typeToName) {
                         using rpT = std::remove_reference_t<pT>;
                         constexpr auto name = type_name<rpT>();
+                        constexpr auto id = CTTI<rpT>();
                         typeToName[CTTI<rpT>()] = name;
                         if constexpr (std::is_const_v<rpT>) {
-                            reads.push_back(CTTI<rpT>());
+                            reads.push_back(id);
                         }
                         else {
-                            writes.push_back(CTTI<rpT>());
+                            writes.push_back(id);
                         }
                     };
                     (enterType.operator()<Ts>(tasks.readDependencies, tasks.writeDependencies, typeToName), ...);

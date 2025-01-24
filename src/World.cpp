@@ -816,13 +816,14 @@ void World::CheckSystems() {
 
     for (const auto& [type,task] : typeToSystem) {
         for (const auto& [type2, task2] : typeToSystem) {
+            auto sysName1 = typeToName.at(type);
+            auto sysName2 = typeToName.at(type2);
             if (type == type2) {
                 continue;
             }
             if (auto conflict = checkTask(task, task2)) {
                 ExportTaskGraph(std::cout);
-                auto sysName1 = typeToName.at(type);
-                auto sysName2 = typeToName.at(type2);
+               
                 auto typeName = typeToName.at(conflict.value());
                 Debug::Fatal("{} and {} access {} in an unsafe way!", sysName1, sysName2, typeName);
             }

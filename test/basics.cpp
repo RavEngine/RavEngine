@@ -183,12 +183,78 @@ int Test_SpawnDestroy(){
     return 0;
 }
 
+int Test_CheckGraph() {
+    struct Foo {};
+    struct Bar {};
+    struct C {};
+    {
+        World w;
+
+        struct System1 {
+            void operator()(const Foo&, const Bar&, const C&) {
+
+            }
+        };
+
+        struct System2 {
+            void operator()(const Foo&, const Bar&, const C&) {
+
+            }
+        };
+
+        static_assert(CTTI<System1>() != CTTI<System2>(), "Different type names produce the same ID!");
+
+        w.EmplaceSystem<System1>();
+        w.EmplaceSystem<System2>();
+        try {
+            w.Tick(1);
+        }
+        catch (std::exception& s) {
+            // this shouldn't hit, these 
+            cout << "CheckGraph all-const errored when it should not have" << std::endl;
+            return 1;
+        }
+    }
+    {
+        World w;
+        // these are unsafe A is wholly contained within B and there is a read-write conflict
+        struct System1{
+            void operator()(const Foo&, Bar&) {
+
+            }
+        };
+
+        struct System2 {
+            void operator()(const Foo&, const Bar&, const C&) {
+
+            }
+        };
+        w.EmplaceSystem<System1>();
+        w.EmplaceSystem<System2>();
+        
+        bool caughtProblem = false;
+        try {
+            w.Tick(1);
+        }
+        catch (std::exception& e) {
+            caughtProblem = true;
+        }
+        if (!caughtProblem) {
+            cout << "CheckGraph write-read did not catch this problem when it should have" << std::endl;
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 int main(int argc, char** argv) {
     const unordered_map<std::string_view, std::function<int(void)>> tests{
 		{"CTTI",&Test_CTTI},
         {"Test_UUID",&Test_UUID},
         {"Test_AddDel",&Test_AddDel},
         {"Test_SpawnDestroy",&Test_SpawnDestroy},
+        {"Test_CheckGraph",&Test_CheckGraph},
     };
 
     if (argc < 2){
