@@ -24,6 +24,7 @@
 #else
     #include "Ref.hpp"
 #endif
+#include "Debug.hpp"
 #include "Function.hpp"
 #include "Utilities.hpp"
 #include "CallableTraits.hpp"
@@ -1017,12 +1018,12 @@ namespace RavEngine {
         
 		constexpr static uint8_t id_size = 8;
 		Ref<Skybox> skybox;
-        
     private:
-      
+        bool graphWasModified = false;
+
         template<bool isSerial, bool polymorphic, typename T, typename ... Args>
         inline auto EmplaceSystemGeneric(Args&& ... args){
-            
+            graphWasModified = true;
             using argtypes = functor_args_t<T>;
             
             return
@@ -1077,14 +1078,14 @@ namespace RavEngine {
                             before.emplace(ECSTasks.emplace([fom, this] {
                                 fom.fm.f.before(this);
                             }).name(Format("{}::before()", type_name<T>().data())));
-                            range_update.precede(before);
-                            do_task.succeed(before);
+                            range_update.precede(before.value());
+                            do_task.succeed(before.value());
                         }
                         if constexpr (SystemHasAfter<T>) {
                             after.emplace(ECSTasks.emplace([fom, this] {
                                 fom.fm.f.after(this);
                             }).name(Format("{}::after()", type_name<T>().data())));
-                            do_task.precede(after);
+                            do_task.precede(after.value());
                         }
                     }
                     
@@ -1096,9 +1097,30 @@ namespace RavEngine {
                         .preHook = before,
                         .postHook = after
                     };
+                    if (typeToName.contains(CTTI<T>())) {
+                        Debug::Fatal("System {}/{} has already been loaded!",CTTI<T>(),type_name<T>());
+                    };
+                    typeToName[CTTI<T>()] = type_name<T>();
+                    // enter parameter types into tracking structure
+                    constexpr static auto enterType = []<typename pT>(std::vector<ctti_t>&reads, std::vector<ctti_t>&writes, auto & typeToName) {
+                        using rpT = std::remove_reference_t<pT>;
+                        constexpr auto name = type_name<rpT>();
+                        constexpr auto name_system = type_name<T>();
+                        constexpr auto id = CTTI<rpT>();
+                        typeToName[id] = name;
+                        if constexpr (std::is_const_v<rpT>) {
+                            using nc_rpT = std::remove_const_t<rpT>;
+                            constexpr auto id = CTTI<nc_rpT>();
+                            typeToName[id] = name;
+                            reads.push_back(id);
+                        }
+                        else {
+                            writes.push_back(id);
+                        }
+                    };
+                    (enterType.template operator()<Ts>(tasks.readDependencies, tasks.writeDependencies, typeToName), ...);
                     
-                    typeToSystem[CTTI<T>()] = tasks;
-                    
+                    typeToSystem[CTTI<T>()] = tasks;                    
                     return tasks;
                     
                 }(std::type_identity<argtypes_noref>{},std::forward<Args>(args)...);
@@ -1122,6 +1144,8 @@ namespace RavEngine {
             }).name("Check time");
             condition.precede(task.rangeUpdate);
         }
+
+        void CheckSystems();
         
     public:
         /**
@@ -1150,6 +1174,7 @@ namespace RavEngine {
             }
             
             dependencyLeaf.succeed(dependecyRoot);
+            graphWasModified = true;
         }
      
         /**
@@ -1167,6 +1192,8 @@ namespace RavEngine {
                 ECSTasks.erase(after.value());
             }
             typeToSystem.erase(CTTI<T>());
+
+            // graphWasModified is not set to true here, because removing systems cannot introduce new hazards to an already-safe graph.
         }
         
         /**
@@ -1247,6 +1274,9 @@ namespace RavEngine {
             return EmplaceTimedSystemGeneric<true, true, T>(interval, std::forward<Args>(args)...);
         }
         
+        const auto& getTypeToSystem() const {
+            return typeToSystem;
+        }
 	private:
 		std::atomic<bool> isRendering = false;
         char worldIDbuf [id_size]{0};
@@ -1283,8 +1313,11 @@ namespace RavEngine {
         struct SystemTasks {
             tf::Task rangeUpdate, do_task;
             std::optional<tf::Task>preHook, postHook;
+            std::vector<ctti_t> readDependencies;
+            std::vector<ctti_t> writeDependencies;
         };
         UnorderedMap<ctti_t, SystemTasks> typeToSystem;
+        UnorderedMap<ctti_t, std::string_view> typeToName;
         				
 		void SetupTaskGraph();
 		

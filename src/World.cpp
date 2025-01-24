@@ -37,6 +37,7 @@
     #include "Transform.hpp"
 #endif
 #include "PhysicsBodyComponent.hpp"
+#include "CaseAnalysis.hpp"
 
 using namespace std;
 using namespace RavEngine;
@@ -52,6 +53,9 @@ static inline void SetEmpty(typename World::EntitySparseSet<T>::const_iterator& 
 
 void RavEngine::World::Tick(float scale) {
     RVE_PROFILE_FN;
+    if (graphWasModified) {
+        CheckSystems();
+    }
 
     PreTick(scale);
 	
@@ -718,4 +722,146 @@ RavEngine::World::MDICommandBase::~MDICommandBase()
 }
 #endif
 
+void World::CheckSystems() {
+#if 0
+    auto findTaskOwner = [this](const tf::Task& task) -> std::optional<ctti_t> {
+        for (const auto& [type, task] : typeToSystem) {
+            if (task.do_task == task 
+                || task.postHook == task
+                || task.preHook == task
+                || task.rangeUpdate == task
+                ) {
+                return type;
+            }
+    
+        }
+        return {};
+    };
+#endif
+    struct CheckTaskPassed {};
+    struct CheckTaskHooksFailure{};
+    struct CheckTasksQueryFailure { ctti_t conflict; };
+    using CheckTaskResult = std::variant<CheckTaskPassed, CheckTaskHooksFailure, CheckTasksQueryFailure>;
 
+    auto checkTask = [this](const SystemTasks& task1, const SystemTasks& task2) -> CheckTaskResult {
+        // check task1 subtree
+        bool dependencyExists = false;
+        task1.rangeUpdate.for_each_successor([&task2,&dependencyExists](tf::Task successor1) {
+            // are any of Task 2's tasks in Task 1's subtree?
+            if (successor1 == task2.do_task) {
+                dependencyExists = true;
+            }
+        });
+
+        // check task2 subtree
+        task2.rangeUpdate.for_each_successor([&task1, &dependencyExists](tf::Task successor2) {
+            if (successor2 == task1.do_task) {
+                dependencyExists = true;
+            }
+        });
+
+        // if there is a dependency, then we know these two systems
+        // cannot run at the same time, so we don't need to check them.
+        if (dependencyExists) {
+            return CheckTaskPassed{};
+        }
+
+        // if there is not a dependency, then these systems could execute
+        // in parallel so we must check them.
+
+        // check 0: does one of the systems have a pre or post hook? if it does, this situation
+        // is unsafe because the hooks have arbitrary world access.
+        if (task1.preHook.has_value() || task1.postHook.has_value() || task2.preHook.has_value() || task2.postHook.has_value()) {
+            return CheckTaskHooksFailure{};
+        }
+
+        // check 1: do the queries overlap (can the systems operate on the same entities at the same time). 
+        // If they do not, then these systems are safe to run in parallel.
+        // A overlaps with B if all of the component types in A's query are in B's query and A does not have query types unique to it
+        auto checkOverlap = [this](const SystemTasks& A, const SystemTasks& B) -> bool {
+            uint32_t overlapCount = 0;
+            UnorderedSet<ctti_t> alreadyTested;
+            const auto testSet = [&alreadyTested,&overlapCount,&B, this](auto&& dependencies) {
+                for (const auto id : dependencies) {  
+                    const auto lookingFor = typeToName.at(id);
+                    auto testDeplist = [&alreadyTested,&overlapCount](auto&& dependenciesList, ctti_t id) {
+                        if (std::find(dependenciesList.begin(), dependenciesList.end(), id) != dependenciesList.end()) {
+                            if (not alreadyTested.contains(id)) {
+                                //continue;
+                                overlapCount++;
+                                alreadyTested.insert(id);
+                            }
+                        }
+                    };
+                    testDeplist(B.readDependencies, id);
+                    testDeplist(B.writeDependencies, id);
+                }
+            };
+            testSet(A.readDependencies);
+            testSet(A.writeDependencies);
+            
+            if (overlapCount == A.readDependencies.size() + A.writeDependencies.size()) {
+                // overlap detected!
+                return true;
+            }
+            return false;
+        };
+        bool overlap = checkOverlap(task1, task2) || checkOverlap(task2, task1);
+
+        // if there's no overlap, these are fine to run in parallel.
+        if (!overlap) {
+            return CheckTaskPassed{};
+        }
+
+        // check 2: For the overlap, is B reading or writing a component type that A is writing to?
+        auto checkWriteOverlap = [](const SystemTasks& A, const SystemTasks& B) -> std::optional<ctti_t> {
+            for (const auto& id : A.writeDependencies) {
+                if (std::find(B.readDependencies.begin(), B.readDependencies.end(), id) != B.readDependencies.end()) {
+                    return id;
+                }
+                if (std::find(B.readDependencies.begin(), B.readDependencies.end(), id) != B.readDependencies.end()) {
+                    return id;
+                }
+            }
+            return {};
+        };
+        auto res_a = checkWriteOverlap(task1, task2);
+        auto res_b = checkWriteOverlap(task2, task1);
+
+        if (auto id = res_a) {
+            return CheckTasksQueryFailure{ id.value()};
+        }
+        if (auto id = res_b) {
+            return CheckTasksQueryFailure{id.value()};
+        }
+        return CheckTaskPassed{};
+    };
+
+    for (const auto& [type,task] : typeToSystem) {
+        for (const auto& [type2, task2] : typeToSystem) {
+            auto sysName1 = typeToName.at(type);
+            auto sysName2 = typeToName.at(type2);
+            if (type == type2) {
+                continue;
+            }
+            auto result = checkTask(task, task2);
+
+            std::visit(
+                CaseAnalysis{
+                    [](const CheckTaskPassed&) {},
+                    [&sysName1,&sysName2](const CheckTaskHooksFailure&) {
+                        Debug::Fatal("{} and {} require an explicit dependency because one or both contains a pre or post hook", sysName1, sysName2);
+                    },
+                    [this,&sysName1,&sysName2](const CheckTasksQueryFailure& info) {
+                        ExportTaskGraph(std::cout);
+                        auto typeName = typeToName.at(info.conflict);
+                        Debug::Fatal("{} and {} access {} in an unsafe way!", sysName1, sysName2, typeName);
+                    },
+                },
+                result);
+
+        }
+    }
+
+    graphWasModified = false;
+}

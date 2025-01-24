@@ -27,19 +27,19 @@ consteval uint64_t Hash64_CT( const char * str, size_t n, uint64_t basis = uint_
 }
 template< size_t N >
 consteval uint32_t Hash32_CT( const char ( &s )[ N ] ) {
-        return Hash32_CT( s, N - 1 );
+        return Hash32_CT( s, N);
 }
 template< size_t N >
 consteval uint64_t Hash64_CT( const char ( &s )[ N ] ) {
-        return Hash64_CT( s, N - 1 );
+        return Hash64_CT( s, N);
 }
 
 consteval uint32_t Hash32_CT(const std::string_view& v) {
-    return Hash32_CT(v.data(), v.size() - 1);
+    return Hash32_CT(v.data(), v.size());
 }
 
 consteval uint64_t Hash64_CT(const std::string_view& v) {
-    return Hash64_CT(v.data(), v.size() - 1);
+    return Hash64_CT(v.data(), v.size());
 }
 
 // Type name extraction 
