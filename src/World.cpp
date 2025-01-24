@@ -738,7 +738,7 @@ void World::CheckSystems() {
     };
 #endif
 
-    auto checkTask = [this](const SystemTasks& task1, const SystemTasks& task2) {
+    auto checkTask = [this](const SystemTasks& task1, const SystemTasks& task2) -> std::optional<ctti_t> {
         // check task1 subtree
         bool dependencyExists = false;
         task1.rangeUpdate.for_each_successor([&task2,&dependencyExists](tf::Task successor1) {
@@ -758,7 +758,7 @@ void World::CheckSystems() {
         // if there is a dependency, then we know these two systems
         // cannot run at the same time, so we don't need to check them.
         if (dependencyExists) {
-            return;
+            return {};
         }
 
         // if there is not a dependency, then these systems could execute
@@ -787,10 +787,31 @@ void World::CheckSystems() {
 
         // if there's no overlap, these are fine to run in parallel.
         if (!overlap) {
-            return;
+            return {};
         }
 
-        // check 2: For the overlap, is one system reading to a component type that the other is writing to?
+        // check 2: For the overlap, is B reading or writing a component type that A is writing to?
+        auto checkWriteOverlap = [](const SystemTasks& A, const SystemTasks& B) -> std::optional<ctti_t> {
+            for (const auto& id : A.writeDependencies) {
+                if (std::find(B.readDependencies.begin(), B.readDependencies.end(), id) != B.readDependencies.end()) {
+                    return id;
+                }
+                if (std::find(B.readDependencies.begin(), B.readDependencies.end(), id) != B.readDependencies.end()) {
+                    return id;
+                }
+            }
+            return {};
+        };
+        auto res_a = checkWriteOverlap(task1, task2);
+        auto res_b = checkWriteOverlap(task2, task1);
+
+        if (auto id = res_a) {
+            return id;
+        }
+        if (auto id = res_b) {
+            return id;
+        }
+        return {};
     };
 
     for (const auto& [type,task] : typeToSystem) {
@@ -798,7 +819,13 @@ void World::CheckSystems() {
             if (type == type2) {
                 continue;
             }
-            checkTask(task, task2);
+            if (auto conflict = checkTask(task, task2)) {
+                ExportTaskGraph(std::cout);
+                auto sysName1 = typeToName.at(type);
+                auto sysName2 = typeToName.at(type2);
+                auto typeName = typeToName.at(conflict.value());
+                Debug::Fatal("{} and {} access {} in an unsafe way!", sysName1, sysName2, typeName);
+            }
         }
     }
 
