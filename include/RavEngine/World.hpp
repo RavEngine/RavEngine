@@ -1118,7 +1118,7 @@ namespace RavEngine {
                             writes.push_back(id);
                         }
                     };
-                    (enterType.operator()<Ts>(tasks.readDependencies, tasks.writeDependencies, typeToName), ...);
+                    (enterType.template operator()<Ts>(tasks.readDependencies, tasks.writeDependencies, typeToName), ...);
                     
                     typeToSystem[CTTI<T>()] = tasks;                    
                     return tasks;
