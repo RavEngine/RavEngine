@@ -117,7 +117,12 @@ namespace RavEngine {
 
     // if the System does not need Engine data, 
     // the FuncMode will default to this type
-    struct DataProviderNone{};
+    struct DataProviderNone {};
+
+    template <typename T>
+    concept IsEngineDataProvider = 
+        (std::is_convertible_v<T, WorldDataProvider> || std::is_convertible_v<T, ValidatorProvider>) 
+        && not (std::is_convertible_v<T, DataProviderNone>);
 
 	class World : public std::enable_shared_from_this<World> {
 		friend class AudioPlayer;
@@ -1049,16 +1054,19 @@ namespace RavEngine {
         inline auto EmplaceSystemGeneric(Args&& ... args){
             graphWasModified = true;
             using argtypes = functor_args_t<T>;
+
+
             
             return
             // step 1: get it as types
-            [this]<typename... Ts>(std::type_identity<std::tuple<Ts...>>, auto&& ... args) -> auto
+            [this]<typename T1, typename... Ts>(std::type_identity<std::tuple<T1, Ts...>>, auto&& ... args) -> auto
             {
-                using argtypes_noref = std::tuple<remove_polymorphic_arg_t<std::remove_const_t<std::remove_reference_t<Ts>>>...>;
+                using argtypes_noref_noDP = std::tuple<remove_polymorphic_arg_t<std::remove_const_t<std::remove_reference_t<T1>>>,remove_polymorphic_arg_t<std::remove_const_t<std::remove_reference_t<Ts>>>...>;
+                using argtypes_noref_DP = std::tuple<remove_polymorphic_arg_t<std::remove_const_t<std::remove_reference_t<Ts>>>...>;
                 // step 2: get it as non-reference types, and slice off the first argument
-                // because it's a float and we don't want it
-                return
-                [this]<typename ... A>(std::type_identity<std::tuple<A...>>, auto&& ... args) -> auto
+                // if it is an engine data provider
+                
+                auto innerfn = [this]<typename ... A, typename ... OrigTs>(std::type_identity<std::tuple<A...>>, std::type_identity<std::tuple<OrigTs...>>, auto&& ... args) -> auto
                 {
                     
                     // use `A...` here
@@ -1142,12 +1150,20 @@ namespace RavEngine {
                             writes.push_back(id);
                         }
                     };
-                    (enterType.template operator()<Ts>(tasks.readDependencies, tasks.writeDependencies, typeToName), ...);
+                    (enterType.template operator()<OrigTs>(tasks.readDependencies, tasks.writeDependencies, typeToName), ...);
                     
                     typeToSystem[CTTI<T>()] = tasks;                    
                     return tasks;
                     
-                }(std::type_identity<argtypes_noref>{},std::forward<Args>(args)...);
+                };
+                // based on if the system needs a dataprovider as arg 0
+                if constexpr (IsEngineDataProvider<T1>) {
+                    return innerfn(std::type_identity<argtypes_noref_DP>{}, std::type_identity<std::tuple<Ts...>>{}, std::forward<Args>(args)...);
+                }
+                else {
+                    return innerfn(std::type_identity<argtypes_noref_noDP>{}, std::type_identity<std::tuple<T1, Ts...>>{}, std::forward<Args>(args)...);
+                }
+                
             }(std::type_identity<argtypes>{}, std::forward<Args>(args)...);
         }
         
