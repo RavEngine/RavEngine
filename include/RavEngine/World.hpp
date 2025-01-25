@@ -829,7 +829,7 @@ namespace RavEngine {
             using DataProvider_t = DataProviderType;
             funcmode_t& fm;
             const std::array<void*,n_types>& ptrs;
-            FilterOneMode(funcmode_t& fm_i, const std::array<void*,n_types>& ptrs_i) : fm(fm_i),ptrs(ptrs_i){}
+            FilterOneMode(funcmode_t& fm_i, const std::array<void*,n_types>& ptrs_i, const DataProviderType) : fm(fm_i),ptrs(ptrs_i){}
             static constexpr decltype(n_types) nTypes(){
                 return n_types;
             }
@@ -844,7 +844,7 @@ namespace RavEngine {
             using DataProvider_t = DataProviderType;
             funcmode_t fm;
             const std::array<void*,n_types> ptrs;
-            FilterOneModeCopy(const funcmode_t& fm_i, const std::array<void*,n_types>& ptrs_i) : fm(fm_i),ptrs(ptrs_i){}
+            FilterOneModeCopy(const funcmode_t& fm_i, const std::array<void*, n_types>& ptrs_i, const DataProviderType) : fm(fm_i), ptrs(ptrs_i) {}
             static constexpr decltype(n_types) nTypes(){
                 return n_types;
             }
@@ -964,7 +964,7 @@ namespace RavEngine {
                 {
                     auto fd = GenFilterData<A...>(fm);
                     auto mainFilter = fd.getMainFilter();
-                    FilterOneMode fom(fm, fd.ptrs);
+                    FilterOneMode fom(fm, fd.ptrs, DataProviderNone{});
                     for (entity_id_t i = 0; i < mainFilter->DenseSize(); i++) {
                         FilterOne<A...>(fom, i);
                     }
@@ -1066,7 +1066,7 @@ namespace RavEngine {
                 // step 2: get it as non-reference types, and slice off the first argument
                 // if it is an engine data provider
                 
-                auto innerfn = [this]<typename ... A, typename ... OrigTs>(std::type_identity<std::tuple<A...>>, std::type_identity<std::tuple<OrigTs...>>, auto&& ... args) -> auto
+                auto innerfn = [this]<typename ... A, typename ... OrigTs, typename DataProviderT>(std::type_identity<std::tuple<A...>>, std::type_identity<std::tuple<OrigTs...>>, std::type_identity<DataProviderT>, auto&& ... args) -> auto
                 {
                     
                     // use `A...` here
@@ -1077,7 +1077,7 @@ namespace RavEngine {
                     
                     auto fd = GenFilterData<A...>(fm);
                     
-                    FilterOneModeCopy fom(std::move(fm),fd.ptrs);
+                    FilterOneModeCopy fom(std::move(fm), fd.ptrs, DataProviderNone{});
                     
                     auto setptr = fd.getMainFilter();
                     
@@ -1158,10 +1158,10 @@ namespace RavEngine {
                 };
                 // based on if the system needs a dataprovider as arg 0
                 if constexpr (IsEngineDataProvider<T1>) {
-                    return innerfn(std::type_identity<argtypes_noref_DP>{}, std::type_identity<std::tuple<Ts...>>{}, std::forward<Args>(args)...);
+                    return innerfn(std::type_identity<argtypes_noref_DP>{}, std::type_identity<std::tuple<Ts...>>{}, std::type_identity<T1>{}, std::forward<Args>(args)...);
                 }
                 else {
-                    return innerfn(std::type_identity<argtypes_noref_noDP>{}, std::type_identity<std::tuple<T1, Ts...>>{}, std::forward<Args>(args)...);
+                    return innerfn(std::type_identity<argtypes_noref_noDP>{}, std::type_identity<std::tuple<T1, Ts...>>{}, std::type_identity<DataProviderNone>{}, std::forward<Args>(args)...);
                 }
                 
             }(std::type_identity<argtypes>{}, std::forward<Args>(args)...);
