@@ -340,7 +340,7 @@ int Test_DataProviders() {
     };
 
 
-    w.EmplaceSystem<DataProviderSystem>(&w,&failed);
+    w.EmplaceSerialSystem<DataProviderSystem>(&w,&failed);
     w.Tick(0.16);
 
     if (failed) {

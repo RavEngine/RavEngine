@@ -1107,6 +1107,11 @@ namespace RavEngine {
                     FilterOneModeCopy fom(std::move(fm), fd.ptrs, DataProviderT{});
                     
                     auto setptr = fd.getMainFilter();
+
+                    if constexpr (IsEngineDataProvider<DataProviderT> && std::is_convertible_v<DataProviderT, WorldDataProvider>) {
+                        // validate: if the system uses the WorldProvider, it must be a serial system
+                        static_assert(isSerial, "Systems that use WorldDataProvider must be serial");
+                    }
                     
                     // value update
                     auto range_update = ECSTasks.emplace([this,ptr,setptr](){
