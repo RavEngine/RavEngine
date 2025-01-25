@@ -107,6 +107,18 @@ namespace RavEngine {
         a.after((World*)nullptr);
     };
 
+    struct WorldDataProvider {
+        World* world;
+    };
+
+    struct ValidatorProvider {
+
+    };
+
+    // if the System does not need Engine data, 
+    // the FuncMode will default to this type
+    struct DataProviderNone{};
+
 	class World : public std::enable_shared_from_this<World> {
 		friend class AudioPlayer;
 		friend class App;
@@ -807,8 +819,9 @@ namespace RavEngine {
             }
         };
         
-        template<typename funcmode_t, size_t n_types>
+        template<typename funcmode_t, size_t n_types, typename DataProviderType = DataProviderNone>
         struct FilterOneMode{
+            using DataProvider_t = DataProviderType;
             funcmode_t& fm;
             const std::array<void*,n_types>& ptrs;
             FilterOneMode(funcmode_t& fm_i, const std::array<void*,n_types>& ptrs_i) : fm(fm_i),ptrs(ptrs_i){}
@@ -821,8 +834,9 @@ namespace RavEngine {
         };
         
         // for when the object needs to own the data, for outliving scopes
-        template<typename funcmode_t, size_t n_types>
+        template<typename funcmode_t, size_t n_types, typename DataProviderType = DataProviderNone>
         struct FilterOneModeCopy{
+            using DataProvider_t = DataProviderType;
             funcmode_t fm;
             const std::array<void*,n_types> ptrs;
             FilterOneModeCopy(const funcmode_t& fm_i, const std::array<void*,n_types>& ptrs_i) : fm(fm_i),ptrs(ptrs_i){}
@@ -841,6 +855,16 @@ namespace RavEngine {
             ((FilterValidityCheck<A, isPolymorphic>(owner, pointerArray[i], satisfies), i++), ...);
             return satisfies;
         }
+
+        template<typename filterone_t>
+        auto MakeEngineDataProvider(){
+            using provider_t = filterone_t::DataProvider_t;
+            provider_t instance;
+            if constexpr (std::is_convertible_v< provider_t, WorldDataProvider>) {
+                instance.world = this;
+            }
+            return instance;
+        };
                 
         template<typename ... A, typename filterone_t>
         inline void FilterOne(filterone_t& fom, entity_id_t i){
