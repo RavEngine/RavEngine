@@ -861,11 +861,10 @@ namespace RavEngine {
             return satisfies;
         }
 
-        template<typename filterone_t>
+        template<typename provider_t>
         auto MakeEngineDataProvider(){
-            using provider_t = filterone_t::DataProvider_t;
             provider_t instance;
-            if constexpr (std::is_convertible_v< provider_t, WorldDataProvider>) {
+            if constexpr (std::is_convertible_v<provider_t, WorldDataProvider>) {
                 instance.world = this;
             }
             return instance;
@@ -874,16 +873,30 @@ namespace RavEngine {
         template<typename ... A, typename filterone_t>
         inline void FilterOne(filterone_t& fom, entity_id_t i){
             using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
+            using dataProviderType = filterone_t::DataProvider_t;
             if constexpr(filterone_t::nTypes() == 1){
                 if constexpr(!filterone_t::isPolymorphic()){
-                    fom.fm.f(FilterComponentGetDirect<primary_t>(i,fom.ptrs[Index_v<primary_t, A...>]));
+                    if constexpr (IsEngineDataProvider<dataProviderType>) {
+                        const auto dp = MakeEngineDataProvider<dataProviderType>();
+                        fom.fm.f(dp, FilterComponentGetDirect<primary_t>(i, fom.ptrs[Index_v<primary_t, A...>]));
+                    }
+                    else {
+                        fom.fm.f(FilterComponentGetDirect<primary_t>(i, fom.ptrs[Index_v<primary_t, A...>]));
+                    }
+                    
                 }
                 else{
                     //polymorphic query needs to be handled differently, because there can be multiple of a type on an entity
                     auto ptr_c = static_cast<SparseSetForPolymorphic*>(fom.ptrs[Index_v<primary_t, A...>]);
                     auto& indirection_obj = ptr_c->Get(i);
                     indirection_obj.for_each<primary_t>([&](auto comp_ptr){
-                        fom.fm.f(*comp_ptr);
+                        if constexpr (IsEngineDataProvider<dataProviderType>) {
+                            const auto dp = MakeEngineDataProvider<dataProviderType>();
+                            fom.fm.f(dp, *comp_ptr);
+                        }
+                        else {
+                            fom.fm.f(*comp_ptr);
+                        }
                     });
                 }
             }
@@ -899,13 +912,27 @@ namespace RavEngine {
                     bool satisfies = DoesEntitySatisfyFilter<filterone_t::isPolymorphic(), A...>(owner, fom.ptrs);
                     if (satisfies){
                         if constexpr (!filterone_t::isPolymorphic()){
-                            fom.fm.f(FilterComponentGet<A>(owner,fom.ptrs[Index_v<A, A...>])...);
+                            if constexpr (IsEngineDataProvider<dataProviderType>) {
+                                const auto dp = MakeEngineDataProvider<dataProviderType>();
+                                fom.fm.f(dp, FilterComponentGet<A>(owner, fom.ptrs[Index_v<A, A...>])...);
+                            }
+                            else {
+                                fom.fm.f(FilterComponentGet<A>(owner, fom.ptrs[Index_v<A, A...>])...);
+                            }
+                            
                         }
                         else{
                             // Because there can be multiple base types per entity, per each Filter type in A,
                             // the user's function must take vectors of A, and decide how to process 
                             // multi-case
-                            fom.fm.f(FilterComponentBaseMultiGet<A>(owner, fom.ptrs[Index_v<A, A...>])...);
+                            if constexpr (IsEngineDataProvider<dataProviderType>) {
+                                const auto dp = MakeEngineDataProvider<dataProviderType>();
+                                fom.fm.f(dp, FilterComponentBaseMultiGet<A>(owner, fom.ptrs[Index_v<A, A...>])...);
+                            }
+                            else {
+                                fom.fm.f(FilterComponentBaseMultiGet<A>(owner, fom.ptrs[Index_v<A, A...>])...);
+                            }
+                           
                         }
                     }
                 }
@@ -1077,7 +1104,7 @@ namespace RavEngine {
                     
                     auto fd = GenFilterData<A...>(fm);
                     
-                    FilterOneModeCopy fom(std::move(fm), fd.ptrs, DataProviderNone{});
+                    FilterOneModeCopy fom(std::move(fm), fd.ptrs, DataProviderT{});
                     
                     auto setptr = fd.getMainFilter();
                     

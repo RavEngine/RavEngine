@@ -303,6 +303,54 @@ int Test_CheckGraph() {
     return 0;
 }
 
+int Test_DataProviders() {
+    struct IntComponent {
+        int x = 5;
+    };
+    struct FloatComponent {
+        float x = 6;
+    };
+
+    World w;
+    auto e = w.Instantiate<Entity>();
+    e.EmplaceComponent<IntComponent>();
+
+    struct DataProvider : public RavEngine::WorldDataProvider {
+
+    };
+
+    bool failed = false;
+    struct DataProviderSystem {
+        World* cmpWorld = nullptr;
+        bool* failed = nullptr;
+
+        DataProviderSystem(World* w, bool* b) : cmpWorld(w), failed(b) {}
+
+        void operator()(const DataProvider& dp, const IntComponent& ic, const FloatComponent& fc) const{
+            if (dp.world != cmpWorld) {
+                *failed = true;
+            }
+            if (ic.x != 5) {
+                *failed = true;
+            }
+            if (fc.x != 6) {
+                *failed = true;
+            }
+        }
+    };
+
+
+    w.EmplaceSystem<DataProviderSystem>(&w,&failed);
+    w.Tick(0.16);
+
+    if (failed) {
+        std::cout << "Got wrong world or wrong component value" << std::endl;
+        return 1;
+    }
+
+    return 0;
+}
+
 int main(int argc, char** argv) {
     const unordered_map<std::string_view, std::function<int(void)>> tests{
 		{"CTTI",&Test_CTTI},
@@ -310,6 +358,7 @@ int main(int argc, char** argv) {
         {"Test_AddDel",&Test_AddDel},
         {"Test_SpawnDestroy",&Test_SpawnDestroy},
         {"Test_CheckGraph",&Test_CheckGraph},
+        {"Test_DataProviders", &Test_DataProviders}
     };
 
     if (argc < 2){
