@@ -865,7 +865,7 @@ void World::CheckSystems() {
                         Debug::Fatal("{} and {} require an explicit dependency because one or both contains a pre or post hook", sysName1, sysName2);
                     },
                     [this,&sysName1,&sysName2](const CheckTasksQueryFailure& info) {
-                        ExportTaskGraph(std::cout);
+                        ExportTaskGraph(std::cerr);
                         auto typeName = typeToName.at(info.conflict);
                         Debug::Fatal("{} and {} access {} in an unsafe way!", sysName1, sysName2, typeName);
                     },
