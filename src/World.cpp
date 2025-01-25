@@ -743,10 +743,22 @@ void World::CheckSystems() {
     struct CheckTasksQueryFailure { ctti_t conflict; };
     using CheckTaskResult = std::variant<CheckTaskPassed, CheckTaskHooksFailure, CheckTasksQueryFailure>;
 
-    auto checkTask = [this](const SystemTasks& task1, const SystemTasks& task2) -> CheckTaskResult {
+    auto recurse_subtree = [](const tf::Task& root, auto&& fn) -> void {
+
+        auto recurse_subtree_impl = [&fn](const tf::Task& root, auto&& recurse_subtree_fn) -> void {
+            root.for_each_successor([&fn, &recurse_subtree_fn](const tf::Task& task) {
+                fn(task);
+                recurse_subtree_fn(task, recurse_subtree_fn);
+             });
+        };
+
+        recurse_subtree_impl(root, recurse_subtree_impl);
+    };
+
+    auto checkTask = [this, &recurse_subtree](const SystemTasks& task1, const SystemTasks& task2) -> CheckTaskResult {
         // check task1 subtree
         bool dependencyExists = false;
-        task1.rangeUpdate.for_each_successor([&task2,&dependencyExists](tf::Task successor1) {
+        recurse_subtree(task1.rangeUpdate, [&task2,&dependencyExists](const tf::Task& successor1) {
             // are any of Task 2's tasks in Task 1's subtree?
             if (successor1 == task2.do_task) {
                 dependencyExists = true;
@@ -754,7 +766,7 @@ void World::CheckSystems() {
         });
 
         // check task2 subtree
-        task2.rangeUpdate.for_each_successor([&task1, &dependencyExists](tf::Task successor2) {
+        recurse_subtree(task2.rangeUpdate, [&task1, &dependencyExists](tf::Task successor2) {
             if (successor2 == task1.do_task) {
                 dependencyExists = true;
             }
