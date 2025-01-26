@@ -299,6 +299,30 @@ int Test_CheckGraph() {
             return 1;
         }
     }
+    {
+        World w;
+        struct Test5System1 {
+            void operator()(const RavEngine::WorldDataProvider&, const Foo&) const{}
+        };
+        struct Test5System2 {
+            void operator()(const RavEngine::WorldDataProvider&, const Bar&) const {}
+        };
+
+        w.EmplaceSerialSystem<Test5System1>();
+        w.EmplaceSerialSystem<Test5System2>();
+
+        bool caughtProblem = false;
+        try {
+            w.Tick(1);
+        }
+        catch (std::exception& e) {
+            caughtProblem = true;
+        }
+        if (!caughtProblem) {
+            cout << "CheckGraph WorldDataProvider did not catch this problem when it should have" << std::endl;
+            return 1;
+        }
+    }
 
     return 0;
 }

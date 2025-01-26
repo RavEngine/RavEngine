@@ -1108,11 +1108,7 @@ namespace RavEngine {
                     
                     auto setptr = fd.getMainFilter();
 
-                    if constexpr (IsEngineDataProvider<DataProviderT> && std::is_convertible_v<DataProviderT, WorldDataProvider>) {
-                        // validate: if the system uses the WorldProvider, it must be a serial system
-                        static_assert(isSerial, "Systems that use WorldDataProvider must be serial");
-                    }
-                    
+                                   
                     // value update
                     auto range_update = ECSTasks.emplace([this,ptr,setptr](){
                         *ptr = static_cast<pos_t>(setptr->DenseSize());
@@ -1164,6 +1160,13 @@ namespace RavEngine {
                     if (typeToName.contains(CTTI<T>())) {
                         Debug::Fatal("System {}/{} has already been loaded!",CTTI<T>(),type_name<T>());
                     };
+
+                    if constexpr (IsEngineDataProvider<DataProviderT> && std::is_convertible_v<DataProviderT, WorldDataProvider>) {
+                        // validate: if the system uses the WorldProvider, it must be a serial system
+                        static_assert(isSerial, "Systems that use WorldDataProvider must be serial");
+                        tasks.usesWorldDataProvider = true;
+                    }
+
                     typeToName[CTTI<T>()] = type_name<T>();
                     // enter parameter types into tracking structure
                     constexpr static auto enterType = []<typename pT>(std::vector<ctti_t>&reads, std::vector<ctti_t>&writes, auto & typeToName) {
@@ -1387,6 +1390,7 @@ namespace RavEngine {
             std::optional<tf::Task>preHook, postHook;
             std::vector<ctti_t> readDependencies;
             std::vector<ctti_t> writeDependencies;
+            bool usesWorldDataProvider = false;
         };
         UnorderedMap<ctti_t, SystemTasks> typeToSystem;
         UnorderedMap<ctti_t, std::string_view> typeToName;
