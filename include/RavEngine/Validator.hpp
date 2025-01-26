@@ -9,7 +9,7 @@ namespace RavEngine {
 
 	template<typename ... A>
 	struct Validator {
-		friend struct ValidatorProvider<A>;	// access to default constructor
+		friend struct ValidatorProvider<A...>;	// access to default constructor
 
 		template<typename T>
 		constexpr static bool IsValid() {
