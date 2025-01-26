@@ -14,6 +14,8 @@
 #include <RavEngine/AnimatorSystem.hpp>
 #include <RavEngine/Constraint.hpp>
 #include <RavEngine/RPCSystem.hpp>
+#include <RavEngine/Validator.hpp>
+#include <RavEngine/CheckedComponentHandle.hpp>
 #include <cassert>
 #include <span>
 
@@ -325,6 +327,40 @@ int Test_CheckGraph() {
         }
         if (!caughtProblem) {
             cout << "CheckGraph WorldDataProvider did not catch this problem when it should have" << std::endl;
+            return 1;
+        }
+    }
+    {
+        struct IntComponent {
+            int x = 0;
+        };
+
+        struct ReferencingComponent {
+            CheckedComponentHandle<IntComponent> comp;
+        };
+
+        struct Test6System1 {
+            void operator()(const ValidatorProvider<IntComponent>& v, ReferencingComponent& r) {
+                r.comp.get(v.validator)->x = 5;
+            }
+        };
+
+        World w;
+        w.EmplaceSerialSystem<Test6System1>();
+        auto e = w.Instantiate <Entity>();
+        e.EmplaceComponent<IntComponent>();
+        e.EmplaceComponent<ReferencingComponent>(e);
+
+        w.Tick(0.166);
+
+        bool failed = false;
+        w.Filter([&failed](const IntComponent& i) {
+            if (i.x != 5) {
+                failed = true;
+            }
+        });
+        if (failed) {
+            cout << "CheckedComponentHandle did not produce the expected value." << std::endl;
             return 1;
         }
     }
