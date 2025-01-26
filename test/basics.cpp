@@ -10,11 +10,16 @@
 #include <RavEngine/Uuid.hpp>
 #include <string_view>
 #include <RavEngine/Debug.hpp>
+#include <RavEngine/PhysicsLinkSystem.hpp>
+#include <RavEngine/AnimatorSystem.hpp>
+#include <RavEngine/Constraint.hpp>
+#include <RavEngine/RPCSystem.hpp>
 #include <cassert>
 #include <span>
 
 using namespace RavEngine;
 using namespace std;
+
 
 // needed for linker
 const std::string_view RVE_VFS_get_name(){
@@ -299,6 +304,82 @@ int Test_CheckGraph() {
             return 1;
         }
     }
+    {
+        World w;
+        struct Test5System1 {
+            void operator()(const RavEngine::WorldDataProvider&, const Foo&) const{}
+        };
+        struct Test5System2 {
+            void operator()(const RavEngine::WorldDataProvider&, const Bar&) const {}
+        };
+
+        w.EmplaceSerialSystem<Test5System1>();
+        w.EmplaceSerialSystem<Test5System2>();
+
+        bool caughtProblem = false;
+        try {
+            w.Tick(1);
+        }
+        catch (std::exception& e) {
+            caughtProblem = true;
+        }
+        if (!caughtProblem) {
+            cout << "CheckGraph WorldDataProvider did not catch this problem when it should have" << std::endl;
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+int Test_DataProviders() {
+    struct IntComponent {
+        int x = 5;
+    };
+    struct FloatComponent {
+        float x = 6;
+    };
+
+    World w;
+    auto e = w.Instantiate<Entity>();
+    e.EmplaceComponent<IntComponent>();
+
+    struct DataProvider : public RavEngine::WorldDataProvider {
+
+    };
+
+    bool failed = false;
+    struct DataProviderSystem {
+        World* cmpWorld = nullptr;
+        bool* failed = nullptr;
+
+        DataProviderSystem(World* w, bool* b) : cmpWorld(w), failed(b) {}
+
+        void operator()(const DataProvider& dp, const IntComponent& ic, const FloatComponent& fc) const{
+            if (dp.world != cmpWorld) {
+                *failed = true;
+            }
+            if (ic.x != 5) {
+                *failed = true;
+            }
+            if (fc.x != 6) {
+                *failed = true;
+            }
+        }
+    };
+
+
+    w.EmplaceSerialSystem<DataProviderSystem>(&w,&failed);
+    w.CreateDependency<DataProviderSystem, RavEngine::PhysicsLinkSystemRead>();
+    w.CreateDependency<DataProviderSystem, RavEngine::SocketSystem>();
+    w.CreateDependency<DataProviderSystem, RavEngine::RPCSystem>();
+    w.CreateDependency<DataProviderSystem, RavEngine::AnimatorSystem>();
+    w.Tick(0.16);
+
+    if (failed) {
+        std::cout << "Got wrong world or wrong component value" << std::endl;
+        return 1;
+    }
 
     return 0;
 }
@@ -310,6 +391,7 @@ int main(int argc, char** argv) {
         {"Test_AddDel",&Test_AddDel},
         {"Test_SpawnDestroy",&Test_SpawnDestroy},
         {"Test_CheckGraph",&Test_CheckGraph},
+        {"Test_DataProviders", &Test_DataProviders}
     };
 
     if (argc < 2){

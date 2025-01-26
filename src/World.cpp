@@ -740,8 +740,9 @@ void World::CheckSystems() {
 #endif
     struct CheckTaskPassed {};
     struct CheckTaskHooksFailure{};
+    struct CheckTaskWorldDataProvider {};
     struct CheckTasksQueryFailure { ctti_t conflict; };
-    using CheckTaskResult = std::variant<CheckTaskPassed, CheckTaskHooksFailure, CheckTasksQueryFailure>;
+    using CheckTaskResult = std::variant<CheckTaskPassed, CheckTaskHooksFailure, CheckTaskWorldDataProvider, CheckTasksQueryFailure>;
 
     auto recurse_subtree = [](const tf::Task& root, auto&& fn) -> void {
 
@@ -785,6 +786,11 @@ void World::CheckSystems() {
         // is unsafe because the hooks have arbitrary world access.
         if (task1.preHook.has_value() || task1.postHook.has_value() || task2.preHook.has_value() || task2.postHook.has_value()) {
             return CheckTaskHooksFailure{};
+        }
+
+        // does one of the systems use the WorldDataProvider? if so, it must be run in isolation
+        if (task1.usesWorldDataProvider || task2.usesWorldDataProvider) {
+            return CheckTaskWorldDataProvider{};
         }
 
         // check 1: do the queries overlap (can the systems operate on the same entities at the same time). 
@@ -863,6 +869,9 @@ void World::CheckSystems() {
                     [](const CheckTaskPassed&) {},
                     [&sysName1,&sysName2](const CheckTaskHooksFailure&) {
                         Debug::Fatal("{} and {} require an explicit dependency because one or both contains a pre or post hook", sysName1, sysName2);
+                    },
+                    [&sysName1,&sysName2](const CheckTaskWorldDataProvider&) {
+                        Debug::Fatal("{} or {} uses a WorldDataProvider, and must be run in isolation", sysName1, sysName2);
                     },
                     [this,&sysName1,&sysName2](const CheckTasksQueryFailure& info) {
                         ExportTaskGraph(std::cerr);

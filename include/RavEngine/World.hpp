@@ -107,6 +107,23 @@ namespace RavEngine {
         a.after((World*)nullptr);
     };
 
+    struct WorldDataProvider {
+        World* world;
+    };
+
+    struct ValidatorProvider {
+
+    };
+
+    // if the System does not need Engine data, 
+    // the FuncMode will default to this type
+    struct DataProviderNone {};
+
+    template <typename T>
+    concept IsEngineDataProvider = 
+        (std::is_convertible_v<T, WorldDataProvider> || std::is_convertible_v<T, ValidatorProvider>) 
+        && not (std::is_convertible_v<T, DataProviderNone>);
+
 	class World : public std::enable_shared_from_this<World> {
 		friend class AudioPlayer;
 		friend class App;
@@ -807,11 +824,12 @@ namespace RavEngine {
             }
         };
         
-        template<typename funcmode_t, size_t n_types>
+        template<typename funcmode_t, size_t n_types, typename DataProviderType = DataProviderNone>
         struct FilterOneMode{
+            using DataProvider_t = DataProviderType;
             funcmode_t& fm;
             const std::array<void*,n_types>& ptrs;
-            FilterOneMode(funcmode_t& fm_i, const std::array<void*,n_types>& ptrs_i) : fm(fm_i),ptrs(ptrs_i){}
+            FilterOneMode(funcmode_t& fm_i, const std::array<void*,n_types>& ptrs_i, const DataProviderType) : fm(fm_i),ptrs(ptrs_i){}
             static constexpr decltype(n_types) nTypes(){
                 return n_types;
             }
@@ -821,11 +839,12 @@ namespace RavEngine {
         };
         
         // for when the object needs to own the data, for outliving scopes
-        template<typename funcmode_t, size_t n_types>
+        template<typename funcmode_t, size_t n_types, typename DataProviderType = DataProviderNone>
         struct FilterOneModeCopy{
+            using DataProvider_t = DataProviderType;
             funcmode_t fm;
             const std::array<void*,n_types> ptrs;
-            FilterOneModeCopy(const funcmode_t& fm_i, const std::array<void*,n_types>& ptrs_i) : fm(fm_i),ptrs(ptrs_i){}
+            FilterOneModeCopy(const funcmode_t& fm_i, const std::array<void*, n_types>& ptrs_i, const DataProviderType) : fm(fm_i), ptrs(ptrs_i) {}
             static constexpr decltype(n_types) nTypes(){
                 return n_types;
             }
@@ -841,20 +860,43 @@ namespace RavEngine {
             ((FilterValidityCheck<A, isPolymorphic>(owner, pointerArray[i], satisfies), i++), ...);
             return satisfies;
         }
+
+        template<typename provider_t>
+        auto MakeEngineDataProvider(){
+            provider_t instance;
+            if constexpr (std::is_convertible_v<provider_t, WorldDataProvider>) {
+                instance.world = this;
+            }
+            return instance;
+        };
                 
         template<typename ... A, typename filterone_t>
         inline void FilterOne(filterone_t& fom, entity_id_t i){
             using primary_t = typename std::tuple_element<0, std::tuple<A...> >::type;
+            using dataProviderType = filterone_t::DataProvider_t;
             if constexpr(filterone_t::nTypes() == 1){
                 if constexpr(!filterone_t::isPolymorphic()){
-                    fom.fm.f(FilterComponentGetDirect<primary_t>(i,fom.ptrs[Index_v<primary_t, A...>]));
+                    if constexpr (IsEngineDataProvider<dataProviderType>) {
+                        const auto dp = MakeEngineDataProvider<dataProviderType>();
+                        fom.fm.f(dp, FilterComponentGetDirect<primary_t>(i, fom.ptrs[Index_v<primary_t, A...>]));
+                    }
+                    else {
+                        fom.fm.f(FilterComponentGetDirect<primary_t>(i, fom.ptrs[Index_v<primary_t, A...>]));
+                    }
+                    
                 }
                 else{
                     //polymorphic query needs to be handled differently, because there can be multiple of a type on an entity
                     auto ptr_c = static_cast<SparseSetForPolymorphic*>(fom.ptrs[Index_v<primary_t, A...>]);
                     auto& indirection_obj = ptr_c->Get(i);
                     indirection_obj.for_each<primary_t>([&](auto comp_ptr){
-                        fom.fm.f(*comp_ptr);
+                        if constexpr (IsEngineDataProvider<dataProviderType>) {
+                            const auto dp = MakeEngineDataProvider<dataProviderType>();
+                            fom.fm.f(dp, *comp_ptr);
+                        }
+                        else {
+                            fom.fm.f(*comp_ptr);
+                        }
                     });
                 }
             }
@@ -870,13 +912,27 @@ namespace RavEngine {
                     bool satisfies = DoesEntitySatisfyFilter<filterone_t::isPolymorphic(), A...>(owner, fom.ptrs);
                     if (satisfies){
                         if constexpr (!filterone_t::isPolymorphic()){
-                            fom.fm.f(FilterComponentGet<A>(owner,fom.ptrs[Index_v<A, A...>])...);
+                            if constexpr (IsEngineDataProvider<dataProviderType>) {
+                                const auto dp = MakeEngineDataProvider<dataProviderType>();
+                                fom.fm.f(dp, FilterComponentGet<A>(owner, fom.ptrs[Index_v<A, A...>])...);
+                            }
+                            else {
+                                fom.fm.f(FilterComponentGet<A>(owner, fom.ptrs[Index_v<A, A...>])...);
+                            }
+                            
                         }
                         else{
                             // Because there can be multiple base types per entity, per each Filter type in A,
                             // the user's function must take vectors of A, and decide how to process 
                             // multi-case
-                            fom.fm.f(FilterComponentBaseMultiGet<A>(owner, fom.ptrs[Index_v<A, A...>])...);
+                            if constexpr (IsEngineDataProvider<dataProviderType>) {
+                                const auto dp = MakeEngineDataProvider<dataProviderType>();
+                                fom.fm.f(dp, FilterComponentBaseMultiGet<A>(owner, fom.ptrs[Index_v<A, A...>])...);
+                            }
+                            else {
+                                fom.fm.f(FilterComponentBaseMultiGet<A>(owner, fom.ptrs[Index_v<A, A...>])...);
+                            }
+                           
                         }
                     }
                 }
@@ -935,7 +991,7 @@ namespace RavEngine {
                 {
                     auto fd = GenFilterData<A...>(fm);
                     auto mainFilter = fd.getMainFilter();
-                    FilterOneMode fom(fm, fd.ptrs);
+                    FilterOneMode fom(fm, fd.ptrs, DataProviderNone{});
                     for (entity_id_t i = 0; i < mainFilter->DenseSize(); i++) {
                         FilterOne<A...>(fom, i);
                     }
@@ -1025,16 +1081,19 @@ namespace RavEngine {
         inline auto EmplaceSystemGeneric(Args&& ... args){
             graphWasModified = true;
             using argtypes = functor_args_t<T>;
+
+
             
             return
             // step 1: get it as types
-            [this]<typename... Ts>(std::type_identity<std::tuple<Ts...>>, auto&& ... args) -> auto
+            [this]<typename T1, typename... Ts>(std::type_identity<std::tuple<T1, Ts...>>, auto&& ... args) -> auto
             {
-                using argtypes_noref = std::tuple<remove_polymorphic_arg_t<std::remove_const_t<std::remove_reference_t<Ts>>>...>;
+                using argtypes_noref_noDP = std::tuple<remove_polymorphic_arg_t<std::remove_const_t<std::remove_reference_t<T1>>>,remove_polymorphic_arg_t<std::remove_const_t<std::remove_reference_t<Ts>>>...>;
+                using argtypes_noref_DP = std::tuple<remove_polymorphic_arg_t<std::remove_const_t<std::remove_reference_t<Ts>>>...>;
                 // step 2: get it as non-reference types, and slice off the first argument
-                // because it's a float and we don't want it
-                return
-                [this]<typename ... A>(std::type_identity<std::tuple<A...>>, auto&& ... args) -> auto
+                // if it is an engine data provider
+                
+                auto innerfn = [this]<typename ... A, typename ... OrigTs, typename DataProviderT>(std::type_identity<std::tuple<A...>>, std::type_identity<std::tuple<OrigTs...>>, std::type_identity<DataProviderT>, auto&& ... args) -> auto
                 {
                     
                     // use `A...` here
@@ -1045,10 +1104,11 @@ namespace RavEngine {
                     
                     auto fd = GenFilterData<A...>(fm);
                     
-                    FilterOneModeCopy fom(std::move(fm),fd.ptrs);
+                    FilterOneModeCopy fom(std::move(fm), fd.ptrs, DataProviderT{});
                     
                     auto setptr = fd.getMainFilter();
-                    
+
+                                   
                     // value update
                     auto range_update = ECSTasks.emplace([this,ptr,setptr](){
                         *ptr = static_cast<pos_t>(setptr->DenseSize());
@@ -1100,6 +1160,13 @@ namespace RavEngine {
                     if (typeToName.contains(CTTI<T>())) {
                         Debug::Fatal("System {}/{} has already been loaded!",CTTI<T>(),type_name<T>());
                     };
+
+                    if constexpr (IsEngineDataProvider<DataProviderT> && std::is_convertible_v<DataProviderT, WorldDataProvider>) {
+                        // validate: if the system uses the WorldProvider, it must be a serial system
+                        static_assert(isSerial, "Systems that use WorldDataProvider must be serial");
+                        tasks.usesWorldDataProvider = true;
+                    }
+
                     typeToName[CTTI<T>()] = type_name<T>();
                     // enter parameter types into tracking structure
                     constexpr static auto enterType = []<typename pT>(std::vector<ctti_t>&reads, std::vector<ctti_t>&writes, auto & typeToName) {
@@ -1118,12 +1185,20 @@ namespace RavEngine {
                             writes.push_back(id);
                         }
                     };
-                    (enterType.template operator()<Ts>(tasks.readDependencies, tasks.writeDependencies, typeToName), ...);
+                    (enterType.template operator()<OrigTs>(tasks.readDependencies, tasks.writeDependencies, typeToName), ...);
                     
                     typeToSystem[CTTI<T>()] = tasks;                    
                     return tasks;
                     
-                }(std::type_identity<argtypes_noref>{},std::forward<Args>(args)...);
+                };
+                // based on if the system needs a dataprovider as arg 0
+                if constexpr (IsEngineDataProvider<T1>) {
+                    return innerfn(std::type_identity<argtypes_noref_DP>{}, std::type_identity<std::tuple<Ts...>>{}, std::type_identity<T1>{}, std::forward<Args>(args)...);
+                }
+                else {
+                    return innerfn(std::type_identity<argtypes_noref_noDP>{}, std::type_identity<std::tuple<T1, Ts...>>{}, std::type_identity<DataProviderNone>{}, std::forward<Args>(args)...);
+                }
+                
             }(std::type_identity<argtypes>{}, std::forward<Args>(args)...);
         }
         
@@ -1315,6 +1390,7 @@ namespace RavEngine {
             std::optional<tf::Task>preHook, postHook;
             std::vector<ctti_t> readDependencies;
             std::vector<ctti_t> writeDependencies;
+            bool usesWorldDataProvider = false;
         };
         UnorderedMap<ctti_t, SystemTasks> typeToSystem;
         UnorderedMap<ctti_t, std::string_view> typeToName;
