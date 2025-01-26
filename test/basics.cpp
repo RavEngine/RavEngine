@@ -10,11 +10,16 @@
 #include <RavEngine/Uuid.hpp>
 #include <string_view>
 #include <RavEngine/Debug.hpp>
+#include <RavEngine/PhysicsLinkSystem.hpp>
+#include <RavEngine/AnimatorSystem.hpp>
+#include <RavEngine/Constraint.hpp>
+#include <RavEngine/RPCSystem.hpp>
 #include <cassert>
 #include <span>
 
 using namespace RavEngine;
 using namespace std;
+
 
 // needed for linker
 const std::string_view RVE_VFS_get_name(){
@@ -365,6 +370,10 @@ int Test_DataProviders() {
 
 
     w.EmplaceSerialSystem<DataProviderSystem>(&w,&failed);
+    w.CreateDependency<DataProviderSystem, RavEngine::PhysicsLinkSystemRead>();
+    w.CreateDependency<DataProviderSystem, RavEngine::SocketSystem>();
+    w.CreateDependency<DataProviderSystem, RavEngine::RPCSystem>();
+    w.CreateDependency<DataProviderSystem, RavEngine::AnimatorSystem>();
     w.Tick(0.16);
 
     if (failed) {
