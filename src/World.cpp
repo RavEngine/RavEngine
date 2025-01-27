@@ -684,7 +684,7 @@ World::~World() {
 #if ENABLE_RINGBUFFERS
     // dump out any live rooms
     Filter([this](const SimpleAudioSpace& space) {
-        space.GetData()->OutputSampleData(Filesystem::CurrentWorkingDirectory() / (std::to_string(space.GetOwner().id) + ".wav"));
+        space.GetData()->OutputSampleData(Filesystem::CurrentWorkingDirectory() / (std::to_string(space.GetOwner().id.id) + ".wav"));
     });
 #endif
 

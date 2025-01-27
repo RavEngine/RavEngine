@@ -14,7 +14,7 @@ namespace RavEngine {
 
 	// it's always a multiple of the buffer size
 	// so we don't have to do any math around wrapping mid-buffer
-	AudioRingbuffer::AudioRingbuffer(uint8_t nchannels) : nchannels(nchannels), renderBuffer{ GetSizeForNSec(5u), nchannels}
+	AudioRingbuffer::AudioRingbuffer(uint8_t nchannels) : nchannels(nchannels), renderBuffer{ GetSizeForNSec(20u), nchannels}
 	{
 
 	}

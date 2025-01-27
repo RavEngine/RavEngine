@@ -211,12 +211,16 @@ struct AudioPlayer;
         inline void SwapCurrrentAudioSnapshot(){
             audiomtx1.lock();
             std::swap(acurrent,ainactive);
+			newAudioAvailable = true;
             audiomtx1.unlock();
         }
-        inline void SwapRenderAudioSnapshot(){
-            audiomtx2.lock();
-            std::swap(ainactive,arender);
-            audiomtx2.unlock();
+        inline void SwapRenderAudioSnapshotIfNeeded(){
+			audiomtx1.lock();
+			if (newAudioAvailable) {
+				std::swap(ainactive, arender);
+				newAudioAvailable = false;
+			}
+			audiomtx1.unlock();
         }
         inline AudioSnapshot* GetCurrentAudioSnapshot(){
             return acurrent;
@@ -239,7 +243,8 @@ struct AudioPlayer;
 		locked_hashset<Ref<World>,SpinLock> loadedWorlds;
 #if !RVE_SERVER
         AudioSnapshot a1, a2, a3, *acurrent = &a1, *ainactive = &a2, *arender = &a3;
-        SpinLock audiomtx1, audiomtx2;
+        SpinLock audiomtx1;
+		bool newAudioAvailable = false;
 #endif
 	protected:
 #if !RVE_SERVER

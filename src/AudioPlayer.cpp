@@ -36,6 +36,7 @@ constexpr auto doPlayer = [](auto renderData, auto player) {    // must be a Aud
 };
 
 constexpr auto doDataProvider = [](auto&& player) {
+    assert(player != nullptr);
     auto renderData = &player->renderData;
     static_assert(sizeof(player) == sizeof(std::shared_ptr<void>), "Not a pointer, check this!");
     doPlayer(renderData, player);
@@ -88,7 +89,7 @@ void AudioPlayer::Tick() {
     auto queuedSize = SDL_GetAudioStreamQueued(stream);
     if (queuedSize < maxAudioSampleLatency) {
         RVE_PROFILE_SECTION(tickAudio,"AudioPlayer::Tick");
-        GetApp()->SwapRenderAudioSnapshot();
+        GetApp()->SwapRenderAudioSnapshotIfNeeded();
         SnapshotToRender = GetApp()->GetRenderAudioSnapshot();
 #if USE_MT_IMPL
         audioExecutor.run(audioTaskflow).wait();
@@ -159,6 +160,7 @@ void RavEngine::AudioPlayer::CalculateGeometryAudioSpace(AudioSnapshot::Geometry
     }
 }
 
+
 void RavEngine::AudioPlayer::CalculateSimpleAudioSpace(AudioSnapshot::SimpleAudioSpaceData& r)
 {
     RVE_PROFILE_FN;
@@ -200,8 +202,9 @@ void RavEngine::AudioPlayer::CalculateSimpleAudioSpace(AudioSnapshot::SimpleAudi
         );
         AdditiveBlendSamples(accumulationView, outputView);
     }
-
+    
 }
+
 
 void RavEngine::AudioPlayer::CalculateBoxAudioSpace(AudioSnapshot::BoxReverbationSpaceData& r)
 {
@@ -475,8 +478,6 @@ void AudioPlayer::Init(){
         Debug::Fatal("Cannot load HRTF: {}", IPLerrorToString(errorCode));
     }
     
-   
-
     audioTickThread.emplace([this] {
         while (audioThreadShouldRun) {
             Tick();
