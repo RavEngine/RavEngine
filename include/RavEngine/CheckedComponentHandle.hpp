@@ -27,7 +27,7 @@ namespace RavEngine {
 
         template<typename ValidatorType>
         T* get(const ValidatorType& v) {
-            static_assert(v.template IsValid<T>(), "Validator does not have the necessary types");
+            static_assert(ValidatorType::template IsValid<T>(), "Validator does not have the necessary types");
             return &owner.GetComponent<T>();
         }
 
