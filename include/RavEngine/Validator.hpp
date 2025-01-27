@@ -1,5 +1,6 @@
 #pragma once
 #include <type_traits>
+#include <tuple>
 
 namespace RavEngine {
 	template<typename ... A> struct ValidatorProvider;
@@ -10,6 +11,8 @@ namespace RavEngine {
 	template<typename ... A>
 	struct Validator {
 		friend struct ValidatorProvider<A...>;	// access to default constructor
+
+		using types = std::tuple<A...>;
 
 		template<typename T>
 		constexpr static bool IsValid() {

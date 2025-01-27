@@ -118,7 +118,9 @@ namespace RavEngine {
     template<typename ... A>
     struct ValidatorProvider : public ValidatorProviderBase {
         friend class World;
-        Validator<A...> validator;
+        using ValidatorType = Validator<A...>;
+
+        ValidatorType validator;
 
         // no copy
         ValidatorProvider(const ValidatorProvider&) = delete;
@@ -1109,7 +1111,7 @@ namespace RavEngine {
                 // step 2: get it as non-reference types, and slice off the first argument
                 // if it is an engine data provider
                 
-                auto innerfn = [this]<typename ... A, typename ... OrigTs, typename DataProviderT>(std::type_identity<std::tuple<A...>>, std::type_identity<std::tuple<OrigTs...>>, std::type_identity<DataProviderT>, auto&& ... args) mutable -> auto
+                auto innerfn = [this]<typename ... A, typename ... OrigTs, class DataProviderT>(std::type_identity<std::tuple<A...>>, std::type_identity<std::tuple<OrigTs...>>, std::type_identity<DataProviderT>, auto&& ... args) mutable -> auto
                 {
                     
                     // use `A...` here
@@ -1120,7 +1122,9 @@ namespace RavEngine {
                     
                     auto fd = GenFilterData<A...>(fm);
                     
-                    FilterOneModeCopy fom(std::move(fm), fd.ptrs, std::type_identity<std::remove_reference_t<std::remove_const_t<DataProviderT>>>{});
+                    using DataProviderNCR = std::remove_reference_t<std::remove_const_t<DataProviderT>>;
+
+                    FilterOneModeCopy fom(std::move(fm), fd.ptrs, std::type_identity<DataProviderNCR>{});
                     
                     auto setptr = fd.getMainFilter();
 
@@ -1181,10 +1185,7 @@ namespace RavEngine {
                         // validate: if the system uses the WorldProvider, it must be a serial system
                         static_assert(isSerial, "Systems that use WorldDataProvider must be serial");
                         tasks.usesWorldDataProvider = true;
-                    }
-                    if constexpr (IsEngineDataProvider<DataProviderT> && std::is_convertible_v<DataProviderT, ValidatorProviderBase>) {
-                        static_assert(isSerial, "Systems that use Validators must be serial");
-                    }
+                    }   
 
                     typeToName[CTTI<T>()] = type_name<T>();
                     // enter parameter types into tracking structure
@@ -1205,6 +1206,17 @@ namespace RavEngine {
                         }
                     };
                     (enterType.template operator()<OrigTs>(tasks.readDependencies, tasks.writeDependencies, typeToName), ...);
+
+                    if constexpr (IsEngineDataProvider<DataProviderT> && std::is_convertible_v<DataProviderT, ValidatorProviderBase>) {
+                        static_assert(isSerial, "Systems that use Validators must be serial");
+
+                        // add validator types to the tracking structure
+                        auto enteryValidatorTypes = [this, &tasks]<typename ... vA>(std::type_identity<std::tuple<vA...>>) {
+                            (enterType.template operator() <vA> (tasks.readDependencies, tasks.writeDependencies, typeToName), ...);
+                        };
+                        using validatorTupleType = DataProviderNCR::ValidatorType::types;
+                        enteryValidatorTypes(std::type_identity<validatorTupleType>{});
+                    }
                     
                     typeToSystem[CTTI<T>()] = tasks;                    
                     return tasks;
