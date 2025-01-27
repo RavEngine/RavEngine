@@ -116,6 +116,10 @@ void RavEngine::AudioPlayer::CalculateGeometryAudioSpace(AudioSnapshot::Geometry
         room->DeleteMeshDataForEntity(id);
     }
 
+    auto accumulationView = room->accumulationBuffer.GetWritableDataBufferView();
+    TZero(accumulationView.data(), accumulationView.size());
+
+
     // first check that the listener is inside the room
     if (!r.IsInsideMeshArea(lpos)) {
         return;
@@ -147,9 +151,7 @@ void RavEngine::AudioPlayer::CalculateGeometryAudioSpace(AudioSnapshot::Geometry
 
     auto outputView = room->workingBuffers.GetWritableDataBufferView();
     auto outputScratchView = room->workingBuffers.GetWritableScratchBufferView();
-    auto accumulationView = room->accumulationBuffer.GetWritableDataBufferView();
 
-    TZero(accumulationView.data(), accumulationView.size());
 
     for (const auto& source : SnapshotToRender->sources) {
         TZero(outputView.data(), outputView.size());
@@ -171,6 +173,9 @@ void RavEngine::AudioPlayer::CalculateSimpleAudioSpace(AudioSnapshot::SimpleAudi
         room->DeleteAudioDataForEntity(id);
     }
 
+    auto accumulationView = room->accumulationBuffer.GetWritableDataBufferView();
+    TZero(accumulationView.data(), accumulationView.size());
+
     // existing sources
     // first check that the listener is inside the room
     if (!r.IsInsideSourceArea(lpos)) {
@@ -179,9 +184,8 @@ void RavEngine::AudioPlayer::CalculateSimpleAudioSpace(AudioSnapshot::SimpleAudi
 
     auto outputView = room->workingBuffers.GetWritableDataBufferView();
     auto outputScratchView = room->workingBuffers.GetWritableScratchBufferView();
-    auto accumulationView = room->accumulationBuffer.GetWritableDataBufferView();
 
-    TZero(accumulationView.data(), accumulationView.size());
+   
 
     for (const auto& source : SnapshotToRender->sources) {
         // is this source inside the space? if not, then don't process it
@@ -218,13 +222,15 @@ void RavEngine::AudioPlayer::CalculateBoxAudioSpace(AudioSnapshot::BoxReverbatio
 
     auto listenerPosRoomSpace = vector3(r.invRoomTransform * vector4(lpos, 1));
 
+    auto outputView = room->workingBuffers.GetWritableDataBufferView();
+    TZero(outputView.data(), outputView.size());
+
     // existing sources
     // first check that the listener is inside the room
     if (!RMath::pointInAABB(lpos, r.roomHalfExts)) {
         return;
     }
 
-    auto outputView = room->workingBuffers.GetWritableDataBufferView();
     auto outputScratchView = room->workingBuffers.GetWritableScratchBufferView();
 
     for (const auto& source : SnapshotToRender->sources) {
