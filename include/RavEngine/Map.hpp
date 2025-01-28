@@ -23,4 +23,7 @@ namespace RavEngine {
 
     template<typename T>
     using UnorderedSet = phmap::flat_hash_set<T>;
+
+    template<typename T, typename U>
+    using OrderedMap = phmap::btree_map<T, U>;
 }

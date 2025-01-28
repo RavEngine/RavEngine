@@ -329,9 +329,11 @@ void World::setupRenderTasks(){
                 // update
                 assert(renderDataSource.contains(sm.GetMaterial()));
                 auto valuesToCompare = captureLambda(sm);
-                renderDataSource.if_contains(sm.GetMaterial(), [&trns,this, &iteratorComparator, &valuesToCompare](auto& row) {
+                if (renderDataSource.contains(sm.GetMaterial())) {
+                    auto& row = renderDataSource[sm.GetMaterial()];
+
                     auto it = iteratorComparator(row, valuesToCompare);
-                    if (it == row.commands.end()){
+                    if (it == row.commands.end()) {
                         return;
                     }
                     assert(it != row.commands.end());
@@ -339,8 +341,8 @@ void World::setupRenderTasks(){
                     // write new matrix
                     auto owner = trns.GetOwner();
                     auto ownerIDInWorld = owner.GetID();
-                    renderData.worldTransforms.SetValueAt(ownerIDInWorld.id,trns.GetWorldMatrix());
-                });
+                    renderData.worldTransforms.SetValueAt(ownerIDInWorld.id, trns.GetWorldMatrix());
+                }
 
                 trns.ClearTickDirty();
             }

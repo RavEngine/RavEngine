@@ -422,8 +422,8 @@ namespace RavEngine {
             
             BufferedVRAMVector<matrix4> worldTransforms{"World Transform Private Buffer"};
 
-            locked_node_hashmap<Ref<MaterialInstance>, MDIICommand, phmap::NullMutex> staticMeshRenderData;
-            locked_node_hashmap<Ref<MaterialInstance>, MDIICommandSkinned, phmap::NullMutex> skinnedMeshRenderData;
+            UnorderedNodeMap<Ref<MaterialInstance>, MDIICommand> staticMeshRenderData;
+            UnorderedNodeMap<Ref<MaterialInstance>, MDIICommandSkinned> skinnedMeshRenderData;
 
             RGLBufferPtr cuboBuffer;
 
