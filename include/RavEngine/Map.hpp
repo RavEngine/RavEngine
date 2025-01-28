@@ -1,6 +1,7 @@
 #pragma once
 #include <mutex>
 #include <phmap.h>
+#include <btree.h>
 
 namespace RavEngine {
     template<typename T, typename U, typename lock=std::mutex, typename hash = phmap::priv::hash_default_hash<T>, typename eq = phmap::priv::hash_default_eq<T>>

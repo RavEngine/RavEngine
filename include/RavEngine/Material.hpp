@@ -151,8 +151,12 @@ namespace RavEngine {
 	protected:
 		std::array<RGLBufferPtr, maxBindingSlots> bufferBindings;
 		std::array<Ref<Texture>, maxBindingSlots> textureBindings;
+		uint32_t priority = 0;
 	public:
-		
+		auto GetPriority() const {
+			return priority;
+		}
+
 		/**
 		@return a byte view to the push constant data for the material. The data is appended after the viewProj mat4. 
 		Returning a span of size 0, or with a nullptr pointer means that the material has no additional push constants.

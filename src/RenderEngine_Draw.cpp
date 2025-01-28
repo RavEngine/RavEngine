@@ -848,7 +848,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 							shouldKeep = true;
 						}
 					} }
-				, materialInstance->GetMat()->variant);
+				, materialInstance.mat->GetMat()->variant);
 
 				// transparency vs opaque 
 				std::visit([&shouldKeep, &lightingFilter](auto&& mat) {
@@ -861,7 +861,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					else {
 						shouldKeep = false;
 					}
-					}, materialInstance->GetMat()->variant);
+					}, materialInstance.mat->GetMat()->variant);
 
 				return shouldKeep;
 				};
@@ -1187,7 +1187,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					}
 
 					// bind the pipeline
-					auto pipeline = pipelineSelectorFunction(materialInstance->GetMat());
+					auto pipeline = pipelineSelectorFunction(materialInstance.mat->GetMat());
 					mainCommandBuffer->BindRenderPipeline(pipeline);
 
 					// this is always needed
@@ -1227,7 +1227,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                     }
                         
 					// set push constant data
-					auto pushConstantData = materialInstance->GetPushConstantData();
+					auto pushConstantData = materialInstance.mat->GetPushConstantData();
 
 					// Metal requires 16-byte alignment, so we bake that into the required size
 					size_t pushConstantTotalSize =
@@ -1251,9 +1251,9 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					}
 
 					// bind textures and buffers
-					auto& bufferBindings = materialInstance->GetBufferBindings();
-					auto& textureBindings = materialInstance->GetTextureBindings();
-					for (int i = 0; i < materialInstance->maxBindingSlots; i++) {
+					auto& bufferBindings = materialInstance.mat->GetBufferBindings();
+					auto& textureBindings = materialInstance.mat->GetTextureBindings();
+					for (int i = 0; i < materialInstance.mat->maxBindingSlots; i++) {
 						auto& buffer = bufferBindings[i];
 						auto& texture = textureBindings[i];
 						if (buffer) {

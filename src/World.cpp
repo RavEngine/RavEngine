@@ -324,13 +324,12 @@ void World::setupRenderTasks(){
     });
     
     auto updateRenderDataGeneric = [this]<typename SM_T, typename ... Aux_T>(const SM_T* sm_t_holder, auto& renderDataSource, auto&& captureLambda, auto&& iteratorComparator, const Aux_T* ... axillaryParams){
-        Filter([this,&renderDataSource,&captureLambda,&iteratorComparator](const SM_T& sm, const Aux_T& ..., Transform& trns) {
+        Filter([this, &renderDataSource, &captureLambda, &iteratorComparator](const SM_T& sm, const Aux_T& ..., Transform& trns) {
             if (trns.isTickDirty && sm.GetEnabled()) {
                 // update
-                assert(renderDataSource.contains(sm.GetMaterial()));
                 auto valuesToCompare = captureLambda(sm);
-                if (renderDataSource.contains(sm.GetMaterial())) {
-                    auto& row = renderDataSource[sm.GetMaterial()];
+                if (renderDataSource.find(sm.GetMaterial()) != renderDataSource.end()) {
+                    auto& row = renderDataSource.at(sm.GetMaterial());
 
                     auto it = iteratorComparator(row, valuesToCompare);
                     if (it == row.commands.end()) {
@@ -342,6 +341,9 @@ void World::setupRenderTasks(){
                     auto owner = trns.GetOwner();
                     auto ownerIDInWorld = owner.GetID();
                     renderData.worldTransforms.SetValueAt(ownerIDInWorld.id, trns.GetWorldMatrix());
+                }
+                else {
+                    assert(false); // did not have the material when we should have
                 }
 
                 trns.ClearTickDirty();
@@ -535,7 +537,10 @@ perobject_t World::GetEntityAttributes(entity_t localid)
 }
 
 void DestroyMeshRenderDataGeneric(const auto& mesh, auto material, auto&& renderData, entity_t local_id, auto&& iteratorComparator){
-    
+    if (material == nullptr) {
+        return;
+    }
+
     bool removeContains = false;
     auto data_it = renderData.find(material);
     if (data_it != renderData.end()){

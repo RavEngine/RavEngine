@@ -35,6 +35,30 @@
 #include "Validator.hpp"
 
 namespace RavEngine {
+    struct MaterialSort {
+        Ref<MaterialInstance> mat;
+        MaterialSort(const decltype(mat)& mat) : mat(mat) {
+            assert(mat != nullptr);
+        }
+        bool operator<(const MaterialSort& other) const {
+            return mat->GetPriority() < other.mat->GetPriority();
+        }
+        bool operator==(const MaterialSort& other) const {
+            return mat == other.mat;
+        }
+    };
+}
+
+namespace std {
+    template<>
+    struct hash<RavEngine::MaterialSort> {
+        inline size_t operator()(const RavEngine::MaterialSort& obj) {
+            return std::hash<decltype(obj.mat)>{}(obj.mat);
+        }
+    };
+}
+
+namespace RavEngine {
 	struct Entity;
 	class InputManager;
 	struct Entity;
@@ -139,6 +163,7 @@ namespace RavEngine {
     concept IsEngineDataProvider = 
         (std::is_convertible_v<T, WorldDataProvider> || std::is_convertible_v<T, ValidatorProviderBase>)
         && not (std::is_convertible_v<T, DataProviderNone>);
+
 
 	class World : public std::enable_shared_from_this<World> {
 		friend class AudioPlayer;
@@ -422,8 +447,9 @@ namespace RavEngine {
             
             BufferedVRAMVector<matrix4> worldTransforms{"World Transform Private Buffer"};
 
-            UnorderedNodeMap<Ref<MaterialInstance>, MDIICommand> staticMeshRenderData;
-            UnorderedNodeMap<Ref<MaterialInstance>, MDIICommandSkinned> skinnedMeshRenderData;
+
+            UnorderedMap<MaterialSort, MDIICommand> staticMeshRenderData;
+            UnorderedMap<MaterialSort, MDIICommandSkinned> skinnedMeshRenderData;
 
             RGLBufferPtr cuboBuffer;
 
