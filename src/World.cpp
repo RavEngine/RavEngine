@@ -576,7 +576,7 @@ void updateMeshMaterialGeneric(auto&& renderData, entity_t localID, auto oldMat,
     DestroyMeshRenderDataGeneric(mesh, oldMat, renderData, localID, deletionComparator);
         
     // add the new mesh & its transform to the hashmap
-    auto& set = ( * (renderData.try_emplace(newMat, typename std::remove_reference_t<decltype(renderData)>::mapped_type()).first)).second;
+    auto& set = renderData[newMat];
     bool found = false;
     for (auto& command : set.commands) {
         found = comparator(command);

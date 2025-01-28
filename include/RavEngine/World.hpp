@@ -41,11 +41,21 @@ namespace RavEngine {
             assert(mat != nullptr);
         }
         bool operator<(const MaterialSort& other) const {
-            return mat->GetPriority() < other.mat->GetPriority();
+            constexpr auto make128key = [](const auto & mat) {
+                using int128 = std::ranges::range_difference_t<std::ranges::iota_view<long long, long long>>;
+                // put priority in the high bits
+                int128 key = mat->GetPriority();
+                key <<= 64;
+                auto ptr = mat.get();
+                key |= uintptr_t(ptr);
+                return key;
+            };
+            auto key1 = make128key(mat);
+            auto key2 = make128key(other.mat);
+       
+            return key1 < key2;
         }
-        bool operator==(const MaterialSort& other) const {
-            return mat == other.mat;
-        }
+        bool operator==(const MaterialSort& other) const = default;
     };
 }
 
@@ -448,8 +458,8 @@ namespace RavEngine {
             BufferedVRAMVector<matrix4> worldTransforms{"World Transform Private Buffer"};
 
 
-            UnorderedMap<MaterialSort, MDIICommand> staticMeshRenderData;
-            UnorderedMap<MaterialSort, MDIICommandSkinned> skinnedMeshRenderData;
+            OrderedMap<MaterialSort, MDIICommand> staticMeshRenderData;
+            OrderedMap<MaterialSort, MDIICommandSkinned> skinnedMeshRenderData;
 
             RGLBufferPtr cuboBuffer;
 
