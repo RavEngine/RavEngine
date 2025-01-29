@@ -103,11 +103,12 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 	worldOwning->renderData.stagingBufferPool.Reset();	// release unused buffers
     
     DestroyUnusedResources();
+	RVE_PROFILE_SECTION(resetCB, "Reset Command Buffer")
     mainCommandBuffer->Reset();
     mainCommandBuffer->Begin();
-
-    
-	RVE_PROFILE_SECTION(enc_sync_transforms,"Encode Sync Transforms");
+	RVE_PROFILE_SECTION_END(resetCB);
+   
+	RVE_PROFILE_SECTION(enc_sync_transforms,"Encode Sync Private Data");
     
     // sync private buffers
 	bool transformSyncCommandBufferNeedsCommit = false;
@@ -116,7 +117,9 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
         auto gcbuffer = [this](RGLBufferPtr oldPrivateBuffer){
             gcBuffers.enqueue(oldPrivateBuffer);
         };
+		RVE_PROFILE_SECTION(transforms,"EncodeSync Transforms")
         wrd.worldTransforms.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
+		RVE_PROFILE_SECTION_END(transforms);
         // bitwise-or to prevent short-circuiting
         wrd.directionalLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
         wrd.pointLightData.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
@@ -136,10 +139,15 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
         };
         
         // MDIIcommands
+		RVE_PROFILE_SECTION(staticmesh, "Encode Static Mesh Transforms");
         syncMeshData(wrd.staticMeshRenderData);
+		RVE_PROFILE_SECTION_END(staticmesh);
+		RVE_PROFILE_SECTION(skinnedMesh, "Encode Skinned Mesh Trasnforms");
         syncMeshData(wrd.skinnedMeshRenderData);
+		RVE_PROFILE_SECTION_END(skinnedMesh);
         
         // directional light computations
+		RVE_PROFILE_SECTION(dirlight, "Compute Directional Light Rendering Data");
         uint32_t numVaryingElts = 0;
         for(const auto& target : screenTargets){
             numVaryingElts += target.camDatas.size();
@@ -280,7 +288,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
         }
         
         wrd.directionalLightPassVarying.EncodeSync(device, transformSyncCommandBuffer, gcbuffer, transformSyncCommandBufferNeedsCommit);
-        
+		RVE_PROFILE_SECTION_END(dirlight);
         
         if (transformSyncCommandBufferNeedsCommit){
             transformSyncCommandBuffer->End();
@@ -303,421 +311,421 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 	}
     uint32_t camIdx = 0; // used for selecting directional lights in the lit pass
 
-		// do skeletal operations
-		struct skeletalMeshPrepareResult {
-			bool skeletalMeshesExist = false;
-		};
-		auto prepareSkeletalMeshBuffers = [this, &worldOwning,&worldTransformBuffer]() -> skeletalMeshPrepareResult {
-			// count objects
-			uint32_t totalVertsToSkin = 0;
-			uint32_t totalJointsToSkin = 0;
-			uint32_t totalObjectsToSkin = 0;	// also the number of draw calls in the indirect buffer
+	// do skeletal operations
+	struct skeletalMeshPrepareResult {
+		bool skeletalMeshesExist = false;
+	};
+	auto prepareSkeletalMeshBuffers = [this, &worldOwning,&worldTransformBuffer]() -> skeletalMeshPrepareResult {
+		// count objects
+		uint32_t totalVertsToSkin = 0;
+		uint32_t totalJointsToSkin = 0;
+		uint32_t totalObjectsToSkin = 0;	// also the number of draw calls in the indirect buffer
 
 
-			// resize buffers if they need to be resized
-			auto resizeSkeletonBuffer = [this](RGLBufferPtr& buffer, uint32_t stride, uint32_t neededSize, RGL::BufferConfig::Type type, RGL::BufferAccess access, RGL::BufferFlags options = {}) {
-				uint32_t currentCount = 0;
-				if (!buffer || buffer->getBufferSize() / stride < neededSize) {
-					if (buffer) {
-						currentCount = buffer->getBufferSize() / stride;
-						gcBuffers.enqueue(buffer);
-					}
-					auto newSize = closest_power_of<uint32_t>(neededSize, 2);
-					if (newSize == 0) {
-						return;
-					}
-					buffer = device->CreateBuffer({
-						newSize,
-						type,
-						stride,
-						access,
-						options
-						});
-					if (access == RGL::BufferAccess::Shared) {
-						buffer->MapMemory();
-					}
+		// resize buffers if they need to be resized
+		auto resizeSkeletonBuffer = [this](RGLBufferPtr& buffer, uint32_t stride, uint32_t neededSize, RGL::BufferConfig::Type type, RGL::BufferAccess access, RGL::BufferFlags options = {}) {
+			uint32_t currentCount = 0;
+			if (!buffer || buffer->getBufferSize() / stride < neededSize) {
+				if (buffer) {
+					currentCount = buffer->getBufferSize() / stride;
+					gcBuffers.enqueue(buffer);
 				}
-			};
-
-			for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
-				uint32_t totalEntitiesForThisCommand = 0;
-				for (auto& command : drawcommand.commands) {
-					auto subCommandEntityCount = command.entities.DenseSize();
-					totalObjectsToSkin += subCommandEntityCount;
-					totalEntitiesForThisCommand += subCommandEntityCount;
-
-					if (auto mesh = command.mesh.lock()) {
-						totalVertsToSkin += mesh->GetNumVerts() * subCommandEntityCount;
-					}
-
-					if (auto skeleton = command.skeleton.lock()) {
-						totalJointsToSkin += skeleton->GetSkeleton()->num_joints() * subCommandEntityCount;
-					}
-				}
-
-				resizeSkeletonBuffer(drawcommand.indirectBuffer, sizeof(RGL::IndirectIndexedCommand), totalEntitiesForThisCommand, { .StorageBuffer = true, .IndirectBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Skeleton per-material IndirectBuffer" });
-				//TODO: skinned meshes do not support LOD groups
-				resizeSkeletonBuffer(drawcommand.cullingBuffer, sizeof(entity_t), totalEntitiesForThisCommand, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Skeleton per-material cullingBuffer" });
-			}
-
-			resizeSkeletonBuffer(sharedSkeletonMatrixBuffer, sizeof(matrix4), totalJointsToSkin, { .StorageBuffer = true }, RGL::BufferAccess::Shared, { .debugName = "sharedSkeletonMatrixBuffer" });
-			resizeSkeletonBuffer(sharedSkinnedMeshVertexBuffer, sizeof(VertexNormalUV), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "sharedSkinnedMeshVertexBuffer" });
-
-			return {
-				.skeletalMeshesExist = totalObjectsToSkin > 0 && totalVertsToSkin > 0
-			};
-		};
-		auto skeletalPrepareResult = prepareSkeletalMeshBuffers();
-
-		auto prepareSkeletalCullingBuffer = [this,&worldOwning]() {
-			// dispatch compute to build the indirect buffer for finally rendering the skinned meshes
-			// each skinned mesh gets its own 1-instance draw in the buffer. The instance count starts at 0.
-			mainCommandBuffer->BeginComputeDebugMarker("Prepare Skinned Indirect Draw buffer");
-			mainCommandBuffer->BeginCompute(skinningDrawCallPreparePipeline);
-			for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
-                SkinningPrepareUBO ubo;
-				mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 0, 0);
-				for (auto& command : drawcommand.commands) {
-					const auto objectCount = command.entities.DenseSize();
-					const auto mesh = command.mesh.lock();
-					const auto vertexCount = mesh->GetNumVerts();
-
-					ubo.nVerticesInThisMesh = vertexCount;
-					ubo.nTotalObjects = objectCount;
-					ubo.indexBufferOffset = mesh->GetAllocation().indexRange->start / sizeof(uint32_t);
-					ubo.nIndicesInThisMesh = mesh->GetNumIndices();
-
-					mainCommandBuffer->SetComputeBytes(ubo, 0);
-					mainCommandBuffer->DispatchCompute(std::ceil(objectCount / 32.0f), 1, 1, 32, 1, 1);
-
-					ubo.vertexBufferOffset += vertexCount;
-					ubo.drawCallBufferOffset += objectCount;
-					ubo.baseInstanceOffset += objectCount;
-				}
-			}
-			mainCommandBuffer->EndCompute();
-			mainCommandBuffer->EndComputeDebugMarker();
-		};
-		
-
-		auto poseSkeletalMeshes = [this,&worldOwning]() {
-			RVE_PROFILE_FN_N("Enc Pose Skinned Meshes");
-			mainCommandBuffer->BeginComputeDebugMarker("Pose Skinned Meshes");
-			mainCommandBuffer->BeginCompute(skinnedMeshComputePipeline);
-			mainCommandBuffer->BindComputeBuffer(sharedSkinnedMeshVertexBuffer, 0);
-			mainCommandBuffer->BindComputeBuffer(sharedVertexBuffer, 1);
-			mainCommandBuffer->BindComputeBuffer(sharedSkeletonMatrixBuffer, 2);
-			using mat_t = glm::mat4;
-			std::span<mat_t> matbufMem{ static_cast<mat_t*>(sharedSkeletonMatrixBuffer->GetMappedDataPtr()), sharedSkeletonMatrixBuffer->getBufferSize() / sizeof(mat_t) };
-			SkinningUBO subo;
-			for (const auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
-				for (auto& command : drawcommand.commands) {
-					auto skeleton = command.skeleton.lock();
-					auto mesh = command.mesh.lock();
-					auto& entities = command.entities;
-					mainCommandBuffer->BindComputeBuffer(mesh->GetWeightsBuffer(), 3);
-
-					subo.numObjects = command.entities.DenseSize();
-					subo.numVertices = mesh->GetNumVerts();
-					subo.numBones = skeleton->GetSkeleton()->num_joints();
-					subo.vertexReadOffset = mesh->GetAllocation().vertRange->start / sizeof(VertexNormalUV);
-
-					// write joint transform matrices into buffer and update uniform offset
-					{
-						uint32_t object_id = 0;
-						for (const auto& ownerid : command.entities.GetReverseMap()) {
-                            auto& animator = worldOwning->GetComponent<AnimatorComponent>({ownerid, worldOwning->VersionForEntity(ownerid)});
-							const auto& skinningMats = animator.GetSkinningMats();
-							std::copy(skinningMats.begin(), skinningMats.end(), (matbufMem.begin() + subo.boneReadOffset) + object_id * skinningMats.size());
-							object_id++;
-						}
-					}
-
-					mainCommandBuffer->SetComputeBytes(subo, 0);
-					mainCommandBuffer->DispatchCompute(std::ceil(subo.numObjects / 8.0f), std::ceil(subo.numVertices / 32.0f), 1, 8, 32, 1);
-					subo.boneReadOffset += subo.numBones * subo.numObjects;
-					subo.vertexWriteOffset += subo.numVertices * subo.numObjects;	// one copy of the vertex data per object
-				}
-			}
-			mainCommandBuffer->EndCompute();
-			mainCommandBuffer->EndComputeDebugMarker();
-		};
-
-		auto tickParticles = [this, worldOwning, worldTransformBuffer]() {
-			mainCommandBuffer->BeginComputeDebugMarker("Particle Update");
-
-            worldOwning->Filter([this, worldOwning, worldTransformBuffer](ParticleEmitter& emitter, const Transform& transform) {
-				// frozen particle systems are not ticked
-				if (emitter.GetFrozen()) {
+				auto newSize = closest_power_of<uint32_t>(neededSize, 2);
+				if (newSize == 0) {
 					return;
 				}
-
-				Ref<ParticleRenderMaterialInstance> renderMat;
-				auto updateMat = emitter.GetUpdateMaterial();
-
-				Ref<MeshParticleMeshSelectionMaterialInstance> meshSelFn = nullptr;
-				bool isMeshPipeline = false;
-				uint32_t numMeshes = 0;
-				
-				std::visit(CaseAnalysis{
-                        [&renderMat](const Ref <BillboardParticleRenderMaterialInstance> &billboardMat) {
-                            renderMat = billboardMat;
-                        },
-                        [&renderMat, &meshSelFn, &isMeshPipeline](const Ref <MeshParticleRenderMaterialInstance> &meshMat) {
-                            renderMat = meshMat;
-							meshSelFn = meshMat->customSelectionFunction;
-							isMeshPipeline = true;
-                        }
-                }, emitter.GetRenderMaterial());
-
-				auto worldTransform = transform.GetWorldMatrix();
-
-				auto dispatchSizeUpdate = [this, &emitter, &isMeshPipeline,&renderMat, &numMeshes, &meshSelFn] {
-
-					if (isMeshPipeline) {
-						// allocate indirect buffer
-						auto asMeshInstance = std::static_pointer_cast<MeshParticleRenderMaterialInstance>(renderMat);
-						auto meshCollection = asMeshInstance->meshes;
-
-						auto nMeshes = meshCollection->GetNumLods();
-						numMeshes = nMeshes;
-						auto nCurrentCommands = emitter.indirectDrawBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand);
-						if (nCurrentCommands != nMeshes || emitter.indirectDrawBuffer == nullptr || emitter.indirectDrawBufferStaging == nullptr) {
-							gcBuffers.enqueue(emitter.indirectDrawBuffer);
-							gcBuffers.enqueue(emitter.indirectDrawBufferStaging);
-							emitter.indirectDrawBuffer = device->CreateBuffer({
-								nMeshes, {.StorageBuffer = true, .IndirectBuffer = true}, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, {.TransferDestination = true, .Writable = true, .debugName = "Particle indirect draw buffer"}
-								});
-
-							emitter.indirectDrawBufferStaging = device->CreateBuffer({ nMeshes, {.StorageBuffer = true}, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, {.Transfersource = true, .debugName = "Particle indirect draw buffer staging"} });
-						}
-						emitter.indirectDrawBufferStaging->MapMemory();
-						auto ptr = static_cast<RGL::IndirectIndexedCommand*>(emitter.indirectDrawBufferStaging->GetMappedDataPtr());
-						for (uint32_t i = 0; i < nMeshes; i++) {
-							auto mesh = meshCollection->GetMeshForLOD(i);
-							auto allocation = mesh->GetAllocation();
-							*(ptr + i) = {
-								.indexCount = uint32_t(mesh->GetNumIndices()),
-								.instanceCount = 0,
-								.indexStart = uint32_t(allocation.indexRange->start / sizeof(uint32_t)),
-								.baseVertex = uint32_t(allocation.vertRange->start / sizeof(VertexNormalUV)),
-								.baseInstance = i
-							};
-						}
-
-						emitter.indirectDrawBufferStaging->UnmapMemory();
-						mainCommandBuffer->CopyBufferToBuffer(
-							{
-								.buffer = emitter.indirectDrawBufferStaging,
-								.offset = 0,
-							},
-							{
-								.buffer = emitter.indirectDrawBuffer,
-								.offset = 0,
-							},
-							emitter.indirectDrawBufferStaging->getBufferSize());
-					}
-
-					// setup dispatch sizes
-					// we always need to run this because the Update shader may kill particles, changing the number of active particles
-					if (isMeshPipeline) {
-						mainCommandBuffer->BeginCompute(particleDispatchSetupPipelineIndexed);
-					}
-					else{ 
-						mainCommandBuffer->BeginCompute(particleDispatchSetupPipeline);
-					}
-					mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 0);
-					mainCommandBuffer->BindComputeBuffer(emitter.indirectComputeBuffer, 1);
-					if (isMeshPipeline) {
-						mainCommandBuffer->DispatchCompute(1, 1, 1, 1, 1, 1);
-					}
-					else {
-						mainCommandBuffer->BindComputeBuffer(emitter.indirectDrawBuffer, 2);
-						mainCommandBuffer->DispatchCompute(1, 1, 1, 1, 1, 1);	// this is kinda terrible...
-					}
-					mainCommandBuffer->EndCompute();
-
-					// if there's no mesh selector function, or we have 1 mesh total,
-					// sidestep the selector function and populate the count directly
-					if (isMeshPipeline && (meshSelFn == nullptr || numMeshes == 1)) {
-						// put the particle count into the indirect draw buffer
-						mainCommandBuffer->CopyBufferToBuffer(
-							{
-								.buffer = emitter.emitterStateBuffer,
-								.offset = offsetof(EmitterState,fields) + offsetof(EmitterStateNumericFields,aliveParticleCount)
-							},
-							{
-								.buffer = emitter.indirectDrawBuffer,
-								.offset = offsetof(RGL::IndirectIndexedCommand,instanceCount),
-							},
-							sizeof(EmitterStateNumericFields::aliveParticleCount)
-						);
-					}
-				};
-
-				bool hasCalculatedSizes = false;
-
-				if (emitter.resetRequested) {
-					
-					EmitterStateNumericFields resetState{};
-
-					emitter.emitterStateBuffer->SetBufferData(resetState);	// this will leave the emitter ID value untouched
-
-					emitter.ClearReset();
-				}
-
-				// spawning particles?
-				auto spawnCount = emitter.GetNextParticleSpawnCount();
-				if (spawnCount > 0 && emitter.IsEmitting()) {
-					ParticleCreationPushConstants constants{
-						.particlesToSpawn = spawnCount,
-						.maxParticles = emitter.GetMaxParticles(),
-					};
-					mainCommandBuffer->BeginComputeDebugMarker("Create and Init");
-					mainCommandBuffer->BeginCompute(particleCreatePipeline);
-					mainCommandBuffer->SetComputeBytes(constants, 0);
-
-					mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 0);
-					mainCommandBuffer->BindComputeBuffer(emitter.particleReuseFreelist, 1);
-					mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 2);
-					mainCommandBuffer->BindComputeBuffer(emitter.spawnedThisFrameList, 3);
-
-					mainCommandBuffer->DispatchCompute(std::ceil(spawnCount / 64.0f), 1, 1, 64, 1, 1);
-					mainCommandBuffer->EndCompute();
-
-					dispatchSizeUpdate();
-					hasCalculatedSizes = true;
-
-					// init particles
-					mainCommandBuffer->BeginCompute(updateMat->mat->userInitPipeline);
-
-					mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer,0);
-					mainCommandBuffer->BindComputeBuffer(emitter.spawnedThisFrameList, 1);
-					mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 2);
-					mainCommandBuffer->BindComputeBuffer(emitter.particleLifeBuffer, 3);
-					mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 4);
-
-					mainCommandBuffer->DispatchIndirect({
-						.indirectBuffer = emitter.indirectComputeBuffer,
-						.offsetIntoBuffer = 0,
-                        .blocksizeX = 64, .blocksizeY = 1, .blocksizeZ = 1
+				buffer = device->CreateBuffer({
+					newSize,
+					type,
+					stride,
+					access,
+					options
 					});
+				if (access == RGL::BufferAccess::Shared) {
+					buffer->MapMemory();
+				}
+			}
+		};
 
-					mainCommandBuffer->EndCompute();
-					mainCommandBuffer->EndComputeDebugMarker();
+		for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
+			uint32_t totalEntitiesForThisCommand = 0;
+			for (auto& command : drawcommand.commands) {
+				auto subCommandEntityCount = command.entities.DenseSize();
+				totalObjectsToSkin += subCommandEntityCount;
+				totalEntitiesForThisCommand += subCommandEntityCount;
+
+				if (auto mesh = command.mesh.lock()) {
+					totalVertsToSkin += mesh->GetNumVerts() * subCommandEntityCount;
 				}
 
-				// burst mode
-				if (emitter.mode == ParticleEmitter::Mode::Burst && emitter.IsEmitting()) {
-					emitter.Stop();
+				if (auto skeleton = command.skeleton.lock()) {
+					totalJointsToSkin += skeleton->GetSkeleton()->num_joints() * subCommandEntityCount;
 				}
+			}
 
-				if (!hasCalculatedSizes) {
-					dispatchSizeUpdate();
-				}
+			resizeSkeletonBuffer(drawcommand.indirectBuffer, sizeof(RGL::IndirectIndexedCommand), totalEntitiesForThisCommand, { .StorageBuffer = true, .IndirectBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Skeleton per-material IndirectBuffer" });
+			//TODO: skinned meshes do not support LOD groups
+			resizeSkeletonBuffer(drawcommand.cullingBuffer, sizeof(entity_t), totalEntitiesForThisCommand, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Skeleton per-material cullingBuffer" });
+		}
 
-				// tick particles
-				mainCommandBuffer->BeginComputeDebugMarker("Update, Kill");
-				mainCommandBuffer->BeginCompute(updateMat->mat->userUpdatePipeline);
+		resizeSkeletonBuffer(sharedSkeletonMatrixBuffer, sizeof(matrix4), totalJointsToSkin, { .StorageBuffer = true }, RGL::BufferAccess::Shared, { .debugName = "sharedSkeletonMatrixBuffer" });
+		resizeSkeletonBuffer(sharedSkinnedMeshVertexBuffer, sizeof(VertexNormalUV), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "sharedSkinnedMeshVertexBuffer" });
 
-				mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 0);
-				mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 1);
-				mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 2);
-				mainCommandBuffer->BindComputeBuffer(emitter.particleLifeBuffer, 3);
+		return {
+			.skeletalMeshesExist = totalObjectsToSkin > 0 && totalVertsToSkin > 0
+		};
+	};
+	auto skeletalPrepareResult = prepareSkeletalMeshBuffers();
 
-				ParticleUpdateUBO ubo{
-					.fpsScale = GetApp()->GetCurrentFPSScale()
-				};
+	auto prepareSkeletalCullingBuffer = [this,&worldOwning]() {
+		// dispatch compute to build the indirect buffer for finally rendering the skinned meshes
+		// each skinned mesh gets its own 1-instance draw in the buffer. The instance count starts at 0.
+		mainCommandBuffer->BeginComputeDebugMarker("Prepare Skinned Indirect Draw buffer");
+		mainCommandBuffer->BeginCompute(skinningDrawCallPreparePipeline);
+		for (auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
+            SkinningPrepareUBO ubo;
+			mainCommandBuffer->BindComputeBuffer(drawcommand.indirectBuffer, 0, 0);
+			for (auto& command : drawcommand.commands) {
+				const auto objectCount = command.entities.DenseSize();
+				const auto mesh = command.mesh.lock();
+				const auto vertexCount = mesh->GetNumVerts();
+
+				ubo.nVerticesInThisMesh = vertexCount;
+				ubo.nTotalObjects = objectCount;
+				ubo.indexBufferOffset = mesh->GetAllocation().indexRange->start / sizeof(uint32_t);
+				ubo.nIndicesInThisMesh = mesh->GetNumIndices();
 
 				mainCommandBuffer->SetComputeBytes(ubo, 0);
-				mainCommandBuffer->DispatchIndirect({
-					.indirectBuffer = emitter.indirectComputeBuffer,
-					.offsetIntoBuffer = sizeof(RGL::ComputeIndirectCommand),
-                    .blocksizeX = 64, .blocksizeY = 1, .blocksizeZ = 1
-				});
+				mainCommandBuffer->DispatchCompute(std::ceil(objectCount / 32.0f), 1, 1, 32, 1, 1);
 
+				ubo.vertexBufferOffset += vertexCount;
+				ubo.drawCallBufferOffset += objectCount;
+				ubo.baseInstanceOffset += objectCount;
+			}
+		}
+		mainCommandBuffer->EndCompute();
+		mainCommandBuffer->EndComputeDebugMarker();
+	};
+		
+
+	auto poseSkeletalMeshes = [this,&worldOwning]() {
+		RVE_PROFILE_FN_N("Enc Pose Skinned Meshes");
+		mainCommandBuffer->BeginComputeDebugMarker("Pose Skinned Meshes");
+		mainCommandBuffer->BeginCompute(skinnedMeshComputePipeline);
+		mainCommandBuffer->BindComputeBuffer(sharedSkinnedMeshVertexBuffer, 0);
+		mainCommandBuffer->BindComputeBuffer(sharedVertexBuffer, 1);
+		mainCommandBuffer->BindComputeBuffer(sharedSkeletonMatrixBuffer, 2);
+		using mat_t = glm::mat4;
+		std::span<mat_t> matbufMem{ static_cast<mat_t*>(sharedSkeletonMatrixBuffer->GetMappedDataPtr()), sharedSkeletonMatrixBuffer->getBufferSize() / sizeof(mat_t) };
+		SkinningUBO subo;
+		for (const auto& [materialInstance, drawcommand] : worldOwning->renderData.skinnedMeshRenderData) {
+			for (auto& command : drawcommand.commands) {
+				auto skeleton = command.skeleton.lock();
+				auto mesh = command.mesh.lock();
+				auto& entities = command.entities;
+				mainCommandBuffer->BindComputeBuffer(mesh->GetWeightsBuffer(), 3);
+
+				subo.numObjects = command.entities.DenseSize();
+				subo.numVertices = mesh->GetNumVerts();
+				subo.numBones = skeleton->GetSkeleton()->num_joints();
+				subo.vertexReadOffset = mesh->GetAllocation().vertRange->start / sizeof(VertexNormalUV);
+
+				// write joint transform matrices into buffer and update uniform offset
+				{
+					uint32_t object_id = 0;
+					for (const auto& ownerid : command.entities.GetReverseMap()) {
+                        auto& animator = worldOwning->GetComponent<AnimatorComponent>({ownerid, worldOwning->VersionForEntity(ownerid)});
+						const auto& skinningMats = animator.GetSkinningMats();
+						std::copy(skinningMats.begin(), skinningMats.end(), (matbufMem.begin() + subo.boneReadOffset) + object_id * skinningMats.size());
+						object_id++;
+					}
+				}
+
+				mainCommandBuffer->SetComputeBytes(subo, 0);
+				mainCommandBuffer->DispatchCompute(std::ceil(subo.numObjects / 8.0f), std::ceil(subo.numVertices / 32.0f), 1, 8, 32, 1);
+				subo.boneReadOffset += subo.numBones * subo.numObjects;
+				subo.vertexWriteOffset += subo.numVertices * subo.numObjects;	// one copy of the vertex data per object
+			}
+		}
+		mainCommandBuffer->EndCompute();
+		mainCommandBuffer->EndComputeDebugMarker();
+	};
+
+	auto tickParticles = [this, worldOwning, worldTransformBuffer]() {
+		mainCommandBuffer->BeginComputeDebugMarker("Particle Update");
+
+        worldOwning->Filter([this, worldOwning, worldTransformBuffer](ParticleEmitter& emitter, const Transform& transform) {
+			// frozen particle systems are not ticked
+			if (emitter.GetFrozen()) {
+				return;
+			}
+
+			Ref<ParticleRenderMaterialInstance> renderMat;
+			auto updateMat = emitter.GetUpdateMaterial();
+
+			Ref<MeshParticleMeshSelectionMaterialInstance> meshSelFn = nullptr;
+			bool isMeshPipeline = false;
+			uint32_t numMeshes = 0;
+				
+			std::visit(CaseAnalysis{
+                    [&renderMat](const Ref <BillboardParticleRenderMaterialInstance> &billboardMat) {
+                        renderMat = billboardMat;
+                    },
+                    [&renderMat, &meshSelFn, &isMeshPipeline](const Ref <MeshParticleRenderMaterialInstance> &meshMat) {
+                        renderMat = meshMat;
+						meshSelFn = meshMat->customSelectionFunction;
+						isMeshPipeline = true;
+                    }
+            }, emitter.GetRenderMaterial());
+
+			auto worldTransform = transform.GetWorldMatrix();
+
+			auto dispatchSizeUpdate = [this, &emitter, &isMeshPipeline,&renderMat, &numMeshes, &meshSelFn] {
+
+				if (isMeshPipeline) {
+					// allocate indirect buffer
+					auto asMeshInstance = std::static_pointer_cast<MeshParticleRenderMaterialInstance>(renderMat);
+					auto meshCollection = asMeshInstance->meshes;
+
+					auto nMeshes = meshCollection->GetNumLods();
+					numMeshes = nMeshes;
+					auto nCurrentCommands = emitter.indirectDrawBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand);
+					if (nCurrentCommands != nMeshes || emitter.indirectDrawBuffer == nullptr || emitter.indirectDrawBufferStaging == nullptr) {
+						gcBuffers.enqueue(emitter.indirectDrawBuffer);
+						gcBuffers.enqueue(emitter.indirectDrawBufferStaging);
+						emitter.indirectDrawBuffer = device->CreateBuffer({
+							nMeshes, {.StorageBuffer = true, .IndirectBuffer = true}, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, {.TransferDestination = true, .Writable = true, .debugName = "Particle indirect draw buffer"}
+							});
+
+						emitter.indirectDrawBufferStaging = device->CreateBuffer({ nMeshes, {.StorageBuffer = true}, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Shared, {.Transfersource = true, .debugName = "Particle indirect draw buffer staging"} });
+					}
+					emitter.indirectDrawBufferStaging->MapMemory();
+					auto ptr = static_cast<RGL::IndirectIndexedCommand*>(emitter.indirectDrawBufferStaging->GetMappedDataPtr());
+					for (uint32_t i = 0; i < nMeshes; i++) {
+						auto mesh = meshCollection->GetMeshForLOD(i);
+						auto allocation = mesh->GetAllocation();
+						*(ptr + i) = {
+							.indexCount = uint32_t(mesh->GetNumIndices()),
+							.instanceCount = 0,
+							.indexStart = uint32_t(allocation.indexRange->start / sizeof(uint32_t)),
+							.baseVertex = uint32_t(allocation.vertRange->start / sizeof(VertexNormalUV)),
+							.baseInstance = i
+						};
+					}
+
+					emitter.indirectDrawBufferStaging->UnmapMemory();
+					mainCommandBuffer->CopyBufferToBuffer(
+						{
+							.buffer = emitter.indirectDrawBufferStaging,
+							.offset = 0,
+						},
+						{
+							.buffer = emitter.indirectDrawBuffer,
+							.offset = 0,
+						},
+						emitter.indirectDrawBufferStaging->getBufferSize());
+				}
+
+				// setup dispatch sizes
+				// we always need to run this because the Update shader may kill particles, changing the number of active particles
+				if (isMeshPipeline) {
+					mainCommandBuffer->BeginCompute(particleDispatchSetupPipelineIndexed);
+				}
+				else{ 
+					mainCommandBuffer->BeginCompute(particleDispatchSetupPipeline);
+				}
+				mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 0);
+				mainCommandBuffer->BindComputeBuffer(emitter.indirectComputeBuffer, 1);
+				if (isMeshPipeline) {
+					mainCommandBuffer->DispatchCompute(1, 1, 1, 1, 1, 1);
+				}
+				else {
+					mainCommandBuffer->BindComputeBuffer(emitter.indirectDrawBuffer, 2);
+					mainCommandBuffer->DispatchCompute(1, 1, 1, 1, 1, 1);	// this is kinda terrible...
+				}
 				mainCommandBuffer->EndCompute();
 
-				// kill particles
-				mainCommandBuffer->BeginCompute(particleKillPipeline);
+				// if there's no mesh selector function, or we have 1 mesh total,
+				// sidestep the selector function and populate the count directly
+				if (isMeshPipeline && (meshSelFn == nullptr || numMeshes == 1)) {
+					// put the particle count into the indirect draw buffer
+					mainCommandBuffer->CopyBufferToBuffer(
+						{
+							.buffer = emitter.emitterStateBuffer,
+							.offset = offsetof(EmitterState,fields) + offsetof(EmitterStateNumericFields,aliveParticleCount)
+						},
+						{
+							.buffer = emitter.indirectDrawBuffer,
+							.offset = offsetof(RGL::IndirectIndexedCommand,instanceCount),
+						},
+						sizeof(EmitterStateNumericFields::aliveParticleCount)
+					);
+				}
+			};
 
-				KillParticleUBO kubo{
-					.maxTotalParticles = emitter.GetMaxParticles()
+			bool hasCalculatedSizes = false;
+
+			if (emitter.resetRequested) {
+					
+				EmitterStateNumericFields resetState{};
+
+				emitter.emitterStateBuffer->SetBufferData(resetState);	// this will leave the emitter ID value untouched
+
+				emitter.ClearReset();
+			}
+
+			// spawning particles?
+			auto spawnCount = emitter.GetNextParticleSpawnCount();
+			if (spawnCount > 0 && emitter.IsEmitting()) {
+				ParticleCreationPushConstants constants{
+					.particlesToSpawn = spawnCount,
+					.maxParticles = emitter.GetMaxParticles(),
 				};
+				mainCommandBuffer->BeginComputeDebugMarker("Create and Init");
+				mainCommandBuffer->BeginCompute(particleCreatePipeline);
+				mainCommandBuffer->SetComputeBytes(constants, 0);
 
-				mainCommandBuffer->SetComputeBytes(kubo,0);
+				mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 0);
+				mainCommandBuffer->BindComputeBuffer(emitter.particleReuseFreelist, 1);
+				mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 2);
+				mainCommandBuffer->BindComputeBuffer(emitter.spawnedThisFrameList, 3);
 
-				mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 0);
-				mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 1);
-				mainCommandBuffer->BindComputeBuffer(emitter.particleReuseFreelist, 2);
+				mainCommandBuffer->DispatchCompute(std::ceil(spawnCount / 64.0f), 1, 1, 64, 1, 1);
+				mainCommandBuffer->EndCompute();
+
+				dispatchSizeUpdate();
+				hasCalculatedSizes = true;
+
+				// init particles
+				mainCommandBuffer->BeginCompute(updateMat->mat->userInitPipeline);
+
+				mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer,0);
+				mainCommandBuffer->BindComputeBuffer(emitter.spawnedThisFrameList, 1);
+				mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 2);
 				mainCommandBuffer->BindComputeBuffer(emitter.particleLifeBuffer, 3);
+				mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, 4);
 
 				mainCommandBuffer->DispatchIndirect({
 					.indirectBuffer = emitter.indirectComputeBuffer,
-					.offsetIntoBuffer = sizeof(RGL::ComputeIndirectCommand),	// uses the same indirect command as the update shader, because it works on the alive set
+					.offsetIntoBuffer = 0,
                     .blocksizeX = 64, .blocksizeY = 1, .blocksizeZ = 1
 				});
 
 				mainCommandBuffer->EndCompute();
 				mainCommandBuffer->EndComputeDebugMarker();
+			}
 
-				if (isMeshPipeline && meshSelFn) {
-					//custom mesh selection 
+			// burst mode
+			if (emitter.mode == ParticleEmitter::Mode::Burst && emitter.IsEmitting()) {
+				emitter.Stop();
+			}
 
-					// if the buffer doesn't exist yet, create it
-					if (emitter.meshAliveParticleIndexBuffer == nullptr) {
-						emitter.meshAliveParticleIndexBuffer = device->CreateBuffer({
-							numMeshes * emitter.GetMaxParticles(), {.StorageBuffer = true}, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Alive particle index buffer (for meshes)"}
-						});
-					}
+			if (!hasCalculatedSizes) {
+				dispatchSizeUpdate();
+			}
 
-					struct {
-						uint32_t numMeshes;
-						uint32_t maxTotalParticles;
-					} engineData{
-						.numMeshes = numMeshes,
-						.maxTotalParticles = emitter.GetMaxParticles()
-					};
+			// tick particles
+			mainCommandBuffer->BeginComputeDebugMarker("Update, Kill");
+			mainCommandBuffer->BeginCompute(updateMat->mat->userUpdatePipeline);
 
-					auto transientOffset = WriteTransient(engineData);
-					emitter.renderState.maxTotalParticlesOffset = transientOffset;
+			mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 0);
+			mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 1);
+			mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 2);
+			mainCommandBuffer->BindComputeBuffer(emitter.particleLifeBuffer, 3);
 
-					// setup rendering
-					auto selMat = meshSelFn->material;
-					mainCommandBuffer->BeginComputeDebugMarker("Select meshes");
-					mainCommandBuffer->BeginCompute(selMat->userSelectionPipeline);
+			ParticleUpdateUBO ubo{
+				.fpsScale = GetApp()->GetCurrentFPSScale()
+			};
 
-					mainCommandBuffer->BindComputeBuffer(emitter.meshAliveParticleIndexBuffer, 10);
-					mainCommandBuffer->BindComputeBuffer(emitter.indirectDrawBuffer, 11);
-					mainCommandBuffer->BindComputeBuffer(transientBuffer, 12, transientOffset);
-					mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 13);
-					mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 14);
-					mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 15);
-
-					mainCommandBuffer->DispatchIndirect({
-						.indirectBuffer = emitter.indirectComputeBuffer,
-						.offsetIntoBuffer = sizeof(RGL::ComputeIndirectCommand),
-						.blocksizeX = 64, .blocksizeY = 1, .blocksizeZ = 1
-					});
-					mainCommandBuffer->EndCompute();
-
-					mainCommandBuffer->EndComputeDebugMarker();
-				}
-				
+			mainCommandBuffer->SetComputeBytes(ubo, 0);
+			mainCommandBuffer->DispatchIndirect({
+				.indirectBuffer = emitter.indirectComputeBuffer,
+				.offsetIntoBuffer = sizeof(RGL::ComputeIndirectCommand),
+                .blocksizeX = 64, .blocksizeY = 1, .blocksizeZ = 1
 			});
+
+			mainCommandBuffer->EndCompute();
+
+			// kill particles
+			mainCommandBuffer->BeginCompute(particleKillPipeline);
+
+			KillParticleUBO kubo{
+				.maxTotalParticles = emitter.GetMaxParticles()
+			};
+
+			mainCommandBuffer->SetComputeBytes(kubo,0);
+
+			mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 0);
+			mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 1);
+			mainCommandBuffer->BindComputeBuffer(emitter.particleReuseFreelist, 2);
+			mainCommandBuffer->BindComputeBuffer(emitter.particleLifeBuffer, 3);
+
+			mainCommandBuffer->DispatchIndirect({
+				.indirectBuffer = emitter.indirectComputeBuffer,
+				.offsetIntoBuffer = sizeof(RGL::ComputeIndirectCommand),	// uses the same indirect command as the update shader, because it works on the alive set
+                .blocksizeX = 64, .blocksizeY = 1, .blocksizeZ = 1
+			});
+
+			mainCommandBuffer->EndCompute();
 			mainCommandBuffer->EndComputeDebugMarker();
-		};
 
-		tickParticles();
+			if (isMeshPipeline && meshSelFn) {
+				//custom mesh selection 
+
+				// if the buffer doesn't exist yet, create it
+				if (emitter.meshAliveParticleIndexBuffer == nullptr) {
+					emitter.meshAliveParticleIndexBuffer = device->CreateBuffer({
+						numMeshes * emitter.GetMaxParticles(), {.StorageBuffer = true}, sizeof(RGL::IndirectIndexedCommand), RGL::BufferAccess::Private, {.Writable = true, .debugName = "Alive particle index buffer (for meshes)"}
+					});
+				}
+
+				struct {
+					uint32_t numMeshes;
+					uint32_t maxTotalParticles;
+				} engineData{
+					.numMeshes = numMeshes,
+					.maxTotalParticles = emitter.GetMaxParticles()
+				};
+
+				auto transientOffset = WriteTransient(engineData);
+				emitter.renderState.maxTotalParticlesOffset = transientOffset;
+
+				// setup rendering
+				auto selMat = meshSelFn->material;
+				mainCommandBuffer->BeginComputeDebugMarker("Select meshes");
+				mainCommandBuffer->BeginCompute(selMat->userSelectionPipeline);
+
+				mainCommandBuffer->BindComputeBuffer(emitter.meshAliveParticleIndexBuffer, 10);
+				mainCommandBuffer->BindComputeBuffer(emitter.indirectDrawBuffer, 11);
+				mainCommandBuffer->BindComputeBuffer(transientBuffer, 12, transientOffset);
+				mainCommandBuffer->BindComputeBuffer(emitter.emitterStateBuffer, 13);
+				mainCommandBuffer->BindComputeBuffer(emitter.activeParticleIndexBuffer, 14);
+				mainCommandBuffer->BindComputeBuffer(emitter.particleDataBuffer, 15);
+
+				mainCommandBuffer->DispatchIndirect({
+					.indirectBuffer = emitter.indirectComputeBuffer,
+					.offsetIntoBuffer = sizeof(RGL::ComputeIndirectCommand),
+					.blocksizeX = 64, .blocksizeY = 1, .blocksizeZ = 1
+				});
+				mainCommandBuffer->EndCompute();
+
+				mainCommandBuffer->EndComputeDebugMarker();
+			}
+				
+		});
+		mainCommandBuffer->EndComputeDebugMarker();
+	};
+
+	tickParticles();
 		
-		// don't do operations if there's nothing to skin
-		// these operations run once per frame since the results
-		// are the same for all future passes
-		if (skeletalPrepareResult.skeletalMeshesExist) {
-			poseSkeletalMeshes();
+	// don't do operations if there's nothing to skin
+	// these operations run once per frame since the results
+	// are the same for all future passes
+	if (skeletalPrepareResult.skeletalMeshesExist) {
+		poseSkeletalMeshes();
 
-			prepareSkeletalCullingBuffer();
-		}
+		prepareSkeletalCullingBuffer();
+	}
 
     auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &camIdx]<bool includeLighting = true, bool transparentMode = false, bool runCulling = true>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers, const RenderTargetCollection* target){
 			RVE_PROFILE_FN_N("RenderFromPerspective");
@@ -2111,7 +2119,6 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 #endif
 				mainCommandBuffer->EndRendering();
 			};
-
 			auto doPassWithCamData = [this,&target,&nextImgSize](auto&& camdata, auto&& function) {
 				const auto camPos = camdata.camPos;
 				const auto viewportOverride = camdata.viewportOverride;
@@ -2332,7 +2339,9 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		}
 
 		if (transformSyncCommandBufferNeedsCommit) {
+			RVE_PROFILE_SECTION(transient_wait,"Wait for Transient Buffer to complete");
 			transformSyncCommandBuffer->BlockUntilCompleted();
+			RVE_PROFILE_SECTION_END(transient_wait);
 		}
    
 

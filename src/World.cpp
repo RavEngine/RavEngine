@@ -185,7 +185,10 @@ void World::SetupTaskGraph(){
 
 	auto RunPhysics = ECSTasks.emplace([this]{
         RVE_PROFILE_FN_N("PhysX Tick");
-		Solver->Tick(GetCurrentFPSScale());
+        auto nc = (GetAllComponentsOfType<RigidBodyDynamicComponent>()->DenseSize() + GetAllComponentsOfType<RigidBodyStaticComponent>()->DenseSize());
+        if (nc > 0) {
+            Solver->Tick(GetCurrentFPSScale());
+        }
 	}).name("PhysX Execute");
     
     auto read = EmplaceSystem<PhysicsLinkSystemRead>();
@@ -317,7 +320,7 @@ void World::setupRenderTasks(){
         auto nEntities = numEntities + std::min(nCreatedThisTick, 1);  // hack: if I don't add 1, then the pbr.vsh shader OOBs, not sure why
         auto currentBufferSize = renderData.worldTransforms.Size();
         if (nEntities > currentBufferSize){
-            auto newSize = closest_power_of<entity_id_t>(nEntities, 16);
+            auto newSize = closest_power_of<entity_id_t>(nEntities, 2);
             renderData.worldTransforms.Resize(newSize);
         }
         nCreatedThisTick = 0;
@@ -328,23 +331,19 @@ void World::setupRenderTasks(){
             if (trns.isTickDirty && sm.GetEnabled()) {
                 // update
                 auto valuesToCompare = captureLambda(sm);
-                if (renderDataSource.find(sm.GetMaterial()) != renderDataSource.end()) {
-                    auto& row = renderDataSource.at(sm.GetMaterial());
+                auto& row = renderDataSource.at(sm.GetMaterial());
 
-                    auto it = iteratorComparator(row, valuesToCompare);
-                    if (it == row.commands.end()) {
-                        return;
-                    }
-                    assert(it != row.commands.end());
-                    auto& vec = *it;
-                    // write new matrix
-                    auto owner = trns.GetOwner();
-                    auto ownerIDInWorld = owner.GetID();
-                    renderData.worldTransforms.SetValueAt(ownerIDInWorld.id, trns.GetWorldMatrix());
+                auto it = iteratorComparator(row, valuesToCompare);
+                if (it == row.commands.end()) {
+                    return;
                 }
-                else {
-                    assert(false); // did not have the material when we should have
-                }
+                assert(it != row.commands.end());
+                auto& vec = *it;
+                // write new matrix
+                auto owner = trns.GetOwner();
+                auto ownerIDInWorld = owner.GetID();
+                renderData.worldTransforms.SetValueAt(ownerIDInWorld.id, trns.GetWorldMatrix());
+               
 
                 trns.ClearTickDirty();
             }
@@ -352,6 +351,7 @@ void World::setupRenderTasks(){
     };
 
     auto updateRenderDataStaticMesh = renderTasks.emplace([this,updateRenderDataGeneric] {
+        RVE_PROFILE_FN_N("World: Update Static Mesh Render Data");
         constexpr static StaticMesh* ptrForTemplate = nullptr;
         updateRenderDataGeneric(ptrForTemplate,renderData.staticMeshRenderData, [](auto& sm){
             return sm.GetMesh();
@@ -364,6 +364,7 @@ void World::setupRenderTasks(){
     }).name("Update invalidated static mesh transforms");
 
     auto updateRenderDataSkinnedMesh = renderTasks.emplace([this,updateRenderDataGeneric] {
+        RVE_PROFILE_FN_N("World: Update Skinned Mesh Render Data");
         constexpr static SkinnedMeshComponent* ptrForTemplate = nullptr;
         constexpr static AnimatorComponent* ptrForTemplate2 = nullptr;
         updateRenderDataGeneric(ptrForTemplate,renderData.skinnedMeshRenderData, [](auto& sm){

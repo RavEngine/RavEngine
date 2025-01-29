@@ -1929,6 +1929,7 @@ RavEngine::RenderEngine::~RenderEngine()
 }
 
 void RenderEngine::DestroyUnusedResources() {
+	RVE_PROFILE_FN;
 	// deallocate the resources that have been freed
 
 	auto clear = [](auto& queue) {

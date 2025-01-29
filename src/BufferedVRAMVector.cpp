@@ -4,6 +4,7 @@
 #include "Debug.hpp"
 #include "App.hpp"
 #include "RenderEngine.hpp"
+#include "Profile.hpp"
 
 namespace RavEngine{
 void BufferedVRAMStructureBase::InitializePrivateBuffer(RGLDevicePtr device, uint32_t size){
@@ -25,6 +26,7 @@ BufferedVRAMStructureBase::~BufferedVRAMStructureBase()
 }
 
 void BufferedVRAMStructureBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hostBuffer, RGLCommandBufferPtr transformSyncCommandBuffer, uint32_t elemSize, const Function<void(RGLBufferPtr)>& gcBuffersFn, bool& needsSync){
+    RVE_PROFILE_FN;
     uint32_t newPrivateSize = 0;
     {
         const uint32_t hostSize = hostBuffer->getBufferSize();
@@ -100,8 +102,9 @@ void BufferedVRAMStructureBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hos
             }, copySize);
 
     };
-
-    for (uint32_t i = 0; i < syncTrackBuffer.size(); i++) {
+    RVE_PROFILE_SECTION(computeRanges, "Compute Ranges");
+    const auto n = syncTrackBuffer.size();
+    for (uint32_t i = 0; i < n; i++) {
         auto& modified = syncTrackBuffer[i];
 
         if (modified && gapCounter == 0) {
@@ -119,6 +122,7 @@ void BufferedVRAMStructureBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hos
             modified = false;
         }
     }
+    RVE_PROFILE_SECTION_END(computeRanges);
 
     // if the loop ends and gapCounter != 0, then create another range
     if (gapCounter != 0) {
