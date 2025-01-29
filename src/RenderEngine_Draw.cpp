@@ -1504,9 +1504,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			auto camPos = light.worldTransform * glm::vec4(0, 0, 0, 1);
 			auto& origLight = owner.GetComponent<SpotLight>();
             auto viewMat = origLight.CalcViewMatrix(light.worldTransform);
+			auto projMat = origLight.CalcProjectionMatrix();
 
 			return lightViewProjResult{
-				.lightProj = light.lightViewProj,
+				.lightProj = projMat,
 				.lightView = viewMat,
 				.camPos = camPos,
 				.depthPyramid = origLight.shadowData.pyramid,
