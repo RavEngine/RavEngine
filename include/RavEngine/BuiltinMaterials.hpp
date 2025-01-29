@@ -32,7 +32,7 @@ namespace RavEngine {
 	class PBRMaterialInstance : public MaterialInstance {
 	public:
 		
-		PBRMaterialInstance(Ref<PBRMaterial> m);
+		PBRMaterialInstance(Ref<PBRMaterial> m, uint32_t priority = 0);
 
 		void SetAlbedoTexture(Ref<Texture> texture) {
 			textureBindings[1] = texture;

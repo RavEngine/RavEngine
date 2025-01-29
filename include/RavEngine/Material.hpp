@@ -151,7 +151,7 @@ namespace RavEngine {
 	protected:
 		std::array<RGLBufferPtr, maxBindingSlots> bufferBindings;
 		std::array<Ref<Texture>, maxBindingSlots> textureBindings;
-		uint32_t priority = 0;
+		const uint32_t priority;
 	public:
 		auto GetPriority() const {
 			return priority;
@@ -180,7 +180,7 @@ namespace RavEngine {
 
 	protected:
 		MaterialVariant mat;
-		MaterialInstance(const decltype(mat)& m) : mat(m) {}
+		MaterialInstance(const decltype(mat)& m, const decltype(priority) p = 0) : mat(m), priority(p) {}
 	};
 }
 #endif

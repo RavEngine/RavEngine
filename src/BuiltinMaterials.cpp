@@ -85,7 +85,7 @@ STATIC(RavEngine::defaultTransparentUnlitColorBlendConfig) {
 };
 
 
-RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m) : MaterialInstance(m) {
+RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m, uint32_t priority) : MaterialInstance(m, priority) {
     textureBindings[1] = Texture::Manager::defaultTexture;
     textureBindings[2] = Texture::Manager::defaultNormalTexture;
     textureBindings[3] = Texture::Manager::defaultTexture;
