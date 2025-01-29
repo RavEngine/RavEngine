@@ -34,6 +34,7 @@
 #include "Profile.hpp"
 #include "Validator.hpp"
 
+#if !RVE_SERVER
 namespace RavEngine {
     struct MaterialSort {
         Ref<MaterialInstance> mat;
@@ -67,6 +68,7 @@ namespace std {
         }
     };
 }
+#endif
 
 namespace RavEngine {
 	struct Entity;
