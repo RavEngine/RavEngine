@@ -98,6 +98,36 @@ layout(set = 1, binding = 0) uniform texture2D shadowMaps[];      // the bindles
 layout(set = 2, binding = 0) uniform textureCube pointShadowMaps[];    // we alias these because everything goes into the one heap
 #endif
 
+mat4 shadowmapViewMats[] = {
+    mat4(vec4(0, 0, 1, 0), vec4(0, -1, -0, 0), vec4(1, 0, -0, 0), vec4(-0, -0, 0, 1)),
+    mat4(vec4(0, 0, -1, 0), vec4(0, -1, -0, 0), vec4(-1, 0, -0, 0), vec4(-0, -0, 0, 1)),
+    mat4(vec4(-1, 0, -0, 0), vec4(0, 0, 1, 0), vec4(0, 1, -0, 0), vec4(-0, -0, 0, 1)),
+    mat4(vec4(-1, 0, -0, 0), vec4(0, 0, -1, 0), vec4(0, -1, -0, 0), vec4(-0, -0, 0, 1)),
+    mat4(vec4(-1, 0, -0, 0), vec4(-0, -1, -0, 0), vec4(-0, 0, 1, 0), vec4(0, -0, 0, 1)),
+    mat4(vec4(1, 0, -0, 0), vec4(0, -1, -0, 0), vec4(-0, 0, -1, 0), vec4(-0, -0, 0, 1))
+};
+
+// TODO: custom far and near clips
+mat4 cubemapProjMat = mat4(
+    vec4(1, 0, 0, 0), 
+    vec4(0, 1, 0, 0), 
+    vec4(0, 0, 0.001001, -1), 
+    vec4(0, 0, 0.1001, 0)
+);       
+
+// adapted from: https://gist.github.com/JuanDiegoMontoya/d8788148dcb9780848ce8bf50f89b7bb
+int GetCubeFaceIndex(vec3 dir)
+{
+  float x = abs(dir.x);
+  float y = abs(dir.y);
+  float z = abs(dir.z);
+  if (x > y && x > z)
+    return 0 + (dir.x > 0 ? 0 : 1);
+  else if (y > z)
+    return 2 + (dir.y > 0 ? 0 : 1);
+  return 4 + (dir.z > 0 ? 0 : 1);
+}
+
 void main(){
 
     LitOutput user_out = frag();
@@ -227,21 +257,22 @@ void main(){
         vec3 result = CalculateLightRadiance(worldNormal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, toLight, getLightAttenuation(dist),  light.color * light.intensity, rad);
         float pcfFactor = 1;
 
-        if (recievesShadows && bool(light.castsShadows)){
-            // adapted from: https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/Mesh.hlsl#L233
+        if (recievesShadows && bool(light.castsShadows) && false){
+          
             vec3 shadowPos = worldPosition - light.position;
-            float shadowDistance = length(shadowPos);
             vec3 shadowDir = normalize(shadowPos);
+            int cubemapFace = GetCubeFaceIndex(shadowDir);
 
-            float projectedDistance  = max(max(abs(shadowPos.x), abs(shadowPos.y)), abs(shadowPos.z));
+            // transform into light space
+            mat4 faceViewProj = cubemapProjMat * shadowmapViewMats[cubemapFace];
 
-            float nearClip = engineConstants[0].zNear;
-            float a = 0.0;
-            float b = nearClip;
-            float z = projectedDistance * a + b;
-            float dbDistance = z / projectedDistance;
+            vec4 sampledPos = vec4(shadowPos,1);        // transform to light local space 
+            sampledPos = faceViewProj * sampledPos;    // where is this on the light
+            sampledPos /= sampledPos.w; // perspective divide
+            sampledPos.xy = sampledPos.xy * 0.5 + 0.5;    // transform to [0,1] 
+            sampledPos.y = 1 - sampledPos.y;
 
-            pcfFactor = texture(samplerCubeShadow(pointShadowMaps[light.shadowmapBindlessIndex], shadowSampler), vec4(shadowDir, dbDistance)).r;
+            pcfFactor = texture(samplerCubeShadow(pointShadowMaps[light.shadowmapBindlessIndex], shadowSampler), vec4(shadowDir, sampledPos.z)).r;
 
             radiance += rad * pcfFactor;
         }
