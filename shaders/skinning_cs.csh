@@ -90,6 +90,8 @@ void main()
 		VertexNormalUV readVertex = inputVerts[readOffset];
 		readVertex.pos = (totalmtx * vec4(readVertex.pos,1)).xyz;
 		readVertex.normal = mat3(totalmtx) * readVertex.normal;
+        readVertex.tangent = mat3(totalmtx) * readVertex.tangent;
+        readVertex.bitangent = mat3(totalmtx) * readVertex.bitangent;
 
 		//write matrix
 		vertexOutput[writeOffset] = readVertex;

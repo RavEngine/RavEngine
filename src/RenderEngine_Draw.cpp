@@ -392,7 +392,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 				ubo.nVerticesInThisMesh = vertexCount;
 				ubo.nTotalObjects = objectCount;
-				ubo.indexBufferOffset = mesh->GetAllocation().indexRange->start / sizeof(uint32_t);
+				ubo.indexBufferOffset = mesh->GetAllocation().getIndexRangeStart();
 				ubo.nIndicesInThisMesh = mesh->GetNumIndices();
 
 				mainCommandBuffer->SetComputeBytes(ubo, 0);
@@ -428,7 +428,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				subo.numObjects = command.entities.DenseSize();
 				subo.numVertices = mesh->GetNumVerts();
 				subo.numBones = skeleton->GetSkeleton()->num_joints();
-				subo.vertexReadOffset = mesh->GetAllocation().vertRange->start / sizeof(VertexNormalUV);
+				subo.vertexReadOffset = mesh->GetAllocation().getVertexRangeStart();
 
 				// write joint transform matrices into buffer and update uniform offset
 				{
@@ -507,8 +507,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						*(ptr + i) = {
 							.indexCount = uint32_t(mesh->GetNumIndices()),
 							.instanceCount = 0,
-							.indexStart = uint32_t(allocation.indexRange->start / sizeof(uint32_t)),
-							.baseVertex = uint32_t(allocation.vertRange->start / sizeof(VertexNormalUV)),
+							.indexStart = allocation.getIndexRangeStart(),
+							.baseVertex = allocation.getVertexRangeStart(),
 							.baseInstance = i
 						};
 					}
@@ -905,11 +905,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 							Debug::Assert(mesh->GetNumLods() == 1, "Skeletal meshes cannot have more than 1 LOD currently");
 							for (uint32_t i = 0; i < nEntitiesInThisCommand; i++) {
 								for (uint32_t lodID = 0; lodID < mesh->GetNumLods(); lodID++) {
-									const auto indexRange = mesh->GetAllocation().indexRange;
 									initData = {
 										.indexCount = uint32_t(mesh->GetNumIndices()),
 										.instanceCount = 0,
-										.indexStart = uint32_t((indexRange->start) / sizeof(uint32_t)),
+										.indexStart = mesh->GetAllocation().getIndexRangeStart(),
 										.baseVertex = skeletalVertexOffset,
 										.baseInstance = i
 									};
@@ -1090,8 +1089,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 									initData = {
 										.indexCount = uint32_t(meshInst->totalIndices),
 										.instanceCount = 0,
-										.indexStart = uint32_t(meshInst->meshAllocation.indexRange->start / sizeof(uint32_t)),
-										.baseVertex = uint32_t(meshInst->meshAllocation.vertRange->start / sizeof(VertexNormalUV)),
+										.indexStart = meshInst->meshAllocation.getIndexRangeStart(),
+										.baseVertex = meshInst->meshAllocation.getVertexRangeStart(),
 										.baseInstance = baseInstance,	// sets the offset into the material-global culling buffer (and other per-instance data buffers). we allocate based on worst-case here, so the offset is known.
 									};
 									baseInstance += nEntitiesInThisCommand;

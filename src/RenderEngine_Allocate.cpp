@@ -136,11 +136,11 @@ namespace RavEngine {
 			}
 
 		};
-		if (range.vertRange.getNodePointer() != nullptr) {
-			deallocateData(*range.vertRange, vertexAllocatedList, vertexFreeList);
+		if (range.getVertRange().getNodePointer() != nullptr) {
+			deallocateData(*range.getVertRange(), vertexAllocatedList, vertexFreeList);
 		}
-		if (range.indexRange.getNodePointer() != nullptr) {
-			deallocateData(*range.indexRange, indexAllocatedList, indexFreeList);
+		if (range.getIndexRange().getNodePointer() != nullptr) {
+			deallocateData(*range.getIndexRange(), indexAllocatedList, indexFreeList);
 		}
 	}
 
