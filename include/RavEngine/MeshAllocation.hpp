@@ -39,5 +39,17 @@ namespace RavEngine {
 		uint32_t getPositionByteStart() const {
 			return vertRange->start * sizeof(VertexPosition_t);
 		}
+		uint32_t getNormalByteStart() const {
+			return vertRange->start * sizeof(VertexNormal_t);
+		}
+		uint32_t getTangentByteStart() const {
+			return vertRange->start * sizeof(VertexTangent_t);
+		}
+		uint32_t getBitangentByteStart() const {
+			return vertRange->start * sizeof(VertexBitangent_t);
+		}
+		uint32_t getUVByteStart() const {
+			return vertRange->start * sizeof(VertexUV_t);
+		}
 	};
 }
