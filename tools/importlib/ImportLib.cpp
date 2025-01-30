@@ -20,19 +20,34 @@ namespace RavEngine {
         //mp.indices.mode = indexBufferWidth;
 
         mp.indices.reserve(mesh->mNumFaces * 3);
-        mp.vertices.reserve(mesh->mNumVertices);
+        mp.positions.reserve(mesh->mNumVertices);
+        mp.normals.reserve(mesh->mNumVertices);
+        mp.tangents.reserve(mesh->mNumVertices);
+        mp.bitangents.reserve(mesh->mNumVertices);
+        mp.uv0.reserve(mesh->mNumVertices);
+        mp.lightmapUVs.reserve(mesh->mNumVertices);
         for (int vi = 0; vi < mesh->mNumVertices; vi++) {
             auto vert = mesh->mVertices[vi];
             vector4 scaled(vert.x, vert.y, vert.z, 1);
 
             scaled = scalemat * scaled;
 
-            ASSERT(mesh->mTangents, "Mesh does not have tangents!");
-            ASSERT(mesh->mBitangents, "Mesh does not have bitangents!");
+            //ASSERT(mesh->mTangents, "Mesh does not have tangents!");
+            //ASSERT(mesh->mBitangents, "Mesh does not have bitangents!");
 
             auto normal = mesh->mNormals[vi];
-            auto tangent = mesh->mTangents[vi];
-            auto bitangent = mesh->mBitangents[vi];
+            aiVector3D tangent = { 0,0,0 }, bitangent = { 0,0,0 };
+            if (mesh->mTangents) {
+                tangent = mesh->mTangents[vi];
+            }
+            else {
+                //auto tmp = vector3{normal.x,normal.y,normal.x, }
+               //tangent = aiVector3D:: normal.cross
+                std::cerr << fmt::format("Warning: {} does not have tangents",mesh->mName.C_Str()) << std::endl;
+            }
+            if (mesh->mBitangents) {
+                bitangent = mesh->mBitangents[vi];
+            }
 
             //does mesh have uvs?
             float uvs[2] = { 0 };
@@ -41,13 +56,12 @@ namespace RavEngine {
                 uvs[1] = mesh->mTextureCoords[0][vi].y;
             }
 
-            mp.vertices.push_back(VertexNormalUV{
-                .position = {static_cast<float>(scaled.x),static_cast<float>(scaled.y),static_cast<float>(scaled.z)},
-                .normal = {normal.x,normal.y,normal.z},
-                .tangent = {tangent.x, tangent.y, tangent.z},
-                .bitangent = {bitangent.x,bitangent.y,bitangent.z},
-                .uv = {uvs[0],uvs[1]}
-                });
+            mp.positions.push_back({ static_cast<float>(scaled.x),static_cast<float>(scaled.y),static_cast<float>(scaled.z) });
+            mp.normals.emplace_back(normal.x, normal.y, normal.z);
+            mp.tangents.emplace_back(tangent.x, tangent.y, tangent.z);
+            mp.bitangents.emplace_back(bitangent.x, bitangent.y, bitangent.z);
+            mp.uv0.emplace_back(uvs[0], uvs[1]);
+
         }
 
         for (int ii = 0; ii < mesh->mNumFaces; ii++) {

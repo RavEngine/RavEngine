@@ -71,12 +71,12 @@ namespace RavEngine {
             // must have the entity ID buffer
             vertexConfigCopy.attributeDescs.push_back({
                 .location = ENTITY_INPUT_LOCATION,
-                .binding = 1,
+                .binding = ENTITY_INPUT_BINDING,
                 .offset = 0,
                 .format = RGL::VertexAttributeFormat::R32_Uint,
                 });
             vertexConfigCopy.vertexBindings.push_back({
-                .binding = 1,
+                .binding = ENTITY_INPUT_BINDING,
                 .stride = sizeof(uint32_t),
                 .inputRate = RGL::InputRate::Instance,
                 });

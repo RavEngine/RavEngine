@@ -13,39 +13,55 @@ using namespace RavEngine;
 STATIC(RavEngine::defaultVertexConfig) {
     .vertexBindings = {
                 {
-                    .binding = 0,
-                    .stride = sizeof(VertexNormalUV),
+                    .binding = VTX_POSITION_BINDING,
+                    .stride = sizeof(VertexPosition_t),
+                },
+                {
+                    .binding = VTX_NORMAL_BINDING,
+                    .stride = sizeof(VertexNormal_t),
+                },
+                {
+                    .binding = VTX_TANGENT_BINDING,
+                    .stride = sizeof(VertexTangent_t),
+                },
+                {
+                    .binding = VTX_BITANGENT_BINDING,
+                    .stride = sizeof(VertexBitangent_t),
+                },
+                {
+                    .binding = VTX_UV0_BINDING,
+                    .stride = sizeof(VertexUV_t),
                 },
     },
         .attributeDescs = {
             {
                 .location = 0,
-                .binding = 0,
-                .offset = offsetof(VertexNormalUV,position),
+                .binding = VTX_POSITION_BINDING,
+                .offset = 0,
                 .format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
             },
             {
                 .location = 1,
-                .binding = 0,
-                .offset = offsetof(VertexNormalUV,normal),
+                .binding = VTX_NORMAL_BINDING,
+                .offset = 0,
                 .format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
             },
              {
                 .location = 2,
-                .binding = 0,
-                .offset = offsetof(VertexNormalUV,tangent),
+                .binding = VTX_TANGENT_BINDING,
+                .offset = 0,
                 .format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
             },
             {
                 .location = 3,
-                .binding = 0,
-                .offset = offsetof(VertexNormalUV,bitangent),
+                .binding = VTX_BITANGENT_BINDING,
+                .offset = 0,
                 .format = RGL::VertexAttributeFormat::R32G32B32_SignedFloat,
             },
             {
                 .location = 4,
-                .binding = 0,
-                .offset = offsetof(VertexNormalUV,uv),
+                .binding = VTX_UV0_BINDING,
+                .offset = 0,
                 .format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
             },
     }

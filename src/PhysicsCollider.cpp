@@ -63,11 +63,11 @@ MeshCollider::MeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsset> meshAsset
     material = mat;
     auto& meshdata = meshAsset->GetSystemCopy();
     
-    RavEngine::Vector<PxVec3> vertices(meshdata.vertices.size());
+    RavEngine::Vector<PxVec3> vertices(meshdata.positions.size());
     RavEngine::Vector<PxU32> indices(meshdata.indices.size());
     // only want positional data here, UVs and other data are not relevant
     for(int i = 0; i < vertices.size(); i++){
-        vertices[i] = PxVec3(meshdata.vertices[i].position[0],meshdata.vertices[i].position[1],meshdata.vertices[i].position[2]);
+        vertices[i] = PxVec3(meshdata.positions[i][0],meshdata.positions[i][1],meshdata.positions[i][2]);
     }
     
     for(int i = 0; i < indices.size(); i++){
@@ -109,9 +109,9 @@ ConvexMeshCollider::ConvexMeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsse
     auto& meshdata = meshAsset->GetSystemCopy();
     
     // only want positional data here, UVs and other data are not relevant
-    RavEngine::Vector<PxVec3> vertices(meshdata.vertices.size());
+    RavEngine::Vector<PxVec3> vertices(meshdata.positions.size());
     for(int i = 0; i < vertices.size(); i++){
-        vertices[i] = PxVec3(meshdata.vertices[i].position[0],meshdata.vertices[i].position[1],meshdata.vertices[i].position[2]);
+        vertices[i] = PxVec3(meshdata.positions[i][0],meshdata.positions[i][1],meshdata.positions[i][2]);
     }
     
     PxBoundedData pointdata;

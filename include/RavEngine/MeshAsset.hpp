@@ -125,7 +125,7 @@ public:
 	}
 	
     inline bool hasSystemRAMCopy() const{
-        return systemRAMcopy.vertices.size() > 0;
+        return systemRAMcopy.positions.size() > 0;
     }
     
 	/**

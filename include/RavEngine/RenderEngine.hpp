@@ -25,6 +25,8 @@
 #include "cluster_defs.h"
 #include "Queue.hpp"
 #include "Layer.hpp"
+#include "Mesh.hpp"
+#include <span>
 
 struct SDL_Window;
 
@@ -81,7 +83,7 @@ namespace RavEngine {
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, transparencyApplyPipeline, ssgipipeline, ssgiDownsamplePipeline, ssgiUpsamplePipeline, ambientSSGIApplyPipeline, aoUpsamplePipeline, ssgiUpsamplePipleineFinalStep;
 		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline, clusterBuildGridPipeline, clusterPopulatePipeline;
 		RGLBufferPtr screenTriVerts,
-			sharedVertexBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, quadVertBuffer, lightClusterBuffer, debugRenderBufferUpload;
+			sharedPositionBuffer,sharedNormalBuffer, sharedTangentBuffer, sharedBitangentBuffer, sharedUV0Buffer, sharedLightmapUVBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, quadVertBuffer, lightClusterBuffer, debugRenderBufferUpload;
 		uint32_t debugRenderBufferSize = 0, debugRenderBufferOffset = 0;
 
 		constexpr static uint32_t initialVerts = 1024, initialIndices = 1536;
@@ -312,7 +314,7 @@ namespace RavEngine {
 		ConcurrentQueue<RGLPipelineLayoutPtr> gcPipelineLayout;
 		ConcurrentQueue<RGLRenderPipelinePtr> gcRenderPipeline;
 
-		MeshRange AllocateMesh(const std::span<const VertexNormalUV> vertices, const std::span<const uint32_t> index_bytes);
+		MeshRange AllocateMesh(const MeshPartView& mesh);
 
 		void DeallocateMesh(const MeshRange& range);
 

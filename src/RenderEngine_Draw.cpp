@@ -26,6 +26,7 @@
 #include "MeshCollection.hpp"
 #include "Tonemap.hpp"
 #include "BuiltinTonemap.hpp"
+#include <ravengine_shader_defs.h>
 
 #undef near		// for some INSANE reason, Microsoft defines these words and they leak into here only on ARM targets
 #undef far
@@ -410,6 +411,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 	auto poseSkeletalMeshes = [this,&worldOwning]() {
 		RVE_PROFILE_FN_N("Enc Pose Skinned Meshes");
+#if 0
 		mainCommandBuffer->BeginComputeDebugMarker("Pose Skinned Meshes");
 		mainCommandBuffer->BeginCompute(skinnedMeshComputePipeline);
 		mainCommandBuffer->BindComputeBuffer(sharedSkinnedMeshVertexBuffer, 0);
@@ -449,6 +451,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		}
 		mainCommandBuffer->EndCompute();
 		mainCommandBuffer->EndComputeDebugMarker();
+#endif
 	};
 
 	auto tickParticles = [this, worldOwning, worldTransformBuffer]() {
@@ -1172,7 +1175,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				mainCommandBuffer->EndCompute();
 
 			};
-            auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, particleBillboardMatrices, &lightDataOffset,&layers, &target, &camIdx](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
+			struct BufferSet {
+				RGLBufferPtr positionBuffer, normalBuffer, tangentBuffer, bitangentBuffer, uv0Buffer, lightmapBuffer;
+			};
+            auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, particleBillboardMatrices, &lightDataOffset,&layers, &target, &camIdx](auto&& renderData, const BufferSet& vertexBufferSet, LightingType currentLightingType) {
 				// do static meshes
 				RVE_PROFILE_FN_N("RenderTheRenderData");
 				mainCommandBuffer->SetViewport({
@@ -1182,7 +1188,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					.height = static_cast<float>(viewportScissor.extent[1]),
 					});
 				mainCommandBuffer->SetScissor(viewportScissor);
-				mainCommandBuffer->SetVertexBuffer(vertexBuffer);
+				mainCommandBuffer->SetVertexBuffer(vertexBufferSet.positionBuffer, {.bindingPosition = VTX_POSITION_BINDING});
+				mainCommandBuffer->SetVertexBuffer(vertexBufferSet.normalBuffer, {.bindingPosition = VTX_NORMAL_BINDING});
+				mainCommandBuffer->SetVertexBuffer(vertexBufferSet.tangentBuffer, {.bindingPosition = VTX_TANGENT_BINDING});
+				mainCommandBuffer->SetVertexBuffer(vertexBufferSet.bitangentBuffer, {.bindingPosition = VTX_BITANGENT_BINDING});
+				mainCommandBuffer->SetVertexBuffer(vertexBufferSet.uv0Buffer, {.bindingPosition = VTX_UV0_BINDING});
 				mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
 				for (auto& [materialInstance, drawcommand] : renderData) {
 
@@ -1273,7 +1283,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					}
 
 					// bind the culling buffer and the transform buffer
-					mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = 1 });
+					mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = ENTITY_INPUT_BINDING });
 					mainCommandBuffer->BindBuffer(worldTransformBuffer, 10);
 
 					// do the indirect command
@@ -1406,7 +1416,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 								sharedParticleImpl(emitter, meshMat, result.material, activeIndexBuffer,result.isLit);
 
-								mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
+								mainCommandBuffer->SetVertexBuffer(sharedPositionBuffer, { .bindingPosition = VTX_POSITION_BINDING });
+								mainCommandBuffer->SetVertexBuffer(sharedNormalBuffer, { .bindingPosition = VTX_NORMAL_BINDING });
+								mainCommandBuffer->SetVertexBuffer(sharedTangentBuffer, { .bindingPosition = VTX_TANGENT_BINDING });
+								mainCommandBuffer->SetVertexBuffer(sharedBitangentBuffer, { .bindingPosition = VTX_BITANGENT_BINDING });
+								mainCommandBuffer->SetVertexBuffer(sharedUV0Buffer, { .bindingPosition = VTX_UV0_BINDING });
 								mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
 								mainCommandBuffer->BindBuffer(transientBuffer, MeshParticleRenderMaterialInstance::kEngineDataBinding, emitter.renderState.maxTotalParticlesOffset);
 
@@ -1438,13 +1452,24 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			// do rendering operations
 			mainCommandBuffer->BeginRendering(renderPass);
 			mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
-			renderTheRenderData(worldOwning->renderData.staticMeshRenderData, sharedVertexBuffer, lightingFilter);
+			BufferSet vertexBuffers{
+				.positionBuffer = sharedPositionBuffer,
+				.normalBuffer = sharedNormalBuffer,
+				.tangentBuffer = sharedTangentBuffer,
+				.bitangentBuffer = sharedBitangentBuffer,
+				.uv0Buffer = sharedUV0Buffer,
+				.lightmapBuffer = sharedLightmapUVBuffer,
+			};
+			renderTheRenderData(worldOwning->renderData.staticMeshRenderData, vertexBuffers, lightingFilter);
 			mainCommandBuffer->EndRenderDebugMarker();
+#if 0
 			if (skeletalPrepareResult.skeletalMeshesExist) {
 				mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
-				renderTheRenderData(worldOwning->renderData.skinnedMeshRenderData, sharedSkinnedMeshVertexBuffer, lightingFilter);
+				vertexBuffers.positionBuffer = sharedSkinnedMeshVertexBuffer;
+				renderTheRenderData(worldOwning->renderData.skinnedMeshRenderData, vertexBuffers, lightingFilter);
 				mainCommandBuffer->EndRenderDebugMarker();
 			}
+#endif
 			mainCommandBuffer->EndRendering();
 			};
 

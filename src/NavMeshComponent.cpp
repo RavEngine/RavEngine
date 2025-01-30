@@ -32,12 +32,12 @@ void NavMeshComponent::UpdateNavMesh(Ref<MeshAsset> mesh, Options opt){
     const float* bmin = bounds.min;
     const float* bmax = bounds.max;
     
-    const auto nverts = rawData.vertices.size();
-    vector<float> vertsOnly(rawData.vertices.size() * 3);
-    for(uint32_t i = 0; i < rawData.vertices.size(); i++){
-        vertsOnly[i*3] = rawData.vertices[i].position[0];
-        vertsOnly[i*3+1] = rawData.vertices[i].position[1];
-        vertsOnly[i*3+2] = rawData.vertices[i].position[2];
+    const auto nverts = rawData.NumVerts();
+    vector<float> vertsOnly(rawData.positions.size() * 3);
+    for(uint32_t i = 0; i < rawData.positions.size(); i++){
+        vertsOnly[i*3] = rawData.positions[i][0];
+        vertsOnly[i*3+1] = rawData.positions[i][1];
+        vertsOnly[i*3+2] = rawData.positions[i][2];
     }
     
     // step 1: setup configuration
