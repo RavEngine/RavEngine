@@ -1203,12 +1203,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					.height = static_cast<float>(viewportScissor.extent[1]),
 					});
 				mainCommandBuffer->SetScissor(viewportScissor);
-				mainCommandBuffer->SetVertexBuffer(vertexBufferSet.positionBuffer, {.bindingPosition = VTX_POSITION_BINDING});
-				mainCommandBuffer->SetVertexBuffer(vertexBufferSet.normalBuffer, {.bindingPosition = VTX_NORMAL_BINDING});
-				mainCommandBuffer->SetVertexBuffer(vertexBufferSet.tangentBuffer, {.bindingPosition = VTX_TANGENT_BINDING});
-				mainCommandBuffer->SetVertexBuffer(vertexBufferSet.bitangentBuffer, {.bindingPosition = VTX_BITANGENT_BINDING});
-				mainCommandBuffer->SetVertexBuffer(vertexBufferSet.uv0Buffer, {.bindingPosition = VTX_UV0_BINDING});
-				mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
+				
 				for (auto& [materialInstance, drawcommand] : renderData) {
 
 					bool shouldKeep = filterRenderData(currentLightingType, materialInstance);
@@ -1220,7 +1215,28 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 					// bind the pipeline
 					auto pipeline = pipelineSelectorFunction(materialInstance.mat->GetMat());
-					mainCommandBuffer->BindRenderPipeline(pipeline);
+
+					if (pipeline.attributes.position) {
+						mainCommandBuffer->SetVertexBuffer(vertexBufferSet.positionBuffer, { .bindingPosition = VTX_POSITION_BINDING });
+					}
+					if (pipeline.attributes.normal) {
+						mainCommandBuffer->SetVertexBuffer(vertexBufferSet.normalBuffer, { .bindingPosition = VTX_NORMAL_BINDING });
+					}
+					if (pipeline.attributes.tangent) {
+						mainCommandBuffer->SetVertexBuffer(vertexBufferSet.tangentBuffer, { .bindingPosition = VTX_TANGENT_BINDING });
+					}
+					if (pipeline.attributes.bitangent) {
+						mainCommandBuffer->SetVertexBuffer(vertexBufferSet.bitangentBuffer, { .bindingPosition = VTX_BITANGENT_BINDING });
+					}
+					if (pipeline.attributes.uv0) {
+						mainCommandBuffer->SetVertexBuffer(vertexBufferSet.uv0Buffer, { .bindingPosition = VTX_UV0_BINDING });
+					}
+					if (pipeline.attributes.lightmapUV) {
+						mainCommandBuffer->SetVertexBuffer(vertexBufferSet.lightmapBuffer, { .bindingPosition = VTX_LIGHTMAP_BINDING });
+					}
+					mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
+
+					mainCommandBuffer->BindRenderPipeline(pipeline.pipeline);
 
 					// this is always needed
 					mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);

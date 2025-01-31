@@ -8,6 +8,16 @@ namespace RavEngine {
 	// subclass
 	struct ISkyMaterial : public Material {
 		ISkyMaterial(const std::string& shaderpath);
+		virtual MeshAttributes GetAttributes() const override {
+			return MeshAttributes{
+				.position = true,
+				.normal = false,
+				.tangent = false,
+				.bitangent = false,
+				.uv0 = true,
+				.lightmapUV = false,
+			};
+		};
 	};
 
 	// subclass

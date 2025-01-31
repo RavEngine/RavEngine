@@ -349,7 +349,7 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
             }) {}
 
 
-    RGLRenderPipelinePtr RavEngine::MaterialVariant::GetShadowRenderPipeline() const
+    PipelineUseConfiguration RavEngine::MaterialVariant::GetShadowRenderPipeline() const
     {
         RGLRenderPipelinePtr pipeline;
 
@@ -361,10 +361,10 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
                 pipeline = m->GetShadowRenderPipeline();
             } }, variant);
 
-        return pipeline;
+        return { pipeline };
     }
 
-    RGLRenderPipelinePtr RavEngine::MaterialVariant::GetMainRenderPipeline() const
+    PipelineUseConfiguration RavEngine::MaterialVariant::GetMainRenderPipeline() const
     {
         RGLRenderPipelinePtr pipeline;
 
@@ -376,10 +376,10 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
                 pipeline = m->GetMainRenderPipeline();
             } }, variant);
 
-        return pipeline;
+        return { pipeline };
     }
 
-    RGLRenderPipelinePtr RavEngine::MaterialVariant::GetDepthPrepassPipeline() const
+    PipelineUseConfiguration RavEngine::MaterialVariant::GetDepthPrepassPipeline() const
     {
         RGLRenderPipelinePtr pipeline;
 
@@ -391,7 +391,7 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
                 pipeline = m->GetDepthPrepassPipeline();
             } }, variant);
 
-        return pipeline;
+        return { pipeline };
     }
 }
 #endif

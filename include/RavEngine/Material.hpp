@@ -32,7 +32,19 @@ namespace RavEngine {
 		OpacityMode opacityMode = OpacityMode::Opaque;
 	};
 
+	struct MeshAttributes {
+		bool position : 1 = true;
+		bool normal : 1 = true;
+		bool tangent : 1 = true;
+		bool bitangent : 1 = true;
+		bool uv0 : 1 = true;
+		bool lightmapUV : 1 = false;
+	};
 
+	struct PipelineUseConfiguration {
+		RGLRenderPipelinePtr pipeline;
+		MeshAttributes attributes;
+	};
 
 	/**
 	Represents the interface to a shader. Subclass to create more types of material and expose more abilities.
@@ -92,6 +104,8 @@ namespace RavEngine {
 		RGLPipelineLayoutPtr pipelineLayout;
 		OpacityMode opacityMode;
 
+		virtual MeshAttributes GetAttributes() const = 0;
+
 		bool IsTransparent() const {
 			return opacityMode == OpacityMode::Transparent;
 		}
@@ -116,6 +130,9 @@ namespace RavEngine {
 	struct LitMaterial : public Material {
 		LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions = {}, const MaterialRenderOptions& options = {});
 		LitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options = {}) : LitMaterial(name, name, pipeOptions, options) {}
+		virtual MeshAttributes GetAttributes() const override {
+			return MeshAttributes{};
+		};
 	};
 
 
@@ -123,6 +140,17 @@ namespace RavEngine {
 	struct UnlitMaterial : public Material {
 		UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions = {}, const MaterialRenderOptions& options = {});
 		UnlitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options = {}) : UnlitMaterial(name, name, pipeOptions, options) {}
+
+		virtual MeshAttributes GetAttributes() const override {
+			return MeshAttributes{
+				.position = true,
+				.normal = false,
+				.tangent = false,
+				.bitangent = false,
+				.uv0 = true,
+				.lightmapUV = false,
+			};
+		};
 	};
 
 	struct MaterialVariant  {
@@ -130,9 +158,9 @@ namespace RavEngine {
 		template<typename T>
 		MaterialVariant(const T& value) : variant(value) {}
 
-		RGLRenderPipelinePtr GetShadowRenderPipeline() const;
-		RGLRenderPipelinePtr GetMainRenderPipeline()const;
-		RGLRenderPipelinePtr GetDepthPrepassPipeline() const;
+		PipelineUseConfiguration GetShadowRenderPipeline() const;
+		PipelineUseConfiguration GetMainRenderPipeline()const;
+		PipelineUseConfiguration GetDepthPrepassPipeline() const;
 
 		const MaterialVariant* operator->() const {
 			return this;
