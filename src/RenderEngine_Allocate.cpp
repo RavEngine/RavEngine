@@ -49,7 +49,7 @@ namespace RavEngine {
 		};
 
 		// figure out where to put the new data, resizing the buffer as needed
-		auto vertexAllocation = getAllocationLocation(mesh.positions.size(), currentVertexSize, vertexFreeList,[this](uint32_t newSize) {ReallocateVertexAllocationToSize(newSize); });
+		auto vertexAllocation = getAllocationLocation(mesh.NumVerts(), currentVertexSize, vertexFreeList, [this](uint32_t newSize) {ReallocateVertexAllocationToSize(newSize); });
 		auto indexAllocation = getAllocationLocation(mesh.indices.size(), currentIndexSize, indexFreeList,  [this](uint32_t newSize) {ReallocateIndexAllocationToSize(newSize); });
 
 		// now we have the location to place the vertex and index data in the buffer
@@ -80,7 +80,7 @@ namespace RavEngine {
 		};
 
 		// mark the ranges as consumed
-		auto vertexPlacement = consumeRange(vertexAllocation, mesh.positions.size(), vertexFreeList, vertexAllocatedList);
+		auto vertexPlacement = consumeRange(vertexAllocation, mesh.NumVerts(), vertexFreeList, vertexAllocatedList);
 		auto indexPlacement = consumeRange(indexAllocation, mesh.indices.size(), indexFreeList, indexAllocatedList);
 
 		MeshRange range{ vertexPlacement, indexPlacement };
@@ -96,7 +96,7 @@ namespace RavEngine {
 #endif
 
 		sharedIndexBuffer->SetBufferData(
-			{ mesh.indices.data(), mesh.indices.size() }, range.getIndexRangeByteStart()
+			{ mesh.indices.data(), mesh.indices.size_bytes() }, range.getIndexRangeByteStart()
 		);
 		
 		return range;
