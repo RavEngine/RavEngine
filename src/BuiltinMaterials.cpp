@@ -32,6 +32,10 @@ STATIC(RavEngine::defaultVertexConfig) {
                     .binding = VTX_UV0_BINDING,
                     .stride = sizeof(VertexUV_t),
                 },
+                {
+                    .binding = VTX_LIGHTMAP_BINDING,
+                    .stride = sizeof(VertexUV_t),
+                },
     },
         .attributeDescs = {
             {
@@ -61,6 +65,12 @@ STATIC(RavEngine::defaultVertexConfig) {
             {
                 .location = 4,
                 .binding = VTX_UV0_BINDING,
+                .offset = 0,
+                .format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+            },
+            {
+                .location = 5,
+                .binding = VTX_LIGHTMAP_BINDING,
                 .offset = 0,
                 .format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
             },

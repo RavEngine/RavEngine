@@ -16,7 +16,14 @@
 namespace RavEngine {
 	struct Texture;
 
-
+	struct MeshAttributes {
+		bool position : 1 = true;
+		bool normal : 1 = true;
+		bool tangent : 1 = true;
+		bool bitangent : 1 = true;
+		bool uv0 : 1 = true;
+		bool lightmapUV : 1 = false;
+	};
 
 	struct MaterialConfig {
 		RGL::RenderPipelineDescriptor::VertexConfig vertConfig;
@@ -30,16 +37,11 @@ namespace RavEngine {
 		RGL::CullMode cullMode = RGL::CullMode::Back;
         bool verbatimConfig = false;    // used for Skybox
 		OpacityMode opacityMode = OpacityMode::Opaque;
+
+		MeshAttributes requiredAttributes;
 	};
 
-	struct MeshAttributes {
-		bool position : 1 = true;
-		bool normal : 1 = true;
-		bool tangent : 1 = true;
-		bool bitangent : 1 = true;
-		bool uv0 : 1 = true;
-		bool lightmapUV : 1 = false;
-	};
+	
 
 	struct PipelineUseConfiguration {
 		RGLRenderPipelinePtr pipeline;
@@ -99,12 +101,17 @@ namespace RavEngine {
 			return depthPrepassPipeline;
 		}
 
+		MeshAttributes GetAttributes() const {
+			return requiredAttributes;
+		}
+
 	protected:
 		RGLRenderPipelinePtr renderPipeline, shadowRenderPipeline, depthPrepassPipeline;
 		RGLPipelineLayoutPtr pipelineLayout;
 		OpacityMode opacityMode;
+		const MeshAttributes requiredAttributes;
 
-		virtual MeshAttributes GetAttributes() const = 0;
+		
 
 		bool IsTransparent() const {
 			return opacityMode == OpacityMode::Transparent;
@@ -120,6 +127,7 @@ namespace RavEngine {
 	struct MaterialRenderOptions  {
 		RGL::CullMode cullMode = RGL::CullMode::Back;
 		OpacityMode opacityMode = OpacityMode::Opaque;
+		MeshAttributes requiredAttributes{};
 	};
 
 	struct PipelineOptions {
@@ -130,27 +138,22 @@ namespace RavEngine {
 	struct LitMaterial : public Material {
 		LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions = {}, const MaterialRenderOptions& options = {});
 		LitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options = {}) : LitMaterial(name, name, pipeOptions, options) {}
-		virtual MeshAttributes GetAttributes() const override {
-			return MeshAttributes{};
-		};
 	};
 
 
 	// a material that reads no data
 	struct UnlitMaterial : public Material {
 		UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions = {}, const MaterialRenderOptions& options = {});
-		UnlitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options = {}) : UnlitMaterial(name, name, pipeOptions, options) {}
-
-		virtual MeshAttributes GetAttributes() const override {
-			return MeshAttributes{
+		UnlitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options = {
+			.requiredAttributes = {
 				.position = true,
 				.normal = false,
 				.tangent = false,
 				.bitangent = false,
 				.uv0 = true,
 				.lightmapUV = false,
-			};
-		};
+			}
+		}) : UnlitMaterial(name, name, pipeOptions, options) {}
 	};
 
 	struct MaterialVariant  {

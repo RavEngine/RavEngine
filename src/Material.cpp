@@ -26,7 +26,7 @@ namespace RavEngine {
     */
     Material::Material(const std::string_view name, const MaterialConfig& config) : Material(name, name, config) {}
 
-    RavEngine::Material::Material(const std::string_view vsh_name, const std::string_view fsh_name, const MaterialConfig& config) : opacityMode(config.opacityMode)
+    RavEngine::Material::Material(const std::string_view vsh_name, const std::string_view fsh_name, const MaterialConfig& config) : opacityMode(config.opacityMode), requiredAttributes(config.requiredAttributes)
     {
         auto device = GetApp()->GetDevice();
 
@@ -80,6 +80,44 @@ namespace RavEngine {
                 .stride = sizeof(uint32_t),
                 .inputRate = RGL::InputRate::Instance,
                 });
+        }
+
+        const auto removeAttribute = [&vertexConfigCopy](uint32_t binding) {
+            {
+                auto it = std::find_if(vertexConfigCopy.attributeDescs.begin(), vertexConfigCopy.attributeDescs.end(), [&binding](auto&& attrib) {
+                    return attrib.binding == binding;
+                    });
+                if (it != vertexConfigCopy.attributeDescs.end()) {
+                    vertexConfigCopy.attributeDescs.erase(it);
+                }
+            }
+            {
+                auto it = std::find_if(vertexConfigCopy.vertexBindings.begin(), vertexConfigCopy.vertexBindings.end(), [&binding](auto&& attrib) {
+                    return attrib.binding == binding;
+                });
+                if (it != vertexConfigCopy.vertexBindings.end()) {
+                    vertexConfigCopy.vertexBindings.erase(it);
+                }
+            }
+        };
+
+        if (!requiredAttributes.position) {
+            removeAttribute(VTX_POSITION_BINDING);
+        }
+        if (!requiredAttributes.normal) {
+            removeAttribute(VTX_NORMAL_BINDING);
+        }
+        if (!requiredAttributes.tangent) {
+            removeAttribute(VTX_TANGENT_BINDING);
+        }
+        if (!requiredAttributes.bitangent) {
+            removeAttribute(VTX_BITANGENT_BINDING);
+        }
+        if (!requiredAttributes.uv0) {
+            removeAttribute(VTX_UV0_BINDING);
+        }
+        if (!requiredAttributes.lightmapUV) {
+            removeAttribute(VTX_LIGHTMAP_BINDING);
         }
 
         RGL::RenderPipelineDescriptor rpd{
@@ -361,22 +399,25 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
                 pipeline = m->GetShadowRenderPipeline();
             } }, variant);
 
-        return { pipeline };
+        return { pipeline, {.position = true, .normal = false, .tangent = false, .bitangent = false, .uv0 = false, .lightmapUV = false } };
     }
 
     PipelineUseConfiguration RavEngine::MaterialVariant::GetMainRenderPipeline() const
     {
         RGLRenderPipelinePtr pipeline;
+        MeshAttributes attribs;
 
         std::visit(CaseAnalysis{
-            [&pipeline](const Ref<LitMaterial>& m) {
+            [&pipeline,&attribs](const Ref<LitMaterial>& m) {
                 pipeline = m->GetMainRenderPipeline();
+                attribs = m->GetAttributes();
             },
-            [&pipeline](const Ref<UnlitMaterial>& m) {
+            [&pipeline,&attribs](const Ref<UnlitMaterial>& m) {
                 pipeline = m->GetMainRenderPipeline();
+                attribs = m->GetAttributes();
             } }, variant);
 
-        return { pipeline };
+        return { pipeline, attribs };
     }
 
     PipelineUseConfiguration RavEngine::MaterialVariant::GetDepthPrepassPipeline() const
@@ -391,7 +432,7 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
                 pipeline = m->GetDepthPrepassPipeline();
             } }, variant);
 
-        return { pipeline };
+        return { pipeline, {.position = true, .normal = false, .tangent = false, .bitangent = false, .uv0 = false, .lightmapUV = false } };
     }
 }
 #endif
