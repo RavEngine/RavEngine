@@ -7,18 +7,59 @@ struct VertexNormalUV {
 	vec2 uv;
 };
 
-layout(scalar, binding = 0) buffer matrixOutputMatrixBuffer
+layout(scalar, binding = 0) buffer posOutBuf
 {
-	VertexNormalUV vertexOutput[];
+	vec3 positionOutput[];
 };
 
-layout(scalar, binding = 1) readonly buffer vertexInputBuffer
+layout(scalar, binding = 1) buffer normOutBuf
 {
-	VertexNormalUV inputVerts[];
+	vec3 normalOutput[];
+};
+
+layout(scalar, binding = 2) buffer tanOutBuf
+{
+	vec3 tangentOutput[];
+};
+
+layout(scalar, binding = 3) buffer bitOutBuf
+{
+	vec3 bitangentOutput[];
+};
+
+layout(scalar, binding = 4) buffer uvOutBuf
+{
+	vec2 uvOutput[];
 };
 
 
-layout(std430, binding = 2) readonly buffer poseMatrixBuffer
+layout(scalar, binding = 10) readonly buffer posInBuf
+{
+	vec3 positionInput[];
+};
+
+layout(scalar, binding = 11) readonly buffer normIn
+{
+	vec3 normalInput[];
+};
+
+layout(scalar, binding = 12) readonly buffer tanIn
+{
+	vec3 tangentInput[];
+};
+
+layout(scalar, binding = 13) readonly buffer bitIn
+{
+	vec3 bitangentInput[];
+};
+
+layout(scalar, binding = 14) readonly buffer uvIn
+{
+	vec2 uvInput[];
+};
+
+
+layout(std430, binding = 20) readonly buffer poseMatrixBuffer
 {
     mat4 pose[];
 };
@@ -34,7 +75,7 @@ struct VertexJointBinding {
 	weight weights[NUM_INFLUENCES];
 };
 
-layout(std430, binding = 3) readonly buffer weightsBuffer
+layout(std430, binding = 21) readonly buffer weightsBuffer
 {
 	VertexJointBinding weights[];				// index, influence
 };
@@ -87,13 +128,11 @@ void main()
 		const uint readOffset = (vertID) + ubo.vertexReadOffset;	// there is only one copy of the vertex read data because it comes from the unified mesh data buffer
 
 		// read and apply
-		VertexNormalUV readVertex = inputVerts[readOffset];
-		readVertex.pos = (totalmtx * vec4(readVertex.pos,1)).xyz;
-		readVertex.normal = mat3(totalmtx) * readVertex.normal;
-        readVertex.tangent = mat3(totalmtx) * readVertex.tangent;
-        readVertex.bitangent = mat3(totalmtx) * readVertex.bitangent;
+		uvOutput[writeOffset] = uvInput[readOffset];
 
-		//write matrix
-		vertexOutput[writeOffset] = readVertex;
+		positionOutput[writeOffset] = (totalmtx * vec4(positionInput[readOffset],1)).xyz;
+		normalOutput[writeOffset] = mat3(totalmtx) * normalInput[readOffset];
+		tangentOutput[writeOffset] = mat3(totalmtx) * tangentInput[readOffset];
+		bitangentOutput[writeOffset] = mat3(totalmtx) * bitangentInput[readOffset];
 	}
 }

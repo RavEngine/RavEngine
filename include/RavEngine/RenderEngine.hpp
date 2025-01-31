@@ -83,7 +83,7 @@ namespace RavEngine {
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, transparencyApplyPipeline, ssgipipeline, ssgiDownsamplePipeline, ssgiUpsamplePipeline, ambientSSGIApplyPipeline, aoUpsamplePipeline, ssgiUpsamplePipleineFinalStep;
 		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline, clusterBuildGridPipeline, clusterPopulatePipeline;
 		RGLBufferPtr screenTriVerts,
-			sharedPositionBuffer,sharedNormalBuffer, sharedTangentBuffer, sharedBitangentBuffer, sharedUV0Buffer, sharedLightmapUVBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedMeshVertexBuffer, quadVertBuffer, lightClusterBuffer, debugRenderBufferUpload;
+			sharedPositionBuffer,sharedNormalBuffer, sharedTangentBuffer, sharedBitangentBuffer, sharedUV0Buffer, sharedLightmapUVBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedPositionBuffer, sharedSkinnedNormalBuffer, sharedSkinnedTangentBuffer, sharedSkinnedBitangentBuffer, sharedSkinnedUV0Buffer, quadVertBuffer, lightClusterBuffer, debugRenderBufferUpload;
 		uint32_t debugRenderBufferSize = 0, debugRenderBufferOffset = 0;
 
 		constexpr static uint32_t initialVerts = 1024, initialIndices = 1536;

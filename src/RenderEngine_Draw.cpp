@@ -370,7 +370,12 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		}
 
 		resizeSkeletonBuffer(sharedSkeletonMatrixBuffer, sizeof(matrix4), totalJointsToSkin, { .StorageBuffer = true }, RGL::BufferAccess::Shared, { .debugName = "sharedSkeletonMatrixBuffer" });
-		resizeSkeletonBuffer(sharedSkinnedMeshVertexBuffer, sizeof(VertexNormalUV), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "sharedSkinnedMeshVertexBuffer" });
+		resizeSkeletonBuffer(sharedSkinnedPositionBuffer, sizeof(VertexPosition_t), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Shared Skinned Position Buffer" });
+		resizeSkeletonBuffer(sharedSkinnedNormalBuffer, sizeof(VertexNormal_t), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Shared Skinned Position Buffer" });
+		resizeSkeletonBuffer(sharedSkinnedTangentBuffer, sizeof(VertexTangent_t), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Shared Skinned Position Buffer" });
+		resizeSkeletonBuffer(sharedSkinnedBitangentBuffer, sizeof(VertexBitangent_t), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Shared Skinned Position Buffer" });
+		resizeSkeletonBuffer(sharedSkinnedUV0Buffer, sizeof(VertexUV_t), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Shared Skinned Position Buffer" });
+
 
 		return {
 			.skeletalMeshesExist = totalObjectsToSkin > 0 && totalVertsToSkin > 0
@@ -411,12 +416,22 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 	auto poseSkeletalMeshes = [this,&worldOwning]() {
 		RVE_PROFILE_FN_N("Enc Pose Skinned Meshes");
-#if 0
+
 		mainCommandBuffer->BeginComputeDebugMarker("Pose Skinned Meshes");
 		mainCommandBuffer->BeginCompute(skinnedMeshComputePipeline);
-		mainCommandBuffer->BindComputeBuffer(sharedSkinnedMeshVertexBuffer, 0);
-		mainCommandBuffer->BindComputeBuffer(sharedVertexBuffer, 1);
-		mainCommandBuffer->BindComputeBuffer(sharedSkeletonMatrixBuffer, 2);
+		mainCommandBuffer->BindComputeBuffer(sharedSkinnedPositionBuffer, 0);
+		mainCommandBuffer->BindComputeBuffer(sharedSkinnedNormalBuffer, 1);
+		mainCommandBuffer->BindComputeBuffer(sharedSkinnedTangentBuffer, 2);
+		mainCommandBuffer->BindComputeBuffer(sharedSkinnedBitangentBuffer, 3);
+		mainCommandBuffer->BindComputeBuffer(sharedSkinnedUV0Buffer, 4);
+
+		mainCommandBuffer->BindComputeBuffer(sharedPositionBuffer, 10);
+		mainCommandBuffer->BindComputeBuffer(sharedNormalBuffer, 11);
+		mainCommandBuffer->BindComputeBuffer(sharedTangentBuffer, 12);
+		mainCommandBuffer->BindComputeBuffer(sharedBitangentBuffer, 13);
+		mainCommandBuffer->BindComputeBuffer(sharedUV0Buffer, 14);
+
+		mainCommandBuffer->BindComputeBuffer(sharedSkeletonMatrixBuffer, 20);
 		using mat_t = glm::mat4;
 		std::span<mat_t> matbufMem{ static_cast<mat_t*>(sharedSkeletonMatrixBuffer->GetMappedDataPtr()), sharedSkeletonMatrixBuffer->getBufferSize() / sizeof(mat_t) };
 		SkinningUBO subo;
@@ -425,7 +440,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				auto skeleton = command.skeleton.lock();
 				auto mesh = command.mesh.lock();
 				auto& entities = command.entities;
-				mainCommandBuffer->BindComputeBuffer(mesh->GetWeightsBuffer(), 3);
+				mainCommandBuffer->BindComputeBuffer(mesh->GetWeightsBuffer(), 21);
 
 				subo.numObjects = command.entities.DenseSize();
 				subo.numVertices = mesh->GetNumVerts();
@@ -451,7 +466,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		}
 		mainCommandBuffer->EndCompute();
 		mainCommandBuffer->EndComputeDebugMarker();
-#endif
+
 	};
 
 	auto tickParticles = [this, worldOwning, worldTransformBuffer]() {
@@ -1462,14 +1477,21 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			};
 			renderTheRenderData(worldOwning->renderData.staticMeshRenderData, vertexBuffers, lightingFilter);
 			mainCommandBuffer->EndRenderDebugMarker();
-#if 0
+
 			if (skeletalPrepareResult.skeletalMeshesExist) {
 				mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
-				vertexBuffers.positionBuffer = sharedSkinnedMeshVertexBuffer;
+				vertexBuffers = {
+					.positionBuffer = sharedSkinnedPositionBuffer,
+					.normalBuffer = sharedSkinnedNormalBuffer,
+					.tangentBuffer = sharedSkinnedTangentBuffer,
+					.bitangentBuffer = sharedSkinnedBitangentBuffer,
+					.uv0Buffer = sharedSkinnedUV0Buffer,
+					.lightmapBuffer = nullptr,
+				};
 				renderTheRenderData(worldOwning->renderData.skinnedMeshRenderData, vertexBuffers, lightingFilter);
 				mainCommandBuffer->EndRenderDebugMarker();
 			}
-#endif
+
 			mainCommandBuffer->EndRendering();
 			};
 
