@@ -220,7 +220,9 @@ void SerializeMeshPart(const std::filesystem::path& outfile, const std::variant<
         header.attributes |= SerializedMeshDataHeader::hasTangentsBit;
         header.attributes |= SerializedMeshDataHeader::hasBitangentsBit;
         header.attributes |= SerializedMeshDataHeader::hasUV0Bit;
-        //header.attributes |= SerializedMeshDataHeader::hasLightmapUVBit;
+        if (mesh.lightmapUVs.size() > 0) {
+            header.attributes |= SerializedMeshDataHeader::hasLightmapUVBit;
+        }
 
         // write header
         out.write(reinterpret_cast<const char*>(&header), sizeof(header));
@@ -231,6 +233,11 @@ void SerializeMeshPart(const std::filesystem::path& outfile, const std::variant<
         out.write(reinterpret_cast<const char*>(mesh.tangents.data()), mesh.tangents.size() * sizeof(mesh.tangents[0]));
         out.write(reinterpret_cast<const char*>(mesh.bitangents.data()), mesh.bitangents.size() * sizeof(mesh.bitangents[0]));
         out.write(reinterpret_cast<const char*>(mesh.uv0.data()), mesh.uv0.size() * sizeof(mesh.uv0[0]));
+
+        if (mesh.lightmapUVs.size() > 0) {
+            out.write(reinterpret_cast<const char*>(mesh.lightmapUVs.data()), mesh.lightmapUVs.size() * sizeof(mesh.uv0[0]));
+        }
+
         out.write(reinterpret_cast<const char*>(mesh.indices.data()), mesh.indices.size() * sizeof(mesh.indices[0]));
 
 

@@ -91,9 +91,9 @@ namespace RavEngine {
 		sharedTangentBuffer->SetBufferData({ mesh.tangents.data(), mesh.tangents.size_bytes() }, range.getTangentByteStart());
 		sharedBitangentBuffer->SetBufferData({ mesh.bitangents.data(), mesh.bitangents.size_bytes() }, range.getBitangentByteStart());
 		sharedUV0Buffer->SetBufferData({ mesh.uv0.data(), mesh.uv0.size_bytes() }, range.getUVByteStart());
-#if 0
-		sharedLightmapUVBuffer->SetBufferData({ mesh.lightmapUVs.data(), mesh.lightmapUVs.size_bytes() }, range.getPositionByteStart());
-#endif
+		if (mesh.lightmapUVs.size() > 0) {
+			sharedLightmapUVBuffer->SetBufferData({ mesh.lightmapUVs.data(), mesh.lightmapUVs.size_bytes() }, range.getPositionByteStart());
+		}
 
 		sharedIndexBuffer->SetBufferData(
 			{ mesh.indices.data(), mesh.indices.size_bytes() }, range.getIndexRangeByteStart()

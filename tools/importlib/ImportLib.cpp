@@ -61,6 +61,9 @@ namespace RavEngine {
             mp.tangents.emplace_back(tangent.x, tangent.y, tangent.z);
             mp.bitangents.emplace_back(bitangent.x, bitangent.y, bitangent.z);
             mp.uv0.emplace_back(uvs[0], uvs[1]);
+            if (mesh->mTextureCoords[1]) {
+                mp.lightmapUVs.emplace_back(mesh->mTextureCoords[1][vi].x, mesh->mTextureCoords[1][vi].y);
+            }
 
         }
 
