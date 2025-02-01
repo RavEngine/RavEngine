@@ -45,16 +45,18 @@ MeshParticleVertexOut mesh_particle_vert(uint particleID, ParticleMatrices matri
     scaleMat[2][2] = scale_pos.z;
 
     mat4 inModel = translateMat * rotMat * scaleMat;
-
+#if !RVE_DEPTHONLY
     vec3 T = normalize(vec3(inModel * vec4(inTangent,   0.0)));
    	vec3 B = normalize(vec3(inModel * vec4(inBitangent, 0.0)));
    	vec3 N = normalize(vec3(inModel * vec4(inNormal,    0.0)));
+#endif
 
     MeshParticleVertexOut vs_out;
-
+#if !RVE_DEPTHONLY
 	vs_out.T = T;
 	vs_out.B = B;
 	vs_out.N = N;
+#endif
 
     vec4 vert = inModel * vec4(inPosition, 1);
 

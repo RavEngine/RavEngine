@@ -146,7 +146,7 @@ function(rvesc_compile_meta infile shader_target)
 	string(JSON inopacity ERROR_VARIABLE nofound GET "${desc_STR}" opacity)
 
 
-	if (instage MATCHES "fragment" AND (intype MATCHES "mesh" OR intype MATCHES "quad") AND NOT (inopacity MATCHES "transparent"))
+	if ((intype MATCHES "mesh" OR intype MATCHES "quad") AND NOT (inopacity MATCHES "transparent"))
 		rvesc_compile("${infile}" "${shader_target}" "${inshadername}" "${sh_name_only}_depthonly" "--define \"RVE_DEPTHONLY 1\"")
 	endif()
 

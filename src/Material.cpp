@@ -19,6 +19,9 @@
 
 using namespace std;
 namespace RavEngine {
+    constexpr MeshAttributes shadowAttributes = { .position = true, .normal = false, .tangent = false, .bitangent = false, .uv0 = true, .lightmapUV = false };
+    constexpr MeshAttributes depthPrepassAttributes = { .position = true, .normal = false, .tangent = false, .bitangent = false, .uv0 = true, .lightmapUV = false };
+
 
     /**
     Create a material given a shader. Also registers it in the material manager
@@ -81,44 +84,47 @@ namespace RavEngine {
                 .inputRate = RGL::InputRate::Instance,
                 });
         }
+        
+        auto trimVertexAttributes = [](auto& vertexConfigCopy, auto&& requiredAttributes) {
+            const auto removeAttribute = [&vertexConfigCopy](uint32_t binding) {
+                {
+                    auto it = std::find_if(vertexConfigCopy.attributeDescs.begin(), vertexConfigCopy.attributeDescs.end(), [&binding](auto&& attrib) {
+                        return attrib.binding == binding;
+                        });
+                    if (it != vertexConfigCopy.attributeDescs.end()) {
+                        vertexConfigCopy.attributeDescs.erase(it);
+                    }
+                }
+                {
+                    auto it = std::find_if(vertexConfigCopy.vertexBindings.begin(), vertexConfigCopy.vertexBindings.end(), [&binding](auto&& attrib) {
+                        return attrib.binding == binding;
+                        });
+                    if (it != vertexConfigCopy.vertexBindings.end()) {
+                        vertexConfigCopy.vertexBindings.erase(it);
+                    }
+                }
+                };
 
-        const auto removeAttribute = [&vertexConfigCopy](uint32_t binding) {
-            {
-                auto it = std::find_if(vertexConfigCopy.attributeDescs.begin(), vertexConfigCopy.attributeDescs.end(), [&binding](auto&& attrib) {
-                    return attrib.binding == binding;
-                    });
-                if (it != vertexConfigCopy.attributeDescs.end()) {
-                    vertexConfigCopy.attributeDescs.erase(it);
-                }
+            if (!requiredAttributes.position) {
+                removeAttribute(VTX_POSITION_BINDING);
             }
-            {
-                auto it = std::find_if(vertexConfigCopy.vertexBindings.begin(), vertexConfigCopy.vertexBindings.end(), [&binding](auto&& attrib) {
-                    return attrib.binding == binding;
-                });
-                if (it != vertexConfigCopy.vertexBindings.end()) {
-                    vertexConfigCopy.vertexBindings.erase(it);
-                }
+            if (!requiredAttributes.normal) {
+                removeAttribute(VTX_NORMAL_BINDING);
+            }
+            if (!requiredAttributes.tangent) {
+                removeAttribute(VTX_TANGENT_BINDING);
+            }
+            if (!requiredAttributes.bitangent) {
+                removeAttribute(VTX_BITANGENT_BINDING);
+            }
+            if (!requiredAttributes.uv0) {
+                removeAttribute(VTX_UV0_BINDING);
+            }
+            if (!requiredAttributes.lightmapUV) {
+                removeAttribute(VTX_LIGHTMAP_BINDING);
             }
         };
-
-        if (!requiredAttributes.position) {
-            removeAttribute(VTX_POSITION_BINDING);
-        }
-        if (!requiredAttributes.normal) {
-            removeAttribute(VTX_NORMAL_BINDING);
-        }
-        if (!requiredAttributes.tangent) {
-            removeAttribute(VTX_TANGENT_BINDING);
-        }
-        if (!requiredAttributes.bitangent) {
-            removeAttribute(VTX_BITANGENT_BINDING);
-        }
-        if (!requiredAttributes.uv0) {
-            removeAttribute(VTX_UV0_BINDING);
-        }
-        if (!requiredAttributes.lightmapUV) {
-            removeAttribute(VTX_LIGHTMAP_BINDING);
-        }
+        trimVertexAttributes(vertexConfigCopy, requiredAttributes);
 
         RGL::RenderPipelineDescriptor rpd{
             .stages = {
@@ -154,23 +160,35 @@ namespace RavEngine {
 
         // invert some settings for the shadow pipeline
         if (hasDepthPrepass) {
-            const auto sh_name = Format("{}_fsh_depthonly", fsh_name);
-            rpd.stages[1].shaderModule = LoadShaderByFilename(sh_name, device);  // use the shadow variant
+            rpd.stages[0].shaderModule = LoadShaderByFilename(Format("{}_vsh_depthonly", vsh_name), device);  // use the shadow variant
+            rpd.stages[1].shaderModule = LoadShaderByFilename(Format("{}_fsh_depthonly", fsh_name), device);  // use the shadow variant
         }
         else {
+            if (!config.verbatimConfig) {
+                rpd.stages[0].shaderModule = LoadShaderByFilename(Format("{}_vsh_depthonly", vsh_name), device);  // use the shadow variant
+            }
             rpd.stages.pop_back();  // no fragment shader
         }
 
         rpd.colorBlendConfig.attachments.clear();                           // only write to depth
         rpd.depthStencilConfig.depthFunction = config.depthCompareFunction; // use real depth compare function
-
+       
         rpd.debugName = Format("Material {} {} (Depth Prepass)", fsh_name, vsh_name);
-        depthPrepassPipeline = device->CreateRenderPipeline(rpd);
+        
+        {
+            auto rpd_cpy = rpd;
+            trimVertexAttributes(rpd_cpy.vertexConfig,depthPrepassAttributes);
+            depthPrepassPipeline = device->CreateRenderPipeline(rpd_cpy);
+        }
 
         rpd.rasterizerConfig.windingOrder = RGL::WindingOrder::Clockwise;   // backface shadows
         rpd.rasterizerConfig.depthClampEnable = true;                       // clamp out-of-view fragments
         rpd.debugName = Format("Material {} {} (Shadow)", fsh_name, vsh_name);
-        shadowRenderPipeline = device->CreateRenderPipeline(rpd);
+        {
+            auto rpd_cpy = rpd;
+            trimVertexAttributes(rpd_cpy.vertexConfig, shadowAttributes);
+            shadowRenderPipeline = device->CreateRenderPipeline(rpd_cpy);
+        }
     }
 
     Material::~Material() {
@@ -399,7 +417,7 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
                 pipeline = m->GetShadowRenderPipeline();
             } }, variant);
 
-        return { pipeline, {.position = true, .normal = false, .tangent = false, .bitangent = false, .uv0 = false, .lightmapUV = false } };
+        return { pipeline, shadowAttributes };
     }
 
     PipelineUseConfiguration RavEngine::MaterialVariant::GetMainRenderPipeline() const
@@ -432,7 +450,7 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
                 pipeline = m->GetDepthPrepassPipeline();
             } }, variant);
 
-        return { pipeline, {.position = true, .normal = false, .tangent = false, .bitangent = false, .uv0 = false, .lightmapUV = false } };
+        return { pipeline, depthPrepassAttributes };
     }
 }
 #endif
