@@ -16,15 +16,6 @@
 namespace RavEngine {
 	struct Texture;
 
-	struct MeshAttributes {
-		bool position : 1 = true;
-		bool normal : 1 = true;
-		bool tangent : 1 = true;
-		bool bitangent : 1 = true;
-		bool uv0 : 1 = true;
-		bool lightmapUV : 1 = false;
-	};
-
 	struct MaterialConfig {
 		RGL::RenderPipelineDescriptor::VertexConfig vertConfig;
 		RGL::RenderPipelineDescriptor::ColorBlendConfig colorBlendConfig;
@@ -127,7 +118,14 @@ namespace RavEngine {
 	struct MaterialRenderOptions  {
 		RGL::CullMode cullMode = RGL::CullMode::Back;
 		OpacityMode opacityMode = OpacityMode::Opaque;
-		MeshAttributes requiredAttributes{};
+		MeshAttributes requiredAttributes{
+			.position = true,
+			.normal = true,
+			.tangent = true,
+			.bitangent = true,
+			.uv0 = true,
+			.lightmapUV = false
+		};
 	};
 
 	struct PipelineOptions {
@@ -136,23 +134,29 @@ namespace RavEngine {
 	};
 
 	struct LitMaterial : public Material {
-		LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions = {}, const MaterialRenderOptions& options = {});
-		LitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options = {}) : LitMaterial(name, name, pipeOptions, options) {}
+
+		LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions = {}, const MaterialRenderOptions& options = {
+		});
+		LitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options = {
+		}) : LitMaterial(name, name, pipeOptions, options) {}
 	};
 
 
 	// a material that reads no data
 	struct UnlitMaterial : public Material {
-		UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions = {}, const MaterialRenderOptions& options = {});
-		UnlitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options = {
-			.requiredAttributes = {
+		constexpr static MeshAttributes defaultMeshAttributes = {
 				.position = true,
-				.normal = false,
-				.tangent = false,
-				.bitangent = false,
+				.normal = true,
+				.tangent = true,
+				.bitangent = true,
 				.uv0 = true,
 				.lightmapUV = false,
-			}
+		};
+		UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions = {}, const MaterialRenderOptions& options = {
+			.requiredAttributes = defaultMeshAttributes 
+		});
+		UnlitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options = {
+			.requiredAttributes = defaultMeshAttributes
 		}) : UnlitMaterial(name, name, pipeOptions, options) {}
 	};
 

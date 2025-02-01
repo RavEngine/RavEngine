@@ -3,6 +3,7 @@
 #include <glm/mat4x4.hpp>
 #include "Common3D.hpp"
 #include <span>
+#include "MaterialShared.hpp"
 
 namespace RavEngine{
 
@@ -46,6 +47,8 @@ struct MeshPartBase{
     uint32_t NumVerts() const {
         return positions.size();
     }
+
+    MeshAttributes attributes;
 };
 struct MeshPart : public MeshPartBase<Vector>{
     void ReserveVerts(uint32_t size) {

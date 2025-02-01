@@ -338,7 +338,8 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
             .bindings = augmentLitMaterialBindings(pipeOptions.bindings, options.opacityMode),
             .pushConstantSize = pipeOptions.pushConstantSize,
             .cullMode = options.cullMode,
-            .opacityMode = options.opacityMode
+            .opacityMode = options.opacityMode,
+            .requiredAttributes = options.requiredAttributes,
         }
     )
     {
@@ -401,7 +402,8 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
             .bindings = augmentUnlitMaterialBindings(pipeOptions.bindings, options.opacityMode),
             .pushConstantSize = pipeOptions.pushConstantSize,
             .cullMode = options.cullMode,
-            .opacityMode = options.opacityMode
+            .opacityMode = options.opacityMode,
+            .requiredAttributes = options.requiredAttributes,
             }) {}
 
 

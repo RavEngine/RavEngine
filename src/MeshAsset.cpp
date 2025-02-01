@@ -34,7 +34,7 @@ std::pair<MeshPart, uint32_t> RavEngine::MeshAsset::DeserializeMeshFromMemory(co
 	MeshPart mesh;
 	mesh.indices.reserve(header.numIndicies);
 	mesh.ReserveVerts(header.numVertices);
-
+	
 	auto loadMeshProperty = [&fp, &header](auto&& destination) {
 		for (int i = 0; i < header.numVertices; i++) {
 			std::remove_reference_t<decltype(destination[0])> prop = *reinterpret_cast<decltype(prop)*>(fp);
@@ -45,21 +45,27 @@ std::pair<MeshPart, uint32_t> RavEngine::MeshAsset::DeserializeMeshFromMemory(co
 
 	// load vertices
 	if (header.attributes & SerializedMeshDataHeader::hasPositionsBit) {
+		mesh.attributes.position = true;
 		loadMeshProperty(mesh.positions);
 	}
 	if (header.attributes & SerializedMeshDataHeader::hasNormalsBit) {
+		mesh.attributes.normal = true;
 		loadMeshProperty(mesh.normals);
 	}
 	if (header.attributes & SerializedMeshDataHeader::hasTangentsBit) {
+		mesh.attributes.tangent = true;
 		loadMeshProperty(mesh.tangents);
 	}
 	if (header.attributes & SerializedMeshDataHeader::hasBitangentsBit) {
+		mesh.attributes.bitangent = true;
 		loadMeshProperty(mesh.bitangents);
 	}
 	if (header.attributes & SerializedMeshDataHeader::hasUV0Bit) {
+		mesh.attributes.uv0 = true;
 		loadMeshProperty(mesh.uv0);
 	}
 	if (header.attributes & SerializedMeshDataHeader::hasLightmapUVBit) {
+		mesh.attributes.lightmapUV = true;
 		loadMeshProperty(mesh.lightmapUVs);
 	}
 
@@ -111,8 +117,12 @@ void MeshAsset::InitializeFromMeshPartFragments(const RavEngine::Vector<MeshPart
 	//allMeshes.indices.mode = indexBufferWidth;
 	allMeshes.indices.reserve(ti);
 	
+	MeshAttributes attrCheck = meshes[0].attributes;
+	
 	uint32_t baseline_index = 0;
 	for(const auto& mesh : meshes){
+		Debug::Assert(attrCheck == mesh.attributes, "Meshes have incompatible attributes!");
+
 		auto copyProp = [](auto& destination, const auto& source) {
 			for (const auto& prop : source) {
 				destination.push_back(prop);
@@ -141,7 +151,8 @@ void MeshAsset::InitializeFromRawMesh(const MeshPart& allMeshes, const MeshAsset
 }
 
 void MeshAsset::InitializeFromRawMeshView(const MeshPartView& allMeshes, const MeshAssetOptions& options){
-    
+	attributes = allMeshes.attributes;
+
     // calculate bounding box
     for(const auto& pos : allMeshes.positions){
         bounds.max[0] = std::max<decimalType>(bounds.max[0],pos[0]);
