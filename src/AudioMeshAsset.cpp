@@ -19,11 +19,11 @@ namespace RavEngine {
 		std::vector<IPLVector3> vertices;
 		{
 			vertices.reserve(mesh->GetNumVerts());
-			for (const auto& vert : meshCPU.vertices) {
+			for (const auto& pos : meshCPU.positions) {
 				vertices.push_back(IPLVector3{
-					.x = vert.position[0],
-					.y = vert.position[1],
-					.z = vert.position[2]
+					.x = pos[0],
+					.y = pos[1],
+					.z = pos[2]
 				});
 			}
 		}

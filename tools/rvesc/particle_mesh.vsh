@@ -44,11 +44,11 @@ void main(){
 #endif
 
     vec4 worldPos = vec4(user_out.localPosition, 1);
-
+#if !RVE_DEPTHONLY
     inTBN[0] = inTangent;
 	inTBN[1] = inBitangent;
 	inTBN[2] = inNormal;
-
+#endif
     gl_Position = matrixData[0].viewProj * worldPos;
     clipSpaceZ = gl_Position.z;
     worldPosition = worldPos.xyz;

@@ -28,6 +28,10 @@ namespace RavEngine {
 	{
 		meshes.push_back(m.mesh);
 		lodDistances.push_back(m.minDistance);
+		auto attrCheck = m.mesh->GetAttributes();
+		for (const auto& mesh : meshes) {
+			Debug::Assert(attrCheck == mesh->GetAttributes(), "Mesh attributes do not match!");
+		}
 	}
 	void MeshCollectionStatic::RemoveMeshAtIndex(uint16_t idx)
 	{

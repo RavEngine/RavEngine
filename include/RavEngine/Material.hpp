@@ -16,8 +16,6 @@
 namespace RavEngine {
 	struct Texture;
 
-
-
 	struct MaterialConfig {
 		RGL::RenderPipelineDescriptor::VertexConfig vertConfig;
 		RGL::RenderPipelineDescriptor::ColorBlendConfig colorBlendConfig;
@@ -30,9 +28,16 @@ namespace RavEngine {
 		RGL::CullMode cullMode = RGL::CullMode::Back;
         bool verbatimConfig = false;    // used for Skybox
 		OpacityMode opacityMode = OpacityMode::Opaque;
+
+		MeshAttributes requiredAttributes;
 	};
 
+	
 
+	struct PipelineUseConfiguration {
+		RGLRenderPipelinePtr pipeline;
+		MeshAttributes attributes;
+	};
 
 	/**
 	Represents the interface to a shader. Subclass to create more types of material and expose more abilities.
@@ -87,10 +92,17 @@ namespace RavEngine {
 			return depthPrepassPipeline;
 		}
 
+		MeshAttributes GetAttributes() const {
+			return requiredAttributes;
+		}
+
 	protected:
 		RGLRenderPipelinePtr renderPipeline, shadowRenderPipeline, depthPrepassPipeline;
 		RGLPipelineLayoutPtr pipelineLayout;
 		OpacityMode opacityMode;
+		const MeshAttributes requiredAttributes;
+
+		
 
 		bool IsTransparent() const {
 			return opacityMode == OpacityMode::Transparent;
@@ -106,6 +118,14 @@ namespace RavEngine {
 	struct MaterialRenderOptions  {
 		RGL::CullMode cullMode = RGL::CullMode::Back;
 		OpacityMode opacityMode = OpacityMode::Opaque;
+		MeshAttributes requiredAttributes{
+			.position = true,
+			.normal = true,
+			.tangent = true,
+			.bitangent = true,
+			.uv0 = true,
+			.lightmapUV = false
+		};
 	};
 
 	struct PipelineOptions {
@@ -114,15 +134,30 @@ namespace RavEngine {
 	};
 
 	struct LitMaterial : public Material {
-		LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions = {}, const MaterialRenderOptions& options = {});
-		LitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options = {}) : LitMaterial(name, name, pipeOptions, options) {}
+
+		LitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions = {}, const MaterialRenderOptions& options = {
+		});
+		LitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options = {
+		}) : LitMaterial(name, name, pipeOptions, options) {}
 	};
 
 
 	// a material that reads no data
 	struct UnlitMaterial : public Material {
-		UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions = {}, const MaterialRenderOptions& options = {});
-		UnlitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options = {}) : UnlitMaterial(name, name, pipeOptions, options) {}
+		constexpr static MeshAttributes defaultMeshAttributes = {
+				.position = true,
+				.normal = true,
+				.tangent = true,
+				.bitangent = true,
+				.uv0 = true,
+				.lightmapUV = false,
+		};
+		UnlitMaterial(const std::string_view vsh_name, const std::string_view fsh_name, const PipelineOptions& pipeOptions = {}, const MaterialRenderOptions& options = {
+			.requiredAttributes = defaultMeshAttributes 
+		});
+		UnlitMaterial(const std::string_view name, const PipelineOptions& pipeOptions, const MaterialRenderOptions& options = {
+			.requiredAttributes = defaultMeshAttributes
+		}) : UnlitMaterial(name, name, pipeOptions, options) {}
 	};
 
 	struct MaterialVariant  {
@@ -130,9 +165,9 @@ namespace RavEngine {
 		template<typename T>
 		MaterialVariant(const T& value) : variant(value) {}
 
-		RGLRenderPipelinePtr GetShadowRenderPipeline() const;
-		RGLRenderPipelinePtr GetMainRenderPipeline()const;
-		RGLRenderPipelinePtr GetDepthPrepassPipeline() const;
+		PipelineUseConfiguration GetShadowRenderPipeline() const;
+		PipelineUseConfiguration GetMainRenderPipeline()const;
+		PipelineUseConfiguration GetDepthPrepassPipeline() const;
 
 		const MaterialVariant* operator->() const {
 			return this;

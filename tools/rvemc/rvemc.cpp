@@ -16,6 +16,7 @@
 #include "CaseAnalysis.hpp"
 #include <RavEngine/ImportLib.hpp>
 #include <meshoptimizer.h>
+#include <numeric>
 
 using namespace std;
 using namespace RavEngine;
@@ -78,9 +79,14 @@ std::variant<MeshPart, SkinnedMeshPart> LoadMesh(const std::filesystem::path& pa
                 index += index_base;            // renumber indices
             }
 
-            mesh.vertices.insert(mesh.vertices.end(), mp.vertices.begin(), mp.vertices.end());
+            mesh.positions.insert(mesh.positions.end(), mp.positions.begin(), mp.positions.end());
+            mesh.normals.insert(mesh.normals.end(), mp.normals.begin(), mp.normals.end());
+            mesh.tangents.insert(mesh.tangents.end(), mp.positions.begin(), mp.positions.end());
+            mesh.bitangents.insert(mesh.bitangents.end(), mp.bitangents.begin(), mp.bitangents.end());
+            mesh.uv0.insert(mesh.uv0.end(), mp.uv0.begin(), mp.uv0.end());
+            mesh.lightmapUVs.insert(mesh.lightmapUVs.end(), mp.lightmapUVs.begin(), mp.lightmapUVs.end());
             mesh.indices.insert(mesh.indices.end(), mp.indices.begin(), mp.indices.end());
-            index_base += mp.vertices.size();
+            index_base += mp.NumVerts();
         }
         catch(const std::runtime_error& err){
             FATAL(err.what());
@@ -90,20 +96,31 @@ std::variant<MeshPart, SkinnedMeshPart> LoadMesh(const std::filesystem::path& pa
     // optimize mesh
 
     std::vector<uint32_t> remap(mesh.indices.size()); // allocate temporary memory for the remap table
-    size_t vertex_count = meshopt_generateVertexRemap(remap.data(), mesh.indices.data(), mesh.indices.size(), mesh.vertices.data(), mesh.vertices.size(), sizeof(vertex_t));
-    
+    std::iota(std::begin(remap), std::end(remap), 0);
+#if 0
+    size_t vertex_count = meshopt_generateVertexRemap(remap.data(), mesh.indices.data(), mesh.indices.size(), mesh.positions.data(), mesh.NumVerts(), sizeof(VertexPosition_t));
+
     meshopt_remapIndexBuffer(mesh.indices.data(),mesh.indices.data(),mesh.indices.size(),remap.data());
-    meshopt_remapVertexBuffer(mesh.vertices.data(),mesh.vertices.data(), mesh.vertices.size(), sizeof(vertex_t), remap.data());
+
+    meshopt_remapVertexBuffer(mesh.positions.data(),mesh.positions.data(), mesh.NumVerts(), sizeof(VertexPosition_t), remap.data());
     
-    meshopt_optimizeVertexCache(mesh.indices.data(), mesh.indices.data(), mesh.indices.size(), mesh.vertices.size());
-    meshopt_optimizeOverdraw(mesh.indices.data(), mesh.indices.data(), mesh.indices.size(), &mesh.vertices[0].position.x, mesh.vertices.size(), sizeof(vertex_t), 1.05f);
+    meshopt_optimizeVertexCache(mesh.indices.data(), mesh.indices.data(), mesh.indices.size(), mesh.NumVerts());
+    meshopt_optimizeOverdraw(mesh.indices.data(), mesh.indices.data(), mesh.indices.size(), &mesh.positions[0].x, mesh.NumVerts(), sizeof(VertexPosition_t), 1.05f);
     
     auto indcpy = mesh.indices;
-    meshopt_optimizeVertexFetchRemap(remap.data(), mesh.indices.data(), mesh.indices.size(), mesh.vertices.size());
+    meshopt_optimizeVertexFetchRemap(remap.data(), mesh.indices.data(), mesh.indices.size(), mesh.NumVerts());
 
     meshopt_remapIndexBuffer(mesh.indices.data(), indcpy.data(), mesh.indices.size(), remap.data());
-    meshopt_remapVertexBuffer(mesh.vertices.data(), mesh.vertices.data(), mesh.vertices.size(), sizeof(vertex_t), remap.data());
 
+    meshopt_remapVertexBuffer(mesh.positions.data(), mesh.positions.data(), mesh.NumVerts(), sizeof(VertexPosition_t), remap.data());
+    meshopt_remapVertexBuffer(mesh.normals.data(), mesh.normals.data(), mesh.NumVerts(), sizeof(VertexNormal_t), remap.data());
+    meshopt_remapVertexBuffer(mesh.tangents.data(), mesh.tangents.data(), mesh.NumVerts(), sizeof(VertexTangent_t), remap.data());
+    meshopt_remapVertexBuffer(mesh.bitangents.data(), mesh.bitangents.data(), mesh.NumVerts(), sizeof(VertexBitangent_t), remap.data());
+    meshopt_remapVertexBuffer(mesh.uv0.data(), mesh.uv0.data(), mesh.NumVerts(), sizeof(VertexUV_t), remap.data());
+    if (mesh.lightmapUVs.size() > 0){
+        meshopt_remapVertexBuffer(mesh.lightmapUVs.data(), mesh.lightmapUVs.data(), mesh.NumVerts(), sizeof(VertexUV_t), remap.data());
+    }
+#endif
 
     decltype(SkinnedMeshPart::vertexWeights) weightsgpu;
     if constexpr (isSkinned) {
@@ -137,6 +154,7 @@ std::variant<MeshPart, SkinnedMeshPart> LoadMesh(const std::filesystem::path& pa
                     auto weightval = bone->mWeights[j];
 
                     allweights[remap[weightval.mVertexId] + current_offset].weights.push_back({ VertexWeights::vweights::vw{idx,weightval.mWeight} });
+                    //allweights[weightval.mVertexId + current_offset].weights.push_back({ VertexWeights::vweights::vw{idx,weightval.mWeight} });
                 }
 
             }
@@ -193,16 +211,33 @@ void SerializeMeshPart(const std::filesystem::path& outfile, const std::variant<
     std::visit([&out,&isSkinned](const MeshPart& mesh) {
         
         SerializedMeshDataHeader header{
-           .numVertices = uint32_t(mesh.vertices.size()),
+           .numVertices = uint32_t(mesh.positions.size()),  // these are all the same
            .numIndicies = uint32_t(mesh.indices.size()),
            .attributes = uint8_t(isSkinned ? SerializedMeshDataHeader::SkinnedMeshBit : 0)
         };
+        header.attributes |= SerializedMeshDataHeader::hasPositionsBit;
+        header.attributes |= SerializedMeshDataHeader::hasNormalsBit;
+        header.attributes |= SerializedMeshDataHeader::hasTangentsBit;
+        header.attributes |= SerializedMeshDataHeader::hasBitangentsBit;
+        header.attributes |= SerializedMeshDataHeader::hasUV0Bit;
+        if (mesh.lightmapUVs.size() > 0) {
+            header.attributes |= SerializedMeshDataHeader::hasLightmapUVBit;
+        }
 
         // write header
         out.write(reinterpret_cast<const char*>(&header), sizeof(header));
 
         // vertices and indices
-        out.write(reinterpret_cast<const char*>(mesh.vertices.data()), mesh.vertices.size() * sizeof(mesh.vertices[0]));
+        out.write(reinterpret_cast<const char*>(mesh.positions.data()), mesh.positions.size() * sizeof(mesh.positions[0]));
+        out.write(reinterpret_cast<const char*>(mesh.normals.data()), mesh.normals.size() * sizeof(mesh.normals[0]));
+        out.write(reinterpret_cast<const char*>(mesh.tangents.data()), mesh.tangents.size() * sizeof(mesh.tangents[0]));
+        out.write(reinterpret_cast<const char*>(mesh.bitangents.data()), mesh.bitangents.size() * sizeof(mesh.bitangents[0]));
+        out.write(reinterpret_cast<const char*>(mesh.uv0.data()), mesh.uv0.size() * sizeof(mesh.uv0[0]));
+
+        if (mesh.lightmapUVs.size() > 0) {
+            out.write(reinterpret_cast<const char*>(mesh.lightmapUVs.data()), mesh.lightmapUVs.size() * sizeof(mesh.uv0[0]));
+        }
+
         out.write(reinterpret_cast<const char*>(mesh.indices.data()), mesh.indices.size() * sizeof(mesh.indices[0]));
 
 

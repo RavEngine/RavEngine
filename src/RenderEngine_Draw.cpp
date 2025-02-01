@@ -26,6 +26,7 @@
 #include "MeshCollection.hpp"
 #include "Tonemap.hpp"
 #include "BuiltinTonemap.hpp"
+#include <ravengine_shader_defs.h>
 
 #undef near		// for some INSANE reason, Microsoft defines these words and they leak into here only on ARM targets
 #undef far
@@ -369,7 +370,12 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		}
 
 		resizeSkeletonBuffer(sharedSkeletonMatrixBuffer, sizeof(matrix4), totalJointsToSkin, { .StorageBuffer = true }, RGL::BufferAccess::Shared, { .debugName = "sharedSkeletonMatrixBuffer" });
-		resizeSkeletonBuffer(sharedSkinnedMeshVertexBuffer, sizeof(VertexNormalUV), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "sharedSkinnedMeshVertexBuffer" });
+		resizeSkeletonBuffer(sharedSkinnedPositionBuffer, sizeof(VertexPosition_t), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Shared Skinned Position Buffer" });
+		resizeSkeletonBuffer(sharedSkinnedNormalBuffer, sizeof(VertexNormal_t), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Shared Skinned Position Buffer" });
+		resizeSkeletonBuffer(sharedSkinnedTangentBuffer, sizeof(VertexTangent_t), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Shared Skinned Position Buffer" });
+		resizeSkeletonBuffer(sharedSkinnedBitangentBuffer, sizeof(VertexBitangent_t), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Shared Skinned Position Buffer" });
+		resizeSkeletonBuffer(sharedSkinnedUV0Buffer, sizeof(VertexUV_t), totalVertsToSkin, { .StorageBuffer = true, .VertexBuffer = true }, RGL::BufferAccess::Private, { .Writable = true, .debugName = "Shared Skinned Position Buffer" });
+
 
 		return {
 			.skeletalMeshesExist = totalObjectsToSkin > 0 && totalVertsToSkin > 0
@@ -410,11 +416,22 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 	auto poseSkeletalMeshes = [this,&worldOwning]() {
 		RVE_PROFILE_FN_N("Enc Pose Skinned Meshes");
+
 		mainCommandBuffer->BeginComputeDebugMarker("Pose Skinned Meshes");
 		mainCommandBuffer->BeginCompute(skinnedMeshComputePipeline);
-		mainCommandBuffer->BindComputeBuffer(sharedSkinnedMeshVertexBuffer, 0);
-		mainCommandBuffer->BindComputeBuffer(sharedVertexBuffer, 1);
-		mainCommandBuffer->BindComputeBuffer(sharedSkeletonMatrixBuffer, 2);
+		mainCommandBuffer->BindComputeBuffer(sharedSkinnedPositionBuffer, 0);
+		mainCommandBuffer->BindComputeBuffer(sharedSkinnedNormalBuffer, 1);
+		mainCommandBuffer->BindComputeBuffer(sharedSkinnedTangentBuffer, 2);
+		mainCommandBuffer->BindComputeBuffer(sharedSkinnedBitangentBuffer, 3);
+		mainCommandBuffer->BindComputeBuffer(sharedSkinnedUV0Buffer, 4);
+
+		mainCommandBuffer->BindComputeBuffer(sharedPositionBuffer, 10);
+		mainCommandBuffer->BindComputeBuffer(sharedNormalBuffer, 11);
+		mainCommandBuffer->BindComputeBuffer(sharedTangentBuffer, 12);
+		mainCommandBuffer->BindComputeBuffer(sharedBitangentBuffer, 13);
+		mainCommandBuffer->BindComputeBuffer(sharedUV0Buffer, 14);
+
+		mainCommandBuffer->BindComputeBuffer(sharedSkeletonMatrixBuffer, 20);
 		using mat_t = glm::mat4;
 		std::span<mat_t> matbufMem{ static_cast<mat_t*>(sharedSkeletonMatrixBuffer->GetMappedDataPtr()), sharedSkeletonMatrixBuffer->getBufferSize() / sizeof(mat_t) };
 		SkinningUBO subo;
@@ -423,7 +440,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				auto skeleton = command.skeleton.lock();
 				auto mesh = command.mesh.lock();
 				auto& entities = command.entities;
-				mainCommandBuffer->BindComputeBuffer(mesh->GetWeightsBuffer(), 3);
+				mainCommandBuffer->BindComputeBuffer(mesh->GetWeightsBuffer(), 21);
 
 				subo.numObjects = command.entities.DenseSize();
 				subo.numVertices = mesh->GetNumVerts();
@@ -449,6 +466,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		}
 		mainCommandBuffer->EndCompute();
 		mainCommandBuffer->EndComputeDebugMarker();
+
 	};
 
 	auto tickParticles = [this, worldOwning, worldTransformBuffer]() {
@@ -1061,8 +1079,24 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 					//prepass: get number of LODs and entities
 					uint32_t numLODs = 0, numEntities = 0;
+
+					MeshAttributes materialAttributes;
+					std::visit(CaseAnalysis{
+					[&materialAttributes](const Ref<LitMaterial>& mat) {
+						materialAttributes = mat->GetAttributes();
+					},
+					[&materialAttributes](const Ref<UnlitMaterial>& mat) {
+						materialAttributes = mat->GetAttributes();
+					} }
+					, materialInstance.mat->GetMat()->variant);
+
+
+
 					for (const auto& command : drawcommand.commands) {
 						if (auto mesh = command.mesh.lock()) {
+							auto meshattr = mesh->GetMeshForLOD(0)->GetAttributes();
+							Debug::Assert(mesh->GetNumLods() > 0, "Mesh has no LODs!");
+							Debug::Assert(materialAttributes.CompatibleWith(meshattr), "Mesh does not have all attributes required for material!");
 							numLODs += mesh->GetNumLods();
 							numEntities += command.entities.DenseSize();
 						}
@@ -1172,7 +1206,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				mainCommandBuffer->EndCompute();
 
 			};
-            auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, particleBillboardMatrices, &lightDataOffset,&layers, &target, &camIdx](auto&& renderData, RGLBufferPtr vertexBuffer, LightingType currentLightingType) {
+			struct BufferSet {
+				RGLBufferPtr positionBuffer, normalBuffer, tangentBuffer, bitangentBuffer, uv0Buffer, lightmapBuffer;
+			};
+            auto renderTheRenderData = [this, &viewproj, &viewonly,&projOnly, &worldTransformBuffer, &pipelineSelectorFunction, &viewportScissor, &worldOwning, particleBillboardMatrices, &lightDataOffset,&layers, &target, &camIdx](auto&& renderData, const BufferSet& vertexBufferSet, LightingType currentLightingType) {
 				// do static meshes
 				RVE_PROFILE_FN_N("RenderTheRenderData");
 				mainCommandBuffer->SetViewport({
@@ -1182,8 +1219,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					.height = static_cast<float>(viewportScissor.extent[1]),
 					});
 				mainCommandBuffer->SetScissor(viewportScissor);
-				mainCommandBuffer->SetVertexBuffer(vertexBuffer);
-				mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
+				
 				for (auto& [materialInstance, drawcommand] : renderData) {
 
 					bool shouldKeep = filterRenderData(currentLightingType, materialInstance);
@@ -1195,7 +1231,28 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 					// bind the pipeline
 					auto pipeline = pipelineSelectorFunction(materialInstance.mat->GetMat());
-					mainCommandBuffer->BindRenderPipeline(pipeline);
+
+					if (pipeline.attributes.position) {
+						mainCommandBuffer->SetVertexBuffer(vertexBufferSet.positionBuffer, { .bindingPosition = VTX_POSITION_BINDING });
+					}
+					if (pipeline.attributes.normal) {
+						mainCommandBuffer->SetVertexBuffer(vertexBufferSet.normalBuffer, { .bindingPosition = VTX_NORMAL_BINDING });
+					}
+					if (pipeline.attributes.tangent) {
+						mainCommandBuffer->SetVertexBuffer(vertexBufferSet.tangentBuffer, { .bindingPosition = VTX_TANGENT_BINDING });
+					}
+					if (pipeline.attributes.bitangent) {
+						mainCommandBuffer->SetVertexBuffer(vertexBufferSet.bitangentBuffer, { .bindingPosition = VTX_BITANGENT_BINDING });
+					}
+					if (pipeline.attributes.uv0) {
+						mainCommandBuffer->SetVertexBuffer(vertexBufferSet.uv0Buffer, { .bindingPosition = VTX_UV0_BINDING });
+					}
+					if (pipeline.attributes.lightmapUV) {
+						mainCommandBuffer->SetVertexBuffer(vertexBufferSet.lightmapBuffer, { .bindingPosition = VTX_LIGHTMAP_BINDING });
+					}
+					mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
+
+					mainCommandBuffer->BindRenderPipeline(pipeline.pipeline);
 
 					// this is always needed
 					mainCommandBuffer->BindBuffer(transientBuffer, 11, lightDataOffset);
@@ -1273,7 +1330,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					}
 
 					// bind the culling buffer and the transform buffer
-					mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = 1 });
+					mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = ENTITY_INPUT_BINDING });
 					mainCommandBuffer->BindBuffer(worldTransformBuffer, 10);
 
 					// do the indirect command
@@ -1406,7 +1463,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 								sharedParticleImpl(emitter, meshMat, result.material, activeIndexBuffer,result.isLit);
 
-								mainCommandBuffer->SetVertexBuffer(sharedVertexBuffer);
+								mainCommandBuffer->SetVertexBuffer(sharedPositionBuffer, { .bindingPosition = VTX_POSITION_BINDING });
+								mainCommandBuffer->SetVertexBuffer(sharedNormalBuffer, { .bindingPosition = VTX_NORMAL_BINDING });
+								mainCommandBuffer->SetVertexBuffer(sharedTangentBuffer, { .bindingPosition = VTX_TANGENT_BINDING });
+								mainCommandBuffer->SetVertexBuffer(sharedBitangentBuffer, { .bindingPosition = VTX_BITANGENT_BINDING });
+								mainCommandBuffer->SetVertexBuffer(sharedUV0Buffer, { .bindingPosition = VTX_UV0_BINDING });
 								mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
 								mainCommandBuffer->BindBuffer(transientBuffer, MeshParticleRenderMaterialInstance::kEngineDataBinding, emitter.renderState.maxTotalParticlesOffset);
 
@@ -1438,13 +1499,31 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			// do rendering operations
 			mainCommandBuffer->BeginRendering(renderPass);
 			mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
-			renderTheRenderData(worldOwning->renderData.staticMeshRenderData, sharedVertexBuffer, lightingFilter);
+			BufferSet vertexBuffers{
+				.positionBuffer = sharedPositionBuffer,
+				.normalBuffer = sharedNormalBuffer,
+				.tangentBuffer = sharedTangentBuffer,
+				.bitangentBuffer = sharedBitangentBuffer,
+				.uv0Buffer = sharedUV0Buffer,
+				.lightmapBuffer = sharedLightmapUVBuffer,
+			};
+			renderTheRenderData(worldOwning->renderData.staticMeshRenderData, vertexBuffers, lightingFilter);
 			mainCommandBuffer->EndRenderDebugMarker();
+
 			if (skeletalPrepareResult.skeletalMeshesExist) {
 				mainCommandBuffer->BeginRenderDebugMarker("Render Skinned Meshes");
-				renderTheRenderData(worldOwning->renderData.skinnedMeshRenderData, sharedSkinnedMeshVertexBuffer, lightingFilter);
+				vertexBuffers = {
+					.positionBuffer = sharedSkinnedPositionBuffer,
+					.normalBuffer = sharedSkinnedNormalBuffer,
+					.tangentBuffer = sharedSkinnedTangentBuffer,
+					.bitangentBuffer = sharedSkinnedBitangentBuffer,
+					.uv0Buffer = sharedSkinnedUV0Buffer,
+					.lightmapBuffer = nullptr,
+				};
+				renderTheRenderData(worldOwning->renderData.skinnedMeshRenderData, vertexBuffers, lightingFilter);
 				mainCommandBuffer->EndRenderDebugMarker();
 			}
+
 			mainCommandBuffer->EndRendering();
 			};
 

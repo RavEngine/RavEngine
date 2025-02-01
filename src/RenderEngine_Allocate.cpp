@@ -9,12 +9,9 @@
 #include "Debug.hpp"
 
 namespace RavEngine {
-	MeshRange RenderEngine::AllocateMesh(const std::span<const VertexNormalUV> vertices, const std::span<const uint32_t> indices)
+	MeshRange RenderEngine::AllocateMesh(const MeshPartView& mesh)
 	{
         std::lock_guard mtx{allocationLock};
-		auto const vertexBytes = std::as_bytes(vertices);
-		auto const indexBytes = std::as_bytes( indices );
-
 	
 		using alloc_iterator_t = allocation_allocatedlist_t::iterator;
 		using freelist_iterator_t = allocation_freelist_t::iterator;
@@ -52,8 +49,8 @@ namespace RavEngine {
 		};
 
 		// figure out where to put the new data, resizing the buffer as needed
-		auto vertexAllocation = getAllocationLocation(vertexBytes.size_bytes(), currentVertexSize, vertexFreeList,[this](uint32_t newSize) {ReallocateVertexAllocationToSize(newSize); });
-		auto indexAllocation = getAllocationLocation(indexBytes.size_bytes(), currentIndexSize, indexFreeList,  [this](uint32_t newSize) {ReallocateIndexAllocationToSize(newSize); });
+		auto vertexAllocation = getAllocationLocation(mesh.NumVerts(), currentVertexSize, vertexFreeList, [this](uint32_t newSize) {ReallocateVertexAllocationToSize(newSize); });
+		auto indexAllocation = getAllocationLocation(mesh.indices.size(), currentIndexSize, indexFreeList,  [this](uint32_t newSize) {ReallocateIndexAllocationToSize(newSize); });
 
 		// now we have the location to place the vertex and index data in the buffer
 		// these numbers are stable because, if the buffer resized, then the only place it could be stored is at the end.
@@ -83,20 +80,26 @@ namespace RavEngine {
 		};
 
 		// mark the ranges as consumed
-		auto vertexPlacement = consumeRange(vertexAllocation, vertexBytes.size_bytes(), vertexFreeList, vertexAllocatedList);
-		auto indexPlacement = consumeRange(indexAllocation, indexBytes.size_bytes(), indexFreeList, indexAllocatedList);
+		auto vertexPlacement = consumeRange(vertexAllocation, mesh.NumVerts(), vertexFreeList, vertexAllocatedList);
+		auto indexPlacement = consumeRange(indexAllocation, mesh.indices.size(), indexFreeList, indexAllocatedList);
+
+		MeshRange range{ vertexPlacement, indexPlacement };
 
 		// upload buffer data
-		sharedVertexBuffer->SetBufferData(
-			{ vertexBytes.data(), vertexBytes.size_bytes() }, vertexPlacement->start
-		);
+		sharedPositionBuffer->SetBufferData({ mesh.positions.data(), mesh.positions.size_bytes() }, range.getPositionByteStart());
+		sharedNormalBuffer->SetBufferData({ mesh.normals.data(), mesh.normals.size_bytes() }, range.getNormalByteStart());
+		sharedTangentBuffer->SetBufferData({ mesh.tangents.data(), mesh.tangents.size_bytes() }, range.getTangentByteStart());
+		sharedBitangentBuffer->SetBufferData({ mesh.bitangents.data(), mesh.bitangents.size_bytes() }, range.getBitangentByteStart());
+		sharedUV0Buffer->SetBufferData({ mesh.uv0.data(), mesh.uv0.size_bytes() }, range.getUVByteStart());
+		if (mesh.lightmapUVs.size() > 0) {
+			sharedLightmapUVBuffer->SetBufferData({ mesh.lightmapUVs.data(), mesh.lightmapUVs.size_bytes() }, range.getPositionByteStart());
+		}
+
 		sharedIndexBuffer->SetBufferData(
-			{ indexBytes.data(), indexBytes.size_bytes() }, indexPlacement->start
+			{ mesh.indices.data(), mesh.indices.size_bytes() }, range.getIndexRangeByteStart()
 		);
 		
-		return {
-			vertexPlacement, indexPlacement
-		};
+		return range;
 	}
 	void RenderEngine::DeallocateMesh(const MeshRange& range)
 	{
@@ -162,7 +165,12 @@ namespace RavEngine {
 
 	void RavEngine::RenderEngine::ReallocateVertexAllocationToSize(uint32_t newSize)
 	{
-		ReallocateGeneric(sharedVertexBuffer, currentVertexSize, newSize, vertexAllocatedList, vertexFreeList, sizeof(VertexNormalUV), { .StorageBuffer = true, .VertexBuffer = true }, lastResizeFrameVB, "Shared Vertex Buffer");
+		ReallocateGeneric(sharedPositionBuffer, currentVertexSize, newSize, vertexAllocatedList, vertexFreeList, sizeof(VertexPosition_t), { .StorageBuffer = true, .VertexBuffer = true }, lastResizeFrameVB, "Shared Position Buffer");
+		ReallocateGeneric(sharedNormalBuffer, currentVertexSize, newSize, vertexAllocatedList, vertexFreeList, sizeof(VertexNormal_t), { .StorageBuffer = true, .VertexBuffer = true }, lastResizeFrameVB, "Shared Normal Buffer");
+		ReallocateGeneric(sharedTangentBuffer, currentVertexSize, newSize, vertexAllocatedList, vertexFreeList, sizeof(VertexTangent_t), { .StorageBuffer = true, .VertexBuffer = true }, lastResizeFrameVB, "Shared Tangent Buffer");
+		ReallocateGeneric(sharedBitangentBuffer, currentVertexSize, newSize, vertexAllocatedList, vertexFreeList, sizeof(VertexBitangent_t), { .StorageBuffer = true, .VertexBuffer = true }, lastResizeFrameVB, "Shared Bitangent Buffer");
+		ReallocateGeneric(sharedUV0Buffer, currentVertexSize, newSize, vertexAllocatedList, vertexFreeList, sizeof(VertexUV_t), { .StorageBuffer = true, .VertexBuffer = true }, lastResizeFrameVB, "Shared UV0 Buffer");
+		ReallocateGeneric(sharedLightmapUVBuffer, currentVertexSize, newSize, vertexAllocatedList, vertexFreeList, sizeof(VertexUV_t), { .StorageBuffer = true, .VertexBuffer = true }, lastResizeFrameVB, "Shared LightmapUV Buffer");
 	}
 	void RenderEngine::ReallocateIndexAllocationToSize(uint32_t newSize)
 	{
@@ -230,14 +238,14 @@ namespace RavEngine {
 				commandbuffer->CopyBufferToBuffer(
 					{
 						.buffer = oldBuffer,
-						.offset = oldstart,
+						.offset = oldstart * stride,
 					},
-			{
-				.buffer = reallocBuffer,
-				.offset = offset,
-			},
-			ptr.count
-			);
+					{
+						.buffer = reallocBuffer,
+						.offset = offset * stride,
+					},
+					ptr.count * stride
+				);
 				ptr.start = offset;
 				offset += ptr.count;
 			}

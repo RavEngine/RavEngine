@@ -33,14 +33,40 @@ std::pair<MeshPart, uint32_t> RavEngine::MeshAsset::DeserializeMeshFromMemory(co
 
 	MeshPart mesh;
 	mesh.indices.reserve(header.numIndicies);
-	mesh.vertices.reserve(header.numVertices);
+	mesh.ReserveVerts(header.numVertices);
+	
+	auto loadMeshProperty = [&fp, &header](auto&& destination) {
+		for (int i = 0; i < header.numVertices; i++) {
+			std::remove_reference_t<decltype(destination[0])> prop = *reinterpret_cast<decltype(prop)*>(fp);
+			destination.push_back(prop);
+			fp += sizeof(prop);
+		}
+	};
 
 	// load vertices
-	for (int i = 0; i < header.numVertices; i++) {
-		VertexNormalUV vert = *reinterpret_cast<decltype(vert)*>(fp);
-		mesh.vertices.push_back(vert);
-
-		fp += sizeof(vert);
+	if (header.attributes & SerializedMeshDataHeader::hasPositionsBit) {
+		mesh.attributes.position = true;
+		loadMeshProperty(mesh.positions);
+	}
+	if (header.attributes & SerializedMeshDataHeader::hasNormalsBit) {
+		mesh.attributes.normal = true;
+		loadMeshProperty(mesh.normals);
+	}
+	if (header.attributes & SerializedMeshDataHeader::hasTangentsBit) {
+		mesh.attributes.tangent = true;
+		loadMeshProperty(mesh.tangents);
+	}
+	if (header.attributes & SerializedMeshDataHeader::hasBitangentsBit) {
+		mesh.attributes.bitangent = true;
+		loadMeshProperty(mesh.bitangents);
+	}
+	if (header.attributes & SerializedMeshDataHeader::hasUV0Bit) {
+		mesh.attributes.uv0 = true;
+		loadMeshProperty(mesh.uv0);
+	}
+	if (header.attributes & SerializedMeshDataHeader::hasLightmapUVBit) {
+		mesh.attributes.lightmapUV = true;
+		loadMeshProperty(mesh.lightmapUVs);
 	}
 
 	for (int i = 0; i < header.numIndicies; i++) {
@@ -82,25 +108,39 @@ void MeshAsset::InitializeFromMeshPartFragments(const RavEngine::Vector<MeshPart
 	decltype(totalVerts) tv = 0;
 	decltype(totalIndices) ti = 0;
 	for(int i = 0; i < meshes.size(); i++){
-		tv += meshes[i].vertices.size();
+		tv += meshes[i].NumVerts();
 		ti += meshes[i].indices.size();
 	}
 	
 	MeshPart allMeshes;
-	allMeshes.vertices.reserve(tv);
+	allMeshes.ReserveVerts(tv);
 	//allMeshes.indices.mode = indexBufferWidth;
 	allMeshes.indices.reserve(ti);
 	
+	MeshAttributes attrCheck = meshes[0].attributes;
+	
 	uint32_t baseline_index = 0;
 	for(const auto& mesh : meshes){
-		for(const auto& vert : mesh.vertices){
-			allMeshes.vertices.push_back(vert);
-		}
+		Debug::Assert(attrCheck == mesh.attributes, "Meshes have incompatible attributes!");
+
+		auto copyProp = [](auto& destination, const auto& source) {
+			for (const auto& prop : source) {
+				destination.push_back(prop);
+			}
+		};
+		copyProp(allMeshes.positions, mesh.positions);
+		copyProp(allMeshes.normals, mesh.normals);
+		copyProp(allMeshes.tangents, mesh.tangents);
+		copyProp(allMeshes.bitangents, mesh.bitangents);
+		copyProp(allMeshes.uv0, mesh.uv0);
+		copyProp(allMeshes.lightmapUVs, mesh.lightmapUVs);
+		
 		for (int i = 0; i < mesh.indices.size(); i++) {
 			allMeshes.indices.push_back(mesh.indices[i] + baseline_index);	//must recompute index here
 		}
-		baseline_index += mesh.vertices.size();
+		baseline_index += mesh.NumVerts();
 	}
+	allMeshes.attributes = attrCheck;
 	InitializeFromRawMesh(allMeshes, options);
 }
 
@@ -112,29 +152,29 @@ void MeshAsset::InitializeFromRawMesh(const MeshPart& allMeshes, const MeshAsset
 }
 
 void MeshAsset::InitializeFromRawMeshView(const MeshPartView& allMeshes, const MeshAssetOptions& options){
-    
+	attributes = allMeshes.attributes;
+
     // calculate bounding box
-    for(const auto& vert : allMeshes.vertices){
-        bounds.max[0] = std::max<decimalType>(bounds.max[0],vert.position[0]);
-        bounds.max[1] = std::max<decimalType>(bounds.max[1],vert.position[1]);
-        bounds.max[2] = std::max<decimalType>(bounds.max[2],vert.position[2]);
+    for(const auto& pos : allMeshes.positions){
+        bounds.max[0] = std::max<decimalType>(bounds.max[0],pos[0]);
+        bounds.max[1] = std::max<decimalType>(bounds.max[1],pos[1]);
+        bounds.max[2] = std::max<decimalType>(bounds.max[2],pos[2]);
+        														  
+        bounds.min[0] = std::min<decimalType>(bounds.min[0],pos[0]);
+        bounds.min[1] = std::min<decimalType>(bounds.min[1],pos[1]);
+        bounds.min[2] = std::min<decimalType>(bounds.min[2],pos[2]);
         
-        bounds.min[0] = std::min<decimalType>(bounds.min[0],vert.position[0]);
-        bounds.min[1] = std::min<decimalType>(bounds.min[1],vert.position[1]);
-        bounds.min[2] = std::min<decimalType>(bounds.min[2],vert.position[2]);
-        
-        radius = std::max(radius, glm::distance(glm::vec3(vert.position[0],vert.position[1],vert.position[2]), glm::vec3(0,0,0)));
+        radius = std::max(radius, glm::distance(pos, glm::vec3(0,0,0)));
     }
     
     if (options.uploadToGPU){
 	
         //copy out of intermediate
-        auto& v = allMeshes.vertices;
         auto& i = allMeshes.indices;
-        totalVerts = v.size();
+		totalVerts = allMeshes.NumVerts();;
         totalIndices = i.size();
 #if !RVE_SERVER
-		meshAllocation = GetApp()->GetRenderEngine().AllocateMesh(v, i);
+		meshAllocation = GetApp()->GetRenderEngine().AllocateMesh(allMeshes);
 #endif
     }
 }

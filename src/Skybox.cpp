@@ -48,6 +48,14 @@ RavEngine::ISkyMaterial::ISkyMaterial(const std::string& shaderpath) : Material(
         },
         .pushConstantSize = sizeof(glm::mat4),
         .verbatimConfig = true,
+        .requiredAttributes = {
+            .position = true,
+            .normal = false,
+            .tangent = false,
+            .bitangent = false,
+            .uv0 = true,
+            .lightmapUV = false,
+        }
     }
     )
 {

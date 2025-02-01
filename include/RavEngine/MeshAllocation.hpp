@@ -1,5 +1,7 @@
 #pragma once
 #include "DataStructures.hpp"
+#include "Mesh.hpp"
+
 namespace RavEngine {
 	using allocation_freelist_t = LinkedList<Range>;
 	using allocation_allocatedlist_t = allocation_freelist_t;
@@ -7,6 +9,10 @@ namespace RavEngine {
 	struct MeshRange {
 	private:
 		allocation_allocatedlist_t::iterator vertRange, indexRange;
+		struct typedRange {
+			allocation_allocatedlist_t::iterator iter;
+		};
+
 	public:
 		MeshRange(const decltype(vertRange)& vr, const decltype(indexRange)& ir) : vertRange(vr), indexRange(ir) {}
 		MeshRange(){}
@@ -19,11 +25,31 @@ namespace RavEngine {
 		}
 
 		uint32_t getIndexRangeStart() const {
-			return indexRange->start / sizeof(uint32_t);
+			return indexRange->start;
+		}
+
+		uint32_t getIndexRangeByteStart() const {
+			return indexRange->start * sizeof(uint32_t);
 		}
 
 		uint32_t getVertexRangeStart() const {
-			return vertRange->start / sizeof(VertexNormalUV);
+			return vertRange->start;
+		}
+
+		uint32_t getPositionByteStart() const {
+			return vertRange->start * sizeof(VertexPosition_t);
+		}
+		uint32_t getNormalByteStart() const {
+			return vertRange->start * sizeof(VertexNormal_t);
+		}
+		uint32_t getTangentByteStart() const {
+			return vertRange->start * sizeof(VertexTangent_t);
+		}
+		uint32_t getBitangentByteStart() const {
+			return vertRange->start * sizeof(VertexBitangent_t);
+		}
+		uint32_t getUVByteStart() const {
+			return vertRange->start * sizeof(VertexUV_t);
 		}
 	};
 }

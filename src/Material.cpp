@@ -19,6 +19,9 @@
 
 using namespace std;
 namespace RavEngine {
+    constexpr MeshAttributes shadowAttributes = { .position = true, .normal = false, .tangent = false, .bitangent = false, .uv0 = true, .lightmapUV = false };
+    constexpr MeshAttributes depthPrepassAttributes = { .position = true, .normal = false, .tangent = false, .bitangent = false, .uv0 = true, .lightmapUV = false };
+
 
     /**
     Create a material given a shader. Also registers it in the material manager
@@ -26,7 +29,7 @@ namespace RavEngine {
     */
     Material::Material(const std::string_view name, const MaterialConfig& config) : Material(name, name, config) {}
 
-    RavEngine::Material::Material(const std::string_view vsh_name, const std::string_view fsh_name, const MaterialConfig& config) : opacityMode(config.opacityMode)
+    RavEngine::Material::Material(const std::string_view vsh_name, const std::string_view fsh_name, const MaterialConfig& config) : opacityMode(config.opacityMode), requiredAttributes(config.requiredAttributes)
     {
         auto device = GetApp()->GetDevice();
 
@@ -71,16 +74,57 @@ namespace RavEngine {
             // must have the entity ID buffer
             vertexConfigCopy.attributeDescs.push_back({
                 .location = ENTITY_INPUT_LOCATION,
-                .binding = 1,
+                .binding = ENTITY_INPUT_BINDING,
                 .offset = 0,
                 .format = RGL::VertexAttributeFormat::R32_Uint,
                 });
             vertexConfigCopy.vertexBindings.push_back({
-                .binding = 1,
+                .binding = ENTITY_INPUT_BINDING,
                 .stride = sizeof(uint32_t),
                 .inputRate = RGL::InputRate::Instance,
                 });
         }
+        
+        auto trimVertexAttributes = [](auto& vertexConfigCopy, auto&& requiredAttributes) {
+            const auto removeAttribute = [&vertexConfigCopy](uint32_t binding) {
+                {
+                    auto it = std::find_if(vertexConfigCopy.attributeDescs.begin(), vertexConfigCopy.attributeDescs.end(), [&binding](auto&& attrib) {
+                        return attrib.binding == binding;
+                        });
+                    if (it != vertexConfigCopy.attributeDescs.end()) {
+                        vertexConfigCopy.attributeDescs.erase(it);
+                    }
+                }
+                {
+                    auto it = std::find_if(vertexConfigCopy.vertexBindings.begin(), vertexConfigCopy.vertexBindings.end(), [&binding](auto&& attrib) {
+                        return attrib.binding == binding;
+                        });
+                    if (it != vertexConfigCopy.vertexBindings.end()) {
+                        vertexConfigCopy.vertexBindings.erase(it);
+                    }
+                }
+                };
+
+            if (!requiredAttributes.position) {
+                removeAttribute(VTX_POSITION_BINDING);
+            }
+            if (!requiredAttributes.normal) {
+                removeAttribute(VTX_NORMAL_BINDING);
+            }
+            if (!requiredAttributes.tangent) {
+                removeAttribute(VTX_TANGENT_BINDING);
+            }
+            if (!requiredAttributes.bitangent) {
+                removeAttribute(VTX_BITANGENT_BINDING);
+            }
+            if (!requiredAttributes.uv0) {
+                removeAttribute(VTX_UV0_BINDING);
+            }
+            if (!requiredAttributes.lightmapUV) {
+                removeAttribute(VTX_LIGHTMAP_BINDING);
+            }
+        };
+        trimVertexAttributes(vertexConfigCopy, requiredAttributes);
 
         RGL::RenderPipelineDescriptor rpd{
             .stages = {
@@ -116,23 +160,35 @@ namespace RavEngine {
 
         // invert some settings for the shadow pipeline
         if (hasDepthPrepass) {
-            const auto sh_name = Format("{}_fsh_depthonly", fsh_name);
-            rpd.stages[1].shaderModule = LoadShaderByFilename(sh_name, device);  // use the shadow variant
+            rpd.stages[0].shaderModule = LoadShaderByFilename(Format("{}_vsh_depthonly", vsh_name), device);  // use the shadow variant
+            rpd.stages[1].shaderModule = LoadShaderByFilename(Format("{}_fsh_depthonly", fsh_name), device);  // use the shadow variant
         }
         else {
+            if (!config.verbatimConfig) {
+                rpd.stages[0].shaderModule = LoadShaderByFilename(Format("{}_vsh_depthonly", vsh_name), device);  // use the shadow variant
+            }
             rpd.stages.pop_back();  // no fragment shader
         }
 
         rpd.colorBlendConfig.attachments.clear();                           // only write to depth
         rpd.depthStencilConfig.depthFunction = config.depthCompareFunction; // use real depth compare function
-
+       
         rpd.debugName = Format("Material {} {} (Depth Prepass)", fsh_name, vsh_name);
-        depthPrepassPipeline = device->CreateRenderPipeline(rpd);
+        
+        {
+            auto rpd_cpy = rpd;
+            trimVertexAttributes(rpd_cpy.vertexConfig,depthPrepassAttributes);
+            depthPrepassPipeline = device->CreateRenderPipeline(rpd_cpy);
+        }
 
         rpd.rasterizerConfig.windingOrder = RGL::WindingOrder::Clockwise;   // backface shadows
         rpd.rasterizerConfig.depthClampEnable = true;                       // clamp out-of-view fragments
         rpd.debugName = Format("Material {} {} (Shadow)", fsh_name, vsh_name);
-        shadowRenderPipeline = device->CreateRenderPipeline(rpd);
+        {
+            auto rpd_cpy = rpd;
+            trimVertexAttributes(rpd_cpy.vertexConfig, shadowAttributes);
+            shadowRenderPipeline = device->CreateRenderPipeline(rpd_cpy);
+        }
     }
 
     Material::~Material() {
@@ -282,7 +338,8 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
             .bindings = augmentLitMaterialBindings(pipeOptions.bindings, options.opacityMode),
             .pushConstantSize = pipeOptions.pushConstantSize,
             .cullMode = options.cullMode,
-            .opacityMode = options.opacityMode
+            .opacityMode = options.opacityMode,
+            .requiredAttributes = options.requiredAttributes,
         }
     )
     {
@@ -345,11 +402,12 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
             .bindings = augmentUnlitMaterialBindings(pipeOptions.bindings, options.opacityMode),
             .pushConstantSize = pipeOptions.pushConstantSize,
             .cullMode = options.cullMode,
-            .opacityMode = options.opacityMode
+            .opacityMode = options.opacityMode,
+            .requiredAttributes = options.requiredAttributes,
             }) {}
 
 
-    RGLRenderPipelinePtr RavEngine::MaterialVariant::GetShadowRenderPipeline() const
+    PipelineUseConfiguration RavEngine::MaterialVariant::GetShadowRenderPipeline() const
     {
         RGLRenderPipelinePtr pipeline;
 
@@ -361,25 +419,28 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
                 pipeline = m->GetShadowRenderPipeline();
             } }, variant);
 
-        return pipeline;
+        return { pipeline, shadowAttributes };
     }
 
-    RGLRenderPipelinePtr RavEngine::MaterialVariant::GetMainRenderPipeline() const
+    PipelineUseConfiguration RavEngine::MaterialVariant::GetMainRenderPipeline() const
     {
         RGLRenderPipelinePtr pipeline;
+        MeshAttributes attribs;
 
         std::visit(CaseAnalysis{
-            [&pipeline](const Ref<LitMaterial>& m) {
+            [&pipeline,&attribs](const Ref<LitMaterial>& m) {
                 pipeline = m->GetMainRenderPipeline();
+                attribs = m->GetAttributes();
             },
-            [&pipeline](const Ref<UnlitMaterial>& m) {
+            [&pipeline,&attribs](const Ref<UnlitMaterial>& m) {
                 pipeline = m->GetMainRenderPipeline();
+                attribs = m->GetAttributes();
             } }, variant);
 
-        return pipeline;
+        return { pipeline, attribs };
     }
 
-    RGLRenderPipelinePtr RavEngine::MaterialVariant::GetDepthPrepassPipeline() const
+    PipelineUseConfiguration RavEngine::MaterialVariant::GetDepthPrepassPipeline() const
     {
         RGLRenderPipelinePtr pipeline;
 
@@ -391,7 +452,7 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
                 pipeline = m->GetDepthPrepassPipeline();
             } }, variant);
 
-        return pipeline;
+        return { pipeline, depthPrepassAttributes };
     }
 }
 #endif

@@ -12,6 +12,7 @@
 #endif
 #include "MeshAllocation.hpp"
 #include "Mesh.hpp"
+#include "MaterialShared.hpp"
 
 struct aiMesh;
 struct aiScene;
@@ -28,13 +29,18 @@ public:
 
 	MeshAsset(const MeshAsset&) = delete;
 	MeshAsset(MeshAsset&&) = delete;
-    
+
+	auto GetAttributes() const {
+		return attributes;
+	}
+	
 protected:
 	MeshAsset() {};		// SkinnedMesh needs this
 
 	size_t totalVerts = 0, totalIndices = 0;
     Bounds bounds;
     float radius = 0;
+	MeshAttributes attributes;
 
 	friend class RenderEngine;
 #if !RVE_SERVER
@@ -125,7 +131,7 @@ public:
 	}
 	
     inline bool hasSystemRAMCopy() const{
-        return systemRAMcopy.vertices.size() > 0;
+        return systemRAMcopy.positions.size() > 0;
     }
     
 	/**
