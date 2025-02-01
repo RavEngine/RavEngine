@@ -140,6 +140,7 @@ void MeshAsset::InitializeFromMeshPartFragments(const RavEngine::Vector<MeshPart
 		}
 		baseline_index += mesh.NumVerts();
 	}
+	allMeshes.attributes = attrCheck;
 	InitializeFromRawMesh(allMeshes, options);
 }
 

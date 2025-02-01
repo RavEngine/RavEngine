@@ -77,6 +77,7 @@ struct MeshPartView : public MeshPartBase<basic_immutable_span>{
         uv0 = { other.uv0.data(),other.uv0.size() };
         lightmapUVs = { other.lightmapUVs.data(),other.lightmapUVs.size() };
         indices = { other.indices.data(), other.indices.size() };
+        attributes = other.attributes;
     }
 };
 

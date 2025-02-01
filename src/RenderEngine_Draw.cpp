@@ -1079,8 +1079,24 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 					//prepass: get number of LODs and entities
 					uint32_t numLODs = 0, numEntities = 0;
+
+					MeshAttributes materialAttributes;
+					std::visit(CaseAnalysis{
+					[&materialAttributes](const Ref<LitMaterial>& mat) {
+						materialAttributes = mat->GetAttributes();
+					},
+					[&materialAttributes](const Ref<UnlitMaterial>& mat) {
+						materialAttributes = mat->GetAttributes();
+					} }
+					, materialInstance.mat->GetMat()->variant);
+
+
+
 					for (const auto& command : drawcommand.commands) {
 						if (auto mesh = command.mesh.lock()) {
+							auto meshattr = mesh->GetMeshForLOD(0)->GetAttributes();
+							Debug::Assert(mesh->GetNumLods() > 0, "Mesh has no LODs!");
+							Debug::Assert(materialAttributes.CompatibleWith(meshattr), "Mesh does not have all attributes required for material!");
 							numLODs += mesh->GetNumLods();
 							numEntities += command.entities.DenseSize();
 						}
