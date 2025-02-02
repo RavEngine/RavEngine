@@ -257,7 +257,10 @@ void main(){
             };
             vec3 dbgcolor = vec3(0);
             for(uint i = 0; i < light.shadowmapBindlessIndices.length(); i++){
-                mat4 faceViewProj = cubemapProjMat * shadowmapViewMats[i];
+                mat4 lightCenteredView = shadowmapViewMats[i];
+                lightCenteredView[3] += vec4(-light.position,0);
+
+                mat4 faceViewProj = cubemapProjMat * lightCenteredView;
 
                 pcfFactor = min(pcfForShadow(worldPosition, faceViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndices[i]]), pcfFactor);
                 dbgcolor += pcfFactor * pallete[i];
