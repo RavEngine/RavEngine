@@ -17,9 +17,9 @@ struct PointLight
     vec3 color;
     float intensity;
     int castsShadows;
-    uint shadowmapBindlessIndex;
     uint shadowRenderLayers;
     uint illuminationLayers;
+    uint shadowmapBindlessIndices[6];
 };
 
 struct SpotLight{

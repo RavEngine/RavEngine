@@ -26,5 +26,9 @@ float pcfForShadow(vec3 pixelWorldPos, mat4 lightViewProj, sampler shadowSampler
 	sampledPos.xy = sampledPos.xy * 0.5 + 0.5;    // transform to [0,1] 
 	sampledPos.y = 1 - sampledPos.y;
 
+	if (sampledPos.z > 1 || sampledPos.z < 0){
+		return 1;	// out-of-range
+	}
+
     return texture(sampler2DShadow(t_depthshadow,shadowSampler), sampledPos.xyz, 0).x;
 }

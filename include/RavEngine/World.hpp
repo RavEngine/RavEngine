@@ -417,9 +417,9 @@ namespace RavEngine {
             glm::vec3 color;
             float intensity;
             int castsShadows;
-            int shadowmapBindlessIndex;
             renderlayer_t shadowLayers;
             renderlayer_t illuminationLayers;
+            int shadowmapBindlessIndices[6]{ 0 };
         };
 
         struct SpotLightDataUpload {

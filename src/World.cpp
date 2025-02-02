@@ -480,7 +480,10 @@ void World::setupRenderTasks(){
                     denseData.color = { colorData.R,colorData.G,colorData.B};
                     denseData.intensity = lightData.GetIntensity();
                     denseData.castsShadows = lightData.CastsShadows();
-                    denseData.shadowmapBindlessIndex = lightData.shadowData.mapCube->GetDefaultView().GetReadonlyBindlessTextureHandle();
+                    for (int i = 0; i < 6; i++) {
+                        denseData.shadowmapBindlessIndices[i] = lightData.shadowData.cubeShadowmaps[i]->GetDefaultView().GetReadonlyBindlessTextureHandle();
+                    }
+                    //denseData.shadowmapBindlessIndex = lightData.shadowData.mapCube->GetDefaultView().GetReadonlyBindlessTextureHandle();
                     denseData.shadowLayers = lightData.GetShadowLayers();
                     denseData.illuminationLayers = lightData.GetIlluminationLayers();
                     lightData.clearInvalidate();

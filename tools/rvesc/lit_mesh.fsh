@@ -24,6 +24,23 @@ struct LitOutput{
 #include "enginedata.glsl"
 #include "make_engine_data.glsl"
 
+mat4 shadowmapViewMats[] = {
+mat4(vec4(0.000000, 0.000000, -1.000000, 0.000000), vec4(0.000000, 1.000000, -0.000000, 0.000000), vec4(1.000000, 0.000000, -0.000000, 0.000000), vec4(-0.000000, -0.000000, 0.000000, 1.000000)),
+mat4(vec4(0.000000, 0.000000, 1.000000, 0.000000), vec4(0.000000, 1.000000, -0.000000, 0.000000), vec4(-1.000000, 0.000000, -0.000000, 0.000000), vec4(-0.000000, -0.000000, 0.000000, 1.000000)),
+mat4(vec4(-1.000000, 0.000000, -0.000000, 0.000000), vec4(0.000000, 0.000000, -1.000000, 0.000000), vec4(0.000000, -1.000000, -0.000000, 0.000000), vec4(-0.000000, -0.000000, 0.000000, 1.000000)),
+mat4(vec4(-1.000000, 0.000000, -0.000000, 0.000000), vec4(0.000000, 0.000000, 1.000000, 0.000000), vec4(0.000000, 1.000000, -0.000000, 0.000000), vec4(-0.000000, -0.000000, 0.000000, 1.000000)),
+mat4(vec4(-1.000000, 0.000000, -0.000000, 0.000000), vec4(0.000000, 1.000000, -0.000000, 0.000000), vec4(0.000000, -0.000000, -1.000000, 0.000000), vec4(-0.000000, -0.000000, 0.000000, 1.000000)),
+mat4(vec4(1.000000, 0.000000, -0.000000, 0.000000), vec4(-0.000000, 1.000000, -0.000000, 0.000000), vec4(0.000000, 0.000000, 1.000000, 0.000000), vec4(-0.000000, -0.000000, 0.000000, 1.000000)),
+};
+
+// TODO: custom far and near clips
+mat4 cubemapProjMat = mat4(
+    vec4(1, 0, 0, 0), 
+    vec4(0, 1, 0, 0), 
+    vec4(0, 0, 0.001001, -1), 
+    vec4(0, 0, 0.1001, 0)
+);
+
 #if !RVE_DEPTHONLY && !RVE_TRANSPARENT
 #define RVE_EXTRAOUTPUT 1
 #else
@@ -227,21 +244,25 @@ void main(){
         float pcfFactor = 1;
 
         if (recievesShadows && bool(light.castsShadows)){
-            // adapted from: https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/Mesh.hlsl#L233
-            vec3 shadowPos = worldPosition - light.position;
-            float shadowDistance = length(shadowPos);
-            vec3 shadowDir = normalize(shadowPos);
 
-            float projectedDistance  = max(max(abs(shadowPos.x), abs(shadowPos.y)), abs(shadowPos.z));
+            vec3 pallete[] = {
+                vec3(1,0,0),
+                vec3(1,0,0),
+                
+                vec3(0,1,0),
+                vec3(0,1,0),
 
-            float nearClip = engineConstants[0].zNear;
-            float a = 0.0;
-            float b = nearClip;
-            float z = projectedDistance * a + b;
-            float dbDistance = z / projectedDistance;
+                vec3(0,0,1),
+                vec3(0,0,1),
+            };
+            vec3 dbgcolor = vec3(0);
+            for(uint i = 0; i < light.shadowmapBindlessIndices.length(); i++){
+                mat4 faceViewProj = cubemapProjMat * shadowmapViewMats[i];
 
-            pcfFactor = texture(samplerCubeShadow(pointShadowMaps[light.shadowmapBindlessIndex], shadowSampler), vec4(shadowDir, dbDistance)).r;
-
+                pcfFactor = min(pcfForShadow(worldPosition, faceViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndices[i]]), pcfFactor);
+                dbgcolor += pcfFactor * pallete[i];
+            }
+            //outcolor *= vec4(dbgcolor,1);
             radiance += rad * pcfFactor;
         }
 
