@@ -63,7 +63,7 @@ namespace RavEngine {
 					glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, 0.0f, -1.0f }, glm::vec3{ 0.0f, 1.0f, 0.0f })
 				}
 	};
-	
+#if _WIN32
 	 void DumpMats() {
 		 for (const auto& mat : pointLightViewMats) {
 			 OutputDebugStringA("mat4(");
@@ -83,6 +83,7 @@ namespace RavEngine {
 			 OutputDebugStringA("),\n");
 		 }
 	 }
+#endif
 
 struct LightingType{
     bool Lit: 1 = false;
