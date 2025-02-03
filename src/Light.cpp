@@ -125,7 +125,7 @@ matrix4 RavEngine::PointLight::CalcProjectionMatrix() const {
 #if !RVE_SERVER
     return RMath::perspectiveProjection<float>(deg_to_rad(90), 1, 0.1, 100);
 #else
-    return { 1 };
+    return matrix4{ 1.0f };
 #endif
 }
 
@@ -134,7 +134,7 @@ matrix4 RavEngine::PointLight::CalcViewMatrix(const vector3& lightPos, uint8_t i
     // center around light
     return glm::translate(pointLightViewMats[index], -lightPos);
 #else
-    return { 1 };
+    return matrix4{ 1.0f };
 #endif
 
 }
