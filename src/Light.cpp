@@ -9,8 +9,56 @@
 #include <RGL/Texture.hpp>
 #endif
 
+#if _WIN32
+#include <Windows.h>
+#endif
+
 using namespace RavEngine;
 using namespace std;
+
+const glm::mat4 pointLightViewMats[] = {
+                {// +x
+                    glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ 1.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, 1.0f, 0.0f })
+                },
+                {// -x
+                    glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ -1.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, 1.0f, 0.0f })
+                },
+                {// +y
+                    glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, 1.0f, 0.0f }, glm::vec3{ 0.0f, 0.0f, -1.0f })
+                },
+                {// -y
+                    glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, -1.0f, 0.0f }, glm::vec3{ 0.0f, 0.0f, 1.0f })
+                },
+            // +Z
+            {
+                glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, 0.0f, 1.0f }, glm::vec3{ 0.0f, 1.0f, 0.0f })
+           },
+            // -z
+                {
+                glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, 0.0f, -1.0f }, glm::vec3{ 0.0f, 1.0f, 0.0f })
+            }
+};
+#if _WIN32
+void DumpMats() {
+    for (const auto& mat : pointLightViewMats) {
+        OutputDebugStringA("mat4(");
+        for (int r = 0; r < 4; r++) {
+            OutputDebugStringA("vec4(");
+            for (int c = 0; c < 4; c++) {
+                OutputDebugStringA(std::to_string(mat[r][c]).data());
+                if (c < 3) {
+                    OutputDebugStringA(", ");
+                }
+            }
+            OutputDebugStringA(")");
+            if (r < 3) {
+                OutputDebugStringA(", ");
+            }
+        }
+        OutputDebugStringA("),\n");
+    }
+}
+#endif
 
 void DirectionalLight::DebugDraw(RavEngine::DebugDrawer& dbg, const Transform& tr) const{
 	dbg.DrawCapsule(tr.GetWorldMatrix(), debug_color, 1, 2);
@@ -71,6 +119,24 @@ matrix4 RavEngine::SpotLight::CalcProjectionMatrix() const{
     ret = RMath::perspectiveProjection<float>(coneAngle * 2, 1, 0.1, 100);
 #endif
     return ret;
+}
+
+matrix4 RavEngine::PointLight::CalcProjectionMatrix() const {
+#if !RVE_SERVER
+    return RMath::perspectiveProjection<float>(deg_to_rad(90), 1, 0.1, 100);
+#else
+    return { 1 };
+#endif
+}
+
+matrix4 RavEngine::PointLight::CalcViewMatrix(const vector3& lightPos, uint8_t index) {
+#if !RVE_SERVER
+    // center around light
+    return glm::translate(pointLightViewMats[index], -lightPos);
+#else
+    return { 1 };
+#endif
+
 }
 
 

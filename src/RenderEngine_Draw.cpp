@@ -27,9 +27,6 @@
 #include "Tonemap.hpp"
 #include "BuiltinTonemap.hpp"
 #include <ravengine_shader_defs.h>
-#if _WIN32
-#include <Windows.h>
-#endif
 
 #undef near		// for some INSANE reason, Microsoft defines these words and they leak into here only on ARM targets
 #undef far
@@ -40,50 +37,6 @@
 
 
 namespace RavEngine {
-
-	 const glm::mat4 pointLightViewMats[] = {
-				{// +x
-					glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ 1.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, 1.0f, 0.0f })
-				},
-				{// -x
-					glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ -1.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, 1.0f, 0.0f })
-				},
-				{// +y
-					glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, 1.0f, 0.0f }, glm::vec3{ 0.0f, 0.0f, -1.0f })
-				},
-				{// -y
-					glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, -1.0f, 0.0f }, glm::vec3{ 0.0f, 0.0f, 1.0f })
-				},
-				// +Z
-				{
-					glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, 0.0f, 1.0f }, glm::vec3{ 0.0f, 1.0f, 0.0f })
-			   },
-				// -z
-					{
-					glm::lookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, 0.0f, -1.0f }, glm::vec3{ 0.0f, 1.0f, 0.0f })
-				}
-	};
-#if _WIN32
-	 void DumpMats() {
-		 for (const auto& mat : pointLightViewMats) {
-			 OutputDebugStringA("mat4(");
-			 for (int r = 0; r < 4; r++) {
-				 OutputDebugStringA("vec4(");
-				 for (int c = 0; c < 4; c++) {
-					 OutputDebugStringA(std::to_string(mat[r][c]).data());
-					 if (c < 3) {
-						 OutputDebugStringA(", ");
-					 }
-				 }
-				 OutputDebugStringA(")");
-				 if (r < 3) {
-					 OutputDebugStringA(", ");
-				 }
-			 }
-			 OutputDebugStringA("),\n");
-		 }
-	 }
-#endif
 
 struct LightingType{
     bool Lit: 1 = false;
@@ -1647,24 +1600,13 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 		RVE_PROFILE_SECTION(encode_point_shadows, "Render Encode Point Shadows");
 		constexpr auto pointLightShadowmapFunction = [](uint8_t index, uint32_t denseIdx, const RavEngine::World::PointLightUploadData& light, Entity owner) {
-			auto lightProj = RMath::perspectiveProjection<float>(deg_to_rad(90), 1, 0.1, 100);
-
-			glm::mat4 viewMat;
-            auto lightPos = light.position;
-
-			// rotate view space to each cubemap direction based on the index
-           
-            
-            // center around light
-            viewMat = glm::translate(pointLightViewMats[index], -lightPos);
-            
 			auto camPos = light.position;
 
 			auto& origLight = owner.GetComponent<PointLight>();
 
 			return lightViewProjResult{
-				.lightProj = lightProj,
-				.lightView = viewMat,
+				.lightProj = origLight.CalcProjectionMatrix(),
+				.lightView = PointLight::CalcViewMatrix(light.position,index),
 				.camPos = camPos,
 				.depthPyramid = origLight.shadowData.cubePyramids[index],
 				.shadowmapTexture = origLight.shadowData.cubeShadowmaps[index],

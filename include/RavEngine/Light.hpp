@@ -142,6 +142,9 @@ struct PointLight : public ShadowLightBase, public QueryableDelta<QueryableDelta
 		RGLTexturePtr mapCube;
 	} shadowData;
 #endif
+
+    matrix4 CalcProjectionMatrix() const;
+    static matrix4 CalcViewMatrix(const vector3& lightPos, uint8_t index);
 	
 private:
 	/**

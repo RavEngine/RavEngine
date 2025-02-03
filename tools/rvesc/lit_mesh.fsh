@@ -24,23 +24,6 @@ struct LitOutput{
 #include "enginedata.glsl"
 #include "make_engine_data.glsl"
 
-mat4 shadowmapViewMats[] = {
-mat4(vec4(0.000000, 0.000000, -1.000000, 0.000000), vec4(0.000000, 1.000000, -0.000000, 0.000000), vec4(1.000000, 0.000000, -0.000000, 0.000000), vec4(-0.000000, -0.000000, 0.000000, 1.000000)),
-mat4(vec4(0.000000, 0.000000, 1.000000, 0.000000), vec4(0.000000, 1.000000, -0.000000, 0.000000), vec4(-1.000000, 0.000000, -0.000000, 0.000000), vec4(-0.000000, -0.000000, 0.000000, 1.000000)),
-mat4(vec4(-1.000000, 0.000000, -0.000000, 0.000000), vec4(0.000000, 0.000000, -1.000000, 0.000000), vec4(0.000000, -1.000000, -0.000000, 0.000000), vec4(-0.000000, -0.000000, 0.000000, 1.000000)),
-mat4(vec4(-1.000000, 0.000000, -0.000000, 0.000000), vec4(0.000000, 0.000000, 1.000000, 0.000000), vec4(0.000000, 1.000000, -0.000000, 0.000000), vec4(-0.000000, -0.000000, 0.000000, 1.000000)),
-mat4(vec4(-1.000000, 0.000000, -0.000000, 0.000000), vec4(0.000000, 1.000000, -0.000000, 0.000000), vec4(0.000000, -0.000000, -1.000000, 0.000000), vec4(-0.000000, -0.000000, 0.000000, 1.000000)),
-mat4(vec4(1.000000, 0.000000, -0.000000, 0.000000), vec4(-0.000000, 1.000000, -0.000000, 0.000000), vec4(0.000000, 0.000000, 1.000000, 0.000000), vec4(-0.000000, -0.000000, 0.000000, 1.000000)),
-};
-
-// TODO: custom far and near clips
-mat4 cubemapProjMat = mat4(
-    vec4(1, 0, 0, 0), 
-    vec4(0, 1, 0, 0), 
-    vec4(0, 0, 0.001001, -1), 
-    vec4(0, 0, 0.1001, 0)
-);
-
 #if !RVE_DEPTHONLY && !RVE_TRANSPARENT
 #define RVE_EXTRAOUTPUT 1
 #else
@@ -257,10 +240,9 @@ void main(){
             };
             vec3 dbgcolor = vec3(0);
             for(uint i = 0; i < light.shadowmapBindlessIndices.length(); i++){
-                mat4 lightCenteredView = shadowmapViewMats[i];
-                lightCenteredView[3] += vec4(-light.position,0);
+                mat4 lightCenteredView = light.viewMats[i];
 
-                mat4 faceViewProj = cubemapProjMat * lightCenteredView;
+                mat4 faceViewProj = light.projMat * lightCenteredView;
 
                 pcfFactor = min(pcfForShadow(worldPosition, faceViewProj, shadowSampler, shadowMaps[light.shadowmapBindlessIndices[i]]), pcfFactor);
                 dbgcolor += pcfFactor * pallete[i];

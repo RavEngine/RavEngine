@@ -470,6 +470,9 @@ void World::setupRenderTasks(){
                     // update transform data if it has changed
                     auto& gpudata = renderData.pointLightData.GetForSparseIndexForWriting(ptr->GetOwner(i));
                     gpudata.position = transform.GetWorldPosition();
+                    for (int i = 0; i < 6; i++) {
+                        gpudata.viewMats[i] = PointLight::CalcViewMatrix(gpudata.position, i);
+                    }
                 }
                 auto& lightData = ptr->Get({i});
                 if (lightData.isInvalidated()){
@@ -483,6 +486,7 @@ void World::setupRenderTasks(){
                     for (int i = 0; i < 6; i++) {
                         denseData.shadowmapBindlessIndices[i] = lightData.shadowData.cubeShadowmaps[i]->GetDefaultView().GetReadonlyBindlessTextureHandle();
                     }
+                    denseData.projMat = lightData.CalcProjectionMatrix();
                     //denseData.shadowmapBindlessIndex = lightData.shadowData.mapCube->GetDefaultView().GetReadonlyBindlessTextureHandle();
                     denseData.shadowLayers = lightData.GetShadowLayers();
                     denseData.illuminationLayers = lightData.GetIlluminationLayers();

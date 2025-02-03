@@ -13,6 +13,8 @@ struct Cluster
 
 struct PointLight
 {
+    mat4 viewMats[6];
+    mat4 projMat;
     vec3 position;
     vec3 color;
     float intensity;

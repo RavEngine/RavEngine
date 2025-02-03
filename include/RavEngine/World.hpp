@@ -413,6 +413,8 @@ namespace RavEngine {
         };
         
         struct PointLightUploadData {
+            glm::mat4 viewMats[6];
+            glm::mat4 projMat;
             glm::vec3 position;
             glm::vec3 color;
             float intensity;
