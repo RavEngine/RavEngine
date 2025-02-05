@@ -26,6 +26,19 @@ namespace RavEngine {
         mp.bitangents.reserve(mesh->mNumVertices);
         mp.uv0.reserve(mesh->mNumVertices);
         mp.lightmapUVs.reserve(mesh->mNumVertices);
+
+        mp.attributes = MeshAttributes{
+               .position = true,
+               .normal = true,
+               .tangent = true,
+               .bitangent = true,
+               .uv0 = true,
+        };
+
+        if (mesh->mTextureCoords[1]) {
+            mp.attributes.lightmapUV = true;
+        }
+
         for (int vi = 0; vi < mesh->mNumVertices; vi++) {
             auto vert = mesh->mVertices[vi];
             vector4 scaled(vert.x, vert.y, vert.z, 1);
@@ -61,6 +74,8 @@ namespace RavEngine {
             mp.tangents.emplace_back(tangent.x, tangent.y, tangent.z);
             mp.bitangents.emplace_back(bitangent.x, bitangent.y, bitangent.z);
             mp.uv0.emplace_back(uvs[0], uvs[1]);
+
+
             if (mesh->mTextureCoords[1]) {
                 mp.lightmapUVs.emplace_back(mesh->mTextureCoords[1][vi].x, mesh->mTextureCoords[1][vi].y);
             }
