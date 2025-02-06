@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenEXR Project.
+
+PROJECT_NAME     = "Imath"
+GENERATE_LATEX   = NO
+GENERATE_MAN     = NO
+GENERATE_RTF     = NO
+CASE_SENSE_NAMES = NO
+INPUT            = "@DOXYGEN_INPUT_DIR@"
+OUTPUT_DIRECTORY = "@DOXYGEN_OUTPUT_DIR@"
+RECURSIVE        = YES
+QUIET            = YES
+JAVADOC_AUTOBRIEF    = YES
+GENERATE_HTML        = NO
+GENERATE_XML         = YES
+DISTRIBUTE_GROUP_DOC = YES
+MACRO_EXPANSION      = YES
+ENABLE_PREPROCESSING = YES
+WARN_IF_UNDOCUMENTED = NO
+PREDEFINED = IMATH_CONSTEXPR14=constexpr \
+             IMATH_HOSTDEVICE= \
+             IMATH_INTERNAL_NAMESPACE=Imath \
+             IMATH_INTERNAL_NAMESPACE_SOURCE_ENTER="namespace Imath {" \
+             IMATH_INTERNAL_NAMESPACE_SOURCE_EXIT="}" \
+             IMATH_INTERNAL_NAMESPACE_HEADER_ENTER="namespace Imath {" \
+             IMATH_INTERNAL_NAMESPACE_HEADER_EXIT="}" \
+             IMATH_NOEXCEPT="noexcept" \
+             IMATH_EXPORT="" \
+             IMATH_EXPORT_ENUM= \
+             IMATH_EXPORT_TYPE= \
+             IMATH_EXPORT_TEMPLATE_TYPE= \
+             imath_half_bits_t=half \
+             __cplusplus=1

@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) Contributors to the OpenEXR Project.
+
+name: Python Wheels
+
+on:
+
+  # Run on all changes (PR and push) to the python binding
+  # source/configuration files, except on the release branches, which
+  # have their own workflow, which also publish to pypi/test.pypi.
+  # Note that changes to the core libraries will *not*
+  # trigger building the wheels. However, the main ci workflow does
+  # build and test the bindings (for a single python version on a
+  # single arch)
+
+  push:
+    branches-ignore:
+      - RB-*
+    paths:
+      - 'src/lib/**'
+      - 'src/wrappers/python/**'
+      - 'pyproject.toml'
+      - '.github/workflows/python-wheels.yml'
+  pull_request:
+    branches-ignore:
+      - RB-*
+    paths:
+      - 'src/lib/**'
+      - 'src/wrappers/python/**'
+      - 'pyproject.toml'
+      - '.github/workflows/python-wheels.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build_wheels:
+    name: Python Wheels - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Install Python 
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.x'
+
+      - name: Create sdist
+        # Only create it once.
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: pipx run build --sdist . --outdir wheelhouse
+
+      - name: Build wheel
+        uses: pypa/cibuildwheel@7940a4c0e76eb2030e473a5f864f291f63ee879b # v2.21.3
+        env:
+          CIBW_ARCHS_MACOS: x86_64 arm64 universal2
+          # Build Python 3.7 through 3.12.
+          # Skip python 3.6 since scikit-build-core requires 3.7+
+          # Skip 32-bit wheels builds on Windows
+          # Also skip the PyPy builds, since they fail the unit tests
+          CIBW_BUILD: "cp37-* cp38-* cp39-* cp310-* cp311-* cp312-*"
+          CIBW_SKIP: "*-win32 *_i686"
+          CIBW_TEST_SKIP: "*-macosx*arm64"
+          OPENEXR_TEST_IMAGE_REPO: "https://raw.githubusercontent.com/AcademySoftwareFoundation/openexr-images/main"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: wheels-${{ matrix.os }}
+          path: |
+            ./wheelhouse/*.whl
+            ./wheelhouse/*.tar.gz

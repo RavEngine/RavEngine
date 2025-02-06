@@ -1,0 +1,10 @@
+# if you have git newer than 2.23, you can either
+# specify this on the command line
+# git blame foo.cpp --ignore-revs-file path/to/this/file
+# or add this file to your config
+# git config --global blame.ignoreRevsFile .git-blame-ignore-revs
+
+# initial clang-format run
+2a24ae77ab94f4c06b102eba73feb52e2f90cb46
+# clang-format run 17-Mar-2024
+84f58b85aef7a7844f0d3bfb1301e778eb22e42c

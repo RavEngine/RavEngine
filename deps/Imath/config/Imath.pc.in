@@ -1,0 +1,17 @@
+##
+## SPDX-License-Identifier: BSD-3-Clause
+## Copyright Contributors to the OpenEXR Project.
+##
+
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=@PKG_CONFIG_INSTALL_LIBDIR@
+includedir=@PKG_CONFIG_INSTALL_INCLUDEDIR@
+libsuffix=@LIB_SUFFIX_DASH@
+Name: Imath
+Description: Imath library: vector/matrix and math operations, plus the half type.
+Version: @IMATH_VERSION@
+Requires:
+Conflicts:
+Libs: -L${libdir} -lImath${libsuffix}
+Cflags: -I${includedir} -I${includedir}/Imath

@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) Contributors to the OpenEXR Project.
+
+sphinx == 7.4.2
+breathe
+sphinx-press-theme

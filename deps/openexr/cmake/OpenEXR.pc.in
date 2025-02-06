@@ -1,0 +1,21 @@
+##
+## SPDX-License-Identifier: BSD-3-Clause
+## Copyright (c) Contributors to the OpenEXR Project.
+##
+
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=@PKG_CONFIG_INSTALL_LIBDIR@
+includedir=@PKG_CONFIG_INSTALL_INCLUDEDIR@
+OpenEXR_includedir=${includedir}/OpenEXR
+libsuffix=@LIB_SUFFIX_DASH@
+
+Name: OpenEXR
+Description: OpenEXR image library
+Version: @OPENEXR_VERSION@
+
+Libs: @exr_pthread_libs@ -L${libdir} -lOpenEXR${libsuffix} -lOpenEXRUtil${libsuffix} -lOpenEXRCore${libsuffix} -lIex${libsuffix} -lIlmThread${libsuffix}
+Cflags: -I${includedir} -I${OpenEXR_includedir} @exr_pthread_cflags@
+Requires: Imath
+Requires.private: @EXR_DEFLATE_PKGCONFIG_REQUIRES@
+

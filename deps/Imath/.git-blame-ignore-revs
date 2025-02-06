@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) Contributors to the OpenEXR Project.
+
+# if you have git newer than 2.23, you can either
+# specify this on the command line
+# git blame foo.cpp --ignore-revs-file path/to/this/file
+# or add this file to your config (use global to change your global user pref)
+# git config [--global] blame.ignoreRevsFile .git-blame-ignore-revs
+
+
