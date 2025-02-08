@@ -206,6 +206,11 @@ Texture::Texture(const std::string& name){
 }
 
 
+RGL::Dimension RavEngine::Texture::GetTextureSize() const
+{
+    return texture->GetSize();
+}
+
 void Texture::CreateTexture(int width, int height, const Config& config){
 
 	RGL::TextureFormat format = config.format;

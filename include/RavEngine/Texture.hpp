@@ -54,9 +54,7 @@ public:
 	/**
 	@return size of the texture in pixels
 	*/
-	RGL::Dimension GetTextureSize() const{
-		return texture->GetSize();
-	}
+	RGL::Dimension GetTextureSize() const;
 
 protected:
 
