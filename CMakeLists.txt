@@ -507,7 +507,7 @@ if(WIN32 AND NOT RAVENGINE_SERVER)
 	target_link_libraries("${PROJECT_NAME}" PUBLIC openxr_loader)
 endif()
 
-set(TINYEXR_BUILD_SAMPLE OFF)
+set(TINYEXR_BUILD_SAMPLE OFF CACHE INTERNAL "")
 add_subdirectory(deps/tinyexr)
 
 # UUID
