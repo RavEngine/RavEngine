@@ -507,6 +507,9 @@ if(WIN32 AND NOT RAVENGINE_SERVER)
 	target_link_libraries("${PROJECT_NAME}" PUBLIC openxr_loader)
 endif()
 
+set(TINYEXR_BUILD_SAMPLE OFF)
+add_subdirectory(deps/tinyexr)
+
 # UUID
 if(LINUX)
 	target_link_libraries("${PROJECT_NAME}" PUBLIC uuid)
@@ -630,6 +633,7 @@ target_link_libraries("${PROJECT_NAME}"
 	"libnyquist"
 	"GameNetworkingSockets_s"
 	"r8brain"
+	tinyexr
 	stb_image
 	Recast
 	Detour
@@ -711,7 +715,7 @@ Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlott
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL3-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
 sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt;simdjson;TracyClient;stb_image;phonon_bundle;PffftObj;pf_conv_arch_avx2;\
 pf_conv_arch_avx;pf_conv_arch_sse4;pf_conv_arch_sse3;pf_conv_arch_dflt;pf_conv_dispatcher;pf_conv_arch_none;PFFASTCONV;PFDSP;SDL_uclibc;\
-glm_static;flatbuffers;meshoptimizer;dds_image;
+glm_static;flatbuffers;meshoptimizer;dds_image;tinyexr;miniz;
 ")
 
 group_in("Tools" "rvesc;rvesc_resources;rvemc;rveskc;rve_importlib;rveac")

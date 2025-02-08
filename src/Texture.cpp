@@ -15,6 +15,7 @@
 #include <RGL/Texture.hpp>
 #endif
 #include <dds.hpp>
+#include <tinyexr.h>
 
 using namespace std;
 using namespace RavEngine;
@@ -79,6 +80,24 @@ void RavEngine::Texture::InitFromDDS(IStream& stream)
     });
 }
 
+void RavEngine::Texture::InitFromEXR(IStream& stream) {
+    std::vector<std::byte> fileData;
+    fileData.resize(stream.size());
+    stream.read(fileData);
+
+    int width = 0, height = 0;
+    float* rgba = nullptr;
+    const char* err = nullptr;
+    LoadEXRFromMemory(&rgba,&width,&height,reinterpret_cast<const unsigned char*>(fileData.data()), fileData.size(),&err);
+
+    CreateTexture(width, height, {
+       .mipLevels = 1,
+       .numLayers = 1,
+       .initialData = {{reinterpret_cast<std::byte*>(rgba),width * height * 4 * sizeof(float)}},
+        .format = RGL::TextureFormat::RGBA32_Sfloat
+    });
+    free(rgba);
+}
 
 RavEngine::Texture::Texture(const Filesystem::Path& pathOnDisk)
 {
@@ -91,6 +110,10 @@ RavEngine::Texture::Texture(const Filesystem::Path& pathOnDisk)
     if (std::string_view{ reinterpret_cast<const char*>(headerData.data()),4 } == "DDS ") {
         // this is a DDS
         InitFromDDS(stream);
+        return;
+    }
+    if (std::string_view{ reinterpret_cast<const char*>(headerData.data()),2 } == "v/") {
+        InitFromEXR(stream);
         return;
     }
 
@@ -143,6 +166,10 @@ Texture::Texture(const std::string& name){
         InitFromDDS(stream);
         return;
     }
+    if (std::string_view{ reinterpret_cast<const char*>(headerData.data()),2 } == "v/") {
+        InitFromEXR(stream);
+        return;
+    }
     
     std::function<void()> freer;
     const char* failureReason = nullptr;
@@ -172,7 +199,7 @@ Texture::Texture(const std::string& name){
     CreateTexture(width, height, {
         .mipLevels = 1, 
         .numLayers = numlayers,
-        .initialData = {{reinterpret_cast<std::byte*>(bytes), nBytes }}
+        .initialData = {{reinterpret_cast<std::byte*>(bytes), nBytes }},
     });
     freer();
 	
@@ -206,7 +233,7 @@ void Texture::CreateTexture(int width, int height, const Config& config){
             .format = format,
             .debugName = config.debugName,
         });
-    }
+    } 
 }
 
 Texture::~Texture() {
