@@ -51,6 +51,11 @@ public:
 		std::string_view debugName;
 	};
 	
+	/**
+	@return size of the texture in pixels
+	*/
+	RGL::Dimension GetTextureSize() const;
+
 protected:
 
 	RGLTexturePtr texture;
@@ -60,6 +65,7 @@ protected:
 	void CreateTexture(int width, int height, const Config& config);
 
 	void InitFromDDS(IStream&);
+	void InitFromEXR(IStream&);
 };
 
 class RuntimeTexture : public Texture{
