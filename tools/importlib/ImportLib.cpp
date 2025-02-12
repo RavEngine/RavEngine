@@ -19,6 +19,8 @@ namespace RavEngine {
         MeshPart mp;
         //mp.indices.mode = indexBufferWidth;
 
+        glm::mat3 rotMat = scalemat;
+
         mp.indices.reserve(mesh->mNumFaces * 3);
         mp.positions.reserve(mesh->mNumVertices);
         mp.normals.reserve(mesh->mNumVertices);
@@ -69,10 +71,22 @@ namespace RavEngine {
                 uvs[1] = mesh->mTextureCoords[0][vi].y;
             }
 
+            glm::vec3 _normal = { normal.x, normal.y, normal.z };
+            glm::vec3 _tangent = { tangent.x, tangent.y, tangent.z };
+            glm::vec3 _bitangent = { bitangent.x, bitangent.y, bitangent.z };
+
+            _normal = glm::normalize(rotMat * _normal);
+            if (glm::length(_tangent) > 0) {
+                _tangent = glm::normalize(rotMat * _tangent);
+            }
+            if (glm::length(_bitangent) > 0) {
+                _bitangent = glm::normalize(rotMat * _bitangent);
+            }
+
             mp.positions.push_back({ static_cast<float>(scaled.x),static_cast<float>(scaled.y),static_cast<float>(scaled.z) });
-            mp.normals.emplace_back(normal.x, normal.y, normal.z);
-            mp.tangents.emplace_back(tangent.x, tangent.y, tangent.z);
-            mp.bitangents.emplace_back(bitangent.x, bitangent.y, bitangent.z);
+            mp.normals.push_back(_normal);
+            mp.tangents.push_back(_tangent);
+            mp.bitangents.push_back(_bitangent);
             mp.uv0.emplace_back(uvs[0], uvs[1]);
 
 

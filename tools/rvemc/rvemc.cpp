@@ -17,6 +17,7 @@
 #include <RavEngine/ImportLib.hpp>
 #include <meshoptimizer.h>
 #include <numeric>
+#include <glm/gtc/type_ptr.hpp>
 
 using namespace std;
 using namespace RavEngine;
@@ -41,13 +42,18 @@ aiProcess_ValidateDataStructure |
 aiProcess_OptimizeMeshes |
 aiProcess_FindInvalidData;
 
+#if defined __APPLE__ || __STDC_VERSION__ >= 199901L    //check for C99
+#define stackarray(name, type, size) type name[size]    //prefer C VLA on supported systems
+#else
+#define stackarray(name, type, size) type* name = (type*)alloca(sizeof(type) * size) //warning: alloca may not be supported in the future
+#endif
 
 struct SkinnedMeshPart : public MeshPart {
     std::vector<VertexWeights> vertexWeights;
 };
 
 template<bool isSkinned>
-std::variant<MeshPart, SkinnedMeshPart> LoadMesh(const std::filesystem::path& path, std::optional<std::string_view> meshName, float scaleFactor) {
+std::variant<MeshPart, SkinnedMeshPart> LoadMesh(const std::filesystem::path& path, std::optional<std::string_view> meshName, float scaleFactor, bool bakeHierarchy) {
     const aiScene* scene = aiImportFile(path.string().c_str(), assimp_flags);
 
 
@@ -68,13 +74,47 @@ std::variant<MeshPart, SkinnedMeshPart> LoadMesh(const std::filesystem::path& pa
         meshCount = meshNode->mNumMeshes;
     }
 
+    auto getWorldMatrix = [](const aiNode* node) -> matrix4 {
+        // figure out size
+        uint16_t depth = 0;
+        for (aiNode* p = node->mParent; p != nullptr; p = p->mParent) {
+            ++depth;
+        }
+        stackarray(transforms, aiMatrix4x4, depth);
+
+        uint16_t tmp = 0;
+        for (aiNode* p = node->mParent; p != nullptr; p = p->mParent) {
+            transforms[tmp] = p->mTransformation;
+            ++tmp;
+        }
+
+        aiMatrix4x4 mat;	//identity
+        if (depth > 0) {
+            for (int i = depth - 1; i >= 0; --i) {
+                mat *= transforms[i];
+            }
+        }
+        mat *= node->mTransformation;
+
+        // row major -> column major
+        mat = mat.Transpose();
+        matrix4 ret;
+        std::memcpy(glm::value_ptr(ret), mat[0], sizeof(ret));
+        return ret;
+    };
 
     Mesh_t mesh;
     uint32_t index_base = 0;
     for (int i = 0; i < meshCount; i++) {
 
         try{
-            auto mp = AIMesh2MeshPart(meshName.has_value() ? scene->mMeshes[meshNode->mMeshes[i]] : scene->mMeshes[i], matrix4(scaleFactor));
+            matrix4 worldTransform{ 1 };
+            if (bakeHierarchy) {
+                worldTransform = getWorldMatrix(meshNode);
+            }
+            worldTransform *= matrix4(scaleFactor);
+
+            auto mp = AIMesh2MeshPart(meshName.has_value() ? scene->mMeshes[meshNode->mMeshes[i]] : scene->mMeshes[i], worldTransform);
             for (auto& index : mp.indices) {
                 index += index_base;            // renumber indices
             }
@@ -309,8 +349,14 @@ int main(int argc, char** argv){
     if (!err) {
         isSkinned = (typeStr == "skinned");
     }
+
+    bool bakeHierarchy = false;
+    err = doc["bake_transform"].get(bakeHierarchy);
+    if (err) {
+        bakeHierarchy = false;
+    }
     
-    auto mesh = isSkinned ? LoadMesh<true>(infile, fmn_opt, scaleFactor) : LoadMesh<false>(infile, fmn_opt, scaleFactor);
+    auto mesh = isSkinned ? LoadMesh<true>(infile, fmn_opt, scaleFactor, bakeHierarchy) : LoadMesh<false>(infile, fmn_opt, scaleFactor, bakeHierarchy);
 
     inputFile.replace_extension("");
     const auto outfileName = inputFile.filename().string() + ".rvem";
