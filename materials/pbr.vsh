@@ -7,6 +7,9 @@ layout(push_constant, std430) uniform UniformBufferObject{
 } ubo;
 
 layout(location = 0) out vec2 outUV;
+#if RVE_HAS_LIGHTMAP_UV
+layout(location = 1) out vec2 outlightmapUV;
+#endif
 
 LitVertexOut vert(EntityIn entity, EngineData data)
 {
@@ -15,6 +18,9 @@ LitVertexOut vert(EntityIn entity, EngineData data)
     v_out.localPosition = inPosition;
 
 	outUV = inUV;
+#if RVE_HAS_LIGHTMAP_UV
+	outlightmapUV = inLightmapUV;
+#endif
 
 	return v_out;
 	

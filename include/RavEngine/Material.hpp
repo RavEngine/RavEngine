@@ -182,7 +182,7 @@ namespace RavEngine {
 	* Represents the settings of a material. Subclass to expose more properties.
 	*/	
 	struct MaterialInstance {
-		constexpr static uint8_t maxBindingSlots = 8;
+		constexpr static uint8_t maxBindingSlots = 12;
 	protected:
 		std::array<RGLBufferPtr, maxBindingSlots> bufferBindings;
 		std::array<Ref<Texture>, maxBindingSlots> textureBindings;

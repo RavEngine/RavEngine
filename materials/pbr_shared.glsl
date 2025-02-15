@@ -6,8 +6,15 @@ layout(binding = 4) uniform texture2D t_metallic;
 layout(binding = 5) uniform texture2D t_roughness; 
 layout(binding = 6) uniform texture2D t_ao;
 layout(binding = 7) uniform texture2D t_emissive;
+#if RVE_HAS_LIGHTMAP_UV
+layout(binding = 8) uniform texture2D t_bakedDirection;
+layout(binding = 9) uniform texture2D t_bakedIndirect;
+#endif
 
 layout(location = 0) in vec2 inUV;
+#if RVE_HAS_LIGHTMAP_UV
+layout(location = 1) in vec2 inLightmapUV;
+#endif
 layout(early_fragment_tests) in;
 
 LitOutput frag()
@@ -29,6 +36,12 @@ LitOutput frag()
 	mat_out.specular = specular * ubo.specularTint;
 	mat_out.metallic = metallic * ubo.metallicTint;
 	mat_out.emissiveColor = texture(sampler2D(t_emissive, g_sampler), inUV).rgb;
+
+#if RVE_HAS_LIGHTMAP_UV
+	// add the baked component
+	vec3 bakedDir = texture(sampler2D(t_bakedDirection, g_sampler), inUV).rgb;
+	vec3 illuminance = texture(sampler2D(t_bakedIndirect, g_sampler), inUV).rgb;
+#endif
 
 	return mat_out;
 }

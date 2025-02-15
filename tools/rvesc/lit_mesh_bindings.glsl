@@ -8,7 +8,8 @@ layout(location = 3) in vec3 inBitangent;
 layout(location = 4) in vec2 inUV;
 
 #if !RVE_DEPTHONLY
-	#ifdef RVE_LIGHTMAP_UV
+	#if RVE_LIGHTMAP_UV
 	layout(location = 5) in vec2 inLightmapUV;
+	#define RVE_HAS_LIGHTMAP_UV 1
 	#endif
 #endif
