@@ -134,7 +134,7 @@ struct Options{
     } pushConstantSettings;
     
     struct BufferBindingSettings{
-        uint8_t firstIndex = 0;
+        uint8_t stageInputSize = 0;
         
     } bufferBindingSettings;
     std::string preambleContent;   // Put defines here

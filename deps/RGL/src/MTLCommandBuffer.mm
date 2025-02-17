@@ -197,8 +197,10 @@ void CommandBufferMTL::EndRendering(){
 
 void CommandBufferMTL::BindBuffer(RGLBufferPtr buffer, uint32_t binding, uint32_t offsetIntoBuffer){
     //TODO: something smarter than this
-    [currentCommandEncoder setVertexBuffer:std::static_pointer_cast<BufferMTL>(buffer)->buffer offset:offsetIntoBuffer atIndex:binding];
-    [currentCommandEncoder setFragmentBuffer:std::static_pointer_cast<BufferMTL>(buffer)->buffer offset:offsetIntoBuffer atIndex:binding];
+    auto offsetIndex = binding + librglc::MTL_STAGE_INPUT_SIZE;
+    
+    [currentCommandEncoder setVertexBuffer:std::static_pointer_cast<BufferMTL>(buffer)->buffer offset:offsetIntoBuffer atIndex:offsetIndex];
+    [currentCommandEncoder setFragmentBuffer:std::static_pointer_cast<BufferMTL>(buffer)->buffer offset:offsetIntoBuffer atIndex:offsetIndex];
 }
 
 void CommandBufferMTL::BindComputeBuffer(RGLBufferPtr buffer, uint32_t binding, uint32_t offsetIntoBuffer){
@@ -215,7 +217,7 @@ void CommandBufferMTL::SetVertexBytes(const untyped_span data, uint32_t offset){
     stackarray(tmp, std::byte, size);
     std::memcpy(tmp, data.data(), data.size());
     
-    [currentCommandEncoder setVertexBytes: tmp length:size atIndex: offset+librglc::MTL_FIRST_BUFFER];
+    [currentCommandEncoder setVertexBytes: tmp length:size atIndex: offset+librglc::MTL_FIRST_BUFFER + librglc::MTL_STAGE_INPUT_SIZE];
 }
 
 void CommandBufferMTL::SetComputeBytes(const untyped_span data, uint32_t offset){

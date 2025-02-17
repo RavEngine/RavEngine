@@ -129,6 +129,7 @@ RenderPipelineMTL::RenderPipelineMTL(decltype(owningDevice) owningDevice, const 
         }
     }
     
+
     for(const auto& attribute : desc.vertexConfig.attributeDescs){
         auto vertexAttribute = [MTLVertexAttributeDescriptor new];
         auto formatpair = rgl2mtlvx(attribute.format);
@@ -141,8 +142,8 @@ RenderPipelineMTL::RenderPipelineMTL(decltype(owningDevice) owningDevice, const 
         }
         
         vertexDescriptor.attributes[attribute.location] = vertexAttribute;
-        i++;
     }
+
     
     vertexDescriptor.layouts[0].stride = totalStride;
     [pipelineDesc setVertexDescriptor:vertexDescriptor];
