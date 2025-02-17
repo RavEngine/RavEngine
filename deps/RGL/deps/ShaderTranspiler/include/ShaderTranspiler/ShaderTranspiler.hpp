@@ -132,6 +132,11 @@ struct Options{
         uint8_t firstIndex = 0;
         
     } pushConstantSettings;
+    
+    struct BufferBindingSettings{
+        uint8_t firstIndex = 0;
+        
+    } bufferBindingSettings;
     std::string preambleContent;   // Put defines here
 };
 

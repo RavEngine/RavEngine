@@ -119,15 +119,13 @@ RenderPipelineMTL::RenderPipelineMTL(decltype(owningDevice) owningDevice, const 
     auto vertexDescriptor = [MTLVertexDescriptor new];
     std::unordered_map<uint32_t, MTLVertexStepFunction> bindingSteps;
     {
-        uint32_t i = 0;
         for(const auto& binding : desc.vertexConfig.vertexBindings){
             bindingSteps[binding.binding] = binding.inputRate == RGL::InputRate::Instance ? MTLVertexStepFunctionPerInstance : MTLVertexStepFunctionPerVertex;
+            vertexDescriptor.layouts[binding.binding].stride = binding.stride;
+            vertexDescriptor.layouts[binding.binding].stepRate = 1;
             if (binding.inputRate == RGL::InputRate::Instance){
-                vertexDescriptor.layouts[i].stepFunction = MTLVertexStepFunctionPerInstance;
-                vertexDescriptor.layouts[i].stepRate = 1;
-                vertexDescriptor.layouts[i].stride = binding.stride;
+                vertexDescriptor.layouts[binding.binding].stepFunction = MTLVertexStepFunctionPerInstance;
             }
-            i++;
         }
     }
     

@@ -667,6 +667,21 @@ IMResult SPIRVtoMSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMod
     
 	auto refldata = getReflectData(msl,bin);
     
+    if (model == spv::ExecutionModel::ExecutionModelVertex){
+        uint8_t currentIndex = opt.bufferBindingSettings.firstIndex;
+        for(auto& resource : refldata.storage_buffers){
+            spirv_cross::MSLResourceBinding newBinding;
+            newBinding.stage = model;
+            newBinding.desc_set = 0;
+            newBinding.basetype = msl.get_type(resource.base_type_id).basetype;
+            newBinding.binding = currentIndex;
+            newBinding.msl_buffer = currentIndex;
+            newBinding.msl_texture = currentIndex;
+            msl.add_msl_resource_binding( newBinding );
+            currentIndex++;
+        }
+    }
+    
     if (opt.uniformBufferSettings.renameBuffer){
         if (refldata.uniform_buffers.size() > 0){
             auto resource = refldata.uniform_buffers[0];
