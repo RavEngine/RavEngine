@@ -118,10 +118,11 @@ RenderPipelineMTL::RenderPipelineMTL(decltype(owningDevice) owningDevice, const 
     uint32_t totalStride = 0;
     auto vertexDescriptor = [MTLVertexDescriptor new];
     std::unordered_map<uint32_t, MTLVertexStepFunction> bindingSteps;
+    std::unordered_map<uint32_t, uint32_t> totalLayoutStrides;
     {
         for(const auto& binding : desc.vertexConfig.vertexBindings){
             bindingSteps[binding.binding] = binding.inputRate == RGL::InputRate::Instance ? MTLVertexStepFunctionPerInstance : MTLVertexStepFunctionPerVertex;
-            vertexDescriptor.layouts[binding.binding].stride = binding.stride;
+            totalLayoutStrides[binding.binding] += binding.stride;
             vertexDescriptor.layouts[binding.binding].stepRate = 1;
             if (binding.inputRate == RGL::InputRate::Instance){
                 vertexDescriptor.layouts[binding.binding].stepFunction = MTLVertexStepFunctionPerInstance;
@@ -144,8 +145,11 @@ RenderPipelineMTL::RenderPipelineMTL(decltype(owningDevice) owningDevice, const 
         vertexDescriptor.attributes[attribute.location] = vertexAttribute;
     }
 
+    for(const auto [layoutIndex,stride] : totalLayoutStrides){
+        vertexDescriptor.layouts[layoutIndex].stride = stride;
+    }
     
-    vertexDescriptor.layouts[0].stride = totalStride;
+    //vertexDescriptor.layouts[0].stride = totalStride;
     [pipelineDesc setVertexDescriptor:vertexDescriptor];
     
 

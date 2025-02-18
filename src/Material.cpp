@@ -82,7 +82,7 @@ namespace RavEngine {
                 .binding = ENTITY_INPUT_BINDING,
                 .stride = sizeof(uint32_t),
                 .inputRate = RGL::InputRate::Instance,
-                });
+            });
         }
         
         auto trimVertexAttributes = [](auto& vertexConfigCopy, auto&& requiredAttributes) {
