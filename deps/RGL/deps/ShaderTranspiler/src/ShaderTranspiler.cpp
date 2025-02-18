@@ -741,7 +741,7 @@ IMResult SPIRVtoMSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMod
             }
             
             // insert the value
-            res = std::format("{}{}{}",res.substr(0, begin),value,res.substr(blockEnd));
+            res = res.substr(0, begin) + std::to_string(value) + res.substr(blockEnd);
             
             itr++;
         }
