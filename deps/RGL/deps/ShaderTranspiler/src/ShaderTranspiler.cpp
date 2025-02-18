@@ -736,6 +736,10 @@ IMResult SPIRVtoMSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMod
             
             value += opt.bufferBindingSettings.stageInputSize;
             
+            if (value > 31){
+                throw std::runtime_error(std::format("Adjusted buffer index too large: {}",value));
+            }
+            
             // insert the value
             res = std::format("{}{}{}",res.substr(0, begin),value,res.substr(blockEnd));
             

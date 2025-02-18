@@ -8,6 +8,7 @@ namespace RGL{
 struct CommandQueueMTL;
 struct TextureMTL;
 struct IBuffer;
+struct RenderPipelineDescriptor;
 struct BufferMTL;
 
     struct CommandBufferMTL : public ICommandBuffer{
@@ -85,6 +86,7 @@ struct BufferMTL;
         void BlockUntilCompleted() final;
     private:
         bool isRender = false;
+        const RenderPipelineDescriptor* pipelineConstructionSettings = nullptr;
     };
 
 }
