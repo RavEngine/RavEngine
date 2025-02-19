@@ -77,6 +77,9 @@ namespace librglc {
                 .type = Options::BindlessSettings::Type::Buffer,
             },
         };
+        opt.bufferBindingSettings = {
+            .stageInputSize = MTL_STAGE_INPUT_SIZE
+        };
 		if (toAPI == API::Vulkan) {
 			opt.version = 15;
             opt.preambleContent = "#define RGL_SL_VK 1";

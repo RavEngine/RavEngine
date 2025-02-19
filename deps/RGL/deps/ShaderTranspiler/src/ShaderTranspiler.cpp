@@ -667,6 +667,23 @@ IMResult SPIRVtoMSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMod
     
 	auto refldata = getReflectData(msl,bin);
     
+#if 0
+    if (model == spv::ExecutionModel::ExecutionModelVertex){
+        uint8_t currentIndex = opt.bufferBindingSettings.firstIndex;
+        for(auto& resource : refldata.storage_buffers){
+            spirv_cross::MSLResourceBinding newBinding;
+            newBinding.stage = model;
+            newBinding.desc_set = 0;
+            newBinding.basetype = msl.get_type(resource.base_type_id).basetype;
+            newBinding.binding = currentIndex;
+            newBinding.msl_buffer = currentIndex;
+            newBinding.msl_texture = currentIndex;
+            msl.add_msl_resource_binding( newBinding );
+            currentIndex++;
+        }
+    }
+#endif
+    
     if (opt.uniformBufferSettings.renameBuffer){
         if (refldata.uniform_buffers.size() > 0){
             auto resource = refldata.uniform_buffers[0];
@@ -688,6 +705,47 @@ IMResult SPIRVtoMSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMod
     
 	setEntryPoint(msl, opt.entryPoint);
     auto res = msl.compile();
+    
+    // renumber buffers the hacky way
+    if (model == spv::ExecutionModel::ExecutionModelVertex && opt.bufferBindingSettings.stageInputSize > 0){
+        constexpr auto atoi_n = [](std::string_view str)
+        {
+            int ret = 0;
+            for(int i = 0; i < str.size(); ++i)
+            {
+                ret = ret * 10 + (str[i] - '0');
+            }
+            return ret;
+        };
+        
+        constexpr static auto tag = "[[buffer(";
+        constexpr auto taglen = sizeof(tag);
+        size_t itr = 0;
+        while (itr < res.size()){
+            itr = res.find(tag, itr, taglen);
+            if (itr == std::string::npos){
+                break;
+            }
+            auto blockEnd = res.find(")",itr);
+            
+            const auto begin = itr + taglen + 1;
+            
+            string_view rangeStr(res.data() + begin, blockEnd - itr - taglen - 1);
+            
+            auto value = atoi_n(rangeStr);
+            
+            value += opt.bufferBindingSettings.stageInputSize;
+            
+            if (value > 31){
+                throw std::runtime_error("Adjusted buffer index too large: " + std::to_string(value));
+            }
+            
+            // insert the value
+            res = res.substr(0, begin) + std::to_string(value) + res.substr(blockEnd);
+            
+            itr++;
+        }
+    }
     
 	return {std::move(res), "", std::move(refldata)};
 }

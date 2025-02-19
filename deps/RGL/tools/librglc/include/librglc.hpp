@@ -8,6 +8,7 @@
 namespace librglc {
 
     constexpr static auto MTL_FIRST_BUFFER = 9;
+    constexpr static auto MTL_STAGE_INPUT_SIZE = 6;
 
 	enum class API : uint8_t {
 		Vulkan,

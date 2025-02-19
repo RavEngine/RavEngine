@@ -157,6 +157,7 @@ void CommandBufferMTL::SetIndexBuffer(RGLBufferPtr buffer) {
 
 void CommandBufferMTL::BindRenderPipeline(RGLRenderPipelinePtr pipelineIn){
     auto pipeline = std::static_pointer_cast<RenderPipelineMTL>(pipelineIn);
+    pipelineConstructionSettings = &pipeline->settings;
     [currentCommandEncoder setRenderPipelineState: pipeline->pipelineState];
     if (pipeline->depthStencilState){
         [currentCommandEncoder setDepthStencilState:pipeline->depthStencilState];
@@ -196,9 +197,25 @@ void CommandBufferMTL::EndRendering(){
 }
 
 void CommandBufferMTL::BindBuffer(RGLBufferPtr buffer, uint32_t binding, uint32_t offsetIntoBuffer){
+    auto offsetIndex = binding + librglc::MTL_STAGE_INPUT_SIZE;
+    const auto& bindingConfig = pipelineConstructionSettings->pipelineLayout->settings.bindings;
+    
     //TODO: something smarter than this
-    [currentCommandEncoder setVertexBuffer:std::static_pointer_cast<BufferMTL>(buffer)->buffer offset:offsetIntoBuffer atIndex:binding];
-    [currentCommandEncoder setFragmentBuffer:std::static_pointer_cast<BufferMTL>(buffer)->buffer offset:offsetIntoBuffer atIndex:binding];
+    auto bindingSettings = std::find_if(bindingConfig.begin(), bindingConfig.end(), [binding](auto&& bindingDesc){
+        return bindingDesc.binding == binding;
+    });
+    
+    if (bindingSettings == bindingConfig.end()){
+        FatalError(std::format("Pipeline does not have a binding with index {}",binding));
+    }
+    
+    auto visibility = bindingSettings->stageFlags;
+    if (uint32_t(visibility) & uint32_t(decltype(visibility)::Vertex)){
+        [currentCommandEncoder setVertexBuffer:std::static_pointer_cast<BufferMTL>(buffer)->buffer offset:offsetIntoBuffer atIndex:offsetIndex];
+    }
+    if (uint32_t(visibility) & uint32_t(decltype(visibility)::Fragment)){
+        [currentCommandEncoder setFragmentBuffer:std::static_pointer_cast<BufferMTL>(buffer)->buffer offset:offsetIntoBuffer atIndex:binding];      // fragment index is not offset
+    }
 }
 
 void CommandBufferMTL::BindComputeBuffer(RGLBufferPtr buffer, uint32_t binding, uint32_t offsetIntoBuffer){
@@ -215,7 +232,7 @@ void CommandBufferMTL::SetVertexBytes(const untyped_span data, uint32_t offset){
     stackarray(tmp, std::byte, size);
     std::memcpy(tmp, data.data(), data.size());
     
-    [currentCommandEncoder setVertexBytes: tmp length:size atIndex: offset+librglc::MTL_FIRST_BUFFER];
+    [currentCommandEncoder setVertexBytes: tmp length:size atIndex: offset+librglc::MTL_FIRST_BUFFER + librglc::MTL_STAGE_INPUT_SIZE];
 }
 
 void CommandBufferMTL::SetComputeBytes(const untyped_span data, uint32_t offset){

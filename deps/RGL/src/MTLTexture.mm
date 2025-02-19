@@ -7,6 +7,19 @@
 
 namespace RGL {
 
+uint32_t bytesPerPixel(RGL::TextureFormat format){
+    switch(format){
+        case decltype(format)::RGBA32_Sfloat:   return sizeof(float) * 4;
+        case decltype(format)::RGBA16_Snorm:
+        case decltype(format)::RGBA16_Unorm:
+        case decltype(format)::RGBA16_Sfloat:   return sizeof(float) / 2 * 4;
+        case decltype(format)::RGBA8_Uint:
+        case decltype(format)::RGBA8_Unorm:   return sizeof(uint8_t) * 4;
+        default:
+            FatalError("bytesPerPixel: Invalid textureformat");
+    }
+}
+
 TextureMTL::TextureMTL(decltype(drawable) texture, const Dimension& size) : drawable(texture), ITexture(size){
     
 }
@@ -71,7 +84,7 @@ TextureMTL::TextureMTL(const std::shared_ptr<DeviceMTL> owningDevice, const Text
         {config.width, config.height, 1} // MTLSize
     };
     
-    NSUInteger bytesPerRow = 4 * config.width;   // TODO: replace 4 with nchannels of format
+    NSUInteger bytesPerRow = bytesPerPixel(config.format) * config.width;
     
     [texture replaceRegion:region
                 mipmapLevel:0
