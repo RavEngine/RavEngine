@@ -2,6 +2,13 @@
 #extension GL_EXT_shader_16bit_storage : enable
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
 
+#if !RVE_DEPTHONLY
+	#ifdef RVE_LIGHTMAP_UV
+        #define RVE_HAS_LIGHTMAP_UV 1
+	#endif
+#endif
+
+
 struct LitOutput{
     vec4 color;
     vec3 normal;

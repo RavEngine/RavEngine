@@ -123,8 +123,7 @@ RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m, uint32_t
     textureBindings[9] = Texture::Manager::zeroTexture;
 }
 
-
-RavEngine::PBRMaterial::PBRMaterial(MaterialRenderOptions options) : LitMaterial("pbr", options.opacityMode == OpacityMode::Transparent ? "pbr_transparent" : "pbr", {
+RavEngine::PBRMaterial::PBRMaterial(MaterialRenderOptions options, const std::string_view vsh_name, const std::string_view fsh_name) : LitMaterial(vsh_name, fsh_name,{
     .bindings = {
         {
             .binding = 0,
@@ -177,10 +176,20 @@ RavEngine::PBRMaterial::PBRMaterial(MaterialRenderOptions options) : LitMaterial
             .stageFlags = RGL::BindingVisibility::Fragment,
         },
     },
-    .pushConstantSize = sizeof(PBRPushConstantData) 
-    }, options) {}
+    .pushConstantSize = sizeof(PBRPushConstantData)
+    }, options) {
+}
 
+RavEngine::PBRMaterial::PBRMaterial(MaterialRenderOptions options) : PBRMaterial(options, "pbr", options.opacityMode == OpacityMode::Transparent ? "pbr_transparent" : "pbr") {}
+
+MaterialRenderOptions augmentOptionsForBaked(MaterialRenderOptions opt) {
+    opt.requiredAttributes.lightmapUV = true;
+    return opt;
+}
+
+RavEngine::PBRMaterialBaked::PBRMaterialBaked(MaterialRenderOptions options) : PBRMaterial(augmentOptionsForBaked(options), "pbr_baked", options.opacityMode == OpacityMode::Transparent ? "pbr_baked_transparent" : "pbr_baked")
+{
+}
 
 #endif
-
 

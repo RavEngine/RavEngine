@@ -3,6 +3,7 @@
 #include "Material.hpp"
 #include "Common3D.hpp"
 #include <variant>
+#include <string_view>
 
 namespace RavEngine {
 
@@ -15,6 +16,12 @@ namespace RavEngine {
 	
 	struct PBRMaterial : public LitMaterial {
 		PBRMaterial(MaterialRenderOptions options = {  });
+	protected:
+		PBRMaterial(MaterialRenderOptions options, const std::string_view vsh_name, const std::string_view fsh_name);
+	};
+
+	struct PBRMaterialBaked : public PBRMaterial {
+		PBRMaterialBaked(MaterialRenderOptions options = {  });
 	};
 
 	// the default layout and blend information.
@@ -75,7 +82,18 @@ namespace RavEngine {
 		PBRPushConstantData pushConstantData;
 	};
 
-   
+	class PBRMaterialBakedInstance : public PBRMaterialInstance {
+	public:
+		PBRMaterialBakedInstance(Ref<PBRMaterialBaked> m, uint32_t priority = 0) : PBRMaterialInstance(m, priority) {}
+
+		void SetBakedDirectionTexture(Ref<Texture> texture) {
+			textureBindings[8] = texture;
+		}
+
+		void SetBakedEmissivityTexture(Ref<Texture> texture) {
+			textureBindings[9] = texture;
+		}
+	};
 }
 
 #endif

@@ -1,0 +1,9 @@
+{
+  "shader": "pbr.fsh",
+  "stage": "fragment",
+  "type": "lit-mesh",
+  "defines": [
+    "RVE_LIGHTMAP_UV 1"
+  ],
+  "opacity": "transparent"
+}
