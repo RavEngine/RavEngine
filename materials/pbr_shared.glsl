@@ -39,8 +39,12 @@ LitOutput frag()
 
 #if RVE_HAS_LIGHTMAP_UV
 	// add the baked component
-	vec3 bakedDir = texture(sampler2D(t_bakedDirection, g_sampler), inUV).rgb;
-	vec3 illuminance = texture(sampler2D(t_bakedIndirect, g_sampler), inUV).rgb;
+	vec4 bakedDir = texture(sampler2D(t_bakedDirection, g_sampler), inLightmapUV).rgba;
+	vec3 illuminance = texture(sampler2D(t_bakedIndirect, g_sampler), inLightmapUV).rgb;
+
+	float halfLambert = dot(normal, bakedDir.xyz - 0.5) + 0.5;	//TODO: normal should be world-space normal
+	vec3 bakeDiffuseLighting = illuminance * halfLambert / max(1e-4, bakedDir.w);
+	mat_out.emissiveColor += bakeDiffuseLighting;
 #endif
 
 	return mat_out;
