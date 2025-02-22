@@ -19,6 +19,11 @@ struct LitOutput{
     float ao;
 };
 
+struct EnvironmentData{
+    mat4 entityModelMtx;
+    mat3 TBN;
+};
+
 #include "%s"
 
 #include "ravengine_shader.glsl"
@@ -106,13 +111,20 @@ layout(set = 2, binding = 0) uniform textureCube pointShadowMaps[];    // we ali
 
 void main(){
 
-    LitOutput user_out = frag();
     // normals are in local space
     // but we need them in world space
     mat4 entityModelMtx = model[varyingEntityID];
 
     const mat3 TBN = mat3(inTBN[0],inTBN[1],inTBN[2]);
+
+    EnvironmentData envData;
+    envData.entityModelMtx = entityModelMtx;
+    envData.TBN = TBN;
+
+    LitOutput user_out = frag(envData);
+
     const vec3 objectSpaceNormal = TBN * user_out.normal;
+
 
     const vec3 worldNormal = mat3(entityModelMtx) * objectSpaceNormal;
 

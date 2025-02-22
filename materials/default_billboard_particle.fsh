@@ -9,7 +9,7 @@ layout(binding = 1) uniform texture2D t_spritesheet;
 
 layout(location = 0) in vec2 inUV; 
 
-LitOutput frag(){
+LitOutput frag(EnvironmentData envData){
     LitOutput fs_out;
 
     fs_out.color = texture(sampler2D(t_spritesheet, g_sampler), inUV);
