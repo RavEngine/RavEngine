@@ -14,8 +14,7 @@ namespace RavEngine{
 
 struct IStream;
 
-class Texture {
-public:
+struct Texture {
 	struct Config {
 		uint8_t mipLevels = 1;
 		int numLayers = 1;
@@ -81,9 +80,9 @@ protected:
 };
 
 
-class RenderTexture {
-public:
-    RenderTexture(int width, int height);
+struct RenderTexture {
+
+	RenderTexture(int width, int height);
     
     Ref<Texture> GetTexture();
     const auto& GetCollection() const{
