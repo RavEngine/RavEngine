@@ -126,7 +126,7 @@ void BloomEffect::Preamble(dim_t<int> targetSize){
         passes.front()->clearOutputBeforeRendering = true;
 
         dim_t<float> size{ targetSize.width / 2.0f, targetSize.height / 2.0f };
-        tempTexture = New<RuntimeTexture>(size.width, size.height, Texture::Config{
+        tempTexture = New<Texture>(size.width, size.height, Texture::Config{
             .mipLevels = uint8_t(samplePassCount), 
             .enableRenderTarget = true,
             .format = RGL::TextureFormat::RGBA16_Sfloat,

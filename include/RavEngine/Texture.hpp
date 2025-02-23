@@ -16,6 +16,15 @@ struct IStream;
 
 class Texture {
 public:
+	struct Config {
+		uint8_t mipLevels = 1;
+		int numLayers = 1;
+		bool enableRenderTarget = false;
+		RGL::TextureUploadData initialData;
+		RGL::TextureFormat format = RGL::TextureFormat::RGBA8_Unorm;
+		std::string_view debugName;
+	};
+
 	/**
 	 Create a texture given a file
 	 @param filename name of the texture
@@ -27,29 +36,32 @@ public:
 
 	Texture(const Filesystem::Path& pathOnDisk);
     Texture(RGLTexturePtr tx) : texture(tx){}
+
+	/**
+	 Create a texture from data
+	 @param width width of the texture
+	 @param height height of the texture
+	 @param hasMipMaps does the texture contain mip maps
+	 @param numLayers the number of layers in the texture (NOT channels!)
+	 @param data pointer to the image data. Must be a 4-channel image.
+	 @param flags optional creation flags
+	 */
+	Texture(int width, int height, const Config& config) : Texture() {
+		CreateTexture(width, height, config);
+	}
 	
 	virtual ~Texture();
 	    
     /**
      Use the manager to avoid loading duplicate textures
-     Works with Runtime textures as well, using the construction arguments to differentiate textures
      */
-    struct Manager : public GenericWeakReadThroughCache<std::string,Texture>{
-		static Ref<class RuntimeTexture> defaultTexture, defaultNormalTexture, zeroTexture;
+    struct Manager : public GenericWeakReadThroughCache<std::string, RavEngine::Texture>{
+		static Ref<RavEngine::Texture> defaultTexture, defaultNormalTexture, zeroTexture;
 	};
 
 	auto GetRHITexturePointer() const {
 		return texture;
 	}
-
-	struct Config {
-		uint8_t mipLevels = 1;
-		int numLayers = 1;
-		bool enableRenderTarget = false;
-		RGL::TextureUploadData initialData;
-		RGL::TextureFormat format = RGL::TextureFormat::RGBA8_Unorm;
-		std::string_view debugName;
-	};
 	
 	/**
 	@return size of the texture in pixels
@@ -68,35 +80,18 @@ protected:
 	void InitFromEXR(IStream&);
 };
 
-class RuntimeTexture : public Texture{
-public:
-	RuntimeTexture(const std::string& filename) = delete;
-	
-	/**
-	 Create a texture from data
-	 @param width width of the texture
-	 @param height height of the texture
-	 @param hasMipMaps does the texture contain mip maps
-	 @param numLayers the number of layers in the texture (NOT channels!)
-	 @param data pointer to the image data. Must be a 4-channel image.
-	 @param flags optional creation flags
-	 */
-	RuntimeTexture(int width, int height, const Config& config) : Texture(){
-		CreateTexture(width, height, config);
-	}
-};
 
 class RenderTexture {
 public:
     RenderTexture(int width, int height);
     
-    Ref<RuntimeTexture> GetTexture();
+    Ref<Texture> GetTexture();
     const auto& GetCollection() const{
         return collection;
     }
 private:
     RenderTargetCollection collection;
-    Ref<RuntimeTexture> finalFB;
+    Ref<Texture> finalFB;
 };
 
 }

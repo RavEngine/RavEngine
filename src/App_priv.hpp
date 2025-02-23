@@ -237,21 +237,21 @@ int App::run(int argc, char** argv) {
 	{
 		//make the default texture white
 		uint8_t data[] = {0xFF,0xFF,0xFF,0xFF};
-		Texture::Manager::defaultTexture = make_shared<RuntimeTexture>(1, 1, Texture::Config{
+		Texture::Manager::defaultTexture = make_shared<Texture>(1, 1, Texture::Config{
 			.mipLevels = 1,
 			.numLayers = 1,
 			.initialData = {{reinterpret_cast<std::byte*>(data),sizeof(data)}}
 			});
 		
 		uint8_t normalData[] = {256/2,256/2, 0xFF,0xFF};
-		Texture::Manager::defaultNormalTexture = New<RuntimeTexture>(1,1, Texture::Config{
+		Texture::Manager::defaultNormalTexture = New<Texture>(1,1, Texture::Config{
 			.mipLevels = 1,
 			.numLayers = 1,
 			.initialData = {{reinterpret_cast<std::byte*>(normalData),sizeof(normalData)}}
 		});
 
 		uint8_t zeroData[] = { 0,0,0,0 };
-		Texture::Manager::zeroTexture = New<RuntimeTexture>(1, 1, Texture::Config{
+		Texture::Manager::zeroTexture = New<Texture>(1, 1, Texture::Config{
 			.mipLevels = 1,
 			.numLayers = 1,
 			.initialData = {{reinterpret_cast<std::byte*>(zeroData), sizeof(zeroData)}}
