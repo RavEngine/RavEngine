@@ -93,5 +93,20 @@ private:
     Ref<Texture> finalFB;
 };
 
+struct CubemapTexture {
+	struct Config {
+		bool enableRenderTarget = false;
+		RGL::TextureFormat format = RGL::TextureFormat::RGBA8_Unorm;
+		std::string_view debugName;
+	};
+
+	CubemapTexture(int size, const Config& config);
+
+	RGL::TextureView GetView() const;
+
+private:
+	RGLTexturePtr cubemap;
+};
+
 }
 #endif

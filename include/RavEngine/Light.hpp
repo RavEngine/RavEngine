@@ -11,6 +11,7 @@
 namespace RavEngine{
 class MeshAsset;
 class CameraComponent;
+struct Skybox;
 /**
 Represents a light-emitting object. Lights can be constrained to specific objects with layers. 
 By default, lights will illuminate objects on any layer. 
@@ -90,6 +91,7 @@ public:
 
 /**
 A light that additively affects the whole scene. This is the only light type that is affected by SSAO. Useful for faking indirect light.
+If an environment provided, then the color and intensity are multipliers for the environment data. Otherwise, the environment is assumed to be {1,1,1,1}.
 */
 struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 	using light_t = AmbientLight;
@@ -100,6 +102,7 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
 
+    Ref<Skybox> environment; // optional
 };
 
 /**

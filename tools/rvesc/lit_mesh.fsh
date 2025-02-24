@@ -52,6 +52,7 @@ struct AmbientLightData{
     vec3 color;
     float intensity;
     uint illuminationLayers;
+    uint environmentCubemapBindlessIndex;
 };
 
 layout(scalar, binding = 12) readonly buffer ambientLightSSBO{
@@ -158,7 +159,12 @@ void main(){
             continue;
         }
 
-        outcolor += user_out.color * vec4(light.color * light.intensity,1);
+        vec3 environmentColor = vec3(1);
+        if ((light.environmentCubemapBindlessIndex & (~0)) > 0){
+            // use cubemap as environment color
+        }
+
+        outcolor += user_out.color * vec4(light.color * light.intensity * environmentColor,1);
     }
     #endif
 

@@ -258,5 +258,23 @@ RenderTexture::RenderTexture(int width, int height) {
 Ref<Texture> RenderTexture::GetTexture() {
     return finalFB;
 }
+
+CubemapTexture::CubemapTexture(int size, const Config& config)
+{
+    auto device = GetApp()->GetDevice();
+    cubemap = device->CreateTexture({
+           .usage = {.TransferDestination = true, .Sampled = true, .ColorAttachment = config.enableRenderTarget},
+           .aspect = {.HasColor = true},
+           .width = uint32_t(size),
+           .height = uint32_t(size),
+           .mipLevels = 1,
+           .format = config.format,
+           .debugName = config.debugName,
+        });
+}
+RGL::TextureView CubemapTexture::GetView() const
+{
+    return cubemap->GetDefaultView();
+}
 }
 #endif

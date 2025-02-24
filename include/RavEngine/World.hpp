@@ -90,6 +90,7 @@ namespace RavEngine {
     struct AudioMeshComponent;
     struct MeshCollectionStatic;
     struct MeshCollectionSkinned;
+    struct SkyLight;
     class World;
 
     template <typename T, typename... Ts>
@@ -410,6 +411,7 @@ namespace RavEngine {
             glm::vec3 color;
             float intensity;
             renderlayer_t illuminationLayers;
+            uint32_t skyboxBindlessIndex = std::numeric_limits<uint32_t>::max();
         };
         
         struct PointLightUploadData {
