@@ -4,7 +4,6 @@
 
 namespace RavEngine {
 	struct MeshAsset;
-	struct CubemapTexture;
 	
 	// subclass
 	struct ISkyMaterial : public Material {
@@ -36,8 +35,6 @@ namespace RavEngine {
 	struct Skybox {
 		bool enabled = true;
 		Ref<ISkyMaterialInstance> skyMat;
-		Ref<CubemapTexture> cubemapTexture;
-		bool environmentNeedsUpdate = false;
 
 		// default constructor, loads default sky implementation
 		Skybox();

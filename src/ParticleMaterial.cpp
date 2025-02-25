@@ -339,8 +339,14 @@ namespace RavEngine {
 					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = false
 				},
-				{
+				{	// shadow sampler
 					.binding = 14,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Compute,
+					.writable = false
+				},
+				{	// environment sampler
+					.binding = 31,
 					.type = RGL::BindingType::StorageBuffer,
 					.stageFlags = RGL::BindingVisibility::Compute,
 					.writable = false

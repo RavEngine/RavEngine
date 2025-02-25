@@ -503,7 +503,15 @@ void World::setupRenderTasks(){
                 auto ownerLocalId = ptr->GetOwner(i);
                 auto& light = ptr->Get({i});
                 auto& color = light.GetColorRGBA();
-                renderData.ambientLightData.GetForSparseIndexForWriting(ownerLocalId) = {{color.R, color.G, color.B}, light.GetIntensity(), light.GetIlluminationLayers()};
+                auto& uploadData = renderData.ambientLightData.GetForSparseIndexForWriting(ownerLocalId);
+                uploadData = {{color.R, color.G, color.B}, light.GetIntensity(), light.GetIlluminationLayers()};
+                if (light.environment) {
+                    Debug::Assert(light.environment->outputTexture != nullptr, "Skybox does not have a CubemapTexture assigned");
+                    uploadData.skyboxBindlessIndex = light.environment->outputTexture->GetView().GetReadonlyBindlessTextureHandle();
+                }
+                else {
+                    uploadData.skyboxBindlessIndex = std::numeric_limits<decltype(uploadData.skyboxBindlessIndex)>::max();
+                }
                 light.clearInvalidate();
             }
         }

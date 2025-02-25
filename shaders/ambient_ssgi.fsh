@@ -1,4 +1,5 @@
 #extension GL_EXT_samplerless_texture_functions : enable
+#extension GL_EXT_nonuniform_qualifier : enable
 
 layout(push_constant, scalar) uniform UniformBufferObject{
     uint ambientLightCount;
@@ -10,12 +11,17 @@ struct AmbientLightData{
     vec3 color;
     float intensity;
     uint illuminationLayers;
+    uint environmentCubemapBindlessIndex;
 };
 
 layout(binding = 0) uniform sampler g_sampler;
 layout(binding = 1) uniform texture2D albedoTex;    
 layout(binding = 2) uniform texture2D radianceTex;  // render layers are in the Alpha channel
 layout(binding = 3) uniform texture2D giSSAO;
+layout(binding = 4) uniform texture2D normalTex;
+
+layout(set = 2, binding = 0) uniform textureCube cubeMaps[];
+
 
 layout(location = 0) out vec4 outcolor;
 
@@ -36,6 +42,7 @@ void main(){
     uint entityRenderLayer = floatBitsToUint(texture(sampler2D(radianceTex,g_sampler), uv).a);
 
     const vec3 albedo = texture(sampler2D(albedoTex, g_sampler), uv).rgb;
+    const vec3 worldNormal = texture(sampler2D(normalTex, g_sampler), uv).rgb;
 
     vec4 giao = texture(sampler2D(giSSAO, g_sampler), uv);
 
@@ -58,7 +65,13 @@ void main(){
             continue;
         }
 
-        ambientcontrib += albedo * (light.color * light.intensity) * vec3(ao);
+        vec3 environmentColor = vec3(1);
+        if ((light.environmentCubemapBindlessIndex & (~0)) > 0){
+            // use cubemap as environment color
+            environmentColor = texture(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], g_sampler), worldNormal).rgb;
+        }
+
+        ambientcontrib += albedo * (light.color * light.intensity * environmentColor) * vec3(ao);
     }
 
     // Global illumination

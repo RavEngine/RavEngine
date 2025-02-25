@@ -100,7 +100,7 @@ struct CubemapTexture {
 		std::string_view debugName;
 	};
 
-	CubemapTexture(int size, const Config& config);
+	CubemapTexture(int size, const Config& config = {});
 
 	RGL::TextureView GetView() const;
 

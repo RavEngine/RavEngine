@@ -1276,6 +1276,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);	
 						mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);
 						mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
+						mainCommandBuffer->SetFragmentSampler(shadowSampler, 31);
 						mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
 						
 					}
@@ -1373,6 +1374,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 							mainCommandBuffer->BindBuffer(worldOwning->renderData.ambientLightData.GetPrivateBuffer(), 12);
 							mainCommandBuffer->BindBuffer(worldOwning->renderData.directionalLightData.GetPrivateBuffer(), 13);
 							mainCommandBuffer->SetFragmentSampler(shadowSampler, 14);
+							mainCommandBuffer->SetFragmentSampler(shadowSampler, 31);
 							mainCommandBuffer->BindBuffer(worldOwning->renderData.pointLightData.GetPrivateBuffer(), 15);
 							mainCommandBuffer->BindBuffer(worldOwning->renderData.spotLightData.GetPrivateBuffer(), 17);
                             mainCommandBuffer->BindBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), 28);
@@ -1851,6 +1853,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->SetFragmentTexture(target.lightingScratchTexture->GetDefaultView(), 1);	// albedo color
 					mainCommandBuffer->SetFragmentTexture(target.radianceTexture->GetDefaultView(), 2);
 					mainCommandBuffer->SetFragmentTexture(target.ssgiOutputTexture->GetDefaultView(), 3);
+					mainCommandBuffer->SetFragmentTexture(target.viewSpaceNormalsTexture->GetDefaultView(), 4);
+					mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);
 
 					AmbientSSGIApplyUBO ubo{
 						.ambientLightCount = worldOwning->renderData.ambientLightData.DenseSize(),

@@ -1772,6 +1772,18 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 					.stageFlags = RGL::BindingVisibility::Fragment,
 				},
 				{
+					.binding = 4,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+				},
+				{
+					.binding = 2,
+					.count = 2048,
+					.isBindless = true,
+					.type = RGL::BindingType::SampledImage,
+					.stageFlags = RGL::BindingVisibility::Fragment,
+				},
+				{
 					.binding = 10,
 					.type = RGL::BindingType::StorageBuffer,
 					.stageFlags = RGL::BindingVisibility::Fragment,

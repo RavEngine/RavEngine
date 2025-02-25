@@ -106,8 +106,9 @@ layout(scalar, binding = 30) readonly buffer dirLightVaryingSSBO{
 
 #if !RVE_DEPTHONLY  // depth only calculation does not do shadow reads
 layout(binding = 14) uniform sampler shadowSampler;
+layout(binding = 31) uniform sampler environmentSampler;
 layout(set = 1, binding = 0) uniform texture2D shadowMaps[];      // the bindless heap must be in set 1 binding 0
-layout(set = 2, binding = 0) uniform textureCube pointShadowMaps[];    // we alias these because everything goes into the one heap
+layout(set = 2, binding = 0) uniform textureCube cubeMaps[];    // we alias these because everything goes into the one heap
 #endif
 
 void main(){
@@ -162,6 +163,7 @@ void main(){
         vec3 environmentColor = vec3(1);
         if ((light.environmentCubemapBindlessIndex & (~0)) > 0){
             // use cubemap as environment color
+            environmentColor = texture(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], environmentSampler), worldNormal).rgb;
         }
 
         outcolor += user_out.color * vec4(light.color * light.intensity * environmentColor,1);

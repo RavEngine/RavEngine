@@ -224,9 +224,16 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
                 .stageFlags = RGL::BindingVisibility::Fragment
             }
         );
-        configBindingsCopy.push_back(
+        configBindingsCopy.push_back(   // shadow sampler
             {
                 .binding = 14,
+                .type = RGL::BindingType::Sampler,
+                .stageFlags = RGL::BindingVisibility::Fragment
+            }
+        );
+        configBindingsCopy.push_back(   // environment sampler
+            {
+                .binding = 31,
                 .type = RGL::BindingType::Sampler,
                 .stageFlags = RGL::BindingVisibility::Fragment
             }
