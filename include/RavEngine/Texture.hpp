@@ -95,10 +95,12 @@ private:
 
 struct CubemapTexture {
 	struct Config {
-        bool enableRenderTarget;
-        RGL::TextureFormat format;
+        bool enableRenderTarget = false;
+        RGL::TextureFormat format = RGL::TextureFormat::RGBA8_Unorm;
 		std::string_view debugName;
+#if !_MSC_VER
         Config(): enableRenderTarget(false), format(RGL::TextureFormat::RGBA8_Unorm){} // workaround for clang/gcc bug
+#endif
 	};
 
 	CubemapTexture(int size, const Config& config = {});
