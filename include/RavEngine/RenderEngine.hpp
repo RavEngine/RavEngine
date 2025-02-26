@@ -26,7 +26,6 @@
 #include "Queue.hpp"
 #include "Layer.hpp"
 #include "Mesh.hpp"
-#include <span>
 
 struct SDL_Window;
 
@@ -77,7 +76,7 @@ namespace RavEngine {
 
 		RGLTexturePtr dummyShadowmap, dummyCubemap;
 		RGLSamplerPtr textureSampler, shadowSampler, depthPyramidSampler;
-		RGLRenderPassPtr litRenderPass, unlitRenderPass, depthPrepassRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, finalRenderPassNoDepth, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, litTransparentPass, unlitTransparentPass, transparentClearPass, transparencyApplyPass, ssgiPassNoClear, ssgiAmbientApplyPass, ssgiPassClear;
+		RGLRenderPassPtr litRenderPass, unlitRenderPass, envSkyboxPass, depthPrepassRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, finalRenderPassNoDepth, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, litTransparentPass, unlitTransparentPass, transparentClearPass, transparencyApplyPass, ssgiPassNoClear, ssgiAmbientApplyPass, ssgiPassClear;
 
 		RGLRenderPipelinePtr depthPyramidCopyPipeline,
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, transparencyApplyPipeline, ssgipipeline, ssgiDownsamplePipeline, ssgiUpsamplePipeline, ambientSSGIApplyPipeline, aoUpsamplePipeline, ssgiUpsamplePipleineFinalStep;

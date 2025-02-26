@@ -7,6 +7,8 @@
 #include "App.hpp"
 #if !RVE_SERVER
 #include <RGL/Texture.hpp>
+#include "Texture.hpp"
+#include "RenderEngine.hpp"
 #endif
 
 #if _WIN32
@@ -171,6 +173,29 @@ RavEngine::SpotLight::SpotLight()
 #endif
 }
 
+RavEngine::EnvironmentLight::EnvironmentLight(decltype(sky) sky, decltype(outputTexture) ot) : sky(sky), outputTexture(ot)
+{
+    if (auto app = GetApp()) {
+        auto dim = ot->GetTextureSize();
+        stagingTexture = New<Texture>(dim.width, dim.height,Texture::Config{ .enableRenderTarget = true, .format = RGL::TextureFormat::RGBA16_Sfloat, .debugName = "env staging"});
+        stagingDepthTexture = app->GetDevice()->CreateTexture({
+            .usage = {.DepthStencilAttachment = true},
+            .aspect = {.HasDepth = true},
+            .width = dim.width,
+            .height = dim.height,
+            .format = RGL::TextureFormat::D32SFloat,
+            .debugName = "env staging depth"
+         });
+    }
+}
+
+RavEngine::EnvironmentLight::~EnvironmentLight()
+{
+    if (auto app = GetApp()) {
+        app->GetRenderEngine().gcTextures.enqueue(stagingDepthTexture);
+    }
+}
+
 RavEngine::PointLight::PointLight()
 {
 #if !RVE_SERVER
@@ -210,3 +235,5 @@ RavEngine::PointLight::PointLight()
 	});
 #endif
 }
+
+

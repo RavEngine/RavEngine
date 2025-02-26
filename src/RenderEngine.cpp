@@ -425,6 +425,21 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
         }
     });
 
+	envSkyboxPass = RGL::CreateRenderPass({
+		.attachments = {
+			{
+				.format = colorTexFormat,
+				.loadOp = RGL::LoadAccessOperation::Load,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			},
+		},
+		 .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+			.format = RGL::TextureFormat::D32SFloat,
+			.loadOp = RGL::LoadAccessOperation::Load,
+			.storeOp = RGL::StoreAccessOperation::Store,
+		}
+	});
+
 	litTransparentPass = RGL::CreateRenderPass({
 		.attachments = {},
         .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{

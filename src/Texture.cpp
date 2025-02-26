@@ -268,13 +268,19 @@ CubemapTexture::CubemapTexture(int size, const Config& config)
            .width = uint32_t(size),
            .height = uint32_t(size),
            .mipLevels = 1,
+           .arrayLayers = 6,
            .format = config.format,
+           .isCubemap = true,
            .debugName = config.debugName,
         });
 }
 RGL::TextureView CubemapTexture::GetView() const
 {
     return cubemap->GetDefaultView();
+}
+RGL::Dimension CubemapTexture::GetTextureSize() const
+{
+    return cubemap->GetSize();
 }
 }
 #endif

@@ -104,6 +104,8 @@ struct CubemapTexture {
 
 	RGL::TextureView GetView() const;
 
+	RGL::Dimension GetTextureSize() const;
+
 private:
 	RGLTexturePtr cubemap;
 };

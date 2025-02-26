@@ -13,6 +13,7 @@ class MeshAsset;
 class CameraComponent;
 struct Skybox;
 struct CubemapTexture;
+struct Texture;
 /**
 Represents a light-emitting object. Lights can be constrained to specific objects with layers. 
 By default, lights will illuminate objects on any layer. 
@@ -95,9 +96,17 @@ A light that additively affects the whole scene. This is the only light type tha
 If an environment provided, then the color and intensity are multipliers for the environment data. Otherwise, the environment is assumed to be {1,1,1,1}.
 */
 struct EnvironmentLight {
+    MOVE_NO_COPY(EnvironmentLight);
+private:
+    friend class RenderEngine;
+    friend class World;
+    Ref<Texture> stagingTexture;
     Ref<Skybox> sky;
     Ref<CubemapTexture> outputTexture;
-    EnvironmentLight(decltype(sky) sky, decltype(outputTexture) ot) : sky(sky), outputTexture(ot) {}
+    RGLTexturePtr stagingDepthTexture;
+public:
+    EnvironmentLight(decltype(sky) sky, decltype(outputTexture) ot);
+    ~EnvironmentLight();
 };
 
 struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
