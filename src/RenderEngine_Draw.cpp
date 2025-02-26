@@ -325,9 +325,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 	};
    
 	// render skyboxes if there are any
-	for (const auto& ambientLight : *worldOwning->GetAllComponentsOfType<AmbientLight>()) {
+	for (auto& ambientLight : *worldOwning->GetAllComponentsOfType<AmbientLight>()) {
 		mainCommandBuffer->BeginRenderDebugMarker("Skybox for environment maps");
-		if (ambientLight.environment && ambientLight.environmentNeedsUpdate) {
+		if (ambientLight.environment && ambientLight.environment->environmentNeedsUpdate) {
+			ambientLight.environment->environmentNeedsUpdate = false;
 			const auto& outputTex = ambientLight.environment->outputTexture;
 			const auto dim = outputTex->GetTextureSize();
 			// render the six faces
@@ -1926,6 +1927,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);
 
 					AmbientSSGIApplyUBO ubo{
+						.invView = glm::transpose(camData.viewOnly),
 						.ambientLightCount = worldOwning->renderData.ambientLightData.DenseSize(),
 						.ssaoStrength = camData.indirectSettings.ssaoStrength,
 					};

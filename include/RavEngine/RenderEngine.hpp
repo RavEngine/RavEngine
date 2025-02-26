@@ -127,6 +127,7 @@ namespace RavEngine {
 		};
 
 		struct AmbientSSGIApplyUBO {
+			glm::mat4 invView{ 1 };
 			uint32_t ambientLightCount = 0;
 			float ssaoStrength = 1;
 			uint32_t options = 0;

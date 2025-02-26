@@ -2,6 +2,7 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 
 layout(push_constant, scalar) uniform UniformBufferObject{
+    mat4 invView;
     uint ambientLightCount;
     float ssaoStrength;
     uint options;
@@ -42,7 +43,8 @@ void main(){
     uint entityRenderLayer = floatBitsToUint(texture(sampler2D(radianceTex,g_sampler), uv).a);
 
     const vec3 albedo = texture(sampler2D(albedoTex, g_sampler), uv).rgb;
-    const vec3 worldNormal = texture(sampler2D(normalTex, g_sampler), uv).rgb;
+    vec3 worldNormal = texture(sampler2D(normalTex, g_sampler), uv).rgb;
+    worldNormal = mat3(ubo.invView) * worldNormal;  // the texture is in view space
 
     vec4 giao = texture(sampler2D(giSSAO, g_sampler), uv);
 

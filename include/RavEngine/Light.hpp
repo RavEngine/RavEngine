@@ -104,9 +104,13 @@ private:
     Ref<Skybox> sky;
     Ref<CubemapTexture> outputTexture;
     RGLTexturePtr stagingDepthTexture;
+    bool environmentNeedsUpdate = true;
 public:
     EnvironmentLight(decltype(sky) sky, decltype(outputTexture) ot);
     ~EnvironmentLight();
+    void SetNeedsUpdate() {
+        environmentNeedsUpdate = true;
+    }
 };
 
 struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
@@ -118,8 +122,7 @@ struct AmbientLight : public Light, public QueryableDelta<Light,AmbientLight>{
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
 
-    std::optional<EnvironmentLight> environment; // optional
-    bool environmentNeedsUpdate = true;
+    std::optional<EnvironmentLight> environment; // optional 
 };
 
 /**
