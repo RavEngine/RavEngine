@@ -70,7 +70,11 @@ void main(){
         vec3 environmentColor = vec3(1);
         if ((light.environmentCubemapBindlessIndex & (~0)) > 0){
             // use cubemap as environment color
-            environmentColor = texture(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], g_sampler), worldNormal).rgb;
+            vec3 incident = normalize(vec3(uv * 2 - 1,-1)); // view space
+            incident = mat3(ubo.invView) * incident;
+            vec3 refl = reflect(incident, worldNormal);
+
+            environmentColor = texture(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], g_sampler), refl).rgb;
         }
 
         ambientcontrib += albedo * (light.color * light.intensity * environmentColor) * vec3(ao);
