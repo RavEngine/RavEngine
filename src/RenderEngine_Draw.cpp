@@ -1766,8 +1766,9 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				renderFromPerspective.template operator()<true, transparentMode, transparentMode>(camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, transparentMode ? litTransparentPass : litRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
                 }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, &target);
-
+#if 0
 				if (!transparentMode) {
+
 					if (camData.indirectSettings.SSAOEnabled || camData.indirectSettings.SSGIEnabled) {
 						constexpr auto divFacForMip = [](uint32_t mip) {
 							return std::pow(2, mip);
@@ -1947,6 +1948,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->EndRendering();
 					mainCommandBuffer->EndRenderDebugMarker();
 				}
+#endif
 			};
 
             auto renderLitPass = [&renderLitPass_Impl](auto&& camData, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {

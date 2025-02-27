@@ -1561,7 +1561,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				},
 				{
 					.type = RGL::ShaderStageDesc::Type::Fragment,
-					.shaderModule = LoadShaderByFilename("ssgi_ao_fsh", device),
+					.shaderModule = LoadShaderByFilename("ssgi_gi_only_fsh", device),
 				}
 		},
 		.vertexConfig = {

@@ -114,6 +114,3 @@ vec4 getVisibility() {
     return vec4(lighting, min(1,visibility));   // pin AO to 1
 }
 
-void main() {
-    fragColor = getVisibility();
-}
