@@ -138,8 +138,6 @@ void main(){
 
     #if RVE_EXTRAOUTPUT
         outAlbedo = user_out.color;
-
-       
     #endif
     #if RVE_PREPASS
     outViewSpaceNormal = vec4(mat3(data.viewOnly) * worldNormal,1);
@@ -159,7 +157,6 @@ void main(){
     // compute lighting based on the results of the user's function
 
     // ambient lights
-    #if !RVE_EXTRAOUTPUT        // ambient is applied later if running in opaque-lit
     for(uint i = 0; i < engineConstants[0].ambientLightCount; i++){
         AmbientLightData light = ambientLights[i];
         
@@ -168,14 +165,13 @@ void main(){
         }
 
         vec3 environmentColor = vec3(1);
-        if ((light.environmentCubemapBindlessIndex & (~0)) > 0){
+        if (light.environmentCubemapBindlessIndex != (~0)){
             // use cubemap as environment color
             environmentColor = texture(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], environmentSampler), worldNormal).rgb;
         }
 
         outcolor += user_out.color * vec4(light.color * light.intensity * environmentColor,1);
     }
-    #endif
 
     // directional lights
     for(uint i = 0; i < engineConstants[0].directionalLightCount; i++){

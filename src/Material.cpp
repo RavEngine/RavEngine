@@ -20,7 +20,7 @@
 using namespace std;
 namespace RavEngine {
     constexpr MeshAttributes shadowAttributes = { .position = true, .normal = false, .tangent = false, .bitangent = false, .uv0 = true, .lightmapUV = false };
-    constexpr MeshAttributes depthPrepassAttributes = { .position = true, .normal = false, .tangent = false, .bitangent = false, .uv0 = true, .lightmapUV = false };
+    constexpr MeshAttributes depthPrepassAttributes = { .position = true, .normal = true, .tangent = true, .bitangent = true, .uv0 = true, .lightmapUV = false };
 
 
     /**

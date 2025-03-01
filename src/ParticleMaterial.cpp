@@ -120,7 +120,6 @@ namespace RavEngine {
 				rpd.debugName = Format("ParticleMaterial Prepass {} {}", particleVS, particleFS);
 				rpd.stages[1].shaderModule = LoadShaderByFilename(sh_name, device);
 
-				rpd.colorBlendConfig.attachments.clear();					// no color attachments for shadow mode
 				rpd.depthStencilConfig.depthFunction = RGL::DepthCompareFunction::Greater;
 				prepassRenderPipeline = device->CreateRenderPipeline(rpd);
 			}
