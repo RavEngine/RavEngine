@@ -1755,7 +1755,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 					// render depth prepass
 					mainCommandBuffer->BeginRenderDebugMarker("Lit Opaque Depth Prepass");
-					renderFromPerspective.template operator() < true, transparentMode, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, depthPrepassRenderPass, [](auto&& mat) {
+					renderFromPerspective.template operator() < true, transparentMode, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, depthPrepassRenderPassLit, [](auto&& mat) {
 						return mat->GetDepthPrepassPipeline();
 						}, renderArea, { .Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, &target);
 					mainCommandBuffer->EndRenderDebugMarker();
@@ -2339,12 +2339,14 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		
 
 			// lit pass
+			depthPrepassRenderPassLit->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+			depthPrepassRenderPassLit->SetAttachmentTexture(0,target.viewSpaceNormalsTexture->GetDefaultView());
 			depthPrepassRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+
 
 			litRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
 			litRenderPass->SetAttachmentTexture(1, target.radianceTexture->GetDefaultView());
 			litRenderPass->SetAttachmentTexture(2, target.lightingScratchTexture->GetDefaultView());
-			litRenderPass->SetAttachmentTexture(3, target.viewSpaceNormalsTexture->GetDefaultView());
 			litRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
 			litClearRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());

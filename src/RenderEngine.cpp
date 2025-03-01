@@ -347,11 +347,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				   .loadOp = RGL::LoadAccessOperation::Load,
 				   .storeOp = RGL::StoreAccessOperation::Store,
 			   },
-			   {
-				   .format = viewSpaceNormalTextureFormat,
-				   .loadOp = RGL::LoadAccessOperation::Load,
-				   .storeOp = RGL::StoreAccessOperation::Store,
-			   },
 		   },
 		   .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
 			   .format = RGL::TextureFormat::D32SFloat,
@@ -573,6 +568,23 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.clearColor = depthClearColor
 		}
 	});
+
+	depthPrepassRenderPassLit = RGL::CreateRenderPass({
+		.attachments = {
+			{
+				
+				.format = viewSpaceNormalTextureFormat,
+				.loadOp = RGL::LoadAccessOperation::Clear,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			},
+		},
+		.depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+			.format = RGL::TextureFormat::D32SFloat,
+			.loadOp = RGL::LoadAccessOperation::Load,
+			.storeOp = RGL::StoreAccessOperation::Store,
+			.clearColor = depthClearColor
+		}
+		});
 
 	dummyShadowmap = device->CreateTexture({
 		.usage = {.TransferDestination = true,  .Sampled = true,},

@@ -42,10 +42,13 @@ struct EnvironmentData{
 #define RVE_EXTRAOUTPUT 0
 #endif
 
+#if RVE_PREPASS
+layout(location = 0) out vec4 outViewSpaceNormal;
+#endif
+
 #if RVE_EXTRAOUTPUT
 layout(location = 1) out vec4 outRadiance;
 layout(location = 2) out vec4 outAlbedo;
-layout(location = 3) out vec4 outViewSpaceNormal;
 #endif
 
 struct AmbientLightData{
@@ -129,13 +132,17 @@ void main(){
 
 
     const vec3 worldNormal = mat3(entityModelMtx) * objectSpaceNormal;
+    
+     // this part needs them in view space
+    EngineData data = make_engine_data(engineConstants[0]);
 
     #if RVE_EXTRAOUTPUT
         outAlbedo = user_out.color;
 
-        // this part needs them in view space
-        EngineData data = make_engine_data(engineConstants[0]);
-        outViewSpaceNormal = vec4(mat3(data.viewOnly) * worldNormal,1);
+       
+    #endif
+    #if RVE_PREPASS
+    outViewSpaceNormal = vec4(mat3(data.viewOnly) * worldNormal,1);
     #endif
 
     vec4 outcolor = vec4(0); // NV: these don't default-init to 0

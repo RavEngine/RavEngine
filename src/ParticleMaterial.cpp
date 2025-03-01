@@ -116,18 +116,24 @@ namespace RavEngine {
 
 			userRenderPipeline = device->CreateRenderPipeline(rpd);
 			if (hasDepthPrepass) {
-				const auto sh_name = Format("{}_fsh_depthonly", particleFS);
-				rpd.debugName = Format("ParticleMaterial DepthOnly {} {}", particleVS, particleFS);
+				const auto sh_name = Format("{}_fsh_prepass", particleFS);
+				rpd.debugName = Format("ParticleMaterial Prepass {} {}", particleVS, particleFS);
 				rpd.stages[1].shaderModule = LoadShaderByFilename(sh_name, device);
-			}
-			else {
-				rpd.stages.pop_back();
+
+				rpd.colorBlendConfig.attachments.clear();					// no color attachments for shadow mode
+				rpd.depthStencilConfig.depthFunction = RGL::DepthCompareFunction::Greater;
+				prepassRenderPipeline = device->CreateRenderPipeline(rpd);
 			}
 
-			rpd.colorBlendConfig.attachments.clear();					// no color attachments for shadow mode
-			rpd.debugName = Format("ParticleMaterial Shadow {}", particleVS);
-			rpd.depthStencilConfig.depthFunction = RGL::DepthCompareFunction::Greater;
-			shadowRenderPipeline = device->CreateRenderPipeline(rpd);
+			if (!IsTransparent()) {
+				const auto sh_name = Format("{}_fsh_shadow", particleFS);
+				rpd.debugName = Format("ParticleMaterial Shadow {} {}", particleVS, particleFS);
+				rpd.stages[1].shaderModule = LoadShaderByFilename(sh_name, device);
+
+				rpd.colorBlendConfig.attachments.clear();					// no color attachments for shadow mode
+				rpd.depthStencilConfig.depthFunction = RGL::DepthCompareFunction::Greater;
+				shadowRenderPipeline = device->CreateRenderPipeline(rpd);
+			}
 		}
 	}
 	ParticleUpdateMaterial::ParticleUpdateMaterial(const std::string_view initShaderName, const std::string_view updateShaderName)
