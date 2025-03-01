@@ -111,6 +111,14 @@ vec4 getVisibility() {
     visibility /= ubo.sliceCount;
     lighting /= ubo.sliceCount;
 
-    return vec4(lighting, min(1,visibility));   // pin AO to 1
+    vec4 ret = vec4(0);
+#if RVE_IL
+    ret.rgb = lighting;
+#endif
+#if RVE_AO
+    ret.a = min(1,visibility);   // pin AO to 1
+#endif
+
+    return ret;
 }
 
