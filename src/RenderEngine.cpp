@@ -1521,6 +1521,24 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			}
 		);
 
+	ssaoPassClear = RGL::CreateRenderPass(
+		{
+		   .attachments = {
+			   {
+				   .format = ssaoOutputFormat,					// outputs here
+				   .loadOp = RGL::LoadAccessOperation::Clear,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+		   },
+		   .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+			   .format = RGL::TextureFormat::D32SFloat,
+			   .loadOp = RGL::LoadAccessOperation::Load,
+			   .storeOp = RGL::StoreAccessOperation::Store,
+			   .clearColor = depthClearColor
+		   }
+		}
+	);
+
 	ssgiPassNoClear = RGL::CreateRenderPass(
 		{
 		   .attachments = {
@@ -1602,6 +1620,54 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.attachments = {
 				{
 					.format = colorTexFormat,
+				},
+			}
+		},
+		.depthStencilConfig = {
+			.depthFormat = depthFormat,
+			.depthTestEnabled = false,
+			.depthWriteEnabled = false,
+		},
+		.pipelineLayout = ssgiLayout,
+	});
+
+	ssaoPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
+		.stages = {
+				{
+					.type = RGL::ShaderStageDesc::Type::Vertex,
+					.shaderModule = LoadShaderByFilename("ssgi_ao_vsh", device),
+				},
+				{
+					.type = RGL::ShaderStageDesc::Type::Fragment,
+					.shaderModule = LoadShaderByFilename("ssgi_ao_only_fsh", device),
+				}
+		},
+		.vertexConfig = {
+			.vertexBindings = {
+				{
+					.binding = 0,
+					.stride = sizeof(Vertex2D),
+				},
+			},
+			.attributeDescs = {
+				{
+					.location = 0,
+					.binding = 0,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+				},
+			}
+		},
+		.inputAssembly = {
+			.topology = RGL::PrimitiveTopology::TriangleList,
+		},
+		.rasterizerConfig = {
+			.windingOrder = RGL::WindingOrder::Counterclockwise,
+		},
+		.colorBlendConfig = {
+			.attachments = {
+				{
+					.format = ssaoOutputFormat,
 				},
 			}
 		},
@@ -1945,6 +2011,17 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 			.debugName = "View Space Normals Texture"
 		});
 
+	// ssao is rendered at half-resolution
+	collection.ssaoOutputTexture = device->CreateTexture({
+		.usage = {.Sampled = true, .ColorAttachment = true },
+			.aspect = {.HasColor = true },
+			.width = width / 2,
+			.height = height / 2,
+			.format = ssaoOutputFormat,
+			.initialLayout = RGL::ResourceLayout::Undefined,
+			.debugName = "SSAO Texture"
+		});
+
 	constexpr static uint32_t maxssgiRes = 1024;
 
 	const auto ratio = float(height) / width;
@@ -1999,6 +2076,7 @@ void RavEngine::RenderEngine::ResizeRenderTargetCollection(RenderTargetCollectio
     gcTextures.enqueue(collection.radianceTexture);
     gcTextures.enqueue(collection.viewSpaceNormalsTexture);
     gcTextures.enqueue(collection.ssgiOutputTexture);
+    gcTextures.enqueue(collection.ssaoOutputTexture);
     
     for(const auto tx : collection.mlabAccum){
         gcTextures.enqueue(tx);

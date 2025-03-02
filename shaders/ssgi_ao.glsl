@@ -112,11 +112,16 @@ vec4 getVisibility() {
     lighting /= ubo.sliceCount;
 
     vec4 ret = vec4(0);
-#if RVE_IL
+#ifdef RVE_IL
     ret.rgb = lighting;
 #endif
-#if RVE_AO
+#ifdef RVE_AO
     ret.a = min(1,visibility);   // pin AO to 1
+#endif
+
+    // if IL is not being written, put AO in all channels
+#if defined(RVE_AO) && !defined(RVE_IL)
+    ret.rgba = ret.a;
 #endif
 
     return ret;

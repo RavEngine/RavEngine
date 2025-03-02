@@ -76,10 +76,10 @@ namespace RavEngine {
 
 		RGLTexturePtr dummyShadowmap, dummyCubemap;
 		RGLSamplerPtr textureSampler, shadowSampler, depthPyramidSampler;
-		RGLRenderPassPtr litRenderPass, unlitRenderPass, envSkyboxPass, depthPrepassRenderPass, depthPrepassRenderPassLit, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, finalRenderPassNoDepth, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, litTransparentPass, unlitTransparentPass, transparentClearPass, transparencyApplyPass, ssgiPassNoClear, ssgiAmbientApplyPass, ssgiPassClear;
+		RGLRenderPassPtr litRenderPass, unlitRenderPass, envSkyboxPass, depthPrepassRenderPass, depthPrepassRenderPassLit, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, finalRenderPassNoDepth, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, litTransparentPass, unlitTransparentPass, transparentClearPass, transparencyApplyPass, ssaoPassClear, ssgiPassNoClear, ssgiAmbientApplyPass, ssgiPassClear;
 
 		RGLRenderPipelinePtr depthPyramidCopyPipeline,
-			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, transparencyApplyPipeline, ssgipipeline, ssgiDownsamplePipeline, ssgiUpsamplePipeline, ambientSSGIApplyPipeline, aoUpsamplePipeline, ssgiUpsamplePipleineFinalStep;
+			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, transparencyApplyPipeline, ssgipipeline, ssaoPipeline, ssgiDownsamplePipeline, ssgiUpsamplePipeline, ambientSSGIApplyPipeline, aoUpsamplePipeline, ssgiUpsamplePipleineFinalStep;
 		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline, clusterBuildGridPipeline, clusterPopulatePipeline;
 		RGLBufferPtr screenTriVerts,
 			sharedPositionBuffer,sharedNormalBuffer, sharedTangentBuffer, sharedBitangentBuffer, sharedUV0Buffer, sharedLightmapUVBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedPositionBuffer, sharedSkinnedNormalBuffer, sharedSkinnedTangentBuffer, sharedSkinnedBitangentBuffer, sharedSkinnedUV0Buffer, quadVertBuffer, lightClusterBuffer, debugRenderBufferUpload;
@@ -151,6 +151,7 @@ namespace RavEngine {
 			albedoFormat = RGL::TextureFormat::RGBA16_Sfloat,
 			viewSpaceNormalTextureFormat = RGL::TextureFormat::RGBA16_Sfloat,
 			ssgiOutputFormat = RGL::TextureFormat::RGBA16_Sfloat,
+			ssaoOutputFormat = RGL::TextureFormat::R16_Float,
 			depthFormat = RGL::TextureFormat::D32SFloat;
 
 		struct navDebugUBO {

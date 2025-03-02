@@ -1759,6 +1759,40 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						return mat->GetDepthPrepassPipeline();
 						}, renderArea, { .Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, &target);
 					mainCommandBuffer->EndRenderDebugMarker();
+
+					// render SSAO
+					if (camData.indirectSettings.SSAOEnabled) {
+						mainCommandBuffer->BeginRenderDebugMarker("SSAO");
+						ssaoPassClear->SetAttachmentTexture(0, target.ssaoOutputTexture->GetDefaultView());
+						ssaoPassClear->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+						ssgiPassNoClear->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+
+						mainCommandBuffer->BeginRendering(ssaoPassClear);
+						mainCommandBuffer->BindRenderPipeline(ssaoPipeline);
+						mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+						mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 1);
+						mainCommandBuffer->SetFragmentTexture(target.viewSpaceNormalsTexture->GetDefaultView(), 2);
+						mainCommandBuffer->SetFragmentTexture(target.radianceTexture->GetDefaultView(), 3);
+
+						const auto size = target.ssgiOutputTexture->GetSize();
+						{
+							SSGIUBO ssgiubo{
+								.projection = camData.projOnly,
+								.invProj = glm::inverse(camData.projOnly),
+								.outputDim = {size.width / 2, size.height / 2},
+								.sampleCount = 4,
+								.sampleRadius = 4.0,
+								.sliceCount = 4,
+								.hitThickness = 0.5,
+							};
+							mainCommandBuffer->SetFragmentBytes(ssgiubo, 0);
+						}
+
+						mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+						mainCommandBuffer->Draw(3);
+						mainCommandBuffer->EndRendering();
+						mainCommandBuffer->EndRenderDebugMarker();
+					}
 				}
 
 				// render with shading
