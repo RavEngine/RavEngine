@@ -121,7 +121,7 @@ vec4 getVisibility() {
 
     // if IL is not being written, put AO in all channels
 #if defined(RVE_AO) && !defined(RVE_IL)
-    ret.rgba = ret.a;
+    ret = vec4(ret.a);
 #endif
 
     return ret;
