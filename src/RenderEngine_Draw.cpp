@@ -1779,12 +1779,12 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->SetFragmentTexture(target.viewSpaceNormalsTexture->GetDefaultView(), 2);
 						mainCommandBuffer->SetFragmentTexture(target.radianceTexture->GetDefaultView(), 3);
 
-						const auto size = target.ssgiOutputTexture->GetSize();
+						const auto size = target.ssaoOutputTexture1->GetSize();
 						{
 							SSGIUBO ssgiubo{
 								.projection = camData.projOnly,
 								.invProj = glm::inverse(camData.projOnly),
-								.outputDim = {size.width / 2, size.height / 2},
+								.outputDim = {size.width, size.height},
 								.sampleCount = 4,
 								.sampleRadius = 4.0,
 								.sliceCount = 4,
@@ -1801,7 +1801,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->BeginCompute(blurKernelX);
 						mainCommandBuffer->SetComputeTexture(target.ssaoOutputTexture1->GetDefaultView(), 0);
 						mainCommandBuffer->SetComputeTexture(target.ssaoOutputTexture2->GetDefaultView(), 1);
-						mainCommandBuffer->DispatchCompute(std::ceil((size.width / 2) / 64.0), (size.height/2), 1, 64, 1, 1);
+						mainCommandBuffer->DispatchCompute(std::ceil(size.width / 64.0), (size.height), 1, 64, 1, 1);
 
 						mainCommandBuffer->EndCompute();
 
@@ -1809,7 +1809,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->BeginCompute(blurKernelY);
 						mainCommandBuffer->SetComputeTexture(target.ssaoOutputTexture2->GetDefaultView(), 0);
 						mainCommandBuffer->SetComputeTexture(target.ssaoOutputTexture1->GetDefaultView(), 1);
-						mainCommandBuffer->DispatchCompute(std::ceil((size.height / 2) / 64.0), (size.width / 2), 1, 64, 1, 1);
+						mainCommandBuffer->DispatchCompute(std::ceil(size.height / 64.0), (size.width), 1, 64, 1, 1);
 						mainCommandBuffer->EndCompute();
 
 						mainCommandBuffer->EndRenderDebugMarker();
