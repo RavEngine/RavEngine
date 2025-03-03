@@ -880,6 +880,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			}
 
 #pragma pack(push, 1)
+			const auto outputDim = viewportScissor.extent;
 			struct LightData {
 				glm::mat4 viewProj;
 				glm::mat4 viewOnly;
@@ -887,10 +888,12 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				glm::uvec4 screenDimension;
 				glm::vec3 camPos;
 				glm::uvec3 gridSize;
+				glm::uvec2 outputSize;
 				uint32_t ambientLightCount;
 				uint32_t directionalLightCount;
 				float zNear;
 				float zFar;
+				uint32_t aoBindlessIndex = 0;
 			}
 			lightData{
 				.viewProj = viewproj,
@@ -899,10 +902,12 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				.screenDimension = { viewportScissor.offset[0],viewportScissor.offset[1], viewportScissor.extent[0],viewportScissor.extent[1] },
 				.camPos = camPos,
 				.gridSize = { Clustered::gridSizeX, Clustered::gridSizeY, Clustered::gridSizeZ },
+				.outputSize = {outputDim[0], outputDim[1]},
 				.ambientLightCount = worldOwning->renderData.ambientLightData.DenseSize(),
 				.directionalLightCount = worldOwning->renderData.directionalLightData.DenseSize(),
 				.zNear = zNearFar.x,
 				.zFar = zNearFar.y,
+				.aoBindlessIndex = target ? target->ssaoOutputTexture1->GetDefaultView().GetReadonlyBindlessTextureHandle() : Texture::Manager::defaultTexture->GetRHITexturePointer()->GetDefaultView().GetReadonlyBindlessTextureHandle(),
 			};
 
 #pragma pack(pop)

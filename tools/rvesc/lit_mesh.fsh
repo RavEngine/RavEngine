@@ -157,6 +157,9 @@ void main(){
     // compute lighting based on the results of the user's function
 
     // ambient lights
+    const vec2 ao_uv = vec2(gl_FragCoord.xy) / engineConstants[0].outputDim;
+    float ao = texture(sampler2D(shadowMaps[engineConstants[0].aoTextureBindlessID],environmentSampler),ao_uv).r;
+
     for(uint i = 0; i < engineConstants[0].ambientLightCount; i++){
         AmbientLightData light = ambientLights[i];
         
@@ -170,7 +173,8 @@ void main(){
             environmentColor = texture(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], environmentSampler), worldNormal).rgb;
         }
 
-        outcolor += user_out.color * vec4(light.color * light.intensity * environmentColor,1);
+        vec4 ambientContrib = vec4(light.color * light.intensity * environmentColor * ao,1);
+        outcolor += user_out.color * ambientContrib;
     }
 
     // directional lights
