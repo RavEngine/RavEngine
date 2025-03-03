@@ -80,7 +80,7 @@ namespace RavEngine {
 
 		RGLRenderPipelinePtr depthPyramidCopyPipeline,
 			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, transparencyApplyPipeline, ssgipipeline, ssaoPipeline, ssgiDownsamplePipeline, ssgiUpsamplePipeline, ambientSSGIApplyPipeline, aoUpsamplePipeline, ssgiUpsamplePipleineFinalStep;
-		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline, clusterBuildGridPipeline, clusterPopulatePipeline, blurKernel;
+		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline, clusterBuildGridPipeline, clusterPopulatePipeline, blurKernelX, blurKernelY;
 		RGLBufferPtr screenTriVerts,
 			sharedPositionBuffer,sharedNormalBuffer, sharedTangentBuffer, sharedBitangentBuffer, sharedUV0Buffer, sharedLightmapUVBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedPositionBuffer, sharedSkinnedNormalBuffer, sharedSkinnedTangentBuffer, sharedSkinnedBitangentBuffer, sharedSkinnedUV0Buffer, quadVertBuffer, lightClusterBuffer, debugRenderBufferUpload;
 		uint32_t debugRenderBufferSize = 0, debugRenderBufferOffset = 0;

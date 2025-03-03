@@ -1088,10 +1088,17 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				},
 		}
 	});
-	blurKernel = device->CreateComputePipeline({
+	blurKernelX = device->CreateComputePipeline({
 		.stage = {
 			.type = RGL::ShaderStageDesc::Type::Compute,
-			.shaderModule = LoadShaderByFilename("blur_kernel_csh", device)
+			.shaderModule = LoadShaderByFilename("blur_kernel_x_csh", device)
+		},
+		.pipelineLayout = blurKernelLayout
+	});
+	blurKernelY = device->CreateComputePipeline({
+		.stage = {
+			.type = RGL::ShaderStageDesc::Type::Compute,
+			.shaderModule = LoadShaderByFilename("blur_kernel_y_csh", device)
 		},
 		.pipelineLayout = blurKernelLayout
 	});

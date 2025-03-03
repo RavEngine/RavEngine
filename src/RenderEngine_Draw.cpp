@@ -1791,15 +1791,23 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->SetVertexBuffer(screenTriVerts);
 						mainCommandBuffer->Draw(3);
 						mainCommandBuffer->EndRendering();
-						mainCommandBuffer->EndRenderDebugMarker();
 
-						// blur it
-						mainCommandBuffer->BeginCompute(blurKernel);
+						// blur it horizontally --> tex2
+						mainCommandBuffer->BeginCompute(blurKernelX);
 						mainCommandBuffer->SetComputeTexture(target.ssaoOutputTexture1->GetDefaultView(), 0);
 						mainCommandBuffer->SetComputeTexture(target.ssaoOutputTexture2->GetDefaultView(), 1);
 						mainCommandBuffer->DispatchCompute(std::ceil((size.width / 2) / 64.0), (size.height/2), 1, 64, 1, 1);
 
 						mainCommandBuffer->EndCompute();
+
+						// blur it vertically --> tex1
+						mainCommandBuffer->BeginCompute(blurKernelY);
+						mainCommandBuffer->SetComputeTexture(target.ssaoOutputTexture2->GetDefaultView(), 0);
+						mainCommandBuffer->SetComputeTexture(target.ssaoOutputTexture1->GetDefaultView(), 1);
+						mainCommandBuffer->DispatchCompute(std::ceil((size.height / 2) / 64.0), (size.width / 2), 1, 64, 1, 1);
+						mainCommandBuffer->EndCompute();
+
+						mainCommandBuffer->EndRenderDebugMarker();
 					}
 				}
 
