@@ -1072,6 +1072,30 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.pipelineLayout = defaultCullingLayout
 	});
 
+	auto blurKernelLayout = device->CreatePipelineLayout({
+		.bindings = {
+				{
+					.binding = 0,
+					.type = RGL::BindingType::StorageImage,
+					.stageFlags = RGL::BindingVisibility::Compute,
+					.writable = false
+				},
+				{
+					.binding = 1,
+					.type = RGL::BindingType::StorageImage,
+					.stageFlags = RGL::BindingVisibility::Compute,
+					.writable = true
+				},
+		}
+	});
+	blurKernel = device->CreateComputePipeline({
+		.stage = {
+			.type = RGL::ShaderStageDesc::Type::Compute,
+			.shaderModule = LoadShaderByFilename("blur_kernel_csh", device)
+		},
+		.pipelineLayout = blurKernelLayout
+	});
+
 	auto skinningDrawCallPrepareLayout = device->CreatePipelineLayout({
 		.bindings = {
 			{
@@ -2012,15 +2036,17 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 		});
 
 	// ssao is rendered at half-resolution
-	collection.ssaoOutputTexture = device->CreateTexture({
-		.usage = {.Sampled = true, .ColorAttachment = true },
+	const RGL::TextureConfig ssaoTexConfig = {
+		.usage = {.Sampled = true, .Storage = true, .ColorAttachment = true },
 			.aspect = {.HasColor = true },
 			.width = width / 2,
 			.height = height / 2,
 			.format = ssaoOutputFormat,
 			.initialLayout = RGL::ResourceLayout::Undefined,
 			.debugName = "SSAO Texture"
-		});
+	};
+	collection.ssaoOutputTexture1 = device->CreateTexture(ssaoTexConfig);
+	collection.ssaoOutputTexture2 = device->CreateTexture(ssaoTexConfig);
 
 	constexpr static uint32_t maxssgiRes = 1024;
 
@@ -2076,7 +2102,8 @@ void RavEngine::RenderEngine::ResizeRenderTargetCollection(RenderTargetCollectio
     gcTextures.enqueue(collection.radianceTexture);
     gcTextures.enqueue(collection.viewSpaceNormalsTexture);
     gcTextures.enqueue(collection.ssgiOutputTexture);
-    gcTextures.enqueue(collection.ssaoOutputTexture);
+    gcTextures.enqueue(collection.ssaoOutputTexture1);
+    gcTextures.enqueue(collection.ssaoOutputTexture2);
     
     for(const auto tx : collection.mlabAccum){
         gcTextures.enqueue(tx);

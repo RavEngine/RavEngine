@@ -1763,7 +1763,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					// render SSAO
 					if (camData.indirectSettings.SSAOEnabled) {
 						mainCommandBuffer->BeginRenderDebugMarker("SSAO");
-						ssaoPassClear->SetAttachmentTexture(0, target.ssaoOutputTexture->GetDefaultView());
+						ssaoPassClear->SetAttachmentTexture(0, target.ssaoOutputTexture1->GetDefaultView());
 						ssaoPassClear->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 						ssgiPassNoClear->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
@@ -1792,6 +1792,14 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->Draw(3);
 						mainCommandBuffer->EndRendering();
 						mainCommandBuffer->EndRenderDebugMarker();
+
+						// blur it
+						mainCommandBuffer->BeginCompute(blurKernel);
+						mainCommandBuffer->SetComputeTexture(target.ssaoOutputTexture1->GetDefaultView(), 0);
+						mainCommandBuffer->SetComputeTexture(target.ssaoOutputTexture2->GetDefaultView(), 1);
+						mainCommandBuffer->DispatchCompute(std::ceil((size.width / 2) / 64.0), (size.height/2), 1, 64, 1, 1);
+
+						mainCommandBuffer->EndCompute();
 					}
 				}
 
