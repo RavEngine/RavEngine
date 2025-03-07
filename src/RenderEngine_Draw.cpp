@@ -1777,18 +1777,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
 						mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 1);
 						mainCommandBuffer->SetFragmentTexture(target.viewSpaceNormalsTexture->GetDefaultView(), 2);
-						mainCommandBuffer->SetFragmentTexture(target.radianceTexture->GetDefaultView(), 3);
 
 						const auto size = target.ssaoOutputTexture1->GetSize();
 						{
-							SSGIUBO ssgiubo{
-								.projection = camData.projOnly,
-								.invProj = glm::inverse(camData.projOnly),
-								.outputDim = {size.width, size.height},
-								.sampleCount = 4,
-								.sampleRadius = 4.0,
-								.sliceCount = 4,
-								.hitThickness = 0.5,
+							GTAOUBO ssgiubo{
+								.screenDim = {size.width, size.height},
 							};
 							mainCommandBuffer->SetFragmentBytes(ssgiubo, 0);
 						}

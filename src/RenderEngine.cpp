@@ -1614,6 +1614,27 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.constants = {{sizeof(SSGIUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Fragment)}} 
 	});
 
+	const auto gtaoLayout = device->CreatePipelineLayout({
+		.bindings = {
+			{
+				.binding = 0,
+				.type = RGL::BindingType::Sampler,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 1,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 2,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+		},
+		.constants = {{sizeof(GTAOUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Fragment)}}
+	});
+
 	ssgipipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
 		.stages = {
 				{
@@ -1670,7 +1691,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				},
 				{
 					.type = RGL::ShaderStageDesc::Type::Fragment,
-					.shaderModule = LoadShaderByFilename("ssgi_ao_only_fsh", device),
+					.shaderModule = LoadShaderByFilename("gtao_fsh", device),
 				}
 		},
 		.vertexConfig = {
@@ -1707,7 +1728,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.depthTestEnabled = false,
 			.depthWriteEnabled = false,
 		},
-		.pipelineLayout = ssgiLayout,
+		.pipelineLayout = gtaoLayout,
 	});
 
 	{

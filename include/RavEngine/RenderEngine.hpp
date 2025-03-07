@@ -190,6 +190,10 @@ namespace RavEngine {
 			float hitThickness;
 		};
 
+		struct GTAOUBO {
+			glm::ivec2 screenDim;
+		};
+
 		struct JointInfluence {
 			uint32_t joint_index;
 			float influence;

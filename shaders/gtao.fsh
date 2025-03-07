@@ -15,11 +15,9 @@ layout(push_constant, scalar) uniform UniformBufferObject{
 } ubo;
  
 // Depth buffer
-layout(binding = 0) uniform sampler2D gDepth;
-#if 0
-layout(binding = 1) uniform texture2D gDepth;
-layout(binding = 2) uniform texture2D gViewNormal;
-#endif
+layout(binding = 0) uniform sampler g_sampler;
+layout(binding = 1) uniform texture2D tDepth;
+layout(binding = 2) uniform texture2D tViewNormal;
  
 // Used to get vector from camera to pixel
 float aspect;
@@ -77,7 +75,7 @@ vec3 GetCameraVec(vec2 uv)
 void SliceSample(vec2 tc_base, vec2 aoDir, int i, float targetMip, vec3 ray, vec3 v, inout float closest)
 {
     vec2 uv = tc_base + aoDir * i;
-    float depth = textureLod(gDepth, uv, targetMip).x;
+    float depth = textureLod(sampler2D(tDepth, g_sampler), uv, targetMip).x;
     // Vector from current pixel to current slice sample
     vec3 p = GetCameraVec(uv) * depth - ray;
     // Cosine of the horizon angle of the current sample
@@ -100,29 +98,15 @@ void main()
     aspect = float(ubo.screenDim.x) / ubo.screenDim.y;
     
     // Depth of the current pixel
-    float dhere = textureLod(gDepth, tc_original, 0.0).x;
+    float dhere = textureLod(sampler2D(tDepth, g_sampler), tc_original, 0.0).x;
     // Vector from camera to the current pixel's position
     vec3 ray = GetCameraVec(tc_original) * dhere;
     
-    const float normalSampleDist = 1.0;
-    
-    // Calculate normal from the 4 neighbourhood pixels
-    vec2 uv = tc_original + vec2(viewsizediv.x * normalSampleDist, 0.0);
-    vec3 p1 = ray - GetCameraVec(uv) * textureLod(gDepth, uv, 0.0).x;
-    
-    uv = tc_original + vec2(0.0, viewsizediv.y * normalSampleDist);
-    vec3 p2 = ray - GetCameraVec(uv) * textureLod(gDepth, uv, 0.0).x;
-    
-    uv = tc_original + vec2(-viewsizediv.x * normalSampleDist, 0.0);
-    vec3 p3 = ray - GetCameraVec(uv) * textureLod(gDepth, uv, 0.0).x;
-    
-    uv = tc_original + vec2(0.0, -viewsizediv.y * normalSampleDist);
-    vec3 p4 = ray - GetCameraVec(uv) * textureLod(gDepth, uv, 0.0).x;
-    
-    vec3 normal1 = normalize(cross(p1, p2));
-    vec3 normal2 = normalize(cross(p3, p4));
-    
-    vec3 normal = normalize(normal1 + normal2);
+    vec3 normal = texture(sampler2D(tViewNormal, g_sampler), tc_original).rgb;
+    if (normal.r == 0 && normal.g == 0 && normal.b == 0){
+        fragcolor = vec4(1,1,1,1);
+        return;
+    }
     
     // Calculate the distance between samples (direction vector scale) so that the world space AO radius remains constant but also clamp to avoid cache trashing
     // viewsizediv = vec2(1.0 / sreenWidth, 1.0 / screenHeight)
