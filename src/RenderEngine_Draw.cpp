@@ -1780,7 +1780,9 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 						const auto size = target.ssaoOutputTexture1->GetSize();
 						{
-							GTAOUBO ssgiubo{
+							SSAOUBO ssgiubo{
+								.proj = camData.projOnly,
+								.invProj = glm::inverse(camData.projOnly),
 								.screenDim = {size.width, size.height},
 							};
 							mainCommandBuffer->SetFragmentBytes(ssgiubo, 0);

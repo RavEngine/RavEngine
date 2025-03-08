@@ -1683,7 +1683,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.pipelineLayout = ssgiLayout,
 	});
 
-	ssaoPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
+	gtaoPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
 		.stages = {
 				{
 					.type = RGL::ShaderStageDesc::Type::Vertex,
@@ -1730,6 +1730,75 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		},
 		.pipelineLayout = gtaoLayout,
 	});
+
+	const auto ssaoLayout = device->CreatePipelineLayout({
+		.bindings = {
+			{
+				.binding = 0,
+				.type = RGL::BindingType::Sampler,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 1,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 2,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+		},
+		.constants = {{sizeof(SSAOUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Fragment)}}
+	});
+
+	ssaoPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
+		.stages = {
+				{
+					.type = RGL::ShaderStageDesc::Type::Vertex,
+					.shaderModule = LoadShaderByFilename("ssgi_ao_vsh", device),
+				},
+				{
+					.type = RGL::ShaderStageDesc::Type::Fragment,
+					.shaderModule = LoadShaderByFilename("ssao_fsh", device),
+				}
+		},
+		.vertexConfig = {
+			.vertexBindings = {
+				{
+					.binding = 0,
+					.stride = sizeof(Vertex2D),
+				},
+			},
+			.attributeDescs = {
+				{
+					.location = 0,
+					.binding = 0,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+				},
+			}
+		},
+		.inputAssembly = {
+			.topology = RGL::PrimitiveTopology::TriangleList,
+		},
+		.rasterizerConfig = {
+			.windingOrder = RGL::WindingOrder::Counterclockwise,
+		},
+		.colorBlendConfig = {
+			.attachments = {
+				{
+					.format = ssaoOutputFormat,
+				},
+			}
+		},
+		.depthStencilConfig = {
+			.depthFormat = depthFormat,
+			.depthTestEnabled = false,
+			.depthWriteEnabled = false,
+		},
+		.pipelineLayout = ssaoLayout,
+		});
 
 	{
 		auto downscaleLayout = device->CreatePipelineLayout({
