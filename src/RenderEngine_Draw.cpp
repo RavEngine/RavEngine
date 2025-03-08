@@ -826,7 +826,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                 
             QuadParticleData quadData{
                 .viewProj = viewproj,
-                .billboard = glm::inverse(rotComp),
+                .billboard = glm::transpose(rotComp),
             };
                 
             particleBillboardMatrices = WriteTransient(quadData);
@@ -2036,7 +2036,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                 if (worldOwning->skybox && worldOwning->skybox->skyMat && worldOwning->skybox->skyMat->GetMat()->renderPipeline) {
 					mainCommandBuffer->BeginRendering(unlitRenderPass);
 					mainCommandBuffer->BeginRenderDebugMarker("Skybox");
-					renderSkybox(worldOwning->skybox->skyMat->GetMat()->renderPipeline, glm::inverse(camData.viewOnly), camData.camPos, deg_to_rad(camData.fov), fullSizeViewport, fullSizeScissor);
+					renderSkybox(worldOwning->skybox->skyMat->GetMat()->renderPipeline, glm::transpose(camData.viewOnly), camData.camPos, deg_to_rad(camData.fov), fullSizeViewport, fullSizeScissor);
 					mainCommandBuffer->EndRenderDebugMarker();
 					mainCommandBuffer->EndRendering();
                 }
