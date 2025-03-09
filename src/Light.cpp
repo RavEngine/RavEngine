@@ -176,8 +176,8 @@ RavEngine::SpotLight::SpotLight()
 RavEngine::EnvironmentLight::EnvironmentLight(decltype(sky) sky, decltype(outputTexture) ot) : sky(sky), outputTexture(ot)
 {
     if (auto app = GetApp()) {
-        auto dim = ot->GetTextureSize();
 #if !RVE_SERVER
+        auto dim = ot->GetTextureSize();
         stagingTexture = New<Texture>(dim.width, dim.height,Texture::Config{ .enableRenderTarget = true, .format = RGL::TextureFormat::RGBA16_Sfloat, .debugName = "env staging"});
         stagingDepthTexture = app->GetDevice()->CreateTexture({
             .usage = {.DepthStencilAttachment = true},
