@@ -100,10 +100,12 @@ struct EnvironmentLight {
 private:
     friend class RenderEngine;
     friend class World;
-    Ref<Texture> stagingTexture;
     Ref<Skybox> sky;
+#if !RVE_SERVER
+    Ref<Texture> stagingTexture;
     Ref<CubemapTexture> outputTexture;
     RGLTexturePtr stagingDepthTexture;
+#endif
     bool environmentNeedsUpdate = true;
 public:
     EnvironmentLight(decltype(sky) sky, decltype(outputTexture) ot);
