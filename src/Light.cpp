@@ -193,9 +193,11 @@ RavEngine::EnvironmentLight::EnvironmentLight(decltype(sky) sky, decltype(output
 
 RavEngine::EnvironmentLight::~EnvironmentLight()
 {
+#if !RVE_SERVER
     if (auto app = GetApp()) {
         app->GetRenderEngine().gcTextures.enqueue(stagingDepthTexture);
     }
+#endif
 }
 
 RavEngine::PointLight::PointLight()
