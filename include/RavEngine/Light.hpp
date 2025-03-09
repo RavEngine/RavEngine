@@ -101,9 +101,9 @@ private:
     friend class RenderEngine;
     friend class World;
     Ref<Skybox> sky;
+    Ref<CubemapTexture> outputTexture;
 #if !RVE_SERVER
     Ref<Texture> stagingTexture;
-    Ref<CubemapTexture> outputTexture;
     RGLTexturePtr stagingDepthTexture;
 #endif
     bool environmentNeedsUpdate = true;
