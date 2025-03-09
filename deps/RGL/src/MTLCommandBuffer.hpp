@@ -87,6 +87,8 @@ struct BufferMTL;
     private:
         bool isRender = false;
         const RenderPipelineDescriptor* pipelineConstructionSettings = nullptr;
+        std::shared_ptr<RenderPipelineMTL> currentRenderPipeline = nullptr;
+        std::shared_ptr<ComputePipelineMTL> currentComputePipeline = nullptr;
     };
 
 }

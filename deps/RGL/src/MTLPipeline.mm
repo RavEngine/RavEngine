@@ -182,5 +182,19 @@ RenderPipelineMTL::RenderPipelineMTL(decltype(owningDevice) owningDevice, const 
     
 }
 
+PipelineLayoutMTL::PipelineLayoutMTL(const decltype(settings)& settings) : settings(settings){
+    auto bindings = settings.bindings;
+    std::sort(bindings.begin(), bindings.end(), [](auto&& a, auto&& b){
+        return a.binding < b.binding;
+    });
+    
+    uint32_t remapIndex = 0;
+    for(const auto& binding : bindings){
+        if (binding.type == RGL::BindingType::Sampler){
+            samplerBindingsMap[binding.binding] = remapIndex++;
+        }
+    };
+}
+
 }
 #endif

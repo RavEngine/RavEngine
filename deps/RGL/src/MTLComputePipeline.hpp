@@ -8,6 +8,7 @@ struct DeviceMTL;
 struct ComputePipelineMTL : public IComputePipeline{
     OBJC_ID(MTLComputePipelineState) pipelineState;
     const std::shared_ptr<DeviceMTL> owningDevice;
+    const ComputePipelineDescriptor settings;
     ComputePipelineMTL(decltype(owningDevice) owningDevice, const ComputePipelineDescriptor& desc);
     virtual ~ComputePipelineMTL();
 };

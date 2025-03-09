@@ -707,7 +707,7 @@ IMResult SPIRVtoMSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMod
     auto res = msl.compile();
     
     // renumber buffers the hacky way
-    if (model == spv::ExecutionModel::ExecutionModelVertex && opt.bufferBindingSettings.stageInputSize > 0){
+    constexpr auto resourceRenumber = [](auto&& res, auto&& opt, const std::string_view tag, auto&& renumberFn){
         constexpr auto atoi_n = [](std::string_view str)
         {
             int ret = 0;
@@ -718,26 +718,25 @@ IMResult SPIRVtoMSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMod
             return ret;
         };
         
-        constexpr static auto tag = "[[buffer(";
-        constexpr auto taglen = sizeof(tag);
+        auto taglen = tag.size();
         size_t itr = 0;
         while (itr < res.size()){
-            itr = res.find(tag, itr, taglen);
+            itr = res.find(tag.data(), itr, taglen);
             if (itr == std::string::npos){
                 break;
             }
             auto blockEnd = res.find(")",itr);
             
-            const auto begin = itr + taglen + 1;
+            const auto begin = itr + taglen;
             
-            string_view rangeStr(res.data() + begin, blockEnd - itr - taglen - 1);
+            string_view rangeStr(res.data() + begin, blockEnd - itr - taglen);
             
             auto value = atoi_n(rangeStr);
             
-            value += opt.bufferBindingSettings.stageInputSize;
+            value = renumberFn(value);
             
             if (value > 31){
-                throw std::runtime_error("Adjusted buffer index too large: " + std::to_string(value));
+                throw std::runtime_error("Adjusted index too large: " + std::to_string(value));
             }
             
             // insert the value
@@ -745,6 +744,18 @@ IMResult SPIRVtoMSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMod
             
             itr++;
         }
+    };
+    
+    if (model == spv::ExecutionModel::ExecutionModelVertex && opt.bufferBindingSettings.stageInputSize > 0){
+        resourceRenumber(res,opt,"[[buffer(",[&opt](auto value){
+            return value + opt.bufferBindingSettings.stageInputSize;
+        });
+    }
+    {
+        uint32_t samplerIdx = 0;
+        resourceRenumber(res,opt,"[[sampler(",[&opt,&samplerIdx](auto value){
+            return samplerIdx++;
+        });
     }
     
 	return {std::move(res), "", std::move(refldata)};
