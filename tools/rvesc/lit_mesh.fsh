@@ -173,12 +173,12 @@ void main(){
             vec3 cameraRay = normalize(vec3(ndc, -1));
             cameraRay.y *= -1;
             cameraRay = mat3(engineConstants[0].invView) * cameraRay;   // world space
-            vec3 surfaceReflectedRay = reflect(cameraRay, worldNormal);
+            vec3 surfaceReflectedRay = normalize(reflect(cameraRay, worldNormal));
 
             vec3 environmentColor = texture(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], environmentSampler), surfaceReflectedRay).rgb;
 
             vec3 rad = vec3(0);
-            //vec3 lightResult = CalculateLightRadiance(worldNormal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, -surfaceReflectedRay, 1, environmentColor * light.intensity, rad);
+            vec3 lightResult = CalculateLightRadiance(worldNormal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, surfaceReflectedRay, 1, environmentColor * light.intensity, rad);
             radiance += rad;
             outcolor += vec4(ao * environmentColor * light.intensity,0);
         }
