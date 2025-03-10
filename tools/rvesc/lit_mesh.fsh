@@ -143,7 +143,7 @@ void main(){
     outViewSpaceNormal = vec4(mat3(data.viewOnly) * worldNormal,1);
     #endif
 
-    vec4 outcolor = vec4(0); // NV: these don't default-init to 0
+    vec4 outcolor = vec4(0,0,0,1); // NV: these don't default-init to 0
 
     vec3 radiance = vec3(0);
     
@@ -158,7 +158,7 @@ void main(){
 
     // ambient lights
     const vec2 ao_uv = vec2(gl_FragCoord.xy) / engineConstants[0].outputDim;
-    float ao = texture(sampler2D(shadowMaps[engineConstants[0].aoTextureBindlessID],environmentSampler),ao_uv).r;
+    float ao = min(texture(sampler2D(shadowMaps[engineConstants[0].aoTextureBindlessID],environmentSampler),ao_uv).r,1);
 
     for(uint i = 0; i < engineConstants[0].ambientLightCount; i++){
         AmbientLightData light = ambientLights[i];
@@ -167,14 +167,26 @@ void main(){
             continue;
         }
 
-        vec3 environmentColor = vec3(1);
         if (light.environmentCubemapBindlessIndex != (~0)){
             // use cubemap as environment color
-            environmentColor = texture(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], environmentSampler), worldNormal).rgb;
-        }
+            vec2 ndc = ao_uv * 2 - 1; 
+            vec3 cameraRay = normalize(vec3(ndc, -1));
+            cameraRay.y *= -1;
+            cameraRay = mat3(engineConstants[0].invView) * cameraRay;   // world space
+            vec3 surfaceReflectedRay = reflect(cameraRay, worldNormal);
 
-        vec4 ambientContrib = vec4(light.color * light.intensity * environmentColor * ao,1);
-        outcolor += user_out.color * ambientContrib;
+            vec3 environmentColor = texture(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], environmentSampler), surfaceReflectedRay).rgb;
+
+            vec3 rad = vec3(0);
+            //vec3 lightResult = CalculateLightRadiance(worldNormal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, -surfaceReflectedRay, 1, environmentColor * light.intensity, rad);
+            radiance += rad;
+            outcolor += vec4(ao * environmentColor * light.intensity,0);
+        }
+        // no BRDF
+        else{
+            vec4 ambientContrib = vec4(light.color * light.intensity * ao,0);
+            outcolor += user_out.color * ambientContrib;
+        }
     }
 
     // directional lights

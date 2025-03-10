@@ -1,6 +1,7 @@
 struct EngineData_Internal{
     mat4 viewProj;
     mat4 viewOnly;
+    mat4 invView;
     mat4 projOnly;
     uvec4 screenDimensions;
     vec3 camPos;

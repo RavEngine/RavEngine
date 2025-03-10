@@ -884,6 +884,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			struct LightData {
 				glm::mat4 viewProj;
 				glm::mat4 viewOnly;
+				glm::mat4 invView;
 				glm::mat4 projOnly;
 				glm::uvec4 screenDimension;
 				glm::vec3 camPos;
@@ -898,6 +899,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			lightData{
 				.viewProj = viewproj,
 				.viewOnly = viewonly,
+				.invView = glm::inverse(viewonly),
 				.projOnly = projOnly,
 				.screenDimension = { viewportScissor.offset[0],viewportScissor.offset[1], viewportScissor.extent[0],viewportScissor.extent[1] },
 				.camPos = camPos,
