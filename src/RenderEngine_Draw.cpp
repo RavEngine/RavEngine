@@ -812,8 +812,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 		prepareSkeletalCullingBuffer();
 	}
-
-    auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &camIdx]<bool includeLighting = true, bool transparentMode = false, bool runCulling = true>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers, const RenderTargetCollection* target){
+	struct RenderFromPerspectiveSettings {
+		bool enableSSAO = false;
+	};
+    auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &camIdx]<bool includeLighting = true, bool transparentMode = false, bool runCulling = true>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers, const RenderTargetCollection* target, const RenderFromPerspectiveSettings extraSettings){
 			RVE_PROFILE_FN_N("RenderFromPerspective");
             uint32_t particleBillboardMatrices = 0;
 
@@ -881,6 +883,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 #pragma pack(push, 1)
 			const auto outputDim = viewportScissor.extent;
+			bool wantsSSAO = target && extraSettings.enableSSAO;
 			struct LightData {
 				glm::mat4 viewProj;
 				glm::mat4 viewOnly;
@@ -909,7 +912,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				.directionalLightCount = worldOwning->renderData.directionalLightData.DenseSize(),
 				.zNear = zNearFar.x,
 				.zFar = zNearFar.y,
-				.aoBindlessIndex = target ? target->ssaoOutputTexture1->GetDefaultView().GetReadonlyBindlessTextureHandle() : Texture::Manager::defaultTexture->GetRHITexturePointer()->GetDefaultView().GetReadonlyBindlessTextureHandle(),
+				.aoBindlessIndex = wantsSSAO ? target->ssaoOutputTexture1->GetDefaultView().GetReadonlyBindlessTextureHandle() : Texture::Manager::defaultTexture->GetRHITexturePointer()->GetDefaultView().GetReadonlyBindlessTextureHandle(),
 			};
 
 #pragma pack(pop)
@@ -1645,7 +1648,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					auto shadowMapSize = shadowTexture->GetSize().width;
 					renderFromPerspective.template operator()<false,false>(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, {}, shadowRenderPass, [](auto&& mat) {
 						return mat->GetShadowRenderPipeline();
-                    }, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true, .Opaque = true }, lightMats.depthPyramid, light.shadowLayers, nullptr);
+                    }, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true, .Opaque = true }, lightMats.depthPyramid, light.shadowLayers, nullptr, {});
 
 				}
 				postshadowmapFunction(owner);
@@ -1764,7 +1767,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->BeginRenderDebugMarker("Lit Opaque Depth Prepass");
 					renderFromPerspective.template operator() < true, transparentMode, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, depthPrepassRenderPassLit, [](auto&& mat) {
 						return mat->GetDepthPrepassPipeline();
-						}, renderArea, { .Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, &target);
+						}, renderArea, { .Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, & target, {});
 					mainCommandBuffer->EndRenderDebugMarker();
 
 					// render SSAO
@@ -1817,7 +1820,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 				renderFromPerspective.template operator()<true, transparentMode, transparentMode>(camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, transparentMode ? litTransparentPass : litRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-                }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, &target);
+					}, renderArea, { .Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, & target, {.enableSSAO = camData.indirectSettings.SSAOEnabled});
 #if 0
 				if (!transparentMode) {
 
@@ -2012,13 +2015,13 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				mainCommandBuffer->BeginRenderDebugMarker("Unlit Opaque Depth Prepass");
 				renderFromPerspective.template operator() < false, false, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, depthPrepassRenderPass, [](auto&& mat) {
 					return mat->GetDepthPrepassPipeline();
-					}, renderArea, { .Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers, & target);
+					}, renderArea, { .Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers, & target, {});
 				mainCommandBuffer->EndRenderDebugMarker();
 
 				// render color
 				renderFromPerspective.template operator() < false, false, false> (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-					}, renderArea, { .Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers, & target);
+					}, renderArea, { .Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers, & target, {});
 			};
 
 			auto renderLitPassTransparent = [&renderLitPass_Impl](auto&& camData, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
@@ -2033,7 +2036,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				unlitTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 				renderFromPerspective.template operator() < false, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitTransparentPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-				}, renderArea, { .Unlit = true, .Transparent = true }, target.depthPyramid, camData.layers,&target);
+					}, renderArea, { .Unlit = true, .Transparent = true }, target.depthPyramid, camData.layers, & target, {});
 				RVE_PROFILE_SECTION_END(unlittrans);
                 
                 // then do the skybox, if one is defined.
