@@ -59,6 +59,10 @@ namespace RGL {
 		Dimension GetSize() const final;
 		virtual ~TextureD3D12();
 
+		uint8_t GetNumMips() const final {
+			return numMips;
+		}
+
 		ID3D12Resource* GetResource() const final {
 			return texture.Get();
 		}

@@ -177,6 +177,8 @@ RavEngine::EnvironmentLight::EnvironmentLight(decltype(sky) sky, decltype(output
 {
     if (auto app = GetApp()) {
 #if !RVE_SERVER
+        const auto envMips = outputTexture->GetRHITexturePointer()->GetNumMips();
+        Debug::Assert(envMips >= 4, "Environment maps must have at least 4 mip levels");
         auto dim = ot->GetTextureSize();
         stagingTexture = New<Texture>(dim.width, dim.height,Texture::Config{ .enableRenderTarget = true, .format = RGL::TextureFormat::RGBA16_Sfloat, .debugName = "env staging"});
         stagingDepthTexture = app->GetDevice()->CreateTexture({
@@ -184,6 +186,7 @@ RavEngine::EnvironmentLight::EnvironmentLight(decltype(sky) sky, decltype(output
             .aspect = {.HasDepth = true},
             .width = dim.width,
             .height = dim.height,
+            .mipLevels = envMips,
             .format = RGL::TextureFormat::D32SFloat,
             .debugName = "env staging depth"
          });

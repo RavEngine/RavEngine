@@ -267,7 +267,7 @@ CubemapTexture::CubemapTexture(int size, const Config& config)
            .aspect = {.HasColor = true},
            .width = uint32_t(size),
            .height = uint32_t(size),
-           .mipLevels = 1,
+           .mipLevels = config.numMips,
            .arrayLayers = 6,
            .format = config.format,
            .isCubemap = true,
