@@ -386,10 +386,9 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						.offset = {0, 0},
 						.extent = {dim.width / dimDivisor, dim.height / dimDivisor}
 					};
-
+                    const auto renderTarget = stagingTarget->GetViewForMip(mip);
+                    envSkyboxPass->SetAttachmentTexture(0, renderTarget);
 					mainCommandBuffer->BeginRendering(envSkyboxPass);
-					const auto renderTarget = stagingTarget->GetViewForMip(mip);
-					envSkyboxPass->SetAttachmentTexture(0, renderTarget);
 					renderSkybox(environmentPreFilterPipeline, glm::transpose(view), campos, deg_to_rad(90), faceViewport, faceScissor, [&] {
 						mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
 						mainCommandBuffer->SetFragmentTexture(outputTex->GetView(), 2);
