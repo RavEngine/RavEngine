@@ -1,6 +1,7 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_shader_16bit_storage : enable
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
+#extension GL_EXT_samplerless_texture_functions : enable
 
 #if !RVE_DEPTHONLY
 	#ifdef RVE_LIGHTMAP_UV
@@ -175,7 +176,10 @@ void main(){
             cameraRay = mat3(engineConstants[0].invView) * cameraRay;   // world space
             vec3 surfaceReflectedRay = normalize(reflect(cameraRay, worldNormal));
 
-            vec3 environmentColor = texture(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], environmentSampler), surfaceReflectedRay).rgb;
+            const int numLods = textureQueryLevels(cubeMaps[light.environmentCubemapBindlessIndex]);
+            const float envMip = user_out.roughness * numLods;  // higher roughness -> higher LOD
+
+            vec3 environmentColor = textureLod(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], environmentSampler), surfaceReflectedRay, envMip).rgb;
 
             vec3 rad = vec3(0);
             vec3 lightResult = CalculateLightRadiance(worldNormal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, surfaceReflectedRay, 1, environmentColor * light.intensity, rad);
