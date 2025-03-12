@@ -299,7 +299,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
         }
     }
 
-	auto renderSkybox = [this](RGLRenderPipelinePtr skyboxPipeline, const glm::mat4& invView, const glm::vec3 camPos, float fov_rad, RGL::Viewport fullSizeViewport, RGL::Rect fullSizeScissor) {
+	auto renderSkybox = [this](RGLRenderPipelinePtr skyboxPipeline, const glm::mat4& invView, const glm::vec3 camPos, float fov_rad, RGL::Viewport fullSizeViewport, RGL::Rect fullSizeScissor, auto&& extraFn) {
 		struct skyboxData {
 			glm::mat3 invView;
 			glm::vec3 camPos;
@@ -320,6 +320,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		mainCommandBuffer->BindRenderPipeline(skyboxPipeline);
 		mainCommandBuffer->BindBuffer(transientBuffer, 1, transientOffset);
 		mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+		extraFn();
 		mainCommandBuffer->Draw(3);
 		
 	};
@@ -330,27 +331,28 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		if (ambientLight.environment && ambientLight.environment->environmentNeedsUpdate) {
 			ambientLight.environment->environmentNeedsUpdate = false;
 			const auto& outputTex = ambientLight.environment->outputTexture;
-			const auto dim = outputTex->GetTextureSize();
+			
 			// render the six faces
-			RGL::Viewport faceViewport{
-				.x = 0,
-				.y = 0,
-				.width = float(dim.width),
-				.height = float(dim.height),
-			};
-			RGL::Rect faceScissor{
-				.offset = {0, 0},
-				.extent = {dim.width, dim.height}
-			};
 			//TODO: this is inefficient as it incurs a copy and wastes memory
+			constexpr static vector3 campos(0, 0, 0);
 			for (uint8_t i = 0; i < 6; i++){
-				constexpr static vector3 campos(0, 0, 0);
+				const auto dim = outputTex->GetTextureSize();
+				RGL::Viewport faceViewport{
+					.x = 0,
+					.y = 0,
+					.width = float(dim.width),
+					.height = float(dim.height),
+				};
+				RGL::Rect faceScissor{
+					.offset = {0, 0},
+					.extent = {dim.width, dim.height}
+				};
 				glm::mat4 view = PointLight::CalcViewMatrix(campos, i);
 				auto stagingView = ambientLight.environment->stagingTexture->GetRHITexturePointer()->GetDefaultView();
 				envSkyboxPass->SetAttachmentTexture(0, stagingView);
 				envSkyboxPass->SetDepthAttachmentTexture(ambientLight.environment->stagingDepthTexture->GetDefaultView());
 				mainCommandBuffer->BeginRendering(envSkyboxPass);
-				renderSkybox(ambientLight.environment->sky->skyMat->GetMat()->renderPipeline, glm::transpose(view), campos, deg_to_rad(90), faceViewport, faceScissor);
+				renderSkybox(ambientLight.environment->sky->skyMat->GetMat()->renderPipeline, glm::transpose(view), campos, deg_to_rad(90), faceViewport, faceScissor, [] {});
 				mainCommandBuffer->EndRendering();
 
 				mainCommandBuffer->CopyTextureToTexture(
@@ -365,6 +367,51 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						.layer = i
 					}
 				);
+			}
+			for (uint8_t i = 0; i < 6; i++) {
+				// convolve the roughness textures
+				glm::mat4 view = PointLight::CalcViewMatrix(campos, i);
+				const auto numLevels = ambientLight.environment->stagingDepthTexture->GetNumMips();
+				const auto stagingTarget = ambientLight.environment->stagingTexture->GetRHITexturePointer();
+				const auto dim = outputTex->GetTextureSize();
+				for (uint8_t mip = 1; mip < numLevels; mip++) {
+					const uint32_t dimDivisor = std::pow(2, mip);
+					RGL::Viewport faceViewport{
+						.x = 0,
+						.y = 0,
+						.width = float(dim.width) / dimDivisor,
+						.height = float(dim.height) / dimDivisor,
+					};
+					RGL::Rect faceScissor{
+						.offset = {0, 0},
+						.extent = {dim.width / dimDivisor, dim.height / dimDivisor}
+					};
+
+					mainCommandBuffer->BeginRendering(envSkyboxPass);
+					const auto renderTarget = stagingTarget->GetViewForMip(mip);
+					envSkyboxPass->SetAttachmentTexture(0, renderTarget);
+					renderSkybox(environmentPreFilterPipeline, glm::transpose(view), campos, deg_to_rad(90), faceViewport, faceScissor, [&] {
+						mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+						mainCommandBuffer->SetFragmentTexture(outputTex->GetView(), 2);
+						SkyboxEnvPrefilterUBO constants{
+							.roughness = float(i) / numLevels
+						};
+						mainCommandBuffer->SetFragmentBytes(constants, 0);
+					});
+					mainCommandBuffer->EndRendering();
+					mainCommandBuffer->CopyTextureToTexture(
+						{
+							.texture = stagingTarget->GetDefaultView(),
+							.mip = mip,
+							.layer = 0,
+						},
+						{
+							.texture = outputTex->GetView(),
+							.mip = mip,
+							.layer = i
+						}
+					);
+				}
 			}
 		}
 		mainCommandBuffer->EndRenderDebugMarker();
@@ -2043,7 +2090,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                 if (worldOwning->skybox && worldOwning->skybox->skyMat && worldOwning->skybox->skyMat->GetMat()->renderPipeline) {
 					mainCommandBuffer->BeginRendering(unlitRenderPass);
 					mainCommandBuffer->BeginRenderDebugMarker("Skybox");
-					renderSkybox(worldOwning->skybox->skyMat->GetMat()->renderPipeline, glm::transpose(camData.viewOnly), camData.camPos, deg_to_rad(camData.fov), fullSizeViewport, fullSizeScissor);
+					renderSkybox(worldOwning->skybox->skyMat->GetMat()->renderPipeline, glm::transpose(camData.viewOnly), camData.camPos, deg_to_rad(camData.fov), fullSizeViewport, fullSizeScissor, [] {});
 					mainCommandBuffer->EndRenderDebugMarker();
 					mainCommandBuffer->EndRendering();
                 }

@@ -180,7 +180,7 @@ RavEngine::EnvironmentLight::EnvironmentLight(decltype(sky) sky, decltype(output
         const auto envMips = outputTexture->GetRHITexturePointer()->GetNumMips();
         Debug::Assert(envMips >= 4, "Environment maps must have at least 4 mip levels");
         auto dim = ot->GetTextureSize();
-        stagingTexture = New<Texture>(dim.width, dim.height,Texture::Config{ .enableRenderTarget = true, .format = RGL::TextureFormat::RGBA16_Sfloat, .debugName = "env staging"});
+        stagingTexture = New<Texture>(dim.width, dim.height,Texture::Config{ .mipLevels = envMips, .enableRenderTarget = true, .format = RGL::TextureFormat::RGBA16_Sfloat, .debugName = "env staging"});
         stagingDepthTexture = app->GetDevice()->CreateTexture({
             .usage = {.DepthStencilAttachment = true},
             .aspect = {.HasDepth = true},
