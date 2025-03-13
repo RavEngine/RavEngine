@@ -312,7 +312,21 @@ void CommandBufferMTL::SetComputeSampler(RGLSamplerPtr sampler, uint32_t index) 
 }
 
 void CommandBufferMTL::UseResource(const TextureView& view){
-    [currentCommandEncoder useResource:view.texture.mtl.texture->texture usage:MTLResourceUsageRead stages:MTLRenderStageVertex | MTLRenderStageFragment];
+    if (isRender){
+        [currentCommandEncoder useResource:view.texture.mtl.texture->texture usage:MTLResourceUsageRead | MTLResourceUsageWrite stages:MTLRenderStageVertex | MTLRenderStageFragment];
+    }
+    else{
+        [currentComputeCommandEncoder useResource:view.texture.mtl.texture->texture usage:MTLResourceUsageRead | MTLResourceUsageWrite];
+    }
+}
+
+void CommandBufferMTL::UseResource(const RGLBufferPtr buffer){
+    if (isRender){
+        [currentCommandEncoder useResource:std::static_pointer_cast<BufferMTL>(buffer)->buffer usage:MTLResourceUsageRead | MTLResourceUsageWrite stages:MTLRenderStageVertex | MTLRenderStageFragment];
+    }
+    else{
+        [currentComputeCommandEncoder useResource:std::static_pointer_cast<BufferMTL>(buffer)->buffer usage:MTLResourceUsageRead | MTLResourceUsageWrite];
+    }
 }
 
 constexpr static uint32_t bindlessOffset = 0;
