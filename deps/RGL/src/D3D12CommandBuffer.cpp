@@ -323,6 +323,11 @@ namespace RGL {
 		SyncIfNeeded(thisTexture, neededState, false);
     }
 
+	void CommandBufferD3D12::UseResource(const RGLBufferPtr buffer)
+	{
+
+	}
+
 
 	void CommandBufferD3D12::Draw(uint32_t nVertices, const DrawInstancedConfig& config)
 	{

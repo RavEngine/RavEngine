@@ -120,6 +120,7 @@ namespace RGL {
 		void EndComputeDebugMarker() final;
         
         void UseResource(const TextureView& tx) final;
+		void UseResource(const RGLBufferPtr buffer) final;
 
 		void BlockUntilCompleted() final;
 

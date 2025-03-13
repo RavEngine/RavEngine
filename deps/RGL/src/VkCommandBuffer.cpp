@@ -330,6 +330,11 @@ namespace RGL {
         
     }
 
+	void CommandBufferVk::UseResource(const RGLBufferPtr buffer)
+	{
+
+	}
+
 
 	void CommandBufferVk::Commit(const CommitConfig& config)
 	{
