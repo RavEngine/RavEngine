@@ -121,6 +121,13 @@ namespace RavEngine {
 				rpd.stages[1].shaderModule = LoadShaderByFilename(sh_name, device);
 
 				rpd.depthStencilConfig.depthFunction = RGL::DepthCompareFunction::Greater;
+                if (internalConfig.mode == LightingMode::Lit){
+                    rpd.colorBlendConfig = RavEngine::defaultColorBlendConfigLitPrepass;
+                }
+                else{
+                    rpd.colorBlendConfig = RavEngine::defaultColorBlendConfigUnlitPrepass;
+                }
+               
 				prepassRenderPipeline = device->CreateRenderPipeline(rpd);
 			}
 
