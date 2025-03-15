@@ -1141,6 +1141,18 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						drawcommand.cuboBuffer->getBufferSize());
 
 					mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
+                    for (auto& [materialInstance, drawcommand] :  worldOwning->renderData.skinnedMeshRenderData) {
+                        for (auto& command : drawcommand.commands) {
+                            // make buffers resident
+                            if (auto mesh = command.mesh.lock()) {
+                                mainCommandBuffer->UseResource(drawcommand.cullingBuffer);
+                                mainCommandBuffer->UseResource(drawcommand.indirectBuffer);
+                                mainCommandBuffer->UseResource(mesh->lodDistances.GetPrivateBuffer());
+                                mainCommandBuffer->UseResource(command.entities.GetPrivateBuffer());
+                            }
+                        }
+                    }
+                    
 					mainCommandBuffer->BindComputeBuffer(drawcommand.cuboBuffer, DefaultCullBindings::Cubo);
 					mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, DefaultCullBindings::modelMatrix);
                     mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), DefaultCullBindings::renderLayer);
