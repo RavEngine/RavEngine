@@ -930,6 +930,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 #pragma pack(push, 1)
 			const auto outputDim = viewportScissor.extent;
 			bool wantsSSAO = target && extraSettings.enableSSAO;
+            const auto ssaoTargetTexture = wantsSSAO ? target->ssaoOutputTexture1 : Texture::Manager::defaultTexture->GetRHITexturePointer();
 			struct LightData {
 				glm::mat4 viewProj;
 				glm::mat4 viewOnly;
@@ -958,7 +959,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				.directionalLightCount = worldOwning->renderData.directionalLightData.DenseSize(),
 				.zNear = zNearFar.x,
 				.zFar = zNearFar.y,
-				.aoBindlessIndex = wantsSSAO ? target->ssaoOutputTexture1->GetDefaultView().GetReadonlyBindlessTextureHandle() : Texture::Manager::defaultTexture->GetRHITexturePointer()->GetDefaultView().GetReadonlyBindlessTextureHandle(),
+                .aoBindlessIndex = ssaoTargetTexture->GetDefaultView().GetReadonlyBindlessTextureHandle()
 			};
 
 #pragma pack(pop)
@@ -1635,6 +1636,20 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 			// do rendering operations
 			mainCommandBuffer->BeginRendering(renderPass);
+
+            // make bindless resources resident
+
+            if constexpr(includeLighting){
+                if (wantsSSAO){
+                    mainCommandBuffer->UseResource(ssaoTargetTexture->GetDefaultView());
+                }
+                worldOwning->Filter([this](const AmbientLight& light){
+                    if (light.environment.has_value()){
+                        mainCommandBuffer->UseResource(light.environment->outputTexture->GetView());
+                    }
+                });
+            }
+        
 			mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
 			BufferSet vertexBuffers{
 				.positionBuffer = sharedPositionBuffer,
