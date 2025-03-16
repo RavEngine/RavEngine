@@ -412,6 +412,7 @@ namespace RavEngine {
             float intensity;
             renderlayer_t illuminationLayers;
             uint32_t skyboxBindlessIndex = std::numeric_limits<uint32_t>::max();
+            uint32_t skyboxIrradianceBindlessIndex = std::numeric_limits<uint32_t>::max();
         };
         
         struct PointLightUploadData {

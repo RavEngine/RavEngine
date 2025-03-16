@@ -13,6 +13,7 @@ struct AmbientLightData{
     float intensity;
     uint illuminationLayers;
     uint environmentCubemapBindlessIndex;
+    uint irradianceCubemapBindlessIndex;
 };
 
 layout(binding = 0) uniform sampler g_sampler;

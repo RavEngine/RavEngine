@@ -57,6 +57,7 @@ struct AmbientLightData{
     float intensity;
     uint illuminationLayers;
     uint environmentCubemapBindlessIndex;
+    uint irradianceCubemapBindlessIndex;
 };
 
 layout(scalar, binding = 12) readonly buffer ambientLightSSBO{
