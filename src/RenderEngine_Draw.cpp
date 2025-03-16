@@ -435,7 +435,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				mainCommandBuffer->BeginRendering(envSkyboxPass);
 				renderSkybox(environmentIrradiancePipeline, glm::transpose(view), campos, deg_to_rad(90), faceViewport, faceScissor, [&] {
 					mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-					mainCommandBuffer->SetFragmentTexture(irradianceTex->GetView(), 2);
+					mainCommandBuffer->SetFragmentTexture(outputTex->GetView(), 2);
 				});
 				mainCommandBuffer->EndRendering();
 
