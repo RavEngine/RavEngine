@@ -102,13 +102,14 @@ private:
     friend class World;
     Ref<Skybox> sky;
     Ref<CubemapTexture> outputTexture;
+    Ref<CubemapTexture> irradianceTexture;
 #if !RVE_SERVER
     Ref<Texture> stagingTexture;
     RGLTexturePtr stagingDepthTexture;
 #endif
     bool environmentNeedsUpdate = true;
 public:
-    EnvironmentLight(decltype(sky) sky, decltype(outputTexture) ot);
+    EnvironmentLight(decltype(sky) sky, decltype(outputTexture) ot, decltype(irradianceTexture) it);
     ~EnvironmentLight();
     void SetNeedsUpdate() {
         environmentNeedsUpdate = true;

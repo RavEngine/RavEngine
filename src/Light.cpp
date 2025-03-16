@@ -173,12 +173,14 @@ RavEngine::SpotLight::SpotLight()
 #endif
 }
 
-RavEngine::EnvironmentLight::EnvironmentLight(decltype(sky) sky, decltype(outputTexture) ot) : sky(sky), outputTexture(ot)
+RavEngine::EnvironmentLight::EnvironmentLight(decltype(sky) sky, decltype(outputTexture) ot, decltype(irradianceTexture) it) : sky(sky), outputTexture(ot), irradianceTexture(it)
 {
     if (auto app = GetApp()) {
 #if !RVE_SERVER
         const auto envMips = outputTexture->GetRHITexturePointer()->GetNumMips();
+        const auto irrMips = irradianceTexture->GetRHITexturePointer()->GetNumMips();
         Debug::Assert(envMips >= 4, "Environment maps must have at least 4 mip levels");
+        Debug::Assert(irrMips == 1, "Irradiance map must have 1 mip");
         auto dim = ot->GetTextureSize();
         stagingTexture = New<Texture>(dim.width, dim.height,Texture::Config{ .mipLevels = envMips, .enableRenderTarget = true, .format = RGL::TextureFormat::RGBA16_Sfloat, .debugName = "env staging"});
         stagingDepthTexture = app->GetDevice()->CreateTexture({

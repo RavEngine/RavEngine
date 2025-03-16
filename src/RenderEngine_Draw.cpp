@@ -412,6 +412,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					);
 				}
 			}
+
+			// compute irradiance
+			for (uint8_t i = 0; i < 6; i++) {
+
+			}
 		}
 		mainCommandBuffer->EndRenderDebugMarker();
 	}
