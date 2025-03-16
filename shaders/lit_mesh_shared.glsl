@@ -1,14 +1,17 @@
 struct EngineData_Internal{
     mat4 viewProj;
     mat4 viewOnly;
+    mat4 invView;
     mat4 projOnly;
     uvec4 screenDimensions;
     vec3 camPos;
     uvec3 gridSize;
+    uvec2 outputDim;
     uint ambientLightCount;
     uint directionalLightCount;
     float zNear;
     float zFar;
+    uint aoTextureBindlessID;
 };
 #define MODEL_MATRIX_BINDING 10
 

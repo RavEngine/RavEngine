@@ -173,6 +173,7 @@ namespace RGL {
 		virtual Dimension GetSize() const = 0;
 		virtual TextureView GetDefaultView() const = 0;
 		virtual TextureView GetViewForMip(uint32_t mip) const = 0;
+		virtual uint8_t GetNumMips() const = 0;
 		virtual RGLCustomTextureViewPtr MakeCustomTextureView(const CustomTextureViewConfig& config) const = 0;
 	};
 

@@ -157,6 +157,7 @@ void CommandBufferMTL::SetIndexBuffer(RGLBufferPtr buffer) {
 
 void CommandBufferMTL::BindRenderPipeline(RGLRenderPipelinePtr pipelineIn){
     auto pipeline = std::static_pointer_cast<RenderPipelineMTL>(pipelineIn);
+    currentRenderPipeline = pipeline;
     pipelineConstructionSettings = &pipeline->settings;
     [currentCommandEncoder setRenderPipelineState: pipeline->pipelineState];
     if (pipeline->depthStencilState){
@@ -174,8 +175,10 @@ void CommandBufferMTL::BindRenderPipeline(RGLRenderPipelinePtr pipelineIn){
 
 void CommandBufferMTL::BeginCompute(RGLComputePipelinePtr pipelineIn){
     isRender = false;
+    auto pipeline = std::static_pointer_cast<ComputePipelineMTL>(pipelineIn);
+    currentComputePipeline = pipeline;
     currentComputeCommandEncoder = [currentCommandBuffer computeCommandEncoder];
-    [currentComputeCommandEncoder setComputePipelineState:std::static_pointer_cast<ComputePipelineMTL>(pipelineIn)->pipelineState];
+    [currentComputeCommandEncoder setComputePipelineState:pipeline->pipelineState];
 }
 
 void CommandBufferMTL::EndCompute(){
@@ -295,18 +298,35 @@ void CommandBufferMTL::Commit(const CommitConfig & config){
 }
 
 void CommandBufferMTL::SetVertexSampler(RGLSamplerPtr sampler, uint32_t index) {
-    [currentCommandEncoder setVertexSamplerState:std::static_pointer_cast<SamplerMTL>(sampler)->sampler atIndex:index];
+    uint32_t remappedIdx = currentRenderPipeline->settings.pipelineLayout->samplerBindingsMap.at(index);
+    [currentCommandEncoder setVertexSamplerState:std::static_pointer_cast<SamplerMTL>(sampler)->sampler atIndex:remappedIdx];
 }
 void CommandBufferMTL::SetFragmentSampler(RGLSamplerPtr sampler, uint32_t index) {
-    [currentCommandEncoder setFragmentSamplerState:std::static_pointer_cast<SamplerMTL>(sampler)->sampler atIndex:index];
+    uint32_t remappedIdx = currentRenderPipeline->settings.pipelineLayout->samplerBindingsMap.at(index);
+    [currentCommandEncoder setFragmentSamplerState:std::static_pointer_cast<SamplerMTL>(sampler)->sampler atIndex:remappedIdx];
 }
 
 void CommandBufferMTL::SetComputeSampler(RGLSamplerPtr sampler, uint32_t index) {
-    [currentComputeCommandEncoder setSamplerState:std::static_pointer_cast<SamplerMTL>(sampler)->sampler atIndex:index];
+    uint32_t remappedIdx = currentComputePipeline->settings.pipelineLayout->samplerBindingsMap.at(index);
+    [currentComputeCommandEncoder setSamplerState:std::static_pointer_cast<SamplerMTL>(sampler)->sampler atIndex:remappedIdx];
 }
 
 void CommandBufferMTL::UseResource(const TextureView& view){
-    [currentCommandEncoder useResource:view.texture.mtl.texture->texture usage:MTLResourceUsageRead stages:MTLRenderStageVertex | MTLRenderStageFragment];
+    if (isRender){
+        [currentCommandEncoder useResource:view.texture.mtl.texture->texture usage:MTLResourceUsageRead | MTLResourceUsageWrite stages:MTLRenderStageVertex | MTLRenderStageFragment];
+    }
+    else{
+        [currentComputeCommandEncoder useResource:view.texture.mtl.texture->texture usage:MTLResourceUsageRead | MTLResourceUsageWrite];
+    }
+}
+
+void CommandBufferMTL::UseResource(const RGLBufferPtr buffer){
+    if (isRender){
+        [currentCommandEncoder useResource:std::static_pointer_cast<BufferMTL>(buffer)->buffer usage:MTLResourceUsageRead | MTLResourceUsageWrite stages:MTLRenderStageVertex | MTLRenderStageFragment];
+    }
+    else{
+        [currentComputeCommandEncoder useResource:std::static_pointer_cast<BufferMTL>(buffer)->buffer usage:MTLResourceUsageRead | MTLResourceUsageWrite];
+    }
 }
 
 constexpr static uint32_t bindlessOffset = 0;

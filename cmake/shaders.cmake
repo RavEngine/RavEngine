@@ -147,7 +147,8 @@ function(rvesc_compile_meta infile shader_target)
 
 
 	if ((intype MATCHES "mesh" OR intype MATCHES "quad") AND NOT (inopacity MATCHES "transparent"))
-		rvesc_compile("${infile}" "${shader_target}" "${inshadername}" "${sh_name_only}_depthonly" "--define \"RVE_DEPTHONLY 1\"")
+		rvesc_compile("${infile}" "${shader_target}" "${inshadername}" "${sh_name_only}_prepass" "--define \"RVE_DEPTHONLY 1\",\"RVE_PREPASS 1\"" )
+		rvesc_compile("${infile}" "${shader_target}" "${inshadername}" "${sh_name_only}_shadow" "--define \"RVE_DEPTHONLY 1\"")
 	endif()
 
 endfunction()

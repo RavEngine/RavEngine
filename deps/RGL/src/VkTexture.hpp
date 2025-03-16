@@ -41,6 +41,10 @@ namespace RGL {
 		std::string debugName;
 
 		uint32_t globalDescriptorIndex = 0;
+
+		uint8_t GetNumMips() const final {
+			return createdConfig.mipLevels;
+		}
 	};
 
 	struct CustomTextureViewVk : public ICustomTextureView {

@@ -20,7 +20,7 @@
 using namespace std;
 namespace RavEngine {
     constexpr MeshAttributes shadowAttributes = { .position = true, .normal = false, .tangent = false, .bitangent = false, .uv0 = true, .lightmapUV = false };
-    constexpr MeshAttributes depthPrepassAttributes = { .position = true, .normal = false, .tangent = false, .bitangent = false, .uv0 = true, .lightmapUV = false };
+    constexpr MeshAttributes depthPrepassAttributes = { .position = true, .normal = true, .tangent = true, .bitangent = true, .uv0 = true, .lightmapUV = false };
 
 
     /**
@@ -160,34 +160,32 @@ namespace RavEngine {
 
         // invert some settings for the shadow pipeline
         if (hasDepthPrepass) {
-            rpd.stages[0].shaderModule = LoadShaderByFilename(Format("{}_vsh_depthonly", vsh_name), device);  // use the shadow variant
-            rpd.stages[1].shaderModule = LoadShaderByFilename(Format("{}_fsh_depthonly", fsh_name), device);  // use the shadow variant
-        }
-        else {
-            if (!config.verbatimConfig) {
-                rpd.stages[0].shaderModule = LoadShaderByFilename(Format("{}_vsh_depthonly", vsh_name), device);  // use the shadow variant
+            rpd.stages[0].shaderModule = LoadShaderByFilename(Format("{}_vsh_prepass", vsh_name), device);  // use the shadow variant
+            rpd.stages[1].shaderModule = LoadShaderByFilename(Format("{}_fsh_prepass", fsh_name), device);  // use the shadow variant
+            rpd.colorBlendConfig = config.depthPrepassColorBlendConfig;         // switch to depth prepass config
+            rpd.depthStencilConfig.depthFunction = config.depthCompareFunction; // use real depth compare function
+
+            rpd.debugName = Format("Material {} {} (Depth Prepass)", fsh_name, vsh_name);
+
+            {
+                auto rpd_cpy = rpd;
+                trimVertexAttributes(rpd_cpy.vertexConfig, depthPrepassAttributes);
+                depthPrepassPipeline = device->CreateRenderPipeline(rpd_cpy);
             }
-            rpd.stages.pop_back();  // no fragment shader
         }
 
-        rpd.colorBlendConfig.attachments.clear();                           // only write to depth
-        rpd.depthStencilConfig.depthFunction = config.depthCompareFunction; // use real depth compare function
-       
-        rpd.debugName = Format("Material {} {} (Depth Prepass)", fsh_name, vsh_name);
-        
-        {
-            auto rpd_cpy = rpd;
-            trimVertexAttributes(rpd_cpy.vertexConfig,depthPrepassAttributes);
-            depthPrepassPipeline = device->CreateRenderPipeline(rpd_cpy);
-        }
-
-        rpd.rasterizerConfig.windingOrder = RGL::WindingOrder::Clockwise;   // backface shadows
-        rpd.rasterizerConfig.depthClampEnable = true;                       // clamp out-of-view fragments
-        rpd.debugName = Format("Material {} {} (Shadow)", fsh_name, vsh_name);
-        {
-            auto rpd_cpy = rpd;
-            trimVertexAttributes(rpd_cpy.vertexConfig, shadowAttributes);
-            shadowRenderPipeline = device->CreateRenderPipeline(rpd_cpy);
+        if (!config.verbatimConfig && config.opacityMode != OpacityMode::Transparent) {
+            rpd.stages[0].shaderModule = LoadShaderByFilename(Format("{}_vsh_shadow", vsh_name), device);  // use the shadow variant
+            rpd.stages[1].shaderModule = LoadShaderByFilename(Format("{}_fsh_shadow", vsh_name), device);  // use the shadow variant
+            rpd.colorBlendConfig.attachments.clear();                           // only write to depth
+            rpd.rasterizerConfig.windingOrder = RGL::WindingOrder::Clockwise;   // backface shadows
+            rpd.rasterizerConfig.depthClampEnable = true;                       // clamp out-of-view fragments
+            rpd.debugName = Format("Material {} {} (Shadow)", fsh_name, vsh_name);
+            {
+                auto rpd_cpy = rpd;
+                trimVertexAttributes(rpd_cpy.vertexConfig, shadowAttributes);
+                shadowRenderPipeline = device->CreateRenderPipeline(rpd_cpy);
+            }
         }
     }
 
@@ -342,6 +340,7 @@ std::vector<RGL::PipelineLayoutDescriptor::LayoutBindingDesc> augmentLitMaterial
         {
             .vertConfig = defaultVertexConfig,
             .colorBlendConfig = options.opacityMode == OpacityMode::Opaque ? defaultColorBlendConfig : defaultTransparentColorBlendConfig,
+            .depthPrepassColorBlendConfig = options.opacityMode == OpacityMode::Opaque ? defaultColorBlendConfigLitPrepass : defaultTransparentColorBlendConfig,
             .bindings = augmentLitMaterialBindings(pipeOptions.bindings, options.opacityMode),
             .pushConstantSize = pipeOptions.pushConstantSize,
             .cullMode = options.cullMode,

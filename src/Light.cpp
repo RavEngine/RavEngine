@@ -176,24 +176,31 @@ RavEngine::SpotLight::SpotLight()
 RavEngine::EnvironmentLight::EnvironmentLight(decltype(sky) sky, decltype(outputTexture) ot) : sky(sky), outputTexture(ot)
 {
     if (auto app = GetApp()) {
+#if !RVE_SERVER
+        const auto envMips = outputTexture->GetRHITexturePointer()->GetNumMips();
+        Debug::Assert(envMips >= 4, "Environment maps must have at least 4 mip levels");
         auto dim = ot->GetTextureSize();
-        stagingTexture = New<Texture>(dim.width, dim.height,Texture::Config{ .enableRenderTarget = true, .format = RGL::TextureFormat::RGBA16_Sfloat, .debugName = "env staging"});
+        stagingTexture = New<Texture>(dim.width, dim.height,Texture::Config{ .mipLevels = envMips, .enableRenderTarget = true, .format = RGL::TextureFormat::RGBA16_Sfloat, .debugName = "env staging"});
         stagingDepthTexture = app->GetDevice()->CreateTexture({
             .usage = {.DepthStencilAttachment = true},
             .aspect = {.HasDepth = true},
             .width = dim.width,
             .height = dim.height,
+            .mipLevels = envMips,
             .format = RGL::TextureFormat::D32SFloat,
             .debugName = "env staging depth"
          });
+#endif
     }
 }
 
 RavEngine::EnvironmentLight::~EnvironmentLight()
 {
+#if !RVE_SERVER
     if (auto app = GetApp()) {
         app->GetRenderEngine().gcTextures.enqueue(stagingDepthTexture);
     }
+#endif
 }
 
 RavEngine::PointLight::PointLight()

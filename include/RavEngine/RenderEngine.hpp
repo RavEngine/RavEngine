@@ -76,11 +76,11 @@ namespace RavEngine {
 
 		RGLTexturePtr dummyShadowmap, dummyCubemap;
 		RGLSamplerPtr textureSampler, shadowSampler, depthPyramidSampler;
-		RGLRenderPassPtr litRenderPass, unlitRenderPass, envSkyboxPass, depthPrepassRenderPass, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, finalRenderPassNoDepth, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, litTransparentPass, unlitTransparentPass, transparentClearPass, transparencyApplyPass, ssgiPassNoClear, ssgiAmbientApplyPass, ssgiPassClear;
+		RGLRenderPassPtr litRenderPass, unlitRenderPass, envSkyboxPass, depthPrepassRenderPass, depthPrepassRenderPassLit, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, finalRenderPassNoDepth, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, litTransparentPass, unlitTransparentPass, transparentClearPass, transparencyApplyPass, ssaoPassClear, ssgiPassNoClear, ssgiAmbientApplyPass, ssgiPassClear;
 
 		RGLRenderPipelinePtr depthPyramidCopyPipeline,
-			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, transparencyApplyPipeline, ssgipipeline, ssgiDownsamplePipeline, ssgiUpsamplePipeline, ambientSSGIApplyPipeline, aoUpsamplePipeline, ssgiUpsamplePipleineFinalStep;
-		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline, clusterBuildGridPipeline, clusterPopulatePipeline;
+			im3dLineRenderPipeline, im3dPointRenderPipeline, im3dTriangleRenderPipeline, recastLinePipeline, recastPointPipeline, recastTrianglePipeline, guiRenderPipeline, transparencyApplyPipeline, ssgipipeline, gtaoPipeline, ssaoPipeline, ssgiDownsamplePipeline, ssgiUpsamplePipeline, ambientSSGIApplyPipeline, aoUpsamplePipeline, ssgiUpsamplePipleineFinalStep, environmentPreFilterPipeline;
+		RGLComputePipelinePtr skinnedMeshComputePipeline, defaultCullingComputePipeline, skinningDrawCallPreparePipeline, depthPyramidPipeline, particleCreatePipeline, particleDispatchSetupPipeline, particleDispatchSetupPipelineIndexed, particleKillPipeline, clusterBuildGridPipeline, clusterPopulatePipeline, blurKernelX, blurKernelY;
 		RGLBufferPtr screenTriVerts,
 			sharedPositionBuffer,sharedNormalBuffer, sharedTangentBuffer, sharedBitangentBuffer, sharedUV0Buffer, sharedLightmapUVBuffer, sharedIndexBuffer, sharedSkeletonMatrixBuffer, sharedSkinnedPositionBuffer, sharedSkinnedNormalBuffer, sharedSkinnedTangentBuffer, sharedSkinnedBitangentBuffer, sharedSkinnedUV0Buffer, quadVertBuffer, lightClusterBuffer, debugRenderBufferUpload;
 		uint32_t debugRenderBufferSize = 0, debugRenderBufferOffset = 0;
@@ -126,6 +126,10 @@ namespace RavEngine {
 			float filterRadius;
 		};
 
+		struct SkyboxEnvPrefilterUBO {
+			float roughness;
+		};
+
 		struct AmbientSSGIApplyUBO {
 			glm::mat4 invView{ 1 };
 			uint32_t ambientLightCount = 0;
@@ -151,6 +155,7 @@ namespace RavEngine {
 			albedoFormat = RGL::TextureFormat::RGBA16_Sfloat,
 			viewSpaceNormalTextureFormat = RGL::TextureFormat::RGBA16_Sfloat,
 			ssgiOutputFormat = RGL::TextureFormat::RGBA16_Sfloat,
+			ssaoOutputFormat = RGL::TextureFormat::R16_Float,
 			depthFormat = RGL::TextureFormat::D32SFloat;
 
 		struct navDebugUBO {
@@ -187,6 +192,16 @@ namespace RavEngine {
 			float sampleRadius;
 			float sliceCount;
 			float hitThickness;
+		};
+
+		struct GTAOUBO {
+			glm::ivec2 screenDim;
+		};
+
+		struct SSAOUBO {
+			glm::mat4 proj;
+			glm::mat4 invProj;
+			glm::ivec2 screenDim;
 		};
 
 		struct JointInfluence {

@@ -18,7 +18,7 @@ namespace RavEngine {
 
 	struct MaterialConfig {
 		RGL::RenderPipelineDescriptor::VertexConfig vertConfig;
-		RGL::RenderPipelineDescriptor::ColorBlendConfig colorBlendConfig;
+		RGL::RenderPipelineDescriptor::ColorBlendConfig colorBlendConfig, depthPrepassColorBlendConfig;
 		bool depthTestEnabled = true;
 		bool depthWriteEnabled = true;
 		RGL::DepthCompareFunction depthCompareFunction = RGL::DepthCompareFunction::Greater;

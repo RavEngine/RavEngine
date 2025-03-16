@@ -277,6 +277,7 @@ namespace RGL {
 		void SetScissor(const Rect&) final;
         
         void UseResource(const TextureView& tx) final;
+		void UseResource(const RGLBufferPtr buffer) final;
 
 		void Commit(const CommitConfig&) final;
 

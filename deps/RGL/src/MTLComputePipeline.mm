@@ -6,7 +6,7 @@
 #include "RGLMTL.hpp"
 
 namespace RGL{
-    ComputePipelineMTL::ComputePipelineMTL(decltype(owningDevice) owningDevice, const RGL::ComputePipelineDescriptor &desc) : owningDevice(owningDevice) {
+    ComputePipelineMTL::ComputePipelineMTL(decltype(owningDevice) owningDevice, const RGL::ComputePipelineDescriptor &desc) : owningDevice(owningDevice), settings(desc) {
         
         auto shadermodule = desc.stage.shaderModule;
         MTL_CHECK(pipelineState = [owningDevice->device newComputePipelineStateWithFunction:shadermodule->function error:&err]);

@@ -139,6 +139,7 @@ struct TextureView;
 		virtual void SetScissor(const Rect&) = 0;
         
         virtual void UseResource(const TextureView& tx) = 0;
+        virtual void UseResource(const RGLBufferPtr buffer) = 0;
 
 		virtual void CopyTextureToBuffer(TextureView& sourceTexture, const Rect& sourceRect, size_t offset, RGLBufferPtr desetBuffer) = 0;
 

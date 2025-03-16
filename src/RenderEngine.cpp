@@ -347,11 +347,6 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				   .loadOp = RGL::LoadAccessOperation::Load,
 				   .storeOp = RGL::StoreAccessOperation::Store,
 			   },
-			   {
-				   .format = viewSpaceNormalTextureFormat,
-				   .loadOp = RGL::LoadAccessOperation::Load,
-				   .storeOp = RGL::StoreAccessOperation::Store,
-			   },
 		   },
 		   .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
 			   .format = RGL::TextureFormat::D32SFloat,
@@ -573,6 +568,23 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.clearColor = depthClearColor
 		}
 	});
+
+	depthPrepassRenderPassLit = RGL::CreateRenderPass({
+		.attachments = {
+			{
+				
+				.format = viewSpaceNormalTextureFormat,
+				.loadOp = RGL::LoadAccessOperation::Clear,
+				.storeOp = RGL::StoreAccessOperation::Store,
+			},
+		},
+		.depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+			.format = RGL::TextureFormat::D32SFloat,
+			.loadOp = RGL::LoadAccessOperation::Load,
+			.storeOp = RGL::StoreAccessOperation::Store,
+			.clearColor = depthClearColor
+		}
+		});
 
 	dummyShadowmap = device->CreateTexture({
 		.usage = {.TransferDestination = true,  .Sampled = true,},
@@ -1060,6 +1072,37 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.pipelineLayout = defaultCullingLayout
 	});
 
+	auto blurKernelLayout = device->CreatePipelineLayout({
+		.bindings = {
+				{
+					.binding = 0,
+					.type = RGL::BindingType::StorageImage,
+					.stageFlags = RGL::BindingVisibility::Compute,
+					.writable = false
+				},
+				{
+					.binding = 1,
+					.type = RGL::BindingType::StorageImage,
+					.stageFlags = RGL::BindingVisibility::Compute,
+					.writable = true
+				},
+		}
+	});
+	blurKernelX = device->CreateComputePipeline({
+		.stage = {
+			.type = RGL::ShaderStageDesc::Type::Compute,
+			.shaderModule = LoadShaderByFilename("blur_kernel_x_csh", device)
+		},
+		.pipelineLayout = blurKernelLayout
+	});
+	blurKernelY = device->CreateComputePipeline({
+		.stage = {
+			.type = RGL::ShaderStageDesc::Type::Compute,
+			.shaderModule = LoadShaderByFilename("blur_kernel_y_csh", device)
+		},
+		.pipelineLayout = blurKernelLayout
+	});
+
 	auto skinningDrawCallPrepareLayout = device->CreatePipelineLayout({
 		.bindings = {
 			{
@@ -1509,6 +1552,24 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			}
 		);
 
+	ssaoPassClear = RGL::CreateRenderPass(
+		{
+		   .attachments = {
+			   {
+				   .format = ssaoOutputFormat,					// outputs here
+				   .loadOp = RGL::LoadAccessOperation::Clear,
+				   .storeOp = RGL::StoreAccessOperation::Store,
+			   },
+		   },
+		   .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
+			   .format = RGL::TextureFormat::D32SFloat,
+			   .loadOp = RGL::LoadAccessOperation::Load,
+			   .storeOp = RGL::StoreAccessOperation::Store,
+			   .clearColor = depthClearColor
+		   }
+		}
+	);
+
 	ssgiPassNoClear = RGL::CreateRenderPass(
 		{
 		   .attachments = {
@@ -1553,6 +1614,27 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		.constants = {{sizeof(SSGIUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Fragment)}} 
 	});
 
+	const auto gtaoLayout = device->CreatePipelineLayout({
+		.bindings = {
+			{
+				.binding = 0,
+				.type = RGL::BindingType::Sampler,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 1,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 2,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+		},
+		.constants = {{sizeof(GTAOUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Fragment)}}
+	});
+
 	ssgipipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
 		.stages = {
 				{
@@ -1561,7 +1643,7 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				},
 				{
 					.type = RGL::ShaderStageDesc::Type::Fragment,
-					.shaderModule = LoadShaderByFilename("ssgi_ao_fsh", device),
+					.shaderModule = LoadShaderByFilename("ssgi_gi_only_fsh", device),
 				}
 		},
 		.vertexConfig = {
@@ -1600,6 +1682,123 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		},
 		.pipelineLayout = ssgiLayout,
 	});
+
+	gtaoPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
+		.stages = {
+				{
+					.type = RGL::ShaderStageDesc::Type::Vertex,
+					.shaderModule = LoadShaderByFilename("ssgi_ao_vsh", device),
+				},
+				{
+					.type = RGL::ShaderStageDesc::Type::Fragment,
+					.shaderModule = LoadShaderByFilename("gtao_fsh", device),
+				}
+		},
+		.vertexConfig = {
+			.vertexBindings = {
+				{
+					.binding = 0,
+					.stride = sizeof(Vertex2D),
+				},
+			},
+			.attributeDescs = {
+				{
+					.location = 0,
+					.binding = 0,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+				},
+			}
+		},
+		.inputAssembly = {
+			.topology = RGL::PrimitiveTopology::TriangleList,
+		},
+		.rasterizerConfig = {
+			.windingOrder = RGL::WindingOrder::Counterclockwise,
+		},
+		.colorBlendConfig = {
+			.attachments = {
+				{
+					.format = ssaoOutputFormat,
+				},
+			}
+		},
+		.depthStencilConfig = {
+			.depthFormat = depthFormat,
+			.depthTestEnabled = false,
+			.depthWriteEnabled = false,
+		},
+		.pipelineLayout = gtaoLayout,
+	});
+
+	const auto ssaoLayout = device->CreatePipelineLayout({
+		.bindings = {
+			{
+				.binding = 0,
+				.type = RGL::BindingType::Sampler,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 1,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 2,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+		},
+		.constants = {{sizeof(SSAOUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Fragment)}}
+	});
+
+	ssaoPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
+		.stages = {
+				{
+					.type = RGL::ShaderStageDesc::Type::Vertex,
+					.shaderModule = LoadShaderByFilename("ssgi_ao_vsh", device),
+				},
+				{
+					.type = RGL::ShaderStageDesc::Type::Fragment,
+					.shaderModule = LoadShaderByFilename("ssao_fsh", device),
+				}
+		},
+		.vertexConfig = {
+			.vertexBindings = {
+				{
+					.binding = 0,
+					.stride = sizeof(Vertex2D),
+				},
+			},
+			.attributeDescs = {
+				{
+					.location = 0,
+					.binding = 0,
+					.offset = 0,
+					.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+				},
+			}
+		},
+		.inputAssembly = {
+			.topology = RGL::PrimitiveTopology::TriangleList,
+		},
+		.rasterizerConfig = {
+			.windingOrder = RGL::WindingOrder::Counterclockwise,
+		},
+		.colorBlendConfig = {
+			.attachments = {
+				{
+					.format = ssaoOutputFormat,
+				},
+			}
+		},
+		.depthStencilConfig = {
+			.depthFormat = depthFormat,
+			.depthTestEnabled = false,
+			.depthWriteEnabled = false,
+		},
+		.pipelineLayout = ssaoLayout,
+		});
 
 	{
 		auto downscaleLayout = device->CreatePipelineLayout({
@@ -1874,6 +2073,75 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.clearColor = depthClearColor
 		}}
 	});
+
+	auto envPreFilterLayout = device->CreatePipelineLayout({
+		.bindings = {
+			{
+				.binding = 0,
+				.type = RGL::BindingType::Sampler,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+			{
+				.binding = 1,
+				.type = RGL::BindingType::StorageBuffer,
+				.stageFlags = RGL::BindingVisibility::Vertex,
+			},
+			{
+				.binding = 2,
+				.type = RGL::BindingType::SampledImage,
+				.stageFlags = RGL::BindingVisibility::Fragment,
+			},
+		},
+		.constants = {{sizeof(SkyboxEnvPrefilterUBO), 0, RGL::StageVisibility(RGL::StageVisibility::Fragment)}}
+	});
+
+	environmentPreFilterPipeline = device->CreateRenderPipeline(RGL::RenderPipelineDescriptor{
+			.stages = {
+					{
+						.type = RGL::ShaderStageDesc::Type::Vertex,
+						.shaderModule = LoadShaderByFilename("defaultsky_vsh", device),
+					},
+					{
+						.type = RGL::ShaderStageDesc::Type::Fragment,
+						.shaderModule = LoadShaderByFilename("envPreFilter_fsh", device),
+					}
+			},
+			.vertexConfig = {
+				.vertexBindings = {
+					{
+						.binding = 0,
+						.stride = sizeof(Vertex2D),
+					},
+				},
+				.attributeDescs = {
+					{
+						.location = 0,
+						.binding = 0,
+						.offset = 0,
+						.format = RGL::VertexAttributeFormat::R32G32_SignedFloat,
+					},
+				}
+			},
+			.inputAssembly = {
+				.topology = RGL::PrimitiveTopology::TriangleList,
+			},
+			.rasterizerConfig = {
+				.windingOrder = RGL::WindingOrder::Counterclockwise,
+			},
+			.colorBlendConfig = {
+				.attachments = {
+					{
+						.format = colorTexFormat,
+					},
+				}
+			},
+			.depthStencilConfig = {
+				.depthFormat = depthFormat,
+				.depthTestEnabled = false,
+				.depthWriteEnabled = false,
+			},
+			.pipelineLayout = envPreFilterLayout,
+		});
 }
 
 RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim size, bool createDepth)
@@ -1933,6 +2201,19 @@ RenderTargetCollection RavEngine::RenderEngine::CreateRenderTargetCollection(dim
 			.debugName = "View Space Normals Texture"
 		});
 
+	// ssao is rendered at half-resolution
+	const RGL::TextureConfig ssaoTexConfig = {
+		.usage = {.Sampled = true, .Storage = true, .ColorAttachment = true },
+			.aspect = {.HasColor = true },
+			.width = width / 2,
+			.height = height / 2,
+			.format = ssaoOutputFormat,
+			.initialLayout = RGL::ResourceLayout::Undefined,
+			.debugName = "SSAO Texture"
+	};
+	collection.ssaoOutputTexture1 = device->CreateTexture(ssaoTexConfig);
+	collection.ssaoOutputTexture2 = device->CreateTexture(ssaoTexConfig);
+
 	constexpr static uint32_t maxssgiRes = 1024;
 
 	const auto ratio = float(height) / width;
@@ -1987,6 +2268,8 @@ void RavEngine::RenderEngine::ResizeRenderTargetCollection(RenderTargetCollectio
     gcTextures.enqueue(collection.radianceTexture);
     gcTextures.enqueue(collection.viewSpaceNormalsTexture);
     gcTextures.enqueue(collection.ssgiOutputTexture);
+    gcTextures.enqueue(collection.ssaoOutputTexture1);
+    gcTextures.enqueue(collection.ssaoOutputTexture2);
     
     for(const auto tx : collection.mlabAccum){
         gcTextures.enqueue(tx);

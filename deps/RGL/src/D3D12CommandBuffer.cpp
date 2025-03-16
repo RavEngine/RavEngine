@@ -323,6 +323,11 @@ namespace RGL {
 		SyncIfNeeded(thisTexture, neededState, false);
     }
 
+	void CommandBufferD3D12::UseResource(const RGLBufferPtr buffer)
+	{
+
+	}
+
 
 	void CommandBufferD3D12::Draw(uint32_t nVertices, const DrawInstancedConfig& config)
 	{
@@ -473,13 +478,15 @@ namespace RGL {
 		dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
 		dstLocation.SubresourceIndex = to.texture.texture.dx.parentResource->SubresourceIndexForMipLayer(to.mip, to.layer);
 
+		const auto mipdivisor = std::pow(2, from.mip);
+
 		// Create a box that specifies the region to copy
 		D3D12_BOX box = {};
 		box.left = 0;
 		box.top = 0;
 		box.front = 0;
-		box.right = srcLocation.pResource->GetDesc().Width;
-		box.bottom = srcLocation.pResource->GetDesc().Height;
+		box.right = srcLocation.pResource->GetDesc().Width / mipdivisor;
+		box.bottom = srcLocation.pResource->GetDesc().Height / mipdivisor;
 		box.back = 1;
 
 		// Copy the region from the source texture to the destination texture

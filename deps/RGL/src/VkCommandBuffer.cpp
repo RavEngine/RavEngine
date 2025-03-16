@@ -330,6 +330,11 @@ namespace RGL {
         
     }
 
+	void CommandBufferVk::UseResource(const RGLBufferPtr buffer)
+	{
+
+	}
+
 
 	void CommandBufferVk::Commit(const CommitConfig& config)
 	{
@@ -902,6 +907,7 @@ namespace RGL {
 				auto& srcLayout = activeTextures.at(TextureLastUseKey{src, arg.from.texture.texture.vk.coveredMips, arg.from.texture.texture.vk.coveredLayers });
 				auto& dstLayout = activeTextures.at(TextureLastUseKey{ dst, arg.to.texture.texture.vk.coveredMips, arg.to.texture.texture.vk.coveredLayers });
 
+				int dimDivisor = std::pow(2, arg.from.mip);
 				auto dim = src->GetSize();
 				VkImageCopy2 region{
 					.sType = VK_STRUCTURE_TYPE_IMAGE_COPY_2,
@@ -920,7 +926,7 @@ namespace RGL {
 						.layerCount = 1
 					},
 					.dstOffset = {0,0,0},
-					.extent = {dim.width, dim.height ,1}
+					.extent = {dim.width / dimDivisor, dim.height / dimDivisor, 1}
 				};
 				VkCopyImageInfo2 copyInfo{
 					.sType = VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2,

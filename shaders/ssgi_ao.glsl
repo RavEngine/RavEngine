@@ -111,9 +111,19 @@ vec4 getVisibility() {
     visibility /= ubo.sliceCount;
     lighting /= ubo.sliceCount;
 
-    return vec4(lighting, min(1,visibility));   // pin AO to 1
+    vec4 ret = vec4(0);
+#ifdef RVE_IL
+    ret.rgb = lighting;
+#endif
+#ifdef RVE_AO
+    ret.a = min(1,visibility);   // pin AO to 1
+#endif
+
+    // if IL is not being written, put AO in all channels
+#if defined(RVE_AO) && !defined(RVE_IL)
+    ret = vec4(ret.a);
+#endif
+
+    return ret;
 }
 
-void main() {
-    fragColor = getVisibility();
-}

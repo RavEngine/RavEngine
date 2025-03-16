@@ -34,7 +34,7 @@ void main(){
     LitVertexOut user_out = vert(entity, data);
     
     vec4 worldPos = entity.modelMtx * vec4(user_out.localPosition, 1);
-#if !RVE_DEPTHONLY
+#if !RVE_DEPTHONLY || RVE_PREPASS
 	inTBN[0] = inTangent;
 	inTBN[1] = inBitangent;
 	inTBN[2] = inNormal;

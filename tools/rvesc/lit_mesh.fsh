@@ -1,6 +1,7 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_shader_16bit_storage : enable
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
+#extension GL_EXT_samplerless_texture_functions : enable
 
 #if !RVE_DEPTHONLY
 	#ifdef RVE_LIGHTMAP_UV
@@ -42,10 +43,13 @@ struct EnvironmentData{
 #define RVE_EXTRAOUTPUT 0
 #endif
 
+#if RVE_PREPASS
+layout(location = 0) out vec4 outViewSpaceNormal;
+#endif
+
 #if RVE_EXTRAOUTPUT
 layout(location = 1) out vec4 outRadiance;
 layout(location = 2) out vec4 outAlbedo;
-layout(location = 3) out vec4 outViewSpaceNormal;
 #endif
 
 struct AmbientLightData{
@@ -129,16 +133,18 @@ void main(){
 
 
     const vec3 worldNormal = mat3(entityModelMtx) * objectSpaceNormal;
+    
+     // this part needs them in view space
+    EngineData data = make_engine_data(engineConstants[0]);
 
     #if RVE_EXTRAOUTPUT
         outAlbedo = user_out.color;
-
-        // this part needs them in view space
-        EngineData data = make_engine_data(engineConstants[0]);
-        outViewSpaceNormal = vec4(mat3(data.viewOnly) * worldNormal,1);
+    #endif
+    #if RVE_PREPASS
+    outViewSpaceNormal = vec4(mat3(data.viewOnly) * worldNormal,1);
     #endif
 
-    vec4 outcolor = vec4(0); // NV: these don't default-init to 0
+    vec4 outcolor = vec4(0,0,0,1); // NV: these don't default-init to 0
 
     vec3 radiance = vec3(0);
     
@@ -152,7 +158,9 @@ void main(){
     // compute lighting based on the results of the user's function
 
     // ambient lights
-    #if !RVE_EXTRAOUTPUT        // ambient is applied later if running in opaque-lit
+    const vec2 ao_uv = vec2(gl_FragCoord.xy) / engineConstants[0].outputDim;
+    float ao = min(texture(sampler2D(shadowMaps[engineConstants[0].aoTextureBindlessID],environmentSampler),ao_uv).r,1);
+
     for(uint i = 0; i < engineConstants[0].ambientLightCount; i++){
         AmbientLightData light = ambientLights[i];
         
@@ -160,15 +168,30 @@ void main(){
             continue;
         }
 
-        vec3 environmentColor = vec3(1);
-        if ((light.environmentCubemapBindlessIndex & (~0)) > 0){
+        if (light.environmentCubemapBindlessIndex != (~0)){
             // use cubemap as environment color
-            environmentColor = texture(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], environmentSampler), worldNormal).rgb;
-        }
+            vec2 ndc = ao_uv * 2 - 1; 
+            vec3 cameraRay = normalize(vec3(ndc, -1));
+            cameraRay.y *= -1;
+            cameraRay = mat3(engineConstants[0].invView) * cameraRay;   // world space
+            vec3 surfaceReflectedRay = normalize(reflect(cameraRay, worldNormal));
 
-        outcolor += user_out.color * vec4(light.color * light.intensity * environmentColor,1);
+            const int numLods = textureQueryLevels(cubeMaps[light.environmentCubemapBindlessIndex]);
+            const float envMip = user_out.roughness * numLods;  // higher roughness -> higher LOD
+
+            vec3 environmentColor = textureLod(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], environmentSampler), surfaceReflectedRay, envMip).rgb;
+
+            vec3 rad = vec3(0);
+            vec3 lightResult = CalculateLightRadiance(worldNormal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, surfaceReflectedRay, 1, environmentColor * light.intensity, rad);
+            radiance += rad;
+            outcolor += vec4(ao * environmentColor * light.intensity,0);
+        }
+        // no BRDF
+        else{
+            vec4 ambientContrib = vec4(light.color * light.intensity * ao,0);
+            outcolor += user_out.color * ambientContrib;
+        }
     }
-    #endif
 
     // directional lights
     for(uint i = 0; i < engineConstants[0].directionalLightCount; i++){

@@ -122,5 +122,9 @@ TextureView RGL::CustomTextureViewMTL::GetView() const
     return TextureView();
 }
 
+uint8_t TextureMTL::GetNumMips() const {
+    return texture.mipmapLevelCount;
+}
+
 }
 #endif

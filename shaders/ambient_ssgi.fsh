@@ -68,7 +68,7 @@ void main(){
         }
 
         vec3 environmentColor = vec3(1);
-        if ((light.environmentCubemapBindlessIndex & (~0)) > 0){
+        if (light.environmentCubemapBindlessIndex != (~0)){
             // use cubemap as environment color
             vec3 incident = normalize(vec3(uv * 2 - 1,-1)); // view space
             incident = mat3(ubo.invView) * incident;

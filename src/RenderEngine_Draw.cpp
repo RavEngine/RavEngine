@@ -299,7 +299,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
         }
     }
 
-	auto renderSkybox = [this](RGLRenderPipelinePtr skyboxPipeline, const glm::mat4& invView, const glm::vec3 camPos, float fov_rad, RGL::Viewport fullSizeViewport, RGL::Rect fullSizeScissor) {
+	auto renderSkybox = [this](RGLRenderPipelinePtr skyboxPipeline, const glm::mat4& invView, const glm::vec3 camPos, float fov_rad, RGL::Viewport fullSizeViewport, RGL::Rect fullSizeScissor, auto&& extraFn) {
 		struct skyboxData {
 			glm::mat3 invView;
 			glm::vec3 camPos;
@@ -320,6 +320,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		mainCommandBuffer->BindRenderPipeline(skyboxPipeline);
 		mainCommandBuffer->BindBuffer(transientBuffer, 1, transientOffset);
 		mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+		extraFn();
 		mainCommandBuffer->Draw(3);
 		
 	};
@@ -330,27 +331,28 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		if (ambientLight.environment && ambientLight.environment->environmentNeedsUpdate) {
 			ambientLight.environment->environmentNeedsUpdate = false;
 			const auto& outputTex = ambientLight.environment->outputTexture;
-			const auto dim = outputTex->GetTextureSize();
+			
 			// render the six faces
-			RGL::Viewport faceViewport{
-				.x = 0,
-				.y = 0,
-				.width = float(dim.width),
-				.height = float(dim.height),
-			};
-			RGL::Rect faceScissor{
-				.offset = {0, 0},
-				.extent = {dim.width, dim.height}
-			};
 			//TODO: this is inefficient as it incurs a copy and wastes memory
+			constexpr static vector3 campos(0, 0, 0);
 			for (uint8_t i = 0; i < 6; i++){
-				constexpr static vector3 campos(0, 0, 0);
+				const auto dim = outputTex->GetTextureSize();
+				RGL::Viewport faceViewport{
+					.x = 0,
+					.y = 0,
+					.width = float(dim.width),
+					.height = float(dim.height),
+				};
+				RGL::Rect faceScissor{
+					.offset = {0, 0},
+					.extent = {dim.width, dim.height}
+				};
 				glm::mat4 view = PointLight::CalcViewMatrix(campos, i);
 				auto stagingView = ambientLight.environment->stagingTexture->GetRHITexturePointer()->GetDefaultView();
 				envSkyboxPass->SetAttachmentTexture(0, stagingView);
 				envSkyboxPass->SetDepthAttachmentTexture(ambientLight.environment->stagingDepthTexture->GetDefaultView());
 				mainCommandBuffer->BeginRendering(envSkyboxPass);
-				renderSkybox(ambientLight.environment->sky->skyMat->GetMat()->renderPipeline, glm::transpose(view), campos, deg_to_rad(90), faceViewport, faceScissor);
+				renderSkybox(ambientLight.environment->sky->skyMat->GetMat()->renderPipeline, glm::transpose(view), campos, deg_to_rad(90), faceViewport, faceScissor, [] {});
 				mainCommandBuffer->EndRendering();
 
 				mainCommandBuffer->CopyTextureToTexture(
@@ -365,6 +367,50 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						.layer = i
 					}
 				);
+			}
+			for (uint8_t i = 0; i < 6; i++) {
+				// convolve the roughness textures
+				glm::mat4 view = PointLight::CalcViewMatrix(campos, i);
+				const auto numLevels = ambientLight.environment->stagingDepthTexture->GetNumMips();
+				const auto stagingTarget = ambientLight.environment->stagingTexture->GetRHITexturePointer();
+				const auto dim = outputTex->GetTextureSize();
+				for (uint8_t mip = 1; mip < numLevels; mip++) {
+					const uint32_t dimDivisor = std::pow(2, mip);
+					RGL::Viewport faceViewport{
+						.x = 0,
+						.y = 0,
+						.width = float(dim.width) / dimDivisor,
+						.height = float(dim.height) / dimDivisor,
+					};
+					RGL::Rect faceScissor{
+						.offset = {0, 0},
+						.extent = {dim.width / dimDivisor, dim.height / dimDivisor}
+					};
+                    const auto renderTarget = stagingTarget->GetViewForMip(mip);
+                    envSkyboxPass->SetAttachmentTexture(0, renderTarget);
+					mainCommandBuffer->BeginRendering(envSkyboxPass);
+					renderSkybox(environmentPreFilterPipeline, glm::transpose(view), campos, deg_to_rad(90), faceViewport, faceScissor, [&] {
+						mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+						mainCommandBuffer->SetFragmentTexture(outputTex->GetView(), 2);
+						SkyboxEnvPrefilterUBO constants{
+							.roughness = float(i) / numLevels
+						};
+						mainCommandBuffer->SetFragmentBytes(constants, 0);
+					});
+					mainCommandBuffer->EndRendering();
+					mainCommandBuffer->CopyTextureToTexture(
+						{
+							.texture = stagingTarget->GetDefaultView(),
+							.mip = mip,
+							.layer = 0,
+						},
+						{
+							.texture = outputTex->GetView(),
+							.mip = mip,
+							.layer = i
+						}
+					);
+				}
 			}
 		}
 		mainCommandBuffer->EndRenderDebugMarker();
@@ -812,8 +858,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 		prepareSkeletalCullingBuffer();
 	}
-
-    auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &camIdx]<bool includeLighting = true, bool transparentMode = false, bool runCulling = true>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers, const RenderTargetCollection* target){
+	struct RenderFromPerspectiveSettings {
+		bool enableSSAO = false;
+	};
+    auto renderFromPerspective = [this, &worldTransformBuffer, &worldOwning, &skeletalPrepareResult, &camIdx]<bool includeLighting = true, bool transparentMode = false, bool runCulling = true>(const matrix4& viewproj, const matrix4& viewonly, const matrix4& projOnly, vector3 camPos, glm::vec2 zNearFar, RGLRenderPassPtr renderPass, auto&& pipelineSelectorFunction, RGL::Rect viewportScissor, LightingType lightingFilter, const DepthPyramid& pyramid, const renderlayer_t layers, const RenderTargetCollection* target, const RenderFromPerspectiveSettings extraSettings){
 			RVE_PROFILE_FN_N("RenderFromPerspective");
             uint32_t particleBillboardMatrices = 0;
 
@@ -826,7 +874,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                 
             QuadParticleData quadData{
                 .viewProj = viewproj,
-                .billboard = glm::inverse(rotComp),
+                .billboard = glm::transpose(rotComp),
             };
                 
             particleBillboardMatrices = WriteTransient(quadData);
@@ -880,29 +928,38 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			}
 
 #pragma pack(push, 1)
+			const auto outputDim = viewportScissor.extent;
+			bool wantsSSAO = target && extraSettings.enableSSAO;
+            const auto ssaoTargetTexture = wantsSSAO ? target->ssaoOutputTexture1 : Texture::Manager::defaultTexture->GetRHITexturePointer();
 			struct LightData {
 				glm::mat4 viewProj;
 				glm::mat4 viewOnly;
+				glm::mat4 invView;
 				glm::mat4 projOnly;
 				glm::uvec4 screenDimension;
 				glm::vec3 camPos;
 				glm::uvec3 gridSize;
+				glm::uvec2 outputSize;
 				uint32_t ambientLightCount;
 				uint32_t directionalLightCount;
 				float zNear;
 				float zFar;
+				uint32_t aoBindlessIndex = 0;
 			}
 			lightData{
 				.viewProj = viewproj,
 				.viewOnly = viewonly,
+				.invView = glm::inverse(viewonly),
 				.projOnly = projOnly,
 				.screenDimension = { viewportScissor.offset[0],viewportScissor.offset[1], viewportScissor.extent[0],viewportScissor.extent[1] },
 				.camPos = camPos,
 				.gridSize = { Clustered::gridSizeX, Clustered::gridSizeY, Clustered::gridSizeZ },
+				.outputSize = {outputDim[0], outputDim[1]},
 				.ambientLightCount = worldOwning->renderData.ambientLightData.DenseSize(),
 				.directionalLightCount = worldOwning->renderData.directionalLightData.DenseSize(),
 				.zNear = zNearFar.x,
 				.zFar = zNearFar.y,
+                .aoBindlessIndex = ssaoTargetTexture->GetDefaultView().GetReadonlyBindlessTextureHandle()
 			};
 
 #pragma pack(pop)
@@ -1084,6 +1141,18 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						drawcommand.cuboBuffer->getBufferSize());
 
 					mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
+                    for (auto& [materialInstance, drawcommand] :  worldOwning->renderData.skinnedMeshRenderData) {
+                        for (auto& command : drawcommand.commands) {
+                            // make buffers resident
+                            if (auto mesh = command.mesh.lock()) {
+                                mainCommandBuffer->UseResource(drawcommand.cullingBuffer);
+                                mainCommandBuffer->UseResource(drawcommand.indirectBuffer);
+                                mainCommandBuffer->UseResource(mesh->lodDistances.GetPrivateBuffer());
+                                mainCommandBuffer->UseResource(command.entities.GetPrivateBuffer());
+                            }
+                        }
+                    }
+                    
 					mainCommandBuffer->BindComputeBuffer(drawcommand.cuboBuffer, DefaultCullBindings::Cubo);
 					mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, DefaultCullBindings::modelMatrix);
                     mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), DefaultCullBindings::renderLayer);
@@ -1258,6 +1327,17 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					worldOwning->renderData.cuboBuffer->getBufferSize());
 
 				mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
+                for (auto& [materialInstance, drawcommand] : renderData) {
+                    for (auto& command : drawcommand.commands) {
+                        // make buffers resident
+                        if (auto mesh = command.mesh.lock()) {
+                            mainCommandBuffer->UseResource(drawcommand.cullingBuffer);
+                            mainCommandBuffer->UseResource(drawcommand.indirectBuffer);
+                            mainCommandBuffer->UseResource(mesh->lodDistances.GetPrivateBuffer());
+                            mainCommandBuffer->UseResource(command.entities.GetPrivateBuffer());
+                        }
+                    }
+                }
                 mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.cuboBuffer, DefaultCullBindings::Cubo);
                 mainCommandBuffer->BindComputeBuffer(worldTransformBuffer, DefaultCullBindings::modelMatrix);
 				mainCommandBuffer->BindComputeBuffer(worldOwning->renderData.renderLayers.GetPrivateBuffer(), DefaultCullBindings::renderLayer);
@@ -1568,6 +1648,20 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 			// do rendering operations
 			mainCommandBuffer->BeginRendering(renderPass);
+
+            // make bindless resources resident
+
+            if constexpr(includeLighting){
+                if (wantsSSAO){
+                    mainCommandBuffer->UseResource(ssaoTargetTexture->GetDefaultView());
+                }
+                worldOwning->Filter([this](const AmbientLight& light){
+                    if (light.environment.has_value()){
+                        mainCommandBuffer->UseResource(light.environment->outputTexture->GetView());
+                    }
+                });
+            }
+        
 			mainCommandBuffer->BeginRenderDebugMarker("Render Static Meshes");
 			BufferSet vertexBuffers{
 				.positionBuffer = sharedPositionBuffer,
@@ -1638,7 +1732,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					auto shadowMapSize = shadowTexture->GetSize().width;
 					renderFromPerspective.template operator()<false,false>(lightSpaceMatrix, lightMats.lightView, lightMats.lightProj, lightMats.camPos, {}, shadowRenderPass, [](auto&& mat) {
 						return mat->GetShadowRenderPipeline();
-                    }, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true, .Opaque = true }, lightMats.depthPyramid, light.shadowLayers, nullptr);
+                    }, { 0, 0, shadowMapSize,shadowMapSize }, { .Lit = true, .Unlit = true, .FilterLightBlockers = true, .Opaque = true }, lightMats.depthPyramid, light.shadowLayers, nullptr, {});
 
 				}
 				postshadowmapFunction(owner);
@@ -1755,19 +1849,65 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 					// render depth prepass
 					mainCommandBuffer->BeginRenderDebugMarker("Lit Opaque Depth Prepass");
-					renderFromPerspective.template operator() < true, transparentMode, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, depthPrepassRenderPass, [](auto&& mat) {
+					renderFromPerspective.template operator() < true, transparentMode, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, depthPrepassRenderPassLit, [](auto&& mat) {
 						return mat->GetDepthPrepassPipeline();
-						}, renderArea, { .Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, &target);
+						}, renderArea, { .Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, & target, {});
 					mainCommandBuffer->EndRenderDebugMarker();
+
+					// render SSAO
+					if (camData.indirectSettings.SSAOEnabled) {
+						mainCommandBuffer->BeginRenderDebugMarker("SSAO");
+						ssaoPassClear->SetAttachmentTexture(0, target.ssaoOutputTexture1->GetDefaultView());
+						ssaoPassClear->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+						ssgiPassNoClear->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+
+						mainCommandBuffer->BeginRendering(ssaoPassClear);
+						mainCommandBuffer->BindRenderPipeline(ssaoPipeline);
+						mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+						mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 1);
+						mainCommandBuffer->SetFragmentTexture(target.viewSpaceNormalsTexture->GetDefaultView(), 2);
+
+						const auto size = target.ssaoOutputTexture1->GetSize();
+						{
+							SSAOUBO ssgiubo{
+								.proj = camData.projOnly,
+								.invProj = glm::inverse(camData.projOnly),
+								.screenDim = {size.width, size.height},
+							};
+							mainCommandBuffer->SetFragmentBytes(ssgiubo, 0);
+						}
+
+						mainCommandBuffer->SetVertexBuffer(screenTriVerts);
+						mainCommandBuffer->Draw(3);
+						mainCommandBuffer->EndRendering();
+
+						// blur it horizontally --> tex2
+						mainCommandBuffer->BeginCompute(blurKernelX);
+						mainCommandBuffer->SetComputeTexture(target.ssaoOutputTexture1->GetDefaultView(), 0);
+						mainCommandBuffer->SetComputeTexture(target.ssaoOutputTexture2->GetDefaultView(), 1);
+						mainCommandBuffer->DispatchCompute(std::ceil(size.width / 64.0), (size.height), 1, 64, 1, 1);
+
+						mainCommandBuffer->EndCompute();
+
+						// blur it vertically --> tex1
+						mainCommandBuffer->BeginCompute(blurKernelY);
+						mainCommandBuffer->SetComputeTexture(target.ssaoOutputTexture2->GetDefaultView(), 0);
+						mainCommandBuffer->SetComputeTexture(target.ssaoOutputTexture1->GetDefaultView(), 1);
+						mainCommandBuffer->DispatchCompute(std::ceil(size.height / 64.0), (size.width), 1, 64, 1, 1);
+						mainCommandBuffer->EndCompute();
+
+						mainCommandBuffer->EndRenderDebugMarker();
+					}
 				}
 
 				// render with shading
 
 				renderFromPerspective.template operator()<true, transparentMode, transparentMode>(camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, transparentMode ? litTransparentPass : litRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-                }, renderArea, {.Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, &target);
-
+					}, renderArea, { .Lit = true, .Transparent = transparentMode, .Opaque = !transparentMode, }, target.depthPyramid, camData.layers, & target, {.enableSSAO = camData.indirectSettings.SSAOEnabled});
+#if 0
 				if (!transparentMode) {
+
 					if (camData.indirectSettings.SSAOEnabled || camData.indirectSettings.SSGIEnabled) {
 						constexpr auto divFacForMip = [](uint32_t mip) {
 							return std::pow(2, mip);
@@ -1947,6 +2087,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					mainCommandBuffer->EndRendering();
 					mainCommandBuffer->EndRenderDebugMarker();
 				}
+#endif
 			};
 
             auto renderLitPass = [&renderLitPass_Impl](auto&& camData, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
@@ -1958,13 +2099,13 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				mainCommandBuffer->BeginRenderDebugMarker("Unlit Opaque Depth Prepass");
 				renderFromPerspective.template operator() < false, false, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, camData.zNearFar, depthPrepassRenderPass, [](auto&& mat) {
 					return mat->GetDepthPrepassPipeline();
-					}, renderArea, { .Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers, & target);
+					}, renderArea, { .Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers, & target, {});
 				mainCommandBuffer->EndRenderDebugMarker();
 
 				// render color
 				renderFromPerspective.template operator() < false, false, false> (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitRenderPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-					}, renderArea, { .Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers, & target);
+					}, renderArea, { .Unlit = true, .Opaque = true }, target.depthPyramid, camData.layers, & target, {});
 			};
 
 			auto renderLitPassTransparent = [&renderLitPass_Impl](auto&& camData, auto&& fullSizeViewport, auto&& fullSizeScissor, auto&& renderArea) {
@@ -1979,14 +2120,14 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				unlitTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 				renderFromPerspective.template operator() < false, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitTransparentPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
-				}, renderArea, { .Unlit = true, .Transparent = true }, target.depthPyramid, camData.layers,&target);
+					}, renderArea, { .Unlit = true, .Transparent = true }, target.depthPyramid, camData.layers, & target, {});
 				RVE_PROFILE_SECTION_END(unlittrans);
                 
                 // then do the skybox, if one is defined.
                 if (worldOwning->skybox && worldOwning->skybox->skyMat && worldOwning->skybox->skyMat->GetMat()->renderPipeline) {
 					mainCommandBuffer->BeginRendering(unlitRenderPass);
 					mainCommandBuffer->BeginRenderDebugMarker("Skybox");
-					renderSkybox(worldOwning->skybox->skyMat->GetMat()->renderPipeline, glm::inverse(camData.viewOnly), camData.camPos, deg_to_rad(camData.fov), fullSizeViewport, fullSizeScissor);
+					renderSkybox(worldOwning->skybox->skyMat->GetMat()->renderPipeline, glm::transpose(camData.viewOnly), camData.camPos, deg_to_rad(camData.fov), fullSizeViewport, fullSizeScissor, [] {});
 					mainCommandBuffer->EndRenderDebugMarker();
 					mainCommandBuffer->EndRendering();
                 }
@@ -2337,12 +2478,14 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 		
 
 			// lit pass
+			depthPrepassRenderPassLit->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+			depthPrepassRenderPassLit->SetAttachmentTexture(0,target.viewSpaceNormalsTexture->GetDefaultView());
 			depthPrepassRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+
 
 			litRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());
 			litRenderPass->SetAttachmentTexture(1, target.radianceTexture->GetDefaultView());
 			litRenderPass->SetAttachmentTexture(2, target.lightingScratchTexture->GetDefaultView());
-			litRenderPass->SetAttachmentTexture(3, target.viewSpaceNormalsTexture->GetDefaultView());
 			litRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
 			litClearRenderPass->SetAttachmentTexture(0, target.lightingTexture->GetDefaultView());

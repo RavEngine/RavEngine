@@ -30,6 +30,8 @@ struct TextureMTL : public ITexture{
 
     RGLCustomTextureViewPtr MakeCustomTextureView(const CustomTextureViewConfig& config) const;
     
+    uint8_t GetNumMips() const final;
+    
     std::vector<OBJC_ID(MTLTexture)> mipTextures;
     
     uint32_t globalIndex = 0;

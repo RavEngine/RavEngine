@@ -218,7 +218,7 @@ void Texture::CreateTexture(int width, int height, const Config& config) {
     auto device = GetApp()->GetDevice();
     if (config.initialData.data.data() != nullptr) {
         texture = device->CreateTextureWithData({
-            .usage = {.TransferDestination = true, .Sampled = true, .ColorAttachment = config.enableRenderTarget},
+            .usage = {.TransferSource = true, .TransferDestination = true, .Sampled = true, .ColorAttachment = config.enableRenderTarget},
             .aspect = {.HasColor = true},
             .width = uint32_t(width),
             .height = uint32_t(height),
@@ -230,7 +230,7 @@ void Texture::CreateTexture(int width, int height, const Config& config) {
     }
     else {
         texture = device->CreateTexture({
-            .usage = {.TransferDestination = true, .Sampled = true, .ColorAttachment = config.enableRenderTarget},
+            .usage = {.TransferSource = true, .TransferDestination = true, .Sampled = true, .ColorAttachment = config.enableRenderTarget},
             .aspect = {.HasColor = true},
             .width = uint32_t(width),
             .height = uint32_t(height),
@@ -263,11 +263,11 @@ CubemapTexture::CubemapTexture(int size, const Config& config)
 {
     auto device = GetApp()->GetDevice();
     cubemap = device->CreateTexture({
-           .usage = {.TransferDestination = true, .Sampled = true, .ColorAttachment = config.enableRenderTarget},
+           .usage = {.TransferSource = true, .TransferDestination = true, .Sampled = true, .ColorAttachment = config.enableRenderTarget},
            .aspect = {.HasColor = true},
            .width = uint32_t(size),
            .height = uint32_t(size),
-           .mipLevels = 1,
+           .mipLevels = config.numMips,
            .arrayLayers = 6,
            .format = config.format,
            .isCubemap = true,

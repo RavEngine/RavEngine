@@ -87,10 +87,19 @@ STATIC(RavEngine::defaultColorBlendConfig) {
                 },
                 {
                     .format = RenderEngine::albedoFormat
-                },
-                 {
-                    .format = RenderEngine::viewSpaceNormalTextureFormat
-                },
+                },  
+    }
+};
+
+STATIC(RavEngine::defaultColorBlendConfigUnlitPrepass) {
+    .attachments = {}
+};
+
+STATIC(RavEngine::defaultColorBlendConfigLitPrepass) {
+    .attachments = {
+        {
+            .format = RenderEngine::viewSpaceNormalTextureFormat
+        },
     }
 };
 
