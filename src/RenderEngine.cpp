@@ -2152,6 +2152,11 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 				},
 				{
 					.binding = 1,
+					.type = RGL::BindingType::StorageBuffer,
+					.stageFlags = RGL::BindingVisibility::Vertex,
+				},
+				{
+					.binding = 2,
 					.type = RGL::BindingType::SampledImage,
 					.stageFlags = RGL::BindingVisibility::Fragment,
 				},

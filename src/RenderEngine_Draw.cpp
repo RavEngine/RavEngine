@@ -414,8 +414,43 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			}
 
 			// compute irradiance
+			const auto& irradianceTex = ambientLight.environment->irradianceTexture;
 			for (uint8_t i = 0; i < 6; i++) {
+				const auto dim = outputTex->GetTextureSize();
+				RGL::Viewport faceViewport{
+					.x = 0,
+					.y = 0,
+					.width = float(dim.width),
+					.height = float(dim.height),
+				};
+				RGL::Rect faceScissor{
+					.offset = {0, 0},
+					.extent = {dim.width, dim.height}
+				};
+				glm::mat4 view = PointLight::CalcViewMatrix(campos, i);
 
+				auto stagingView = ambientLight.environment->stagingTexture->GetRHITexturePointer()->GetDefaultView();
+				envSkyboxPass->SetAttachmentTexture(0, stagingView);
+				envSkyboxPass->SetDepthAttachmentTexture(ambientLight.environment->stagingDepthTexture->GetDefaultView());
+				mainCommandBuffer->BeginRendering(envSkyboxPass);
+				renderSkybox(environmentIrradiancePipeline, glm::transpose(view), campos, deg_to_rad(90), faceViewport, faceScissor, [&] {
+					mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+					mainCommandBuffer->SetFragmentTexture(irradianceTex->GetView(), 2);
+				});
+				mainCommandBuffer->EndRendering();
+
+				mainCommandBuffer->CopyTextureToTexture(
+					{
+						.texture = stagingView,
+						.mip = 0,
+						.layer = 0,
+					},
+					{
+						.texture = irradianceTex->GetView(),
+						.mip = 0,
+						.layer = i
+					}
+				);
 			}
 		}
 		mainCommandBuffer->EndRenderDebugMarker();

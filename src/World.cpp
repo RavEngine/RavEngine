@@ -508,6 +508,7 @@ void World::setupRenderTasks(){
                 if (light.environment) {
                     Debug::Assert(light.environment->outputTexture != nullptr, "Skybox does not have a CubemapTexture assigned");
                     uploadData.skyboxBindlessIndex = light.environment->outputTexture->GetView().GetReadonlyBindlessTextureHandle();
+                    uploadData.skyboxIrradianceBindlessIndex = light.environment->irradianceTexture->GetView().GetReadonlyBindlessTextureHandle();
                 }
                 else {
                     uploadData.skyboxBindlessIndex = std::numeric_limits<decltype(uploadData.skyboxBindlessIndex)>::max();

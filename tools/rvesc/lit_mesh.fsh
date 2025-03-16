@@ -181,10 +181,11 @@ void main(){
             const float envMip = user_out.roughness * numLods;  // higher roughness -> higher LOD
 
             vec3 environmentColor = textureLod(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], environmentSampler), surfaceReflectedRay, envMip).rgb;
+            vec3 irradianceColor = texture(samplerCube(cubeMaps[light.irradianceCubemapBindlessIndex], environmentSampler), surfaceReflectedRay).rgb;
 
             vec3 rad = vec3(0);
-            vec3 lightResult = CalculateLightRadiance(worldNormal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, surfaceReflectedRay, 1, environmentColor * light.intensity, rad);
-            radiance += rad;
+            vec3 lightResult = CalculateLightRadiance(worldNormal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, surfaceReflectedRay, 1, environmentColor * light.intensity, rad) + irradianceColor;
+            radiance += rad + irradianceColor;
             outcolor += vec4(ao * environmentColor * light.intensity,0);
         }
         // no BRDF

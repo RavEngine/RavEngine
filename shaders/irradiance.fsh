@@ -4,7 +4,7 @@ layout(location = 0) out vec4 FragColor;
 layout(location = 0) in vec3 localPos;
 
 layout(binding = 0) uniform sampler g_sampler;
-layout(binding = 1) uniform textureCube environmentMap;
+layout(binding = 2) uniform textureCube environmentMap;
 
 const float PI = 3.14159265359;
 
