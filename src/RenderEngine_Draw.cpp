@@ -326,134 +326,136 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 	};
    
 	// render skyboxes if there are any
-	for (auto& ambientLight : *worldOwning->GetAllComponentsOfType<AmbientLight>()) {
-		mainCommandBuffer->BeginRenderDebugMarker("Skybox for environment maps");
-		if (ambientLight.environment && ambientLight.environment->environmentNeedsUpdate) {
-			ambientLight.environment->environmentNeedsUpdate = false;
-			const auto& outputTex = ambientLight.environment->outputTexture;
-			
-			// render the six faces
-			//TODO: this is inefficient as it incurs a copy and wastes memory
-			constexpr static vector3 campos(0, 0, 0);
-			for (uint8_t i = 0; i < 6; i++){
-				const auto dim = outputTex->GetTextureSize();
-				RGL::Viewport faceViewport{
-					.x = 0,
-					.y = 0,
-					.width = float(dim.width),
-					.height = float(dim.height),
-				};
-				RGL::Rect faceScissor{
-					.offset = {0, 0},
-					.extent = {dim.width, dim.height}
-				};
-				glm::mat4 view = PointLight::CalcViewMatrix(campos, i);
-				auto stagingView = ambientLight.environment->stagingTexture->GetRHITexturePointer()->GetDefaultView();
-				envSkyboxPass->SetAttachmentTexture(0, stagingView);
-				envSkyboxPass->SetDepthAttachmentTexture(ambientLight.environment->stagingDepthTexture->GetDefaultView());
-				mainCommandBuffer->BeginRendering(envSkyboxPass);
-				renderSkybox(ambientLight.environment->sky->skyMat->GetMat()->renderPipeline, glm::transpose(view), campos, deg_to_rad(90), faceViewport, faceScissor, [] {});
-				mainCommandBuffer->EndRendering();
+	if (auto allAmbients = worldOwning->GetAllComponentsOfType<AmbientLight>()) {
+		for (auto& ambientLight : *allAmbients) {
+			mainCommandBuffer->BeginRenderDebugMarker("Skybox for environment maps");
+			if (ambientLight.environment && ambientLight.environment->environmentNeedsUpdate) {
+				ambientLight.environment->environmentNeedsUpdate = false;
+				const auto& outputTex = ambientLight.environment->outputTexture;
 
-				mainCommandBuffer->CopyTextureToTexture(
+				// render the six faces
+				//TODO: this is inefficient as it incurs a copy and wastes memory
+				constexpr static vector3 campos(0, 0, 0);
+				for (uint8_t i = 0; i < 6; i++) {
+					const auto dim = outputTex->GetTextureSize();
+					RGL::Viewport faceViewport{
+						.x = 0,
+						.y = 0,
+						.width = float(dim.width),
+						.height = float(dim.height),
+					};
+					RGL::Rect faceScissor{
+						.offset = {0, 0},
+						.extent = {dim.width, dim.height}
+					};
+					glm::mat4 view = PointLight::CalcViewMatrix(campos, i);
+					auto stagingView = ambientLight.environment->stagingTexture->GetRHITexturePointer()->GetDefaultView();
+					envSkyboxPass->SetAttachmentTexture(0, stagingView);
+					envSkyboxPass->SetDepthAttachmentTexture(ambientLight.environment->stagingDepthTexture->GetDefaultView());
+					mainCommandBuffer->BeginRendering(envSkyboxPass);
+					renderSkybox(ambientLight.environment->sky->skyMat->GetMat()->renderPipeline, glm::transpose(view), campos, deg_to_rad(90), faceViewport, faceScissor, [] {});
+					mainCommandBuffer->EndRendering();
+
+					mainCommandBuffer->CopyTextureToTexture(
+						{
+							.texture = stagingView,
+							.mip = 0,
+							.layer = 0,
+						},
 					{
-						.texture = stagingView,
-						.mip = 0,
-						.layer = 0,
-					},
-					{ 
 						.texture = outputTex->GetView(),
 						.mip = 0,
 						.layer = i
 					}
-				);
-			}
-			for (uint8_t i = 0; i < 6; i++) {
-				// convolve the roughness textures
-				glm::mat4 view = PointLight::CalcViewMatrix(campos, i);
-				const auto numLevels = ambientLight.environment->stagingDepthTexture->GetNumMips();
-				const auto stagingTarget = ambientLight.environment->stagingTexture->GetRHITexturePointer();
-				const auto dim = outputTex->GetTextureSize();
-				for (uint8_t mip = 1; mip < numLevels; mip++) {
-					const uint32_t dimDivisor = std::pow(2, mip);
-					RGL::Viewport faceViewport{
-						.x = 0,
-						.y = 0,
-						.width = float(dim.width) / dimDivisor,
-						.height = float(dim.height) / dimDivisor,
-					};
-					RGL::Rect faceScissor{
-						.offset = {0, 0},
-						.extent = {dim.width / dimDivisor, dim.height / dimDivisor}
-					};
-                    const auto renderTarget = stagingTarget->GetViewForMip(mip);
-                    envSkyboxPass->SetAttachmentTexture(0, renderTarget);
-					mainCommandBuffer->BeginRendering(envSkyboxPass);
-					renderSkybox(environmentPreFilterPipeline, glm::transpose(view), campos, deg_to_rad(90), faceViewport, faceScissor, [&] {
-						mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-						mainCommandBuffer->SetFragmentTexture(outputTex->GetView(), 2);
-						SkyboxEnvPrefilterUBO constants{
-							.roughness = float(i) / numLevels
+					);
+				}
+				for (uint8_t i = 0; i < 6; i++) {
+					// convolve the roughness textures
+					glm::mat4 view = PointLight::CalcViewMatrix(campos, i);
+					const auto numLevels = ambientLight.environment->stagingDepthTexture->GetNumMips();
+					const auto stagingTarget = ambientLight.environment->stagingTexture->GetRHITexturePointer();
+					const auto dim = outputTex->GetTextureSize();
+					for (uint8_t mip = 1; mip < numLevels; mip++) {
+						const uint32_t dimDivisor = std::pow(2, mip);
+						RGL::Viewport faceViewport{
+							.x = 0,
+							.y = 0,
+							.width = float(dim.width) / dimDivisor,
+							.height = float(dim.height) / dimDivisor,
 						};
-						mainCommandBuffer->SetFragmentBytes(constants, 0);
-					});
-					mainCommandBuffer->EndRendering();
-					mainCommandBuffer->CopyTextureToTexture(
-						{
-							.texture = stagingTarget->GetDefaultView(),
-							.mip = mip,
-							.layer = 0,
-						},
+						RGL::Rect faceScissor{
+							.offset = {0, 0},
+							.extent = {dim.width / dimDivisor, dim.height / dimDivisor}
+						};
+						const auto renderTarget = stagingTarget->GetViewForMip(mip);
+						envSkyboxPass->SetAttachmentTexture(0, renderTarget);
+						mainCommandBuffer->BeginRendering(envSkyboxPass);
+						renderSkybox(environmentPreFilterPipeline, glm::transpose(view), campos, deg_to_rad(90), faceViewport, faceScissor, [&] {
+							mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+							mainCommandBuffer->SetFragmentTexture(outputTex->GetView(), 2);
+							SkyboxEnvPrefilterUBO constants{
+								.roughness = float(i) / numLevels
+							};
+							mainCommandBuffer->SetFragmentBytes(constants, 0);
+							});
+						mainCommandBuffer->EndRendering();
+						mainCommandBuffer->CopyTextureToTexture(
+							{
+								.texture = stagingTarget->GetDefaultView(),
+								.mip = mip,
+								.layer = 0,
+							},
 						{
 							.texture = outputTex->GetView(),
 							.mip = mip,
 							.layer = i
 						}
-					);
+						);
+					}
 				}
-			}
 
-			// compute irradiance
-			const auto& irradianceTex = ambientLight.environment->irradianceTexture;
-			for (uint8_t i = 0; i < 6; i++) {
-				const auto dim = outputTex->GetTextureSize();
-				RGL::Viewport faceViewport{
-					.x = 0,
-					.y = 0,
-					.width = float(dim.width),
-					.height = float(dim.height),
-				};
-				RGL::Rect faceScissor{
-					.offset = {0, 0},
-					.extent = {dim.width, dim.height}
-				};
-				glm::mat4 view = PointLight::CalcViewMatrix(campos, i);
+				// compute irradiance
+				const auto& irradianceTex = ambientLight.environment->irradianceTexture;
+				for (uint8_t i = 0; i < 6; i++) {
+					const auto dim = outputTex->GetTextureSize();
+					RGL::Viewport faceViewport{
+						.x = 0,
+						.y = 0,
+						.width = float(dim.width),
+						.height = float(dim.height),
+					};
+					RGL::Rect faceScissor{
+						.offset = {0, 0},
+						.extent = {dim.width, dim.height}
+					};
+					glm::mat4 view = PointLight::CalcViewMatrix(campos, i);
 
-				auto stagingView = ambientLight.environment->stagingTexture->GetRHITexturePointer()->GetDefaultView();
-				envSkyboxPass->SetAttachmentTexture(0, stagingView);
-				envSkyboxPass->SetDepthAttachmentTexture(ambientLight.environment->stagingDepthTexture->GetDefaultView());
-				mainCommandBuffer->BeginRendering(envSkyboxPass);
-				renderSkybox(environmentIrradiancePipeline, glm::transpose(view), campos, deg_to_rad(90), faceViewport, faceScissor, [&] {
-					mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-					mainCommandBuffer->SetFragmentTexture(outputTex->GetView(), 2);
-				});
-				mainCommandBuffer->EndRendering();
+					auto stagingView = ambientLight.environment->stagingTexture->GetRHITexturePointer()->GetDefaultView();
+					envSkyboxPass->SetAttachmentTexture(0, stagingView);
+					envSkyboxPass->SetDepthAttachmentTexture(ambientLight.environment->stagingDepthTexture->GetDefaultView());
+					mainCommandBuffer->BeginRendering(envSkyboxPass);
+					renderSkybox(environmentIrradiancePipeline, glm::transpose(view), campos, deg_to_rad(90), faceViewport, faceScissor, [&] {
+						mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+						mainCommandBuffer->SetFragmentTexture(outputTex->GetView(), 2);
+						});
+					mainCommandBuffer->EndRendering();
 
-				mainCommandBuffer->CopyTextureToTexture(
-					{
-						.texture = stagingView,
-						.mip = 0,
-						.layer = 0,
-					},
+					mainCommandBuffer->CopyTextureToTexture(
+						{
+							.texture = stagingView,
+							.mip = 0,
+							.layer = 0,
+						},
 					{
 						.texture = irradianceTex->GetView(),
 						.mip = 0,
 						.layer = i
 					}
-				);
+					);
+				}
 			}
+			mainCommandBuffer->EndRenderDebugMarker();
 		}
-		mainCommandBuffer->EndRenderDebugMarker();
 	}
     	
     auto worldTransformBuffer = worldOwning->renderData.worldTransforms.GetPrivateBuffer();
