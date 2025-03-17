@@ -184,9 +184,10 @@ void main(){
             vec3 irradianceColor = texture(samplerCube(cubeMaps[light.irradianceCubemapBindlessIndex], environmentSampler), surfaceReflectedRay).rgb;
 
             vec3 rad = vec3(0);
-            vec3 lightResult = CalculateLightRadiance(worldNormal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, surfaceReflectedRay, 1, environmentColor * light.intensity, rad) + irradianceColor;
+            vec3 lightResult = CalculateLightRadiance(worldNormal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, surfaceReflectedRay, 1, environmentColor * light.intensity, rad);
             radiance += rad + irradianceColor;
-            outcolor += vec4(ao * environmentColor * light.intensity,0);
+            outcolor += vec4(irradianceColor * user_out.color.rgb * light.intensity * ao,0);
+            outcolor += vec4(ao * environmentColor * light.intensity * user_out.color.rgb,0);
         }
         // no BRDF
         else{
