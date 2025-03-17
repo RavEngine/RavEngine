@@ -207,26 +207,68 @@ struct AudioPlayer;
 		auto GetCurrentRenderWorld()  {
 			return renderWorld;
 		}
+
+
 #if !RVE_SERVER
+		struct AudioBitsetUnpack {
+			uint8_t current = 0, inactive = 0, render = 0;
+		};
+		static AudioBitsetUnpack UnpackAudioBitset(uint8_t audioCurrentBitset) {
+			uint8_t currentIdx = (audioCurrentBitset & audioCurrentMask) >> audioCurrentShift;
+			uint8_t inactiveIdx = (audioCurrentBitset & audioInactiveMask) >> audioInactiveShift;
+			uint8_t renderIdx = (audioCurrentBitset & audioRenderMask) >> audioRenderShift;
+
+			return { currentIdx, inactiveIdx, renderIdx };
+		}
+
+		static uint8_t RepackAudioBitset(AudioBitsetUnpack values) {
+			uint8_t audioNextBitset = 0;
+			audioNextBitset |= values.current << audioCurrentShift;
+			audioNextBitset |= values.inactive << audioInactiveShift;
+			audioNextBitset |= values.render << audioRenderShift;
+
+			return audioNextBitset;
+		}
+
         inline void SwapCurrrentAudioSnapshot(){
             audiomtx1.lock();
-            std::swap(audioCurrentIdx, audioInactiveIdx);
+			// swapping currentIdx with inactiveIdx
+			const uint8_t audioCurrentBitset = audioswapbitset;
+			auto indices = UnpackAudioBitset(audioCurrentBitset);
+
+            std::swap(indices.current, indices.inactive);
+
+			uint8_t audioNextBitset = RepackAudioBitset(indices);
+	
+			audioswapbitset = audioNextBitset;
+
 			newAudioAvailable = true;
             audiomtx1.unlock();
         }
         inline void SwapRenderAudioSnapshotIfNeeded(){
+			// swapping inactive with render
 			audiomtx1.lock();
 			if (newAudioAvailable) {
-				std::swap(audioInactiveIdx, audioRenderIdx);
+				const uint8_t audioCurrentBitset = audioswapbitset;
+				auto indices = UnpackAudioBitset(audioCurrentBitset);
+				std::swap(indices.inactive, indices.render);
+
+				uint8_t audioNextBitset = RepackAudioBitset(indices);
+				audioswapbitset = audioNextBitset;
+
 				newAudioAvailable = false;
 			}
 			audiomtx1.unlock();
         }
         inline AudioSnapshot* GetCurrentAudioSnapshot(){
-            return &audioSnapshots[audioCurrentIdx];
+			auto idx = (audioswapbitset & audioCurrentMask) >> audioCurrentShift;
+			auto ptr = &audioSnapshots[idx];
+			return ptr;
         }
         inline AudioSnapshot* GetRenderAudioSnapshot(){
-            return &audioSnapshots[audioRenderIdx];
+			auto idx = (audioswapbitset & audioRenderMask) >> audioRenderShift;
+			auto ptr = &audioSnapshots[idx];
+			return ptr;
         }
 #endif
 
@@ -243,7 +285,14 @@ struct AudioPlayer;
 		locked_hashset<Ref<World>,SpinLock> loadedWorlds;
 #if !RVE_SERVER
         Array<AudioSnapshot, 3> audioSnapshots;
-		uint8_t audioCurrentIdx = 0, audioInactiveIdx = 1, audioRenderIdx = 2;
+		constexpr static uint8_t 
+			audioCurrentShift = 0, audioInactiveShift = 2, audioRenderShift = 4,
+			audioCurrentMask = 0b00000011, 
+			audioInactiveMask = (audioCurrentMask << audioInactiveShift), 
+			audioRenderMask = (audioCurrentMask << audioRenderShift)
+			;
+
+		uint8_t audioswapbitset = (0 << audioCurrentShift) | (1 << audioInactiveShift) | (2 << audioRenderShift);
         SpinLock audiomtx1;
 		bool newAudioAvailable = false;
 #endif
