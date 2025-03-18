@@ -182,8 +182,6 @@ void main(){
             // https://learnopengl.com/PBR/IBL/Specular-IBL
             const vec3 prefilteredColor = textureLod(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], environmentSampler), surfaceReflectedRay, envMip).rgb;
             const float NdotV = dot(worldNormal,cameraRay);
-            const vec3 indirectSpecular = GGXEnvironmentBRDF(user_out.color.rgb, NdotV, sqrt(user_out.roughness));
-
         
             const vec3 N = worldNormal;
             const vec3 V = normalize(engineConstants[0].camPos - worldPosition);
@@ -194,12 +192,18 @@ void main(){
 
             vec3 F0 = vec3(0.04); 
             F0 = mix(F0, albedo, metallic);
-            vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness); 
+            vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+
+            vec3 kS = F;
             vec3 kD = 1.0 - kS;
+            kD *= 1.0 - metallic;	
             
             vec3 diffuse    = irradiance * albedo;
-            vec3 ambient    = (kD * diffuse) * ao; 
 
+            const vec2 envBRDF = GGXEnvironmentBRDFScaleBias(max(NdotV,0), sqrt(user_out.roughness));
+            const vec3 specular = prefilteredColor * (F *  envBRDF.x + envBRDF.y);
+
+            vec3 ambient  = (kD * diffuse + specular) * ao; 
             outcolor += vec4(ambient,0);
         }
         // no BRDF
