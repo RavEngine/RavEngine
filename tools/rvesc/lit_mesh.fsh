@@ -186,6 +186,7 @@ void main(){
 
             vec3 ambient = CalculateAmbientLightRadiance(worldNormal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, irradiance, prefilteredColor);
             ambient *= ao;
+            ambient *= light.intensity * light.color;
 
             outcolor += vec4(ambient,0);
         }
