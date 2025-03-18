@@ -126,3 +126,26 @@ vec3 GGXEnvironmentBRDF(in vec3 specAlbedo, in float nDotV, in float sqrtRoughne
     vec2 scaleBias = GGXEnvironmentBRDFScaleBias(nDotV, sqrtRoughness);
     return specAlbedo * scaleBias.x + scaleBias.y;
 }
+
+vec3 CalculateAmbientLightRadiance(vec3 worldNormal, vec3 camPos, vec3 worldPos, vec3 albedo, float metallic, float roughness, vec3 irradiance, vec3 prefilteredColor){
+    const vec3 N = worldNormal;
+    const vec3 V = normalize(camPos - worldPos);
+    const float NdotV = dot(N,V);
+
+    vec3 F0 = vec3(0.04); 
+    F0 = mix(F0, albedo, metallic);
+    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+
+    vec3 kS = F;
+    vec3 kD = 1.0 - kS;
+    kD *= 1.0 - metallic;	
+            
+    vec3 diffuse    = irradiance * albedo;
+
+    const vec2 envBRDF = GGXEnvironmentBRDFScaleBias(max(NdotV,0), sqrt(roughness));
+    const vec3 specular = prefilteredColor * (F *  envBRDF.x + envBRDF.y);
+
+    vec3 ambient  = (kD * diffuse + specular); 
+
+    return ambient;
+}
