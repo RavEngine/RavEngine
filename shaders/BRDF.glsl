@@ -38,6 +38,11 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+} 
+
 /** Parameters
  @param Normal: normal vector for this pixel
  @param camPos: location of the camera in world-space
@@ -80,4 +85,44 @@ vec3 CalculateLightRadiance(vec3 Normal, vec3 camPos, vec3 WorldPos, vec3 albedo
     radiance *= NdotL;
 
     return Lo;
+}
+
+float saturate(float value){
+    return clamp(value,0.0,1.0);
+}
+
+// adapted from: https://github.com/TheRealMJP/DXRPathTracer/blob/master/SampleFramework12/v1.02/Shaders/BRDF.hlsl
+//-------------------------------------------------------------------------------------------------
+// Returns scale and bias values for environment specular reflections that represents the
+// integral of the geometry/visibility + fresnel terms for a GGX BRDF given a particular
+// viewing angle and roughness value. The final value is computed using polynomials that were
+// fitted to tabulated data generated via monte carlo integration.
+//-------------------------------------------------------------------------------------------------
+vec2 GGXEnvironmentBRDFScaleBias(in float nDotV, in float sqrtRoughness)
+{
+    const float nDotV2 = nDotV * nDotV;
+    const float sqrtRoughness2 = sqrtRoughness * sqrtRoughness;
+    const float sqrtRoughness3 = sqrtRoughness2 * sqrtRoughness;
+
+    const float delta = 0.991086418474895f + (0.412367709802119f * sqrtRoughness * nDotV2) -
+                        (0.363848256078895f * sqrtRoughness2) -
+                        (0.758634385642633f * nDotV * sqrtRoughness2);
+    const float bias = saturate((0.0306613448029984f * sqrtRoughness) + 0.0238299731830387f /
+                                (0.0272458171384516f + sqrtRoughness3 + nDotV2) -
+                                0.0454747751719356f);
+
+    const float scale = saturate(delta - bias);
+    return vec2(scale, bias);
+}
+
+//-------------------------------------------------------------------------------------------------
+// Returns an adjusted scale factor for environment specular reflections that represents the
+// integral of the geometry/visibility + fresnel terms for a GGX BRDF given a particular
+// viewing angle and roughness value. The final value is computed using polynomials that were
+// fitted to tabulated data generated via monte carlo integration.
+//-------------------------------------------------------------------------------------------------
+vec3 GGXEnvironmentBRDF(in vec3 specAlbedo, in float nDotV, in float sqrtRoughness)
+{
+    vec2 scaleBias = GGXEnvironmentBRDFScaleBias(nDotV, sqrtRoughness);
+    return specAlbedo * scaleBias.x + scaleBias.y;
 }

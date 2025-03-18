@@ -179,15 +179,28 @@ void main(){
 
             const int numLods = textureQueryLevels(cubeMaps[light.environmentCubemapBindlessIndex]);
             const float envMip = user_out.roughness * numLods;  // higher roughness -> higher LOD
+            // https://learnopengl.com/PBR/IBL/Specular-IBL
+            const vec3 prefilteredColor = textureLod(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], environmentSampler), surfaceReflectedRay, envMip).rgb;
+            const float NdotV = dot(worldNormal,cameraRay);
+            const vec3 indirectSpecular = GGXEnvironmentBRDF(user_out.color.rgb, NdotV, sqrt(user_out.roughness));
 
-            vec3 environmentColor = textureLod(samplerCube(cubeMaps[light.environmentCubemapBindlessIndex], environmentSampler), surfaceReflectedRay, envMip).rgb;
-            vec3 irradianceColor = texture(samplerCube(cubeMaps[light.irradianceCubemapBindlessIndex], environmentSampler), surfaceReflectedRay).rgb;
+        
+            const vec3 N = worldNormal;
+            const vec3 V = normalize(engineConstants[0].camPos - worldPosition);
+            const vec3 albedo = user_out.color.rgb;
+            const float metallic = user_out.metallic;
+            const float roughness = user_out.roughness;
+            vec3 irradiance = texture(samplerCube(cubeMaps[light.irradianceCubemapBindlessIndex], environmentSampler), N).rgb;
 
-            vec3 rad = vec3(0);
-            vec3 lightResult = CalculateLightRadiance(worldNormal, engineConstants[0].camPos, worldPosition, user_out.color.rgb, user_out.metallic, user_out.roughness, surfaceReflectedRay, 1, environmentColor * light.intensity, rad);
-            radiance += rad + irradianceColor;
-            outcolor += vec4(irradianceColor * user_out.color.rgb * light.intensity * ao,0);
-            outcolor += vec4(ao * environmentColor * light.intensity * user_out.color.rgb,0);
+            vec3 F0 = vec3(0.04); 
+            F0 = mix(F0, albedo, metallic);
+            vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness); 
+            vec3 kD = 1.0 - kS;
+            
+            vec3 diffuse    = irradiance * albedo;
+            vec3 ambient    = (kD * diffuse) * ao; 
+
+            outcolor += vec4(ambient,0);
         }
         // no BRDF
         else{
