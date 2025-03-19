@@ -233,29 +233,43 @@ struct AudioPlayer;
         inline void SwapCurrrentAudioSnapshot(){
 			// swapping currentIdx with inactiveIdx
 			uint8_t audioCurrentBitset = audioswapbitset.load();
-			auto indices = UnpackAudioBitset(audioCurrentBitset);
+            uint8_t audioNextBitset = audioCurrentBitset;
+            
+            auto makeNextBitset = [&audioCurrentBitset]{
+                auto indices = UnpackAudioBitset(audioCurrentBitset);
 
-            std::swap(indices.current, indices.inactive);
+                std::swap(indices.current, indices.inactive);
 
-			uint8_t audioNextBitset = RepackAudioBitset(indices);
+                uint8_t audioNextBitset = RepackAudioBitset(indices);
 
-			// set the audioAvailable flag
-			audioNextBitset |= 1 << audioAvailableShift;
+                // set the audioAvailable flag
+                audioNextBitset |= 1 << audioAvailableShift;
+                
+                return audioNextBitset;
+            };
+            audioNextBitset = makeNextBitset();
 	
-			while (!audioswapbitset.compare_exchange_weak(audioCurrentBitset, audioNextBitset, std::memory_order_release, std::memory_order_relaxed));
+            while (!audioswapbitset.compare_exchange_weak(audioCurrentBitset, audioNextBitset, std::memory_order_release, std::memory_order_relaxed)){
+                audioNextBitset = makeNextBitset();
+            }
         }
         inline void SwapRenderAudioSnapshotIfNeeded(){
 			// swapping inactive with render
 			auto audioCurrentBitset = audioswapbitset.load();
-			if (NewAudioAvailable(audioCurrentBitset)) {
-				auto indices = UnpackAudioBitset(audioCurrentBitset);
-				std::swap(indices.inactive, indices.render);
-
-				uint8_t audioNextBitset = RepackAudioBitset(indices);
-				audioswapbitset = audioNextBitset;
-
-				// newAudioAvailable is set to false automatically because repackAudioBitset sets all bits to 0
-				while (!audioswapbitset.compare_exchange_weak(audioCurrentBitset, audioNextBitset, std::memory_order_release, std::memory_order_relaxed));
+            if (NewAudioAvailable(audioCurrentBitset)) {
+                uint8_t audioNextBitset = audioCurrentBitset;
+                auto makeNextBitset = [&audioCurrentBitset] {
+                    auto indices = UnpackAudioBitset(audioCurrentBitset);
+                    std::swap(indices.inactive, indices.render);
+                    // newAudioAvailable is set to false automatically because repackAudioBitset sets all bits to 0
+                    uint8_t audioNextBitset = RepackAudioBitset(indices);
+                    return audioNextBitset;
+                };
+                audioNextBitset = makeNextBitset();
+                
+                while (!audioswapbitset.compare_exchange_weak(audioCurrentBitset, audioNextBitset, std::memory_order_release, std::memory_order_relaxed)){
+                    audioNextBitset = makeNextBitset();
+                }
 			}
         }
         inline AudioSnapshot* GetCurrentAudioSnapshot(){
