@@ -142,7 +142,9 @@ void main(){
         outAlbedo = user_out.color;
     #endif
     #if RVE_PREPASS
-    outViewSpaceNormal = vec4(mat3(data.viewOnly) * worldNormal,1);
+    vec3 viewNormal = mat3(data.viewOnly) * worldNormal;
+    viewNormal = normalize(viewNormal);
+    outViewSpaceNormal = vec4(viewNormal,1);
     #endif
 
     vec4 outcolor = vec4(0,0,0,1); // NV: these don't default-init to 0
