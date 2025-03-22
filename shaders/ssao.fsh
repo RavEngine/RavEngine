@@ -46,9 +46,8 @@ void main()
     const vec2 TexCoords = gl_FragCoord.xy / ubo.screenDim;
 
      // get input for SSAO algorithm
-    vec2 ndc = TexCoords * 2 - 1;
     float depth = texture(sampler2D(tDepth, g_sampler),TexCoords).r;
-    vec3 fragPos = ComputeViewSpacePos(ndc, depth, ubo.invProj);
+    vec3 fragPos = ComputeViewSpacePos(TexCoords, depth, ubo.invProj);
     vec3 normal = normalize(texture(sampler2D(tNormal, g_sampler), TexCoords).rgb);
     vec3 randomVec = vec3(rand(TexCoords),rand(TexCoords*2),rand(TexCoords/2));
     // create TBN change-of-basis matrix: from tangent-space to view-space
