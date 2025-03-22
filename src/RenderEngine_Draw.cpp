@@ -1904,19 +1904,36 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						ssgiPassNoClear->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
 						mainCommandBuffer->BeginRendering(ssaoPassClear);
-						mainCommandBuffer->BindRenderPipeline(ssaoPipeline);
+
+						switch (VideoSettings.aoMethod) {
+						case AOMethod::SSAO:
+							mainCommandBuffer->BindRenderPipeline(ssaoPipeline);
+							break;
+						case AOMethod::GTAO:
+							mainCommandBuffer->BindRenderPipeline(gtaoPipeline);
+						}
 						mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
 						mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 1);
 						mainCommandBuffer->SetFragmentTexture(target.viewSpaceNormalsTexture->GetDefaultView(), 2);
 
 						const auto size = target.ssaoOutputTexture1->GetSize();
-						{
+
+						if (VideoSettings.aoMethod == AOMethod::SSAO){
 							SSAOUBO ssgiubo{
 								.proj = camData.projOnly,
 								.invProj = glm::inverse(camData.projOnly),
 								.screenDim = {size.width, size.height},
 							};
 							mainCommandBuffer->SetFragmentBytes(ssgiubo, 0);
+						}
+						else if (VideoSettings.aoMethod == AOMethod::GTAO) {
+							GTAOUBO ubo{
+								.screenDim = {size.width, size.height},
+							};
+							mainCommandBuffer->SetFragmentBytes(ubo, 0);
+						}
+						else {
+							Debug::Fatal("AO method {} is not implemented",std::to_underlying(VideoSettings.aoMethod));
 						}
 
 						mainCommandBuffer->SetVertexBuffer(screenTriVerts);

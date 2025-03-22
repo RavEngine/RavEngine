@@ -261,9 +261,15 @@ namespace RavEngine {
          @return The name of the current rendering API in use
          */
         static const std::string_view GetCurrentBackendName();
+
+		enum class AOMethod : uint8_t {
+			SSAO,
+			GTAO
+		};
 		
 		static struct vs {
 			bool vsync = true;
+			AOMethod aoMethod = AOMethod::SSAO;
 		} VideoSettings;
 
 		void SyncVideoSettings();
