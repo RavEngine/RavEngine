@@ -130,10 +130,10 @@ void main(){
 
     LitOutput user_out = frag(envData);
 
-    const vec3 objectSpaceNormal = TBN * user_out.normal;
+    const vec3 objectSpaceNormal = normalize(TBN * user_out.normal);
 
 
-    const vec3 worldNormal = mat3(entityModelMtx) * objectSpaceNormal;
+    const vec3 worldNormal = normalize(mat3(entityModelMtx) * objectSpaceNormal);
     
      // this part needs them in view space
     EngineData data = make_engine_data(engineConstants[0]);
