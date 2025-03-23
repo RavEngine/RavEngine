@@ -49,7 +49,7 @@ void main()
     float depth = texture(sampler2D(tDepth, g_sampler),TexCoords).r;
     vec3 fragPos = ComputeViewSpacePos(TexCoords, depth, ubo.invProj);
     vec3 normal = normalize(texture(sampler2D(tNormal, g_sampler), TexCoords).rgb);
-    vec3 randomVec = vec3(rand(TexCoords),rand(TexCoords*2),rand(TexCoords/2));
+    vec3 randomVec = vec3(rand(TexCoords) * 2 - 1,rand(TexCoords*2) * 2 - 1, 0);        // corresponds to the "noiseTexture" in the original. Z is 0 intentionally
     // create TBN change-of-basis matrix: from tangent-space to view-space
     vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
     vec3 bitangent = cross(normal, tangent);
