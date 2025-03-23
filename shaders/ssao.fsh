@@ -23,6 +23,8 @@ const vec3 samples[] = {
     vec3(-0.011456773, -0.30563572, 0.37492394),
     vec3(-0.0023545611, -0.0013345107, 0.0026308813), 
 };
+const float kernelSize = samples.length();
+
 const float radius = 0.5;
 const float bias = 0.025;
 
@@ -46,21 +48,21 @@ void main()
     const vec2 TexCoords = gl_FragCoord.xy / ubo.screenDim;
 
      // get input for SSAO algorithm
-    float depth = texture(sampler2D(tDepth, g_sampler),TexCoords).r;
-    vec3 fragPos = ComputeViewSpacePos(TexCoords, depth, ubo.invProj);
-    vec3 normal = normalize(texture(sampler2D(tNormal, g_sampler), TexCoords).rgb);
-    vec3 randomVec = vec3(rand(TexCoords) * 2 - 1,rand(TexCoords*2) * 2 - 1, 0);        // corresponds to the "noiseTexture" in the original. Z is 0 intentionally
+    const float depth = texture(sampler2D(tDepth, g_sampler),TexCoords).r;
+    const vec3 fragPos = ComputeViewSpacePos(TexCoords, depth, ubo.invProj);
+    const vec3 normal = normalize(texture(sampler2D(tNormal, g_sampler), TexCoords).rgb);
+    const vec3 randomVec = vec3(rand(TexCoords) * 2 - 1,rand(TexCoords*2) * 2 - 1, 0);        // corresponds to the "noiseTexture" in the original. Z is 0 intentionally
     // create TBN change-of-basis matrix: from tangent-space to view-space
-    vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
-    vec3 bitangent = cross(normal, tangent);
-    mat3 TBN = mat3(tangent, bitangent, normal);
+    const vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
+    const vec3 bitangent = cross(normal, tangent);
+    const mat3 TBN = mat3(tangent, bitangent, normal);
     // iterate over the sample kernel and calculate occlusion factor
     float occlusion = 0.0;
-    const float kernelSize = samples.length();
     for(int i = 0; i < kernelSize; ++i)
     {
         // get sample position
-        vec3 samplePos = TBN * samples[i]; // from tangent to view-space
+        const vec3 currentSample = samples[i];
+        vec3 samplePos = TBN * currentSample; // from tangent to view-space
         samplePos = fragPos + samplePos * radius; 
         
         // project sample position (to sample texture) (to get position on screen/texture)
@@ -70,13 +72,14 @@ void main()
         offset.xyz = offset.xyz * 0.5 + 0.5; // transform to range 0.0 - 1.0
         
         // get sample depth
-        float normalizedDepth = texture(sampler2D(tDepth, g_sampler), offset.xy).r;
-        vec3 sampleViewPos = ComputeViewSpacePos(offset.xy, normalizedDepth, ubo.invProj);
-        float sampleDepth = sampleViewPos.z; // get depth value of kernel sample
+        const float normalizedDepth = texture(sampler2D(tDepth, g_sampler), offset.xy).r;
+        const vec3 sampleViewPos = ComputeViewSpacePos(offset.xy, normalizedDepth, ubo.invProj);
+        const float sampleDepth = sampleViewPos.z; // get depth value of kernel sample
         
         // range check & accumulate
-        float rangeCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z - sampleDepth));
-        occlusion += (sampleDepth >= samplePos.z + bias ? 1.0 : 0.0) * rangeCheck;           
+        const float rangeCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z - sampleDepth));
+        float sampleCheck = sampleDepth >= samplePos.z + bias ? 1.0 : 0.0;
+        occlusion += sampleCheck * rangeCheck;           
     }
     occlusion = 1.0 - (occlusion / kernelSize);
     

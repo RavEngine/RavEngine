@@ -1912,7 +1912,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						case AOMethod::GTAO:
 							mainCommandBuffer->BindRenderPipeline(gtaoPipeline);
 						}
-						mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
+						mainCommandBuffer->SetFragmentSampler(textureClampSampler, 0);
 						mainCommandBuffer->SetFragmentTexture(target.depthStencil->GetDefaultView(), 1);
 						mainCommandBuffer->SetFragmentTexture(target.viewSpaceNormalsTexture->GetDefaultView(), 2);
 

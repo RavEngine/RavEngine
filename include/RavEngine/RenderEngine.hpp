@@ -75,7 +75,7 @@ namespace RavEngine {
 		bool transientSubmittedLastFrame = false;
 
 		RGLTexturePtr dummyShadowmap, dummyCubemap;
-		RGLSamplerPtr textureSampler, shadowSampler, depthPyramidSampler;
+		RGLSamplerPtr textureSampler, textureClampSampler, shadowSampler, depthPyramidSampler;
 		RGLRenderPassPtr litRenderPass, unlitRenderPass, envSkyboxPass, depthPrepassRenderPass, depthPrepassRenderPassLit, postProcessRenderPass, postProcessRenderPassClear, finalRenderPass, finalRenderPassNoDepth, shadowRenderPass, lightingClearRenderPass, litClearRenderPass, finalClearRenderPass, depthPyramidCopyPass, litTransparentPass, unlitTransparentPass, transparentClearPass, transparencyApplyPass, ssaoPassClear, ssgiPassNoClear, ssgiAmbientApplyPass, ssgiPassClear;
 
 		RGLRenderPipelinePtr depthPyramidCopyPipeline,

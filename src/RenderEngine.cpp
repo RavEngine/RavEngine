@@ -306,6 +306,10 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
     transformSyncCommandBuffer = mainCommandQueue->CreateCommandBuffer();
     transientCommandBuffer = mainCommandQueue->CreateCommandBuffer();
 	textureSampler = device->CreateSampler({});
+	textureClampSampler = device->CreateSampler({
+		.addressModeU = RGL::SamplerAddressMode::Clamp,
+		.addressModeV = RGL::SamplerAddressMode::Clamp
+	});
 	shadowSampler = device->CreateSampler({
 		.addressModeU = RGL::SamplerAddressMode::Border,
 		.addressModeV = RGL::SamplerAddressMode::Border,
