@@ -71,7 +71,7 @@ void main()
         
         // get sample depth
         float normalizedDepth = texture(sampler2D(tDepth, g_sampler), offset.xy).r;
-        vec3 sampleViewPos = ComputeViewSpacePos(offset.xy * 2 - 1, normalizedDepth, ubo.invProj);
+        vec3 sampleViewPos = ComputeViewSpacePos(offset.xy, normalizedDepth, ubo.invProj);
         float sampleDepth = sampleViewPos.z; // get depth value of kernel sample
         
         // range check & accumulate
