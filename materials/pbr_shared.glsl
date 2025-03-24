@@ -15,7 +15,6 @@ layout(location = 0) in vec2 inUV;
 #if RVE_HAS_LIGHTMAP_UV
 layout(location = 1) in vec2 inLightmapUV;
 #endif
-layout(early_fragment_tests) in;
 
 LitOutput frag(EnvironmentData envData)
 {

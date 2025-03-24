@@ -130,6 +130,12 @@ void main(){
 
     LitOutput user_out = frag(envData);
 
+    #if !RVE_TRANSPARENT
+    if (user_out.color.a < 0.5) {
+        discard;
+    }
+    #endif
+
     const vec3 objectSpaceNormal = normalize(TBN * user_out.normal);
 
 
