@@ -1370,13 +1370,18 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 				mainCommandBuffer->BeginCompute(defaultCullingComputePipeline);
                 for (auto& [materialInstance, drawcommand] : renderData) {
+                    bool shouldKeep = filterRenderData(lightingFilter, materialInstance);
+                    if (!shouldKeep) {
+                        continue;
+                    }
+                    
+                    mainCommandBuffer->UseResource(drawcommand.cullingBuffer);
+                    mainCommandBuffer->UseResource(drawcommand.indirectBuffer);
                     for (auto& command : drawcommand.commands) {
                         // make buffers resident
                         if (auto mesh = command.mesh.lock()) {
-                            mainCommandBuffer->UseResource(drawcommand.cullingBuffer);
-                            mainCommandBuffer->UseResource(drawcommand.indirectBuffer);
-                            mainCommandBuffer->UseResource(mesh->lodDistances.GetPrivateBuffer());
                             mainCommandBuffer->UseResource(command.entities.GetPrivateBuffer());
+                            mainCommandBuffer->UseResource(mesh->lodDistances.GetPrivateBuffer());
                         }
                     }
                 }
@@ -1660,6 +1665,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 								mainCommandBuffer->SetVertexBuffer(sharedTangentBuffer, { .bindingPosition = VTX_TANGENT_BINDING });
 								mainCommandBuffer->SetVertexBuffer(sharedBitangentBuffer, { .bindingPosition = VTX_BITANGENT_BINDING });
 								mainCommandBuffer->SetVertexBuffer(sharedUV0Buffer, { .bindingPosition = VTX_UV0_BINDING });
+                                mainCommandBuffer->SetVertexBuffer(sharedLightmapUVBuffer, { .bindingPosition = VTX_LIGHTMAP_BINDING });
 								mainCommandBuffer->SetIndexBuffer(sharedIndexBuffer);
 								mainCommandBuffer->BindBuffer(transientBuffer, MeshParticleRenderMaterialInstance::kEngineDataBinding, emitter.renderState.maxTotalParticlesOffset);
 
