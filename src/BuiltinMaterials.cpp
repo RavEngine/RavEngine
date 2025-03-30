@@ -129,7 +129,6 @@ RavEngine::PBRMaterialInstance::PBRMaterialInstance(Ref<PBRMaterial> m, uint32_t
     textureBindings[6] = Texture::Manager::defaultTexture;
     textureBindings[7] = Texture::Manager::zeroTexture;
     textureBindings[8] = Texture::Manager::zeroTexture;
-    textureBindings[9] = Texture::Manager::zeroTexture;
 }
 
 RavEngine::PBRMaterial::PBRMaterial(MaterialRenderOptions options, const std::string_view vsh_name, const std::string_view fsh_name) : LitMaterial(vsh_name, fsh_name,{
@@ -176,11 +175,6 @@ RavEngine::PBRMaterial::PBRMaterial(MaterialRenderOptions options, const std::st
         },
         {
             .binding = 8,
-            .type = RGL::BindingType::SampledImage,
-            .stageFlags = RGL::BindingVisibility::Fragment,
-        },
-        {
-            .binding = 9,
             .type = RGL::BindingType::SampledImage,
             .stageFlags = RGL::BindingVisibility::Fragment,
         },

@@ -86,12 +86,8 @@ namespace RavEngine {
 	public:
 		PBRMaterialBakedInstance(Ref<PBRMaterialBaked> m, uint32_t priority = 0) : PBRMaterialInstance(m, priority) {}
 
-		void SetBakedDirectionTexture(Ref<Texture> texture) {
+		void SetBakedShadowTexture(Ref<Texture> texture) {
 			textureBindings[8] = texture;
-		}
-
-		void SetBakedEmissivityTexture(Ref<Texture> texture) {
-			textureBindings[9] = texture;
 		}
 	};
 }

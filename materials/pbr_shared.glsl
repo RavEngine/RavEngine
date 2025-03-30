@@ -7,8 +7,7 @@ layout(binding = 5) uniform texture2D t_roughness;
 layout(binding = 6) uniform texture2D t_ao;
 layout(binding = 7) uniform texture2D t_emissive;
 #if RVE_HAS_LIGHTMAP_UV
-layout(binding = 8) uniform texture2D t_bakedDirection;
-layout(binding = 9) uniform texture2D t_bakedIndirect;
+layout(binding = 8) uniform texture2D t_bakedShadow;
 #endif
 
 layout(location = 0) in vec2 inUV;
@@ -38,15 +37,9 @@ LitOutput frag(EnvironmentData envData)
 
 #if RVE_HAS_LIGHTMAP_UV
 	// add the baked component
-	const vec3 objectSpaceNormal = envData.TBN * normal;
-	const vec3 worldNormal = mat3(envData.entityModelMtx) * objectSpaceNormal;
+	const vec3 tBakedComponent = texture(sampler2D(t_bakedShadow, g_sampler), inLightmapUV).rgb;
 
-	vec4 bakedDir = texture(sampler2D(t_bakedDirection, g_sampler), inLightmapUV).rgba;
-	vec3 illuminance = texture(sampler2D(t_bakedIndirect, g_sampler), inLightmapUV).rgb;
-
-	float halfLambert = dot(worldNormal, bakedDir.xyz - 0.5) + 0.5;
-	vec3 bakeDiffuseLighting = illuminance * halfLambert / max(1e-4, bakedDir.w);
-	mat_out.emissiveColor += bakeDiffuseLighting;
+	mat_out.color *= vec4(tBakedComponent,1);
 #endif
 
 	return mat_out;
