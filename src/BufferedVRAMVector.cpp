@@ -105,7 +105,7 @@ void BufferedVRAMStructureBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hos
             }, copySize);
             nRanges++;
     };
-    constexpr uint32_t maxGapSize = 5;
+    constexpr uint32_t maxGapSize = 5; // we can have gaps of up to this many matrices before making a new range
     RVE_PROFILE_SECTION(computeRanges, "Compute Ranges");
     const auto n = syncTrackBuffer.size();
     for (uint32_t i = 0; i < n; i++) {
@@ -113,8 +113,11 @@ void BufferedVRAMStructureBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hos
         auto& modified = syncTrackBuffer[i];
 
         if (modified && gapCounter == 0) {
-            gapCounter = maxGapSize; // we can have gaps of up to this many matrices before making a new range
+            gapCounter = maxGapSize; 
             rangeBegin = i;
+        }
+        else if (modified) {
+            gapCounter = maxGapSize;
         }
         
         if (!modified) {
@@ -132,7 +135,7 @@ void BufferedVRAMStructureBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hos
     RVE_PROFILE_SECTION_END(computeRanges);
 
     // if the loop ends and gapCounter != 0, then create another range
-    if (gapCounter != 0 && (nRanges > 0 || beginCalled)) {
+    if (gapCounter != 0) {
         endRange(uint32_t(n));
     }        
     
