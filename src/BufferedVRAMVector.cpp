@@ -42,6 +42,7 @@ void BufferedVRAMStructureBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hos
     uint32_t rangeBegin = 0;
     auto& syncTrackBuffer = syncTrackingBuffer;
     auto beginCB = [&] {
+        RVE_PROFILE_FN_N("beginCB");
         if (!needsSync) {
             transformSyncCommandBuffer->Reset();
             transformSyncCommandBuffer->Begin();
@@ -85,7 +86,9 @@ void BufferedVRAMStructureBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hos
         }
     }
 
+    uint32_t nRanges = 0;
     auto endRange = [&](uint32_t end) {
+        RVE_PROFILE_FN_N("endRange");
         // this is the end of the range. add a command
         //Debug::Log("Range: {} - {}", rangeBegin, i);
         beginCB();
@@ -100,17 +103,20 @@ void BufferedVRAMStructureBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hos
                 .buffer = privateBuffer,
                 .offset = bufferOffset
             }, copySize);
-
+            nRanges++;
     };
+    constexpr uint32_t maxGapSize = 5;
     RVE_PROFILE_SECTION(computeRanges, "Compute Ranges");
     const auto n = syncTrackBuffer.size();
     for (uint32_t i = 0; i < n; i++) {
+        //RVE_PROFILE_SECTION(iter, "iter");
         auto& modified = syncTrackBuffer[i];
 
         if (modified && gapCounter == 0) {
-            gapCounter = 2; // we can have gaps of up to 2 matrices before making a new range
+            gapCounter = maxGapSize; // we can have gaps of up to this many matrices before making a new range
             rangeBegin = i;
         }
+        
         if (!modified) {
             auto prevValue = gapCounter;
             gapCounter = std::max(0, gapCounter - 1);   // decrement
@@ -121,12 +127,13 @@ void BufferedVRAMStructureBase::EncodeSync(RGLDevicePtr device, RGLBufferPtr hos
         if (modified) {
             modified = false;
         }
+        //RVE_PROFILE_SECTION_END(iter);
     }
     RVE_PROFILE_SECTION_END(computeRanges);
 
     // if the loop ends and gapCounter != 0, then create another range
-    if (gapCounter != 0) {
-        endRange(uint32_t(syncTrackBuffer.size()));
+    if (gapCounter != 0 && (nRanges > 0 || beginCalled)) {
+        endRange(uint32_t(n));
     }        
     
     if (beginCalled) {

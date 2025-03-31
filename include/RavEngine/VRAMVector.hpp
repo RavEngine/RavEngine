@@ -130,6 +130,17 @@ namespace RavEngine {
 			return nValues;
 		}
 
+		auto capacity() const {
+			return settings.nElements;
+		}
+
+		/**
+		Set the internal "size" of the container. Does not initialize or destroy elements. Use with care.
+		*/
+		void _setElementCount(uint32_t allocatedElements) {
+			nValues = allocatedElements;
+		}
+
 		/**
 		* Make space for more elements, but the current count remains
 		* @param newSize the size in elements (not bytes)

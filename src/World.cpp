@@ -321,8 +321,9 @@ void World::setupRenderTasks(){
         auto currentBufferSize = renderData.worldTransforms.Size();
         if (nEntities > currentBufferSize){
             auto newSize = closest_power_of<entity_id_t>(nEntities, 2);
-            renderData.worldTransforms.Resize(newSize);
+            renderData.worldTransforms.reserve(newSize);
         }
+        renderData.worldTransforms._setElementCount(nEntities);
         nCreatedThisTick = 0;
     });
     

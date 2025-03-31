@@ -64,6 +64,14 @@ public:
             syncTrackingBuffer.resize(newSize, true);   // ensure the initial copy is included
         }
     }
+
+    /**
+    Set the internal "size" of the container. Does not initialize or destroy elements. Use with care. 
+    */
+    void _setElementCount(uint32_t allocatedElements) {
+        hostBuffer._setElementCount(allocatedElements);
+        syncTrackingBuffer.resize(allocatedElements, true);
+    }
     
     void push_back(const T& value){
         hostBuffer.push_back(value);
@@ -84,12 +92,18 @@ public:
     }
     
     void reserve(uint32_t size){
-        hostBuffer.reserve(size);
-        syncTrackingBuffer.reserve(size);
+        if (hostBuffer.capacity() < size) {
+            hostBuffer.reserve(size);
+            syncTrackingBuffer.reserve(size);
+        }
     }
     
     auto Size() const{
         return hostBuffer.size();
+    }
+
+    auto capacity() const {
+        return hostBuffer.capacity();
     }
     
     const auto& operator[](uint32_t i) const{
