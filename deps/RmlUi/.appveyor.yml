@@ -1,0 +1,27 @@
+version: build.{build}
+
+image: Visual Studio 2017
+
+environment:
+  FREETYPE_VER: 2.11.1
+  VS_GENERATOR: Visual Studio 15 2017 Win64
+
+install:
+- cmd: |-
+    cd Dependencies
+    appveyor DownloadFile https://github.com/ubawurinna/freetype-windows-binaries/archive/refs/tags/v%FREETYPE_VER%.zip
+    unzip -o v%FREETYPE_VER%.zip
+    mv "freetype-windows-binaries-%FREETYPE_VER%/include" include
+    mv "freetype-windows-binaries-%FREETYPE_VER%/release dll/win64" lib
+    cd ..
+
+    cmake -B Build -G "%VS_GENERATOR%" -DBUILD_SHARED_LIBS=ON -DRMLUI_WARNINGS_AS_ERRORS=ON
+
+build_script:
+- cmd: |-
+    cmake --build Build --config Debug -- /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+    cmake --build Build --config Release -- /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+
+after_build:
+  - cmd: |-
+      ls Build/*/*.dll -s -h -X

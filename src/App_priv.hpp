@@ -191,7 +191,7 @@ int App::run(int argc, char** argv) {
 
 	//setup GUI rendering
 	Rml::SetSystemInterface(&GetRenderEngine());
-	Rml::SetRenderInterface(&GetRenderEngine());
+	Rml::SetRenderInterface(GetRenderEngine().GetAdaptedInterface());
 	Rml::SetFileInterface(new VFSInterface());
 	Rml::Initialise();
 

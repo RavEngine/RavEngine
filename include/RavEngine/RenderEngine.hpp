@@ -8,7 +8,7 @@
 #if !RVE_SERVER
 #include "Ref.hpp"
 #include <RmlUi/Core/SystemInterface.h>
-#include <RmlUi/Core/RenderInterface.h>
+#include <RmlUi/Core/RenderInterfaceCompatibility.h>
 #include <DebugDraw.h>
 #include "Common3D.hpp"
 #include "Defines.hpp"
@@ -61,7 +61,7 @@ namespace RavEngine {
 		};
 	}
 
-    class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterface, public duDebugDraw {
+    class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterfaceCompatibility, public duDebugDraw {
         friend class App;
 	private:
 		uint64_t frameCount = 0;

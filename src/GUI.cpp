@@ -1,4 +1,5 @@
 #if !RVE_SERVER
+#include <RmlUi/Core.h>
 #include "GUI.hpp"
 #include "App.hpp"
 #include "Debug.hpp"

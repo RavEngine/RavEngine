@@ -1,0 +1,42 @@
+# Primary CMake build target
+/Build/
+
+# Primary CMake install target for development
+/Install/
+
+# Other common build targets
+/build*/
+/Build*/
+/Bin/
+/bin/
+/Lib/
+/lib/
+/out/
+/Install*/
+/install*/
+
+# Distribution target
+/Distribution/
+
+# macOS directory info file
+.DS_Store
+
+# Hidden folders
+.*/
+
+# Not ignore .github/
+!.github/
+
+# CMake user files
+CMakeUserPresets.json
+
+# Visual Studio project files
+*.suo
+*.user
+*.opensdf
+*.dir/
+Win32/
+x64/
+vcpkg/
+CMakeSettings.json
+compile_commands.json
