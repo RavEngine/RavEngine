@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -497,6 +497,7 @@ struct ALSA_pcm_cfg_ctx {
 static enum snd_pcm_chmap_position sdl_channel_maps[SDL_AUDIO_ALSA__SDL_CHMAPS_N][SDL_AUDIO_ALSA__CHMAP_CHANS_N_MAX] = {
     // 0 channels
     {
+        0
     },
     // 1 channel
     {
@@ -565,7 +566,7 @@ static enum snd_pcm_chmap_position sdl_channel_maps[SDL_AUDIO_ALSA__SDL_CHMAPS_N
 };
 
 // Helper for the function right below.
-static bool has_pos(unsigned int *chmap, unsigned int pos)
+static bool has_pos(const unsigned int *chmap, unsigned int pos)
 {
     for (unsigned int chan_idx = 0; ; chan_idx++) {
         if (chan_idx == 6) {
@@ -585,7 +586,7 @@ static bool has_pos(unsigned int *chmap, unsigned int pos)
 #define HAVE_REAR 1
 #define HAVE_SIDE 2
 #define HAVE_BOTH 3
-static void sdl_6chans_set_rear_or_side_channels_from_alsa_6chans(unsigned int *sdl_6chans, unsigned int *alsa_6chans)
+static void sdl_6chans_set_rear_or_side_channels_from_alsa_6chans(unsigned int *sdl_6chans, const unsigned int *alsa_6chans)
 {
     // For alsa channel maps with 6 channels and with SND_CHMAP_FL,SND_CHMAP_FR,SND_CHMAP_FC,
     // SND_CHMAP_LFE, reduce our 6 channels maps to a uniq one.
@@ -637,7 +638,7 @@ static void sdl_6chans_set_rear_or_side_channels_from_alsa_6chans(unsigned int *
 #undef HAVE_SIDE
 #undef HAVE_BOTH
 
-static void swizzle_map_compute_alsa_subscan(struct ALSA_pcm_cfg_ctx *ctx, int *swizzle_map, unsigned int sdl_pos_idx)
+static void swizzle_map_compute_alsa_subscan(const struct ALSA_pcm_cfg_ctx *ctx, int *swizzle_map, unsigned int sdl_pos_idx)
 {
     swizzle_map[sdl_pos_idx] = -1;
     for (unsigned int alsa_pos_idx = 0; ; alsa_pos_idx++) {
@@ -651,7 +652,7 @@ static void swizzle_map_compute_alsa_subscan(struct ALSA_pcm_cfg_ctx *ctx, int *
 }
 
 // XXX: this must stay playback/recording symetric.
-static void swizzle_map_compute(struct ALSA_pcm_cfg_ctx *ctx, int *swizzle_map, bool *needs_swizzle)
+static void swizzle_map_compute(const struct ALSA_pcm_cfg_ctx *ctx, int *swizzle_map, bool *needs_swizzle)
 {
     *needs_swizzle = false;
     for (unsigned int sdl_pos_idx = 0; sdl_pos_idx != ctx->chans_n; sdl_pos_idx++) {
@@ -667,7 +668,7 @@ static void swizzle_map_compute(struct ALSA_pcm_cfg_ctx *ctx, int *swizzle_map, 
 #define CHMAP_NOT_FOUND 2
 // Should always be a queried alsa channel map unless the queried alsa channel map was of type VAR,
 // namely we can program the channel positions directly from the SDL channel map.
-static int alsa_chmap_install(struct ALSA_pcm_cfg_ctx *ctx, unsigned int *chmap)
+static int alsa_chmap_install(struct ALSA_pcm_cfg_ctx *ctx, const unsigned int *chmap)
 {
     bool isstack;
     snd_pcm_chmap_t *chmap_to_install = (snd_pcm_chmap_t*)SDL_small_alloc(unsigned int, 1 + ctx->chans_n, &isstack);
@@ -697,7 +698,7 @@ static int alsa_chmap_install(struct ALSA_pcm_cfg_ctx *ctx, unsigned int *chmap)
 
 // We restrict the alsa channel maps because in the unordered matches we do only simple accounting.
 // In the end, this will handle mostly alsa channel maps with more than one SND_CHMAP_NA position fillers.
-static bool alsa_chmap_has_duplicate_position(struct ALSA_pcm_cfg_ctx *ctx, unsigned int *pos)
+static bool alsa_chmap_has_duplicate_position(const struct ALSA_pcm_cfg_ctx *ctx, const unsigned int *pos)
 {
     if (ctx->chans_n < 2) {// we need at least 2 positions
         LOGDEBUG("channel map:no duplicate");
@@ -922,7 +923,7 @@ static int ALSA_pcm_cfg_hw_chans_n_scan(struct ALSA_pcm_cfg_ctx *ctx, unsigned i
             return CHANS_N_NOT_CONFIGURED;
         }
 
-        LOGDEBUG("target chans_n is %u\n", target_chans_n);
+        LOGDEBUG("target chans_n is %u", target_chans_n);
 
         int status = ALSA_snd_pcm_hw_params_any(ctx->device->hidden->pcm, ctx->hwparams);
         if (status < 0) {
@@ -1049,7 +1050,7 @@ static int ALSA_pcm_cfg_hw_chans_n_scan(struct ALSA_pcm_cfg_ctx *ctx, unsigned i
 
 static bool ALSA_pcm_cfg_hw(struct ALSA_pcm_cfg_ctx *ctx)
 {
-    LOGDEBUG("target chans_n, equal or above requested chans_n mode\n");
+    LOGDEBUG("target chans_n, equal or above requested chans_n mode");
     int status = ALSA_pcm_cfg_hw_chans_n_scan(ctx, CHANS_N_SCAN_MODE__EQUAL_OR_ABOVE_REQUESTED_CHANS_N);
     if (status < 0) {  // something went too wrong
         return false;
@@ -1058,7 +1059,7 @@ static bool ALSA_pcm_cfg_hw(struct ALSA_pcm_cfg_ctx *ctx)
     }
 
     // Here, status == CHANS_N_NOT_CONFIGURED
-    LOGDEBUG("target chans_n, below requested chans_n mode\n");
+    LOGDEBUG("target chans_n, below requested chans_n mode");
     status = ALSA_pcm_cfg_hw_chans_n_scan(ctx, CHANS_N_SCAN_MODE__BELOW_REQUESTED_CHANS_N);
     if (status < 0) { // something went too wrong
         return false;
@@ -1186,7 +1187,6 @@ static bool ALSA_OpenDevice(SDL_AudioDevice *device)
         ALSA_snd_pcm_nonblock(cfg_ctx.device->hidden->pcm, 0);
     }
 #endif
-    ALSA_snd_pcm_start(cfg_ctx.device->hidden->pcm);
     return true;  // We're ready to rock and roll. :-)
 
 err_cleanup_ctx:
@@ -1197,6 +1197,13 @@ err_free_device_hidden:
     SDL_free(cfg_ctx.device->hidden);
     cfg_ctx.device->hidden = NULL;
     return false;
+}
+
+static void ALSA_ThreadInit(SDL_AudioDevice *device)
+{
+    SDL_SetCurrentThreadPriority(device->recording ? SDL_THREAD_PRIORITY_HIGH : SDL_THREAD_PRIORITY_TIME_CRITICAL);
+    // do snd_pcm_start as close to the first time we PlayDevice as possible to prevent an underrun at startup.
+    ALSA_snd_pcm_start(device->hidden->pcm);
 }
 
 static ALSA_Device *hotplug_devices = NULL;
@@ -1496,6 +1503,7 @@ static bool ALSA_Init(SDL_AudioDriverImpl *impl)
 
     impl->DetectDevices = ALSA_DetectDevices;
     impl->OpenDevice = ALSA_OpenDevice;
+    impl->ThreadInit = ALSA_ThreadInit;
     impl->WaitDevice = ALSA_WaitDevice;
     impl->GetDeviceBuf = ALSA_GetDeviceBuf;
     impl->PlayDevice = ALSA_PlayDevice;
@@ -1512,7 +1520,7 @@ static bool ALSA_Init(SDL_AudioDriverImpl *impl)
 }
 
 AudioBootStrap ALSA_bootstrap = {
-    "alsa", "ALSA PCM audio", ALSA_Init, false
+    "alsa", "ALSA PCM audio", ALSA_Init, false, false
 };
 
 #endif // SDL_AUDIO_DRIVER_ALSA

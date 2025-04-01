@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -31,13 +31,7 @@
 #include "SDL_uikitwindow.h"
 
 #import <Foundation/Foundation.h>
-
-#if (__IPHONE_OS_VERSION_MAX_ALLOWED >= 140000) || (__APPLETV_OS_VERSION_MAX_ALLOWED >= 140000) || (__MAC_OS_VERSION_MAX_ALLOWED > 1500000)
 #import <GameController/GameController.h>
-
-#define ENABLE_GCKEYBOARD
-#define ENABLE_GCMOUSE
-#endif
 
 static BOOL UIKit_EventPumpEnabled = YES;
 
@@ -50,7 +44,16 @@ static BOOL UIKit_EventPumpEnabled = YES;
 - (void)update
 {
     NSNotificationCenter *notificationCenter = NSNotificationCenter.defaultCenter;
-    if ((UIKit_EventPumpEnabled || SDL_HasMainCallbacks()) && !self.isObservingNotifications) {
+    bool wants_observation = (UIKit_EventPumpEnabled || SDL_HasMainCallbacks());
+    if (!wants_observation) {
+        // Make sure no windows have active animation callbacks
+        int num_windows = 0;
+        SDL_free(SDL_GetWindows(&num_windows));
+        if (num_windows > 0) {
+            wants_observation = true;
+        }
+    }
+    if (wants_observation && !self.isObservingNotifications) {
         self.isObservingNotifications = YES;
         [notificationCenter addObserver:self selector:@selector(applicationDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
         [notificationCenter addObserver:self selector:@selector(applicationWillResignActive) name:UIApplicationWillResignActiveNotification object:nil];
@@ -64,7 +67,7 @@ static BOOL UIKit_EventPumpEnabled = YES;
                                    name:UIApplicationDidChangeStatusBarOrientationNotification
                                  object:nil];
 #endif
-    } else if (!UIKit_EventPumpEnabled && !SDL_HasMainCallbacks() && self.isObservingNotifications) {
+    } else if (!wants_observation && self.isObservingNotifications) {
         self.isObservingNotifications = NO;
         [notificationCenter removeObserver:self];
     }
@@ -175,8 +178,6 @@ void UIKit_PumpEvents(SDL_VideoDevice *_this)
 #endif
 }
 
-#ifdef ENABLE_GCKEYBOARD
-
 static id keyboard_connect_observer = nil;
 static id keyboard_disconnect_observer = nil;
 
@@ -256,20 +257,6 @@ void SDL_QuitGCKeyboard(void)
         }
     }
 }
-
-#else
-
-void SDL_InitGCKeyboard(void)
-{
-}
-
-void SDL_QuitGCKeyboard(void)
-{
-}
-
-#endif // ENABLE_GCKEYBOARD
-
-#ifdef ENABLE_GCMOUSE
 
 static id mouse_connect_observer = nil;
 static id mouse_disconnect_observer = nil;
@@ -470,22 +457,5 @@ void SDL_QuitGCMouse(void)
         }
     }
 }
-
-#else
-
-void SDL_InitGCMouse(void)
-{
-}
-
-bool SDL_GCMouseRelativeMode(void)
-{
-    return false;
-}
-
-void SDL_QuitGCMouse(void)
-{
-}
-
-#endif // ENABLE_GCMOUSE
 
 #endif // SDL_VIDEO_DRIVER_UIKIT

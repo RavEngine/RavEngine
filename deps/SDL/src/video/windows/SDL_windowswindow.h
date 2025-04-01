@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -81,10 +81,12 @@ struct SDL_WindowData
     bool skip_update_clipcursor;
     bool windowed_mode_was_maximized;
     bool in_window_deactivation;
+    bool force_ws_maximizebox;
+    bool disable_move_size_events;
+    int in_modal_loop;
+    RECT initial_size_rect;
     RECT cursor_clipped_rect; // last successfully committed clipping rect for this window
     RECT cursor_ctrlock_rect; // this is Windows-specific, but probably does not need to be per-window
-    UINT windowed_mode_corner_rounding;
-    COLORREF dwma_border_color;
     bool mouse_tracked;
     bool destroy_parent_with_window;
     SDL_DisplayID last_displayID;

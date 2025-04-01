@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -124,6 +124,9 @@ struct SDL_Window
 
     SDL_PropertiesID props;
 
+    int num_renderers;
+    SDL_Renderer **renderers;
+
     SDL_WindowData *internal;
 
     SDL_Window *prev;
@@ -160,6 +163,8 @@ struct SDL_VideoDisplay
     float content_scale;
     SDL_HDROutputProperties HDR;
 
+    // This is true if we are fullscreen or fullscreen is pending
+    bool fullscreen_active;
     SDL_Window *fullscreen_window;
 
     SDL_VideoDevice *device;
@@ -501,6 +506,7 @@ typedef struct VideoBootStrap
     const char *desc;
     SDL_VideoDevice *(*create)(void);
     bool (*ShowMessageBox)(const SDL_MessageBoxData *messageboxdata, int *buttonID);  // can be done without initializing backend!
+    bool is_preferred;
 } VideoBootStrap;
 
 // Not all of these are available in a given build. Use #ifdefs, etc.
@@ -528,6 +534,7 @@ extern VideoBootStrap OFFSCREEN_bootstrap;
 extern VideoBootStrap QNX_bootstrap;
 extern VideoBootStrap OPENVR_bootstrap;
 
+extern bool SDL_UninitializedVideo(void);
 // Use SDL_OnVideoThread() sparingly, to avoid regressions in use cases that currently happen to work
 extern bool SDL_OnVideoThread(void);
 extern SDL_VideoDevice *SDL_GetVideoDevice(void);
@@ -568,6 +575,7 @@ extern void SDL_OnWindowMoved(SDL_Window *window);
 extern void SDL_OnWindowResized(SDL_Window *window);
 extern void SDL_CheckWindowPixelSizeChanged(SDL_Window *window);
 extern void SDL_OnWindowPixelSizeChanged(SDL_Window *window);
+extern void SDL_OnWindowLiveResizeUpdate(SDL_Window *window);
 extern void SDL_OnWindowMinimized(SDL_Window *window);
 extern void SDL_OnWindowMaximized(SDL_Window *window);
 extern void SDL_OnWindowRestored(SDL_Window *window);
@@ -583,7 +591,8 @@ extern SDL_Window *SDL_GetToplevelForKeyboardFocus(void);
 extern bool SDL_ShouldAllowTopmost(void);
 
 extern void SDL_ToggleDragAndDropSupport(void);
-extern void SDL_UpdateRawMouseDataEnabled(void);
+
+extern void SDL_UpdateDesktopBounds(void);
 
 extern SDL_TextInputType SDL_GetTextInputType(SDL_PropertiesID props);
 extern SDL_Capitalization SDL_GetTextInputCapitalization(SDL_PropertiesID props);

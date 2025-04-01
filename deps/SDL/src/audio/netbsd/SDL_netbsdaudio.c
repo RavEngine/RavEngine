@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -322,7 +322,7 @@ static bool NETBSDAUDIO_Init(SDL_AudioDriverImpl *impl)
 }
 
 AudioBootStrap NETBSDAUDIO_bootstrap = {
-    "netbsd", "NetBSD audio", NETBSDAUDIO_Init, false
+    "netbsd", "NetBSD audio", NETBSDAUDIO_Init, false, false
 };
 
 #endif // SDL_AUDIO_DRIVER_NETBSD

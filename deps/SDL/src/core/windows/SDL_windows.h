@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -156,8 +156,8 @@ extern BOOL WIN_IsEqualIID(REFIID a, REFIID b);
 extern void WIN_RECTToRect(const RECT *winrect, SDL_Rect *sdlrect);
 extern void WIN_RectToRECT(const SDL_Rect *sdlrect, RECT *winrect);
 
-// Returns true if the rect is empty
-extern BOOL WIN_IsRectEmpty(const RECT *rect);
+// Returns false if a window client rect is not valid
+bool WIN_WindowRectValid(const RECT *rect);
 
 extern SDL_AudioFormat SDL_WaveFormatExToSDLFormat(WAVEFORMATEX *waveformat);
 

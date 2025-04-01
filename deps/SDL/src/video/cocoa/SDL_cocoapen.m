@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -135,7 +135,7 @@ static void Cocoa_HandlePenPointEvent(SDL_CocoaWindowData *_data, NSEvent *event
     SDL_SendPenAxis(timestamp, pen, window, SDL_PEN_AXIS_PRESSURE, [event pressure]);
     SDL_SendPenAxis(timestamp, pen, window, SDL_PEN_AXIS_ROTATION, [event rotation]);
     SDL_SendPenAxis(timestamp, pen, window, SDL_PEN_AXIS_XTILT, ((float) tilt.x) * 90.0f);
-    SDL_SendPenAxis(timestamp, pen, window, SDL_PEN_AXIS_YTILT, ((float) tilt.y) * 90.0f);
+    SDL_SendPenAxis(timestamp, pen, window, SDL_PEN_AXIS_YTILT, ((float) -tilt.y) * 90.0f);
     SDL_SendPenAxis(timestamp, pen, window, SDL_PEN_AXIS_TANGENTIAL_PRESSURE, event.tangentialPressure);
 }
 

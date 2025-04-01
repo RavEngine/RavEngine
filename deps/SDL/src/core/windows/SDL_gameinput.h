@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,9 +20,17 @@
 */
 #include "SDL_internal.h"
 
-#ifndef SDL_iostreamromfs_h_
-#define SDL_iostreamromfs_h_
+#ifndef SDL_gameinput_h_
+#define SDL_gameinput_h_
 
-FILE *N3DS_FileOpen(const char *file, const char *mode);
+#ifdef HAVE_GAMEINPUT_H
 
-#endif // SDL_iostreamromfs_h_
+#define COBJMACROS
+#include <gameinput.h>
+
+extern bool SDL_InitGameInput(IGameInput **ppGameInput);
+extern void SDL_QuitGameInput(void);
+
+#endif // HAVE_GAMEINPUT_H
+
+#endif // SDL_gameinput_h_

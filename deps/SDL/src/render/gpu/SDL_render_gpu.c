@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -41,7 +41,6 @@ typedef struct GPU_RenderData
     SDL_GPUDevice *device;
     GPU_Shaders shaders;
     GPU_PipelineCache pipeline_cache;
-    SDL_GPUFence *present_fence;
 
     struct
     {
@@ -78,7 +77,7 @@ typedef struct GPU_RenderData
         GPU_ShaderUniformData shader_data;
     } state;
 
-    SDL_GPUSampler *samplers[3][2];
+    SDL_GPUSampler *samplers[2][2];
 } GPU_RenderData;
 
 typedef struct GPU_TextureData
@@ -336,11 +335,6 @@ static void GPU_UnlockTexture(SDL_Renderer *renderer, SDL_Texture *texture)
     GPU_UpdateTexture(renderer, texture, rect, pixels, data->pitch);
 }
 
-static void GPU_SetTextureScaleMode(SDL_Renderer *renderer, SDL_Texture *texture, SDL_ScaleMode scale_mode)
-{
-    // nothing to do in this backend.
-}
-
 static bool GPU_SetRenderTarget(SDL_Renderer *renderer, SDL_Texture *texture)
 {
     GPU_RenderData *data = (GPU_RenderData *)renderer->internal;
@@ -495,8 +489,7 @@ static void PushUniforms(GPU_RenderData *data, SDL_RenderCommand *cmd)
     SDL_PushGPUVertexUniformData(data->state.command_buffer, 0, &uniforms, sizeof(uniforms));
 }
 
-static SDL_GPUSampler **SamplerPointer(
-    GPU_RenderData *data, SDL_TextureAddressMode address_mode, SDL_ScaleMode scale_mode)
+static SDL_GPUSampler **SamplerPointer(GPU_RenderData *data, SDL_TextureAddressMode address_mode, SDL_ScaleMode scale_mode)
 {
     return &data->samplers[scale_mode][address_mode - 1];
 }
@@ -576,7 +569,7 @@ static void Draw(
     if (tdata) {
         SDL_GPUTextureSamplerBinding sampler_bind;
         SDL_zero(sampler_bind);
-        sampler_bind.sampler = *SamplerPointer(data, cmd->data.draw.texture_address_mode, cmd->data.draw.texture->scaleMode);
+        sampler_bind.sampler = *SamplerPointer(data, cmd->data.draw.texture_address_mode, cmd->data.draw.texture_scale_mode);
         sampler_bind.texture = tdata->texture;
         SDL_BindGPUFragmentSamplers(pass, 0, &sampler_bind, 1);
     }
@@ -786,6 +779,8 @@ static bool GPU_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, 
                same texture, we can combine them all into a single draw call. */
             SDL_Texture *thistexture = cmd->data.draw.texture;
             SDL_BlendMode thisblend = cmd->data.draw.blend;
+            SDL_ScaleMode thisscalemode = cmd->data.draw.texture_scale_mode;
+            SDL_TextureAddressMode thisaddressmode = cmd->data.draw.texture_address_mode;
             const SDL_RenderCommandType thiscmdtype = cmd->command;
             SDL_RenderCommand *finalcmd = cmd;
             SDL_RenderCommand *nextcmd = cmd->next;
@@ -796,7 +791,10 @@ static bool GPU_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, 
                 const SDL_RenderCommandType nextcmdtype = nextcmd->command;
                 if (nextcmdtype != thiscmdtype) {
                     break; // can't go any further on this draw call, different render command up next.
-                } else if (nextcmd->data.draw.texture != thistexture || nextcmd->data.draw.blend != thisblend) {
+                } else if (nextcmd->data.draw.texture != thistexture ||
+                           nextcmd->data.draw.texture_scale_mode != thisscalemode ||
+                           nextcmd->data.draw.texture_address_mode != thisaddressmode ||
+                           nextcmd->data.draw.blend != thisblend) {
                     // FIXME should we check address mode too?
                     break; // can't go any further on this draw call, different texture/blendmode copy up next.
                 } else {
@@ -959,51 +957,35 @@ static bool GPU_RenderPresent(SDL_Renderer *renderer)
 
     SDL_GPUTexture *swapchain;
     Uint32 swapchain_texture_width, swapchain_texture_height;
-    bool result = SDL_AcquireGPUSwapchainTexture(data->state.command_buffer, renderer->window, &swapchain, &swapchain_texture_width, &swapchain_texture_height);
+    bool result = SDL_WaitAndAcquireGPUSwapchainTexture(data->state.command_buffer, renderer->window, &swapchain, &swapchain_texture_width, &swapchain_texture_height);
 
     if (!result) {
         SDL_LogError(SDL_LOG_CATEGORY_RENDER, "Failed to acquire swapchain texture: %s", SDL_GetError());
     }
 
-    if (swapchain == NULL) {
-        goto submit;
-    }
+    if (swapchain != NULL) {
+        SDL_GPUBlitInfo blit_info;
+        SDL_zero(blit_info);
 
-    SDL_GPUBlitInfo blit_info;
-    SDL_zero(blit_info);
+        blit_info.source.texture = data->backbuffer.texture;
+        blit_info.source.w = data->backbuffer.width;
+        blit_info.source.h = data->backbuffer.height;
+        blit_info.destination.texture = swapchain;
+        blit_info.destination.w = swapchain_texture_width;
+        blit_info.destination.h = swapchain_texture_height;
+        blit_info.load_op = SDL_GPU_LOADOP_DONT_CARE;
+        blit_info.filter = SDL_GPU_FILTER_LINEAR;
 
-    blit_info.source.texture = data->backbuffer.texture;
-    blit_info.source.w = data->backbuffer.width;
-    blit_info.source.h = data->backbuffer.height;
-    blit_info.destination.texture = swapchain;
-    blit_info.destination.w = swapchain_texture_width;
-    blit_info.destination.h = swapchain_texture_height;
-    blit_info.load_op = SDL_GPU_LOADOP_DONT_CARE;
-    blit_info.filter = SDL_GPU_FILTER_LINEAR;
+        SDL_BlitGPUTexture(data->state.command_buffer, &blit_info);
 
-    SDL_BlitGPUTexture(data->state.command_buffer, &blit_info);
+        SDL_SubmitGPUCommandBuffer(data->state.command_buffer);
 
-// *** FIXME ***
-// This is going to block if there is ever a frame in flight.
-// We should do something similar to FNA3D
-// where we keep track of MAX_FRAMES_IN_FLIGHT number of fences
-// and only block if we have maxed out the backpressure.
-// -cosmonaut
-submit:
-#if 1
-    if (data->present_fence) {
-        SDL_WaitForGPUFences(data->device, true, &data->present_fence, 1);
-        SDL_ReleaseGPUFence(data->device, data->present_fence);
-    }
-
-    data->present_fence = SDL_SubmitGPUCommandBufferAndAcquireFence(data->state.command_buffer);
-#else
-    SDL_SubmitGPUCommandBuffer(data->state.command_buffer);
-#endif
-
-    if (swapchain != NULL && (swapchain_texture_width != data->backbuffer.width || swapchain_texture_height != data->backbuffer.height)) {
-        SDL_ReleaseGPUTexture(data->device, data->backbuffer.texture);
-        CreateBackbuffer(data, swapchain_texture_width, swapchain_texture_height, SDL_GetGPUSwapchainTextureFormat(data->device, renderer->window));
+        if (swapchain_texture_width != data->backbuffer.width || swapchain_texture_height != data->backbuffer.height) {
+            SDL_ReleaseGPUTexture(data->device, data->backbuffer.texture);
+            CreateBackbuffer(data, swapchain_texture_width, swapchain_texture_height, SDL_GetGPUSwapchainTextureFormat(data->device, renderer->window));
+        }
+    } else {
+        SDL_SubmitGPUCommandBuffer(data->state.command_buffer);
     }
 
     data->state.command_buffer = SDL_AcquireGPUCommandBuffer(data->device);
@@ -1036,11 +1018,6 @@ static void GPU_DestroyRenderer(SDL_Renderer *renderer)
 
     if (!data) {
         return;
-    }
-
-    if (data->present_fence) {
-        SDL_WaitForGPUFences(data->device, true, &data->present_fence, 1);
-        SDL_ReleaseGPUFence(data->device, data->present_fence);
     }
 
     if (data->state.command_buffer) {
@@ -1198,7 +1175,6 @@ static bool GPU_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_P
     renderer->UpdateTexture = GPU_UpdateTexture;
     renderer->LockTexture = GPU_LockTexture;
     renderer->UnlockTexture = GPU_UnlockTexture;
-    renderer->SetTextureScaleMode = GPU_SetTextureScaleMode;
     renderer->SetRenderTarget = GPU_SetRenderTarget;
     renderer->QueueSetViewport = GPU_QueueNoOp;
     renderer->QueueSetDrawColor = GPU_QueueNoOp;
@@ -1262,10 +1238,12 @@ static bool GPU_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_P
 
     SDL_SetGPUSwapchainParameters(data->device, window, data->swapchain.composition, data->swapchain.present_mode);
 
-    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_RGBA32);
+    SDL_SetGPUAllowedFramesInFlight(data->device, 1);
+
     SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_BGRA32);
-    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_RGBX32);
+    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_RGBA32);
     SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_BGRX32);
+    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_RGBX32);
 
     SDL_SetNumberProperty(SDL_GetRendererProperties(renderer), SDL_PROP_RENDERER_MAX_TEXTURE_SIZE_NUMBER, 16384);
 
@@ -1283,6 +1261,8 @@ static bool GPU_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_P
     if (!CreateBackbuffer(data, w, h, SDL_GetGPUSwapchainTextureFormat(data->device, window))) {
         return false;
     }
+
+    SDL_SetPointerProperty(SDL_GetRendererProperties(renderer), SDL_PROP_RENDERER_GPU_DEVICE_POINTER, data->device);
 
     return true;
 }

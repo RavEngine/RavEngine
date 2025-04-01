@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -47,6 +47,10 @@ static void Emscripten_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
 static SDL_FullscreenResult Emscripten_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_VideoDisplay *display, SDL_FullscreenOp fullscreen);
 static void Emscripten_PumpEvents(SDL_VideoDevice *_this);
 static void Emscripten_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window);
+
+static bool pumpevents_has_run = false;
+static int pending_swap_interval = -1;
+
 
 // Emscripten driver bootstrap functions
 
@@ -191,7 +195,8 @@ static SDL_VideoDevice *Emscripten_CreateDevice(void)
 VideoBootStrap Emscripten_bootstrap = {
     EMSCRIPTENVID_DRIVER_NAME, "SDL emscripten video driver",
     Emscripten_CreateDevice,
-    NULL // no ShowMessageBox implementation
+    NULL, // no ShowMessageBox implementation
+    false
 };
 
 bool Emscripten_VideoInit(SDL_VideoDevice *_this)
@@ -228,6 +233,8 @@ static void Emscripten_VideoQuit(SDL_VideoDevice *_this)
 {
     Emscripten_QuitMouse();
     Emscripten_UnlistenSystemTheme();
+    pumpevents_has_run = false;
+    pending_swap_interval = -1;
 }
 
 static bool Emscripten_GetDisplayUsableBounds(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_Rect *rect)
@@ -245,9 +252,31 @@ static bool Emscripten_GetDisplayUsableBounds(SDL_VideoDevice *_this, SDL_VideoD
     return true;
 }
 
+bool Emscripten_ShouldSetSwapInterval(int interval)
+{
+    if (!pumpevents_has_run) {
+        pending_swap_interval = interval;
+        return false;
+    }
+    return true;
+}
+
 static void Emscripten_PumpEvents(SDL_VideoDevice *_this)
 {
-    // do nothing.
+    if (!pumpevents_has_run) {
+        // we assume you've set a mainloop by the time you've called pumpevents, so we delay initial SetInterval changes until then.
+        // otherwise you'll get a warning on the javascript console.
+        pumpevents_has_run = true;
+        if (pending_swap_interval >= 0) {
+            Emscripten_GLES_SetSwapInterval(_this, pending_swap_interval);
+            pending_swap_interval = -1;
+        }
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE void requestFullscreenThroughSDL(SDL_Window *window)
+{
+    SDL_SetWindowFullscreen(window, true);
 }
 
 static bool Emscripten_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID props)
@@ -313,6 +342,13 @@ static bool Emscripten_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, 
 
     Emscripten_RegisterEventHandlers(wdata);
 
+    // disable the emscripten "fullscreen" button.
+    MAIN_THREAD_EM_ASM({
+        Module['requestFullscreen'] = function(lockPointer, resizeCanvas) {
+            _requestFullscreenThroughSDL($0);
+        };
+    }, window);
+
     // Window has been successfully created
     return true;
 }
@@ -364,6 +400,9 @@ static void Emscripten_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
         SDL_free(window->internal);
         window->internal = NULL;
     }
+
+    // just ignore clicks on the fullscreen button while there's no SDL window.
+    MAIN_THREAD_EM_ASM({ Module['requestFullscreen'] = function(lockPointer, resizeCanvas) {}; });
 }
 
 static SDL_FullscreenResult Emscripten_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_VideoDisplay *display, SDL_FullscreenOp fullscreen)

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -429,7 +429,7 @@ static bool JACK_Init(SDL_AudioDriverImpl *impl)
 }
 
 AudioBootStrap JACK_bootstrap = {
-    "jack", "JACK Audio Connection Kit", JACK_Init, false
+    "jack", "JACK Audio Connection Kit", JACK_Init, false, false
 };
 
 #endif // SDL_AUDIO_DRIVER_JACK

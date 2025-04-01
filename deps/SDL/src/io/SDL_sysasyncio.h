@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,8 +24,8 @@
 #ifndef SDL_sysasyncio_h_
 #define SDL_sysasyncio_h_
 
-#if defined(SDL_PLATFORM_WINDOWS) && defined(NTDDI_WIN10_CO)
-#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP) && NTDDI_VERSION >= NTDDI_WIN10_CO
+#if defined(SDL_PLATFORM_WINDOWS) && defined(NTDDI_WIN10_NI)
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP) && NTDDI_VERSION >= NTDDI_WIN10_NI
 #define HAVE_IORINGAPI_H
 #endif
 #endif

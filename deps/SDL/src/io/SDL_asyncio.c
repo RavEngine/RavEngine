@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -57,12 +57,14 @@ SDL_AsyncIO *SDL_AsyncIOFromFile(const char *file, const char *mode)
     }
 
     SDL_AsyncIO *asyncio = (SDL_AsyncIO *)SDL_calloc(1, sizeof(*asyncio));
-    if (asyncio) {
-        asyncio->lock = SDL_CreateMutex();
-        if (!asyncio->lock) {
-            SDL_free(asyncio);
-            return NULL;
-        }
+    if (!asyncio) {
+        return NULL;
+    }
+
+    asyncio->lock = SDL_CreateMutex();
+    if (!asyncio->lock) {
+        SDL_free(asyncio);
+        return NULL;
     }
 
     if (!SDL_SYS_AsyncIOFromFile(file, binary_mode, asyncio)) {
@@ -205,6 +207,7 @@ static bool GetAsyncIOTaskOutcome(SDL_AsyncIOTask *task, SDL_AsyncIOOutcome *out
     SDL_zerop(outcome);
     outcome->asyncio = asyncio->oneshot ? NULL : asyncio;
     outcome->result = task->result;
+    outcome->type = task->type;
     outcome->buffer = task->buffer;
     outcome->offset = task->offset;
     outcome->bytes_requested = task->requested_size;
@@ -306,12 +309,13 @@ bool SDL_LoadFileAsync(const char *file, SDL_AsyncIOQueue *queue, void *userdata
     if (asyncio) {
         asyncio->oneshot = true;
 
-        void *ptr = NULL;
+        Uint8 *ptr = NULL;
         const Sint64 flen = SDL_GetAsyncIOSize(asyncio);
         if (flen >= 0) {
             // !!! FIXME: check if flen > address space, since it'll truncate and we'll just end up with an incomplete buffer or a crash.
-            ptr = SDL_malloc((size_t) (flen + 1));  // over-allocate by one so we can add a null-terminator.
+            ptr = (Uint8 *) SDL_malloc((size_t) (flen + 1));  // over-allocate by one so we can add a null-terminator.
             if (ptr) {
+                ptr[flen] = '\0';
                 retval = SDL_ReadAsyncIO(asyncio, ptr, 0, (Uint64) flen, queue, userdata);
                 if (!retval) {
                     SDL_free(ptr);

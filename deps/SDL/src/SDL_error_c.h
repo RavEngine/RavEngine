@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -45,5 +45,17 @@ typedef struct SDL_error
 
 // Defined in SDL_thread.c
 extern SDL_error *SDL_GetErrBuf(bool create);
+
+// Macros to save and restore error values
+#define SDL_PushError() \
+    char *saved_error = SDL_strdup(SDL_GetError())
+
+#define SDL_PopError()                          \
+    do {                                        \
+        if (saved_error) {                      \
+            SDL_SetError("%s", saved_error);    \
+            SDL_free(saved_error);              \
+        }                                       \
+    } while (0)
 
 #endif // SDL_error_c_h_

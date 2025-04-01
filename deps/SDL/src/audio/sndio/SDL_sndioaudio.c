@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -350,7 +350,7 @@ static bool SNDIO_Init(SDL_AudioDriverImpl *impl)
 }
 
 AudioBootStrap SNDIO_bootstrap = {
-    "sndio", "OpenBSD sndio", SNDIO_Init, false
+    "sndio", "OpenBSD sndio", SNDIO_Init, false, false
 };
 
 #endif // SDL_AUDIO_DRIVER_SNDIO

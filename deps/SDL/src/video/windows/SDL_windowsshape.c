@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -82,7 +82,7 @@ bool WIN_UpdateWindowShape(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surfa
             if (!stretched) {
                 return false;
             }
-            if (!SDL_SoftStretch(shape, NULL, stretched, NULL, SDL_SCALEMODE_LINEAR)) {
+            if (!SDL_StretchSurface(shape, NULL, stretched, NULL, SDL_SCALEMODE_LINEAR)) {
                 SDL_DestroySurface(stretched);
                 return false;
             }
@@ -116,6 +116,7 @@ bool WIN_UpdateWindowShape(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surfa
         }
     }
     if (!SetWindowRgn(data->hwnd, mask, TRUE)) {
+        DeleteObject(mask);
         return WIN_SetError("SetWindowRgn failed");
     }
     return true;

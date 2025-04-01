@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -59,7 +59,7 @@ char *convert_filters(const SDL_DialogFileFilter *filters, int nfilters,
             return NULL;
         }
 
-        terminator = f[1].name ? separator : suffix;
+        terminator = ((i + 1) < nfilters) ? separator : suffix;
         new_length = SDL_strlen(combined) + SDL_strlen(converted)
                    + SDL_strlen(terminator) + 1;
 

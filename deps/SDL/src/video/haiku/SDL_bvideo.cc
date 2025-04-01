@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -113,7 +113,8 @@ static SDL_VideoDevice * HAIKU_CreateDevice(void)
 VideoBootStrap HAIKU_bootstrap = {
     "haiku", "Haiku graphics",
     HAIKU_CreateDevice,
-    HAIKU_ShowMessageBox
+    HAIKU_ShowMessageBox,
+    false
 };
 
 void HAIKU_DeleteDevice(SDL_VideoDevice * device)
@@ -240,6 +241,9 @@ static bool HAIKU_SetRelativeMouseMode(bool enabled)
 
 	SDL_BWin *bewin = _ToBeWin(window);
 	BGLView *_SDL_GLView = bewin->GetGLView();
+    if (!_SDL_GLView) {
+        return false;
+    }
 
 	bewin->Lock();
 	if (enabled)

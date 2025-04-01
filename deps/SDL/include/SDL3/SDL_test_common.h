@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -139,6 +139,7 @@ typedef struct
     int gl_accum_blue_size;
     int gl_accum_alpha_size;
     int gl_stereo;
+    int gl_release_behavior;
     int gl_multisamplebuffers;
     int gl_multisamplesamples;
     int gl_retained_backing;
@@ -176,7 +177,7 @@ extern "C" {
  *
  * \returns a newly allocated common state object.
  */
-SDLTest_CommonState *SDLCALL SDLTest_CommonCreateState(char **argv, SDL_InitFlags flags);
+SDLTest_CommonState * SDLCALL SDLTest_CommonCreateState(char **argv, SDL_InitFlags flags);
 
 /**
  * Free the common state object.

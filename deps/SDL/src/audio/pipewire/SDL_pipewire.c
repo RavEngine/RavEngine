@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -44,7 +44,9 @@ enum PW_READY_FLAGS
 {
     PW_READY_FLAG_BUFFER_ADDED = 0x1,
     PW_READY_FLAG_STREAM_READY = 0x2,
-    PW_READY_FLAG_ALL_BITS = 0x3
+    PW_READY_FLAG_ALL_PREOPEN_BITS = 0x3,
+    PW_READY_FLAG_OPEN_COMPLETE = 0x4,
+    PW_READY_FLAG_ALL_BITS = 0x7
 };
 
 #define PW_ID_TO_HANDLE(x) (void *)((uintptr_t)x)
@@ -513,6 +515,25 @@ static bool get_int_param(const struct spa_pod *param, Uint32 key, int *val)
     return false;
 }
 
+static SDL_AudioFormat SPAFormatToSDL(enum spa_audio_format spafmt)
+{
+    switch (spafmt) {
+        #define CHECKFMT(spa,sdl) case SPA_AUDIO_FORMAT_##spa: return SDL_AUDIO_##sdl
+        CHECKFMT(U8, U8);
+        CHECKFMT(S8, S8);
+        CHECKFMT(S16_LE, S16LE);
+        CHECKFMT(S16_BE, S16BE);
+        CHECKFMT(S32_LE, S32LE);
+        CHECKFMT(S32_BE, S32BE);
+        CHECKFMT(F32_LE, F32LE);
+        CHECKFMT(F32_BE, F32BE);
+        #undef CHECKFMT
+        default: break;
+    }
+
+    return SDL_AUDIO_UNKNOWN;
+}
+
 // Interface node callbacks
 static void node_event_info(void *object, const struct pw_node_info *info)
 {
@@ -529,7 +550,7 @@ static void node_event_info(void *object, const struct pw_node_info *info)
 
         // Need to parse the parameters to get the sample rate
         for (i = 0; i < info->n_params; ++i) {
-            pw_node_enum_params(node->proxy, 0, info->params[i].id, 0, 0, NULL);
+            pw_node_enum_params((struct pw_node*)node->proxy, 0, info->params[i].id, 0, 0, NULL);
         }
 
         hotplug_core_sync(node);
@@ -540,6 +561,15 @@ static void node_event_param(void *object, int seq, uint32_t id, uint32_t index,
 {
     struct node_object *node = object;
     struct io_node *io = node->userdata;
+
+    if ((id == SPA_PARAM_Format) && (io->spec.format == SDL_AUDIO_UNKNOWN)) {
+        struct spa_audio_info_raw info;
+        SDL_zero(info);
+        if (spa_format_audio_raw_parse(param, &info) == 0) {
+            //SDL_Log("Sink Format: %d, Rate: %d Hz, Channels: %d", info.format, info.rate, info.channels);
+            io->spec.format = SPAFormatToSDL(info.format);
+        }
+    }
 
     // Get the default frequency
     if (io->spec.freq == 0) {
@@ -672,7 +702,9 @@ static void registry_event_global_callback(void *object, uint32_t id, uint32_t p
                 // Begin setting the node properties
                 io->id = id;
                 io->recording = recording;
-                io->spec.format = SDL_AUDIO_F32; // Pipewire uses floats internally, other formats require conversion.
+                if (io->spec.format == SDL_AUDIO_UNKNOWN) {
+                    io->spec.format = SDL_AUDIO_S16;  // we'll go conservative here if for some reason the format isn't known.
+                }
                 io->name = io->buf;
                 io->path = io->buf + desc_buffer_len;
                 SDL_strlcpy(io->buf, node_desc, desc_buffer_len);
@@ -1155,7 +1187,11 @@ static bool PIPEWIRE_OpenDevice(SDL_AudioDevice *device)
     PIPEWIRE_pw_properties_setf(props, PW_KEY_NODE_LATENCY, "%u/%i", device->sample_frames, device->spec.freq);
     PIPEWIRE_pw_properties_setf(props, PW_KEY_NODE_RATE, "1/%u", device->spec.freq);
     PIPEWIRE_pw_properties_set(props, PW_KEY_NODE_ALWAYS_PROCESS, "true");
-    PIPEWIRE_pw_properties_set(props, PW_KEY_NODE_DONT_RECONNECT, "true");  // Requesting a specific device, don't migrate to new default hardware.
+
+    // UPDATE: This prevents users from moving the audio to a new sink (device) using standard tools. This is slightly in conflict
+    //  with how SDL wants to manage audio devices, but if people want to do it, we should let them, so this is commented out
+    //  for now. We might revisit later.
+    //PIPEWIRE_pw_properties_set(props, PW_KEY_NODE_DONT_RECONNECT, "true");  // Requesting a specific device, don't migrate to new default hardware.
 
     if (node_id != PW_ID_ANY) {
         PIPEWIRE_pw_thread_loop_lock(hotplug_loop);
@@ -1185,12 +1221,13 @@ static bool PIPEWIRE_OpenDevice(SDL_AudioDevice *device)
         return SDL_SetError("Pipewire: Failed to start stream loop");
     }
 
-    // Wait until all init flags are set or the stream has failed.
+    // Wait until all pre-open init flags are set or the stream has failed.
     PIPEWIRE_pw_thread_loop_lock(priv->loop);
-    while (priv->stream_init_status != PW_READY_FLAG_ALL_BITS &&
+    while (priv->stream_init_status != PW_READY_FLAG_ALL_PREOPEN_BITS &&
            PIPEWIRE_pw_stream_get_state(priv->stream, NULL) != PW_STREAM_STATE_ERROR) {
         PIPEWIRE_pw_thread_loop_wait(priv->loop);
     }
+    priv->stream_init_status |= PW_READY_FLAG_OPEN_COMPLETE;
     PIPEWIRE_pw_thread_loop_unlock(priv->loop);
 
     if (PIPEWIRE_pw_stream_get_state(priv->stream, &error) == PW_STREAM_STATE_ERROR) {
@@ -1307,10 +1344,10 @@ static bool PIPEWIRE_Init(SDL_AudioDriverImpl *impl)
 }
 
 AudioBootStrap PIPEWIRE_PREFERRED_bootstrap = {
-    "pipewire", "Pipewire", PIPEWIRE_PREFERRED_Init, false
+    "pipewire", "Pipewire", PIPEWIRE_PREFERRED_Init, false, true
 };
 AudioBootStrap PIPEWIRE_bootstrap = {
-    "pipewire", "Pipewire", PIPEWIRE_Init, false
+    "pipewire", "Pipewire", PIPEWIRE_Init, false, false
 };
 
 #endif // SDL_AUDIO_DRIVER_PIPEWIRE

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -76,10 +76,15 @@ static void SDLCALL UpdateWindowFrameUsableWhileCursorHidden(void *userdata, con
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 static bool WIN_SuspendScreenSaver(SDL_VideoDevice *_this)
 {
+    DWORD result;
     if (_this->suspend_screensaver) {
-        SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
+        result = SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
     } else {
-        SetThreadExecutionState(ES_CONTINUOUS);
+        result = SetThreadExecutionState(ES_CONTINUOUS);
+    }
+    if (result == 0) {
+        SDL_SetError("SetThreadExecutionState() failed");
+        return false;
     }
     return true;
 }
@@ -102,6 +107,9 @@ static void WIN_DeleteDevice(SDL_VideoDevice *device)
     }
     if (data->shcoreDLL) {
         SDL_UnloadObject(data->shcoreDLL);
+    }
+    if (data->dwmapiDLL) {
+        SDL_UnloadObject(data->dwmapiDLL);
     }
 #endif
 #ifdef HAVE_DXGI_H
@@ -163,6 +171,8 @@ static SDL_VideoDevice *WIN_CreateDevice(void)
         data->GetDisplayConfigBufferSizes = (LONG (WINAPI *)(UINT32,UINT32*,UINT32* ))SDL_LoadFunction(data->userDLL, "GetDisplayConfigBufferSizes");
         data->QueryDisplayConfig = (LONG (WINAPI *)(UINT32,UINT32*,DISPLAYCONFIG_PATH_INFO*,UINT32*,DISPLAYCONFIG_MODE_INFO*,DISPLAYCONFIG_TOPOLOGY_ID*))SDL_LoadFunction(data->userDLL, "QueryDisplayConfig");
         data->DisplayConfigGetDeviceInfo = (LONG (WINAPI *)(DISPLAYCONFIG_DEVICE_INFO_HEADER*))SDL_LoadFunction(data->userDLL, "DisplayConfigGetDeviceInfo");
+        data->GetPointerType = (BOOL (WINAPI *)(UINT32, POINTER_INPUT_TYPE *))SDL_LoadFunction(data->userDLL, "GetPointerType");
+        data->GetPointerPenInfo = (BOOL (WINAPI *)(UINT32, POINTER_PEN_INFO *))SDL_LoadFunction(data->userDLL, "GetPointerPenInfo");
         /* *INDENT-ON* */ // clang-format on
     } else {
         SDL_ClearError();
@@ -173,6 +183,17 @@ static SDL_VideoDevice *WIN_CreateDevice(void)
         /* *INDENT-OFF* */ // clang-format off
         data->GetDpiForMonitor = (HRESULT (WINAPI *)(HMONITOR, MONITOR_DPI_TYPE, UINT *, UINT *))SDL_LoadFunction(data->shcoreDLL, "GetDpiForMonitor");
         data->SetProcessDpiAwareness = (HRESULT (WINAPI *)(PROCESS_DPI_AWARENESS))SDL_LoadFunction(data->shcoreDLL, "SetProcessDpiAwareness");
+        /* *INDENT-ON* */ // clang-format on
+    } else {
+        SDL_ClearError();
+    }
+
+    data->dwmapiDLL = SDL_LoadObject("DWMAPI.DLL");
+    if (data->dwmapiDLL) {
+        /* *INDENT-OFF* */ // clang-format off
+        data->DwmFlush = (HRESULT (WINAPI *)(void))SDL_LoadFunction(data->dwmapiDLL, "DwmFlush");
+        data->DwmEnableBlurBehindWindow = (HRESULT (WINAPI *)(HWND hwnd, const DWM_BLURBEHIND *pBlurBehind))SDL_LoadFunction(data->dwmapiDLL, "DwmEnableBlurBehindWindow");
+        data->DwmSetWindowAttribute = (HRESULT (WINAPI *)(HWND hwnd, DWORD dwAttribute, LPCVOID pvAttribute, DWORD cbAttribute))SDL_LoadFunction(data->dwmapiDLL, "DwmSetWindowAttribute");
         /* *INDENT-ON* */ // clang-format on
     } else {
         SDL_ClearError();
@@ -328,10 +349,11 @@ static SDL_VideoDevice *WIN_CreateDevice(void)
 VideoBootStrap WINDOWS_bootstrap = {
     "windows", "SDL Windows video driver", WIN_CreateDevice,
     #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
-    WIN_ShowMessageBox
+    WIN_ShowMessageBox,
     #else
-    NULL
+    NULL,
     #endif
+    false
 };
 
 static BOOL WIN_DeclareDPIAwareUnaware(SDL_VideoDevice *_this)
@@ -480,11 +502,11 @@ static bool WIN_VideoInit(SDL_VideoDevice *_this)
         if (SUCCEEDED(hr)) {
             data->oleinitialized = true;
         } else {
-            SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "OleInitialize() failed: 0x%.8x, using fallback drag-n-drop functionality\n", (unsigned int)hr);
+            SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "OleInitialize() failed: 0x%.8x, using fallback drag-n-drop functionality", (unsigned int)hr);
         }
 #endif // !(defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES))
     } else {
-        SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "CoInitialize() failed: 0x%.8x, using fallback drag-n-drop functionality\n", (unsigned int)hr);
+        SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "CoInitialize() failed: 0x%.8x, using fallback drag-n-drop functionality", (unsigned int)hr);
     }
 
     WIN_InitDPIAwareness(_this);

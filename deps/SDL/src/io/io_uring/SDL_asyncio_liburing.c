@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -225,7 +225,7 @@ static SDL_AsyncIOTask *ProcessCQE(LibUringAsyncIOQueueData *queuedata, struct i
             task = (SDL_AsyncIOTask *) cancel_task->app_userdata;
             SDL_free(cancel_task);
             if (cqe->res >= 0) {  // cancel was successful?
-                task->result = SDL_ASYNCIO_CANCELLED;
+                task->result = SDL_ASYNCIO_CANCELED;
             } else {
                 task = NULL; // it already finished or was too far along to cancel, so we'll pick up the actual results later.
             }

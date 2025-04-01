@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -123,7 +123,8 @@
 #define USB_PRODUCT_SONY_DS5                              0x0ce6
 #define USB_PRODUCT_SONY_DS5_EDGE                         0x0df2
 #define USB_PRODUCT_SWITCH_RETROBIT_CONTROLLER            0x0575
-#define USB_PRODUCT_THRUSTMASTER_ESWAPX_PRO               0xd012
+#define USB_PRODUCT_THRUSTMASTER_ESWAPX_PRO_PS4           0xd00e
+#define USB_PRODUCT_THRUSTMASTER_ESWAPX_PRO_SERIES_X      0xd012
 #define USB_PRODUCT_TURTLE_BEACH_SERIES_X_REACT_R         0x7013
 #define USB_PRODUCT_TURTLE_BEACH_SERIES_X_RECON           0x7009
 #define USB_PRODUCT_VALVE_STEAM_CONTROLLER_DONGLE         0x1142

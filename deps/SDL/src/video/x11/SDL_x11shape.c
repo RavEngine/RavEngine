@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -31,7 +31,7 @@ static Uint8 *GenerateShapeMask(SDL_Surface *shape)
 {
     int x, y;
     const size_t ppb = 8;
-    const size_t bytes_per_scanline = (size_t)(shape->w + (ppb - 1)) / ppb;
+    const size_t bytes_per_scanline = (shape->w + (ppb - 1)) / ppb;
     const Uint8 *a;
     Uint8 *mask;
     Uint8 *mask_scanline;
@@ -71,7 +71,7 @@ bool X11_UpdateWindowShape(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surfa
             if (!stretched) {
                 return false;
             }
-            if (!SDL_SoftStretch(shape, NULL, stretched, NULL, SDL_SCALEMODE_LINEAR)) {
+            if (!SDL_StretchSurface(shape, NULL, stretched, NULL, SDL_SCALEMODE_LINEAR)) {
                 SDL_DestroySurface(stretched);
                 return false;
             }

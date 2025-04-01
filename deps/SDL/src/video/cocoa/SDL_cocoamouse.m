@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -27,7 +27,9 @@
 
 #include "../../events/SDL_mouse_c.h"
 
-// #define DEBUG_COCOAMOUSE
+#if 0
+#define DEBUG_COCOAMOUSE
+#endif
 
 #ifdef DEBUG_COCOAMOUSE
 #define DLog(fmt, ...) printf("%s: " fmt "\n", __func__, ##__VA_ARGS__)
@@ -230,11 +232,11 @@ static bool Cocoa_ShowCursor(SDL_Cursor *cursor)
         SDL_VideoDevice *device = SDL_GetVideoDevice();
         SDL_Window *window = (device ? device->windows : NULL);
         for (; window != NULL; window = window->next) {
-            SDL_CocoaWindowData *internal = (__bridge SDL_CocoaWindowData *)window->internal;
-            if (internal) {
-                [internal.nswindow performSelectorOnMainThread:@selector(invalidateCursorRectsForView:)
-                                                      withObject:[internal.nswindow contentView]
-                                                   waitUntilDone:NO];
+            SDL_CocoaWindowData *data = (__bridge SDL_CocoaWindowData *)window->internal;
+            if (data) {
+                [data.nswindow performSelectorOnMainThread:@selector(invalidateCursorRectsForView:)
+                                                withObject:[data.nswindow contentView]
+                                             waitUntilDone:NO];
             }
         }
         return true;
@@ -428,6 +430,13 @@ static void Cocoa_HandleTitleButtonEvent(SDL_VideoDevice *_this, NSEvent *event)
     }
 }
 
+static NSWindow *Cocoa_MouseFocus;
+
+NSWindow *Cocoa_GetMouseFocus()
+{
+    return Cocoa_MouseFocus;
+}
+
 void Cocoa_HandleMouseEvent(SDL_VideoDevice *_this, NSEvent *event)
 {
     SDL_MouseID mouseID = SDL_DEFAULT_MOUSE_ID;
@@ -437,7 +446,24 @@ void Cocoa_HandleMouseEvent(SDL_VideoDevice *_this, NSEvent *event)
     CGFloat lastMoveX, lastMoveY;
     float deltaX, deltaY;
     bool seenWarp;
-    switch ([event type]) {
+
+    // All events except NSEventTypeMouseExited can only happen if the window
+    // has mouse focus, so we'll always set the focus even if we happen to miss
+    // NSEventTypeMouseEntered, which apparently happens if the window is
+    // created under the mouse on macOS 12.7
+    NSEventType event_type = [event type];
+    if (event_type == NSEventTypeMouseExited) {
+        Cocoa_MouseFocus = NULL;
+    } else {
+        Cocoa_MouseFocus = [event window];
+    }
+
+    switch (event_type) {
+    case NSEventTypeMouseEntered:
+    case NSEventTypeMouseExited:
+        // Focus is handled above
+        return;
+
     case NSEventTypeMouseMoved:
     case NSEventTypeLeftMouseDragged:
     case NSEventTypeRightMouseDragged:

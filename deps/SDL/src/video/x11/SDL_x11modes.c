@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -541,6 +541,89 @@ static bool X11_UpdateXRandRDisplay(SDL_VideoDevice *_this, Display *dpy, int sc
     return true;
 }
 
+static XRRScreenResources *X11_GetScreenResources(Display *dpy, int screen)
+{
+    XRRScreenResources *res = X11_XRRGetScreenResourcesCurrent(dpy, RootWindow(dpy, screen));
+    if (!res || res->noutput == 0) {
+        if (res) {
+            X11_XRRFreeScreenResources(res);
+        }
+        res = X11_XRRGetScreenResources(dpy, RootWindow(dpy, screen));
+    }
+    return res;
+}
+
+static void X11_CheckDisplaysMoved(SDL_VideoDevice *_this, Display *dpy)
+{
+    const int screencount = ScreenCount(dpy);
+
+    SDL_DisplayID *displays = SDL_GetDisplays(NULL);
+    if (!displays) {
+        return;
+    }
+
+    for (int screen = 0; screen < screencount; ++screen) {
+        XRRScreenResources *res = X11_GetScreenResources(dpy, screen);
+        if (!res) {
+            continue;
+        }
+
+        for (int i = 0; displays[i]; ++i) {
+            SDL_VideoDisplay *display = SDL_GetVideoDisplay(displays[i]);
+            const SDL_DisplayData *displaydata = display->internal;
+            if (displaydata->screen == screen) {
+                X11_UpdateXRandRDisplay(_this, dpy, screen, displaydata->xrandr_output, res, display);
+            }
+        }
+        X11_XRRFreeScreenResources(res);
+    }
+    SDL_free(displays);
+}
+
+static void X11_CheckDisplaysRemoved(SDL_VideoDevice *_this, Display *dpy)
+{
+    const int screencount = ScreenCount(dpy);
+    int num_displays = 0;
+
+    SDL_DisplayID *displays = SDL_GetDisplays(&num_displays);
+    if (!displays) {
+        return;
+    }
+
+    for (int screen = 0; screen < screencount; ++screen) {
+        XRRScreenResources *res = X11_GetScreenResources(dpy, screen);
+        if (!res) {
+            continue;
+        }
+
+        for (int output = 0; output < res->noutput; output++) {
+            for (int i = 0; i < num_displays; ++i) {
+                if (!displays[i]) {
+                    // We already removed this display from the list
+                    continue;
+                }
+
+                SDL_VideoDisplay *display = SDL_GetVideoDisplay(displays[i]);
+                const SDL_DisplayData *displaydata = display->internal;
+                if (displaydata->xrandr_output == res->outputs[output]) {
+                    // This display is active, remove it from the list
+                    displays[i] = 0;
+                    break;
+                }
+            }
+        }
+        X11_XRRFreeScreenResources(res);
+    }
+
+    for (int i = 0; i < num_displays; ++i) {
+        if (displays[i]) {
+            // This display wasn't in the XRandR list
+            SDL_DelVideoDisplay(displays[i], true);
+        }
+    }
+    SDL_free(displays);
+}
+
 static void X11_HandleXRandROutputChange(SDL_VideoDevice *_this, const XRROutputChangeNotifyEvent *ev)
 {
     SDL_DisplayID *displays;
@@ -548,8 +631,11 @@ static void X11_HandleXRandROutputChange(SDL_VideoDevice *_this, const XRROutput
     int i;
 
 #if 0
-    printf("XRROutputChangeNotifyEvent! [output=%u, crtc=%u, mode=%u, rotation=%u, connection=%u]", (unsigned int) ev->output, (unsigned int) ev->crtc, (unsigned int) ev->mode, (unsigned int) ev->rotation, (unsigned int) ev->connection);
+    printf("XRROutputChangeNotifyEvent! [output=%u, crtc=%u, mode=%u, rotation=%u, connection=%u]\n", (unsigned int) ev->output, (unsigned int) ev->crtc, (unsigned int) ev->mode, (unsigned int) ev->rotation, (unsigned int) ev->connection);
 #endif
+
+    // XWayland doesn't always send output disconnected events
+    X11_CheckDisplaysRemoved(_this, ev->display);
 
     displays = SDL_GetDisplays(NULL);
     if (displays) {
@@ -568,29 +654,19 @@ static void X11_HandleXRandROutputChange(SDL_VideoDevice *_this, const XRROutput
         if (display) {
             SDL_DelVideoDisplay(display->id, true);
         }
+        X11_CheckDisplaysMoved(_this, ev->display);
+
     } else if (ev->connection == RR_Connected) { // output is coming online
-        Display *dpy = ev->display;
-        const int screen = DefaultScreen(dpy);
-        XVisualInfo vinfo;
-        if (get_visualinfo(dpy, screen, &vinfo)) {
-            XRRScreenResources *res = X11_XRRGetScreenResourcesCurrent(dpy, RootWindow(dpy, screen));
-            if (!res || res->noutput == 0) {
-                if (res) {
-                    X11_XRRFreeScreenResources(res);
-                }
-                res = X11_XRRGetScreenResources(dpy, RootWindow(dpy, screen));
-            }
-
+        if (!display) {
+            Display *dpy = ev->display;
+            const int screen = DefaultScreen(dpy);
+            XRRScreenResources *res = X11_GetScreenResources(dpy, screen);
             if (res) {
-                if (display) {
-                    X11_UpdateXRandRDisplay(_this, dpy, screen, ev->output, res, display);
-                } else {
-                    X11_AddXRandRDisplay(_this, dpy, screen, ev->output, res, true);
-                }
-
+                X11_AddXRandRDisplay(_this, dpy, screen, ev->output, res, true);
                 X11_XRRFreeScreenResources(res);
             }
         }
+        X11_CheckDisplaysMoved(_this, ev->display);
     }
 }
 
@@ -661,7 +737,6 @@ static bool X11_InitModes_XRandR(SDL_VideoDevice *_this)
     const int screencount = ScreenCount(dpy);
     const int default_screen = DefaultScreen(dpy);
     RROutput primary = X11_XRRGetOutputPrimary(dpy, RootWindow(dpy, default_screen));
-    XRRScreenResources *res = NULL;
     int xrandr_error_base = 0;
     int looking_for_primary;
     int output;
@@ -679,16 +754,9 @@ static bool X11_InitModes_XRandR(SDL_VideoDevice *_this)
                 continue;
             }
 
-            res = X11_XRRGetScreenResourcesCurrent(dpy, RootWindow(dpy, screen));
-            if (!res || res->noutput == 0) {
-                if (res) {
-                    X11_XRRFreeScreenResources(res);
-                }
-
-                res = X11_XRRGetScreenResources(dpy, RootWindow(dpy, screen));
-                if (!res) {
-                    continue;
-                }
+            XRRScreenResources *res = X11_GetScreenResources(dpy, screen);
+            if (!res) {
+                continue;
             }
 
             for (output = 0; output < res->noutput; output++) {

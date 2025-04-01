@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -118,7 +118,7 @@ static SDL_VideoDevice *N3DS_CreateDevice(void)
     return device;
 }
 
-VideoBootStrap N3DS_bootstrap = { N3DSVID_DRIVER_NAME, "N3DS Video Driver", N3DS_CreateDevice, NULL /* no ShowMessageBox implementation */ };
+VideoBootStrap N3DS_bootstrap = { N3DSVID_DRIVER_NAME, "N3DS Video Driver", N3DS_CreateDevice, NULL, /* no ShowMessageBox implementation */ false };
 
 static bool N3DS_VideoInit(SDL_VideoDevice *_this)
 {

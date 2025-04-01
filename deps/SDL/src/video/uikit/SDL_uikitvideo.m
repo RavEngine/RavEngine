@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -37,6 +37,7 @@
 #include "SDL_uikitvulkan.h"
 #include "SDL_uikitmetalview.h"
 #include "SDL_uikitmessagebox.h"
+#include "SDL_uikitpen.h"
 
 #define UIKITVID_DRIVER_NAME "uikit"
 
@@ -144,7 +145,8 @@ static SDL_VideoDevice *UIKit_CreateDevice(void)
 VideoBootStrap UIKIT_bootstrap = {
     UIKITVID_DRIVER_NAME, "SDL UIKit video driver",
     UIKit_CreateDevice,
-    UIKit_ShowMessageBox
+    UIKit_ShowMessageBox,
+    false
 };
 
 static bool UIKit_VideoInit(SDL_VideoDevice *_this)
@@ -169,6 +171,7 @@ static void UIKit_VideoQuit(SDL_VideoDevice *_this)
 
     SDL_QuitGCKeyboard();
     SDL_QuitGCMouse();
+    UIKit_QuitPen(_this);
 
     UIKit_QuitModes(_this);
 }
@@ -259,13 +262,8 @@ void UIKit_ForceUpdateHomeIndicator(void)
     if (focus) {
         SDL_UIKitWindowData *data = (__bridge SDL_UIKitWindowData *)focus->internal;
         if (data != nil) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunguarded-availability-new"
-            if ([data.viewcontroller respondsToSelector:@selector(setNeedsUpdateOfHomeIndicatorAutoHidden)]) {
-                [data.viewcontroller performSelectorOnMainThread:@selector(setNeedsUpdateOfHomeIndicatorAutoHidden) withObject:nil waitUntilDone:NO];
-                [data.viewcontroller performSelectorOnMainThread:@selector(setNeedsUpdateOfScreenEdgesDeferringSystemGestures) withObject:nil waitUntilDone:NO];
-            }
-#pragma clang diagnostic pop
+            [data.viewcontroller performSelectorOnMainThread:@selector(setNeedsUpdateOfHomeIndicatorAutoHidden) withObject:nil waitUntilDone:NO];
+            [data.viewcontroller performSelectorOnMainThread:@selector(setNeedsUpdateOfScreenEdgesDeferringSystemGestures) withObject:nil waitUntilDone:NO];
         }
     }
 #endif // !SDL_PLATFORM_TVOS

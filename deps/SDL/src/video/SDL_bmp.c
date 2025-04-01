@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -46,9 +46,21 @@
 #endif
 
 // Logical color space values for BMP files
+// https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-wmf/eb4bbd50-b3ce-4917-895c-be31f214797f
 #ifndef LCS_WINDOWS_COLOR_SPACE
 // 0x57696E20 == "Win "
 #define LCS_WINDOWS_COLOR_SPACE 0x57696E20
+#endif
+
+#ifndef LCS_sRGB
+// 0x73524742 == "sRGB"
+#define LCS_sRGB 0x73524742
+#endif
+
+// Logical/physical color relationship
+// https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-wmf/9fec0834-607d-427d-abd5-ab240fb0db38
+#ifndef LCS_GM_GRAPHICS
+#define LCS_GM_GRAPHICS 0x00000002
 #endif
 
 static bool readRlePixels(SDL_Surface *surface, SDL_IOStream *src, int isRle8)
@@ -64,16 +76,16 @@ static bool readRlePixels(SDL_Surface *surface, SDL_IOStream *src, int isRle8)
     int ofs = 0;
     Uint8 ch;
     Uint8 needsPad;
+    const int pixels_per_byte = (isRle8 ? 1 : 2);
 
 #define COPY_PIXEL(x)                \
     spot = &bits[ofs++];             \
     if (spot >= start && spot < end) \
-    *spot = (x)
+        *spot = (x)
 
-    // !!! FIXME: for all these reads, handle error vs eof? handle -2 if non-blocking?
     for (;;) {
         if (!SDL_ReadU8(src, &ch)) {
-            return true;
+            return false;
         }
         /*
         | encoded mode starts with a run length, and then a byte
@@ -82,26 +94,12 @@ static bool readRlePixels(SDL_Surface *surface, SDL_IOStream *src, int isRle8)
         if (ch) {
             Uint8 pixel;
             if (!SDL_ReadU8(src, &pixel)) {
-                return true;
+                return false;
             }
-            if (isRle8) { // 256-color bitmap, compressed
-                do {
-                    COPY_PIXEL(pixel);
-                } while (--ch);
-            } else { // 16-color bitmap, compressed
-                Uint8 pixel0 = pixel >> 4;
-                Uint8 pixel1 = pixel & 0x0F;
-                for (;;) {
-                    COPY_PIXEL(pixel0); // even count, high nibble
-                    if (!--ch) {
-                        break;
-                    }
-                    COPY_PIXEL(pixel1); // odd count, low nibble
-                    if (!--ch) {
-                        break;
-                    }
-                }
-            }
+            ch /= pixels_per_byte;
+            do {
+                COPY_PIXEL(pixel);
+            } while (--ch);
         } else {
             /*
             | A leading zero is an escape; it may signal the end of the bitmap,
@@ -109,7 +107,7 @@ static bool readRlePixels(SDL_Surface *surface, SDL_IOStream *src, int isRle8)
             | zero tag may be absolute mode or an escape
             */
             if (!SDL_ReadU8(src, &ch)) {
-                return true;
+                return false;
             }
             switch (ch) {
             case 0: // end of line
@@ -117,47 +115,32 @@ static bool readRlePixels(SDL_Surface *surface, SDL_IOStream *src, int isRle8)
                 bits -= pitch; // go to previous
                 break;
             case 1:               // end of bitmap
-                return false; // success!
+                return true; // success!
             case 2:               // delta
                 if (!SDL_ReadU8(src, &ch)) {
-                    return true;
+                    return false;
                 }
-                ofs += ch;
+                ofs += ch / pixels_per_byte;
+
                 if (!SDL_ReadU8(src, &ch)) {
-                    return true;
+                    return false;
                 }
-                bits -= (ch * pitch);
+                bits -= ((ch / pixels_per_byte) * pitch);
                 break;
             default: // no compression
-                if (isRle8) {
-                    needsPad = (ch & 1);
-                    do {
-                        Uint8 pixel;
-                        if (!SDL_ReadU8(src, &pixel)) {
-                            return true;
-                        }
-                        COPY_PIXEL(pixel);
-                    } while (--ch);
-                } else {
-                    needsPad = (((ch + 1) >> 1) & 1); // (ch+1)>>1: bytes size
-                    for (;;) {
-                        Uint8 pixel;
-                        if (!SDL_ReadU8(src, &pixel)) {
-                            return true;
-                        }
-                        COPY_PIXEL(pixel >> 4);
-                        if (!--ch) {
-                            break;
-                        }
-                        COPY_PIXEL(pixel & 0x0F);
-                        if (!--ch) {
-                            break;
-                        }
+                ch /= pixels_per_byte;
+                needsPad = (ch & 1);
+                do {
+                    Uint8 pixel;
+                    if (!SDL_ReadU8(src, &pixel)) {
+                        return false;
                     }
-                }
+                    COPY_PIXEL(pixel);
+                } while (--ch);
+
                 // pad at even boundary
                 if (needsPad && !SDL_ReadU8(src, &ch)) {
-                    return true;
+                    return false;
                 }
                 break;
             }
@@ -501,10 +484,13 @@ SDL_Surface *SDL_LoadBMP_IO(SDL_IOStream *src, bool closeio)
         goto done;
     }
     if ((biCompression == BI_RLE4) || (biCompression == BI_RLE8)) {
-        was_error = readRlePixels(surface, src, biCompression == BI_RLE8);
-        if (was_error) {
+        if (!readRlePixels(surface, src, biCompression == BI_RLE8)) {
             SDL_SetError("Error reading from datastream");
+            goto done;
         }
+
+        // Success!
+        was_error = false;
         goto done;
     }
     top = (Uint8 *)surface->pixels;
@@ -637,6 +623,12 @@ bool SDL_SaveBMP_IO(SDL_Surface *surface, SDL_IOStream *dst, bool closeio)
     Uint32 bV4GammaGreen = 0;
     Uint32 bV4GammaBlue = 0;
 
+    // The additional header members from the Win32 BITMAPV5HEADER struct (124 bytes in total)
+    Uint32 bV5Intent = 0;
+    Uint32 bV5ProfileData = 0;
+    Uint32 bV5ProfileSize = 0;
+    Uint32 bV5Reserved = 0;
+
     // Make sure we have somewhere to save
     if (!SDL_SurfaceValid(surface)) {
         SDL_InvalidParamError("surface");
@@ -728,19 +720,25 @@ bool SDL_SaveBMP_IO(SDL_Surface *surface, SDL_IOStream *dst, bool closeio)
         }
         biClrImportant = 0;
 
-        // Set the BMP info values for the version 4 header
+        // Set the BMP info values
         if (save32bit && !saveLegacyBMP) {
-            biSize = 108;
+            biSize = 124;
+            // Version 4 values
             biCompression = BI_BITFIELDS;
             // The BMP format is always little endian, these masks stay the same
             bV4RedMask = 0x00ff0000;
             bV4GreenMask = 0x0000ff00;
             bV4BlueMask = 0x000000ff;
             bV4AlphaMask = 0xff000000;
-            bV4CSType = LCS_WINDOWS_COLOR_SPACE;
+            bV4CSType = LCS_sRGB;
             bV4GammaRed = 0;
             bV4GammaGreen = 0;
             bV4GammaBlue = 0;
+            // Version 5 values
+            bV5Intent = LCS_GM_GRAPHICS;
+            bV5ProfileData = 0;
+            bV5ProfileSize = 0;
+            bV5Reserved = 0;
         }
 
         // Write the BMP info values
@@ -758,8 +756,9 @@ bool SDL_SaveBMP_IO(SDL_Surface *surface, SDL_IOStream *dst, bool closeio)
             goto done;
         }
 
-        // Write the BMP info values for the version 4 header
+        // Write the BMP info values
         if (save32bit && !saveLegacyBMP) {
+            // Version 4 values
             if (!SDL_WriteU32LE(dst, bV4RedMask) ||
                 !SDL_WriteU32LE(dst, bV4GreenMask) ||
                 !SDL_WriteU32LE(dst, bV4BlueMask) ||
@@ -775,6 +774,13 @@ bool SDL_SaveBMP_IO(SDL_Surface *surface, SDL_IOStream *dst, bool closeio)
             if (!SDL_WriteU32LE(dst, bV4GammaRed) ||
                 !SDL_WriteU32LE(dst, bV4GammaGreen) ||
                 !SDL_WriteU32LE(dst, bV4GammaBlue)) {
+                goto done;
+            }
+            // Version 5 values
+            if (!SDL_WriteU32LE(dst, bV5Intent) ||
+                !SDL_WriteU32LE(dst, bV5ProfileData) ||
+                !SDL_WriteU32LE(dst, bV5ProfileSize) ||
+                !SDL_WriteU32LE(dst, bV5Reserved)) {
                 goto done;
             }
         }

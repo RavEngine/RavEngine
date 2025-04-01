@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -533,6 +533,7 @@ void *SDL_aligned_alloc(size_t alignment, size_t size)
 {
     size_t padding;
     Uint8 *result = NULL;
+    size_t requested_size = size;
 
     if (alignment < sizeof(void*)) {
         alignment = sizeof(void*);
@@ -552,6 +553,11 @@ void *SDL_aligned_alloc(size_t alignment, size_t size)
 
             // Store the original pointer right before the returned value
             SDL_memcpy(result - sizeof(original), &original, sizeof(original));
+
+            // Initialize the padding to zero
+            if (padding > 0) {
+                SDL_memset(result + requested_size, 0, padding);
+            }
         }
     }
     return result;
