@@ -205,6 +205,8 @@ rve_enable_IPO(${PROJECT_NAME})
 target_compile_definitions(${PROJECT_NAME} PUBLIC RMLUI_USE_CUSTOM_RTTI=1)
 
 if (NOT RAVENGINE_SERVER)
+	add_subdirectory("deps/freetype")
+
 	# link freetype (disable freetype dependencies since we do not need them)
 	set(CMAKE_DISABLE_FIND_PACKAGE_PNG ON CACHE INTERNAL "")
 	set(CMAKE_DISABLE_FIND_PACKAGE_BrotliDec ON CACHE INTERNAL "")
@@ -222,7 +224,6 @@ if (NOT RAVENGINE_SERVER)
 	set(FREETYPE_FOUND ON CACHE INTERNAL "")
 	add_subdirectory("deps/harfbuzz" EXCLUDE_FROM_ALL)
 
-	add_subdirectory("deps/freetype")
 	target_include_directories(freetype PUBLIC "deps/harfbuzz/src")
 	target_include_directories(harfbuzz PUBLIC "deps/freetype/include")
 
@@ -233,6 +234,9 @@ if (NOT RAVENGINE_SERVER)
 		set(ARCH "arm"  CACHE INTERNAL "")
 	endif()
 	add_subdirectory("deps/rlottie" EXCLUDE_FROM_ALL)
+
+	set(LUNASVG_BUILD_EXAMPLES OFF)
+	set(PLUTOVG_BUILD_EXAMPLES OFF)
 	add_subdirectory("deps/lunasvg" EXCLUDE_FROM_ALL)
 
 	add_library(Freetype::Freetype ALIAS freetype)
@@ -751,8 +755,7 @@ Recast;ResonanceAudioObj;ResonanceAudioShared;ResonanceAudioStatic;lunasvg;rlott
 test_physfs;tweeny-dummy;zlib;zlibstatic;SDL3-static;json;physfs_uninstall;dist;BUILD_CLANG_FORMAT;crypto;r8brain;harfbuzz;harfbuzz-subset;\
 sdl_headers_copy;libprotoc;protoc;dr_wav;SadieHrtfsObj;fmt;simdjson;TracyClient;stb_image;phonon_bundle;PffftObj;pf_conv_arch_avx2;\
 pf_conv_arch_avx;pf_conv_arch_sse4;pf_conv_arch_sse3;pf_conv_arch_dflt;pf_conv_dispatcher;pf_conv_arch_none;PFFASTCONV;PFDSP;SDL_uclibc;\
-glm_static;flatbuffers;meshoptimizer;dds_image;tinyexr;miniz;rmlui_core;rmlui_debugger
-")
+glm_static;flatbuffers;meshoptimizer;dds_image;tinyexr;miniz;rmlui_core;rmlui_debugger;plutovg")
 
 group_in("Tools" "rvesc;rvesc_resources;rvemc;rveskc;rve_importlib;rveac")
 

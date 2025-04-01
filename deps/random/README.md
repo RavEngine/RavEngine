@@ -1,11 +1,8 @@
 # Random for modern C++ with convenient API
-[![Build Status](https://travis-ci.org/effolkronium/random.svg?branch=master)](https://travis-ci.org/effolkronium/random?branch=master)
+[![Github-sponsors](https://img.shields.io/badge/sponsor-30363D?style=for-the-badge&logo=GitHub-Sponsors&logoColor=#EA4AAA)](https://github.com/sponsors/ilqvya)
 [![Build status](https://ci.appveyor.com/api/projects/status/vq1kodqqxwx16rfv/branch/master?svg=true)](https://ci.appveyor.com/project/effolkronium/random/branch/master)
-[![Coverage Status](https://coveralls.io/repos/github/effolkronium/random/badge.svg?branch=master&unused=0)](https://coveralls.io/github/effolkronium/random?branch=master&unused=0)
-<a href="https://scan.coverity.com/projects/effolkronium-random">
-  <img alt="Coverity Scan Build Status"
-       src="https://scan.coverity.com/projects/13062/badge.svg"/>
-</a>
+[![Coverage Status](https://coveralls.io/repos/github/effolkronium/random/badge.svg?branch=master&unused=0)](https://coveralls.io/github/effolkronium/random?branch=master&unused=0)<a href="https://scan.coverity.com/projects/effolkronium-random"><img alt="Coverity Scan Build Status" src="https://scan.coverity.com/projects/13062/badge.svg"/></a>
+[![Github-sponsors](https://img.shields.io/badge/sponsor-30363D?style=for-the-badge&logo=GitHub-Sponsors&logoColor=#EA4AAA)](https://github.com/sponsors/ilqvya)
 - [Design goals](#design-goals)
 - [Supported compilers](#supported-compilers)
 - [Integration](#integration)
@@ -14,10 +11,11 @@
   - [Common type number range](#common-type-number-range)
   - [Character range](#character-range)
   - [Bool](#bool)
-  - [Random value from std::initilizer_list](#random-value-from-stdinitilizer_list)
+  - [Random value from std::initializer_list](#random-value-from-stdinitializer_list)
   - [Random iterator](#random-iterator)
   - [Random element from array](#random-element-from-array)
   - [Container of random values](#container-of-random-values)
+  - [Weighted random values](#weighted-random-values)
   - [Shuffle](#shuffle)
   - [Custom distribution](#custom-distribution)
   - [Custom Seeder](#custom-seeder)
@@ -38,11 +36,11 @@ There are few ways to get working with random in C++:
 - **C style**
 ```cpp
   srand( time(NULL) ); // seed with time since epoch
-  auto random_number = (rand() % (9 - 1)) + 1; // get a pseudo-random integer between 1 and 9
+  auto random_number = (rand() % 9) + 1; // get a pseudo-random integer between 1 and 9
 ```
 * Problems
   * should specify seed
-  * should write your own distribution algorihtm
+  * should write your own distribution algorithm
   * [There are no guarantees as to the quality of the random sequence produced.](http://en.cppreference.com/w/cpp/numeric/random/rand#Notes)
 - **C++11 style**
 ```cpp
@@ -54,7 +52,7 @@ There are few ways to get working with random in C++:
 * Problems
   * should specify seed
   * should choose, create and use a chain of various objects like engines and distributions
-  * [mt19937](http://en.cppreference.com/w/cpp/numeric/random/mersenne_twister_engine) use 5000 bytes of memory for each creation (which is bad for performance if we create it too frequently)
+  * [mt19937](http://en.cppreference.com/w/cpp/numeric/random/mersenne_twister_engine) uses 5000 bytes of memory for each creation (which is bad for performance if we create it too frequently)
   * uncomfortable and not intuitively clear usage
 - **effolkronium random style**
 ```cpp
@@ -70,9 +68,9 @@ There are few ways to get working with random in C++:
     * *random_thread_local* which has static methods and [thread_local](http://en.cppreference.com/w/cpp/keyword/thread_local) internal state. It's thread safe but less efficient
     * *random_local* which has non static methods and local internal state. It can be created on the stack at local scope
 ## Supported compilers
-* GCC 4.9 - 8.0 (and possibly later)
-* Clang 3.7 - 8.0 (and possibly later)
-* Microsoft Visual C++ 2015 - 2019 (and possibly later)
+* GCC 4.9 - 10.0 (and possibly later)
+* Clang 3.7 - 10.0 (and possibly later)
+* Microsoft Visual C++ 2015 - 2022 (and possibly later)
 ## Integration
 #### CMake
 * As subproject
@@ -162,8 +160,8 @@ auto val = Random::get<bool>() // true with 50% probability by default
 ```cpp
 auto val = Random::get<bool>(-1) // Error: assert occurred! Out of [0; 1] range
 ```
-### Random value from std::initilizer_list
-Return random value from values in a std::initilizer_list
+### Random value from std::initializer_list
+Return random value from values in a std::initializer_list
 ```cpp
 auto val = Random::get({1, 2, 3}) // val = 1 or 2 or 3
 ```
@@ -211,8 +209,22 @@ class MyContainer
     void insert(iterator after, T value) {...}
 };
 
-auto vec = Random DOT get<MyContainer>(1, 9, 5); // decltype(vec) is std::MyContainer<int> with size = 5
+auto vec = Random::get<MyContainer>(1, 9, 5); // decltype(vec) is std::MyContainer<int> with size = 5
 
+```
+### Weighted random values
+Return random iterator from map-like containers
+```cpp
+    std::unordered_map<std::string, unsigned long> nonzero_ulong_umap = {{"Orange", 1ul}, {"Apple", 2ul}, {"Banana", 3ul}};
+    std::unordered_map<std::string, unsigned> nonzero_uint_umap = {{"Orange", 1u}, {"Apple", 2u}, {"Banana", 3u}};
+    
+    std::map<std::string, float> nonzero_float_map = {{"Orange", 1.0f}, {"Apple", 2.0f}, {"Banana", 3.0f}};
+    std::map<std::string, double> nonzero_double_map = {{"Orange", 1.0}, {"Apple", 2.0}, {"Banana", 3.0}};
+
+    Random::get<Random_t::weight>(nonzero_ulong_umap);
+    Random::get<Random_t::weight>(nonzero_uint_umap);
+    Random::get<Random_t::weight>(nonzero_float_map);
+    Random::get<Random_t::weight>(nonzero_double_map);
 ```
 ### Shuffle
 Reorders the elements in a given range or in all container [ref](http://en.cppreference.com/w/cpp/algorithm/random_shuffle)
@@ -237,7 +249,7 @@ auto result = Random::get<std::gamma_distribution<>>( 1.f, 2.f );
 * Argument by reference
 ```cpp
 std::gamma_distribution<> gamma{ 1.f, 2.f };
-auto result = Random DOT get( gamma ); // return result of gamma.operator()( engine_ )
+auto result = Random::get( gamma ); // return result of gamma.operator()( engine_ )
 ```
 ### Custom Seeder
 Specify seed by which random engine will be seeded at construction time:
@@ -274,7 +286,7 @@ Seed an internal random engine by a newly created Seeder instance
 Random::reseed( );
 ```
 ### Thread local random
-It uses static methods API and data with [thread_local](http://en.cppreference.com/w/cpp/keyword/thread_local) storage which is fully **thread safe** (but less perfomance)
+It uses static methods API and data with [thread_local](http://en.cppreference.com/w/cpp/keyword/thread_local) storage which is fully **thread safe** (but less performance)
 ```cpp
 using Random = effolkronium::random_thread_local
 

@@ -1,6 +1,6 @@
 # This file is part of the Tweeny library.
 #
-# Copyright (c) 2016-2020 Leonardo Guilherme Lucena de Freitas
+# Copyright (c) 2016-2021 Leonardo Guilherme Lucena de Freitas
 # Copyright (c) 2016 Guilherme R. Costa
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,13 +25,14 @@
 # target that uses tweeny, a simple `target_link_libraries(target tweeny)` is sufficient to set up include and link
 # instructions.
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.0...3.28)
 cmake_policy(SET CMP0063 NEW)
-project(Tweeny LANGUAGES CXX VERSION 3.1.1)
+project(Tweeny LANGUAGES CXX VERSION 3.2.0)
 
 # Setup variables and options
 option(TWEENY_BUILD_DOCUMENTATION "Attempts to build the documentation. You'll need doxygen and graphviz installed" OFF)
 option(TWEENY_BUILD_SINGLE_HEADER "Joins together all header files in a single one. Needs Python 3.6 and quom installed" OFF)
+option(TWEENY_BUILD_SANDBOX "Adds a 'sandbox' target that links to tweeny. Useful when exploring tweeny" OFF)
 
 # The library target
 add_library(tweeny INTERFACE)
@@ -88,4 +89,9 @@ set_target_properties(tweeny-dummy PROPERTIES LINKER_LANGUAGE CXX EXCLUDE_FROM_A
 
 if (TWEENY_BUILD_SINGLE_HEADER)
     include(cmake/GenerateSingleHeader.cmake)
+endif()
+
+if (TWEENY_BUILD_SANDBOX)
+    add_executable(sandbox src/sandbox.cc)
+    target_link_libraries(sandbox tweeny)
 endif()

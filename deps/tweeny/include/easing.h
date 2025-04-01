@@ -1,7 +1,7 @@
 /*
  This file is part of the Tweeny library.
 
- Copyright (c) 2016-2020 Leonardo Guilherme Lucena de Freitas
+ Copyright (c) 2016-2021 Leonardo Guilherme Lucena de Freitas
  Copyright (c) 2016 Guilherme R. Costa
 
  Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -119,7 +119,7 @@ namespace tweeny {
      * @brief The easing class holds all the bundled easings.
      *
      * You should pass the easing function to the @p tweeny::tween::via method, to set the easing function that will
-     * be used to interpolate values in a tween currentPoint.
+     * be used to interpolate values in a tween point.
      *
      * **Example**:
      *
@@ -129,6 +129,48 @@ namespace tweeny {
      */
     class easing {
         public:
+            /**
+             * @brief Enumerates all easings to aid in runtime when adding easins to a tween using tween::via
+             *
+             * The aim of this enum is to help in situations where the easing doesn't come straight from the C++
+             * code but rather from a configuration file or some sort of external paramenter.
+             */
+            enum class enumerated {
+                def,
+                linear,
+                stepped,
+                quadraticIn,
+                quadraticOut,
+                quadraticInOut,
+                cubicIn,
+                cubicOut,
+                cubicInOut,
+                quarticIn,
+                quarticOut,
+                quarticInOut,
+                quinticIn,
+                quinticOut,
+                quinticInOut,
+                sinusoidalIn,
+                sinusoidalOut,
+                sinusoidalInOut,
+                exponentialIn,
+                exponentialOut,
+                exponentialInOut,
+                circularIn,
+                circularOut,
+                circularInOut,
+                bounceIn,
+                bounceOut,
+                bounceInOut,
+                elasticIn,
+                elasticOut,
+                elasticInOut,
+                backIn,
+                backOut,
+                backInOut
+            };
+
             /**
              * @ingroup stepped
              * @brief Value is constant.
@@ -474,7 +516,7 @@ namespace tweeny {
             static constexpr struct bounceInEasing {
                 template<typename T>
                 static T run(float position, T start, T end) {
-                    return (end - start) - bounceOut.run((1 - position), T(), end) + start;
+                    return (end - start) - bounceOut.run((1 - position), T(), (end - start)) + start;
                 }
             } bounceIn = bounceInEasing{};
 
@@ -508,8 +550,8 @@ namespace tweeny {
             static constexpr struct bounceInOutEasing {
                 template<typename T>
                 static T run(float position, T start, T end) {
-                    if (position < 0.5f) return static_cast<T>(bounceIn.run(position * 2, T(), end) * .5f + start);
-                    else return static_cast<T>(bounceOut.run((position * 2 - 1), T(), end) * .5f + (end - start) * .5f + start);
+                    if (position < 0.5f) return static_cast<T>(bounceIn.run(position * 2, T(), (end - start)) * .5f + start);
+                    else return static_cast<T>(bounceOut.run((position * 2 - 1), T(), (end - start)) * .5f + (end - start) * .5f + start);
                 }
             } bounceInOut = bounceInOutEasing{};
 

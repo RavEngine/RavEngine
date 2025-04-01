@@ -6,22 +6,55 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
-    runs-on: macos-10.15
+    runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: install dependencies
-      run: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config freetype glib cairo icu4c graphite2 gobject-introspection gtk-doc ninja gcovr
-    - run: pip3 install meson fonttools --upgrade
-    - name: run
-      run: PKG_CONFIG_PATH="/usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libffi/lib/pkgconfig" meson build -Db_coverage=true -Dcoretext=enabled -Dgraphite=enabled -Dauto_features=enabled -Dchafa=disabled -Doptimization=2
-    - name: ci
-      run: meson test --print-errorlogs -Cbuild
-
-    - name: cov
-      run: ninja -Cbuild coverage-xml
-    - uses: codecov/codecov-action@v1
+    - name: Checkout
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@a1209f81afb8c005c13b4296c32e363431bffea5 # v1.2.17
       with:
-        file: build/meson-logs/coverage.xml
+        key: ${{ github.job }}-${{ runner.os }}-${{ runner.arch }}
+    - name: Install Dependencies
+      run: |
+        export HOMEBREW_NO_AUTO_UPDATE=1
+        export HOMEBREW_NO_INSTALL_CLEANUP=1
+        brew rm -f pkg-config@0.29.2
+        brew install \
+          cairo \
+          freetype \
+          glib \
+          gobject-introspection \
+          graphite2 \
+          icu4c \
+          meson \
+          ninja \
+          pkgconf
+    - name: Setup Python
+      uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+      with:
+        python-version: '3.12'
+    - name: Install Python Dependencies
+      run: pip3 install -r .ci/requirements.txt --require-hashes
+    - name: Setup Meson
+      env:
+        PKG_CONFIG_PATH: "/usr/local/opt/libffi/lib/pkgconfig"
+      run: |
+        brew link --force icu4c
+        ccache --version
+        meson setup build \
+          -Dauto_features=enabled \
+          -Ddocs=disabled \
+          -Dchafa=disabled \
+          -Dcoretext=enabled \
+          -Dgraphite=enabled \
+          -Doptimization=2 \
+    - name: Build
+      run: meson compile -Cbuild
+    - name: Test
+      run: meson test --print-errorlogs -Cbuild

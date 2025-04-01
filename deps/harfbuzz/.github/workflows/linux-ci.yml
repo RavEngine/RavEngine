@@ -3,51 +3,63 @@ name: linux-ci
 on:
   push:
     branches: [ main ]
+    tags: ["*.*.*"]
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-24.04
 
     steps:
-    - uses: actions/checkout@v2
-    - name: install dependencies
-      run: sudo apt-get install pkg-config gcc gcovr gtk-doc-tools libfreetype6-dev libglib2.0-dev libcairo2-dev libicu-dev libgraphite2-dev python3 python3-setuptools ninja-build gobject-introspection libgirepository1.0-dev
-    - run: sudo pip3 install fonttools meson==0.56.0
-    - name: run
-      run: meson build -Db_coverage=true --auto-features=enabled -Dgraphite=enabled -Dchafa=disabled -Dragel_subproject=true -Doptimization=2
-    - name: ci
+    - name: Checkout
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@a1209f81afb8c005c13b4296c32e363431bffea5 # v1.2.17
+      with:
+        key: ${{ github.job }}-${{ runner.os }}-${{ runner.arch }}
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install \
+          gcc \
+          gobject-introspection \
+          gtk-doc-tools \
+          libcairo2-dev \
+          libfreetype6-dev \
+          libgirepository1.0-dev \
+          libglib2.0-dev \
+          libgraphite2-dev \
+          libicu-dev \
+          pkg-config
+    - name: Setup Python
+      uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+      with:
+        python-version: '3.12'
+    - name: Install Python Dependencies
+      run: pip3 install -r .ci/requirements.txt --require-hashes
+    - name: Setup Meson
+      run: |
+        ccache --version
+        meson setup build \
+          -Dauto_features=enabled \
+          -Dchafa=disabled \
+          -Dgraphite=enabled \
+          -Doptimization=2 \
+          -Ddoc_tests=true \
+          -Dragel_subproject=true
+    - name: Build
+      run: meson compile -Cbuild
+    - name: Test
       run: meson test --print-errorlogs -Cbuild
-
-    - name: generate documentations
+    - name: Generate Documentations
       run: ninja -Cbuild harfbuzz-doc
-    - name: deploy documentations
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    - name: Deploy Documentations
+      if: github.ref_type == 'tag'
       run: .ci/deploy-docs.sh
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
         REVISION: ${{ github.sha }}
-
-    # waiting for https://github.com/rhysd/github-action-benchmark/issues/36 to happen
-    # - name: benchmark
-    #   run: build/perf/perf --benchmark_format=json > perf/result.json
-    # - name: store benchmark result
-    #   uses: rhysd/github-action-benchmark@b2ee598
-    #   if: github.event_name != 'pull_request'
-    #   with:
-    #     name: C++ Benchmark
-    #     tool: 'googlecpp'
-    #     output-file-path: perf/result.json
-    #     gh-pages-branch: gh-pages
-    #     github-token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
-    #     auto-push: true
-    #     alert-threshold: '150%'
-    #     comment-on-alert: true
-    #     fail-on-alert: true
-
-    - name: cov
-      run: ninja -Cbuild coverage-xml
-    - uses: codecov/codecov-action@v1
-      with:
-        file: build/meson-logs/coverage.xml

@@ -60,7 +60,7 @@ elseif(ANDROID)
     add_definitions(-DPLATFORM_ANDROID)
 endif ()
 
-cmake_minimum_required(VERSION 3.4.1)
+cmake_minimum_required(VERSION 3.5)
 set(CMAKE_COLOR_MAKEFILE ON)
 
 set(INSTALL_DIR "${PROJECT_SOURCE_DIR}/install" CACHE PATH "Install path")

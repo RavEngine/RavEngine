@@ -26,6 +26,8 @@ add_library(ozz_base
   ${PROJECT_SOURCE_DIR}/include/ozz/base/containers/vector.h
   ${PROJECT_SOURCE_DIR}/include/ozz/base/containers/vector_archive.h
   ${PROJECT_SOURCE_DIR}/include/ozz/base/containers/std_allocator.h
+  ${PROJECT_SOURCE_DIR}/include/ozz/base/encode/group_varint.h
+  encode/group_varint.cc
   ${PROJECT_SOURCE_DIR}/include/ozz/base/io/archive.h
   io/archive.cc
   ${PROJECT_SOURCE_DIR}/include/ozz/base/io/archive_traits.h
@@ -62,6 +64,7 @@ target_compile_definitions(ozz_base
   PRIVATE $<$<BOOL:${BUILD_SHARED_LIBS}>:OZZ_BUILD_BASE_LIB>)
 
 target_compile_options(ozz_base PUBLIC $<$<CXX_COMPILER_ID:MSVC>:/wd4251>)
+
 target_include_directories(ozz_base PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>)

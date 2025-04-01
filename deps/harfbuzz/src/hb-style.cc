@@ -46,15 +46,14 @@
 static inline float
 _hb_angle_to_ratio (float a)
 {
-  return tanf (a * float (M_PI / 180.));
+  return tanf (a * -HB_PI / 180.f);
 }
-#if 0
+
 static inline float
 _hb_ratio_to_angle (float r)
 {
-  return atanf (r) * float (180. / M_PI);
+  return atanf (r) * -180.f / HB_PI;
 }
-#endif
 
 /**
  * hb_style_get_value:
@@ -62,8 +61,8 @@ _hb_ratio_to_angle (float r)
  * @style_tag: a style tag.
  *
  * Searches variation axes of a #hb_font_t object for a specific axis first,
- * if not set, then tries to get default style values from different
- * tables of the font.
+ * if not set, first tries to get default style values in `STAT` table
+ * then tries to polyfill from different tables of the font.
  *
  * Returns: Corresponding axis or default value to a style tag.
  *
@@ -109,11 +108,20 @@ hb_style_get_value (hb_font_t *font, hb_style_tag_t style_tag)
 	   : 12.f;
   }
   case HB_STYLE_TAG_SLANT_ANGLE:
-    return face->table.post->table->italicAngle.to_float ();
+  {
+    float angle = face->table.post->table->italicAngle.to_float ();
+
+    if (font->slant)
+      angle = _hb_ratio_to_angle (font->slant + _hb_angle_to_ratio (angle));
+
+    return angle;
+  }
   case HB_STYLE_TAG_WIDTH:
     return face->table.OS2->has_data ()
 	   ? face->table.OS2->get_width ()
-	   : (face->table.head->is_condensed () ? 75 : 100);
+	   : (face->table.head->is_condensed () ? 75 :
+	      face->table.head->is_expanded () ? 125 :
+	      100);
   case HB_STYLE_TAG_WEIGHT:
     return face->table.OS2->has_data ()
 	   ? face->table.OS2->usWeightClass

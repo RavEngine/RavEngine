@@ -36,8 +36,8 @@ alphtype unsigned char;
 write data;
 
 action clear_item {
-	memset (&info, 0, sizeof (info));
-	memset (&pos , 0, sizeof (pos ));
+	hb_memset (&info, 0, sizeof (info));
+	hb_memset (&pos , 0, sizeof (pos ));
 }
 
 action add_item {
@@ -58,17 +58,18 @@ action ensure_unicode { if (unlikely (!buffer->ensure_unicode ())) return false;
 action parse_glyph_name {
 	/* TODO Unescape \" and \\ if found. */
 	if (!hb_font_glyph_from_string (font,
-					tok, p - tok,
+					tok+1, p - tok - 2, /* Skip "" */
 					&info.codepoint))
 	  return false;
 }
 
-action parse_codepoint { if (!parse_uint (tok, p, &info.codepoint)) return false; }
-action parse_cluster   { if (!parse_uint (tok, p, &info.cluster )) return false; }
-action parse_x_offset  { if (!parse_int  (tok, p, &pos.x_offset )) return false; }
-action parse_y_offset  { if (!parse_int  (tok, p, &pos.y_offset )) return false; }
-action parse_x_advance { if (!parse_int  (tok, p, &pos.x_advance)) return false; }
-action parse_y_advance { if (!parse_int  (tok, p, &pos.y_advance)) return false; }
+action parse_codepoint	{ if (!parse_uint (tok, p, &info.codepoint)) return false; }
+action parse_cluster	{ if (!parse_uint (tok, p, &info.cluster )) return false; }
+action parse_x_offset	{ if (!parse_int  (tok, p, &pos.x_offset )) return false; }
+action parse_y_offset	{ if (!parse_int  (tok, p, &pos.y_offset )) return false; }
+action parse_x_advance	{ if (!parse_int  (tok, p, &pos.x_advance)) return false; }
+action parse_y_advance	{ if (!parse_int  (tok, p, &pos.y_advance)) return false; }
+action parse_glyph_flags{ if (!parse_uint (tok, p, &info.mask    )) return false; }
 
 unum	= '0' | [1-9] digit*;
 num	= '-'? unum;
@@ -82,13 +83,14 @@ glyph_name = '"' ([^\\"] | '\\' [\\"])* '"';
 parse_glyph_name   = (glyph_name >tok %parse_glyph_name);
 parse_codepoint = (codepoint >tok %parse_codepoint);
 
-glyph	= "\"g\""  colon (parse_glyph_name | parse_codepoint);
-unicode	= "\"u\""  colon parse_codepoint;
-cluster	= "\"cl\"" colon (unum >tok %parse_cluster);
-xoffset	= "\"dx\"" colon (num >tok %parse_x_offset);
-yoffset	= "\"dy\"" colon (num >tok %parse_y_offset);
-xadvance= "\"ax\"" colon (num >tok %parse_x_advance);
-yadvance= "\"ay\"" colon (num >tok %parse_y_advance);
+glyph	=  "\"g\""  colon (parse_glyph_name | parse_codepoint);
+unicode	=  "\"u\""  colon parse_codepoint;
+cluster	=  "\"cl\"" colon (unum >tok %parse_cluster);
+xoffset	=  "\"dx\"" colon (num  >tok %parse_x_offset);
+yoffset	=  "\"dy\"" colon (num  >tok %parse_y_offset);
+xadvance=  "\"ax\"" colon (num  >tok %parse_x_advance);
+yadvance=  "\"ay\"" colon (num  >tok %parse_y_advance);
+glyphflags="\"fl\"" colon (unum >tok %parse_glyph_flags);
 
 element = glyph @ensure_glyphs
 	| unicode @ensure_unicode
@@ -96,14 +98,15 @@ element = glyph @ensure_glyphs
 	| xoffset
 	| yoffset
 	| xadvance
-	| yadvance;
+	| yadvance
+	| glyphflags;
 item	=
-	( '{' space* element (comma element)* space* '}')
+	( '{' space* element (comma element)* space* '}' space* (','|']') space* )
 	>clear_item
 	@add_item
 	;
 
-main := space* item (comma item)* space* (','|']')?;
+main := space* '['? space* item*;
 
 }%%
 
@@ -119,13 +122,6 @@ _hb_buffer_deserialize_json (hb_buffer_t *buffer,
   /* Ensure we have positions. */
   (void) hb_buffer_get_glyph_positions (buffer, nullptr);
 
-  while (p < pe && ISSPACE (*p))
-    p++;
-  if (p < pe && *p == (buffer->len ? ',' : '['))
-  {
-    *end_ptr = ++p;
-  }
-
   const char *tok = nullptr;
   int cs;
   hb_glyph_info_t info = {0};
@@ -137,7 +133,7 @@ _hb_buffer_deserialize_json (hb_buffer_t *buffer,
 
   *end_ptr = p;
 
-  return p == pe && *(p-1) != ']';
+  return p == pe;
 }
 
 #endif /* HB_BUFFER_DESERIALIZE_JSON_HH */

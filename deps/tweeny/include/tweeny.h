@@ -1,7 +1,7 @@
 /*
  This file is part of the Tweeny library.
 
- Copyright (c) 2016-2020 Leonardo Guilherme Lucena de Freitas
+ Copyright (c) 2016-2021 Leonardo Guilherme Lucena de Freitas
  Copyright (c) 2016 Guilherme R. Costa
 
  Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -78,7 +78,6 @@
 #ifndef TWEENY_H
 #define TWEENY_H
 
-#include "tween.h"
 #include "tween.h"
 #include "easing.h"
 

@@ -6,16 +6,20 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   msvc:
     runs-on: ${{ matrix.os }}
 
     strategy:
+      fail-fast: false
       matrix:
-        os: [windows-2016, windows-latest]
+        os: [windows-2019, windows-latest]
         include:
-          - name: msvc-2017-x86
-            os: windows-2016
+          - name: msvc-2019-x86
+            os: windows-2019
             ARCH: x86
           - name: msvc-2019-amd64
             os: windows-latest
@@ -23,30 +27,35 @@ jobs:
     name: ${{ matrix.name }}
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v1
-        with:
-          python-version: '3.x'
-      - uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch : ${{ matrix.ARCH }}
-      - name: Install Dependencies
-        run: |
-          pip install --upgrade meson ninja fonttools
-      - name: Build
-        run: |
-          # This dir contains a pkg-config which meson will happily use and later fail, so remove it
-          $env:path = ($env:path.Split(';') | Where-Object { $_ -ne 'C:\Strawberry\perl\bin' }) -join ';'
-
+    - name: Checkout
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@a1209f81afb8c005c13b4296c32e363431bffea5 # v1.2.17
+      with:
+        variant: sccache
+        key: ${{ github.job }}-${{ matrix.os }}-${{ matrix.ARCH }}
+    - name: Setup Python
+      uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+      with:
+        python-version: '3.12'
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+      with:
+        arch : ${{ matrix.ARCH }}
+    - name: Install Python Dependencies
+      run: |
+        pip3 install -r .ci/requirements.txt --require-hashes
+    - name: Setup Meson
+      run: |
+          sccache --version
           meson setup build `
-            --wrap-mode=default `
+            --wrap-mode=forcefallback `
             --buildtype=release `
             -Dglib=enabled `
             -Dfreetype=enabled `
             -Dgdi=enabled `
             -Ddirectwrite=enabled
-
-          meson compile -C build
-      - name: Test
-        run: |
-          meson test --print-errorlogs --suite=harfbuzz -C build
+    - name: Build
+      run: meson compile -Cbuild
+    - name: Test
+      run: meson test --print-errorlogs --suite=harfbuzz -Cbuild

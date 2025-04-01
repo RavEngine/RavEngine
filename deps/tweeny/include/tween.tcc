@@ -1,7 +1,7 @@
 /*
  This file is part of the Tweeny library.
 
- Copyright (c) 2016-2020 Leonardo Guilherme Lucena de Freitas
+ Copyright (c) 2016-2021 Leonardo Guilherme Lucena de Freitas
  Copyright (c) 2016 Guilherme R. Costa
 
  Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -67,6 +67,91 @@ namespace tweeny {
     }
 
     template<typename T, typename... Ts>
+    template<typename... Fs>
+    tween<T, Ts...> & tween<T, Ts...>::via(easing::enumerated enumerated, Fs... vs) {
+        switch (enumerated) {
+            case easing::enumerated::def: return via(easing::def, vs...);
+            case easing::enumerated::linear: return via(easing::linear, vs...);
+            case easing::enumerated::stepped: return via(easing::stepped, vs...);
+            case easing::enumerated::quadraticIn: return via(easing::quadraticIn, vs...);
+            case easing::enumerated::quadraticOut: return via(easing::quadraticOut, vs...);
+            case easing::enumerated::quadraticInOut: return via(easing::quadraticInOut, vs...);
+            case easing::enumerated::cubicIn: return via(easing::cubicIn, vs...);
+            case easing::enumerated::cubicOut: return via(easing::cubicOut, vs...);
+            case easing::enumerated::cubicInOut: return via(easing::cubicInOut, vs...);
+            case easing::enumerated::quarticIn: return via(easing::quarticIn, vs...);
+            case easing::enumerated::quarticOut: return via(easing::quarticOut, vs...);
+            case easing::enumerated::quarticInOut: return via(easing::quarticInOut, vs...);
+            case easing::enumerated::quinticIn: return via(easing::quinticIn, vs...);
+            case easing::enumerated::quinticOut: return via(easing::quinticOut, vs...);
+            case easing::enumerated::quinticInOut: return via(easing::quinticInOut, vs...);
+            case easing::enumerated::sinusoidalIn: return via(easing::sinusoidalIn, vs...);
+            case easing::enumerated::sinusoidalOut: return via(easing::sinusoidalOut, vs...);
+            case easing::enumerated::sinusoidalInOut: return via(easing::sinusoidalInOut, vs...);
+            case easing::enumerated::exponentialIn: return via(easing::exponentialIn, vs...);
+            case easing::enumerated::exponentialOut: return via(easing::exponentialOut, vs...);
+            case easing::enumerated::exponentialInOut: return via(easing::exponentialInOut, vs...);
+            case easing::enumerated::circularIn: return via(easing::circularIn, vs...);
+            case easing::enumerated::circularOut: return via(easing::circularOut, vs...);
+            case easing::enumerated::circularInOut: return via(easing::circularInOut, vs...);
+            case easing::enumerated::bounceIn: return via(easing::bounceIn, vs...);
+            case easing::enumerated::bounceOut: return via(easing::bounceOut, vs...);
+            case easing::enumerated::bounceInOut: return via(easing::bounceInOut, vs...);
+            case easing::enumerated::elasticIn: return via(easing::elasticIn, vs...);
+            case easing::enumerated::elasticOut: return via(easing::elasticOut, vs...);
+            case easing::enumerated::elasticInOut: return via(easing::elasticInOut, vs...);
+            case easing::enumerated::backIn: return via(easing::backIn, vs...);
+            case easing::enumerated::backOut: return via(easing::backOut, vs...);
+            case easing::enumerated::backInOut: return via(easing::backInOut, vs...);
+            default: return via(easing::def, vs...);
+        }
+    }
+
+    template<typename T, typename... Ts>
+    template<typename... Fs>
+    tween<T, Ts...> & tween<T, Ts...>::via(const std::string & easing, Fs... vs) {
+        if (easing == "stepped") return via(easing::stepped, vs...);
+        if (easing == "linear") return via(easing::linear, vs...);
+        if (easing == "quadraticIn") return via(easing::quadraticIn, vs...);
+        if (easing == "quadraticOut") return via(easing::quadraticOut, vs...);
+        if (easing == "quadraticInOut") return via(easing::quadraticInOut, vs...);
+        if (easing == "cubicIn") return via(easing::cubicIn, vs...);
+        if (easing == "cubicOut") return via(easing::cubicOut, vs...);
+        if (easing == "cubicInOut") return via(easing::cubicInOut, vs...);
+        if (easing == "quarticIn") return via(easing::quarticIn, vs...);
+        if (easing == "quarticOut") return via(easing::quarticOut, vs...);
+        if (easing == "quarticInOut") return via(easing::quarticInOut, vs...);
+        if (easing == "quinticIn") return via(easing::quinticIn, vs...);
+        if (easing == "quinticOut") return via(easing::quinticOut, vs...);
+        if (easing == "quinticInOut") return via(easing::quinticInOut, vs...);
+        if (easing == "sinusoidalIn") return via(easing::sinusoidalIn, vs...);
+        if (easing == "sinusoidalOut") return via(easing::sinusoidalOut, vs...);
+        if (easing == "sinusoidalInOut") return via(easing::sinusoidalInOut, vs...);
+        if (easing == "exponentialIn") return via(easing::exponentialIn, vs...);
+        if (easing == "exponentialOut") return via(easing::exponentialOut, vs...);
+        if (easing == "exponentialInOut") return via(easing::exponentialInOut, vs...);
+        if (easing == "circularIn") return via(easing::circularIn, vs...);
+        if (easing == "circularOut") return via(easing::circularOut, vs...);
+        if (easing == "circularInOut") return via(easing::circularInOut, vs...);
+        if (easing == "bounceIn") return via(easing::bounceIn, vs...);
+        if (easing == "bounceOut") return via(easing::bounceOut, vs...);
+        if (easing == "bounceInOut") return via(easing::bounceInOut, vs...);
+        if (easing == "elasticIn") return via(easing::elasticIn, vs...);
+        if (easing == "elasticOut") return via(easing::elasticOut, vs...);
+        if (easing == "elasticInOut") return via(easing::elasticInOut, vs...);
+        if (easing == "backIn") return via(easing::backIn, vs...);
+        if (easing == "backOut") return via(easing::backOut, vs...);
+        if (easing == "backInOut") return via(easing::backInOut, vs...);
+        return via(easing::def, vs...);
+    }
+
+    template<typename T, typename... Ts>
+    template<typename... Fs>
+    tween <T, Ts...> & tween<T, Ts...>::via(const char * easing, Fs... vs) {
+        return via(std::string(easing));
+    }
+
+    template<typename T, typename... Ts>
     template<typename... Ds>
     inline tween<T, Ts...> & tween<T, Ts...>::during(Ds... ds) {
         total = 0;
@@ -80,7 +165,7 @@ namespace tweeny {
 
     template<typename T, typename... Ts>
     inline const typename detail::tweentraits<T, Ts...>::valuesType & tween<T, Ts...>::step(int32_t dt, bool suppress) {
-        return step(static_cast<float>(dt * currentDirection)/static_cast<float>(total), suppress);
+        return step(static_cast<float>(dt)/static_cast<float>(total), suppress);
     }
 
     template<typename T, typename... Ts>
@@ -90,6 +175,7 @@ namespace tweeny {
 
     template<typename T, typename... Ts>
     inline const typename detail::tweentraits<T, Ts...>::valuesType & tween<T, Ts...>::step(float dp, bool suppress) {
+        dp *= currentDirection;
         seek(currentProgress + dp, true);
         if (!suppress) dispatch(onStepCallbacks);
         return current;
@@ -118,7 +204,7 @@ namespace tweeny {
     template<size_t I>
     inline void tween<T, Ts...>::interpolate(float prog, unsigned point, typename traits::valuesType & values, detail::int2type<I>) const {
         auto & p = points.at(point);
-        uint32_t pointDuration = p.duration() - (p.stacked - (prog * static_cast<float>(total)));
+        auto pointDuration = uint32_t(p.duration() - (p.stacked - (prog * static_cast<float>(total))));
         float pointTotal = static_cast<float>(pointDuration) / static_cast<float>(p.duration(I));
         if (pointTotal > 1.0f) pointTotal = 1.0f;
         auto easing = std::get<I>(p.easings);
@@ -129,7 +215,7 @@ namespace tweeny {
     template<typename T, typename... Ts>
     inline void tween<T, Ts...>::interpolate(float prog, unsigned point, typename traits::valuesType & values, detail::int2type<0>) const {
         auto & p = points.at(point);
-        uint32_t pointDuration = p.duration() - (p.stacked - (prog * static_cast<float>(total)));
+        auto pointDuration = uint32_t(p.duration() - (p.stacked - (prog * static_cast<float>(total))));
         float pointTotal = static_cast<float>(pointDuration) / static_cast<float>(p.duration(0));
         if (pointTotal > 1.0f) pointTotal = 1.0f;
         auto easing = std::get<0>(p.easings);
@@ -239,9 +325,9 @@ namespace tweeny {
     }
 
     template<typename T, typename... Ts>
-    inline const typename detail::tweentraits<T, Ts...>::valuesType & tween<T, Ts...>::jump(int32_t p, bool suppress) {
-        p = detail::clip(p, 0, points.size() -1);
-        return seek(points.at(p).stacked, suppress);
+    inline const typename detail::tweentraits<T, Ts...>::valuesType & tween<T, Ts...>::jump(std::size_t p, bool suppress) {
+        p = detail::clip(p, static_cast<size_t>(0), points.size() -1);
+        return seek(static_cast<int32_t>(points.at(p).stacked), suppress);
     }
 
     template<typename T, typename... Ts> inline uint16_t tween<T, Ts...>::point() const {
@@ -249,6 +335,7 @@ namespace tweeny {
     }
 
     template<typename T, typename... Ts> inline uint16_t tween<T, Ts...>::pointAt(float progress) const {
+        progress = detail::clip(progress, 0.0f, 1.0f);
         uint32_t t = static_cast<uint32_t>(progress * total);
         uint16_t point = 0;
         while (t > points.at(point).stacked) point++;

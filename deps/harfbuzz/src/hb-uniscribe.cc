@@ -355,7 +355,7 @@ _hb_rename_font (hb_blob_t *blob, wchar_t *new_name)
     return nullptr;
   }
 
-  memcpy(new_sfnt_data, orig_sfnt_data, length);
+  hb_memcpy(new_sfnt_data, orig_sfnt_data, length);
 
   OT::name &name = StructAtOffset<OT::name> (new_sfnt_data, name_table_offset);
   name.format = 0;
@@ -478,11 +478,11 @@ populate_log_font (LOGFONTW  *lf,
 		   hb_font_t *font,
 		   unsigned int font_size)
 {
-  memset (lf, 0, sizeof (*lf));
+  hb_memset (lf, 0, sizeof (*lf));
   lf->lfHeight = - (int) font_size;
   lf->lfCharSet = DEFAULT_CHARSET;
 
-  memcpy (lf->lfFaceName, font->face->data.uniscribe->face_name, sizeof (lf->lfFaceName));
+  hb_memcpy (lf->lfFaceName, font->face->data.uniscribe->face_name, sizeof (lf->lfFaceName));
 
   return true;
 }
@@ -699,7 +699,7 @@ retry:
 				     script_tags,
 				     &item_count);
   if (unlikely (FAILED (hr)))
-    FAIL ("ScriptItemizeOpenType() failed: 0x%08lx", hr);
+    FAIL ("ScriptItemizeOpenType() failed: 0x%08lx", (unsigned long) hr);
 
 #undef MAX_ITEMS
 
@@ -785,7 +785,7 @@ retry:
     }
     if (unlikely (FAILED (hr)))
     {
-      FAIL ("ScriptShapeOpenType() failed: 0x%08lx", hr);
+      FAIL ("ScriptShapeOpenType() failed: 0x%08lx", (unsigned long) hr);
     }
 
     for (unsigned int j = chars_offset; j < chars_offset + item_chars_len; j++)
@@ -811,7 +811,7 @@ retry:
 				     offsets + glyphs_offset,
 				     nullptr);
     if (unlikely (FAILED (hr)))
-      FAIL ("ScriptPlaceOpenType() failed: 0x%08lx", hr);
+      FAIL ("ScriptPlaceOpenType() failed: 0x%08lx", (unsigned long) hr);
 
     if (DEBUG_ENABLED (UNISCRIBE))
       fprintf (stderr, "Item %d RTL %d LayoutRTL %d LogicalOrder %d ScriptTag %c%c%c%c\n",
@@ -878,7 +878,8 @@ retry:
   if (backward)
     hb_buffer_reverse (buffer);
 
-  buffer->unsafe_to_break_all ();
+  buffer->clear_glyph_flags ();
+  buffer->unsafe_to_break ();
 
   /* Wow, done! */
   return true;

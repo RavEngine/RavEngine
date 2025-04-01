@@ -1,8 +1,3 @@
-if build_machine.system() == 'windows'
-  message('Skipping gtk-doc while building on Windows')
-  subdir_done()
-endif
-
 if not find_program('gtkdoc-scan', required: get_option('docs')).found()
   message('Not building documentation as gtk-doc was not found')
   subdir_done()
@@ -41,19 +36,21 @@ html_images = [
 ]
 
 ignore_headers = [
+  'hb-features.h',
   'hb-gobject.h',
   'hb-gobject-enums.h',
   'hb-gobject-enums-tmp.h',
   'hb-gobject-structs.h',
+  'hb-wasm-api.h',
 ]
 
 gnome.gtkdoc('harfbuzz',
   main_sgml: 'harfbuzz-docs.xml',
-  src_dir: [join_paths(meson.current_source_dir(), '../src'),
-            join_paths(meson.current_build_dir(), '../src'),
+  src_dir: [meson.current_source_dir() / '..' / 'src',
+            meson.current_build_dir() / '..' / 'src',
            ],
   scan_args: ['--deprecated-guards=HB_DISABLE_DEPRECATED',
-              '--ignore-decorators=HB_EXTERN|HB_DEPRECATED',
+              '--ignore-decorators=HB_EXTERN|HB_DEPRECATED|HB_DEPRECATED_FOR()',
              ],
   mkdb_args: ['--source-suffixes=h,cc',
               '--xml-mode',
@@ -63,4 +60,6 @@ gnome.gtkdoc('harfbuzz',
   html_assets: html_images,
   ignore_headers: ignore_headers,
   dependencies: [libharfbuzz_dep],
-  install: true)
+  install: true,
+  check: get_option('doc_tests'),
+)

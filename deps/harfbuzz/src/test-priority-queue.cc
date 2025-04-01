@@ -30,7 +30,7 @@
 static void
 test_insert ()
 {
-  hb_priority_queue_t queue;
+  hb_priority_queue_t<int64_t> queue;
   assert (queue.is_empty ());
 
   queue.insert (10, 0);
@@ -53,7 +53,7 @@ test_insert ()
 static void
 test_extract ()
 {
-  hb_priority_queue_t queue;
+  hb_priority_queue_t<int32_t> queue;
   queue.insert (0, 0);
   queue.insert (60, 6);
   queue.insert (30, 3);
@@ -73,17 +73,9 @@ test_extract ()
   assert (queue.is_empty ());
 }
 
-static void
-test_extract_empty ()
-{
-  hb_priority_queue_t queue;
-  assert (queue.pop_minimum () == hb_pair (0, 0));
-}
-
 int
 main (int argc, char **argv)
 {
   test_insert ();
   test_extract ();
-  test_extract_empty ();
 }

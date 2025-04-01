@@ -136,7 +136,7 @@ struct JstfLangSys : List16OfOffset16To<JstfPriority>
  * ExtenderGlyphs -- Extender Glyph Table
  */
 
-typedef SortedArray16Of<HBGlyphID> ExtenderGlyphs;
+typedef SortedArray16Of<HBGlyphID16> ExtenderGlyphs;
 
 
 /*
@@ -214,6 +214,7 @@ struct JSTF
   {
     TRACE_SANITIZE (this);
     return_trace (version.sanitize (c) &&
+		  hb_barrier () &&
 		  likely (version.major == 1) &&
 		  scriptList.sanitize (c, this));
   }

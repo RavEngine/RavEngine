@@ -1,6 +1,9 @@
-/freetype2
+/freetype-*
+/icu
+/libpng-*
+/zlib-*
 /glib
 /packagecache
-/benchmark-1.4.1
+/benchmark-*
 /cairo
 /ragel-6.10

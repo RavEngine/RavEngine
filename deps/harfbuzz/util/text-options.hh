@@ -82,6 +82,9 @@ struct text_options_t
   private:
   FILE *in_fp = nullptr;
   GString *gs = nullptr;
+  char *line = nullptr;
+  unsigned line_len = UINT_MAX;
+  hb_bool_t single_par = false;
 };
 
 struct shape_text_options_t : text_options_t
@@ -107,6 +110,18 @@ parse_text (const char *name G_GNUC_UNUSED,
 {
   text_options_t *text_opts = (text_options_t *) data;
 
+  if (text_opts->text && !*arg)
+  {
+    // Empty --text provided but --unicodes called; ignore it. This is useful for scripting.
+    return true;
+  }
+  if (text_opts->text && !text_opts->text_len)
+  {
+    // Empty --unicodes provided as well as text; ignore it. This is useful for scripting.
+    g_free (text_opts->text);
+    text_opts->text = nullptr;
+  }
+
   if (text_opts->text)
   {
     g_set_error (error, G_OPTION_ERROR, G_OPTION_ERROR_BAD_VALUE,
@@ -124,7 +139,7 @@ encode_unicodes (const char *unicodes,
 		 GString    *gs,
 		 GError    **error)
 {
-#define DELIMITERS "<+->{},;&#\\xXuUnNiI\n\t\v\f\r "
+#define DELIMITERS "<+-|>{},;&#\\xXuUnNiI\n\t\v\f\r "
 
   char *s = (char *) unicodes;
   char *p;
@@ -273,18 +288,38 @@ text_options_t::get_line (unsigned int *len)
 {
   if (text)
   {
-    if (text_len == -2)
+    if (!line)
+    {
+      line = text;
+      line_len = text_len;
+    }
+    if (line_len == UINT_MAX)
+      line_len = strlen (line);
+
+    if (!line_len)
     {
       *len = 0;
       return nullptr;
     }
 
-    if (text_len == -1)
-      text_len = strlen (text);
+    const char *ret = line;
+    const char *p = single_par ? nullptr : (const char *) memchr (line, '\n', line_len);
+    unsigned int ret_len;
+    if (!p)
+    {
+      ret_len = line_len;
+      line += ret_len;
+      line_len = 0;
+    }
+    else
+    {
+      ret_len = p - ret;
+      line += ret_len + 1;
+      line_len -= ret_len + 1;
+    }
 
-    *len = text_len;
-    text_len = -2;
-    return text;
+    *len = ret_len;
+    return ret;
   }
 
   g_string_set_size (gs, 0);
@@ -292,7 +327,7 @@ text_options_t::get_line (unsigned int *len)
   while (fgets (buf, sizeof (buf), in_fp))
   {
     unsigned bytes = strlen (buf);
-    if (bytes && buf[bytes - 1] == '\n')
+    if (!single_par && bytes && buf[bytes - 1] == '\n')
     {
       bytes--;
       g_string_append_len (gs, buf, bytes);
@@ -313,12 +348,13 @@ text_options_t::add_options (option_parser_t *parser)
   {
     {"text",		0, 0, G_OPTION_ARG_CALLBACK,	(gpointer) &parse_text,		"Set input text",			"string"},
     {"text-file",	0, 0, G_OPTION_ARG_STRING,	&this->text_file,		"Set input text file-name",		"filename"},
-    {"unicodes",      'u', 0, G_OPTION_ARG_CALLBACK,	(gpointer) &parse_unicodes,	"Set input Unicode codepoints\n\n    If no text is provided, standard input is used for input.",		"list of hex numbers"},
+    {"unicodes",      'u', 0, G_OPTION_ARG_CALLBACK,	(gpointer) &parse_unicodes,	"Set input Unicode codepoints",		"list of hex numbers"},
+    {"single-par",	0, 0, G_OPTION_ARG_NONE,	&this->single_par,		"Treat text as single paragraph",	nullptr},
     {nullptr}
   };
   parser->add_group (entries,
 		     "text",
-		     "Text options:",
+		     "Text options:\n\nIf no text is provided, standard input is used for input.\n",
 		     "Options for the input text",
 		     this);
 }
