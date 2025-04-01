@@ -24,7 +24,7 @@ namespace RGL {
 	ShaderLibraryD3D12::ShaderLibraryD3D12(const std::string_view source, const FromSourceConfig& config) : bufferBindingStore(std::make_shared<decltype(bufferBindingStore)::element_type>())
 	{
 #if RGL_CAN_RUNTIME_COMPILE
-		auto result = librglc::CompileString(source, librglc::API::Direct3D12, static_cast<librglc::ShaderStage>(config.stage), {
+		auto result = librglc::CompileString(source, "rumtime_shader", librglc::API::Direct3D12, static_cast<librglc::ShaderStage>(config.stage), {
 			.outputBinary = true,
 			.entrypointOutputName = "main",
 		});

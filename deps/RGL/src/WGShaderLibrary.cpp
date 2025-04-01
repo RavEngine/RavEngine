@@ -21,7 +21,7 @@ namespace RGL{
     }
     ShaderLibraryWG::ShaderLibraryWG(decltype(owningDevice) owningDevice, const std::string_view, const FromSourceConfig& config) : owningDevice(owningDevice){
 #ifdef RGL_CAN_RUNTIME_COMPILE  // defined in CMake
-    auto result = librglc::CompileString(source, librglc::API::WebGPU, static_cast<librglc::ShaderStage>(config.stage), {
+    auto result = librglc::CompileString(source, "rumtime_shader", librglc::API::WebGPU, static_cast<librglc::ShaderStage>(config.stage), {
         .entrypointOutputName = "transient_fn"
     });
     InitFromShaderSource(owningDevice, result);

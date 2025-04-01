@@ -74,7 +74,7 @@ namespace RGL {
 	ShaderLibraryVk::ShaderLibraryVk(decltype(owningDevice) device, const std::string_view source, const FromSourceConfig& config) : owningDevice(device)
 	{
 #if RGL_CAN_RUNTIME_COMPILE
-		auto result = librglc::CompileString(source, librglc::API::Vulkan, static_cast<librglc::ShaderStage>(config.stage), {
+		auto result = librglc::CompileString(source, "rumtime_shader", librglc::API::Vulkan, static_cast<librglc::ShaderStage>(config.stage), {
 			.outputBinary = true,
 			.entrypointOutputName = "main"
 		});
