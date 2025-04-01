@@ -98,8 +98,8 @@ void RavEngine::SimpleAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuffer
 
 void RavEngine::SimpleAudioSpace::RoomData::DeleteAudioDataForEntity(entity_id_t entity)
 {
-    steamAudioData.if_contains(entity, [this](SteamAudioEffects& effects) {
-        DestroyEffects(effects);
+    steamAudioData.if_contains(entity, [this](auto&& effects) {
+        DestroyEffects(effects.second);
     });
     steamAudioData.erase(entity);
 }
@@ -434,16 +434,16 @@ void RavEngine::GeometryAudioSpace::RoomData::RenderAudioSource(PlanarSampleBuff
 }
 
 void RavEngine::GeometryAudioSpace::RoomData::DeleteAudioDataForEntity(entity_id_t entity) {
-    steamAudioSourceData.if_contains(entity, [this](SteamAudioSourceConfig& effects) {
-        DestroySteamAudioSourceConfig(effects);
+    steamAudioSourceData.if_contains(entity, [this](auto&& effects) {
+        DestroySteamAudioSourceConfig(effects.second);
     });
     steamAudioSourceData.erase(entity);
 }
 
 void RavEngine::GeometryAudioSpace::RoomData::DeleteMeshDataForEntity(entity_id_t entity)
 {
-    steamAudioMeshData.if_contains(entity, [this](SteamAudioMeshConfig& effects) {
-        DestroySteamAudioMeshConfig(effects);
+    steamAudioMeshData.if_contains(entity, [this](auto&& effects) {
+        DestroySteamAudioMeshConfig(effects.second);
     });
     steamAudioMeshData.erase(entity);
 }

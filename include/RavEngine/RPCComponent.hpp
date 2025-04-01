@@ -144,10 +144,10 @@ namespace RavEngine {
 				std::memcpy(&RPC, cmd.msg.data() + RPCMsgUnpacker::code_offset, sizeof(RPC));
 
 				//invoke that RPC
-				if (table.if_contains(RPC, [&](const rpc_entry& func) {
-					if (cmd.isOwner || func.mode == Directionality::Bidirectional) {
+				if (table.if_contains(RPC, [&](auto&& func) {
+					if (cmd.isOwner || func.second.mode == Directionality::Bidirectional) {
                         RPCMsgUnpacker packer{cmd.msg};
-						func.func(packer, cmd.origin);
+						func.second.func(packer, cmd.origin);
 					}
 					})) {
 				}

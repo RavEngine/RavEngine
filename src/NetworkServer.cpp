@@ -278,7 +278,8 @@ void RavEngine::NetworkServer::OnRPC(const std::string_view& cmd, HSteamNetConne
 	//decode the RPC header to to know where it is going
 
 	uuids::uuid id(cmd.data() + 1);
-	if (!NetworkIdentities.if_contains(id, [&cmd, &origin](auto entity) {
+	if (!NetworkIdentities.if_contains(id, [&cmd, &origin](auto&& entity_pair) {
+		auto entity = entity_pair.second;
 		assert(entity.template HasComponent<NetworkIdentity>());
 		bool isOwner = origin == entity.template GetComponent<NetworkIdentity>().Owner;
 		entity.template GetComponent<RPCComponent>().CacheServerRPC(cmd, isOwner, origin);

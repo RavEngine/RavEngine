@@ -47,7 +47,7 @@ void RavEngine::AnimatorComponent::Layer::Goto(anim_id_t newState, bool skipTran
 	auto prevState = currentState;
 	if (newState != currentState) {
         states.if_contains(currentState, [&newState](auto&& currentState){
-            currentState.DoEnd(newState);
+            currentState.second.DoEnd(newState);
         });
     }
 	if (skipTransition || !(states.contains(newState) && GetStateForID(currentState).exitTransitions.contains(newState))) {	//just jump to the new state

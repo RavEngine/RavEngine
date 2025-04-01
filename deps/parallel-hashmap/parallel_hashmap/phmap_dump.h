@@ -21,7 +21,7 @@
 
 #include <iostream>
 #include <fstream>
-#include <sstream>
+#include <functional>
 #include "phmap.h"
 namespace phmap
 {
@@ -42,69 +42,60 @@ struct IsTriviallyCopyable<std::pair<T1, T2>> {
 
 namespace priv {
 
+#if !defined(PHMAP_NON_DETERMINISTIC) && !defined(PHMAP_DISABLE_DUMP)
+
+static constexpr size_t s_version_base = std::numeric_limits<size_t>::max() - 10;
+static constexpr size_t s_version = s_version_base;
 // ------------------------------------------------------------------------
 // dump/load for raw_hash_set
 // ------------------------------------------------------------------------
 template <class Policy, class Hash, class Eq, class Alloc>
 template<typename OutputArchive>
-bool raw_hash_set<Policy, Hash, Eq, Alloc>::dump(OutputArchive& ar) const {
+bool raw_hash_set<Policy, Hash, Eq, Alloc>::phmap_dump(OutputArchive& ar) const {
     static_assert(type_traits_internal::IsTriviallyCopyable<value_type>::value,
                     "value_type should be trivially copyable");
 
-    if (!ar.dump(size_)) {
-        std::cerr << "Failed to dump size_" << std::endl;
-        return false;
-    }
-    if (size_ == 0) {
+    ar.saveBinary(&s_version, sizeof(size_t));
+    ar.saveBinary(&size_, sizeof(size_t));
+    ar.saveBinary(&capacity_, sizeof(size_t));
+    if (size_ == 0)
         return true;
-    }
-    if (!ar.dump(capacity_)) {
-        std::cerr << "Failed to dump capacity_" << std::endl;
-        return false;
-    }
-    if (!ar.dump(reinterpret_cast<char*>(ctrl_),
-        sizeof(ctrl_t) * (capacity_ + Group::kWidth + 1))) {
-
-        std::cerr << "Failed to dump ctrl_" << std::endl;
-        return false;
-    }
-    if (!ar.dump(reinterpret_cast<char*>(slots_),
-                    sizeof(slot_type) * capacity_)) {
-        std::cerr << "Failed to dump slot_" << std::endl;
-        return false;
-    }
+    ar.saveBinary(ctrl_,  sizeof(ctrl_t) * (capacity_ + Group::kWidth + 1));
+    ar.saveBinary(slots_, sizeof(slot_type) * capacity_);
+    ar.saveBinary(&growth_left(), sizeof(size_t));
     return true;
 }
 
 template <class Policy, class Hash, class Eq, class Alloc>
 template<typename InputArchive>
-bool raw_hash_set<Policy, Hash, Eq, Alloc>::load(InputArchive& ar) {
+bool raw_hash_set<Policy, Hash, Eq, Alloc>::phmap_load(InputArchive& ar) {
     static_assert(type_traits_internal::IsTriviallyCopyable<value_type>::value,
                     "value_type should be trivially copyable");
     raw_hash_set<Policy, Hash, Eq, Alloc>().swap(*this); // clear any existing content
-    if (!ar.load(&size_)) {
-        std::cerr << "Failed to load size_" << std::endl;
-        return false;
-    }
-    if (size_ == 0) {
-        return true;
-    }
-    if (!ar.load(&capacity_)) {
-        std::cerr << "Failed to load capacity_" << std::endl;
-        return false;
-    }
 
-    // allocate memory for ctrl_ and slots_
-    initialize_slots();
-    if (!ar.load(reinterpret_cast<char*>(ctrl_),
-        sizeof(ctrl_t) * (capacity_ + Group::kWidth + 1))) {
-        std::cerr << "Failed to load ctrl" << std::endl;
-        return false;
+    size_t version = 0;
+    ar.loadBinary(&version, sizeof(size_t));
+    if (version < s_version_base) {
+        // we didn't store the version, version actually contains the size
+        size_ = version;
+    } else {
+        ar.loadBinary(&size_, sizeof(size_t));
     }
-    if (!ar.load(reinterpret_cast<char*>(slots_),
-                    sizeof(slot_type) * capacity_)) {
-        std::cerr << "Failed to load slot" << std::endl;
-        return false;
+    ar.loadBinary(&capacity_, sizeof(size_t));
+
+    if (capacity_) {
+        // allocate memory for ctrl_ and slots_
+        initialize_slots(capacity_);
+    }
+    if (size_ == 0)
+        return true;
+    ar.loadBinary(ctrl_,  sizeof(ctrl_t) * (capacity_ + Group::kWidth + 1));
+    ar.loadBinary(slots_, sizeof(slot_type) * capacity_);
+    if (version >= s_version_base) {
+        // growth_left should be restored after calling initialize_slots() which resets it.
+        ar.loadBinary(&growth_left(), sizeof(size_t));
+    } else {
+       drop_deletes_without_resize();
     }
     return true;
 }
@@ -117,18 +108,16 @@ template <size_t N,
           class Mtx_,
           class Policy, class Hash, class Eq, class Alloc>
 template<typename OutputArchive>
-bool parallel_hash_set<N, RefSet, Mtx_, Policy, Hash, Eq, Alloc>::dump(OutputArchive& ar) const {
+bool parallel_hash_set<N, RefSet, Mtx_, Policy, Hash, Eq, Alloc>::phmap_dump(OutputArchive& ar) const {
     static_assert(type_traits_internal::IsTriviallyCopyable<value_type>::value,
-                    "value_type should be trivially copyable");
+                  "value_type should be trivially copyable");
 
-    if (! ar.dump(subcnt())) {
-        std::cerr << "Failed to dump meta!" << std::endl;
-        return false;
-    }
+    size_t submap_count = subcnt();
+    ar.saveBinary(&submap_count, sizeof(size_t));
     for (size_t i = 0; i < sets_.size(); ++i) {
         auto& inner = sets_[i];
         typename Lockable::UniqueLock m(const_cast<Inner&>(inner));
-        if (!inner.set_.dump(ar)) {
+        if (!inner.set_.phmap_dump(ar)) {
             std::cerr << "Failed to dump submap " << i << std::endl;
             return false;
         }
@@ -141,16 +130,12 @@ template <size_t N,
           class Mtx_,
           class Policy, class Hash, class Eq, class Alloc>
 template<typename InputArchive>
-bool parallel_hash_set<N, RefSet, Mtx_, Policy, Hash, Eq, Alloc>::load(InputArchive& ar) {
+bool parallel_hash_set<N, RefSet, Mtx_, Policy, Hash, Eq, Alloc>::phmap_load(InputArchive& ar) {
     static_assert(type_traits_internal::IsTriviallyCopyable<value_type>::value,
-                    "value_type should be trivially copyable");
+                  "value_type should be trivially copyable");
 
     size_t submap_count = 0;
-    if (!ar.load(&submap_count)) {
-        std::cerr << "Failed to load submap count!" << std::endl;
-        return false;
-    }
-
+    ar.loadBinary(&submap_count, sizeof(size_t));
     if (submap_count != subcnt()) {
         std::cerr << "submap count(" << submap_count << ") != N(" << N << ")" << std::endl;
         return false;
@@ -159,13 +144,16 @@ bool parallel_hash_set<N, RefSet, Mtx_, Policy, Hash, Eq, Alloc>::load(InputArch
     for (size_t i = 0; i < submap_count; ++i) {            
         auto& inner = sets_[i];
         typename Lockable::UniqueLock m(const_cast<Inner&>(inner));
-        if (!inner.set_.load(ar)) {
+        if (!inner.set_.phmap_load(ar)) {
             std::cerr << "Failed to load submap " << i << std::endl;
             return false;
         }
     }
     return true;
 }
+
+#endif // !defined(PHMAP_NON_DETERMINISTIC) && !defined(PHMAP_DISABLE_DUMP)
+
 } // namespace priv
 
 
@@ -180,48 +168,168 @@ bool parallel_hash_set<N, RefSet, Mtx_, Policy, Hash, Eq, Alloc>::load(InputArch
 class BinaryOutputArchive {
 public:
     BinaryOutputArchive(const char *file_path) {
-        ofs_.open(file_path, std::ios_base::binary);
+      os_ = new std::ofstream(file_path, std::ofstream::out |
+                                             std::ofstream::trunc |
+                                             std::ofstream::binary);
+      destruct_ = [this]() { delete os_; };
     }
 
-    bool dump(const char *p, size_t sz) {
-        ofs_.write(p, sz);
+    BinaryOutputArchive(std::ostream &os) : os_(&os) {}
+
+    ~BinaryOutputArchive() {
+        if (destruct_) {
+            destruct_();
+        }
+    }
+    
+    BinaryOutputArchive(const BinaryOutputArchive&) = delete;
+    BinaryOutputArchive& operator=(const BinaryOutputArchive&) = delete;
+
+    bool saveBinary(const void *p, size_t sz) {
+        os_->write(reinterpret_cast<const char*>(p), (std::streamsize)sz);
         return true;
     }
 
     template<typename V>
     typename std::enable_if<type_traits_internal::IsTriviallyCopyable<V>::value, bool>::type
-    dump(const V& v) {
-        ofs_.write(reinterpret_cast<const char *>(&v), sizeof(V));
+    saveBinary(const V& v) {
+        os_->write(reinterpret_cast<const char *>(&v), sizeof(V));
         return true;
     }
 
+    template<typename Map>
+    auto saveBinary(const Map& v) -> decltype(v.phmap_dump(*this), bool())
+    {
+        return v.phmap_dump(*this);
+    }
+
 private:
-    std::ofstream ofs_;
+    std::ostream* os_;
+    std::function<void()> destruct_;
 };
 
 
 class BinaryInputArchive {
 public:
     BinaryInputArchive(const char * file_path) {
-        ifs_.open(file_path, std::ios_base::binary);
+      is_ = new std::ifstream(file_path,
+                              std::ifstream::in | std::ifstream::binary);
+      destruct_ = [this]() { delete is_; };
     }
 
-    bool load(char* p, size_t sz) {
-        ifs_.read(p, sz);
+    BinaryInputArchive(std::istream& is) : is_(&is) {}
+    
+    ~BinaryInputArchive() {
+        if (destruct_) {
+            destruct_();
+        }
+    }
+
+    BinaryInputArchive(const BinaryInputArchive&) = delete;
+    BinaryInputArchive& operator=(const BinaryInputArchive&) = delete;
+
+    bool loadBinary(void* p, size_t sz) {
+        is_->read(reinterpret_cast<char*>(p),  (std::streamsize)sz);
         return true;
     }
 
     template<typename V>
     typename std::enable_if<type_traits_internal::IsTriviallyCopyable<V>::value, bool>::type
-    load(V* v) {
-        ifs_.read(reinterpret_cast<char *>(v), sizeof(V));
+    loadBinary(V* v) {
+        is_->read(reinterpret_cast<char *>(v), sizeof(V));
         return true;
     }
 
+    template<typename Map>
+    auto loadBinary(Map* v) -> decltype(v->phmap_load(*this), bool())
+    {
+        return v->phmap_load(*this);
+    }
+    
 private:
-    std::ifstream ifs_;
+    std::istream* is_;
+    std::function<void()> destruct_;
 };
 
 } // namespace phmap
+
+
+#ifdef CEREAL_SIZE_TYPE
+
+template <class T>
+using PhmapTrivCopyable = typename phmap::type_traits_internal::IsTriviallyCopyable<T>;
+    
+namespace cereal
+{
+    // Overload Cereal serialization code for phmap::flat_hash_map
+    // -----------------------------------------------------------
+    template <class K, class V, class Hash, class Eq, class A>
+    void save(typename std::enable_if<PhmapTrivCopyable<K>::value && PhmapTrivCopyable<V>::value, typename cereal::BinaryOutputArchive>::type &ar,
+              phmap::flat_hash_map<K, V, Hash, Eq, A> const &hmap)
+    {
+        hmap.phmap_dump(ar);
+    }
+
+    template <class K, class V, class Hash, class Eq, class A>
+    void load(typename std::enable_if<PhmapTrivCopyable<K>::value && PhmapTrivCopyable<V>::value, typename cereal::BinaryInputArchive>::type &ar, 
+              phmap::flat_hash_map<K, V, Hash, Eq, A>  &hmap)
+    {
+        hmap.phmap_load(ar);
+    }
+
+
+    // Overload Cereal serialization code for phmap::parallel_flat_hash_map
+    // --------------------------------------------------------------------
+    template <class K, class V, class Hash, class Eq, class A, size_t N, class Mtx_>
+    void save(typename std::enable_if<PhmapTrivCopyable<K>::value && PhmapTrivCopyable<V>::value, typename cereal::BinaryOutputArchive>::type &ar,
+              phmap::parallel_flat_hash_map<K, V, Hash, Eq, A, N, Mtx_> const &hmap)
+    {
+        hmap.phmap_dump(ar);
+    }
+
+    template <class K, class V, class Hash, class Eq, class A, size_t N, class Mtx_>
+    void load(typename std::enable_if<PhmapTrivCopyable<K>::value && PhmapTrivCopyable<V>::value, typename cereal::BinaryInputArchive>::type &ar, 
+              phmap::parallel_flat_hash_map<K, V, Hash, Eq, A, N, Mtx_>  &hmap)
+    {
+        hmap.phmap_load(ar);
+    }
+
+    // Overload Cereal serialization code for phmap::flat_hash_set
+    // -----------------------------------------------------------
+    template <class K, class Hash, class Eq, class A>
+    void save(typename std::enable_if<PhmapTrivCopyable<K>::value, typename cereal::BinaryOutputArchive>::type &ar,
+              phmap::flat_hash_set<K, Hash, Eq, A> const &hset)
+    {
+        hset.phmap_dump(ar);
+    }
+
+    template <class K, class Hash, class Eq, class A>
+    void load(typename std::enable_if<PhmapTrivCopyable<K>::value, typename cereal::BinaryInputArchive>::type &ar, 
+              phmap::flat_hash_set<K, Hash, Eq, A>  &hset)
+    {
+        hset.phmap_load(ar);
+    }
+
+    // Overload Cereal serialization code for phmap::parallel_flat_hash_set
+    // --------------------------------------------------------------------
+    template <class K, class Hash, class Eq, class A, size_t N, class Mtx_>
+    void save(typename std::enable_if<PhmapTrivCopyable<K>::value, typename cereal::BinaryOutputArchive>::type &ar,
+              phmap::parallel_flat_hash_set<K, Hash, Eq, A, N, Mtx_> const &hset)
+    {
+        hset.phmap_dump(ar);
+    }
+
+    template <class K, class Hash, class Eq, class A, size_t N, class Mtx_>
+    void load(typename std::enable_if<PhmapTrivCopyable<K>::value, typename cereal::BinaryInputArchive>::type &ar, 
+              phmap::parallel_flat_hash_set<K, Hash, Eq, A, N, Mtx_>  &hset)
+    {
+        hset.phmap_load(ar);
+    }
+}
+
+#endif
+
+
+
 
 #endif // phmap_dump_h_guard_

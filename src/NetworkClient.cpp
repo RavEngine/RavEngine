@@ -227,8 +227,8 @@ void NetworkClient::NetDestroy(const std::string_view& command){
         
     //lookup the entity and destroy it
     GetApp()->DispatchMainThread([uuid,this](){
-        if (NetworkIdentities.if_contains(uuid, [&](auto entity) {
-            entity.Destroy();
+        if (NetworkIdentities.if_contains(uuid, [&](auto&& entity_pair) {
+			entity_pair.second.Destroy();
         })) {
             //this must be here, otherwise we will encounter deadlock
             NetworkIdentities.erase(uuid);
@@ -243,8 +243,8 @@ void NetworkClient::NetDestroy(const std::string_view& command){
 void RavEngine::NetworkClient::OwnershipRevoked(const std::string_view& cmd)
 {
 	uuids::uuid id(cmd.data() + 1);
-	bool success = NetworkIdentities.if_contains(id, [this](const auto id) {
-		RevokeOwnership(id);
+	bool success = NetworkIdentities.if_contains(id, [this](auto&& id) {
+		RevokeOwnership(id.second);
 	});
 	if (!success) {
 		// the entity did not exist 
@@ -256,8 +256,8 @@ void RavEngine::NetworkClient::OwnershipToThis(const std::string_view& cmd)
 {
 	uuids::uuid netid(cmd.data() + 1);
     GetApp()->DispatchMainThread([netid,this](){
-        bool success = NetworkIdentities.if_contains(netid, [this](const auto id) {
-            GainOwnership(id);
+        bool success = NetworkIdentities.if_contains(netid, [this](auto&& id) {
+            GainOwnership(id.second);
         });
         if (!success) {
             Debug::Warning("Cannot add ownership to an entity that does not exist, id = {}", netid.to_string());
@@ -274,11 +274,12 @@ void RavEngine::NetworkClient::OnRPC(const std::string_view& cmd)
 {
 	//decode the RPC header to to know where it is going
 	uuids::uuid id(cmd.data() + 1);
-	bool success = NetworkIdentities.if_contains(id, [&cmd,this](auto entity) {
-        assert(entity.template HasComponent<RPCComponent>());
-        assert(entity.template HasComponent<NetworkIdentity>());
-        auto& netid = entity.template GetComponent<NetworkIdentity>();
-        entity.template GetComponent<RPCComponent>().CacheClientRPC(cmd, netid.Owner == k_HSteamNetConnection_Invalid, this->connection);
+	bool success = NetworkIdentities.if_contains(id, [&cmd,this](auto&& entity_pair) {
+		auto entity = entity_pair.second;
+        assert(entity.HasComponent<RPCComponent>());
+        assert(entity.HasComponent<NetworkIdentity>());
+        auto& netid = entity.GetComponent<NetworkIdentity>();
+        entity.GetComponent<RPCComponent>().CacheClientRPC(cmd, netid.Owner == k_HSteamNetConnection_Invalid, this->connection);
 	});
 	if (!success) {
 		Debug::Warning("Cannot relay RPC, entity with ID {} does not exist", id.to_string());

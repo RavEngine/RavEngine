@@ -15,7 +15,7 @@ namespace RavEngine {
 	class NetworkManager{
 	private:
 		typedef Function<Entity(World*)> func_t;
-		locked_hashmap<ctti_t, func_t,SpinLock> NetworkedObjects;
+		locked_node_hashmap<ctti_t, func_t,SpinLock> NetworkedObjects;
 
 		template <typename T>
 		class HasClientCreate
@@ -41,7 +41,7 @@ namespace RavEngine {
         std::optional<Entity> CreateEntity(ctti_t id, World* world){
             std::optional<Entity> value;
 			NetworkedObjects.if_contains(id, [&](const auto& fn) {
-				Entity entity = fn(world);
+				Entity entity = fn.second(world);
 				value.emplace(entity);
 			});
             return value;
