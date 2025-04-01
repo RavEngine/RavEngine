@@ -1,3 +1,4 @@
+#if !RVE_SERVER
 #include "RMLFileInterface.hpp"
 #include "VirtualFileSystem.hpp"
 #include "App.hpp"
@@ -66,3 +67,4 @@ size_t VFSInterface::Tell(Rml::FileHandle file){
 	VFShandle* handle = reinterpret_cast<VFShandle*>(file);
 	return handle->offset;
 }
+#endif

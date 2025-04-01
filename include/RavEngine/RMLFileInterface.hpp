@@ -1,4 +1,5 @@
 #pragma once
+#if !RVE_SERVER
 #include <RmlUi/Core/FileInterface.h>
 
 namespace RavEngine{
@@ -21,3 +22,4 @@ public:
 	size_t Tell(Rml::FileHandle file) override;
 };
 }
+#endif

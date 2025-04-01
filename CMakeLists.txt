@@ -205,6 +205,7 @@ rve_enable_IPO(${PROJECT_NAME})
 target_compile_definitions(${PROJECT_NAME} PUBLIC RMLUI_USE_CUSTOM_RTTI=1)
 
 if (NOT RAVENGINE_SERVER)
+	set(SKIP_INSTALL_ALL ON)
 	add_subdirectory("deps/freetype")
 
 	# link freetype (disable freetype dependencies since we do not need them)
