@@ -60,13 +60,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   # Set warning as error
   add_compile_options(/WX)
 
-  # Select whether to use the DLL version or the static library version of the Visual C++ runtime library.
-  if(ozz_build_msvc_rt_dll)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-  else()
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  endif()
-
 # --------------------------------------
 # else consider the compiler as GCC compatible (inc clang)
 else()
