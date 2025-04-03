@@ -8,7 +8,7 @@
 #if !RVE_SERVER
 #include "Ref.hpp"
 #include <RmlUi/Core/SystemInterface.h>
-#include <RmlUi/Core/RenderInterfaceCompatibility.h>
+#include <RmlUi/Core/RenderInterface.h>
 #include <DebugDraw.h>
 #include "Common3D.hpp"
 #include "Defines.hpp"
@@ -61,7 +61,7 @@ namespace RavEngine {
 		};
 	}
 
-    class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterfaceCompatibility, public duDebugDraw {
+    class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterface, public duDebugDraw {
         friend class App;
 	private:
 		uint64_t frameCount = 0;
@@ -280,33 +280,17 @@ namespace RavEngine {
 		void SetClipboardText(const Rml::String& text) override;
 		void GetClipboardText(Rml::String& text) override;
 		
-		/// Called by RmlUi when it wants to render geometry that it does not wish to optimise.
-		void RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture, const Rml::Vector2f& translation) override;
-		
-		/// Called by RmlUi when it wants to compile geometry it believes will be static for the forseeable future.
-		Rml::CompiledGeometryHandle CompileGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture) override;
-		
-		/// Called by RmlUi when it wants to render application-compiled geometry.
-		void RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, const Rml::Vector2f& translation) override;
-		/// Called by RmlUi when it wants to release application-compiled geometry.
-		void ReleaseCompiledGeometry(Rml::CompiledGeometryHandle geometry) override;
-		
-		/// Called by RmlUi when it wants to enable or disable scissoring to clip content.
-		void EnableScissorRegion(bool enable) override;
-		/// Called by RmlUi when it wants to change the scissor region.
-		void SetScissorRegion(int x, int y, int width, int height) override;
-		
-		/// Called by RmlUi when a texture is required by the library.
-		bool LoadTexture(Rml::TextureHandle& texture_handle, Rml::Vector2i& texture_dimensions, const Rml::String& source) override;
-		/// Called by RmlUi when a texture is required to be built from an internally-generated sequence of pixels.
-		bool GenerateTexture(Rml::TextureHandle& texture_handle, const Rml::byte* source, const Rml::Vector2i& source_dimensions) override;
-		/// Called by RmlUi when a loaded texture is no longer required.
-		void ReleaseTexture(Rml::TextureHandle texture_handle) override;
-		
-		/// Called by RmlUi when it wants to set the current transform matrix to a new matrix.
-		void SetTransform(const Rml::Matrix4f* transform) override;
-
-		bool LogMessage(Rml::Log::Type type, const Rml::String& message) override;
+		// Rml::RenderInterface overrides, used internally
+		Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices) final;
+		void RenderGeometry(Rml::CompiledGeometryHandle geometry, Rml::Vector2f translation, Rml::TextureHandle texture) final;
+		void ReleaseGeometry(Rml::CompiledGeometryHandle geometry) final;
+		void EnableScissorRegion(bool enable) final;
+		void SetScissorRegion(Rml::Rectanglei region) final;
+		Rml::TextureHandle LoadTexture(Rml::Vector2i& texture_dimensions, const Rml::String& source) final;
+		Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> source, Rml::Vector2i source_dimensions) final;
+		void ReleaseTexture(Rml::TextureHandle texture_handle) final;
+		void SetTransform(const Rml::Matrix4f* transform) final;
+		bool LogMessage(Rml::Log::Type type, const Rml::String& message) final;
 
 #ifndef NDEBUG
 		static std::optional<GUIComponent> debuggerContext;

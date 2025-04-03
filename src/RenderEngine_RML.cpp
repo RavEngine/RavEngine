@@ -26,17 +26,18 @@ struct TextureHandleStruct{
 
 struct CompiledGeoStruct{
 	RGLBufferPtr vb, ib;
-	Rml::TextureHandle th;
-	const int nindices = 0;
+	
+	const uint32_t nindices = 0;
 
 	void Destroy(RenderEngine* renderer) {
 		renderer->gcBuffers.enqueue(vb);
 		renderer->gcBuffers.enqueue(ib);
 	}
 	
-	~CompiledGeoStruct(){
-		//do not destroy texture here, RML will tell us when to free that separately
-	}
+};
+
+struct CompiledTextureStruct {
+	Rml::TextureHandle th;
 };
 
 matrix4 RenderEngine::make_gui_matrix(Rml::Vector2f translation){
@@ -56,12 +57,8 @@ matrix4 RenderEngine::make_gui_matrix(Rml::Vector2f translation){
  @param data the bytes representing the texture
  @return RML texturehandle which is a pointer to a TextureHandleStruct on the heap
  */
-static inline Rml::TextureHandle createTexture(uint32_t width, uint32_t height, const Rml::byte* data, RGLDevicePtr device){
-	int numLayers = 1;
-	int numChannels = 4;
-
-	auto uncompressed_size = width * height * numChannels * numLayers;
-	
+static inline Rml::TextureHandle createTexture(uint32_t width, uint32_t height, Rml::Span<const Rml::byte> data, RGLDevicePtr device){
+		
 	auto th = device->CreateTextureWithData(
 		{
 			.usage = {.TransferDestination = true, .Sampled = true},
@@ -70,7 +67,7 @@ static inline Rml::TextureHandle createTexture(uint32_t width, uint32_t height, 
 			.height = height,
 			.format = RGL::TextureFormat::RGBA8_Unorm
 		}, 
-		{ {data, uncompressed_size} }
+		{ {data.data(), data.size()}}
 	);
 
 	return reinterpret_cast<Rml::TextureHandle>(new TextureHandleStruct{th});
@@ -95,55 +92,11 @@ void RenderEngine::GetClipboardText(Rml::String &text){
 	SDL_free(data);
 }
 
-/// Called by RmlUi when it wants to render geometry that it does not wish to optimise.
-void RenderEngine::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture, const Rml::Vector2f& translation) {
-
-	auto vbuf = device->CreateBuffer({
-		 uint32_t(num_vertices),
-		{.VertexBuffer = true},
-		sizeof(Rml::Vertex),
-		RGL::BufferAccess::Private
-		});
-
-	auto ibuf = device->CreateBuffer({
-		 uint32_t(num_indices),
-		{.IndexBuffer = true},
-		sizeof(int),
-		RGL::BufferAccess::Private
-		});
-
-	vbuf->SetBufferData({ vertices, uint32_t(num_vertices * sizeof(Rml::Vertex))});
-	ibuf->SetBufferData({ indices, uint32_t(num_indices * sizeof(int)) });
-
-	RGLTexturePtr tx;
-	if (texture) {
-		auto btexture = reinterpret_cast<TextureHandleStruct*>(texture);
-		tx = btexture->th;
-	}
-	else {
-		tx = Texture::Manager::defaultTexture->GetRHITexturePointer();
-	}
-	auto drawmat = make_gui_matrix(translation);
-
-	mainCommandBuffer->BindRenderPipeline(guiRenderPipeline);
-	if (RMLScissor.enabled) {
-		mainCommandBuffer->SetScissor({ RMLScissor.x, RMLScissor.y, RMLScissor.width, RMLScissor.height });
-	}
-
-	mainCommandBuffer->SetVertexBuffer(vbuf);
-	mainCommandBuffer->SetIndexBuffer(ibuf);
-	mainCommandBuffer->SetVertexBytes(drawmat, 0);
-	mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
-	mainCommandBuffer->SetFragmentTexture(tx->GetDefaultView(), 1);
-	mainCommandBuffer->DrawIndexed(num_indices);
-
-	// trash buffers
-	gcBuffers.enqueue(vbuf);
-	gcBuffers.enqueue(ibuf);
-}
 
 /// Called by RmlUi when it wants to compile geometry it believes will be static for the forseeable future.
-Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture){
+Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices){
+	const auto num_vertices = vertices.size();
+	const auto num_indices = indices.size();
 	auto vbuf = device->CreateBuffer({
 		 uint32_t(num_vertices),
 		{.VertexBuffer = true},
@@ -165,8 +118,8 @@ Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices,
 	const auto indsize = num_indices * sizeof(int);
 
 	if (RGL::CurrentAPI() == RGL::API::Direct3D12) {
-		auto vbufStaging = WriteTransient({ vertices, vertSize });
-		auto ibufStaging = WriteTransient({ indices, indsize });
+		auto vbufStaging = WriteTransient({ vertices.data(), vertSize});
+		auto ibufStaging = WriteTransient({ indices.data(), indsize});
 
 		mainCommandBuffer->CopyBufferToBuffer(
 			{
@@ -192,20 +145,20 @@ Rml::CompiledGeometryHandle RenderEngine::CompileGeometry(Rml::Vertex* vertices,
 	}
 	else {
 		// vulkan requires us to do something inefficient here
-		vbuf->SetBufferData({ vertices, uint32_t(num_vertices * sizeof(Rml::Vertex)) });
-		ibuf->SetBufferData({ indices, uint32_t(num_indices * sizeof(int)) });
+		vbuf->SetBufferData({ vertices.data(), uint32_t(num_vertices * sizeof(Rml::Vertex))});
+		ibuf->SetBufferData({ indices.data(), uint32_t(num_indices * sizeof(int))});
 	}
 
-	CompiledGeoStruct* cgs = new CompiledGeoStruct{ vbuf,ibuf, texture, num_indices };
+	CompiledGeoStruct* cgs = new CompiledGeoStruct{ vbuf,ibuf, uint32_t(num_indices) };
 	return reinterpret_cast<Rml::CompiledGeometryHandle>(cgs);
 }
 /// Called by RmlUi when it wants to render application-compiled geometry.
-void RenderEngine::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, const Rml::Vector2f& translation){
+void RenderEngine::RenderGeometry(Rml::CompiledGeometryHandle geometry, Rml::Vector2f translation, Rml::TextureHandle texture){
 	CompiledGeoStruct* cgs = reinterpret_cast<CompiledGeoStruct*>(geometry);
 
 	RGLTexturePtr tx;
-	if (cgs->th) {
-		auto btexture = reinterpret_cast<TextureHandleStruct*>(cgs->th);
+	if (texture) {
+		auto btexture = reinterpret_cast<TextureHandleStruct*>(texture);
 		tx = btexture->th;
 	}
 	else {
@@ -227,7 +180,7 @@ void RenderEngine::RenderCompiledGeometry(Rml::CompiledGeometryHandle geometry, 
 	//don't delete here, RML will tell us when to delete cgs
 }
 /// Called by RmlUi when it wants to release application-compiled geometry.
-void RenderEngine::ReleaseCompiledGeometry(Rml::CompiledGeometryHandle geometry) {
+void RenderEngine::ReleaseGeometry(Rml::CompiledGeometryHandle geometry) {
 	CompiledGeoStruct* cgs = reinterpret_cast<CompiledGeoStruct*>(geometry);
 	cgs->Destroy(this);	// enqueue buffers for deletion on the next frame
 	delete cgs; 	//destructor decrements refcounts as needed
@@ -238,15 +191,16 @@ void RenderEngine::EnableScissorRegion(bool enable) {
     RMLScissor.enabled = enable;
 }
 /// Called by RmlUi when it wants to change the scissor region.
-void RenderEngine::SetScissorRegion(int x, int y, int width, int height) {
-    RMLScissor.x = x;
-    RMLScissor.y = y;
-    RMLScissor.width = width;
-    RMLScissor.height = height;
+void RenderEngine::SetScissorRegion(Rml::Rectanglei region) {
+	const auto xy = region.TopLeft();
+    RMLScissor.x = xy.x;
+    RMLScissor.y = xy.y;
+    RMLScissor.width = region.Width();
+    RMLScissor.height = region.Height();
 }
 
 /// Called by RmlUi when a texture is required by the library.
-bool RenderEngine::LoadTexture(Rml::TextureHandle& texture_handle, Rml::Vector2i& texture_dimensions, const Rml::String& source) {
+Rml::TextureHandle RenderEngine::LoadTexture(Rml::Vector2i& texture_dimensions, const Rml::String& source) {
 	
 	//pull texture out of vfs into byte array, then call createTexture
     RavEngine::Vector<uint8_t> data;
@@ -261,17 +215,17 @@ bool RenderEngine::LoadTexture(Rml::TextureHandle& texture_handle, Rml::Vector2i
 	}
 	texture_dimensions.x = width;
 	texture_dimensions.y = height;
+
+	constexpr int numLayers = 1;
+	constexpr int numChannels = 4;
+	auto uncompressed_size = width * height * numChannels * numLayers;
 	
-	texture_handle = createTexture(texture_dimensions.x, texture_dimensions.y, bytes, device);
-	
-	return true;
+	return createTexture(texture_dimensions.x, texture_dimensions.y, {bytes, uint32_t(uncompressed_size) }, device);
 }
 /// Called by RmlUi when a texture is required to be built from an internally-generated sequence of pixels.
-bool RenderEngine::GenerateTexture(Rml::TextureHandle& texture_handle, const Rml::byte* source, const Rml::Vector2i& source_dimensions) {
+Rml::TextureHandle RenderEngine::GenerateTexture(Rml::Span<const Rml::byte> source, Rml::Vector2i source_dimensions) {
 	
-	texture_handle = createTexture(source_dimensions.x, source_dimensions.y, source, device);
-	
-	return true;
+	return createTexture(source_dimensions.x, source_dimensions.y, source, device);
 }
 /// Called by RmlUi when a loaded texture is no longer required.
 void RenderEngine::ReleaseTexture(Rml::TextureHandle texture_handle) {
