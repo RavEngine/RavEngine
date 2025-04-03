@@ -166,7 +166,9 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
 			break;
 		case SDL_EVENT_GAMEPAD_ADDED:
 			{
-				Debug::Log("Controller added : {}",SDL_GetGamepadName(SDL_OpenGamepad(event.gdevice.which)));
+                if (auto name = SDL_GetGamepadName(SDL_OpenGamepad(event.gdevice.which))){
+                    Debug::Log("Controller added : {}",name);
+                }
 			}
 			break;
 		case SDL_EVENT_GAMEPAD_REMOVED:
