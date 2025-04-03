@@ -359,7 +359,7 @@ namespace RavEngine {
 		
         static Ref<GUIMaterialInstance> guiMaterial;
 				
-		matrix4 currentGUIMatrix;
+		matrix4 currentGUIMatrix = matrix4(1);
                 
         struct scissor{
             uint16_t x, y, width, height;

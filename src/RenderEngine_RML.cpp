@@ -169,6 +169,7 @@ void RenderEngine::RenderGeometry(Rml::CompiledGeometryHandle geometry, Rml::Vec
 		mainCommandBuffer->SetScissor({ RMLScissor.x, RMLScissor.y, RMLScissor.width, RMLScissor.height });
 	}
 	auto drawmat = make_gui_matrix(translation);
+	drawmat = drawmat * currentGUIMatrix;		// apply requested transformation
 
 	mainCommandBuffer->SetVertexBuffer(cgs->vb);
 	mainCommandBuffer->SetIndexBuffer(cgs->ib);
@@ -239,7 +240,6 @@ void RenderEngine::SetTransform(const Rml::Matrix4f* transform){
 	
 	auto data = transform->data();
 	currentGUIMatrix = glm::make_mat4(data);
-	Debug::Fatal("Local transformations not supported yet");
 }
 bool RavEngine::RenderEngine::LogMessage(Rml::Log::Type type, const Rml::String& message)
 {
