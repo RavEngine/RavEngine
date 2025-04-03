@@ -205,9 +205,6 @@ rve_enable_IPO(${PROJECT_NAME})
 target_compile_definitions(${PROJECT_NAME} PUBLIC RMLUI_USE_CUSTOM_RTTI=1)
 
 if (NOT RAVENGINE_SERVER)
-	set(SKIP_INSTALL_ALL ON)
-	add_subdirectory("deps/freetype")
-
 	# link freetype (disable freetype dependencies since we do not need them)
 	set(CMAKE_DISABLE_FIND_PACKAGE_PNG ON CACHE INTERNAL "")
 	set(CMAKE_DISABLE_FIND_PACKAGE_BrotliDec ON CACHE INTERNAL "")
@@ -216,6 +213,7 @@ if (NOT RAVENGINE_SERVER)
 	set(CMAKE_DISABLE_FIND_PACKAGE_HarfBuzz ON CACHE INTERNAL "")
 	set(SKIP_INSTALL_ALL ON CACHE INTERNAL "")
 	set(HARFBUZZ_FOUND ON CACHE INTERNAL "")
+	add_subdirectory("deps/freetype")
 
 	if(CMAKE_SYSTEM_NAME STREQUAL "iOS" OR CMAKE_SYSTEM_NAME STREQUAL "tvOS" OR CMAKE_SYSTEM_NAME STREQUAL "visionOS")
 		set(HB_IOS ON CACHE INTERNAL "")
