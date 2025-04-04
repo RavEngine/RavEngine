@@ -43,13 +43,18 @@ namespace RavEngine {
         }
         bool operator<(const MaterialSort& other) const {
             constexpr auto make128key = [](const auto & mat) {
-                using int128 = std::ranges::range_difference_t<std::ranges::iota_view<long long, long long>>;
+                using int128_t = std::ranges::range_difference_t<std::ranges::iota_view<long long, long long>>;
                 // put priority in the high bits
-                int128 key = mat->GetPriority();
-                key <<= 64;
-                auto ptr = mat.get();
-                key |= uintptr_t(ptr);
-                return key;
+                struct key_parts_t {
+                    uint64_t ptr;
+                    uint64_t priority;
+                } key {
+                    uintptr_t(mat.get()),
+                    mat->GetPriority(),
+                };
+                
+                auto key_ret = *reinterpret_cast<int128_t*>(&key);
+                return key_ret;
             };
             auto key1 = make128key(mat);
             auto key2 = make128key(other.mat);
