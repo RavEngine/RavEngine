@@ -263,7 +263,9 @@ void RenderEngine::ActivateKeyboard(Rml::Vector2f caret_position, float line_hei
     const auto window = GetApp()->GetMainWindow()->window;
     
     SDL_SetTextInputArea(window, &rect, 0);
-    SDL_StartTextInput(window);
+    if (not SDL_TextInputActive(window)){
+        SDL_StartTextInput(window);
+    }
 }
 
 void RenderEngine::DeactivateKeyboard(){
