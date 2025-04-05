@@ -327,7 +327,7 @@ namespace RavEngine {
 		dim_t<int> currentRenderSize;
 		matrix4 make_gui_matrix(Rml::Vector2f translation);
 
-		constexpr static uint32_t transientSizeBytes = 65536;
+		constexpr static uint32_t transientSizeBytes = 32 * 1024 * 1024;
 		RGLBufferPtr transientBuffer, transientStagingBuffer;
 		uint32_t transientOffset = 0;
 		

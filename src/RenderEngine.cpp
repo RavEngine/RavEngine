@@ -728,14 +728,14 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 		});
 
 	transientBuffer = device->CreateBuffer({
-		65536,
+		transientSizeBytes,
 		{.StorageBuffer = true},
 		sizeof(char),
 		RGL::BufferAccess::Private,
 		{.TransferDestination = true, .PixelShaderResource = true, .debugName = "Transient Buffer" }
 	});
 	transientStagingBuffer = device->CreateBuffer({
-		65536,
+		transientSizeBytes,
 		{.StorageBuffer = true},
 		sizeof(char),
 		RGL::BufferAccess::Shared,

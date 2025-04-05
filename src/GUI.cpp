@@ -40,6 +40,7 @@ static inline Rml::Input::KeyIdentifier SDLtoRML(const int scancode){
 			SDL2RML(SDL_SCANCODE_INSERT, INSERT)
 			SDL2RML(SDL_SCANCODE_RETURN, RETURN)
 			SDL2RML(SDL_SCANCODE_KP_ENTER, NUMPADENTER)
+			SDL2RML(SDL_SCANCODE_TAB, TAB)
 			default:
 				value = 0;
 				break;
