@@ -50,28 +50,6 @@ static inline Rml::Input::KeyIdentifier SDLtoRML(const int scancode){
 	return static_cast<Rml::Input::KeyIdentifier>(value);
 }
 
-static inline char TypeCharacter(SDL_Keycode key, uint32_t modifiers){
-	char code = 0;
-	switch(key){
-		//no type
-		case SDL_SCANCODE_RIGHT:
-		case SDL_SCANCODE_UP:
-		case SDL_SCANCODE_DOWN:
-		case SDL_SCANCODE_LEFT:
-		case SDL_SCANCODE_BACKSPACE:
-		case SDL_SCANCODE_DELETE:
-			break;
-		default:
-            //TODO: can the 'true' flag help with symbol typing?
-			code = static_cast<char>(SDL_GetKeyFromScancode(static_cast<SDL_Scancode>(key),SDL_KMOD_NONE,false));
-			if (modifiers & Rml::Input::KeyModifier::KM_SHIFT || modifiers & Rml::Input::KeyModifier::KM_CAPSLOCK){
-				code = std::toupper(code);
-			}
-			break;
-	}
-	return code;
-}
-
 ElementDocument* GUIComponent::AddDocument(const std::string &name){
 	if (IsDocumentLoaded(name)){
 		Debug::Fatal("Document is already loaded");
@@ -174,6 +152,13 @@ RavEngine::GUIComponent::GUIData::~GUIData() {
 	Rml::RemoveContext(context->GetName());
 }
 
+void GUIComponent::GUIData::TextInput(const std::string_view strview) {
+    Rml::String str{strview};
+    EnqueueUIUpdate([this,str] {
+        context->ProcessTextInput(str);
+    });
+}
+
 void GUIComponent::GUIData::AnyActionDown(const int charcode){
 	//If is a modifier, add to the bitmask
 	switch(charcode){
@@ -213,9 +198,8 @@ void GUIComponent::GUIData::AnyActionDown(const int charcode){
             EnqueueUIUpdate([this,charcode] {
 				context->ProcessKeyDown(SDLtoRML(charcode), modifier_state);
 				//don't process on modifier keys
-				auto code = TypeCharacter(charcode, modifier_state);
-				if (! (modifier_state & Rml::Input::KeyModifier::KM_CTRL) && code != 0){
-					context->ProcessTextInput(TypeCharacter(charcode, modifier_state));
+                if (charcode == SDL_SCANCODE_RETURN || charcode == SDL_SCANCODE_RETURN2){
+					context->ProcessTextInput("\n");
 				}
 			});
 			break;

@@ -1,6 +1,7 @@
 #if !RVE_SERVER
 #include "RenderEngine.hpp"
 #include "App.hpp"
+#include "Window.hpp"
 #include <RGL/RGL.hpp>
 #include <stb_image.h>
 #include <Texture.hpp>
@@ -12,6 +13,7 @@
 #include <RGL/CommandBuffer.hpp>
 #include "VirtualFileSystem.hpp"
 #include <glm/gtc/type_ptr.hpp>
+#include <SDL3/SDL_keyboard.h>
 
 using namespace RavEngine;
 using namespace std;
@@ -255,4 +257,18 @@ bool RavEngine::RenderEngine::LogMessage(Rml::Log::Type type, const Rml::String&
 
 	return true;
 }
+
+void RenderEngine::ActivateKeyboard(Rml::Vector2f caret_position, float line_height){
+    const SDL_Rect rect{int(caret_position.x), int(caret_position.y), 1, int(line_height)};
+    const auto window = GetApp()->GetMainWindow()->window;
+    
+    SDL_SetTextInputArea(window, &rect, 0);
+    SDL_StartTextInput(window);
+}
+
+void RenderEngine::DeactivateKeyboard(){
+    const auto window = GetApp()->GetMainWindow()->window;
+    SDL_StopTextInput(window);
+}
+
 #endif

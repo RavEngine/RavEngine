@@ -13,5 +13,7 @@ namespace RavEngine {
 		Invoked when an input is released
 		*/
 		virtual void AnyActionUp(const int charcode){}
+        
+        virtual void TextInput(const std::string_view str){}
 	};
 }

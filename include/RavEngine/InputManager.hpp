@@ -272,6 +272,8 @@ namespace RavEngine {
 		 @param controller the source controller
 		 */
 		void ProcessAxisID(int ID, float value, CID controller);
+        
+        void ProcessTextInput(const std::string_view str);
 		
 		/**
 		 Purge invalid bindings from the lists

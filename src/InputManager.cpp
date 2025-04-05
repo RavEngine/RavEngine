@@ -96,6 +96,15 @@ void InputManager::TickAxes(){
 	CleanupBindings();
 }
 
+void InputManager::ProcessTextInput(const std::string_view str) {
+    //process the Any actions
+    for(auto l : AnyEventBindings){
+        if (auto listener = l.lock()){
+            listener->TextInput(str);
+        }
+    }
+}
+
 void InputManager::CleanupBindings(){
 	RVE_PROFILE_FN;
 	//clean up invalid action bindings
@@ -174,6 +183,9 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
 		case SDL_EVENT_GAMEPAD_REMOVED:
 			Debug::Log("Controller removed");
 			break;
+        case SDL_EVENT_TEXT_INPUT:
+            ProcessTextInput(event.text.text);
+            break;
 	}
 }
 #endif

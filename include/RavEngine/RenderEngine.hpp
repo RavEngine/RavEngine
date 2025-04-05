@@ -279,6 +279,8 @@ namespace RavEngine {
 		void SetMouseCursor(const Rml::String& cursor_name) override;
 		void SetClipboardText(const Rml::String& text) override;
 		void GetClipboardText(Rml::String& text) override;
+        void ActivateKeyboard(Rml::Vector2f caret_position, float line_height) final;
+        void DeactivateKeyboard() final;
 		
 		// Rml::RenderInterface overrides, used internally
 		Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices) final;

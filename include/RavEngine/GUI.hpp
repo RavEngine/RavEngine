@@ -40,6 +40,8 @@ protected:
         
         void AnyActionUp(const int charcode) override;
         
+        void TextInput(const std::string_view) final;
+        
 		struct {
 			float x = 0, y = 0;
 		} MousePos;
