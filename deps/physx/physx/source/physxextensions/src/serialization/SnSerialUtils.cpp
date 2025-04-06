@@ -87,7 +87,7 @@ PxU32 getBinaryPlatformTag()
 	return sBinaryPlatformTags[6];
 #elif PX_SWITCH && PX_A64
 	return sBinaryPlatformTags[7];
-#elif PX_LINUX && PX_A64
+#elif (PX_LINUX && PX_A64) || __ANDROID__
 	return sBinaryPlatformTags[8];
 #else
 	#error Unknown binary platform
