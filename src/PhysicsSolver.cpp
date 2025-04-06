@@ -26,7 +26,6 @@ STATIC(PhysicsSolver::gDefaultAllocatorCallback);
 STATIC(PhysicsSolver::foundation) = nullptr;
 STATIC(PhysicsSolver::phys) = nullptr;
 STATIC(PhysicsSolver::pvd) = nullptr;
-STATIC(PhysicsSolver::cooking) = nullptr;
 
 
 //see https://gameworksdocs.nvidia.com/PhysX/4.1/documentation/physxguide/Manual/RigidBodyCollision.html#broad-phase-callback
@@ -152,7 +151,6 @@ void PhysicsSolver::DeallocatePhysx() {
 void PhysicsSolver::ReleaseStatics() {
     PX_RELEASE(phys);
     PX_RELEASE(foundation);
-	PX_RELEASE(cooking);
 }
 
 bool RavEngine::PhysicsSolver::Raycast(const vector3& origin, const vector3& direction, decimalType maxDistance, RaycastHit& out_hit)
@@ -260,22 +258,6 @@ PhysicsSolver::PhysicsSolver(World* world): owner(world){
 
     desc.filterShader = FilterShader;
     desc.simulationEventCallback = this;
-	
-	// initialize cooking library with defaults
-	cooking = PxCreateCooking(PX_PHYSICS_VERSION, *foundation, PxCookingParams(PxTolerancesScale()));
-	if (!cooking){
-		Debug::Fatal("PhysX Cooking initialization failed");
-	}
-	
-	// setup cooking parameters (used for all subsequent calls to cooking)
-	PxTolerancesScale scale;
-	PxCookingParams params(scale);
-	// disable mesh cleaning - perform mesh validation on development configurations
-	//params.meshPreprocessParams |= PxMeshPreprocessingFlag::eDISABLE_CLEAN_MESH;
-	// disable edge precompute, edges are set for each triangle, slows contact generation
-	//params.meshPreprocessParams |= PxMeshPreprocessingFlag::eDISABLE_ACTIVE_EDGES_PRECOMPUTE;
-	
-	PhysicsSolver::cooking->setParams(params);
 	
 	// initialize extensions (can be omitted, these are optional components)
 	if (!PxInitExtensions(*phys, pvd)){

@@ -10,6 +10,16 @@
 using namespace physx;
 using namespace RavEngine;
 
+PxCookingParams createCookingParams() {
+    PxTolerancesScale scale;
+    PxCookingParams params(scale);
+    // disable mesh cleaning - perform mesh validation on development configurations
+    //params.meshPreprocessParams |= PxMeshPreprocessingFlag::eDISABLE_CLEAN_MESH;
+    // disable edge precompute, edges are set for each triangle, slows contact generation
+    //params.meshPreprocessParams |= PxMeshPreprocessingFlag::eDISABLE_ACTIVE_EDGES_PRECOMPUTE;
+    return params;
+}
+
 void PhysicsCollider::UpdateFilterData(PhysicsBodyComponent* owner){
     PxFilterData filterData;
     filterData.word0 = owner->filterGroup; // word0 = own ID
@@ -92,12 +102,12 @@ MeshCollider::MeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsset> meshAsset
         meshDesc.flags = PxMeshFlag::e16_BIT_INDICES;
     }    //otherwise assume 32 bit
     
+    auto params = createCookingParams();
 #ifndef NDEBUG
-    //Debug::Assert(PhysicsSolver::cooking->validateTriangleMesh(meshDesc), "Triangle mesh validation failed");
+    //Debug::Assert(PxValidateTriangleMesh(params, meshDesc), "Triangle mesh validation failed");
 #endif
-    
-    physx::PxTriangleMesh* triMesh = PhysicsSolver::cooking->createTriangleMesh(meshDesc, PhysicsSolver::phys->getPhysicsInsertionCallback());
-    
+    physx::PxTriangleMesh* triMesh = PxCreateTriangleMesh(params, meshDesc, PhysicsSolver::phys->getPhysicsInsertionCallback());
+        
     collider = PxRigidActorExt::createExclusiveShape(*owner->rigidActor, PxTriangleMeshGeometry(triMesh), *material->GetPhysXmat());
     triMesh->release();
     UpdateFilterData(owner);
@@ -126,7 +136,8 @@ ConvexMeshCollider::ConvexMeshCollider(PhysicsBodyComponent* owner, Ref<MeshAsse
     meshDesc.points = pointdata;
     meshDesc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
     
-    physx::PxConvexMesh* convMesh = PhysicsSolver::cooking->createConvexMesh(meshDesc, PhysicsSolver::phys->getPhysicsInsertionCallback());
+    auto params = createCookingParams();
+    physx::PxConvexMesh* convMesh = PxCreateConvexMesh(params, meshDesc, PhysicsSolver::phys->getPhysicsInsertionCallback());
     
     collider = PxRigidActorExt::createExclusiveShape(*owner->rigidActor, PxConvexMeshGeometry(convMesh), *material->GetPhysXmat());
     UpdateFilterData(owner);

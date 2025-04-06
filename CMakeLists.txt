@@ -514,7 +514,7 @@ if(EMSCRIPTEN OR (WIN32 AND CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "ARM64"))
 	target_compile_definitions(SceneQuery PRIVATE "PX_SIMD_DISABLED")
 	target_compile_definitions(SimulationController PRIVATE "PX_SIMD_DISABLED" "DISABLE_CUDA_PHYSX")
 	target_compile_definitions(PhysXExtensions PRIVATE "PX_SIMD_DISABLED")
-	target_compile_definitions(PhysXVehicle PRIVATE "PX_SIMD_DISABLED")
+	target_compile_definitions(PhysXVehicle2 PRIVATE "PX_SIMD_DISABLED")
 	target_compile_definitions(PhysXCommon PRIVATE "PX_SIMD_DISABLED")
 	target_compile_definitions(PhysX PRIVATE "PX_SIMD_DISABLED")
 	target_compile_definitions(PhysXFoundation PRIVATE "PX_SIMD_DISABLED")
@@ -653,13 +653,12 @@ target_link_libraries("${PROJECT_NAME}"
 	"PhysXExtensions"
 	"PhysX"
 	"PhysXPvdSDK"
-	"PhysXVehicle"
+	"PhysXVehicle2"
 	"PhysXCharacterKinematic"
 	"PhysXCooking"
 	"PhysXCommon"
 	"PhysXFoundation"
 	"PhysXTask"
-	"FastXml"
 	"LowLevel"
 	"LowLevelAABB"
 	"LowLevelDynamics"
@@ -733,7 +732,7 @@ macro(enable_unity targets)
 endmacro()
 
 set(all_unity 
-"LowLevel;FastXml;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;im3d;libnyquist;Detour;ozz_animation;ozz_animation_offline;\
+"LowLevel;SceneQuery;SimulationController;PhysXTask;PhysXCharacterKinematic;im3d;libnyquist;Detour;ozz_animation;ozz_animation_offline;\
 ozz_animation_tools;ozz_base;ozz_geometry;ozz_options;json;libopus;DebugUtils;DetourCrowd;DetourTileCache;harfbuzz;"
 )
 
@@ -758,8 +757,8 @@ glm_static;flatbuffers;meshoptimizer;dds_image;tinyexr;miniz;rmlui_core;rmlui_de
 group_in("Tools" "rvesc;rvesc_resources;rvemc;rveskc;rve_importlib;rveac")
 
 group_in("Libraries/PhysX SDK" 
-"FastXml;LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\
-PhysXCooking;PhysXExtensions;PhysXFoundation;PhysXPvdSDK;PhysXTask;PhysXVehicle;SceneQuery;SimulationController;PhysXVehicle2"
+"LowLevel;LowLevelAABB;LowLevelDynamics;PhysX;PhysXCharacterKinematic;PhysXCommon;\
+PhysXCooking;PhysXExtensions;PhysXFoundation;PhysXPvdSDK;PhysXTask;SceneQuery;SimulationController;PhysXVehicle2"
 )
 
 group_in("Libraries/ozz" 
