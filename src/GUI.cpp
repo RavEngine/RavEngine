@@ -171,7 +171,7 @@ void GUIComponent::GUIData::AnyActionDown(const int charcode){
 		case SDL_SCANCODE_LSHIFT:
 		case SDL_SCANCODE_RSHIFT:
 			modifier_state |= Rml::Input::KeyModifier::KM_SHIFT;
-			break;
+			break; 
 		case SDL_SCANCODE_MENU:
 			modifier_state |= Rml::Input::KeyModifier::KM_META;
 			break;

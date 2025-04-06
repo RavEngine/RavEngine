@@ -7,7 +7,6 @@
 //
 #if !RVE_SERVER
 #include "Ref.hpp"
-#include <RmlUi/Core/SystemInterface.h>
 #include <RmlUi/Core/RenderInterface.h>
 #include <DebugDraw.h>
 #include "Common3D.hpp"
@@ -61,7 +60,7 @@ namespace RavEngine {
 		};
 	}
 
-    class RenderEngine : public Rml::SystemInterface, public Rml::RenderInterface, public duDebugDraw {
+    class RenderEngine : public Rml::RenderInterface, public duDebugDraw {
         friend class App;
 	private:
 		uint64_t frameCount = 0;
@@ -273,14 +272,7 @@ namespace RavEngine {
 		} VideoSettings;
 
 		void SyncVideoSettings();
-		
-		// Rml::SystemInterface overrides, used internally
-		double GetElapsedTime() override;
-		void SetMouseCursor(const Rml::String& cursor_name) override;
-		void SetClipboardText(const Rml::String& text) override;
-		void GetClipboardText(Rml::String& text) override;
-        void ActivateKeyboard(Rml::Vector2f caret_position, float line_height) final;
-        void DeactivateKeyboard() final;
+        
 		
 		// Rml::RenderInterface overrides, used internally
 		Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices) final;
@@ -292,7 +284,6 @@ namespace RavEngine {
 		Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> source, Rml::Vector2i source_dimensions) final;
 		void ReleaseTexture(Rml::TextureHandle texture_handle) final;
 		void SetTransform(const Rml::Matrix4f* transform) final;
-		bool LogMessage(Rml::Log::Type type, const Rml::String& message) final;
 
 #ifndef NDEBUG
 		static std::optional<GUIComponent> debuggerContext;

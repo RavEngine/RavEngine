@@ -68,8 +68,10 @@ void RGLmsgCallback(RGL::MessageSeverity severity, const std::string& msg, void*
 	case RGL::MessageSeverity::Error:
 		Debug::Error(msg);
 		break;
+    case RGL::MessageSeverity::Fatal:
+        // fatal errors are handled by the fatal callback
+        break;
 	}
-	// fatal errors are handled by the fatal callback
 };
 #endif
 
@@ -190,7 +192,7 @@ int App::run(int argc, char** argv) {
 	}
 
 	//setup GUI rendering
-	Rml::SetSystemInterface(&GetRenderEngine());
+	Rml::SetSystemInterface(&rmlSystemInterface);
 	Rml::SetRenderInterface(&GetRenderEngine());
 	Rml::SetFileInterface(new VFSInterface());
 	Rml::Initialise();

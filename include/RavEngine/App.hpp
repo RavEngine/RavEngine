@@ -8,6 +8,7 @@
 #include <RGL/Types.hpp>
 #include "RenderTargetCollection.hpp"
 #include "AudioSnapshot.hpp"
+#include "RMLSystemInterface.hpp"
 #endif
 #include <optional>
 #include "GetApp.hpp"
@@ -48,6 +49,7 @@ struct AudioPlayer;
         
 #if !RVE_SERVER
         std::unique_ptr<RenderEngine> Renderer;
+        RMLSystemInterface rmlSystemInterface;
 #endif
         std::unique_ptr<VirtualFilesystem> Resources;
 	public:
