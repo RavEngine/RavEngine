@@ -89,6 +89,7 @@ ThreadImpl* getThread(PxThreadImpl* impl)
 
 static void setTid(ThreadImpl& threadImpl)
 {
+#if !TARGET_OS_TV
 // query TID
 // AM: TODO: neither of the below are implemented
 #if PX_APPLE_FAMILY
@@ -97,6 +98,7 @@ static void setTid(ThreadImpl& threadImpl)
 	threadImpl.tid = pthread_self();
 #else
 	threadImpl.tid = syscall(__NR_gettid);
+#endif
 #endif
 
 	// notify/unblock parent thread
