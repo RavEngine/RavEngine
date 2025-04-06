@@ -49,8 +49,11 @@ PX_FORCE_INLINE bool isLegalProtocol(const int mutexProtocol)
 	return
 	(
 		(PTHREAD_PRIO_NONE == mutexProtocol) ||
-		(PTHREAD_PRIO_INHERIT == mutexProtocol) ||
+		(PTHREAD_PRIO_INHERIT == mutexProtocol)
+#if !__ANDROID__
+        ||
 		((PTHREAD_PRIO_PROTECT == mutexProtocol) &&  ((sched_getscheduler(0) == SCHED_FIFO) || (sched_getscheduler(0) == SCHED_RR)))
+#endif
 	);
 }
 
@@ -91,7 +94,7 @@ PxMutexImpl::PxMutexImpl()
 	pthread_mutexattr_t attr;
 	pthread_mutexattr_init(&attr);
 	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-#if PX_LINUX
+#if PX_LINUX && !__ANDROID__
 	pthread_mutexattr_setprotocol(&attr, gMutexProtocol);
 	pthread_mutexattr_setprioceiling(&attr, 0);
 #endif

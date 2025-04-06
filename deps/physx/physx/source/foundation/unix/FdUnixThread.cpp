@@ -32,7 +32,7 @@
 #include "foundation/PxThread.h"
 
 #include <math.h>
-#if !PX_APPLE_FAMILY && !defined(__CYGWIN__) && !PX_EMSCRIPTEN
+#if !PX_APPLE_FAMILY && !defined(__CYGWIN__) && !PX_EMSCRIPTEN && !__ANDROID__
 #include <bits/local_lim.h> // PTHREAD_STACK_MIN
 #endif
 #include <stdio.h>
@@ -246,9 +246,11 @@ __attribute__((noreturn))
 
 void PxThreadImpl::kill()
 {
+#if !__ANDROID__ // hope we never have to kill a thread on Android
 	if(getThread(this)->state == ePxThreadStarted)
 		pthread_cancel(getThread(this)->thread);
 	getThread(this)->state = ePxThreadStopped;
+#endif
 }
 
 void PxThreadImpl::sleep(uint32_t ms)
