@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -34,29 +34,14 @@
 
 namespace physx
 {
-
-class PxvArticulation;
-
 class PxNodeIndex;
 
 namespace Sc
 {
-	//typedef Dy::FsData ArticulationDriveCache;
-
 	class ArticulationSim;
-	class BodyCore;
-	class BodySim;
-	class ArticulationJointCore;
 
 	class ArticulationCore
 	{
-	//= ATTENTION! =====================================================================================
-	// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-	// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-	// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-	// accordingly.
-	//==================================================================================================
-
 		//---------------------------------------------------------------------------------
 		// Construction, destruction & initialization
 		//---------------------------------------------------------------------------------
@@ -64,7 +49,6 @@ namespace Sc
 // PX_SERIALIZATION
 		public:
 													ArticulationCore(const PxEMPTY) : mSim(NULL), mCore(PxEmpty) {}
-		static		void							getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
 													ArticulationCore();
 													~ArticulationCore();
@@ -84,12 +68,6 @@ namespace Sc
 		PX_FORCE_INLINE	PxReal						getWakeCounter()					const	{ return mCore.wakeCounter;				}
 		PX_FORCE_INLINE	void						setWakeCounterInternal(const PxReal v)		{ mCore.wakeCounter = v;				}
 						void						setWakeCounter(const PxReal v);
-
-		PX_FORCE_INLINE	PxReal						getMaxLinearVelocity()				const	{ return mCore.maxLinearVelocity;		}
-						void						setMaxLinearVelocity(const PxReal max);
-
-		PX_FORCE_INLINE	PxReal						getMaxAngularVelocity()				const	{ return mCore.maxAngularVelocity;		}
-						void						setMaxAngularVelocity(const PxReal max);
 
 						bool						isSleeping() const;
 						void						wakeUp(PxReal wakeCounter);
@@ -111,7 +89,8 @@ namespace Sc
 
 						bool						applyCache(PxArticulationCache& cache, const PxArticulationCacheFlags flag)const;
 		
-						void						copyInternalStateToCache(PxArticulationCache& cache, const PxArticulationCacheFlags flag) const;
+						void						copyInternalStateToCache
+														(PxArticulationCache& cache, const PxArticulationCacheFlags flag, const bool isGpuSimEnabled) const;
 
 						void						packJointData(const PxReal* maximum, PxReal* reduced) const;
 
@@ -119,9 +98,9 @@ namespace Sc
 
 						void						commonInit() const;
 
-						void						computeGeneralizedGravityForce(PxArticulationCache& cache) const;
+						void						computeGeneralizedGravityForce(PxArticulationCache& cache, const bool rootMotion) const;
 
-						void						computeCoriolisAndCentrifugalForce(PxArticulationCache& cache) const;
+						void						computeCoriolisAndCentrifugalForce(PxArticulationCache& cache, const bool rootMotion) const;
 
 						void						computeGeneralizedExternalForce(PxArticulationCache& cache) const;
 
@@ -129,18 +108,21 @@ namespace Sc
 
 						void						computeJointForce(PxArticulationCache& cache) const;
 
-
 						void						computeDenseJacobian(PxArticulationCache& cache, PxU32& nRows, PxU32& nCols) const;
 
 						void						computeCoefficientMatrix(PxArticulationCache& cache) const;
 
 						bool						computeLambda(PxArticulationCache& cache, PxArticulationCache& rollBackCache, const PxReal* const jointTorque, const PxVec3 gravity, const PxU32 maxIter) const;
 
-						void						computeGeneralizedMassMatrix(PxArticulationCache& cache) const;
+						void						computeGeneralizedMassMatrix(PxArticulationCache& cache, const bool rootMotion) const;
+
+						PxVec3						computeArticulationCOM(const bool rootFrame) const;
+
+						void						computeCentroidalMomentumMatrix(PxArticulationCache& cache) const;
 
 						PxU32						getCoefficientMatrixSize() const;
 
-						PxSpatialVelocity			getLinkAcceleration(const PxU32 linkId) const;
+						PxSpatialVelocity			getLinkAcceleration(const PxU32 linkId, const bool isGpuSimEnabled) const;
 
 						PxU32						getGpuArticulationIndex() const;				
 
@@ -164,7 +146,7 @@ namespace Sc
 														return *reinterpret_cast<ArticulationCore*>(reinterpret_cast<PxU8*>(&core) - offset);
 													}
 
-						PxNodeIndex				getIslandNodeIndex() const;
+						PxNodeIndex					getIslandNodeIndex() const;
 
 						void						setGlobalPose();
 

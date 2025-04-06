@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -63,12 +63,10 @@ static PxRigidDynamic* createDynamic(const PxTransform& t, const PxGeometry& geo
 static PxJoint* createLimitedSpherical(PxRigidActor* a0, const PxTransform& t0, PxRigidActor* a1, const PxTransform& t1)
 {
 	PxSphericalJoint* j = PxSphericalJointCreate(*gPhysics, a0, t0, a1, t1);
-	j->setLimitCone(PxJointLimitCone(PxPi/4, PxPi/4, 0.05f));
+	j->setLimitCone(PxJointLimitCone(PxPi/4, PxPi/4));
 	j->setSphericalJointFlag(PxSphericalJointFlag::eLIMIT_ENABLED, true);
 	return j;
 }
-
-// revolute joint limited to an angle of at most pi/4 radians (45 degrees)
 
 // fixed, breakable joint
 static PxJoint* createBreakableFixed(PxRigidActor* a0, const PxTransform& t0, PxRigidActor* a1, const PxTransform& t1)
@@ -161,7 +159,7 @@ void cleanupPhysics(bool /*interactive*/)
 	if(gPvd)
 	{
 		PxPvdTransport* transport = gPvd->getTransport();
-		gPvd->release();	gPvd = NULL;
+		PX_RELEASE(gPvd);
 		PX_RELEASE(transport);
 	}
 	PX_RELEASE(gFoundation);

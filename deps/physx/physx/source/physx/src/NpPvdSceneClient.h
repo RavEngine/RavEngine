@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -44,11 +44,9 @@
 #include "PsPvd.h"
 
 #include "PxsMaterialCore.h"
-#include "PxsFEMSoftBodyMaterialCore.h"
-#include "PxsFEMClothMaterialCore.h"
+#include "PxsDeformableSurfaceMaterialCore.h"
+#include "PxsDeformableVolumeMaterialCore.h"
 #include "PxsPBDMaterialCore.h"
-#include "PxsFLIPMaterialCore.h"
-#include "PxsMPMMaterialCore.h"
 
 namespace physx
 {
@@ -65,18 +63,16 @@ class NpArticulationJointReducedCoordinate;
 class NpArticulationReducedCoordinate;
 class NpArticulationSpatialTendon;
 class NpArticulationFixedTendon;
-class NpArticulationSensor;
+class NpArticulationMimicJoint;
 class NpActor;
 class NpScene;
 
 #if PX_SUPPORT_GPU_PHYSX
-class NpSoftBody;
-class NpFEMCloth;
+class NpDeformableSurface;
+class NpDeformableVolume;
 class NpPBDParticleSystem;
-class NpFLIPParticleSystem;
-class NpMPMParticleSystem;
-class NpCustomParticleSystem;
-class NpHairSystem;
+class NpDeformableAttachment;
+class NpDeformableElementFilter;
 #endif
 
 namespace Sc
@@ -168,9 +164,9 @@ class PvdSceneClient : public PxPvdSceneClient, public PvdClient, public PvdVisu
 	void updatePvdProperties(const NpArticulationFixedTendon* articulationTendon);
 	void releasePvdInstance(const NpArticulationFixedTendon* articulationTendon);
 
-	void createPvdInstance(const NpArticulationSensor* sensor);
-	void updatePvdProperties(const NpArticulationSensor* sensor);
-	void releasePvdInstance(const NpArticulationSensor* sensor);
+	void createPvdInstance(const NpArticulationMimicJoint* mimicJoint);
+	void updatePvdProperties(const NpArticulationMimicJoint* mimicJoint);
+	void releasePvdInstance(const NpArticulationMimicJoint* mimicJoint);
 
 	///////////////////////////////////////////////////////////////////////////
 
@@ -178,29 +174,17 @@ class PvdSceneClient : public PxPvdSceneClient, public PvdClient, public PvdVisu
 	void updatePvdProperties(const PxsMaterialCore* materialCore);
 	void releasePvdInstance	(const PxsMaterialCore* materialCore);
 
-	void createPvdInstance	(const PxsFEMSoftBodyMaterialCore* materialCore);
-	void updatePvdProperties(const PxsFEMSoftBodyMaterialCore* materialCore);
-	void releasePvdInstance	(const PxsFEMSoftBodyMaterialCore* materialCore);
+	void createPvdInstance(const PxsDeformableSurfaceMaterialCore* materialCore);
+	void updatePvdProperties(const PxsDeformableSurfaceMaterialCore* materialCore);
+	void releasePvdInstance(const PxsDeformableSurfaceMaterialCore* materialCore);
 
-	void createPvdInstance	(const PxsFEMClothMaterialCore* materialCore);
-	void updatePvdProperties(const PxsFEMClothMaterialCore* materialCore);
-	void releasePvdInstance	(const PxsFEMClothMaterialCore* materialCore);
+	void createPvdInstance	(const PxsDeformableVolumeMaterialCore* materialCore);
+	void updatePvdProperties(const PxsDeformableVolumeMaterialCore* materialCore);
+	void releasePvdInstance	(const PxsDeformableVolumeMaterialCore* materialCore);
 
 	void createPvdInstance	(const PxsPBDMaterialCore* materialCore);
 	void updatePvdProperties(const PxsPBDMaterialCore* materialCore);
 	void releasePvdInstance	(const PxsPBDMaterialCore* materialCore);
-
-	void createPvdInstance	(const PxsFLIPMaterialCore* materialCore);
-	void updatePvdProperties(const PxsFLIPMaterialCore* materialCore);
-	void releasePvdInstance	(const PxsFLIPMaterialCore* materialCore);
-
-	void createPvdInstance	(const PxsMPMMaterialCore* materialCore);
-	void updatePvdProperties(const PxsMPMMaterialCore* materialCore);
-	void releasePvdInstance	(const PxsMPMMaterialCore* materialCore);
-
-	void createPvdInstance	(const PxsCustomMaterialCore* materialCore);
-	void updatePvdProperties(const PxsCustomMaterialCore* materialCore);
-	void releasePvdInstance	(const PxsCustomMaterialCore* materialCore);
 
 	///////////////////////////////////////////////////////////////////////////
 
@@ -219,17 +203,17 @@ class PvdSceneClient : public PxPvdSceneClient, public PvdClient, public PvdVisu
 	void releasePvdInstance		(const NpAggregate* aggregate);
 
 #if PX_SUPPORT_GPU_PHYSX
-	void createPvdInstance(const NpSoftBody* softBody);
-	void updatePvdProperties(const NpSoftBody* softBody);
-	void attachAggregateActor(const NpSoftBody* softBody, NpActor* actor);
-	void detachAggregateActor(const NpSoftBody* softBody, NpActor* actor);
-	void releasePvdInstance(const NpSoftBody* softBody);
+	void createPvdInstance(const NpDeformableSurface* deformableSurface);
+	void updatePvdProperties(const NpDeformableSurface* deformableSurface);
+	void attachAggregateActor(const NpDeformableSurface* deformableSurface, NpActor* actor);
+	void detachAggregateActor(const NpDeformableSurface* deformableSurface, NpActor* actor);
+	void releasePvdInstance(const NpDeformableSurface* deformableSurface);
 
-	void createPvdInstance(const NpFEMCloth* femCloth);
-	void updatePvdProperties(const NpFEMCloth* femCloth);
-	void attachAggregateActor(const NpFEMCloth* femCloth, NpActor* actor);
-	void detachAggregateActor(const NpFEMCloth* femCloth, NpActor* actor);
-	void releasePvdInstance(const NpFEMCloth* femCloth);
+	void createPvdInstance(const NpDeformableVolume* deformableVolume);
+	void updatePvdProperties(const NpDeformableVolume* deformableVolume);
+	void attachAggregateActor(const NpDeformableVolume* deformableVolume, NpActor* actor);
+	void detachAggregateActor(const NpDeformableVolume* deformableVolume, NpActor* actor);
+	void releasePvdInstance(const NpDeformableVolume* deformableVolume);
 
 	void createPvdInstance(const NpPBDParticleSystem* particleSystem);
 	void updatePvdProperties(const NpPBDParticleSystem* particleSystem);
@@ -237,29 +221,17 @@ class PvdSceneClient : public PxPvdSceneClient, public PvdClient, public PvdVisu
 	void detachAggregateActor(const NpPBDParticleSystem* particleSystem, NpActor* actor);
 	void releasePvdInstance(const NpPBDParticleSystem* particleSystem);
 
-	void createPvdInstance(const NpFLIPParticleSystem* particleSystem);
-	void updatePvdProperties(const NpFLIPParticleSystem* particleSystem);
-	void attachAggregateActor(const NpFLIPParticleSystem* particleSystem, NpActor* actor);
-	void detachAggregateActor(const NpFLIPParticleSystem* particleSystem, NpActor* actor);
-	void releasePvdInstance(const NpFLIPParticleSystem* particleSystem);
+	void createPvdInstance(const NpDeformableAttachment* attachment);
+	void updatePvdProperties(const NpDeformableAttachment* attachment);
+	void attachAggregateActor(const NpDeformableAttachment* attachment, NpActor* actor);
+	void detachAggregateActor(const NpDeformableAttachment* attachment, NpActor* actor);
+	void releasePvdInstance(const NpDeformableAttachment* attachment);
 
-	void createPvdInstance(const NpMPMParticleSystem* particleSystem);
-	void updatePvdProperties(const NpMPMParticleSystem* particleSystem);
-	void attachAggregateActor(const NpMPMParticleSystem* particleSystem, NpActor* actor);
-	void detachAggregateActor(const NpMPMParticleSystem* particleSystem, NpActor* actor);
-	void releasePvdInstance(const NpMPMParticleSystem* particleSystem);
-
-	void createPvdInstance(const NpCustomParticleSystem* particleSystem);
-	void updatePvdProperties(const NpCustomParticleSystem* particleSystem);
-	void attachAggregateActor(const NpCustomParticleSystem* particleSystem, NpActor* actor);
-	void detachAggregateActor(const NpCustomParticleSystem* particleSystem, NpActor* actor);
-	void releasePvdInstance(const NpCustomParticleSystem* particleSystem);
-
-	void createPvdInstance(const NpHairSystem* hairSystem);
-	void updatePvdProperties(const NpHairSystem* hairSystem);
-	void attachAggregateActor(const NpHairSystem* hairSystem, NpActor* actor);
-	void detachAggregateActor(const NpHairSystem* hairSystem, NpActor* actor);
-	void releasePvdInstance(const NpHairSystem* hairSystem);
+	void createPvdInstance(const NpDeformableElementFilter* elementFilter);
+	void updatePvdProperties(const NpDeformableElementFilter* elementFilter);
+	void attachAggregateActor(const NpDeformableElementFilter* elementFilter, NpActor* actor);
+	void detachAggregateActor(const NpDeformableElementFilter* elementFilter, NpActor* actor);
+	void releasePvdInstance(const NpDeformableElementFilter* elementFilter);
 #endif
 
 	void originShift(PxVec3 shift);

@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -41,6 +41,7 @@
 
 namespace physx
 {
+class PxBounds3;
 namespace Gu
 {
 	class Box;
@@ -74,7 +75,7 @@ namespace Gu
 										capsule.radius = capsuleGeom.radius;
 									}
 
-						void		computeSweptBox(Gu::Box& box, const PxVec3& extents, const PxVec3& center, const PxMat33& rot, const PxVec3& unitDir, const PxReal distance);
+						void		computeSweptBox(Gu::Box& box, const PxVec3& extents, const PxVec3& center, const PxMat33& rot, const PxVec3& unitDir, PxReal distance);
 
 	/**
 	*	PT: computes "alignment value" used to select the "best" triangle in case of identical impact distances (for sweeps).

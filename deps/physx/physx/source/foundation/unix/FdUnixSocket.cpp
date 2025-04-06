@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -157,9 +157,9 @@ bool SocketImpl::connect(const char* host, uint16_t port, uint32_t timeout)
 		pfd.events = POLLOUT;
 		const int pollResult = ::poll(&pfd, 1, timeout /*milliseconds*/);
 
-		const bool timeout = (pollResult == 0);
-		const bool error = (pollResult < 0); // an error inside poll happened. Can check error with `errno` variable.
-		if(timeout || error)
+		const bool pollTimeout = (pollResult == 0);
+		const bool pollError = (pollResult < 0); // an error inside poll happened. Can check error with `errno` variable.
+		if(pollTimeout || pollError)
 		{
 			disconnect();
 			return false;

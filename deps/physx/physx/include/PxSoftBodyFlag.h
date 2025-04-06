@@ -22,44 +22,57 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 #ifndef PX_SOFT_BODY_FLAG_H
 #define PX_SOFT_BODY_FLAG_H
 
-#include "PxPhysXConfig.h"
-#include "foundation/PxFlags.h"
+#include "PxDeformableVolumeFlag.h"
 
 #if !PX_DOXYGEN
 namespace physx
 {
 #endif
-	
-	/**
-	\brief These flags determine what data is read or written to the gpu softbody.
 
-	@see PxScene::copySoftBodyData, PxScene::applySoftBodyData
-	*/
-	class PxSoftBodyDataFlag
+/**
+\brief Deprecated
+\see PxDeformableVolumeDataFlag
+*/
+typedef PX_DEPRECATED PxDeformableVolumeDataFlag PxSoftBodyDataFlag;
+
+/**
+\brief Deprecated
+\see PxDeformableVolumeDataFlags
+*/
+typedef PX_DEPRECATED PxDeformableVolumeDataFlags PxSoftBodyDataFlags;
+
+/**
+\brief These flags determine what data is read or written when using PxScene::copySoftBodyData()
+or PxScene::applySoftBodyData.
+
+\see PxScene::copySoftBodyData, PxScene::applySoftBodyData
+
+\deprecated There is no direct replacement. The data is exposed in the PxSoftBody interface, accessible directly from GPU.
+There is no replacement for eTET_REST_POSES, as the data is constant and can be derived from the input collision mesh.
+*/
+PX_DEPRECATED class PxSoftBodyGpuDataFlag
+{
+public:
+	enum Enum
 	{
-	public:
-		enum Enum
-		{
-			eTET_INDICES = 0,			//!< The collision mesh tetrahedron indices (quadruples of int32)
-			eTET_STRESS = 1,			//!< The collision mesh cauchy stress tensors (float 3x3 matrices)
-			eTET_STRESSCOEFF = 2,		//!< The collision mesh tetrahedron von Mises stress (float scalar)
-			eTET_REST_POSES = 3,		//!< The collision mesh tetrahedron rest poses (float 3x3 matrices)
-			eTET_ROTATIONS = 4,			//!< The collision mesh tetrahedron orientations (quaternions, quadruples of float)
-			eTET_POSITION_INV_MASS = 5,	//!< The collision mesh vertex positions and their inverted mass in the 4th component (quadruples of float)
-			eSIM_TET_INDICES = 6,		//!< The simulation mesh tetrahedron indices (quadruples of int32)
-			eSIM_VELOCITY_INV_MASS = 7,	//!< The simulation mesh vertex velocities and their inverted mass in the 4th component (quadruples of float)
-			eSIM_POSITION_INV_MASS = 8,	//!< The simulation mesh vertex positions and their inverted mass in the 4th component (quadruples of float)
-			eSIM_KINEMATIC_TARGET = 9	//!< The simulation mesh kinematic target positions
-		};
+		eTET_INDICES = 0,			//!< The collision mesh tetrahedron indices (quadruples of int32)
+		eTET_REST_POSES = 1,		//!< The collision mesh tetrahedron rest poses (float 3x3 matrices)
+		eTET_ROTATIONS = 2,			//!< The collision mesh tetrahedron orientations (quaternions, quadruples of float)
+		eTET_POSITION_INV_MASS = 3,	//!< The collision mesh vertex positions and their inverted mass in the 4th component (quadruples of float)
+		eSIM_TET_INDICES = 4,		//!< The simulation mesh tetrahedron indices (quadruples of int32)
+		eSIM_TET_ROTATIONS = 5,		//!< The simulation mesh tetrahedron orientations (quaternions, quadruples of float)
+		eSIM_VELOCITY_INV_MASS = 6,	//!< The simulation mesh vertex velocities and their inverted mass in the 4th component (quadruples of float)
+		eSIM_POSITION_INV_MASS = 7  //!< The simulation mesh vertex positions and their inverted mass in the 4th component (quadruples of float)
 	};
-	
+};
+
 #if !PX_DOXYGEN
 }
 #endif

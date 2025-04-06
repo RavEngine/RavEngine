@@ -22,12 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #ifndef PX_PROFILE_EVENT_SENDER_H
 #define PX_PROFILE_EVENT_SENDER_H
 
-#include "foundation/Px.h"
 
 namespace physx { namespace profile {
 

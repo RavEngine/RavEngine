@@ -22,14 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.     
 
 #include "geomutils/PxContactBuffer.h"
 #include "GuVecCapsule.h"
 #include "GuContactMethodImpl.h"
-#include "GuDistanceSegmentSegmentSIMD.h"
+#include "GuDistanceSegmentSegment.h"
+#include "GuPCMContactGenUtil.h"
 
 using namespace physx;
 using namespace Gu;
@@ -72,26 +73,19 @@ static Vec4V pcmDistancePointSegmentTValue22(	const Vec3VArg a0, const Vec3VArg 
 
 static void storeContact(const Vec3VArg contact, const Vec3VArg normal, const FloatVArg separation, PxContactBuffer& buffer)
 {
-	PxContactPoint& point = buffer.contacts[buffer.count++];
-
-	const Vec4V normalSep = aos::V4SetW(Vec4V_From_Vec3V(normal), separation);
-
-	V4StoreA(normalSep, &point.normal.x);
-	V3StoreA(contact, point.point);
-	point.internalFaceIndex1 = PXC_CONTACT_NO_FACE_INDEX;
+	outputSimplePCMContact(buffer, contact, normal, separation);
 }
 
 bool Gu::pcmContactCapsuleCapsule(GU_CONTACT_METHOD_ARGS)
 {
 	PX_UNUSED(renderOutput);
 	PX_UNUSED(cache);
+	PX_ASSERT(transform1.q.isSane());
+	PX_ASSERT(transform0.q.isSane());
 
 	// Get actual shape data
 	const PxCapsuleGeometry& shapeCapsule0 = checkedCast<PxCapsuleGeometry>(shape0);
 	const PxCapsuleGeometry& shapeCapsule1 = checkedCast<PxCapsuleGeometry>(shape1);
-
-	PX_ASSERT(transform1.q.isSane());
-	PX_ASSERT(transform0.q.isSane());
 
 	const Vec3V _p0 = V3LoadA(&transform0.p.x);
 	const QuatV q0 = QuatVLoadA(&transform0.q.x);
@@ -110,7 +104,7 @@ bool Gu::pcmContactCapsuleCapsule(GU_CONTACT_METHOD_ARGS)
 
 	const FloatV cDist = FLoad(params.mContactDistance);
 
-	const Vec3V positionOffset = V3Scale(V3Add(_p0, _p1),  FHalf());
+	const Vec3V positionOffset = V3Scale(V3Add(_p0, _p1), FHalf());
 	const Vec3V p0 = V3Sub(_p0, positionOffset);
 	const Vec3V p1 = V3Sub(_p1, positionOffset);
 
@@ -161,7 +155,7 @@ bool Gu::pcmContactCapsuleCapsule(GU_CONTACT_METHOD_ARGS)
 		if(FAllGrtr(cos, parallelTolerance))//paralle
 		{
 			//project s, e into s1e1
-			const Vec4V t= pcmDistancePointSegmentTValue22(s0, e0, s1, e1,
+			const Vec4V t = pcmDistancePointSegmentTValue22(s0, e0, s1, e1,
 															s1, e1, s0, e0);
 
 			const BoolV con = BAnd(V4IsGrtrOrEq(t, zeroV4), V4IsGrtrOrEq(oneV4, t));
@@ -185,7 +179,7 @@ bool Gu::pcmContactCapsuleCapsule(GU_CONTACT_METHOD_ARGS)
 				if(BAllEqTTTT(bCon))
 				{
 					const FloatV dist = FSqrt(sqDist);
-					const FloatV pen =  FSub(dist, sumRadius);
+					const FloatV pen = FSub(dist, sumRadius);
 					const Vec3V normal = V3ScaleInv(v, dist);
 					PX_ASSERT(isFiniteVec3V(normal));
 					const Vec3V _p = V3NegScaleSub(normal, r0, projS1);
@@ -205,8 +199,8 @@ bool Gu::pcmContactCapsuleCapsule(GU_CONTACT_METHOD_ARGS)
 				if(BAllEqTTTT(bCon))
 				{
 					const FloatV dist = FSqrt(sqDist);
-					const FloatV pen =  FSub(dist, sumRadius);
-					const Vec3V normal =  V3ScaleInv(v, dist);
+					const FloatV pen = FSub(dist, sumRadius);
+					const Vec3V normal = V3ScaleInv(v, dist);
 					PX_ASSERT(isFiniteVec3V(normal));
 					const Vec3V _p = V3NegScaleSub(normal, r0, projE1);
 					const Vec3V p = V3Add(_p, positionOffset);
@@ -225,7 +219,7 @@ bool Gu::pcmContactCapsuleCapsule(GU_CONTACT_METHOD_ARGS)
 				if(BAllEqTTTT(bCon))
 				{
 					const FloatV dist = FSqrt(sqDist);
-					const FloatV pen =  FSub(dist, sumRadius);
+					const FloatV pen = FSub(dist, sumRadius);
 					const Vec3V normal = V3ScaleInv(v, dist);
 				 	PX_ASSERT(isFiniteVec3V(normal));
 					const Vec3V _p = V3NegScaleSub(normal, r0, s0);
@@ -246,7 +240,7 @@ bool Gu::pcmContactCapsuleCapsule(GU_CONTACT_METHOD_ARGS)
 				if(BAllEqTTTT(bCon))
 				{
 					const FloatV dist = FSqrt(sqDist);
-					const FloatV pen =  FSub(dist, sumRadius);
+					const FloatV pen = FSub(dist, sumRadius);
 					const Vec3V normal = V3ScaleInv(v, dist);
 					PX_ASSERT(isFiniteVec3V(normal));
 					const Vec3V _p = V3NegScaleSub(normal, r0, e0);

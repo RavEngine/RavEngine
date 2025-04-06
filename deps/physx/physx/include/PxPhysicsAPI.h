@@ -22,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_PHYSICS_API_H
 #define PX_PHYSICS_API_H
-/** \addtogroup physics
-@{
-*/
 
 /**
 This is the main include header for the Physics SDK, for users who
@@ -40,7 +37,6 @@ Alternatively, one can instead directly #include a subset of the below files.
 */
 
 // Foundation SDK 
-#include "foundation/Px.h"
 #include "foundation/PxAlignedMalloc.h"
 #include "foundation/PxAlloca.h"
 #include "foundation/PxAllocatorCallback.h"
@@ -53,6 +49,7 @@ Alternatively, one can instead directly #include a subset of the below files.
 #include "foundation/PxBitUtils.h"
 #include "foundation/PxBounds3.h"
 #include "foundation/PxBroadcast.h"
+#include "foundation/PxConstructor.h"
 #include "foundation/PxErrorCallback.h"
 #include "foundation/PxErrors.h"
 #include "foundation/PxFlags.h"
@@ -110,8 +107,6 @@ Alternatively, one can instead directly #include a subset of the below files.
 #include "common/PxTypeInfo.h"
 #include "common/PxStringTable.h"
 #include "common/PxSerializer.h"
-#include "common/PxMetaData.h"
-#include "common/PxMetaDataFlags.h"
 #include "common/PxSerialFramework.h"
 #include "common/PxInsertionCallback.h"
 
@@ -162,8 +157,12 @@ Alternatively, one can instead directly #include a subset of the below files.
 #include "PxConstraintDesc.h"
 #include "PxContact.h"
 #include "PxContactModifyCallback.h"
+#include "PxDeformableSurface.h"
+#include "PxDeformableSurfaceMaterial.h"
+#include "PxDeformableVolume.h"
+#include "PxDeformableVolumeMaterial.h"
 #include "PxDeletionListener.h"
-#include "PxFEMSoftBodyMaterial.h"
+#include "PxFEMSoftBodyMaterial.h" // deprecated, include PxDeformableVolumeMaterial.h
 #include "PxFiltering.h"
 #include "PxForceMode.h"
 #include "PxLockedData.h"
@@ -186,19 +185,9 @@ Alternatively, one can instead directly #include a subset of the below files.
 #include "PxShape.h"
 #include "PxSimulationEventCallback.h"
 #include "PxSimulationStatistics.h"
-#include "PxSoftBody.h"
+#include "PxSoftBody.h" //deprecated, include PxDeformableVolume.h
 #include "PxVisualizationParameter.h"
 #include "PxPruningStructure.h"
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-#include "PxCustomParticleSystem.h"
-#include "PxFEMCloth.h"
-#include "PxFEMClothMaterial.h"
-#include "PxFLIPParticleSystem.h"
-#include "PxFLIPMaterial.h"
-#include "PxHairSystem.h"
-#include "PxMPMMaterial.h"
-#include "PxMPMParticleSystem.h"
-#endif
 
 //Character Controller
 #include "characterkinematic/PxBoxController.h"
@@ -224,30 +213,13 @@ Alternatively, one can instead directly #include a subset of the below files.
 
 //Serialization
 #include "extensions/PxSerialization.h"
-#include "extensions/PxBinaryConverter.h"
 #include "extensions/PxRepXSerializer.h"
 
 //Vehicle Simulation
 #include "vehicle2/PxVehicleAPI.h"
-#include "vehicle/PxVehicleComponents.h"
-#include "vehicle/PxVehicleDrive.h"
-#include "vehicle/PxVehicleDrive4W.h"
-#include "vehicle/PxVehicleDriveTank.h"
-#include "vehicle/PxVehicleSDK.h"
-#include "vehicle/PxVehicleShaders.h"
-#include "vehicle/PxVehicleTireFriction.h"
-#include "vehicle/PxVehicleUpdate.h"
-#include "vehicle/PxVehicleUtil.h"
-#include "vehicle/PxVehicleUtilControl.h"
-#include "vehicle/PxVehicleUtilSetup.h"
-#include "vehicle/PxVehicleUtilTelemetry.h"
-#include "vehicle/PxVehicleWheels.h"
-#include "vehicle/PxVehicleNoDrive.h"
-#include "vehicle/PxVehicleDriveNW.h"
 
 //Connecting the SDK to Visual Debugger
 #include "pvd/PxPvdSceneClient.h"
 #include "pvd/PxPvd.h"
 #include "pvd/PxPvdTransport.h"
-/** @} */
 #endif

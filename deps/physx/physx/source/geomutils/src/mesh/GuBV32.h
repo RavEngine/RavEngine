@@ -22,13 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef GU_BV32_H
 #define GU_BV32_H
 
+#include "foundation/PxSimpleTypes.h"
 #include "foundation/PxBounds3.h"
 #include "foundation/PxVec4.h"
 #include "common/PxSerialFramework.h"
@@ -48,7 +49,7 @@ namespace physx
 			PxU32		mDepth;
 			size_t		mData;
 
-			PX_FORCE_INLINE BV32Data() : mNbLeafNodes(0), mDepth(0),  mData(PX_INVALID_U32)
+			PX_FORCE_INLINE BV32Data() : mNbLeafNodes(0), mDepth(0), mData(PX_INVALID_U32)
 			{
 				setEmpty();
 			}
@@ -124,7 +125,6 @@ namespace physx
 			BV32Tree(const PxEMPTY);
 			void			exportExtraData(PxSerializationContext&);
 			void			importExtraData(PxDeserializationContext& context);
-			static			void			getBinaryMetaData(PxOutputStream& stream);
 			//~PX_SERIALIZATION
 
 							BV32Tree();
@@ -135,7 +135,6 @@ namespace physx
 
 			bool			load(PxInputStream& stream, bool mismatch);
 
-			void			calculateLeafNode(BV32Data& node);
 			void			createSOAformatNode(BV32DataPacked& packedData, const BV32Data& node, const PxU32 childOffset, PxU32& currentIndex, PxU32& nbPackedNodes);
 
 			void			reset();

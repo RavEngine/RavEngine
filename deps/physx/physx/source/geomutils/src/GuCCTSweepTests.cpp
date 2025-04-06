@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -215,7 +215,7 @@ bool sweepBox_BoxGeom_Precise(GU_BOX_SWEEP_FUNC_PARAMS)
 
 // PT: test: new version for CCT, based on code for general sweeps. Just to check it works or not with rotations
 // TODO: refactor this and the similar code in sweptBox for box-vs-mesh. Not so easy though.
-static bool sweepBoxVsTriangles(PxU32 nbTris, const PxTriangle* triangles, const Box& box, const PxVec3& unitDir, const PxReal distance, PxGeomSweepHit& sweepHit,
+static bool sweepBoxVsTriangles(PxU32 nbTris, const PxTriangle* triangles, const Box& box, const PxVec3& unitDir, PxReal distance, PxGeomSweepHit& sweepHit,
 								PxHitFlags hitFlags, bool isDoubleSided, const PxU32* cachedIndex)
 {
 	if(!nbTris)
@@ -316,7 +316,7 @@ float localMinDist = 1.0f;
 				// PT: TODO: optimize this.... already computed in triBoxSweepTestBoxSpace...
 				currentTriangle.denormalizedNormal(bestTriNormal);
 
-				if(hitFlags & PxHitFlag::eMESH_ANY)
+				if(hitFlags & PxHitFlag::eANY_HIT)
 					break;
 			}
 		}

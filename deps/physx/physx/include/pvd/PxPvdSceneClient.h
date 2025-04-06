@@ -22,18 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 #ifndef PX_PVD_SCENE_CLIENT_H
 #define PX_PVD_SCENE_CLIENT_H
 
-/** \addtogroup pvd
-@{
-*/
 
 #include "foundation/PxFlags.h"
+#include "foundation/PxVec3.h"
 
 #if !PX_DOXYGEN
 namespace physx
@@ -72,7 +70,7 @@ struct PxPvdSceneFlag
 /**
 \brief Bitfield that contains a set of raised flags defined in PxPvdSceneFlag.
 
-@see PxPvdSceneFlag
+\see PxPvdSceneFlag
 */
 typedef PxFlags<PxPvdSceneFlag::Enum, PxU8> PxPvdSceneFlags;
 PX_FLAGS_OPERATORS(PxPvdSceneFlag::Enum, PxU8)
@@ -141,5 +139,4 @@ protected:
 } // namespace physx
 #endif
 
-/** @} */
 #endif

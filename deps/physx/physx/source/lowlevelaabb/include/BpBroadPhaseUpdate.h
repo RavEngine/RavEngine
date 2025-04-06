@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -85,8 +85,34 @@ public:
 
 	 \param[in]  boxesCapacity the length of the boxBounds and boxGroups arrays.
 
-	 @see BroadPhase::update
+	 \see BroadPhase::update
 	 */
+	BroadPhaseUpdateData(
+		const ShapeHandle* created, PxU32 createdSize, 
+		const ShapeHandle* updated, PxU32 updatedSize, 
+		const ShapeHandle* removed, PxU32 removedSize, 
+		const PxBounds3* boxBounds, const Bp::FilterGroup::Enum* boxGroups, const PxReal* boxContactDistances, const PxU32* boxEnvIDs, PxU32 boxesCapacity,
+		const BpFilter& filter,
+		bool stateChanged,
+		bool gpuStateChanged
+	) :
+		mCreated		(created),
+		mCreatedSize	(createdSize),
+		mUpdated		(updated),
+		mUpdatedSize	(updatedSize),
+		mRemoved		(removed),
+		mRemovedSize	(removedSize),
+		mBoxBounds		(boxBounds),
+		mBoxGroups		(boxGroups),
+		mBoxDistances	(boxContactDistances),
+		mBoxEnvIDs		(boxEnvIDs),
+		mBoxesCapacity	(boxesCapacity),
+		mFilter			(filter),
+		mStateChanged	(stateChanged),
+		mGpuStateChanged(gpuStateChanged)
+	{
+	}
+
 	BroadPhaseUpdateData(
 		const ShapeHandle* created, PxU32 createdSize, 
 		const ShapeHandle* updated, PxU32 updatedSize, 
@@ -105,6 +131,7 @@ public:
 		mBoxBounds		(boxBounds),
 		mBoxGroups		(boxGroups),
 		mBoxDistances	(boxContactDistances),
+		mBoxEnvIDs		(NULL),
 		mBoxesCapacity	(boxesCapacity),
 		mFilter			(filter),
 		mStateChanged	(stateChanged),
@@ -122,6 +149,7 @@ public:
 		mBoxBounds		(other.mBoxBounds),
 		mBoxGroups		(other.mBoxGroups),
 		mBoxDistances	(other.mBoxDistances),
+		mBoxEnvIDs		(other.mBoxEnvIDs),
 		mBoxesCapacity	(other.mBoxesCapacity),
 		mFilter			(other.mFilter),
 		mStateChanged	(other.mStateChanged),
@@ -143,6 +171,7 @@ public:
 	PX_FORCE_INLINE	const PxBounds3*				getAABBs()				const { return mBoxBounds;			}
 	PX_FORCE_INLINE	const Bp::FilterGroup::Enum*	getGroups()				const { return mBoxGroups;			}
 	PX_FORCE_INLINE	const PxReal*					getContactDistance()	const { return mBoxDistances;		}
+	PX_FORCE_INLINE	const PxU32*					getEnvIDs()				const { return mBoxEnvIDs;			}
 	PX_FORCE_INLINE	PxU32							getCapacity()			const { return mBoxesCapacity;		}
 
 	PX_FORCE_INLINE	const BpFilter&					getFilter()				const { return mFilter;				}
@@ -169,6 +198,7 @@ private:
 	const PxBounds3*				mBoxBounds;
 	const Bp::FilterGroup::Enum*	mBoxGroups;
 	const PxReal*					mBoxDistances;
+	const PxU32*					mBoxEnvIDs;
 	const PxU32						mBoxesCapacity;
 
 	const BpFilter&					mFilter;

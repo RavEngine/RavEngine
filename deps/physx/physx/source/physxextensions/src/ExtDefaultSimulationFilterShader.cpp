@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -30,7 +30,8 @@
 #include "extensions/PxDefaultSimulationFilterShader.h"
 #include "PxRigidActor.h"
 #include "PxShape.h"
-
+#include "PxDeformableSurface.h"
+#include "PxDeformableVolume.h"
 #include "foundation/PxIntrinsics.h"
 #include "foundation/PxAllocator.h"
 #include "foundation/PxInlineArray.h"
@@ -200,6 +201,34 @@ namespace
 				}
 			}
 			break;
+			case PxActorType::eDEFORMABLE_SURFACE:
+			{
+				PxDeformableSurface& sActor = static_cast<PxDeformableSurface&>(actor);
+				PxShape* shape = sActor.getShape();
+
+				// retrieve current group mask
+				PxFilterData resultFd = shape->getSimulationFilterData();
+
+				adjustFilterData(TGroupsMask, fd, resultFd);
+
+				// set new filter data
+				shape->setSimulationFilterData(resultFd);				
+			}
+			break;
+			case PxActorType::eDEFORMABLE_VOLUME:
+			{
+				PxDeformableVolume& sActor = static_cast<PxDeformableVolume&>(actor);
+				PxShape* shape = sActor.getShape();
+
+				// retrieve current group mask
+				PxFilterData resultFd = shape->getSimulationFilterData();
+
+				adjustFilterData(TGroupsMask, fd, resultFd);
+
+				// set new filter data
+				shape->setSimulationFilterData(resultFd);
+			}
+			break;			
 			default:
 			break;
 		}

@@ -22,14 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef SC_CONTACT_REPORT_BUFFER_H
 #define SC_CONTACT_REPORT_BUFFER_H
 
-#include "foundation/Px.h"
 #include "common/PxProfileZone.h"
 
 namespace physx
@@ -59,8 +58,8 @@ namespace physx
 			PX_FORCE_INLINE void					reset();
 			PX_FORCE_INLINE void					flush();
 
-			PX_FORCE_INLINE PxU8*					allocateNotThreadSafe(PxU32 size, PxU32& index, PxU32 alignment= 16);
-			PX_FORCE_INLINE PxU8*					reallocateNotThreadSafe(PxU32 size, PxU32& index, PxU32 alignment= 16, PxU32 lastIndex = 0xFFFFFFFF);
+			PX_FORCE_INLINE PxU8*					allocateNotThreadSafe(PxU32 size, PxU32& index, PxU32 alignment = 16);
+			PX_FORCE_INLINE PxU8*					reallocateNotThreadSafe(PxU32 size, PxU32& index, PxU32 alignment = 16, PxU32 lastIndex = 0xFFFFFFFF);
 			PX_FORCE_INLINE	PxU8*					getData(const PxU32& index) const { return mBuffer+index; }
 
 			PX_FORCE_INLINE PxU32					getDefaultBufferSize() const {return mDefaultBufferSize;}

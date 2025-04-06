@@ -22,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_SHAPE_EXT_H
 #define PX_SHAPE_EXT_H
-/** \addtogroup extensions
-  @{
-*/
 
 #include "PxPhysXConfig.h"
 
@@ -47,7 +44,7 @@ namespace physx
 /**
 \brief utility functions for use with PxShape
 
-@see PxShape
+\see PxShape
 */
 
 class PxShapeExt
@@ -63,6 +60,7 @@ public:
 	*/
 	static PX_INLINE	PxTransform		getGlobalPose(const PxShape& shape, const PxRigidActor& actor)
 	{
+		// PT:: tag: scalar transform*transform
 		return actor.getGlobalPose() * shape.getLocalPose();
 	}
 
@@ -79,7 +77,7 @@ public:
 	\param[out] rayHits Raycast hits information
 	\return Number of hits between the ray and the shape
 
-	@see PxRaycastHit PxTransform
+	\see PxRaycastHit PxTransform
 	*/
 	static PX_INLINE PxU32				raycast(const PxShape& shape, const PxRigidActor& actor, 
 												const PxVec3& rayOrigin, const PxVec3& rayDir, PxReal maxDist, PxHitFlags hitFlags,
@@ -98,7 +96,7 @@ public:
 	\param[in] otherGeomPose Pose of the other geometry object
 	\return True if the shape overlaps the geometry object
 
-	@see PxGeometry PxTransform
+	\see PxGeometry PxTransform
 	*/
 	static PX_INLINE bool				overlap(const PxShape& shape, const PxRigidActor& actor, 
 												const PxGeometry& otherGeom, const PxTransform& otherGeomPose)
@@ -121,7 +119,7 @@ public:
 	\param[in] hitFlags Specify which properties per hit should be computed and written to result hit array. Combination of #PxHitFlag flags
 	\return True if the swept geometry object hits the shape
 
-	@see PxGeometry PxTransform PxSweepHit
+	\see PxGeometry PxTransform PxSweepHit
 	*/
 	static PX_INLINE bool			sweep(const PxShape& shape, const PxRigidActor& actor, 
 										  const PxVec3& unitDir, const PxReal distance, const PxGeometry& otherGeom, const PxTransform& otherGeomPose,
@@ -129,7 +127,6 @@ public:
 	{
 		return PxGeometryQuery::sweep(unitDir, distance, otherGeom, otherGeomPose, shape.getGeometry(), getGlobalPose(shape, actor), sweepHit, hitFlags);
 	}
-
 
 	/**
 	\brief Retrieves the axis aligned bounding box enclosing the shape.
@@ -140,11 +137,13 @@ public:
 	\param[in] actor the actor to which the shape is attached
 	\param[in] inflation  Scale factor for computed world bounds. Box extents are multiplied by this value.
 
-	@see PxBounds3
+	\see PxBounds3
 	*/
 	static PX_INLINE PxBounds3		getWorldBounds(const PxShape& shape, const PxRigidActor& actor, float inflation=1.01f)
 	{
-		return PxGeometryQuery::getWorldBounds(shape.getGeometry(), getGlobalPose(shape, actor), inflation);
+		PxBounds3 bounds;
+		PxGeometryQuery::computeGeomBounds(bounds, shape.getGeometry(), getGlobalPose(shape, actor), 0.0f, inflation);
+		return bounds;
 	}
 
 };
@@ -153,5 +152,4 @@ public:
 } // namespace physx
 #endif
 
-/** @} */
 #endif

@@ -22,13 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef SC_PARTICLESYSTEM_CORE_H
 #define SC_PARTICLESYSTEM_CORE_H
 
+#include "foundation/PxPreprocessor.h"
+#if PX_SUPPORT_GPU_PHYSX
 #include "PxParticleSystem.h"
 #include "foundation/PxAssert.h"
 #include "ScActorCore.h"
@@ -37,11 +39,8 @@
 #include "DyParticleSystem.h"
 #include "ScParticleSystemShapeCore.h"
 
-
 namespace physx
 {
-
-
 	namespace Sc
 	{
 		class ParticleSystemSim;
@@ -49,21 +48,9 @@ namespace physx
 
 		class ParticleSystemCore : public ActorCore
 		{
-			//= ATTENTION! =====================================================================================
-			// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-			// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-			// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-			// accordingly.
-			//==================================================================================================
-
-			//---------------------------------------------------------------------------------
-			// Construction, destruction & initialization
-			//---------------------------------------------------------------------------------
-
 			// PX_SERIALIZATION
 		public:
 			ParticleSystemCore(const PxEMPTY) : ActorCore(PxEmpty) {}
-			static		void							getBinaryMetaData(PxOutputStream& stream);
 			//~PX_SERIALIZATION
 			ParticleSystemCore(PxActorType::Enum actorType);
 			~ParticleSystemCore();
@@ -98,9 +85,6 @@ namespace physx
 
 			PxParticleSystemCallback*	getParticleSystemCallback() const;
 			void						setParticleSystemCallback(PxParticleSystemCallback* callback);
-
-			PxCustomParticleSystemSolverCallback*	getParticleSystemSolverCallback() const;
-			void						setParticleSystemSolverCallback(PxCustomParticleSystemSolverCallback* callback);
 			
 			PxReal						getFluidBoundaryDensityScale() const;
 			void						setFluidBoundaryDensityScale(const PxReal v);
@@ -117,7 +101,6 @@ namespace physx
 			PxU16						getSolverIterationCounts() const { return mShapeCore.getLLCore().solverIterationCounts; }
 			void						setSolverIterationCounts(PxU16 c);
 
-
 			PxReal						getWakeCounter() const;
 			void						setWakeCounter(const PxReal v);
 			void						setWakeCounterInternal(const PxReal v);
@@ -128,39 +111,25 @@ namespace physx
 
 			PxActor*					getPxActor() const;
 
-			// TOFIX
-			void						enableCCD(const bool enable);
 
 			PxParticleFlags				getFlags() const { return mShapeCore.getLLCore().mFlags; }
 
-			//void						setFlags(PxParticleFlags flags) { mShapeCore.getLLCore().mFlags = flags; }
 			void						setFlags(PxParticleFlags flags);
+
+			PxParticleLockFlags			getLockFlags() const { return mShapeCore.getLLCore().mLockFlags; }
+
+			void						setLockFlags(PxParticleLockFlags lockFlags) { mShapeCore.getLLCore().mLockFlags = lockFlags; }
 
 			void						setWind(const PxVec3& wind) {mShapeCore.getLLCore().mWind = wind;}
 
 			PxVec3						getWind() const { return mShapeCore.getLLCore().mWind; }
 
-			void						setSolverType(const PxParticleSolverType::Enum solverType) { mShapeCore.getLLCore().solverType = solverType; }
-			PxParticleSolverType::Enum	getSolverType() const { return mShapeCore.getLLCore().solverType; }
-			
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
 			PxSparseGridParams			getSparseGridParams() const { return mShapeCore.getLLCore().sparseGridParams; }
 			void						setSparseGridParams(const PxSparseGridParams& params) { mShapeCore.getLLCore().sparseGridParams = params; }
 
-			PxFLIPParams				getFLIPParams() const { return mShapeCore.getLLCore().flipParams; }
-			void						setFLIPParams(const PxFLIPParams& params) { mShapeCore.getLLCore().flipParams = params; }
-
-			PxMPMParams					getMPMParams() const { return mShapeCore.getLLCore().mpmParams; }
-			void						setMPMParams(const PxMPMParams& params) { mShapeCore.getLLCore().mpmParams = params; }
-#endif
-			
 			void						addRigidAttachment(Sc::BodyCore* core);
 
 			void						removeRigidAttachment(Sc::BodyCore* core);
-
-			void						setPeriodicBoundary(const PxVec3& boundary) { mShapeCore.setPeriodicBoundary(boundary); }
-
-			PxVec3						getPeriodicBoundary() const { return mShapeCore.getPeriodicBoundary(); }
 
 			//---------------------------------------------------------------------------------
 			// Internal API
@@ -176,11 +145,10 @@ namespace physx
 		private:
 			//ParticleSystemSim*						mSim;
 			ParticleSystemShapeCore					mShapeCore;
-			
 		};
 
 	} // namespace Sc
-
 }
+#endif
 
 #endif

@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -280,8 +280,8 @@ static bool /*__fastcall*/ triCapsuleSweep(CapsuleSweepParams* PX_RESTRICT param
 				setupRayData(params, params->mBestDistance, params->mOrigin_Padded, params->mLocalDir_PaddedAligned);
 	#endif
 #else
-				//params->ShrinkOBB(dist);
-				params->ShrinkOBB(params->mBestDistance);
+				//params->shrinkOBB(dist);
+				params->shrinkOBB(params->mBestDistance);
 #endif
 			}
 			return true;
@@ -297,7 +297,7 @@ static bool /*__fastcall*/ triCapsuleSweep(CapsuleSweepParams* PX_RESTRICT param
 	return false;
 }
 
-#include "GuDistanceSegmentTriangleSIMD.h"
+#include "GuDistanceSegmentTriangle.h"
 
 namespace
 {

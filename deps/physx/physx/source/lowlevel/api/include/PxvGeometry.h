@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -67,21 +67,15 @@ namespace physx
 
 struct MaterialIndicesStruct
 {
-//= ATTENTION! =====================================================================================
-// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-// accordingly.
-//==================================================================================================
 // PX_SERIALIZATION
 	MaterialIndicesStruct(const PxEMPTY)	{}
-	static void getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
 
 	MaterialIndicesStruct()
 	:	indices(NULL)
 	,	numIndices(0)
 	,	pad(PX_PADDING_16)
+	,	gpuRemapId(0)
 	{
 	}
 
@@ -131,17 +125,11 @@ struct PxHeightFieldGeometryLL : public PxHeightFieldGeometry
 	MaterialIndicesStruct	materialsLL;
 };
 
-struct PxHairSystemGeometryLL : public PxHairSystemGeometry
-{
-	PxU32					gpuRemapId;
-};
-
 template <> struct PxcGeometryTraits<PxParticleSystemGeometryLL>	{ enum { TypeID = PxGeometryType::ePARTICLESYSTEM}; };
 template <> struct PxcGeometryTraits<PxConvexMeshGeometryLL>		{ enum { TypeID = PxGeometryType::eCONVEXMESH }; };
 template <> struct PxcGeometryTraits<PxTriangleMeshGeometryLL>		{ enum { TypeID = PxGeometryType::eTRIANGLEMESH }; };
 template <> struct PxcGeometryTraits<PxTetrahedronMeshGeometryLL>	{ enum { TypeID = PxGeometryType::eTETRAHEDRONMESH }; };
 template <> struct PxcGeometryTraits<PxHeightFieldGeometryLL>		{ enum { TypeID = PxGeometryType::eHEIGHTFIELD }; };
-template <> struct PxcGeometryTraits<PxHairSystemGeometryLL>		{ enum { TypeID = PxGeometryType::eHAIRSYSTEM }; };
 
 class InvalidGeometry : public PxGeometry
 {
@@ -151,16 +139,9 @@ public:
 
 class GeometryUnion
 {
-//= ATTENTION! =====================================================================================
-// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-// accordingly.
-//==================================================================================================
 public:
 // PX_SERIALIZATION
 	GeometryUnion(const PxEMPTY)	{}
-	static	void	getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
 
 	PX_CUDA_CALLABLE PX_FORCE_INLINE						GeometryUnion()						{ reinterpret_cast<InvalidGeometry&>(mGeometry) = InvalidGeometry(); }
@@ -191,12 +172,12 @@ private:
 		PxU8	sphere[sizeof(PxSphereGeometry)];
 		PxU8	capsule[sizeof(PxCapsuleGeometry)];
 		PxU8	plane[sizeof(PxPlaneGeometry)];
+		PxU8	convexCore[sizeof(PxConvexCoreGeometry)];
 		PxU8	convex[sizeof(PxConvexMeshGeometryLL)];
 		PxU8	particleSystem[sizeof(PxParticleSystemGeometryLL)];
 		PxU8	mesh[sizeof(PxTriangleMeshGeometryLL)];
 		PxU8	tetMesh[sizeof(PxTetrahedronMeshGeometryLL)];
 		PxU8	heightfield[sizeof(PxHeightFieldGeometryLL)];
-		PxU8	hairsystem[sizeof(PxHairSystemGeometryLL)];
 		PxU8	custom[sizeof(PxCustomGeometry)];
 		PxU8	invalid[sizeof(InvalidGeometry)];
 	} mGeometry;
@@ -209,8 +190,8 @@ private:
 			eOWNS_MATERIAL_IDX_MEMORY	= (1<<0),	// PT: for de-serialization to avoid deallocating material index list. Moved there from Sc::ShapeCore (since one byte was free).
 			eIS_EXCLUSIVE				= (1<<1),	// PT: shape's exclusive flag
 			eIDT_TRANSFORM				= (1<<2),	// PT: true if PxsShapeCore::transform is identity
-			eSOFT_BODY_SHAPE			= (1<<3),	// True if this shape is a soft body shape
-			eCLOTH_SHAPE				= (1<<4)	// True if this shape is a cloth shape
+			eDEFORMABLE_SURFACE_SHAPE	= (1<<3),	// True if this shape is a deformable surface shape
+			eDEFORMABLE_VOLUME_SHAPE	= (1<<4)	// True if this shape is a deformable volume shape
 		};
 	};
 
@@ -219,19 +200,13 @@ private:
 
 struct PxsShapeCore
 {
-//= ATTENTION! =====================================================================================
-// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-// accordingly.
-//==================================================================================================
-
-// PX_SERIALIZATION
 	PxsShapeCore()
 	{
 		setDensityForFluid(800.0f);
 	}
-	PxsShapeCore(const PxEMPTY) : mGeometry(PxEmpty)	{}
+
+// PX_SERIALIZATION
+	PxsShapeCore(const PxEMPTY) : mShapeCoreFlags(PxEmpty), mGeometry(PxEmpty)	{}
 //~PX_SERIALIZATION
 
 #if PX_WINDOWS_FAMILY	// PT: to avoid "error: offset of on non-standard-layout type" on Linux

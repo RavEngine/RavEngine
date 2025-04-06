@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -68,7 +68,7 @@ namespace physx
 		PxReal staticFriction;
 
 		/**
-		\brief Material flags for this contact (eDISABLE_FRICTION, eDISABLE_STRONG_FRICTION). @see PxMaterialFlag
+		\brief Material flags for this contact (eDISABLE_FRICTION, eDISABLE_STRONG_FRICTION). \see PxMaterialFlag
 		*/
 		PxU8 materialFlags;
 
@@ -76,7 +76,6 @@ namespace physx
 		\brief The surface index of shape 1 at the contact point. This is used to identify the surface material.
 
 		\note This field is only supported by triangle meshes and heightfields, else it will be set to PXC_CONTACT_NO_FACE_INDEX.
-		\note This value must be directly after internalFaceIndex0 in memory
 		*/
 		PxU32   internalFaceIndex1;
 
@@ -90,6 +89,9 @@ namespace physx
 		*/
 		PxReal restitution;
 
+		/**
+		\brief Damping coefficient (for compliant contacts)
+		*/
 		PxReal damping;
 	};
 

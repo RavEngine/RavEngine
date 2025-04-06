@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -43,86 +43,36 @@ namespace Ext
 {
 	namespace joint
 	{
-		PX_INLINE void computeJointFrames(PxTransform& cA2w, PxTransform& cB2w, const JointData& data, const PxTransform& bA2w, const PxTransform& bB2w)
+		PX_FORCE_INLINE void applyNeighborhoodOperator(const PxTransform32& cA2w, PxTransform32& cB2w)
+		{
+			if(cA2w.q.dot(cB2w.q)<0.0f)	// minimum dist quat (equiv to flipping cB2bB.q, which we don't use anywhere)
+				cB2w.q = -cB2w.q;
+		}
+
+		/*
+		\brief Transform the two joint frames into the world frame using the global poses of the associated actors.
+
+		\param[out]	cA2w	joint frame associated with body 0 expressed in the world frame
+							ie if g0 is the global pose of actor 0 then cA2w = g0 * jointFrame_0.
+		\param[out]	cB2w	joint frame associated with body 1 expressed in the world frame
+							ie if g1 is the global pose of actor 1 then cB2w = g1 * jointFrame_1.
+		\param[in]	data	contains cmLocalPose^-1 * jointFrame for each body.
+		\param[in]	bA2w	pose of the centre of mass of body 0 expressed in the world frame.
+		\param[in]	bB2w	pose of the centre of mass of body 1 expressed in the world frame.
+
+		\note b2w = g*cmLocalPose so we have g = b2w*cmLocalPose^-1. 
+		We therefore have g * jointFrame = b2w * cmLocalPose^-1 * jointFrame = b2w * data.c2b
+		*/
+		PX_INLINE void computeJointFrames(PxTransform32& cA2w, PxTransform32& cB2w, const JointData& data, const PxTransform& bA2w, const PxTransform& bB2w)
 		{
 			PX_ASSERT(bA2w.isValid() && bB2w.isValid());
 
-			cA2w = bA2w.transform(data.c2b[0]);
-			cB2w = bB2w.transform(data.c2b[1]);
+			//cA2w = bA2w * (cMassLocalPose0^-1 * jointFrame0)
+			//cB2w = bB2w * (cMassLocalPose1^-1 * jointFrame1)
+			aos::transformMultiply<false, true>(cA2w, bA2w, data.c2b[0]);
+			aos::transformMultiply<false, true>(cB2w, bB2w, data.c2b[1]);
 
 			PX_ASSERT(cA2w.isValid() && cB2w.isValid());
-		}
-
-		PX_INLINE void computeDerived(const JointData& data, 
-									  const PxTransform& bA2w, const PxTransform& bB2w,
-									  PxTransform& cA2w, PxTransform& cB2w, PxTransform& cB2cA,
-									  bool useShortestPath=true)
-		{
-			computeJointFrames(cA2w, cB2w, data, bA2w, bB2w);
-
-			if(useShortestPath)
-			{
-				if(cA2w.q.dot(cB2w.q)<0.0f)	// minimum error quat
-					cB2w.q = -cB2w.q;
-			}
-
-			cB2cA = cA2w.transformInv(cB2w);
-			PX_ASSERT(cB2cA.isValid());
-		}
-
-		PX_INLINE PxVec3 truncateLinear(const PxVec3& in, PxReal tolerance, bool& truncated)
-		{		
-			const PxReal m = in.magnitudeSquared();
-			truncated = m>tolerance * tolerance;
-			return truncated ? in * PxRecipSqrt(m) * tolerance : in;
-		}
-
-		PX_INLINE PxQuat truncateAngular(const PxQuat& in, PxReal sinHalfTol, PxReal cosHalfTol, bool& truncated)
-		{
-			truncated = false;
-
-			if(sinHalfTol > 0.9999f)	// fixes numerical tolerance issue of projecting because quat is not exactly normalized
-				return in;
-
-			const PxQuat q = in.w>=0.0f ? in : -in;
-					
-			const PxVec3 im = q.getImaginaryPart();
-			const PxReal m = im.magnitudeSquared();
-			truncated = m>sinHalfTol*sinHalfTol;
-			if(!truncated)
-				return in;
-
-			const PxVec3 outV = im * sinHalfTol * PxRecipSqrt(m);			
-			return PxQuat(outV.x, outV.y, outV.z, cosHalfTol);
-		}
-
-		PX_FORCE_INLINE void projectTransforms(PxTransform& bA2w, PxTransform& bB2w, 
-											   const PxTransform& cA2w, const PxTransform& cB2w, 
-											   const PxTransform& cB2cA, const JointData& data, bool projectToA)
-		{
-			PX_ASSERT(cB2cA.isValid());
-
-			// normalization here is unfortunate: long chains of projected constraints can result in
-			// accumulation of error in the quaternion which eventually leaves the quaternion
-			// magnitude outside the validation range. The approach here is slightly overconservative
-			// in that we could just normalize the quaternions which are out of range, but since we
-			// regard projection as an occasional edge case it shouldn't be perf-sensitive, and
-			// this way we maintain the invariant (also maintained by the dynamics integrator) that
-			// body quats are properly normalized up to FP error.
-
-			if(projectToA)
-			{
-				bB2w = cA2w.transform(cB2cA.transform(data.c2b[1].getInverse()));
-				bB2w.q.normalize();
-			}
-			else
-			{
-				bA2w = cB2w.transform(cB2cA.transformInv(data.c2b[0].getInverse()));
-				bA2w.q.normalize();
-			}
-
-			PX_ASSERT(bA2w.isValid());
-			PX_ASSERT(bB2w.isValid());
 		}
 
 		PX_INLINE void computeJacobianAxes(PxVec3 row[3], const PxQuat& qa, const PxQuat& qb)
@@ -184,15 +134,17 @@ namespace Ext
 		{
 			Px1DConstraint* mConstraints;
 			Px1DConstraint* mCurrent;
-			PxVec3 mRa, mRb;
-			PxVec3 mCA2w, mCB2w;
+			PX_ALIGN(16, PxVec3p	mRa);
+			PX_ALIGN(16, PxVec3p	mRb);
+			PX_ALIGN(16, PxVec3p	mCA2w);
+			PX_ALIGN(16, PxVec3p	mCB2w);
 
 		public:
 			ConstraintHelper(Px1DConstraint* c, const PxVec3& ra, const PxVec3& rb)
 				: mConstraints(c), mCurrent(c), mRa(ra), mRb(rb)	{}
 
 			/*PX_NOINLINE*/	ConstraintHelper(Px1DConstraint* c, PxConstraintInvMassScale& invMassScale,
-					PxTransform& cA2w, PxTransform& cB2w, PxVec3p& body0WorldOffset,
+					PxTransform32& cA2w, PxTransform32& cB2w, PxVec3p& body0WorldOffset,
 					const JointData& data, const PxTransform& bA2w, const PxTransform& bB2w)
 				: mConstraints(c), mCurrent(c)
 			{
@@ -202,14 +154,33 @@ namespace Ext
 
 				computeJointFrames(cA2w, cB2w, data, bA2w, bB2w);
 
-				const PxVec3 ra = cB2w.p - bA2w.p;
-				body0WorldOffset = ra;
+				if(1)
+				{
+					const Vec4V cB2wV = V4LoadA(&cB2w.p.x);
+					const Vec4V raV = V4Sub(cB2wV, V4LoadU(&bA2w.p.x));	// const PxVec3 ra = cB2w.p - bA2w.p;
 
-				mRa = ra;
-				mRb = cB2w.p - bB2w.p;
+					V4StoreU(raV, &body0WorldOffset.x);					// body0WorldOffset = ra;
 
-				mCA2w = cA2w.p;
-				mCB2w = cB2w.p;
+					V4StoreA(raV, &mRa.x);								// mRa = ra;
+
+					V4StoreA(V4Sub(cB2wV, V4LoadU(&bB2w.p.x)), &mRb.x);	// mRb = cB2w.p - bB2w.p;
+
+					V4StoreA(V4LoadA(&cA2w.p.x), &mCA2w.x);				// mCA2w = cA2w.p;
+					V4StoreA(cB2wV, &mCB2w.x);							// mCB2w = cB2w.p;
+				}
+				else
+				{
+					const PxVec3 ra = cB2w.p - bA2w.p;
+
+					body0WorldOffset = ra;
+
+					mRa = ra;
+
+					mRb = cB2w.p - bB2w.p;
+
+					mCA2w = cA2w.p;
+					mCB2w = cB2w.p;
+				}
 			}
 
 			PX_FORCE_INLINE const PxVec3& getRa()	const	{ return mRa; }
@@ -231,18 +202,13 @@ namespace Ext
 			// limited linear & angular
 			PX_FORCE_INLINE void linearLimit(const PxVec3& axis, PxReal ordinate, PxReal limitValue, const PxJointLimitParameters& limit)
 			{
-				const PxReal pad = limit.isSoft() ? 0.0f : limit.contactDistance_deprecated;
-
-				if(ordinate + pad > limitValue)
+				if(!limit.isSoft() || ordinate > limitValue)
 					addLimit(linear(axis, limitValue - ordinate, PxConstraintSolveHint::eNONE), limit);
 			}
 
-			PX_FORCE_INLINE void angularLimit(const PxVec3& axis, PxReal ordinate, PxReal limitValue, PxReal pad, const PxJointLimitParameters& limit)
+			PX_FORCE_INLINE void angularLimit(const PxVec3& axis, PxReal ordinate, PxReal limitValue, const PxJointLimitParameters& limit)
 			{
-				if(limit.isSoft())
-					pad = 0.0f;
-
-				if(ordinate + pad > limitValue)
+				if(!limit.isSoft() || ordinate > limitValue)
 					addLimit(angular(axis, limitValue - ordinate, PxConstraintSolveHint::eNONE), limit);
 			}
 
@@ -251,15 +217,14 @@ namespace Ext
 				addLimit(angular(axis, error, PxConstraintSolveHint::eNONE), limit);
 			}
 
-			PX_FORCE_INLINE void anglePair(PxReal angle, PxReal lower, PxReal upper, PxReal pad, const PxVec3& axis, const PxJointLimitParameters& limit)
+			PX_FORCE_INLINE void anglePair(PxReal angle, PxReal lower, PxReal upper, const PxVec3& axis, const PxJointLimitParameters& limit)
 			{
 				PX_ASSERT(lower<upper);
-				if(limit.isSoft())
-					pad = 0;
+				const bool softLimit = limit.isSoft();
 
-				if(angle < lower+pad)
+				if(!softLimit || angle < lower)
 					angularLimit(-axis, -(lower - angle), limit);
-				if(angle > upper-pad)
+				if(!softLimit || angle > upper)
 					angularLimit(axis, (upper - angle), limit);
 			}
 
@@ -277,7 +242,7 @@ namespace Ext
 
 			PX_FORCE_INLINE PxU32 getCount()	const	{ return PxU32(mCurrent - mConstraints); }
 
-			void prepareLockedAxes(const PxQuat& qA, const PxQuat& qB, const PxVec3& cB2cAp, PxU32 lin, PxU32 ang, PxVec3& raOut, PxVec3& rbOut)
+			void prepareLockedAxes(const PxQuat& qA, const PxQuat& qB, const PxVec3& cB2cAp, PxU32 lin, PxU32 ang, PxVec3& raOut, PxVec3& rbOut, PxVec3* axis=NULL)
 			{
 				Px1DConstraint* current = mCurrent;
 				
@@ -288,6 +253,8 @@ namespace Ext
 				if(lin)
 				{
 					const PxMat33Padded axes(qA);
+					if(axis)
+						*axis = axes.column0;
 					
 					if(lin&1) errorVector -= axes.column0 * cB2cAp.x;
 					if(lin&2) errorVector -= axes.column1 * cB2cAp.y;
@@ -295,6 +262,16 @@ namespace Ext
 
 					ra += errorVector;
 
+					//Note that our convention is that C(s) = geometricError = (xA + rA) - (xB + rB)
+					//where xA, xB are the positions of the two bodies in the world frame and rA, rB
+					//are the vectors in the world frame from each body to the joint anchor.
+					//We solve Jv + C(s)/dt = Jv + geometricError/dt = 0.
+					//With GA, GB denoting the actor poses in world frame and LA, LB denoting the 
+					//associated joint frames we have: cB2cAp = [(GA*LA)^-1 * (GB*LB)].p
+					//But cB2cAp = (GA*LA).q.getConjugate() * ((xB + rB) - (xA + rA))
+					//To match our convention we want geometricError = (GA*LA).q.getConjugate() * ((xA + rA) - (xB + rB))
+					//cB2cAp therefore has the wrong sign to be used directly as the geometric error.
+					//We need to negate cB2cAp to ensure that we set geometricError with the correct sign.				
 					if(lin&1) _linear(axes.column0, ra, rb, -cB2cAp.x, PxConstraintSolveHint::eEQUALITY, current++);
 					if(lin&2) _linear(axes.column1, ra, rb, -cB2cAp.y, PxConstraintSolveHint::eEQUALITY, current++);
 					if(lin&4) _linear(axes.column2, ra, rb, -cB2cAp.z, PxConstraintSolveHint::eEQUALITY, current++);
@@ -351,8 +328,63 @@ namespace Ext
 					c->solveHint = PxConstraintSolveHint::eINEQUALITY;
 					c->mods.bounce.restitution = limit.restitution;
 					c->mods.bounce.velocityThreshold = limit.bounceThreshold;
-					if(c->geometricError>0.0f)
+
+					if (c->geometricError > 0.0f)
+					{
 						flags |= Px1DConstraintFlag::eKEEPBIAS;
+						// note: positive error is the scenario where the limit is not hit yet. It reflects the
+						// distance to the limit. Using eKEEPBIAS feels unintuitive in general but what seems to
+						// be solved with this is:
+						//
+						// imagine the following scenario: object o moving towards a limit with velocity v
+						// 
+						//                  |
+						// o---> v          |
+						//                  |
+						//
+						// and let's denote the following distances
+						// 
+						// |<-------->|  |v|*dt  (travel distance assuming time step dt)
+						// |<-------------->|  |ge| (distance to limit = geometric error)
+						// 
+						// furthermore, the sign convention is that v as drawn here is negative and ge is
+						// positive. Since -v*dt is smaller than ge, the limit will not get hit in the dt time
+						// step range. This means, the velocity after the sim step should not change and remain v.
+						// For the solver this means no impulse should get applied.
+						// The impulse applied by the solver is of the form:
+						// 
+						// impulse = -r * ((v - vT) + ge/dt)  (r is a positive scalar value)
+						// 
+						// for this example, let's assume the target velocity vT is zero, so:
+						// 
+						// impulse = -r * (v + ge/dt)  (1)
+						// 
+						// Without Px1DConstraintFlag::eKEEPBIAS, the part related to the geometric error is ignored
+						// during velocity iterations:
+						//
+						// impulse = -r * v
+						// 
+						// The solver will apply the resulting (positive) impulse and this will change the velocity
+						// of the object. That would be wrong though because the object does not hit the limit yet
+						// and the velocity should stay the same.
+						// 
+						// Why does Px1DConstraintFlag::eKEEPBIAS prevent this from happening? In this case, equation
+						// (1) applies and since -v*dt < ge, the resulting impulse will be negative ((v + ge/dt) is
+						// positive). Limit constraints are inequality constraints and clamp the impulse in the range
+						// [0, maxImpulse], thus the negative impulse will get clamped to zero and the velocity will
+						// not change (as desired).
+						// 
+						// Why then create this constraint at all? Imagine the same scenario but with a velocity
+						// magnitude such that the limit gets hit in the dt time step range:
+						// 
+						// |<--------------------->|  |v|*dt
+						// |<-------------->|  |ge|
+						// 
+						// (v + ge/dt) will be negative and the impulse positive. The impulse will get applied and
+						// will make sure that the velocity is reduced by the right amount such that the object
+						// stops at the limit (and does not breach it).
+					}
+
 					if(limit.restitution>0.0f)
 						flags |= Px1DConstraintFlag::eRESTITUTION;
 				}
@@ -366,8 +398,13 @@ namespace Ext
 				c->velocityTarget = velTarget;
 
 				PxU16 flags = PxU16(c->flags | Px1DConstraintFlag::eSPRING | Px1DConstraintFlag::eHAS_DRIVE_LIMIT);
+				
 				if(drive.flags & PxD6JointDriveFlag::eACCELERATION)
 					flags |= Px1DConstraintFlag::eACCELERATION_SPRING;
+				
+				if (drive.flags & PxD6JointDriveFlag::eOUTPUT_FORCE)
+					flags |= Px1DConstraintFlag::eOUTPUT_FORCE;
+
 				c->flags = flags;
 				c->mods.spring.stiffness = drive.stiffness;
 				c->mods.spring.damping = drive.damping;

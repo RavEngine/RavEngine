@@ -22,12 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxIO.h"
-#include "common/PxMetaData.h"
 #include "common/PxSerializer.h"
 #include "extensions/PxExtensionsAPI.h"
 #include "extensions/PxRepXSerializer.h"
@@ -38,6 +37,8 @@
 #include "ExtPrismaticJoint.h"
 #include "ExtRevoluteJoint.h"
 #include "ExtSphericalJoint.h"
+#include "ExtGearJoint.h"
+#include "ExtRackAndPinionJoint.h"
 #include "ExtSerialization.h"
 #include "SnRepXCoreSerializer.h"
 #include "SnJointRepXSerializer.h"
@@ -120,7 +121,7 @@ bool PxInitExtensions(PxPhysics& physics, PxPvd* pvd)
 	{
 		if (OmniPvdPxExtensionsSampler::createInstance())
 		{
-			OmniPvdPxExtensionsSampler::getInstance()->setOmniPvdWriter(physics.getOmniPvd()->getWriter());
+			OmniPvdPxExtensionsSampler::getInstance()->setOmniPvdInstance(physics.getOmniPvd());
 			OmniPvdPxExtensionsSampler::getInstance()->registerClasses();
 		}
 	}
@@ -172,7 +173,7 @@ static void releaseExternalSQ()
 	}
 }
 
-void PxCloseExtensions(void)
+void PxCloseExtensions()
 {
 	releaseExternalSQ();
 
@@ -223,6 +224,8 @@ void Ext::RegisterExtensionsSerializers(PxSerializationRegistry& sr)
 	sr.registerSerializer(PxJointConcreteType::ePRISMATIC,						PX_NEW_SERIALIZER_ADAPTER( PrismaticJoint ));
 	sr.registerSerializer(PxJointConcreteType::eREVOLUTE,						PX_NEW_SERIALIZER_ADAPTER( RevoluteJoint ));
 	sr.registerSerializer(PxJointConcreteType::eSPHERICAL,						PX_NEW_SERIALIZER_ADAPTER( SphericalJoint ));
+	sr.registerSerializer(PxJointConcreteType::eGEAR,							PX_NEW_SERIALIZER_ADAPTER( GearJoint ));
+	sr.registerSerializer(PxJointConcreteType::eRACK_AND_PINION,				PX_NEW_SERIALIZER_ADAPTER( RackAndPinionJoint ));
 }
 
 void Ext::UnregisterExtensionsSerializers(PxSerializationRegistry& sr)
@@ -233,6 +236,8 @@ void Ext::UnregisterExtensionsSerializers(PxSerializationRegistry& sr)
 	PX_DELETE_SERIALIZER_ADAPTER(sr.unregisterSerializer(PxJointConcreteType::ePRISMATIC));
 	PX_DELETE_SERIALIZER_ADAPTER(sr.unregisterSerializer(PxJointConcreteType::eREVOLUTE));
 	PX_DELETE_SERIALIZER_ADAPTER(sr.unregisterSerializer(PxJointConcreteType::eSPHERICAL));
+	PX_DELETE_SERIALIZER_ADAPTER(sr.unregisterSerializer(PxJointConcreteType::eGEAR));
+	PX_DELETE_SERIALIZER_ADAPTER(sr.unregisterSerializer(PxJointConcreteType::eRACK_AND_PINION));
 
 	PX_DELETE_REPX_SERIALIZER(sr.unregisterRepXSerializer(PxConcreteType::eMATERIAL));
 	PX_DELETE_REPX_SERIALIZER(sr.unregisterRepXSerializer(PxConcreteType::eSHAPE));	

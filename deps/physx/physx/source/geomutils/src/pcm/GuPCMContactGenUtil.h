@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -30,6 +30,7 @@
 #define GU_PCM_CONTACT_GEN_UTIL_H
 
 #include "foundation/PxVecMath.h"
+#include "geomutils/PxContactBuffer.h"
 #include "GuShapeConvex.h"
 #include "GuVecCapsule.h"
 #include "GuConvexSupportTable.h"
@@ -50,7 +51,7 @@ namespace Gu
 		EDGE
 	};
 
-	bool contains(aos::Vec3V* verts, const PxU32 numVerts, const aos::Vec3VArg p, const aos::Vec3VArg min, const aos::Vec3VArg max);
+	bool contains(aos::Vec3V* verts, PxU32 numVerts, const aos::Vec3VArg p, const aos::Vec3VArg min, const aos::Vec3VArg max);
 
 	PX_FORCE_INLINE aos::FloatV signed2DTriArea(const aos::Vec3VArg a, const aos::Vec3VArg b, const aos::Vec3VArg c)
 	{
@@ -64,9 +65,9 @@ namespace Gu
 		return FSub(t0, t1);
 	}
 
-	PxI32 getPolygonIndex(const Gu::PolygonalData& polyData, SupportLocal* map, const aos::Vec3VArg normal, PxI32& polyIndex2);
+	PxI32 getPolygonIndex(const Gu::PolygonalData& polyData, const SupportLocal* map, const aos::Vec3VArg normal, PxI32& polyIndex2);
 
-	PX_FORCE_INLINE PxI32 getPolygonIndex(const Gu::PolygonalData& polyData, SupportLocal* map, const aos::Vec3VArg normal)
+	PX_FORCE_INLINE PxI32 getPolygonIndex(const Gu::PolygonalData& polyData, const SupportLocal* map, const aos::Vec3VArg normal)
 	{
 		using namespace aos;
 
@@ -74,8 +75,35 @@ namespace Gu
 		return getPolygonIndex(polyData, map, normal, index2);
 	}
 
-	PxU32 getWitnessPolygonIndex(	const Gu::PolygonalData& polyData, SupportLocal* map, const aos::Vec3VArg normal,
-									const aos::Vec3VArg closest, const PxReal tolerance);
+	PxU32 getWitnessPolygonIndex(	const Gu::PolygonalData& polyData, const SupportLocal* map, const aos::Vec3VArg normal,
+									const aos::Vec3VArg closest, PxReal tolerance);
+
+	PX_FORCE_INLINE void outputPCMContact(PxContactBuffer& contactBuffer, PxU32& contactCount, const aos::Vec3VArg point, const aos::Vec3VArg normal,
+											const aos::FloatVArg penetration, PxU32 internalFaceIndex1 = PXC_CONTACT_NO_FACE_INDEX)
+	{
+		using namespace aos;
+
+		// PT: TODO: the PCM capsule-capsule code was using this alternative version, is it better?
+		// const Vec4V normalSep = V4SetW(Vec4V_From_Vec3V(normal), separation);
+		// V4StoreA(normalSep, &point.normal.x);
+		// Also aren't we overwriting maxImpulse with the position now? Ok to do so?
+		PX_ASSERT(contactCount < PxContactBuffer::MAX_CONTACTS);
+		PxContactPoint& contact = contactBuffer.contacts[contactCount++];
+		V4StoreA(Vec4V_From_Vec3V(normal), &contact.normal.x);
+		V4StoreA(Vec4V_From_Vec3V(point), &contact.point.x);
+		FStore(penetration, &contact.separation);
+		PX_ASSERT(contact.point.isFinite());
+		PX_ASSERT(contact.normal.isFinite());
+		PX_ASSERT(PxIsFinite(contact.separation));
+		contact.internalFaceIndex1 = internalFaceIndex1;
+	}
+
+	PX_FORCE_INLINE bool outputSimplePCMContact(PxContactBuffer& contactBuffer, const aos::Vec3VArg point, const aos::Vec3VArg normal,
+												const aos::FloatVArg penetration, PxU32 internalFaceIndex1 = PXC_CONTACT_NO_FACE_INDEX)
+	{
+		outputPCMContact(contactBuffer, contactBuffer.count, point, normal, penetration, internalFaceIndex1);
+		return true;
+	}
 
 }//Gu
 }//physx

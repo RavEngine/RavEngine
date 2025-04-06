@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -43,19 +43,11 @@ namespace Ext
 {
 	struct DistanceJointData : public JointData
 	{
-	//= ATTENTION! =====================================================================================
-	// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-	// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-	// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-	// accordingly.
-	//==================================================================================================
-
 		PxReal					minDistance;
 		PxReal					maxDistance;
 		PxReal					tolerance;
 		PxReal					stiffness;
 		PxReal					damping;
-		PxReal					contactDistance;
 
 		PxDistanceJointFlags	jointFlags;
 	};
@@ -63,18 +55,11 @@ namespace Ext
     typedef JointT<PxDistanceJoint, DistanceJointData, PxDistanceJointGeneratedValues> DistanceJointT;
 	class DistanceJoint : public DistanceJointT
 	{
-		//= ATTENTION! =====================================================================================
-		// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-		// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-		// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-		// accordingly.
-		//==================================================================================================
 	public:
 		// PX_SERIALIZATION
 										DistanceJoint(PxBaseFlags baseFlags) : DistanceJointT(baseFlags) {}
 				void					resolveReferences(PxDeserializationContext& context);
 		static	DistanceJoint*			createObject(PxU8*& address, PxDeserializationContext& context)	{ return createJointObject<DistanceJoint>(address, context);	}
-		static	void					getBinaryMetaData(PxOutputStream& stream);
 		//~PX_SERIALIZATION
 										DistanceJoint(const PxTolerancesScale& scale, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1);
 		// PxDistanceJoint
@@ -89,8 +74,6 @@ namespace Ext
 		virtual	PxReal					getStiffness()	const	PX_OVERRIDE;
 		virtual	void					setDamping(PxReal damping)	PX_OVERRIDE;
 		virtual	PxReal					getDamping()	const	PX_OVERRIDE;
-		virtual void					setContactDistance(PxReal contactDistance)	PX_OVERRIDE;
-		virtual PxReal					getContactDistance()	const	PX_OVERRIDE;
 		virtual	void					setDistanceJointFlags(PxDistanceJointFlags flags)	PX_OVERRIDE;
 		virtual	void					setDistanceJointFlag(PxDistanceJointFlag::Enum flag, bool value)	PX_OVERRIDE;
 		virtual	PxDistanceJointFlags	getDistanceJointFlags()	const	PX_OVERRIDE;

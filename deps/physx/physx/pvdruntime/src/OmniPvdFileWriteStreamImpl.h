@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -38,17 +38,18 @@ class OmniPvdFileWriteStreamImpl : public OmniPvdFileWriteStream {
 public:
 	OmniPvdFileWriteStreamImpl();
 	~OmniPvdFileWriteStreamImpl();
+	void resetFileParams();
 	void OMNI_PVD_CALL setFileName(const char *fileName);
 	bool OMNI_PVD_CALL openFile();
 	bool OMNI_PVD_CALL closeFile();
-	uint64_t OMNI_PVD_CALL writeBytes(const uint8_t* bytes, const uint64_t nbrBytes);
+	uint64_t OMNI_PVD_CALL writeBytes(const uint8_t* bytes, uint64_t nbrBytes);
 	bool OMNI_PVD_CALL flush();
 	bool OMNI_PVD_CALL openStream();
 	bool OMNI_PVD_CALL closeStream();
 
 	char *mFileName;
-	bool mFileWasOpened;
 	FILE *mPFile;
+	bool mFileOpenAttempted;
 };
 
 #endif

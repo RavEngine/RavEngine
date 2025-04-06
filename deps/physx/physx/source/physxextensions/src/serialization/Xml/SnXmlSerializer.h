@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -85,7 +85,7 @@ namespace Sn {
 	}
 	
 	template<typename TDataType, typename TWriteOperator>
-	inline void writeStridedBufferProperty( XmlWriter& writer, MemoryBuffer& tempBuffer, const char* inPropName, const PxTypedStridedData<TDataType>& inData, PxU32 inCount, PxU32 inItemsPerLine, TWriteOperator inOperator )
+	inline void writeStridedBufferProperty( XmlWriter& writer, MemoryBuffer& tempBuffer, const char* inPropName, const PxTypedBoundedData<TDataType>& inData, PxU32 inCount, PxU32 inItemsPerLine, TWriteOperator inOperator )
 	{
 		writeStridedBufferProperty<TDataType>( writer, tempBuffer, inPropName, inData.data, inData.stride, inCount, inItemsPerLine, inOperator );
 	}

@@ -22,13 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifdef RENDER_SNIPPET
-
-#include <vector>
 
 #include "PxPhysicsAPI.h"
 
@@ -57,7 +55,7 @@ void renderCallback()
 	PxU32 nbActors = scene->getNbActors(PxActorTypeFlag::eRIGID_DYNAMIC | PxActorTypeFlag::eRIGID_STATIC);
 	if(nbActors)
 	{
-		std::vector<PxRigidActor*> actors(nbActors);
+		PxArray<PxRigidActor*> actors(nbActors);
 		scene->getActors(PxActorTypeFlag::eRIGID_DYNAMIC | PxActorTypeFlag::eRIGID_STATIC, (PxActor**)&actors[0], nbActors);
 		Snippets::renderActors(&actors[0], (PxU32)actors.size(), true);
 	}
@@ -65,7 +63,7 @@ void renderCallback()
 	Snippets::finishRender();
 }
 
-void exitCallback(void)
+void exitCallback()
 {
 	delete sCamera;
 	cleanupPhysics(true);

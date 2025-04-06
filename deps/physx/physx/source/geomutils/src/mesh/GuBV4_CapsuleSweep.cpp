@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,7 +32,7 @@ using namespace physx;
 using namespace Gu;
 
 #include "foundation/PxVecMath.h"
-using namespace physx::aos;
+using namespace aos;
 
 #include "GuInternal.h"
 
@@ -123,7 +123,7 @@ public:
 			if(triCapsuleSweep(params, primIndex, params->mNodeSorting))
 			{
 				// PT: TODO: in this version we must compute the impact data immediately,
-				// which is a terrible idea in general, but I'm not sure what else I can do.
+				// which is a bad idea in general, but I'm not sure what else I can do.
 				SweepHit hit;
 				const bool b = computeImpactDataT<ImpactFunctionCapsule>(params->mCapsuleCB, params->mDirCB, &hit, params, params->mWorldm_Aligned, (params->mFlags & QUERY_MODIFIER_DOUBLE_SIDED)!=0, (params->mFlags & QUERY_MODIFIER_MESH_BOTH_SIDES)!=0);
 				PX_ASSERT(b);

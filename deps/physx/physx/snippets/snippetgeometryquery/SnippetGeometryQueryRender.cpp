@@ -22,13 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifdef RENDER_SNIPPET
-
-#include <vector>
 
 #include "PxPhysicsAPI.h"
 
@@ -56,9 +54,9 @@ void renderCallback()
 	static float time = 0.0f;
 	time += 0.003f;
 
-	const PxQuat qx = SnippetUtils::getRotXQuat(time);
-	const PxQuat qy = SnippetUtils::getRotYQuat(time*1.7f);
-	const PxQuat qz = SnippetUtils::getRotZQuat(time*1.33f);
+	const PxQuat qx = PxGetRotXQuat(time);
+	const PxQuat qy = PxGetRotYQuat(time*1.7f);
+	const PxQuat qz = PxGetRotZQuat(time*1.33f);
 
 	const PxTransform pose(PxVec3(0.0f), qx*qy*qz);
 
@@ -133,7 +131,7 @@ void renderCallback()
 	Snippets::finishRender();
 }
 
-void exitCallback(void)
+void exitCallback()
 {
 	delete sCamera;
 	cleanupPhysics(true);

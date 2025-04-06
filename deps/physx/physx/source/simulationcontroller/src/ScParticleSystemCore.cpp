@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #include "foundation/PxPreprocessor.h"
 
@@ -148,15 +148,6 @@ void Sc::ParticleSystemCore::setParticleSystemCallback(PxParticleSystemCallback*
 	mShapeCore.getLLCore().mCallback = callback;
 }
 
-PxCustomParticleSystemSolverCallback* Sc::ParticleSystemCore::getParticleSystemSolverCallback() const
-{
-	return mShapeCore.getLLCore().mSolverCallback;
-}
-void Sc::ParticleSystemCore::setParticleSystemSolverCallback(PxCustomParticleSystemSolverCallback* callback)
-{
-	mShapeCore.getLLCore().mSolverCallback = callback;
-}
-
 PxReal Sc::ParticleSystemCore::getFluidBoundaryDensityScale() const
 {
 	return mShapeCore.getLLCore().fluidBoundaryDensityScale;
@@ -239,13 +230,6 @@ PxActor* Sc::ParticleSystemCore::getPxActor() const
 	return PxPointerOffset<PxActor*>(const_cast<ParticleSystemCore*>(this), gOffsetTable.scCore2PxActor[getActorCoreType()]);
 }
 
-// TOFIX
-void Sc::ParticleSystemCore::enableCCD(const bool enable)
-{
-	mShapeCore.getLLCore().enableCCD = enable;
-}
-
-
 void Sc::ParticleSystemCore::addRigidAttachment(Sc::BodyCore* core)
 {
 	Sc::ParticleSystemSim* sim = getSim();
@@ -274,14 +258,11 @@ void Sc::ParticleSystemCore::setFlags(PxParticleFlags flags)
 		if (wasRigidCollisionDisabled ^ isRigidCollisionDisabled)
 		{
 			if (wasRigidCollisionDisabled)
-				sim->getShapeSim().createLowLevelVolume();
+				sim->createLowLevelVolume();
 			else
-				sim->getShapeSim().destroyLowLevelVolume();
-
+				sim->destroyLowLevelVolume();
 		}
 	}
-
-	
 }
 
 #endif //PX_SUPPORT_GPU_PHYSX

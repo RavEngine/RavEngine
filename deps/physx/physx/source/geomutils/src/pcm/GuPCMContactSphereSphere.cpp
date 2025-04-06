@@ -22,13 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "geomutils/PxContactBuffer.h"
 #include "GuContactMethodImpl.h"
 #include "foundation/PxVecTransform.h"
+#include "GuPCMContactGenUtil.h"
 
 using namespace physx;
 
@@ -41,9 +42,9 @@ bool Gu::pcmContactSphereSphere(GU_CONTACT_METHOD_ARGS)
 	const PxSphereGeometry& shapeSphere0 = checkedCast<PxSphereGeometry>(shape0);
 	const PxSphereGeometry& shapeSphere1 = checkedCast<PxSphereGeometry>(shape1);
 	
-	const FloatV cDist	= FLoad(params.mContactDistance);
-	const Vec3V p0 =  V3LoadA(&transform0.p.x);
-	const Vec3V p1 =  V3LoadA(&transform1.p.x);
+	const FloatV cDist = FLoad(params.mContactDistance);
+	const Vec3V p0 = V3LoadA(&transform0.p.x);
+	const Vec3V p1 = V3LoadA(&transform1.p.x);
 
 	const FloatV r0	= FLoad(shapeSphere0.radius);
 	const FloatV r1	= FLoad(shapeSphere1.radius);
@@ -55,22 +56,14 @@ bool Gu::pcmContactSphereSphere(GU_CONTACT_METHOD_ARGS)
 	
 	if(FAllGrtr(FMul(inflatedSum, inflatedSum), distanceSq))
 	{
-		const FloatV eps	=  FLoad(0.00001f);
+		const FloatV eps = FLoad(0.00001f);
 		const FloatV dist = FSqrt(distanceSq);
 		const BoolV bCon = FIsGrtrOrEq(eps, dist);
 		const Vec3V normal = V3Sel(bCon, V3UnitX(), V3ScaleInv(_delta, dist));
 		const Vec3V point = V3ScaleAdd(normal, r1, p1);
 		const FloatV pen = FSub(dist, radiusSum);
 		
-		PX_ASSERT(contactBuffer.count < PxContactBuffer::MAX_CONTACTS);
-		PxContactPoint& contact = contactBuffer.contacts[contactBuffer.count++];
-		V4StoreA(Vec4V_From_Vec3V(normal), &contact.normal.x);
-		V4StoreA(Vec4V_From_Vec3V(point), &contact.point.x);
-		FStore(pen, &contact.separation);
-
-		contact.internalFaceIndex1 = PXC_CONTACT_NO_FACE_INDEX;
-
-		return true;
+		return outputSimplePCMContact(contactBuffer, point, normal, pen);
 	}
 	return false;
 }

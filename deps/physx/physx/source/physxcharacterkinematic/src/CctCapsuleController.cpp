@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -96,9 +96,9 @@ bool CapsuleController::setRadius(PxF32 r)
 	{
 		PxShape* shape = getKineShape();
 
-		PX_ASSERT(shape->getGeometryType() == PxGeometryType::eCAPSULE);
-		PxCapsuleGeometry cg;
-		shape->getCapsuleGeometry(cg);
+		const PxGeometry& geom = shape->getGeometry();
+		PX_ASSERT(geom.getType() == PxGeometryType::eCAPSULE);
+		PxCapsuleGeometry cg = static_cast<const PxCapsuleGeometry&>(geom);
 
 		cg.radius = CCTtoProxyRadius(r, mProxyScaleCoeff);
 		shape->setGeometry(cg);
@@ -118,9 +118,9 @@ bool CapsuleController::setHeight(PxF32 h)
 	{
 		PxShape* shape = getKineShape();
 
-		PX_ASSERT(shape->getGeometryType() == PxGeometryType::eCAPSULE);
-		PxCapsuleGeometry cg;
-		shape->getCapsuleGeometry(cg);
+		const PxGeometry& geom = shape->getGeometry();
+		PX_ASSERT(geom.getType() == PxGeometryType::eCAPSULE);
+		PxCapsuleGeometry cg = static_cast<const PxCapsuleGeometry&>(geom);
 
 		cg.halfHeight = CCTtoProxyHeight(h, mProxyScaleCoeff);
 		shape->setGeometry(cg);
@@ -147,15 +147,15 @@ bool CapsuleController::setClimbingMode(PxCapsuleClimbingMode::Enum mode)
 
 PxExtendedVec3 CapsuleController::getFootPosition() const
 {
-	PxExtendedVec3 groundPosition = mPosition;														// Middle of the CCT
-	groundPosition -= mUserParams.mUpDirection * (mUserParams.mContactOffset+mRadius+mHeight*0.5f);	// Ground
+	PxExtendedVec3 groundPosition = mPosition;															// Middle of the CCT
+	sub(groundPosition, mUserParams.mUpDirection * (mUserParams.mContactOffset+mRadius+mHeight*0.5f));	// Ground
 	return groundPosition;
 }
 
 bool CapsuleController::setFootPosition(const PxExtendedVec3& position)
 {
 	PxExtendedVec3 centerPosition = position;
-	centerPosition += mUserParams.mUpDirection * (mUserParams.mContactOffset+mRadius+mHeight*0.5f);
+	add(centerPosition, mUserParams.mUpDirection * (mUserParams.mContactOffset+mRadius+mHeight*0.5f));
 	return setPosition(centerPosition);
 }
 
@@ -167,8 +167,8 @@ void CapsuleController::getCapsule(PxExtendedCapsule& capsule) const
 	PxExtendedVec3 p0 = mPosition;
 	PxExtendedVec3 p1 = mPosition;
 	const PxVec3 extents = mUserParams.mUpDirection*mHeight*0.5f;
-	p0 -= extents;
-	p1 += extents;
+	sub(p0, extents);
+	add(p1, extents);
 
 	capsule.p0		= p0;
 	capsule.p1		= p1;
@@ -184,7 +184,7 @@ void CapsuleController::resize(PxReal height)
 
 	const float delta = height - oldHeight;
 	PxExtendedVec3 pos = getPosition();
-	pos += mUserParams.mUpDirection * delta * 0.5f;
+	add(pos, mUserParams.mUpDirection * delta * 0.5f);
 	setPosition(pos);
 }
 

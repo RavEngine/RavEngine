@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -38,21 +38,21 @@ Sc::ConstraintCore::ConstraintCore(PxConstraintConnector& connector, const PxCon
 	mAppliedForce			(PxVec3(0.0f)),
 	mAppliedTorque			(PxVec3(0.0f)),
 	mConnector				(&connector),
-	mProject				(shaders.project),
 	mSolverPrep				(shaders.solverPrep),
 	mVisualize				(shaders.visualize),
 	mDataSize				(dataSize),
 	mLinearBreakForce		(PX_MAX_F32),
 	mAngularBreakForce		(PX_MAX_F32),
 	mMinResponseThreshold	(0.0f),
-	mSim					(NULL)
+	mSim					(NULL),
+	mResidual				()
 {
 }
 
 void Sc::ConstraintCore::setFlags(PxConstraintFlags flags)
 {
 	PxConstraintFlags old = mFlags;
-	flags = flags | (old & PxConstraintFlag::eGPU_COMPATIBLE);
+	flags = flags | (old & PxConstraintFlag::eGPU_COMPATIBLE);  // eGPU_COMPATIBLE is for internal use only and should keep its initial state
 	if(flags != old)
 	{		
 		mFlags = flags;

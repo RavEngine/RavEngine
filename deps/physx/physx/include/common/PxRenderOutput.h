@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -46,7 +46,7 @@ namespace physx
 	/**
 	Output stream to fill RenderBuffer
 	*/
-	class PX_PHYSX_COMMON_API PxRenderOutput
+	class PxRenderOutput
 	{
 	public:
 
@@ -78,7 +78,7 @@ namespace physx
 
 		PX_INLINE PxRenderOutput& operator<<(const PxTransform& t);
 
-		PX_INLINE PxRenderOutput& operator<<(const PxVec3& vertex);	//AM: Don't use this! Slow! Deprecated!
+		PX_INLINE PxRenderOutput& operator<<(const PxVec3& vertex);
 
 		PX_INLINE PxDebugLine* reserveSegments(PxU32 nbSegments);
 
@@ -226,7 +226,7 @@ namespace physx
 	};
 	PX_FORCE_INLINE PxRenderOutput& operator<<(PxRenderOutput& out, const PxDebugCircle& circle)
 	{
-		const PxF32 step = PxTwoPi / circle.nSegments;
+		const PxF32 step = PxTwoPi / PxF32(circle.nSegments);
 		PxF32 angle = 0;
 		out << PxRenderOutput::LINESTRIP;
 		for (PxU32 i = 0; i < circle.nSegments; i++, angle += step)
@@ -245,7 +245,7 @@ namespace physx
 	};
 	PX_FORCE_INLINE PxRenderOutput& operator<<(PxRenderOutput& out, const PxDebugArc& arc)
 	{
-		const PxF32 step = (arc.maxAngle - arc.minAngle) / arc.nSegments;
+		const PxF32 step = (arc.maxAngle - arc.minAngle) / PxF32(arc.nSegments);
 		PxF32 angle = arc.minAngle;
 		out << PxRenderOutput::LINESTRIP;
 		for (PxU32 i = 0; i < arc.nSegments; i++, angle += step)

@@ -22,16 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_TOLERANCES_SCALE_H
 #define PX_TOLERANCES_SCALE_H
 
-/** \addtogroup common
-  @{
-*/
 
 #include "common/PxPhysXCommonConfig.h"
 
@@ -78,7 +75,7 @@ public:
 	\param[in]	defaultLength	Default length
 	\param[in]	defaultSpeed	Default speed
 	*/
-	PX_INLINE PxTolerancesScale(float defaultLength=1.0f, float defaultSpeed=10.0f);
+	PX_INLINE explicit PxTolerancesScale(float defaultLength=1.0f, float defaultSpeed=10.0f);
 
 	/**
 	\brief Returns true if the descriptor is valid.
@@ -103,5 +100,4 @@ PX_INLINE bool PxTolerancesScale::isValid() const
 } // namespace physx
 #endif
 
-/** @} */
 #endif

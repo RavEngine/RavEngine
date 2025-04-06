@@ -22,22 +22,21 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 #ifndef PX_CONVEX_MESH_H
 #define PX_CONVEX_MESH_H
-/** \addtogroup geomutils
-  @{
-*/
 
-#include "foundation/Px.h"
+#include "foundation/PxVec3.h"
+#include "foundation/PxMat33.h"
 #include "common/PxBase.h"
 
 #if !PX_DOXYGEN
 namespace physx
 {
+class PxBounds3;
 #endif
 
 /**
@@ -77,7 +76,7 @@ once you have released all of its #PxShape instances.
 \li #PxVisualizationParameter::eCOLLISION_FNORMALS
 \li #PxVisualizationParameter::eCOLLISION_EDGES
 
-@see PxConvexMeshDesc PxPhysics.createConvexMesh()
+\see PxConvexMeshDesc PxPhysics.createConvexMesh()
 */
 class PxConvexMesh : public PxRefCounted
 {
@@ -86,28 +85,28 @@ public:
 	/**
 	\brief Returns the number of vertices.
 	\return	Number of vertices.
-	@see getVertices()
+	\see getVertices()
 	*/
 	virtual	PxU32	getNbVertices()	const	= 0;
 
 	/**
 	\brief Returns the vertices.
 	\return	Array of vertices.
-	@see getNbVertices()
+	\see getNbVertices()
 	*/
 	virtual	const PxVec3*	getVertices()	const	= 0;
 
 	/**
 	\brief Returns the index buffer.
 	\return	Index buffer.
-	@see getNbPolygons() getPolygonData()
+	\see getNbPolygons() getPolygonData()
 	*/
 	virtual	const PxU8*		getIndexBuffer()	const	= 0;
 
 	/**
 	\brief Returns the number of polygons.
 	\return	Number of polygons.
-	@see getIndexBuffer() getPolygonData()
+	\see getIndexBuffer() getPolygonData()
 	*/
 	virtual	PxU32	getNbPolygons()	const	= 0;
 
@@ -116,14 +115,14 @@ public:
 	\param[in] index	Polygon index in [0 ; getNbPolygons()[.
 	\param[out] data	Polygon data.
 	\return	True if success.
-	@see getIndexBuffer() getNbPolygons()
+	\see getIndexBuffer() getNbPolygons()
 	*/
 	virtual	bool	getPolygonData(PxU32 index, PxHullPolygon& data)	const	= 0;
 
 	/**
 	\brief Decrements the reference count of a convex mesh and releases it if the new reference count is zero.	
 	
-	@see PxPhysics.createConvexMesh() PxConvexMeshGeometry PxShape
+	\see PxPhysics.createConvexMesh() PxConvexMeshGeometry PxShape
 	*/
 	virtual	void	release()	= 0;
 
@@ -159,7 +158,7 @@ public:
 	virtual const PxReal* getSDF() const = 0;
 
 
-	virtual	const char*	getConcreteTypeName() const	{ return "PxConvexMesh"; }
+	virtual	const char*	getConcreteTypeName() const	PX_OVERRIDE	PX_FINAL	{ return "PxConvexMesh"; }
 
 	/**
 	\brief This method decides whether a convex mesh is gpu compatible. If the total number of vertices are more than 64 or any number of vertices in a polygon is more than 32, or
@@ -175,12 +174,11 @@ protected:
 	PX_INLINE			PxConvexMesh(PxType concreteType, PxBaseFlags baseFlags) : PxRefCounted(concreteType, baseFlags) {}
 	PX_INLINE			PxConvexMesh(PxBaseFlags baseFlags) : PxRefCounted(baseFlags) {}
 	virtual				~PxConvexMesh() {}
-	virtual	bool		isKindOf(const char* name) const { return !::strcmp("PxConvexMesh", name) || PxRefCounted::isKindOf(name); }
+	virtual	bool		isKindOf(const char* name) const { PX_IS_KIND_OF(name, "PxConvexMesh", PxRefCounted); }
 };
 
 #if !PX_DOXYGEN
 } // namespace physx
 #endif
 
-/** @} */
 #endif

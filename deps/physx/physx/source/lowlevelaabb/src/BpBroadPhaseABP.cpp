@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -43,8 +43,8 @@
 #include "foundation/PxSync.h"
 #include "task/PxTask.h"
 
-using namespace physx::aos;
 using namespace physx;
+using namespace aos;
 using namespace Bp;
 using namespace Cm;
 
@@ -1279,6 +1279,7 @@ void BoxManager::purgeRemovedFromSleeping(ABP_Object* PX_RESTRICT objects, PxU32
 		}
 		PX_ASSERT(nbSleepingLeft==expectedTotal);
 		PX_ASSERT(nbSleepingLeft+nbRemovedFound==mNbSleeping);
+		PX_UNUSED(nbRemovedFound);
 
 		initSentinels(boxesX, expectedTotal);
 
@@ -1440,6 +1441,7 @@ void BoxManager::prepareData(RadixSortBuffered& /*rs*/, ABP_Object* PX_RESTRICT 
 		}
 	}
 	PX_ASSERT(nbRemoved + nbUpdated + nbSleeping == size);
+	PX_UNUSED(nbRemoved);
 
 	// PT: we must process the sleeping objects first, because the bounds of new sleeping objects are located in the existing updated buffers.
 	// PT: TODO: *HOWEVER* we could sort things right now and then reuse the "keys" buffer?
@@ -1448,7 +1450,7 @@ void BoxManager::prepareData(RadixSortBuffered& /*rs*/, ABP_Object* PX_RESTRICT 
 	{
 		// PT: must merge these guys to current sleeping array
 		// They should already be in sorted order and we should already have the boxes.
-#if PX_DEBUG
+#if PX_ENABLE_ASSERTS
 		const SIMD_AABB_YZ4* boxesYZ = mUpdatedBoxes.getBoxes_YZ();
 		float prevKey = -FLT_MAX;
 		for(PxU32 ii=0;ii<nbSleeping;ii++)
@@ -1504,7 +1506,7 @@ void BoxManager::prepareData(RadixSortBuffered& /*rs*/, ABP_Object* PX_RESTRICT 
 			const ABP_Index* PX_RESTRICT toSortRemap = mInToOut_Sleeping;
 
 			PX_ASSERT(mNbRemovedSleeping<=mNbSleeping);
-#if PX_DEBUG
+#if PX_ENABLE_ASSERTS
 			{
 				PxU32 nbRemovedFound=0;
 				for(PxU32 i=0;i<mNbSleeping;i++)
@@ -1528,7 +1530,6 @@ void BoxManager::prepareData(RadixSortBuffered& /*rs*/, ABP_Object* PX_RESTRICT 
 			BpHandle* PX_RESTRICT dstRemap = reinterpret_cast<BpHandle*>(PX_ALLOC(nbTotal*sizeof(BpHandle), "tmp"));
 
 			PxU32 i=0;
-			PxU32 nbRemovedFound=0;
 			PxU32 nbToGo = nbSorted + nbToSort;
 			while(nbToGo--)
 			{
@@ -1543,8 +1544,6 @@ void BoxManager::prepareData(RadixSortBuffered& /*rs*/, ABP_Object* PX_RESTRICT 
 							dstBoxesX[i] = toSortDataX[offsetNonSorted];
 							dstBoxesYZ[i] = toSortDataYZ[offsetNonSorted];
 						}
-						else
-							nbRemovedFound++;
 
 						offsetNonSorted++;
 
@@ -1793,6 +1792,8 @@ static PX_FORCE_INLINE void outputPair(PairManagerMT& pairManager, PxU32 index0,
 
 		virtual void run()	PX_OVERRIDE;
 
+		virtual bool	isHighPriority()	const	PX_OVERRIDE	{ return true; }
+
 		BroadPhaseABP*			mBP;
 		ABP_TaskID				mID;
 	};
@@ -1815,6 +1816,8 @@ static PX_FORCE_INLINE void outputPair(PairManagerMT& pairManager, PxU32 index0,
 		}
 
 		virtual void run()	PX_OVERRIDE;
+
+		virtual bool	isHighPriority()	const	PX_OVERRIDE	{ return true; }
 
 		ABP_CompleteBoxPruningStartTask*	mStartTask;
 
@@ -1857,6 +1860,8 @@ static PX_FORCE_INLINE void outputPair(PairManagerMT& pairManager, PxU32 index0,
 
 		virtual void run()	PX_OVERRIDE;
 
+		virtual bool	isHighPriority()	const	PX_OVERRIDE	{ return true; }
+
 		ABP_CompleteBoxPruningStartTask*	mStartTask;
 	};
 
@@ -1884,6 +1889,8 @@ static PX_FORCE_INLINE void outputPair(PairManagerMT& pairManager, PxU32 index0,
 		void	addDelayedPairs2(PxArray<BroadPhasePair>& createdPairs);
 		
 		virtual void run()	PX_OVERRIDE;
+
+		virtual bool	isHighPriority()	const	PX_OVERRIDE	{ return true; }
 
 		const SIMD_AABB_X4*				mListX;
 		const SIMD_AABB_YZ4*			mListYZ;
@@ -2053,9 +2060,13 @@ void ABP_PairManager::resizeForNewPairs(PxU32 nbDelayedPairs)
 
 	const PxU32 newNbPairs = currentNbPairs + nbDelayedPairs;
 
+	const PxU32 newHashSize = PxNextPowerOfTwo(newNbPairs + 1);
+	if(newHashSize == mHashSize)
+		return;
+
 	// Get more entries
-	mHashSize = PxNextPowerOfTwo(newNbPairs+1);
-	mMask = mHashSize-1;
+	mHashSize = newHashSize;
+	mMask = newHashSize - 1;
 
 	//reallocPairs();
 	{
@@ -2082,6 +2093,8 @@ void ABP_PairManager::resizeForNewPairs(PxU32 nbDelayedPairs)
 		// ### check it's actually needed... probably only for pairs whose hash value was cut by the and
 		// yeah, since hash(id0, id1) is a constant
 		// However it might not be needed to recompute them => only less efficient but still ok
+
+		// PT: TODO: in heavy scenes like Avalanche100K the number of pairs gets close to a million, and this loop becomes very expensive. Revisit.
 		for(PxU32 i=0;i<currentNbPairs;i++)
 		{
 			const PxU32 hashValue = hash(mActivePairs[i].getId0(), mActivePairs[i].getId1()) & mMask;	// New hash value with new mask

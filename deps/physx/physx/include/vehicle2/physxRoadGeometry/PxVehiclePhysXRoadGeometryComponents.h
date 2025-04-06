@@ -22,14 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #pragma once
-/** \addtogroup vehicle2
-  @{
-*/
 
 #include "vehicle2/PxVehicleParams.h"
 #include "vehicle2/PxVehicleComponent.h"
@@ -112,9 +109,12 @@ public:
 			{
 				const PxU32 wheelId = axleDescription->wheelIdsInAxleOrder[i];
 
+				const PxQueryFilterData* fdPtr = roadGeomParams->filterDataEntries ? (roadGeomParams->filterDataEntries + wheelId) : &roadGeomParams->defaultFilterData;
+
 				PxVehiclePhysXRoadGeometryQueryUpdate(
 					wheelParams[wheelId], suspensionParams[wheelId], 
-					*roadGeomParams, materialFrictionParams[wheelId],
+					roadGeomParams->roadGeometryQueryType, roadGeomParams->filterCallback, *fdPtr,
+					materialFrictionParams[wheelId],
 					steerResponseStates[wheelId], *rigidBodyState,
 					*physxContext.physxScene, physxContext.physxUnitCylinderSweepMesh, context.frame,
 					roadGeometryStates[wheelId], 
@@ -142,4 +142,3 @@ public:
 } // namespace physx
 #endif
 
-/** @} */

@@ -22,17 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #pragma once
 
-/** \addtogroup vehicle2
-  @{
-*/
 
 #include "foundation/PxSimpleTypes.h"
+
+#include "vehicle2/physxRoadGeometry/PxVehiclePhysXRoadGeometryParams.h"
 
 #if !PX_DOXYGEN
 namespace physx
@@ -46,9 +45,7 @@ namespace vehicle2
 
 struct PxVehicleWheelParams;
 struct PxVehicleSuspensionParams;
-struct PxVehiclePhysXRoadGeometryQueryParams;
 struct PxVehiclePhysXRoadGeometryQueryState;
-struct PxVehiclePhysXMaterialFrictionParams;
 struct PxVehicleRigidBodyState;
 struct PxVehicleFrame;
 struct PxVehicleRoadGeometryState;
@@ -57,7 +54,10 @@ struct PxVehicleRoadGeometryState;
 \brief Compute the plane of the road geometry under a wheel and the tire friction of the contact.
 \param[in] wheelParams describes the radius and halfwidth of the wheel.
 \param[in] suspParams describes the frame of the suspension and wheel and the maximum suspension travel.
-\param[in] roadGeomParams describes the operation of the PhysX scene query.
+\param[in] queryType describes what type of PhysX scene query to use (see #PxVehiclePhysXRoadGeometryQueryType).
+           If PxVehiclePhysXRoadGeometryQueryType::eNONE is used, no work will be done.
+\param[in] filterCallback describes the filter callback to use for the PhysX scene query. NULL is a valid input.
+\param[in] filterData describes the filter data to use for the PhysX scene query.
 \param[in] materialFrictionParams describes a mapping between PxMaterial and friction in order to compute a tire friction value.
 \param[in] wheelYawAngle is the yaw angle (in radians) of the wheel.
 \param[in] rigidBodyState describes the pose of the rigid body.
@@ -75,7 +75,9 @@ reference pose far enough to place wheel on the ground.
 */
 void PxVehiclePhysXRoadGeometryQueryUpdate
 (const PxVehicleWheelParams& wheelParams, const PxVehicleSuspensionParams& suspParams,
- const PxVehiclePhysXRoadGeometryQueryParams& roadGeomParams, const PxVehiclePhysXMaterialFrictionParams& materialFrictionParams,
+ const PxVehiclePhysXRoadGeometryQueryType::Enum queryType, 
+ PxQueryFilterCallback* filterCallback, const PxQueryFilterData& filterData,
+ const PxVehiclePhysXMaterialFrictionParams& materialFrictionParams,
  const PxReal wheelYawAngle, const PxVehicleRigidBodyState& rigidBodyState,
  const PxScene& scene, const PxConvexMesh* unitCylinderSweepMesh,
  const PxVehicleFrame& frame,
@@ -87,4 +89,3 @@ void PxVehiclePhysXRoadGeometryQueryUpdate
 } // namespace physx
 #endif
 
-/** @} */

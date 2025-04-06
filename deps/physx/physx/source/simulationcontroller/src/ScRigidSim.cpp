@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -67,16 +67,5 @@ void RigidSim::notifyShapesOfTransformChange()
 	}
 
 	notifyActorInteractionsOfTransformChange(*this);
-}
-
-void RigidSim::setBodyNodeIndex(const PxNodeIndex nodeIndex)
-{
-	PxU32 nbElems = getNbElements();
-	ElementSim** elems = getElements();
-	while (nbElems--)
-	{
-		ShapeSim* sim = static_cast<ShapeSim*>(*elems++);
-		getScene().getSimulationController()->updateShape(sim->getLLShapeSim(), nodeIndex);
-	}
 }
 

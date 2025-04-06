@@ -22,14 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef CM_FLUSH_POOL_H
 #define CM_FLUSH_POOL_H
 
-#include "foundation/Px.h"
 #include "foundation/PxUserAllocated.h"
 #include "foundation/PxBitUtils.h"
 #include "foundation/PxMutex.h"
@@ -104,10 +103,8 @@ namespace Cm
 
 		void clearNotThreadSafe(PxU32 spareChunkCount = sSpareChunkCount)
 		{
-			PX_UNUSED(spareChunkCount);
-
 			//release memory not used previously
-			PxU32 targetSize = mChunkIndex+sSpareChunkCount;
+			PxU32 targetSize = mChunkIndex+spareChunkCount;
 			while (mChunks.size() > targetSize)
 			{
 				PxU8* ptr = mChunks.popBack();

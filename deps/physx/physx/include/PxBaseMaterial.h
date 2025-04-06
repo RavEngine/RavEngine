@@ -22,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_BASE_MATERIAL_H
 #define PX_BASE_MATERIAL_H
-/** \addtogroup physics
-@{
-*/
 
 #include "PxPhysXConfig.h"
 #include "common/PxBase.h"
@@ -43,7 +40,7 @@ namespace physx
 	/**
 	\brief Base material class.
 
-	@see PxPhysics.createMaterial PxPhysics.createFEMClothMaterial PxPhysics.createFEMSoftBodyMaterial PxPhysics.createFLIPMaterial PxPhysics.createMPMMaterial PxPhysics.createPBDMaterial
+	\see PxPhysics.createMaterial PxPhysics.createDeformableSurfaceMaterial PxPhysics.createDeformableVolumeMaterial PxPhysics.createPBDMaterial
 	*/
 	class PxBaseMaterial : public PxRefCounted
 	{
@@ -51,7 +48,7 @@ namespace physx
 		PX_INLINE			PxBaseMaterial(PxType concreteType, PxBaseFlags baseFlags) : PxRefCounted(concreteType, baseFlags), userData(NULL) {}
 		PX_INLINE			PxBaseMaterial(PxBaseFlags baseFlags) : PxRefCounted(baseFlags) {}
 		virtual				~PxBaseMaterial() {}
-		virtual		bool	isKindOf(const char* name) const { return !::strcmp("PxBaseMaterial", name) || PxRefCounted::isKindOf(name); }
+		virtual		bool	isKindOf(const char* name) const { PX_IS_KIND_OF(name, "PxBaseMaterial", PxRefCounted); }
 
 					void*	userData;	//!< user can assign this to whatever, usually to create a 1:1 relationship with a user object.
 	};
@@ -60,5 +57,4 @@ namespace physx
 } // namespace physx
 #endif
 
-/** @} */
 #endif

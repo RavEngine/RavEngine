@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,6 +31,7 @@
 
 #include "foundation/PxVec3.h"
 #include "common/PxPhysXCommonConfig.h"
+#include "foundation/PxVecMath.h"
 
 namespace physx
 {
@@ -96,14 +97,87 @@ namespace Gu
 		return a + ab*v + ac*w;
 	}
 
+	//Scales and translates triangle and query points to fit into the unit box to make calculations less prone to numerical cancellation. 
+	//The returned point will still be in the same space as the input points.
+	PX_FORCE_INLINE PX_CUDA_CALLABLE PxVec3 closestPtPointTriangle2UnitBox(const PxVec3& queryPoint, const PxVec3& triA, const PxVec3& triB, const PxVec3& triC)	
+	{
+		const PxVec3 min = queryPoint.minimum(triA.minimum(triB.minimum(triC)));
+		const PxVec3 max = queryPoint.maximum(triA.maximum(triB.maximum(triC)));
+		const PxVec3 size = max - min;
+
+		PxReal invScaling = PxMax(PxMax(size.x, size.y), PxMax(1e-12f, size.z));
+		PxReal scaling = 1.0f / invScaling;
+
+		PxVec3 p = (queryPoint - min) * scaling;
+		PxVec3 a = (triA - min) * scaling;
+		PxVec3 b = (triB - min) * scaling;
+		PxVec3 c = (triC - min) * scaling;
+
+		PxVec3 result = closestPtPointTriangle2(p, a, b, c, b - a, c - a);
+
+		return result * invScaling + min;
+	}
+
+	// Given the point `c`, return the closest point on the triangle (1, 0, 0), (0, 1, 0), (0, 0, 1).
+	// This function is a specialization of `Gu::closestPtPointTriangle2` for this specific triangle.
+	PX_FORCE_INLINE PX_CUDA_CALLABLE PxVec3 closestPtPointBaryTriangle(PxVec3 c)
+	{
+		const PxReal third = 1.0f / 3.0f; // constexpr
+		c -= PxVec3(third * (c.x + c.y + c.z - 1.0f));
+
+		// two negative: return positive vertex
+		if (c.y < 0.0f && c.z < 0.0f)
+			return PxVec3(1.0f, 0.0f, 0.0f);
+
+		if (c.x < 0.0f && c.z < 0.0f)
+			return PxVec3(0.0f, 1.0f, 0.0f);
+
+		if (c.x < 0.0f && c.y < 0.0f)
+			return PxVec3(0.0f, 0.0f, 1.0f);
+
+		// one negative: return projection onto line if it is on the edge, or the largest vertex otherwise
+		if (c.x < 0.0f)
+		{
+			const PxReal d = c.x * 0.5f;
+			const PxReal y = c.y + d;
+			const PxReal z = c.z + d;
+			if (y > 1.0f)
+				return PxVec3(0.0f, 1.0f, 0.0f);
+			if (z > 1.0f)
+				return PxVec3(0.0f, 0.0f, 1.0f);
+			return PxVec3(0.0f, y, z);
+		}
+		if (c.y < 0.0f)
+		{
+			const PxReal d = c.y * 0.5f;
+			const PxReal x = c.x + d;
+			const PxReal z = c.z + d;
+			if (x > 1.0f)
+				return PxVec3(1.0f, 0.0f, 0.0f);
+			if (z > 1.0f)
+				return PxVec3(0.0f, 0.0f, 1.0f);
+			return PxVec3(x, 0.0f, z);
+		}
+		if (c.z < 0.0f)
+		{
+			const PxReal d = c.z * 0.5f;
+			const PxReal x = c.x + d;
+			const PxReal y = c.y + d;
+			if (x > 1.0f)
+				return PxVec3(1.0f, 0.0f, 0.0f);
+			if (y > 1.0f)
+				return PxVec3(0.0f, 1.0f, 0.0f);
+			return PxVec3(x, y, 0.0f);
+		}
+		return c;
+	}
+
+
 	PX_PHYSX_COMMON_API PxVec3 closestPtPointTriangle(const PxVec3& p, const PxVec3& a, const PxVec3& b, const PxVec3& c, float& s, float& t);
 
 	PX_FORCE_INLINE PxReal distancePointTriangleSquared(const PxVec3& point, 
-														const PxVec3& triangleOrigin, 
-														const PxVec3& triangleEdge0, 
-														const PxVec3& triangleEdge1,
-														PxReal* param0=NULL, 
-														PxReal* param1=NULL)
+														const PxVec3& triangleOrigin, const PxVec3& triangleEdge0, const PxVec3& triangleEdge1,
+														PxReal* param0=NULL, PxReal* param1=NULL)
 	{
 		const PxVec3 pt0 = triangleEdge0 + triangleOrigin;
 		const PxVec3 pt1 = triangleEdge1 + triangleOrigin;
@@ -116,8 +190,26 @@ namespace Gu
 		return (cp - point).magnitudeSquared();
 	}
 
-} // namespace Gu
+	PX_PHYSX_COMMON_API aos::FloatV distancePointTriangleSquared(	const aos::Vec3VArg point, 
+																	const aos::Vec3VArg a, 
+																	const aos::Vec3VArg b, 
+																	const aos::Vec3VArg c,
+																	aos::FloatV& u,
+																	aos::FloatV& v,
+																	aos::Vec3V& closestP); 
 
+	//Scales and translates triangle and query points to fit into the unit box to make calculations less prone to numerical cancellation. 
+	//The returned point and squared distance will still be in the same space as the input points.
+	PX_PHYSX_COMMON_API aos::FloatV distancePointTriangleSquared2UnitBox(
+		const aos::Vec3VArg point,
+		const aos::Vec3VArg a,
+		const aos::Vec3VArg b,
+		const aos::Vec3VArg c,
+		aos::FloatV& u,
+		aos::FloatV& v,
+		aos::Vec3V& closestP);
+
+} // namespace Gu
 }
 
 #endif

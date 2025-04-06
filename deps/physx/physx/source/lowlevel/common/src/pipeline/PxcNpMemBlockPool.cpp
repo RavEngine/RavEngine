@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -35,22 +35,22 @@
 
 using namespace physx;
 
-PxcNpMemBlockPool::PxcNpMemBlockPool(PxcScratchAllocator& allocator):
-  mConstraints("PxcNpMemBlockPool::mConstraints"),
-  mExceptionalConstraints("PxcNpMemBlockPool::mExceptionalConstraints"),
-  mNpCacheActiveStream(0),
-  mFrictionActiveStream(0),
-  mCCDCacheActiveStream(0),
-  mContactIndex(0),
-  mAllocatedBlocks(0),
-  mMaxBlocks(0),
-  mUsedBlocks(0),
-  mMaxUsedBlocks(0),
-  mScratchBlockAddr(0),
-  mNbScratchBlocks(0),
-  mScratchAllocator(allocator),
-  mPeakConstraintAllocations(0),
-  mConstraintAllocations(0)  
+PxcNpMemBlockPool::PxcNpMemBlockPool(PxcScratchAllocator& allocator) :
+	mConstraints("PxcNpMemBlockPool::mConstraints"),
+	mExceptionalConstraints("PxcNpMemBlockPool::mExceptionalConstraints"),
+	mNpCacheActiveStream(0),
+	mFrictionActiveStream(0),
+	mCCDCacheActiveStream(0),
+	mContactIndex(0),
+	mAllocatedBlocks(0),
+	mMaxBlocks(0),
+	mUsedBlocks(0),
+	mMaxUsedBlocks(0),
+	mScratchBlockAddr(0),
+	mNbScratchBlocks(0),
+	mScratchAllocator(allocator),
+	mPeakConstraintAllocations(0),
+	mConstraintAllocations(0)  
 {
 }
 
@@ -209,7 +209,7 @@ PxcNpMemBlock* PxcNpMemBlockPool::acquire(PxcNpMemBlockArray& trackingArray, PxU
 	if(mAllocatedBlocks == mMaxBlocks)
 	{
 #if PX_CHECKED
-		PxGetFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(PxErrorCode::eDEBUG_WARNING, PX_FL,
 				"Reached maximum number of allocated blocks so 16k block allocation will fail!");
 #endif
 		return NULL;
@@ -218,7 +218,7 @@ PxcNpMemBlock* PxcNpMemBlockPool::acquire(PxcNpMemBlockArray& trackingArray, PxU
 #if PX_CHECKED
 	if(mInitialBlocks)
 	{
-		PxGetFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__,
+		PxGetFoundation().error(PxErrorCode::eDEBUG_WARNING, PX_FL,
 			"Number of required 16k memory blocks has exceeded the initial number of blocks. Allocator is being called. Consider increasing the number of pre-allocated 16k blocks.");
 	}
 #endif

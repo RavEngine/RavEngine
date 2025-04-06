@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -60,10 +60,10 @@ namespace physx
 			if (type == PxConcreteType::eTETRAHEDRON_MESH)
 				return NpFactory::getInstance().createTetrahedronMesh(data);
 
-			if (type == PxConcreteType::eSOFTBODY_MESH)
-				return NpFactory::getInstance().createSoftBodyMesh(data);
+			if (type == PxConcreteType::eDEFORMABLE_VOLUME_MESH)
+				return NpFactory::getInstance().createDeformableVolumeMesh(data);
 
-			PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "Inserting object failed: "
+			PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, PX_FL, "Inserting object failed: "
 				"Object type not supported for buildObjectFromData.");
 
 			return NULL;

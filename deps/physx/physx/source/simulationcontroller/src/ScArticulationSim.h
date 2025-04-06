@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -44,10 +44,11 @@ namespace Bp
 namespace Sc
 {
 	class BodySim;
+	class BodyCore;
 	class ArticulationJointSim;
 	class ArticulationSpatialTendonSim;
 	class ArticulationFixedTendonSim;
-	class ArticulationSensorSim;
+	class ArticulationMimicJointSim;
 	class ArticulationCore;
 	class Scene;
 	class ConstraintSim;
@@ -63,9 +64,9 @@ namespace Sc
 
 	typedef PxFlags<ArticulationSimDirtyFlag::Enum, PxU32> ArticulationSimDirtyFlags;
 
-
 	class ArticulationSim : public PxUserAllocated 
 	{
+		PX_NOCOPY(ArticulationSim)
 	public:
 											ArticulationSim(ArticulationCore& core, 
 												Scene& scene,
@@ -83,19 +84,17 @@ namespace Sc
 													ArticulationJointSim* joint);
 
 								void		removeBody(BodySim& body);
-					
 
-								//we don't need removeTendon method anymore because when the articulation is removed from the scene, the articulation sim will
-								//get completely distroy and when we re-add the articulation to the scene, all the data will get recomputed
-								void		addTendon(ArticulationSpatialTendonSim*);
+								//we don't need complementary removeTendon/removeMimicJoint functions because 
+								//the articulation sim will be completely destroyed when the articulation is removed from the scene. 
+								//When we re-add the articulation to the scene all the data will be recomputed.
+	
+								void		addTendon(ArticulationSpatialTendonSim* const);
 								
-								//we don't need removeTendon method anymore because when the articulation is removed from the scene, the articulation sim will
-								//get completely distroy and when we re-add the articulation to the scene, all the data will get recomputed
-								void		addTendon(ArticulationFixedTendonSim*);
+								void		addTendon(ArticulationFixedTendonSim* const);
 							
-								//we don't need removeSensor method anymore because when the articulation is removed from the scene, the articulation sim will
-								//get completely distroy and when we re-add the articulation to the scene, all the data will get recomputed
-								void		addSensor(ArticulationSensorSim* sensor, const PxU32 linkID);
+								void		addMimicJoint(ArticulationMimicJointSim* const mimicJoint, const PxU32 linkA, const PxU32 linkB);
+
 								
 								void		createLLStructure();						// resize LL memory if necessary
 								void		initializeConfiguration();
@@ -109,17 +108,16 @@ namespace Sc
 								void		updateCCDLinks(PxArray<BodySim*>& sims);
 								void		updateCached(PxBitMapPinned* shapehapeChangedMap);
 								void		markShapesUpdated(PxBitMapPinned* shapeChangedMap);
-								void		updateContactDistance(PxReal* contactDistance, const PxReal dt, const Bp::BoundsArray& boundsArray);
+								void		updateContactDistance(PxReal* contactDistance, PxReal dt, const Bp::BoundsArray& boundsArray);
 
-								void		setActive(const bool b, const PxU32 infoFlag=0);
+								void		setActive(bool b, bool asPartOfCreation=false);
 
-								void		updateForces(PxReal dt, bool notify = true);
+								void		updateForces(PxReal dt);
 								void		saveLastCCDTransform();
 
 								void		clearAcceleration(PxReal dt);
 
-
-					void					setKinematicLink(const bool value);
+					void					setFixedBaseLink(bool value);
 					//external reduced coordinate implementation
 					PxU32					getDofs() const;
 
@@ -130,13 +128,12 @@ namespace Sc
 
 					PxU32					getCacheDataSize() const;
 
-					PxU32					getScratchMemorySize() const;
-
 					void					zeroCache(PxArticulationCache&) const;
 
 					bool					applyCache(PxArticulationCache& cache, const PxArticulationCacheFlags flag) const;
 
-					void					copyInternalStateToCache(PxArticulationCache& cache, const PxArticulationCacheFlags flag) const;
+					void					copyInternalStateToCache
+												(PxArticulationCache& cache, const PxArticulationCacheFlags flag, const bool isGpuSimEnabled) const;
 
 					void					packJointData(const PxReal* maximum, PxReal* reduced) const;
 
@@ -144,9 +141,9 @@ namespace Sc
 
 					void					commonInit();
 
-					void					computeGeneralizedGravityForce(PxArticulationCache& cache);
+					void					computeGeneralizedGravityForce(PxArticulationCache& cache, const bool rootMotion);
 
-					void					computeCoriolisAndCentrifugalForce(PxArticulationCache& cache);
+					void					computeCoriolisAndCentrifugalForce(PxArticulationCache& cache, const bool rootMotion);
 
 					void					computeGeneralizedExternalForce(PxArticulationCache& cache);
 
@@ -162,7 +159,11 @@ namespace Sc
 
 					bool					computeLambda(PxArticulationCache& cache, PxArticulationCache& rollBackCache, const PxReal* jointTorque, const PxVec3 gravity, const PxU32 maxIter);
 
-					void					computeGeneralizedMassMatrix(PxArticulationCache& cache);
+					void					computeGeneralizedMassMatrix(PxArticulationCache& cache, const bool rootMotion);
+
+					PxVec3					computeArticulationCOM(const bool rootFrame);
+
+					void					computeCentroidalMomentumMatrix(PxArticulationCache& cache);
 
 					PxU32					getCoefficientMatrixSize() const;
 
@@ -170,9 +171,8 @@ namespace Sc
 					void					setRootAngularVelocity(const PxVec3& velocity);
 					PxSpatialVelocity		getLinkVelocity(const PxU32 linkId) const;
 
-					PxSpatialVelocity		getLinkAcceleration(const PxU32 linkId) const;
+					PxSpatialVelocity		getLinkAcceleration(const PxU32 linkId, const bool isGpuSimEnabled) const;
 
-	
 					//internal method implementation
 	PX_FORCE_INLINE PxNodeIndex		getIslandNodeIndex() const { return mIslandNodeIndex; }
 
@@ -195,19 +195,13 @@ namespace Sc
 	PX_FORCE_INLINE	const Dy::ArticulationLink&	getLink(const PxU32 linkId) const { return mLinks[linkId]; }
 
 					PxU32					getRootActorIndex() const;
-					const PxSpatialForce& getSensorForce(const PxU32 lowLevelIndex) const;
 					
-
-
 					void					updateKinematic(PxArticulationKinematicFlags flags);
 
 					void					copyJointStatus(const PxU32 linkIndex);
 
-	PX_FORCE_INLINE void					getLLArticulationInitialized(bool val) { mIsLLArticultionInitialized = val; }
-	PX_FORCE_INLINE	bool					getLLArticulationInitialized() { return mIsLLArticultionInitialized; }
+	PX_FORCE_INLINE	bool					isLLArticulationInitialized()	const	{ return mIsLLArticulationInitialized; }
 	private:
-					ArticulationSim&		operator=(const ArticulationSim&);
-
 					Dy::FeatherstoneArticulation*					mLLArticulation;
 					Scene&											mScene;
 					ArticulationCore&								mCore;
@@ -216,17 +210,16 @@ namespace Sc
 					PxArray<ArticulationJointSim*>					mJoints;
 					PxArray<Dy::ArticulationSpatialTendon*>			mSpatialTendons;
 					PxArray<Dy::ArticulationFixedTendon*>			mFixedTendons;
-					PxArray<Dy::ArticulationSensor*>				mSensors;
-					PxArray<PxSpatialForce>							mSensorForces;
+					PxArray<Dy::ArticulationMimicJointCore*>		mMimicJoints;
 					
-
 					PxNodeIndex										mIslandNodeIndex;
 					PxArray <Dy::ArticulationLoopConstraint>		mLoopConstraints;
 					PxU32											mMaxDepth;
-					bool											mIsLLArticultionInitialized;
+					bool											mIsLLArticulationInitialized;
 					ArticulationSimDirtyFlags						mDirtyFlags;
-					
 	};
+
+	ArticulationSim* getArticulationSim(const IG::IslandSim& islandSim, PxNodeIndex nodeIndex);
 
 } // namespace Sc
 

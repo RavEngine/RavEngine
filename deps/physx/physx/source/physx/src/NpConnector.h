@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -45,33 +45,42 @@ struct NpConnectorType
 		eAggregate,
 		eObserver,
 		eBvh,
+		eAttachment,
+		eElementFilter,
 		eInvalid
 	};
 };
 
-
 class NpConnector
 {
-//= ATTENTION! =====================================================================================
-// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-// accordingly.
-//==================================================================================================
 public:
-	NpConnector() : mType(NpConnectorType::eInvalid), mObject(NULL) {}
-	NpConnector(NpConnectorType::Enum type, PxBase* object) : mType(PxTo8(type)), mObject(object) {}
-// PX_SERIALIZATION
+	NpConnector() : NpConnector(NpConnectorType::eInvalid, NULL) {}
+	NpConnector(NpConnectorType::Enum type, PxBase* object) : mType(PxTo8(type)), mObject(object) 
+	{
+#if PX_CHECKED
+		const PxU32 numPaddings = sizeof(mPadding) / sizeof(mPadding[0]);
+		for(PxU32 i = 0; i < numPaddings; ++i)
+		{
+			mPadding[i] = PX_PADDING_8;
+		}
+#endif
+	}
+	// PX_SERIALIZATION
 	NpConnector(const NpConnector& c)
 	{
 		//special copy constructor that initializes padding bytes for meta data verification (PX_CHECKED only)		
 		PxMarkSerializedMemory(this, sizeof(NpConnector));
 		mType = c.mType;
+#if PX_CHECKED
+		const PxU32 numPaddings = sizeof(mPadding) / sizeof(mPadding[0]);
+		for(PxU32 i = 0; i < numPaddings; ++i)
+		{
+			mPadding[i] = c.mPadding[i];
+		}
+#endif
 		mObject = c.mObject;
 	}
-
-	static	void	getBinaryMetaData(PxOutputStream& stream);
-//~PX_SERIALIZATION
+	//~PX_SERIALIZATION
 
 	PxU8			mType;			// Revisit whether the type is really necessary or whether the serializable type is enough.
 									// Since joints might gonna inherit from observers to register for constraint release events, the type
@@ -80,7 +89,6 @@ public:
 	PxBase*			mObject;		// So far the serialization framework only supports ptr resolve for PxBase objects.
 									// However, so far the observers all are PxBase, hence this choice of type.
 };
-
 
 class NpConnectorIterator
 {
@@ -107,19 +115,11 @@ private:
 	NpConnectorType::Enum	mType;
 };
 
-
 class NpConnectorArray: public PxInlineArray<NpConnector, 4> 
 {
-//= ATTENTION! =====================================================================================
-// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-// accordingly.
-//==================================================================================================
 public:
 // PX_SERIALIZATION
 	NpConnectorArray(const PxEMPTY) : PxInlineArray<NpConnector, 4> (PxEmpty) {}
-	static	void	getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
 	NpConnectorArray() : PxInlineArray<NpConnector, 4>("connectorArray") 
 	{

@@ -22,34 +22,30 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 #include "foundation/PxTime.h"
 #include "foundation/windows/PxWindowsInclude.h"
 
-namespace
-{
-int64_t getTimeTicks()
+using namespace physx;
+
+static int64_t getTimeTicks()
 {
 	LARGE_INTEGER a;
 	QueryPerformanceCounter(&a);
 	return a.QuadPart;
 }
 
-double getTickDuration()
+static double getTickDuration()
 {
 	LARGE_INTEGER a;
 	QueryPerformanceFrequency(&a);
 	return 1.0f / double(a.QuadPart);
 }
 
-double sTickDuration = getTickDuration();
-} // namespace
-
-namespace physx
-{
+static double sTickDuration = getTickDuration();
 
 static const PxCounterFrequencyToTensOfNanos gCounterFreq = PxTime::getCounterFrequency();
 
@@ -94,4 +90,3 @@ PxTime::Second PxTime::getLastTime() const
 	return mTickCount * sTickDuration;
 }
 
-} // namespace physx

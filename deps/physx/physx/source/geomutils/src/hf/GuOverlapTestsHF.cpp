@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -76,7 +76,7 @@ bool GeomOverlapCallback_SphereHeightfield(GU_OVERLAP_FUNC_PARAMS)
 	{
 		Sphere	mLocalSphere;
 
-		SphereOverlapReport(const PxHeightFieldGeometry& hfGeom, const PxTransform& hfPose, const PxVec3& localSphereCenter, float sphereRadius) : HeightfieldOverlapReport(hfGeom, hfPose)
+		SphereOverlapReport(const PxHeightFieldGeometry& hfGeom_, const PxTransform& hfPose, const PxVec3& localSphereCenter, float sphereRadius) : HeightfieldOverlapReport(hfGeom_, hfPose)
 		{
 			mLocalSphere.center = localSphereCenter;
 			mLocalSphere.radius = sphereRadius * sphereRadius;
@@ -135,7 +135,7 @@ bool GeomOverlapCallback_CapsuleHeightfield(GU_OVERLAP_FUNC_PARAMS)
 		Capsule						mLocalCapsule;
 		CapsuleTriangleOverlapData	mData;
 
-		CapsuleOverlapReport(const PxHeightFieldGeometry& hfGeom, const PxTransform& hfPose) : HeightfieldOverlapReport(hfGeom, hfPose)	{}
+		CapsuleOverlapReport(const PxHeightFieldGeometry& hfGeom_, const PxTransform& hfPose) : HeightfieldOverlapReport(hfGeom_, hfPose)	{}
 
 		virtual bool reportTouchedTris(PxU32 nb, const PxU32* indices)
 		{
@@ -219,7 +219,7 @@ bool GeomOverlapCallback_BoxHeightfield(GU_OVERLAP_FUNC_PARAMS)
 		PxVec3p		mTModelToBox;
 		PxVec3p		mBoxExtents;
 
-		BoxOverlapReport(const PxHeightFieldGeometry& hfGeom, const PxTransform& hfPose) : HeightfieldOverlapReport(hfGeom, hfPose)	{}
+		BoxOverlapReport(const PxHeightFieldGeometry& hfGeom_, const PxTransform& hfPose) : HeightfieldOverlapReport(hfGeom_, hfPose)	{}
 
 		virtual bool reportTouchedTris(PxU32 nb, const PxU32* indices)
 		{
@@ -294,7 +294,7 @@ bool GeomOverlapCallback_ConvexHeightfield(GU_OVERLAP_FUNC_PARAMS)
 		ConvexHullV		mConvex;
 		PxMatTransformV	aToB;
 
-		ConvexOverlapReport(const PxHeightFieldGeometry& hfGeom, const PxTransform& hfPose) : HeightfieldOverlapReport(hfGeom, hfPose)	{}
+		ConvexOverlapReport(const PxHeightFieldGeometry& hfGeom_, const PxTransform& hfPose) : HeightfieldOverlapReport(hfGeom_, hfPose)	{}
 
 		virtual bool reportTouchedTris(PxU32 nb, const PxU32* indices)
 		{

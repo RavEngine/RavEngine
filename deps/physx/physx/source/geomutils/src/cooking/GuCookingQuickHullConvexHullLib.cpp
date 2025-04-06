@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -301,7 +301,7 @@ namespace local
 
 			QuickHullHalfEdge* testEdge = edge;
 			QuickHullHalfEdge* startEdge = NULL;
-			float maxDist = 0.0f;
+			float maxDist = -1.0f;
 			for (PxU32 i = 0; i < 3; i++)
 			{
 				const float d = (testEdge->tail.point - testEdge->next->tail.point).magnitudeSquared();
@@ -402,7 +402,8 @@ namespace local
 		bool findSimplex();
 
 		// add the initial simplex
-		void addSimplex(QuickHullVertex* simplex, bool flipTriangle);
+		// returns true if the operation was successful, false otherwise
+		bool addSimplex(QuickHullVertex* simplex, bool flipTriangle);
 
 		// finds next point to add
 		QuickHullVertex* nextPointToAdd(QuickHullFace*& eyeFace);
@@ -659,6 +660,7 @@ namespace local
 
 		// degenerate face found
 		PX_ASSERT(numv > 2);
+		PX_UNUSED(numv);
 
 		numv = 0;
 		hedge = edge;
@@ -922,7 +924,8 @@ namespace local
 			return PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, PX_FL, "QuickHullConvexHullLib::findSimplex: Simplex input points appers to be coplanar.");
 
 		// now create faces from those triangles
-		addSimplex(&simplex[0], simplex[3].point.dot(normal) - d0 < 0);
+		if (!addSimplex(&simplex[0], simplex[3].point.dot(normal) - d0 < 0))
+			return false;
 
 		return true;
 	}
@@ -932,16 +935,24 @@ namespace local
 	QuickHullFace* QuickHull::createTriangle(const QuickHullVertex& v0, const QuickHullVertex& v1, const QuickHullVertex& v2)
 	{
 		QuickHullFace* face = getFreeHullFace();
+		if (!face)
+			return NULL;
 
 		QuickHullHalfEdge* he0 = getFreeHullHalfEdge();
+		if (!he0)
+			return NULL;
 		he0->face = face;
 		he0->tail = v0;
 
 		QuickHullHalfEdge* he1 = getFreeHullHalfEdge();
+		if (!he1)
+			return NULL;
 		he1->face = face;
 		he1->tail = v1;
 
 		QuickHullHalfEdge* he2 = getFreeHullHalfEdge();
+		if (!he2)
+			return NULL;
 		he2->face = face;
 		he2->tail = v2;
 
@@ -964,7 +975,7 @@ namespace local
 	//////////////////////////////////////////////////////////////////////////
 	// add initial simplex to the quickhull
 	// construct triangles from the simplex points and connect them with half edges
-	void QuickHull::addSimplex(QuickHullVertex* simplex, bool flipTriangle)
+	bool QuickHull::addSimplex(QuickHullVertex* simplex, bool flipTriangle)
 	{
 		PX_ASSERT(simplex);
 
@@ -981,9 +992,17 @@ namespace local
 		if (flipTriangle)
 		{
 			tris[0] = createTriangle(simplex[0], simplex[1], simplex[2]);
+			if (tris[0] == NULL)
+				return false;
 			tris[1] = createTriangle(simplex[3], simplex[1], simplex[0]);
+			if (tris[1] == NULL)
+				return false;
 			tris[2] = createTriangle(simplex[3], simplex[2], simplex[1]);
+			if (tris[2] == NULL)
+				return false;
 			tris[3] = createTriangle(simplex[3], simplex[0], simplex[2]);
+			if (tris[3] == NULL)
+				return false;
 
 			for (PxU32 i = 0; i < 3; i++)
 			{
@@ -995,9 +1014,17 @@ namespace local
 		else
 		{
 			tris[0] = createTriangle(simplex[0], simplex[2], simplex[1]);
+			if (tris[0] == NULL)
+				return false;
 			tris[1] = createTriangle(simplex[3], simplex[0], simplex[1]);
+			if (tris[1] == NULL)
+				return false;
 			tris[2] = createTriangle(simplex[3], simplex[1], simplex[2]);
+			if (tris[2] == NULL)
+				return false;
 			tris[3] = createTriangle(simplex[3], simplex[2], simplex[0]);
+			if (tris[3] == NULL)
+				return false;
 
 			for (PxU32 i = 0; i < 3; i++)
 			{
@@ -1041,6 +1068,7 @@ namespace local
 				addPointToFace(*maxFace, &mVerticesList[i], maxDist);
 			}
 		}
+		return true;
 	}
 
 	//////////////////////////////////////////////////////////////////////////
@@ -1091,7 +1119,7 @@ namespace local
 	//////////////////////////////////////////////////////////////////////////
 	// merge polygons with similar normals
 	void QuickHull::postMergeHull()
-	{		
+	{
 		// merge faces with similar normals 
 		for (PxU32 i = 0; i < mHullFaces.size(); i++)
 		{
@@ -1223,7 +1251,7 @@ namespace local
 	// adds vertex to the hull
 	// sets addFailed to true if we failed to add a point because the merging failed
 	// this can happen as the face plane equation changes and some faces might become concave
-	// returns false if the new faces count would hit the hull face hard limit (255)
+	// returns false if the new faces count would hit the hull face hard limit (255 / 64 for GPU-compatible)
 	bool QuickHull::addPointToHull(const QuickHullVertex* eyeVtx, QuickHullFace& eyeFace, bool& addFailed)
 	{
 		addFailed = false;
@@ -1476,6 +1504,7 @@ namespace local
 		} while (copyHe != face2.edge);
 
 		PX_ASSERT(heTwin);
+		PX_ASSERT(heCopy);
 
 		QuickHullHalfEdge* hedgeAdjPrev = heCopy->prev;
 		QuickHullHalfEdge* hedgeAdjNext = heCopy->next;
@@ -1669,7 +1698,9 @@ namespace local
 			newFaces.pushBack(face);
 			hedgeSidePrev = hedgeSide;
 		}
-		hedgeSideBegin->next->setTwin(hedgeSidePrev);
+
+		if(hedgeSideBegin)
+			hedgeSideBegin->next->setTwin(hedgeSidePrev);
 	}
 
 	//////////////////////////////////////////////////////////////////////////
@@ -1881,6 +1912,10 @@ PxConvexMeshCookingResult::Enum QuickHullConvexHullLib::createConvexHull()
 			else
 				res = expandHullOBB();
 		}
+		else
+		{
+			mQuickHull->postMergeHull();
+		}
 		res = PxConvexMeshCookingResult::ePOLYGONS_LIMIT_REACHED;		
 		break;
 	case local::QuickHullResult::eVERTEX_LIMIT_REACHED:
@@ -1899,7 +1934,7 @@ PxConvexMeshCookingResult::Enum QuickHullConvexHullLib::createConvexHull()
 	// check if we need to build GRB compatible mesh
 	// if hull was cropped we already have a compatible mesh, if not check 
 	// the max verts per face
-	if((mConvexMeshDesc.flags & PxConvexFlag::eGPU_COMPATIBLE) && !mCropedConvexHull &&
+	if(mCookingParams.buildGPUData && !mCropedConvexHull &&
 		(res == PxConvexMeshCookingResult::eSUCCESS || res == PxConvexMeshCookingResult::ePOLYGONS_LIMIT_REACHED))
 	{
 		PX_ASSERT(mQuickHull);
@@ -2000,10 +2035,11 @@ bool QuickHullConvexHullLib::cleanupForSimplex(PxVec3* vertices, PxU32 vertexCou
 	// one dimensional separation
 	simplex[0] = maximumVertex[imax].point;
 	simplex[1] = minimumVertex[imax].point;
+	simplex[2] = simplex[3] = PxVec3(0.0f);	// PT: added to silence the static analyzer
 
 	// set third vertex to be the vertex farthest from
 	// the line between simplex[0] and simplex[1]
-	PxVec3 normal;
+	PxVec3 normal(0.0f);
 	float maxDist = 0;
 	imax = 0;
 	PxVec3 u01 = (simplex[1] - simplex[0]);
@@ -2051,6 +2087,7 @@ bool QuickHullConvexHullLib::cleanupForSimplex(PxVec3* vertices, PxU32 vertexCou
 		if (dist > maxDist)
 		{
 			maxDist = dist;
+			// PT: simplex[3] is never used, is it?
 			simplex[3] = testPoint;
 			imax = i;
 		}
@@ -2255,7 +2292,7 @@ PxConvexMeshCookingResult::Enum QuickHullConvexHullLib::expandHullOBB()
 			break;
 		}
 		// check for vertex limit per face if necessary, GRB supports max 32 verts per face
-		if ((mConvexMeshDesc.flags & PxConvexFlag::eGPU_COMPATIBLE) && c->maxNumVertsPerFace() > gpuMaxVertsPerFace)
+		if (mCookingParams.buildGPUData && c->maxNumVertsPerFace() > gpuMaxVertsPerFace)
 		{ 
 			PX_DELETE(c);
 			c = tmp;

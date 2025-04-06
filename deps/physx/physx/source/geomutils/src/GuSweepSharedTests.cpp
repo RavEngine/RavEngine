@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -47,7 +47,7 @@
 using namespace physx;
 using namespace Gu;
 using namespace Cm;
-using namespace physx::aos;
+using namespace aos;
 
 static const PxReal gEpsilon = .01f;
 
@@ -529,7 +529,7 @@ bool sweepConvex_SphereGeom(GU_CONVEX_SWEEP_FUNC_PARAMS)
 	ConvexHullData* hullData = &convexMesh->getHull();
 
 	const Vec3V zeroV = V3Zero();
-	const FloatV zero= FZero();
+	const FloatV zero = FZero();
 
 	const Vec3V vScale = V3LoadU_SafeReadW(convexGeom.scale.scale);	// PT: safe because 'rotation' follows 'scale' in PxMeshScale
 	const QuatV vQuat = QuatVLoadU(&convexGeom.scale.rotation.x);

@@ -22,16 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef NP_RIGID_ACTOR_TEMPLATE_INTERNAL_H
 #define NP_RIGID_ACTOR_TEMPLATE_INTERNAL_H
-
-// PT: TODO: what is not internal about NpRigidActorTemplate.h ? Just merge the two files
-
-
 
 namespace physx
 {
@@ -44,6 +40,14 @@ static PX_FORCE_INLINE void removeRigidActorT(T& rigidActor)
 
 	//Remove constraints (if any constraint is attached to the actor).
 	rigidActor.NpRigidActorTemplate<APIClass>::removeConstraints(rigidActor);
+
+#if PX_SUPPORT_GPU_PHYSX
+	//Remove attachments (if any attachment is attached to the actor).
+	rigidActor.NpRigidActorTemplate<APIClass>::removeAttachments(rigidActor, true);
+
+	//Remove element filters (if any element filter is attached to the actor).
+	rigidActor.NpRigidActorTemplate<APIClass>::removeElementFilters(rigidActor, true);
+#endif
 
 	//Remove from aggregate (if it is in an aggregate).
 	rigidActor.NpActorTemplate<APIClass>::removeFromAggregate(rigidActor);

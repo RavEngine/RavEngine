@@ -22,14 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#include "geometry/PxTriangleMesh.h"
-#include "common/PxProfileZone.h"
-
 #include "PxcNpBatch.h"
+#include "PxcNpCache.h"
+#include "common/PxProfileZone.h"
 #include "PxcNpWorkUnit.h"
 #include "PxcContactCache.h"
 #include "PxcNpContactPrepShared.h"
@@ -38,6 +37,8 @@
 #include "PxsMaterialManager.h"
 #include "PxsTransformCache.h"
 #include "PxsContactManagerState.h"
+#include "PxcNpThreadContext.h"
+#include "PxcMaterialMethodImpl.h"
 
 // PT: use this define to enable detailed analysis of the NP functions.
 //#define LOCAL_PROFILE_ZONE(x, y)	PX_PROFILE_ZONE(x, y)
@@ -46,6 +47,8 @@
 using namespace physx;
 using namespace Gu;
 
+PX_COMPILE_TIME_ASSERT(sizeof(PxsCachedTransform)==sizeof(PxTransform32));
+
 static void startContacts(PxsContactManagerOutput& output, PxcNpThreadContext& context)
 {
 	context.mContactBuffer.reset();
@@ -53,6 +56,7 @@ static void startContacts(PxsContactManagerOutput& output, PxcNpThreadContext& c
 	output.contactForces = NULL;
 	output.contactPatches = NULL;
 	output.contactPoints = NULL;
+	output.frictionPatches = NULL;
 	output.nbContacts = 0;
 	output.nbPatches = 0;
 	output.statusFlag = 0;	
@@ -93,15 +97,20 @@ static bool copyBuffers(PxsContactManagerOutput& cmOutput, Gu::Cache& cache, Pxc
 		PxU8* oldPatches = cmOutput.contactPatches;
 		PxU8* oldContacts = cmOutput.contactPoints;
 		PxReal* oldForces = cmOutput.contactForces;
+		PxU8* oldFriction = cmOutput.frictionPatches;
 
 		PxU32 forceSize = cmOutput.nbContacts * sizeof(PxReal);
 		if(isMeshType)
 			forceSize += cmOutput.nbContacts * sizeof(PxU32);
 
+		PxU32 frictionSize = oldFriction ? sizeof(PxFrictionPatch) * cmOutput.nbPatches : 0;
+
 		PxU8* PX_RESTRICT contactPatches = NULL;
 		PxU8* PX_RESTRICT contactPoints = NULL;
 
 		PxReal* forceBuffer = NULL;
+
+		PxU8* PX_RESTRICT frictionPatches = NULL;
 
 		bool isOverflown = false;
 
@@ -141,10 +150,23 @@ static bool copyBuffers(PxsContactManagerOutput& cmOutput, Gu::Cache& cache, Pxc
 				forceBuffer = reinterpret_cast<PxReal*>(context.mForceAndIndiceStreamPool->mDataStream + context.mForceAndIndiceStreamPool->mDataStreamSize - index);
 			}
 
+			if (frictionSize)
+			{
+				const PxU32 frictionIndex = PxTo32(PxAtomicAdd(&context.mFrictionPatchStreamPool->mSharedDataIndex, PxI32(frictionSize)));
+
+				if (context.mFrictionPatchStreamPool->isOverflown())
+				{
+					PX_WARN_ONCE("Friction patch buffer overflow detected, please increase its size in the scene desc!\n");
+					isOverflown = true;
+				}
+				frictionPatches = context.mFrictionPatchStreamPool->mDataStream + context.mFrictionPatchStreamPool->mDataStreamSize - frictionIndex;
+			}
+
 			if(isOverflown)
 			{
 				contactPatches = NULL;
 				contactPoints = NULL;
+				frictionPatches = NULL;
 				forceBuffer = NULL;
 				cmOutput.nbContacts = cmOutput.nbPatches = 0;
 			}
@@ -154,20 +176,29 @@ static bool copyBuffers(PxsContactManagerOutput& cmOutput, Gu::Cache& cache, Pxc
 				PxMemCopy(contactPoints, oldContacts, contactSize);
 				if(isMeshType)
 					PxMemCopy(forceBuffer + cmOutput.nbContacts, oldForces + cmOutput.nbContacts, sizeof(PxU32) * cmOutput.nbContacts);
+				if (frictionSize)
+					PxMemCopy(frictionPatches, oldFriction, frictionSize);
 			}
 		}
 		else
 		{
-			const PxU32 alignedOldSize = (oldSize + 0xf) & 0xfffffff0;
+			const PxU32 alignedOldSize = computeAlignedSize(oldSize);
 
-			PxU8* data = context.mContactBlockStream.reserve(alignedOldSize + forceSize);
+			PxU8* data = context.mContactBlockStream.reserve(alignedOldSize + forceSize + frictionSize);
 			if(forceSize)
 				forceBuffer = reinterpret_cast<PxReal*>(data + alignedOldSize);
 
 			contactPatches = data;
 			contactPoints = data + cmOutput.nbPatches * sizeof(PxContactPatch);
 
+			if (frictionSize)
+			{
+				frictionPatches = data + alignedOldSize + forceSize;
+				PxMemCopy(frictionPatches, oldFriction, frictionSize);
+			}
+
 			PxMemCopy(data, oldPatches, oldSize);
+
 			if(isMeshType)
 				PxMemCopy(forceBuffer + cmOutput.nbContacts, oldForces + cmOutput.nbContacts, sizeof(PxU32) * cmOutput.nbContacts);
 		}
@@ -175,8 +206,9 @@ static bool copyBuffers(PxsContactManagerOutput& cmOutput, Gu::Cache& cache, Pxc
 		if(forceSize)
 			PxMemZero(forceBuffer, forceSize);
 		
-		cmOutput.contactPatches= contactPatches;
+		cmOutput.contactPatches = contactPatches;
 		cmOutput.contactPoints = contactPoints;
+		cmOutput.frictionPatches = frictionPatches;
 		cmOutput.contactForces = forceBuffer;
 	}
 
@@ -185,18 +217,28 @@ static bool copyBuffers(PxsContactManagerOutput& cmOutput, Gu::Cache& cache, Pxc
 		if(cache.isMultiManifold())
 		{
 			PX_ASSERT((cache.mCachedSize & 0xF) == 0);
-			PxU8* newData = context.mNpCacheStreamPair.reserve(cache.mCachedSize);
-			PX_ASSERT((reinterpret_cast<uintptr_t>(newData)& 0xF) == 0);
-			PxMemCopy(newData, & cache.getMultipleManifold(), cache.mCachedSize);
-			cache.setMultiManifold(newData);
+
+			const PxU8* cachedData = cache.mCachedData;
+
+			PxcNpCacheReserve(context.mNpCacheStreamPair, cache, cache.mCachedSize);
+			if (!cache.mCachedData)
+				return false;
+
+			PX_ASSERT((reinterpret_cast<uintptr_t>(cache.mCachedData)& 0xF) == 0);
+
+			PxMemCopy(cache.mCachedData, cachedData, cache.mCachedSize);
+			cache.setMultiManifold(cache.mCachedData);
 		}
 		else if(useContactCache)
 		{
 			//Copy cache information as well...
 			const PxU8* cachedData = cache.mCachedData;
-			PxU8* newData = context.mNpCacheStreamPair.reserve(PxU32(cache.mCachedSize + 0xf) & 0xfff0);
-			PxMemCopy(newData, cachedData, cache.mCachedSize);
-			cache.mCachedData = newData;
+
+			PxcNpCacheReserve(context.mNpCacheStreamPair, cache, computeAlignedSize(cache.mCachedSize));
+			if (!cache.mCachedData)
+				return false;
+
+			PxMemCopy(cache.mCachedData, cachedData, cache.mCachedSize);
 		}
 	}
 	return ret;
@@ -243,16 +285,18 @@ static bool finishContacts(const PxcNpWorkUnit& input, PxsContactManagerOutput& 
 	PxU16 compressedContactSize;
 
 	const bool createReports =
-		input.flags & PxcNpWorkUnitFlag::eOUTPUT_CONTACTS
-		|| (input.flags & PxcNpWorkUnitFlag::eFORCE_THRESHOLD);
+		input.mFlags & PxcNpWorkUnitFlag::eOUTPUT_CONTACTS
+		|| (input.mFlags & PxcNpWorkUnitFlag::eFORCE_THRESHOLD);
 
-	if((!isMeshType && !createReports))
+	if(!isMeshType && !createReports)
 		contactForceByteSize = 0;
 
-	bool res = (writeCompressedContact(buffer.contacts, buffer.count, &threadContext, npOutput.nbContacts, npOutput.contactPatches, npOutput.contactPoints, compressedContactSize,
-		reinterpret_cast<PxReal*&>(npOutput.contactForces), contactForceByteSize, threadContext.mMaterialManager, ((input.flags & PxcNpWorkUnitFlag::eMODIFIABLE_CONTACT) != 0), 
+	const bool res = writeCompressedContact(buffer.contacts, buffer.count, &threadContext, npOutput.nbContacts, npOutput.contactPatches, npOutput.contactPoints, compressedContactSize,
+		reinterpret_cast<PxReal*&>(npOutput.contactForces), contactForceByteSize, 
+		npOutput.frictionPatches, threadContext.mFrictionPatchStreamPool,
+		threadContext.mMaterialManager, ((input.mFlags & PxcNpWorkUnitFlag::eMODIFIABLE_CONTACT) != 0), 
 		false, pMaterials, npOutput.nbPatches, 0, NULL, NULL, threadContext.mCreateAveragePoint, threadContext.mContactStreamPool, 
-		threadContext.mPatchStreamPool, threadContext.mForceAndIndiceStreamPool, isMeshType) != 0);
+		threadContext.mPatchStreamPool, threadContext.mForceAndIndiceStreamPool, isMeshType) != 0;
 
 	//handle buffer overflow
 	if(!npOutput.nbContacts)
@@ -280,13 +324,13 @@ static PX_FORCE_INLINE bool checkContactsMustBeGenerated(PxcNpThreadContext& con
 	PX_ASSERT(cachedTransform0->transform.isSane() && cachedTransform1->transform.isSane());
 
 	//ML : if user doesn't raise the eDETECT_DISCRETE_CONTACT, we should not generate contacts
-	if(!(input.flags & PxcNpWorkUnitFlag::eDETECT_DISCRETE_CONTACT))
+	if(!(input.mFlags & PxcNpWorkUnitFlag::eDETECT_DISCRETE_CONTACT))
 		return false;
 
-	if(!(output.statusFlag & PxcNpWorkUnitStatusFlag::eDIRTY_MANAGER) && !(input.flags & PxcNpWorkUnitFlag::eMODIFIABLE_CONTACT))
+	if(!(output.statusFlag & PxcNpWorkUnitStatusFlag::eDIRTY_MANAGER) && !(input.mFlags & PxcNpWorkUnitFlag::eMODIFIABLE_CONTACT))
 	{
-		const PxU32 body0Dynamic = PxU32(input.flags & (PxcNpWorkUnitFlag::eDYNAMIC_BODY0 | PxcNpWorkUnitFlag::eARTICULATION_BODY0 | PxcNpWorkUnitFlag::eSOFT_BODY));
-		const PxU32 body1Dynamic = PxU32(input.flags & (PxcNpWorkUnitFlag::eDYNAMIC_BODY1 | PxcNpWorkUnitFlag::eARTICULATION_BODY1 | PxcNpWorkUnitFlag::eSOFT_BODY));
+		const PxU32 body0Dynamic = PxU32(input.mFlags & (PxcNpWorkUnitFlag::eDYNAMIC_BODY0 | PxcNpWorkUnitFlag::eARTICULATION_BODY0 | PxcNpWorkUnitFlag::eSOFT_BODY));
+		const PxU32 body1Dynamic = PxU32(input.mFlags & (PxcNpWorkUnitFlag::eDYNAMIC_BODY1 | PxcNpWorkUnitFlag::eARTICULATION_BODY1 | PxcNpWorkUnitFlag::eSOFT_BODY));
 
 		const PxU32 active0 = PxU32(body0Dynamic && !cachedTransform0->isFrozen());
 		const PxU32 active1 = PxU32(body1Dynamic && !cachedTransform1->isFrozen());
@@ -323,8 +367,8 @@ static PX_FORCE_INLINE bool checkContactsMustBeGenerated(PxcNpThreadContext& con
 template<bool useLegacyCodepath>
 static PX_FORCE_INLINE void discreteNarrowPhase(PxcNpThreadContext& context, const PxcNpWorkUnit& input, Gu::Cache& cache, PxsContactManagerOutput& output, PxU64 contextID)
 {
-	PxGeometryType::Enum type0 = static_cast<PxGeometryType::Enum>(input.geomType0);
-	PxGeometryType::Enum type1 = static_cast<PxGeometryType::Enum>(input.geomType1);
+	PxGeometryType::Enum type0 = input.getGeomType0();
+	PxGeometryType::Enum type1 = input.getGeomType1();
 
 	const bool flip = (type1<type0);
 
@@ -334,8 +378,8 @@ static PX_FORCE_INLINE void discreteNarrowPhase(PxcNpThreadContext& context, con
 	if(!checkContactsMustBeGenerated<useLegacyCodepath>(context, input, cache, output, cachedTransform0, cachedTransform1, flip, type0, type1))
 		return;
 
-	PxsShapeCore* shape0 = const_cast<PxsShapeCore*>(input.shapeCore0);
-	PxsShapeCore* shape1 = const_cast<PxsShapeCore*>(input.shapeCore1);
+	PxsShapeCore* shape0 = const_cast<PxsShapeCore*>(input.getShapeCore0());
+	PxsShapeCore* shape1 = const_cast<PxsShapeCore*>(input.getShapeCore1());
 
 	if(flip)
 	{
@@ -355,13 +399,12 @@ static PX_FORCE_INLINE void discreteNarrowPhase(PxcNpThreadContext& context, con
 		{
 			//We are using a multi-manifold. This is cached in a reduced npCache...
 			isMultiManifold = true;
-			uintptr_t address = uintptr_t(&cache.getMultipleManifold());
-			manifold.fromBuffer(reinterpret_cast<PxU8*>(address));
+			manifold.fromBuffer(cache.mCachedData);
 			cache.setMultiManifold(&manifold);
 		}
 		else if(cache.isManifold())
 		{
-			void* address = reinterpret_cast<void*>(&cache.getManifold());
+			void* address = cache.mCachedData;
 			PxPrefetch(address);
 			PxPrefetch(address, 128);
 			PxPrefetch(address, 256);
@@ -372,8 +415,8 @@ static PX_FORCE_INLINE void discreteNarrowPhase(PxcNpThreadContext& context, con
 
 	startContacts(output, context);
 
-	const PxTransform* tm0 = &cachedTransform0->transform;
-	const PxTransform* tm1 = &cachedTransform1->transform;
+	const PxTransform32* tm0 = reinterpret_cast<const PxTransform32*>(cachedTransform0);
+	const PxTransform32* tm1 = reinterpret_cast<const PxTransform32*>(cachedTransform1);
 	PX_ASSERT(tm0->isSane() && tm1->isSane());
 
 	const PxGeometry& contactShape0 = shape0->mGeometry.getGeometry();
@@ -415,17 +458,20 @@ static PX_FORCE_INLINE void discreteNarrowPhase(PxcNpThreadContext& context, con
 		conMethod(contactShape0, contactShape1, *tm0, *tm1, context.mNarrowPhaseParams, cache, context.mContactBuffer, &context.mRenderOutput);
 	}
 
-	const PxcGetMaterialMethod materialMethod = g_GetMaterialMethodTable[type0][type1];
-	if(materialMethod)
+	if(context.mContactBuffer.count)
 	{
-		LOCAL_PROFILE_ZONE("materialMethod", contextID);
-		materialMethod(shape0, shape1, context,  materialInfo);
-	}
+		const PxcGetMaterialMethod materialMethod = g_GetMaterialMethodTable[type0][type1];
+		if(materialMethod)
+		{
+			LOCAL_PROFILE_ZONE("materialMethod", contextID);
+			materialMethod(shape0, shape1, context.mContactBuffer, materialInfo);
+		}
 
-	if(flip)
-	{
-		LOCAL_PROFILE_ZONE("flipContacts", contextID);
-		flipContacts(context, materialInfo);
+		if(flip)
+		{
+			LOCAL_PROFILE_ZONE("flipContacts", contextID);
+			flipContacts(context, materialInfo);
+		}
 	}
 
 	if(!useLegacyCodepath)
@@ -437,11 +483,14 @@ static PX_FORCE_INLINE void discreteNarrowPhase(PxcNpThreadContext& context, con
 				manifold.mNumManifolds * sizeof(SingleManifoldHeader) +
 				manifold.mNumTotalContacts * sizeof(Gu::CachedMeshPersistentContact));
 
-			PxU8* buffer = context.mNpCacheStreamPair.reserve(size);
+			PxcNpCacheReserve(context.mNpCacheStreamPair, cache, size);
 
-			PX_ASSERT((reinterpret_cast<uintptr_t>(buffer)& 0xf) == 0);
-			manifold.toBuffer(buffer);
-			cache.setMultiManifold(buffer);
+			if (!cache.mCachedData)
+				return;
+
+			PX_ASSERT((reinterpret_cast<uintptr_t>(cache.mCachedData)& 0xf) == 0);
+			manifold.toBuffer(cache.mCachedData);
+			cache.setMultiManifold(cache.mCachedData);
 			cache.mCachedSize = PxTo16(size);
 		}
 	}

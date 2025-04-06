@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -40,7 +40,7 @@ bool Gu::pcmContactPlaneBox(GU_CONTACT_METHOD_ARGS)
 
 	using namespace aos;
 
-	Gu::PersistentContactManifold& manifold = cache.getManifold();
+	PersistentContactManifold& manifold = cache.getManifold();
 	PxPrefetchLine(&manifold, 256);
 
 	// Get actual shape data
@@ -110,7 +110,7 @@ bool Gu::pcmContactPlaneBox(GU_CONTACT_METHOD_ARGS)
 
 		const FloatV acceptanceDist = FSub(contactDist, px);
 
-		Gu::PersistentContact* manifoldContacts = PX_CP_TO_PCP(contactBuffer.contacts);
+		PersistentContact* manifoldContacts = PX_CP_TO_PCP(contactBuffer.contacts);
 		PxU32 numContacts = 0;
 
 		if(FAllGrtr(acceptanceDist, s0))
@@ -157,7 +157,7 @@ bool Gu::pcmContactPlaneBox(GU_CONTACT_METHOD_ARGS)
 		{
 			const FloatV pen = FAdd(s4, px);
 			//(-x, y, z)
-			const Vec3V p =V3Merge(nbx, by, bz);
+			const Vec3V p = V3Merge(nbx, by, bz);
 			manifoldContacts[numContacts].mLocalPointA = p;
 			manifoldContacts[numContacts].mLocalPointB = V3NegScaleSub(localNormal, pen, aToB.transform(p)); 
 			manifoldContacts[numContacts++].mLocalNormalPen = V4SetW(Vec4V_From_Vec3V(localNormal), pen);
@@ -172,7 +172,6 @@ bool Gu::pcmContactPlaneBox(GU_CONTACT_METHOD_ARGS)
 			manifoldContacts[numContacts].mLocalPointB = V3NegScaleSub(localNormal, pen, aToB.transform(p)); 
 			manifoldContacts[numContacts++].mLocalNormalPen = V4SetW(Vec4V_From_Vec3V(localNormal), pen);
 		}
-
 	
 		if(FAllGrtr(acceptanceDist, s6))
 		{

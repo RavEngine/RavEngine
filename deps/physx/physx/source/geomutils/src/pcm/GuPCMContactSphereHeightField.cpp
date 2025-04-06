@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -39,21 +39,19 @@
 
 using namespace physx;
 using namespace Gu;
-using namespace physx::aos;
+using namespace aos;
 
-namespace physx
+namespace
 {
-
 struct PCMSphereVsHeightfieldContactGenerationCallback : PCMHeightfieldContactGenerationCallback<PCMSphereVsHeightfieldContactGenerationCallback>
 {
-public:
 	PCMSphereVsMeshContactGeneration	mGeneration;
 
 	PCMSphereVsHeightfieldContactGenerationCallback(
-		const aos::Vec3VArg sphereCenter,
-		const aos::FloatVArg sphereRadius,
-		const aos::FloatVArg contactDistance,
-		const aos::FloatVArg replaceBreakingThreshold,
+		const Vec3VArg sphereCenter,
+		const FloatVArg sphereRadius,
+		const FloatVArg contactDistance,
+		const FloatVArg replaceBreakingThreshold,
 		const PxTransformV& sphereTransform, 
 		const PxTransformV& heightfieldTransform,
 		const PxTransform& heightfieldTransform1,
@@ -74,6 +72,7 @@ public:
 		mGeneration.processTriangleCache<CacheSize, PCMSphereVsMeshContactGeneration>(cache);
 	}
 };
+}
 
 bool Gu::pcmContactSphereHeightField(GU_CONTACT_METHOD_ARGS)
 {
@@ -141,6 +140,4 @@ bool Gu::pcmContactSphereHeightField(GU_CONTACT_METHOD_ARGS)
 	}
 
 	return multiManifold.addManifoldContactsToContactBuffer(contactBuffer, sphereTransform, heightfieldTransform, sphereRadius);
-}
-
 }

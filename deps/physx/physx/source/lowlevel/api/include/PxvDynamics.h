@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -46,13 +46,6 @@ Dynamics interface.
 
 struct PxsRigidCore
 {
-//= ATTENTION! =====================================================================================
-// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-// accordingly.
-//==================================================================================================
-
 	PxsRigidCore() : mFlags(0), solverIterationCounts(0)	{}
 	PxsRigidCore(const PxEMPTY) : mFlags(PxEmpty)			{}
 
@@ -72,14 +65,7 @@ PX_COMPILE_TIME_ASSERT(sizeof(PxsRigidCore) == 32);
 
 struct PxsBodyCore : public PxsRigidCore
 {
-//= ATTENTION! =====================================================================================
-// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-// accordingly.
-//==================================================================================================
-
-	PxsBodyCore() : PxsRigidCore() { kinematicLink = PxU8(0); }
+	PxsBodyCore() : PxsRigidCore() { fixedBaseLink = PxU8(0); }
 	PxsBodyCore(const PxEMPTY) : PxsRigidCore(PxEmpty)		{}
 
 	PX_FORCE_INLINE	const PxTransform& getBody2Actor()	const	{ return body2Actor;	}
@@ -127,7 +113,7 @@ struct PxsBodyCore : public PxsRigidCore
 	PxU8					isFastMoving;			//This could be a single bit but it's a u8 at the moment for simplicity's sake
 	PxU8					disableGravity;			//This could be a single bit but it's a u8 at the moment for simplicity's sake
 	PxRigidDynamicLockFlags	lockFlags;				//This is u8. 
-	PxU8					kinematicLink;			//160 This indicates whether the articulation link is kinematic link. All fits into 16 byte alignment
+	PxU8					fixedBaseLink;			//160 This indicates whether the articulation link has PxArticulationFlag::eFIX_BASE. All fits into 16 byte alignment
 	
 	// PT: moved from Sc::BodyCore ctor - we don't want to duplicate all this in immediate mode
 	PX_FORCE_INLINE	void	init(	const PxTransform& bodyPose,

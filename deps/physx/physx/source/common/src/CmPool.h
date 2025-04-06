@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -44,20 +44,19 @@ Allocator for pools of data structures
 Also decodes indices (which can be computed from handles) into objects. To make this
 faster, the EltsPerSlab must be a power of two
 */
-template <class T, class ArgumentType> 
+template <class T> 
 class PoolList : public PxAllocatorTraits<T>::Type
 {
 	typedef typename PxAllocatorTraits<T>::Type Alloc;
 	PX_NOCOPY(PoolList)
 public:
-	PX_INLINE PoolList(const Alloc& alloc, ArgumentType* argument, PxU32 eltsPerSlab)
+	PX_INLINE PoolList(const Alloc& alloc, PxU32 eltsPerSlab)
 		: Alloc(alloc),
 		mEltsPerSlab(eltsPerSlab), 
 		mSlabCount(0),
 		mFreeList(0), 
 		mFreeCount(0), 
-		mSlabs(NULL),
-		mArgument(argument)
+		mSlabs(NULL)
 	{
 		PX_ASSERT(mEltsPerSlab>0);
 		PX_ASSERT((mEltsPerSlab & (mEltsPerSlab-1)) == 0);
@@ -128,7 +127,7 @@ public:
 			{
 
 				//KS - would be great to allocate this using a single allocation but it will make releasing slabs fail later :(
-				T * mAddr = reinterpret_cast<T*>(Alloc::allocate(mEltsPerSlab * sizeof(T), __FILE__, __LINE__));
+				T * mAddr = reinterpret_cast<T*>(Alloc::allocate(mEltsPerSlab * sizeof(T), PX_FL));
 				if (!mAddr)
 					return nbElements; //Allocation failed so only return the set of elements we could allocate from the free list
 
@@ -140,9 +139,9 @@ public:
 					mUseBitmap.resize(2 * newSlabCount*mEltsPerSlab); //set last element as not used
 					if (mFreeList)
 						Alloc::deallocate(mFreeList);
-					mFreeList = reinterpret_cast<T**>(Alloc::allocate(2 * newSlabCount * mEltsPerSlab * sizeof(T*), __FILE__, __LINE__));
+					mFreeList = reinterpret_cast<T**>(Alloc::allocate(2 * newSlabCount * mEltsPerSlab * sizeof(T*), PX_FL));
 
-					T** slabs = reinterpret_cast<T**>(Alloc::allocate(2* newSlabCount *sizeof(T*), __FILE__, __LINE__));
+					T** slabs = reinterpret_cast<T**>(Alloc::allocate(2* newSlabCount *sizeof(T*), PX_FL));
 					if (mSlabs)
 					{
 						PxMemCopy(slabs, mSlabs, sizeof(T*)*mSlabCount);
@@ -162,14 +161,14 @@ public:
 
 				for (; idx >= PxI32(nbToAllocate); --idx)
 				{
-					mFreeList[freeCount++] = PX_PLACEMENT_NEW(mAddr + idx, T(mArgument, baseIndex + idx));
+					mFreeList[freeCount++] = PX_PLACEMENT_NEW(mAddr + idx, T(baseIndex + idx));
 				}
 
 				PxU32 origElements = nbElements;
 				T** writeIdx = elements + nbElements;
 				for (; idx >= 0; --idx)
 				{
-					writeIdx[idx] = PX_PLACEMENT_NEW(mAddr + idx, T(mArgument, baseIndex + idx));
+					writeIdx[idx] = PX_PLACEMENT_NEW(mAddr + idx, T(baseIndex + idx));
 					nbElements++;
 				}
 
@@ -229,7 +228,7 @@ public:
 
 	bool extend()
 	{
-		T * mAddr = reinterpret_cast<T*>(Alloc::allocate(mEltsPerSlab * sizeof(T), __FILE__, __LINE__));
+		T * mAddr = reinterpret_cast<T*>(Alloc::allocate(mEltsPerSlab * sizeof(T), PX_FL));
 		if(!mAddr)
 			return false;
 
@@ -241,9 +240,9 @@ public:
 			mUseBitmap.resize(2* newSlabCount*mEltsPerSlab); //set last element as not used
 			if(mFreeList)
 				Alloc::deallocate(mFreeList);
-			mFreeList = reinterpret_cast<T**>(Alloc::allocate(2* newSlabCount * mEltsPerSlab * sizeof(T*), __FILE__, __LINE__));
+			mFreeList = reinterpret_cast<T**>(Alloc::allocate(2* newSlabCount * mEltsPerSlab * sizeof(T*), PX_FL));
 
-			T** slabs = reinterpret_cast<T**>(Alloc::allocate(2 * newSlabCount * sizeof(T*), __FILE__, __LINE__));
+			T** slabs = reinterpret_cast<T**>(Alloc::allocate(2 * newSlabCount * sizeof(T*), PX_FL));
 			if (mSlabs)
 			{
 				PxMemCopy(slabs, mSlabs, sizeof(T*)*mSlabCount);
@@ -263,7 +262,7 @@ public:
 		PxU32 baseIndex = (mSlabCount-1) * mEltsPerSlab;
 		PxU32 freeCount = mFreeCount;
 		for(PxI32 i=PxI32(mEltsPerSlab-1);i>=0;i--)
-			mFreeList[freeCount++] = PX_PLACEMENT_NEW(mAddr+i, T(mArgument, baseIndex+ i));
+			mFreeList[freeCount++] = PX_PLACEMENT_NEW(mAddr+i, T(baseIndex+ i));
 
 		mFreeCount = freeCount;
 
@@ -287,7 +286,6 @@ private:
 	T**						mFreeList;
 	PxU32					mFreeCount;
 	T**						mSlabs;
-	ArgumentType*			mArgument;
 	PxBitMap				mUseBitmap;
 };
 

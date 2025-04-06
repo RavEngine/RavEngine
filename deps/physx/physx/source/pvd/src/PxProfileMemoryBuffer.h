@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -121,7 +121,7 @@ namespace physx { namespace profile {
 			{
 				const uint32_t allocSize = mBegin ? newSize * 2 : newSize;
 
-				uint8_t* newData = static_cast<uint8_t*>(TAllocator::allocate(allocSize, __FILE__, __LINE__));
+				uint8_t* newData = static_cast<uint8_t*>(TAllocator::allocate(allocSize, PX_FL));
 				memset(newData, 0xf,allocSize);
 				if ( mBegin )
 				{

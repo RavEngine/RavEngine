@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -39,8 +39,6 @@
 using namespace physx;
 using namespace Gu;
 
-namespace
-{
 // PT: TODO: get rid of this copy
 static const PxReal gFatBoxEdgeCoeff = 0.01f;
 
@@ -90,8 +88,6 @@ static void computeBoxWorldEdgeNormal(const Box& box, PxU32 edgeIndex, PxVec3& w
 {
 	PX_ASSERT(edgeIndex<12);
 	worldNormal = box.rotate(getBoxLocalEdgeNormals()[edgeIndex]);
-}
-
 }
 
 // ### optimize! and refactor. And optimize for aabbs

@@ -22,12 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "NpRigidStatic.h"
 #include "NpRigidActorTemplateInternal.h"
+#include "omnipvd/NpOmniPvdSetData.h"
 
 using namespace physx;
 
@@ -83,6 +84,9 @@ void NpRigidStatic::setGlobalPose(const PxTransform& pose, bool /*wake*/)
 
 	mCore.setActor2World(newPose);
 	UPDATE_PVD_PROPERTY
+	OMNI_PVD_WRITE_SCOPE_BEGIN(pvdWriter, pvdRegData)
+	OMNI_PVD_SET_EXPLICIT(pvdWriter, pvdRegData, OMNI_PVD_CONTEXT_HANDLE, PxRigidActor, globalPose, *static_cast<PxRigidActor*>(this), newPose);
+	OMNI_PVD_WRITE_SCOPE_END
 
 	if(npScene)
 		mShapeManager.markActorForSQUpdate(npScene->getSQAPI(), *this);
@@ -90,7 +94,7 @@ void NpRigidStatic::setGlobalPose(const PxTransform& pose, bool /*wake*/)
 	// invalidate the pruning structure if the actor bounds changed
 	if(mShapeManager.getPruningStructure())
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "PxRigidStatic::setGlobalPose: Actor is part of a pruning structure, pruning structure is now invalid!");
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "PxRigidStatic::setGlobalPose: Actor is part of a pruning structure, pruning structure is now invalid!");
 		mShapeManager.getPruningStructure()->invalidate(this);
 	}
 

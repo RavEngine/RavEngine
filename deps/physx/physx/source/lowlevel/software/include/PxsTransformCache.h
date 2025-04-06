@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -80,19 +80,19 @@ namespace physx
 			mUsedSize = PxMax(mUsedSize, index + 1u);
 		}
 
-		PX_FORCE_INLINE void setTransformCache(const PxTransform& transform, const PxU32 flags, const PxU32 index)
+		PX_FORCE_INLINE void setTransformCache(const PxTransform& transform, PxU32 flags, PxU32 index, PxU32 /*indexFrom*/)
 		{
 			mTransformCache[index].transform = transform;
 			mTransformCache[index].flags = flags;
 			mHasAnythingChanged = true;
 		}
 
-		PX_FORCE_INLINE const PxsCachedTransform& getTransformCache(const PxU32 index) const
+		PX_FORCE_INLINE const PxsCachedTransform& getTransformCache(PxU32 index) const
 		{
 			return mTransformCache[index];
 		}
 
-		PX_FORCE_INLINE PxsCachedTransform& getTransformCache(const PxU32 index)
+		PX_FORCE_INLINE PxsCachedTransform& getTransformCache(PxU32 index)
 		{
 			return mTransformCache[index];
 		}
@@ -121,7 +121,7 @@ namespace physx
 			return mTransformCache.begin();
 		}
 
-		PX_FORCE_INLINE PxPinnedArray<PxsCachedTransform>* getCachedTransformArray()
+		PX_FORCE_INLINE PxCachedTransformArrayPinned* getCachedTransformArray()
 		{
 			return &mTransformCache;
 		}
@@ -130,10 +130,12 @@ namespace physx
 		PX_FORCE_INLINE	void setChangedState()		{ mHasAnythingChanged = true;	}
 		PX_FORCE_INLINE	bool hasChanged()	const	{ return mHasAnythingChanged;	}
 
+	protected:
+		PxCachedTransformArrayPinned	mTransformCache;
+
 	private:
-		PxPinnedArray<PxsCachedTransform>	mTransformCache;
-		PxU32								mUsedSize;
-		bool								mHasAnythingChanged;
+		PxU32							mUsedSize;
+		bool							mHasAnythingChanged;
 	};
 }
 

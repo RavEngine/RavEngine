@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -39,44 +39,6 @@
 using namespace physx;
 
 static const PxVec3 gX(1.0f, 0.0f, 0.0f);
-
-static void setRotY(PxMat33& m, PxReal angle)
-{
-	m = PxMat33(PxIdentity);
-
-	const PxReal cos = cosf(angle);
-	const PxReal sin = sinf(angle);
-
-	m[0][0] = m[2][2] = cos;
-	m[0][2] = -sin;
-	m[2][0] = sin;
-}
-
-static void setRotZ(PxMat33& m, PxReal angle)
-{
-	m = PxMat33(PxIdentity);
-
-	const PxReal cos = cosf(angle);
-	const PxReal sin = sinf(angle);
-
-	m[0][0] = m[1][1] = cos;
-	m[0][1] = sin;
-	m[1][0] = -sin;
-}
-
-static PxQuat getRotYQuat(float angle)
-{
-	PxMat33 m;
-	setRotY(m, angle);
-	return PxQuat(m);
-}
-
-static PxQuat getRotZQuat(float angle)
-{
-	PxMat33 m;
-	setRotZ(m, angle);
-	return PxQuat(m);
-}
 
 PxJoint* physx::PxD6JointCreate_Fixed(PxPhysics& physics, PxRigidActor* actor0, const PxVec3& localPos0, PxRigidActor* actor1, const PxVec3& localPos1, bool useD6)
 {
@@ -104,7 +66,7 @@ PxJoint* physx::PxD6JointCreate_Distance(PxPhysics& physics, PxRigidActor* actor
 		j->setMotion(PxD6Axis::eX, PxD6Motion::eLIMITED);
 		j->setMotion(PxD6Axis::eY, PxD6Motion::eLIMITED);
 		j->setMotion(PxD6Axis::eZ, PxD6Motion::eLIMITED);
-		j->setDistanceLimit(PxJointLinearLimit(PxTolerancesScale(), maxDist));
+		j->setDistanceLimit(PxJointLinearLimit(maxDist));
 		return j;
 	}
 	else
@@ -235,8 +197,8 @@ PxJoint* physx::PxD6JointCreate_GenericCone(float& apiroty, float& apirotz, PxPh
 	apiroty = APIRotY;
 	apirotz = APIRotZ;
 
-	const PxQuat RotY = getRotYQuat(APIRotY);
-	const PxQuat RotZ = getRotZQuat(APIRotZ);
+	const PxQuat RotY = PxGetRotYQuat(APIRotY);
+	const PxQuat RotZ = PxGetRotZQuat(APIRotZ);
 	const PxQuat Rot = RotY * RotZ;
 
 	const PxTransform localFrame0(localPos0, Rot);

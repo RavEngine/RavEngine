@@ -22,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxVec3.h"
 #include "GuDistancePointTriangle.h"
-#include "GuDistancePointTriangleSIMD.h"
 
 using namespace physx;
 
@@ -213,6 +212,37 @@ PxVec3 Gu::closestPtPointTriangle(const PxVec3& p, const PxVec3& a, const PxVec3
 //	return V3Dot(vv, vv);
 //}
 
+PX_PHYSX_COMMON_API aos::FloatV Gu::distancePointTriangleSquared2UnitBox(
+	const aos::Vec3VArg queryPoint,
+	const aos::Vec3VArg triA,
+	const aos::Vec3VArg triB,
+	const aos::Vec3VArg triC,
+	aos::FloatV& u,
+	aos::FloatV& v,
+	aos::Vec3V& closestP)
+{
+	using namespace aos;
+
+	const Vec3V min = V3Min(V3Min(triA, triB), V3Min(triC, queryPoint));
+	const Vec3V max = V3Max(V3Max(triA, triB), V3Max(triC, queryPoint));
+	const Vec3V size = V3Sub(max, min);
+
+	FloatV invScaling = FMax(FLoad(1e-12f), V3ExtractMax(size));
+	const FloatV one = FOne();
+	FloatV scaling = FDiv(one, invScaling);
+
+	const Vec3V p = V3Scale(V3Sub(queryPoint, min), scaling);
+	const Vec3V a = V3Scale(V3Sub(triA, min), scaling);
+	const Vec3V b = V3Scale(V3Sub(triB, min), scaling);
+	const Vec3V c = V3Scale(V3Sub(triC, min), scaling);
+
+	Vec3V cp;
+	FloatV result = Gu::distancePointTriangleSquared(p, a, b, c, u, v, cp);
+
+	closestP = V3Add(V3Scale(cp, invScaling), min);
+
+	return FMul(result, FMul(invScaling, invScaling));
+}
 
 aos::FloatV Gu::distancePointTriangleSquared(	const aos::Vec3VArg p, 
 													const aos::Vec3VArg a, 

@@ -22,35 +22,27 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "common/PxProfileZone.h"
-#include "geomutils/PxContactPoint.h"
 
-#include "PxsContactManager.h"
 #include "PxsContext.h"
 #include "PxsRigidBody.h"
 #include "PxsMaterialManager.h"
 #include "PxsCCD.h"
-#include "PxsMaterialManager.h"
-#include "PxsMaterialCombiner.h"
-#include "PxcContactMethodImpl.h"
-#include "PxcMaterialMethodImpl.h"
 #include "PxcNpContactPrepShared.h"
 #include "PxvGeometry.h"
 #include "PxvGlobals.h"
-#include "foundation/PxSort.h"
-#include "foundation/PxAtomic.h"
-#include "foundation/PxUtilities.h"
-#include "foundation/PxMathUtils.h"
 #include "CmFlushPool.h"
 #include "DyThresholdTable.h"
 #include "GuCCDSweepConvexMesh.h"
 #include "GuBounds.h"
 #include "GuConvexMesh.h"
 #include "geometry/PxGeometryQuery.h"
+#include "PxsIslandSim.h"
+#include "PxcMaterialMethodImpl.h"
 
 // PT: this one currently makes these UTs fail
 // [  FAILED  ] CCDReportTest.CCD_soakTest_mesh
@@ -73,7 +65,7 @@ static const bool gUseGeometryQuery = false;
 #define CCD_ANGULAR_IMPULSE					0	// PT: this doesn't compile anymore
 
 using namespace physx;
-using namespace physx::Dy;
+using namespace Dy;
 using namespace Gu;
 
 static PX_FORCE_INLINE void verifyCCDPair(const PxsCCDPair& /*pair*/)
@@ -270,24 +262,30 @@ float physx::computeCCDThreshold(const PxGeometry& geometry)
 			return PxMin(PxMin(shape.halfExtents.x, shape.halfExtents.y), shape.halfExtents.z)*inSphereRatio;
 		}
 
+		case PxGeometryType::eCONVEXCORE:
+		{
+			const PxBounds3 bounds = Gu::computeBounds(geometry, PxTransform(PxIdentity));
+			const PxVec3 halfExtents = bounds.getDimensions() * 0.5f;
+			return PxMin(PxMin(halfExtents.x, halfExtents.y), halfExtents.z) * inSphereRatio;
+		}
+
 		case PxGeometryType::eCONVEXMESH:
 		{
 			const PxConvexMeshGeometry& shape = static_cast<const PxConvexMeshGeometry&>(geometry);
 			const Gu::ConvexHullData& hullData = static_cast<const Gu::ConvexMesh*>(shape.convexMesh)->getHull();
-			return PxMin(shape.scale.scale.z, PxMin(shape.scale.scale.x, shape.scale.scale.y)) * hullData.mInternal.mRadius * inSphereRatio;
+			return PxMin(shape.scale.scale.z, PxMin(shape.scale.scale.x, shape.scale.scale.y)) * hullData.mInternal.mInternalRadius * inSphereRatio;
 		}
 
 		case PxGeometryType::eTRIANGLEMESH:		{ return 0.0f;	}
 		case PxGeometryType::eHEIGHTFIELD:		{ return 0.0f;	}
 		case PxGeometryType::eTETRAHEDRONMESH:	{ return 0.0f;	}
 		case PxGeometryType::ePARTICLESYSTEM:	{ return 0.0f;	}
-		case PxGeometryType::eHAIRSYSTEM:		{ return 0.0f;	}
 		case PxGeometryType::eCUSTOM:			{ return 0.0f;	}
 
 		default:
 		{
 			PX_ASSERT(0);		
-			PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "Gu::computeBoundsWithCCDThreshold::computeBounds: Unknown shape type.");
+			PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, PX_FL, "Gu::computeBoundsWithCCDThreshold::computeBounds: Unknown shape type.");
 		}
 	}
 	return PX_MAX_REAL;
@@ -303,18 +301,50 @@ static float computeBoundsWithCCDThreshold(PxVec3p& origin, PxVec3p& extent, con
 	return computeCCDThreshold(geometry);
 }
 
+static PX_FORCE_INLINE void trTr(PxTransform& out, const PxTransform& a, const PxTransform& b)
+{
+	// PT:: tag: scalar transform*transform
+	out = a * b;
+}
+
+static PX_FORCE_INLINE void trInvTr(PxTransform& out, const PxTransform& a, const PxTransform& b, const PxTransform& c)
+{
+	// PT:: tag: scalar transform*transform
+	out = a * b.getInverse() * c;
+}
+
 // PT: TODO: refactor with ShapeSim version (SIMD), simplify code when shape local pose = idt
-static PX_INLINE PxTransform getShapeAbsPose(const PxsShapeCore* shapeCore, const PxsRigidCore* rigidCore, PxU32 isDynamic)
+static PX_INLINE void getShapeAbsPose(PxTransform& out, const PxsShapeCore* shapeCore, const PxsRigidCore* rigidCore, const void* isDynamic)
 {
 	if(isDynamic)
 	{
 		const PxsBodyCore* PX_RESTRICT bodyCore = static_cast<const PxsBodyCore*>(rigidCore);
-		return bodyCore->body2World * bodyCore->getBody2Actor().getInverse() *shapeCore->getTransform();
+		trInvTr(out, bodyCore->body2World, bodyCore->getBody2Actor(), shapeCore->getTransform());
 	}
 	else 
-	{
-		return rigidCore->body2World * shapeCore->getTransform();
-	}
+		trTr(out, rigidCore->body2World, shapeCore->getTransform());
+}
+
+// \brief Returns the world-space pose for this shape
+// \param[in] atom The rigid body that this CCD shape is associated with
+static void getAbsPose(PxTransform32& out, const PxsCCDShape* ccdShape, const PxsRigidBody* atom)
+{
+	// PT: TODO: refactor with ShapeSim version (SIMD) - or with redundant getShapeAbsPose() above in this same file!
+	// PT: TODO: simplify code when shape local pose = idt
+	if(atom)
+		trInvTr(out, atom->getPose(), atom->getCore().getBody2Actor(), ccdShape->mShapeCore->getTransform());
+	else
+		trTr(out, ccdShape->mRigidCore->body2World, ccdShape->mShapeCore->getTransform());
+}
+
+// \brief Returns the world-space previous pose for this shape
+// \param[in] atom The rigid body that this CCD shape is associated with
+static void getLastCCDAbsPose(PxTransform32& out, const PxsCCDShape* ccdShape, const PxsRigidBody* atom)
+{
+	// PT: TODO: refactor with ShapeSim version (SIMD)
+	// PT: TODO: simplify code when shape local pose = idt
+	// PT:: tag: scalar transform*transform
+	trInvTr(out, atom->getLastCCDTransform(), atom->getCore().getBody2Actor(), ccdShape->mShapeCore->getTransform());
 }
 
 PxsCCDContext::PxsCCDContext(PxsContext* context, Dy::ThresholdStream& thresholdStream, PxvNphaseImplementationContext& nPhaseContext, PxReal ccdThreshold) :
@@ -338,22 +368,7 @@ PxsCCDContext::~PxsCCDContext()
 {
 }
 
-PxTransform PxsCCDShape::getAbsPose(const PxsRigidBody* atom) const
-{
-	// PT: TODO: refactor with ShapeSim version (SIMD) - or with redundant getShapeAbsPose() above in this same file!
-	// PT: TODO: simplify code when shape local pose = idt
-	if(atom)
-		return atom->getPose() * atom->getCore().getBody2Actor().getInverse() * mShapeCore->getTransform();
-	else
-		return mRigidCore->body2World * mShapeCore->getTransform();
-}
-
-PxTransform PxsCCDShape::getLastCCDAbsPose(const PxsRigidBody* atom) const
-{
-	// PT: TODO: refactor with ShapeSim version (SIMD)
-	// PT: TODO: simplify code when shape local pose = idt
-	return atom->getLastCCDTransform() * atom->getCore().getBody2Actor().getInverse() * mShapeCore->getTransform();
-}
+void combineMaterials(const PxsMaterialManager* materialManager, PxU16 origMatIndex0, PxU16 origMatIndex1, PxReal& staticFriction, PxReal& dynamicFriction, PxReal& combinedRestitution, PxU32& materialFlags, PxReal& combinedDamping);
 
 PxReal PxsCCDPair::sweepFindToi(PxcNpThreadContext& context, PxReal dt, PxU32 pass, PxReal ccdThreshold)
 {
@@ -379,16 +394,11 @@ PxReal PxsCCDPair::sweepFindToi(PxcNpThreadContext& context, PxReal dt, PxU32 pa
 		atom1 = mBa0;
 	}
 	
-	PX_ALIGN(16, PxTransform tm0);
-	PX_ALIGN(16, PxTransform tm1);
-	PX_ALIGN(16, PxTransform lastTm0);
-	PX_ALIGN(16, PxTransform lastTm1);
+	const PxTransform32 tm0(ccdShape0->mCurrentTransform);
+	const PxTransform32 lastTm0(ccdShape0->mPrevTransform);
 
-	tm0 = ccdShape0->mCurrentTransform;
-	lastTm0 = ccdShape0->mPrevTransform;
-
-	tm1 = ccdShape1->mCurrentTransform;
-	lastTm1 = ccdShape1->mPrevTransform;
+	const PxTransform32 tm1(ccdShape1->mCurrentTransform);
+	const PxTransform32 lastTm1(ccdShape1->mPrevTransform);
 
 	const PxVec3 trA = tm0.p - lastTm0.p;
 	const PxVec3 trB = tm1.p - lastTm1.p;
@@ -427,7 +437,7 @@ PxReal PxsCCDPair::sweepFindToi(PxcNpThreadContext& context, PxReal dt, PxU32 pa
 	}
 	else
 	{
-		const PxReal restDistance = PxMax(mCm->getWorkUnit().restDistance, 0.0f);
+		const PxReal restDistance = PxMax(mCm->getWorkUnit().mRestDistance, 0.0f);
 		toi = Gu::SweepShapeShape(*ccdShape0, *ccdShape1, tm0, tm1, lastTm0, lastTm1, restDistance, sweepNormal, sweepPoint, mMinToi, context.mCCDFaceIndex, sumFastMovingThresh);
 	}
 
@@ -501,20 +511,18 @@ PxReal PxsCCDPair::sweepFindToi(PxcNpThreadContext& context, PxReal dt, PxU32 pa
 
 	//Work out the materials for the contact (restitution, friction etc.)
 	context.mContactBuffer.count = 0;
-	context.mContactBuffer.contact(mMinToiPoint, mMinToiNormal, 0.0f, g1 == PxGeometryType::eTRIANGLEMESH || g1 == PxGeometryType::eHEIGHTFIELD? mFaceIndex : PXC_CONTACT_NO_FACE_INDEX);
+	context.mContactBuffer.contact(mMinToiPoint, mMinToiNormal, 0.0f,
+		g0 == PxGeometryType::eTRIANGLEMESH || g0 == PxGeometryType::eHEIGHTFIELD ||
+		g1 == PxGeometryType::eTRIANGLEMESH || g1 == PxGeometryType::eHEIGHTFIELD ? mFaceIndex : PXC_CONTACT_NO_FACE_INDEX);
 
 	PxsMaterialInfo materialInfo;
 
-	g_GetSingleMaterialMethodTable[g0](ccdShape0->mShapeCore, 0, context, &materialInfo);
-	g_GetSingleMaterialMethodTable[g1](ccdShape1->mShapeCore, 1, context, &materialInfo);
+	g_GetSingleMaterialMethodTable[g0](ccdShape0->mShapeCore, 0, context.mContactBuffer, &materialInfo);
+	g_GetSingleMaterialMethodTable[g1](ccdShape1->mShapeCore, 1, context.mContactBuffer, &materialInfo);
 
-	const PxsMaterialData& data0 = *context.mMaterialManager->getMaterial(materialInfo.mMaterialIndex0);
-	const PxsMaterialData& data1 = *context.mMaterialManager->getMaterial(materialInfo.mMaterialIndex1);
-
-	mRestitution = PxsCombineRestitution(data0, data1);
-
-	PxU32 unused;
-	PxsCombineIsotropicFriction(data0, data1, mDynamicFriction, mStaticFriction, unused);
+	PxU32 materialFlags;
+	PxReal combinedDamping;
+	combineMaterials(context.mMaterialManager, materialInfo.mMaterialIndex0, materialInfo.mMaterialIndex1, mStaticFriction, mDynamicFriction, mRestitution, materialFlags, combinedDamping);
 
 	mMaterialIndex0 = materialInfo.mMaterialIndex0;
 	mMaterialIndex1 = materialInfo.mMaterialIndex1;
@@ -522,49 +530,37 @@ PxReal PxsCCDPair::sweepFindToi(PxcNpThreadContext& context, PxReal dt, PxU32 pa
 	return toi;
 }
 
+static void updateShape(PxsRigidBody* body, PxsCCDShape* shape)
+{
+	if(body)
+	{
+		//If the CCD shape's update count doesn't match the body's update count, this shape needs its transforms and bounds re-calculated
+		if(body->mCCD->mUpdateCount != shape->mUpdateCount)
+		{
+			PxTransform32 tm;
+			getAbsPose(tm, shape, body);
+
+			PxTransform32 lastTm;
+			getLastCCDAbsPose(lastTm, shape, body);
+
+			const PxVec3 trA = tm.p - lastTm.p;
+
+			PxVec3p origin, extents;
+			computeBoundsWithCCDThreshold(origin, extents, shape->mShapeCore->mGeometry.getGeometry(), tm);
+
+			shape->mCenter = origin - trA;
+			shape->mExtents = extents;
+			shape->mPrevTransform = lastTm;
+			shape->mCurrentTransform = tm;
+			shape->mUpdateCount = body->mCCD->mUpdateCount;
+		}
+	}
+}
+
 void PxsCCDPair::updateShapes()
 {
-	if(mBa0)
-	{
-		//If the CCD shape's update count doesn't match the body's update count, this shape needs its transforms and bounds re-calculated
-		if(mBa0->mCCD->mUpdateCount != mCCDShape0->mUpdateCount)
-		{
-			const PxTransform tm0 = mCCDShape0->getAbsPose(mBa0);
-			const PxTransform lastTm0 = mCCDShape0->getLastCCDAbsPose(mBa0);
-
-			const PxVec3 trA = tm0.p - lastTm0.p;
-
-			PxVec3p origin, extents;
-			computeBoundsWithCCDThreshold(origin, extents, mCCDShape0->mShapeCore->mGeometry.getGeometry(), tm0);
-
-			mCCDShape0->mCenter = origin - trA;
-			mCCDShape0->mExtents = extents;
-			mCCDShape0->mPrevTransform = lastTm0;
-			mCCDShape0->mCurrentTransform = tm0;
-			mCCDShape0->mUpdateCount = mBa0->mCCD->mUpdateCount;
-		}
-	}
-
-	if(mBa1)
-	{
-		//If the CCD shape's update count doesn't match the body's update count, this shape needs its transforms and bounds re-calculated
-		if(mBa1->mCCD->mUpdateCount != mCCDShape1->mUpdateCount)
-		{
-			const PxTransform tm1 = mCCDShape1->getAbsPose(mBa1);
-			const PxTransform lastTm1 = mCCDShape1->getLastCCDAbsPose(mBa1);
-
-			const PxVec3 trB = tm1.p - lastTm1.p;
-
-			PxVec3p origin, extents;
-			computeBoundsWithCCDThreshold(origin, extents, mCCDShape1->mShapeCore->mGeometry.getGeometry(), tm1);
-
-			mCCDShape1->mCenter = origin - trB;
-			mCCDShape1->mExtents = extents;
-			mCCDShape1->mPrevTransform = lastTm1;
-			mCCDShape1->mCurrentTransform = tm1;
-			mCCDShape1->mUpdateCount = mBa1->mCCD->mUpdateCount;
-		}
-	}
+	updateShape(mBa0, mCCDShape0);
+	updateShape(mBa1, mCCDShape1);
 }
 
 PxReal PxsCCDPair::sweepEstimateToi(PxReal ccdThreshold)
@@ -593,7 +589,7 @@ PxReal PxsCCDPair::sweepEstimateToi(PxReal ccdThreshold)
 	//Extract previous/current transforms, translations etc.
 	const PxVec3 trA = ccdShape0->mCurrentTransform.p - ccdShape0->mPrevTransform.p;
 	const PxVec3 trB = ccdShape1->mCurrentTransform.p - ccdShape1->mPrevTransform.p;
-	const PxReal restDistance = PxMax(mCm->getWorkUnit().restDistance, 0.0f);
+	const PxReal restDistance = PxMax(mCm->getWorkUnit().mRestDistance, 0.0f);
 	const PxVec3 relTr = trA - trB;
 
 	//Work out the sum of the fast moving thresholds scaled by the step ratio
@@ -661,7 +657,7 @@ bool PxsCCDPair::sweepAdvanceToToi(PxReal dt, bool clipTrajectoryToToi)
 	//If the TOI < 1.f. If not, this hit happens after this frame or at the very end of the frame. Either way, next frame can handle it
 	if (thisPair->mMinToi < 1.0f)
 	{
-		if(thisPair->mCm->getWorkUnit().flags & PxcNpWorkUnitFlag::eDISABLE_RESPONSE || thisPair->mMaxImpulse == 0.0f)
+		if(thisPair->mCm->getWorkUnit().mFlags & PxcNpWorkUnitFlag::eDISABLE_RESPONSE || thisPair->mMaxImpulse == 0.0f)
 		{
 			//Don't mark pass as done on either body
 			return true;
@@ -798,7 +794,7 @@ bool PxsCCDPair::sweepAdvanceToToi(PxReal dt, bool clipTrajectoryToToi)
 				}
 
 				//const PxVec3 fricJ = -vPerp.getNormalized() * (fricResponse/impulseDivisor);
-				const PxVec3 fricJ =  tDir * (fricResponse);
+				const PxVec3 fricJ = tDir * (fricResponse);
 				j = jImp * mMinToiNormal + fricJ;
 			}
 			else
@@ -1106,10 +1102,10 @@ public:
 						PxContactPatch* patch = reinterpret_cast<PxContactPatch*>(dataBuffer);
 						PxModifiableContact* point = reinterpret_cast<PxModifiableContact*>(patch + 1);
 
-						patch->mMassModification.mInvInertiaScale0 = 1.f;
-						patch->mMassModification.mInvInertiaScale1 = 1.f;
-						patch->mMassModification.mInvMassScale0 = 1.f;
-						patch->mMassModification.mInvMassScale1 = 1.f;
+						patch->mMassModification.linear0 = 1.f;
+						patch->mMassModification.linear1 = 1.f;
+						patch->mMassModification.angular0 = 1.f;
+						patch->mMassModification.angular1 = 1.f;
 
 						patch->normal = pair.mMinToiNormal;
 
@@ -1201,7 +1197,7 @@ public:
 					}
 
 					//If we disabled response, we don't need to resweep at all
-					if(!mDisableResweep && !(pair.mCm->getWorkUnit().flags & PxcNpWorkUnitFlag::eDISABLE_RESPONSE) && pair.mMaxImpulse != 0.0f)
+					if(!mDisableResweep && !(pair.mCm->getWorkUnit().mFlags & PxcNpWorkUnitFlag::eDISABLE_RESPONSE) && pair.mMaxImpulse != 0.0f)
 					{
 						void* a0 = pair.mBa0 == NULL ? NULL : reinterpret_cast<void*>(pair.mBa0);
 						void* a1 = pair.mBa1 == NULL ? NULL : reinterpret_cast<void*>(pair.mBa1);
@@ -1403,23 +1399,72 @@ static PX_FORCE_INLINE bool pairNeedsCCD(const PxsContactManager* cm)
 	// skip articulation vs articulation ccd
 	//Actually. This is fundamentally wrong also :(. We only want to skip links in the same articulation - not all articulations!!!
 	{
-		const bool isJoint0 = (workUnit.flags & PxcNpWorkUnitFlag::eARTICULATION_BODY0) == PxcNpWorkUnitFlag::eARTICULATION_BODY0;
+		const bool isJoint0 = (workUnit.mFlags & PxcNpWorkUnitFlag::eARTICULATION_BODY0) == PxcNpWorkUnitFlag::eARTICULATION_BODY0;
 		if(isJoint0)
 		{
-			const bool isJoint1 = (workUnit.flags & PxcNpWorkUnitFlag::eARTICULATION_BODY1) == PxcNpWorkUnitFlag::eARTICULATION_BODY1;
+			const bool isJoint1 = (workUnit.mFlags & PxcNpWorkUnitFlag::eARTICULATION_BODY1) == PxcNpWorkUnitFlag::eARTICULATION_BODY1;
 			if(isJoint1)
 				return false;
 		}
 	}
 
 	{
-		const bool isFastMoving0 = static_cast<const PxsBodyCore*>(workUnit.rigidCore0)->isFastMoving != 0;
+		const bool isFastMoving0 = static_cast<const PxsBodyCore*>(workUnit.mRigidCore0)->isFastMoving != 0;
 		if(isFastMoving0)
 			return true;
 
-		const bool isFastMoving1 = (workUnit.flags & (PxcNpWorkUnitFlag::eARTICULATION_BODY1 | PxcNpWorkUnitFlag::eDYNAMIC_BODY1)) ? static_cast<const PxsBodyCore*>(workUnit.rigidCore1)->isFastMoving != 0: false;
+		const bool isFastMoving1 = (workUnit.mFlags & (PxcNpWorkUnitFlag::eARTICULATION_BODY1 | PxcNpWorkUnitFlag::eDYNAMIC_BODY1)) ? static_cast<const PxsBodyCore*>(workUnit.mRigidCore1)->isFastMoving != 0: false;
 		return isFastMoving1;
 	}
+}
+
+static PxsCCDShape* processShape(
+	PxVec3& tr, PxReal& threshold, PxsCCDShape* ccdShape,
+	const PxsRigidCore* const rc, const PxsShapeCore* const sc, const PxsRigidBody* const ba,
+	const PxsContactManager* const cm, IG::IslandSim& islandSim, PxsCCDShapeArray& mCCDShapes, PxHashMap<PxsRigidShapePair, PxsCCDShape*>& mMap, bool flag)
+{
+	if(ccdShape == NULL)
+	{
+		//If we hadn't already created ccdShape, create one
+		ccdShape = &mCCDShapes.pushBack();
+		ccdShape->mRigidCore = rc;
+		ccdShape->mShapeCore = sc;
+		ccdShape->mGeometry = &sc->mGeometry.getGeometry();
+
+		mMap.insert(PxsRigidShapePair(rc, sc), ccdShape);
+
+		PxTransform32 tm;
+		getAbsPose(tm, ccdShape, ba);
+
+		PxTransform32 oldTm;
+		if(ba)
+			getLastCCDAbsPose(oldTm, ccdShape, ba);
+		else
+			oldTm = tm;
+
+		tr = tm.p - oldTm.p;
+
+		PxVec3p origin, extents;
+		//Compute the shape's bounds and CCD threshold
+		threshold = computeBoundsWithCCDThreshold(origin, extents, sc->mGeometry.getGeometry(), tm);
+
+		//Set up the CCD shape
+		ccdShape->mCenter = origin - tr;
+		ccdShape->mExtents = extents;
+		ccdShape->mFastMovingThreshold = threshold;
+		ccdShape->mPrevTransform = oldTm;
+		ccdShape->mCurrentTransform = tm;
+		ccdShape->mUpdateCount = 0;
+		ccdShape->mNodeIndex = flag ? islandSim.mCpuData.getNodeIndex2(cm->getWorkUnit().mEdgeIndex)
+									: islandSim.mCpuData.getNodeIndex1(cm->getWorkUnit().mEdgeIndex);
+	}
+	else
+	{
+		//We had already created the shape, so extract the threshold and translation components
+		threshold = ccdShape->mFastMovingThreshold;
+		tr = ccdShape->mCurrentTransform.p - ccdShape->mPrevTransform.p;
+	}
+	return ccdShape;
 }
 
 void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim& islandSim, bool disableResweep, PxI32 numFastMovingShapes)
@@ -1481,15 +1526,15 @@ void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim
 				continue;
 
 			const PxcNpWorkUnit& unit = cm->getWorkUnit();
-			const PxsRigidCore* rc0 = unit.rigidCore0;
-			const PxsRigidCore* rc1 = unit.rigidCore1;
+			const PxsRigidCore* rc0 = unit.mRigidCore0;
+			const PxsRigidCore* rc1 = unit.mRigidCore1;
 			
 			{
-				const PxsShapeCore* sc0 = unit.shapeCore0;
-				const PxsShapeCore* sc1 = unit.shapeCore1;
+				const PxsShapeCore* sc0 = unit.getShapeCore0();
+				const PxsShapeCore* sc1 = unit.getShapeCore1();
 
-				PxsRigidBody* ba0 = cm->mRigidBody0;
-				PxsRigidBody* ba1 = cm->mRigidBody1;
+				PxsRigidBody* ba0 = cm->getRigidBody0();
+				PxsRigidBody* ba1 = cm->getRigidBody1();
 
 				//Look up the body/shape pair in our CCDShape map
 				const PxPair<const PxsRigidShapePair, PxsCCDShape*>* ccdShapePair0 = mMap.find(PxsRigidShapePair(rc0, sc0));
@@ -1505,75 +1550,8 @@ void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim
 				PxVec3 trA(0.0f);
 				PxVec3 trB(0.0f);
 
-				if(ccdShape0 == NULL)
-				{
-					//If we hadn't already created ccdShape, create one
-					ccdShape0 = &mCCDShapes.pushBack();
-					mMap.insert(PxsRigidShapePair(rc0, sc0), ccdShape0);
-
-					ccdShape0->mRigidCore = rc0;
-					ccdShape0->mShapeCore = sc0;
-					ccdShape0->mGeometry = &sc0->mGeometry.getGeometry();
-
-					const PxTransform tm0 = ccdShape0->getAbsPose(ba0);
-					const PxTransform oldTm0 = ba0 ? ccdShape0->getLastCCDAbsPose(ba0) : tm0;
-
-					trA = tm0.p - oldTm0.p;
-
-					PxVec3p origin, extents;
-					//Compute the shape's bounds and CCD threshold
-					threshold0 = computeBoundsWithCCDThreshold(origin, extents, sc0->mGeometry.getGeometry(), tm0);
-
-					//Set up the CCD shape
-					ccdShape0->mCenter = origin - trA;
-					ccdShape0->mExtents = extents;
-					ccdShape0->mFastMovingThreshold = threshold0;
-					ccdShape0->mPrevTransform = oldTm0;
-					ccdShape0->mCurrentTransform = tm0;
-					ccdShape0->mUpdateCount = 0;
-					ccdShape0->mNodeIndex = islandSim.getNodeIndex1(cm->getWorkUnit().mEdgeIndex);
-				}
-				else
-				{
-					//We had already created the shape, so extract the threshold and translation components
-					threshold0 = ccdShape0->mFastMovingThreshold;
-					trA = ccdShape0->mCurrentTransform.p - ccdShape0->mPrevTransform.p;
-				}
-
-				if(ccdShape1 == NULL)
-				{
-					//If the CCD shape was not already constructed, create it
-					ccdShape1 = &mCCDShapes.pushBack();
-					ccdShape1->mRigidCore = rc1;
-					ccdShape1->mShapeCore = sc1;
-					ccdShape1->mGeometry = &sc1->mGeometry.getGeometry();
-
-					mMap.insert(PxsRigidShapePair(rc1, sc1), ccdShape1);
-
-					const PxTransform tm1 = ccdShape1->getAbsPose(ba1);
-					const PxTransform oldTm1 = ba1 ? ccdShape1->getLastCCDAbsPose(ba1) : tm1;
-
-					trB = tm1.p - oldTm1.p;
-
-					PxVec3p origin, extents;
-					//Compute the shape's bounds and CCD threshold
-					threshold1 = computeBoundsWithCCDThreshold(origin, extents, sc1->mGeometry.getGeometry(), tm1);
-
-					//Set up the CCD shape
-					ccdShape1->mCenter = origin - trB;
-					ccdShape1->mExtents = extents;
-					ccdShape1->mFastMovingThreshold = threshold1;
-					ccdShape1->mPrevTransform = oldTm1;
-					ccdShape1->mCurrentTransform = tm1;
-					ccdShape1->mUpdateCount = 0;
-					ccdShape1->mNodeIndex = islandSim.getNodeIndex2(cm->getWorkUnit().mEdgeIndex);
-				}
-				else
-				{
-					//CCD shape already constructed so just extract thresholds and trB components
-					threshold1 = ccdShape1->mFastMovingThreshold;
-					trB = ccdShape1->mCurrentTransform.p - ccdShape1->mPrevTransform.p;
-				}
+				ccdShape0 = processShape(trA, threshold0, ccdShape0, rc0, sc0, ba0, cm, islandSim, mCCDShapes, mMap, false);
+				ccdShape1 = processShape(trB, threshold1, ccdShape1, rc1, sc1, ba1, cm, islandSim, mCCDShapes, mMap, true);
 
 				{
 					//Initialize the CCD bodies
@@ -1625,6 +1603,8 @@ void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim
 				if (ba0->isKinematic() && (ba1 == NULL || ba1->isKinematic()))
 					nbKinematicStaticCollisions++;
 				{
+					const PxcNpWorkUnit& npUnit = cm->getWorkUnit();
+
 					PxsCCDPair& p = mCCDPairs.pushBack();
 					p.mBa0 = ba0;
 					p.mBa1 = ba1;
@@ -1632,8 +1612,8 @@ void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim
 					p.mCCDShape1 = ccdShape1;
 					p.mHasFriction = rc0->hasCCDFriction() || rc1->hasCCDFriction();
 					p.mMinToi = PX_MAX_REAL;
-					p.mG0 = cm->mNpUnit.shapeCore0->mGeometry.getType();
-					p.mG1 = cm->mNpUnit.shapeCore1->mGeometry.getType();
+					p.mG0 = npUnit.getGeomType0();
+					p.mG1 = npUnit.getGeomType1();
 					p.mCm = cm;
 					p.mIslandId = 0xFFFFffff;
 					p.mIsEarliestToiHit = false;
@@ -1764,7 +1744,6 @@ void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim
 	mCCDIslandHistogram.clear(); // number of pairs per island
 	mCCDIslandHistogram.resize(islandCount);
 
-	PxU32 totalActivePairs = 0;
 	for (PxU32 j = 0, n = mCCDPtrPairs.size(); j < n; j++)
 	{
 		const PxU32 staticLabel = 0xFFFFffff;
@@ -1779,7 +1758,6 @@ void PxsCCDContext::updateCCD(PxReal dt, PxBaseTask* continuation, IG::IslandSim
 		p.mIslandId = islandId;
 		mCCDIslandHistogram[p.mIslandId] ++;
 		PX_ASSERT(p.mIslandId != staticLabel);
-		totalActivePairs++;
 	}
 
 	PxU16 count = 0;
@@ -1899,7 +1877,7 @@ void PxsCCDContext::postCCDAdvance(PxBaseTask* /*continuation*/)
 		PxU32 islandEnd = mCCDIslandHistogram[island] + index;
 		for(PxU32 j = index; j < islandEnd; ++j)
 		{
-			PxsCCDPair& p = *mCCDPtrPairs[j];
+			const PxsCCDPair& p = *mCCDPtrPairs[j];
 			//The CCD pairs are ordered by TOI. If we reach a TOI > 1, we can terminate
 			if(p.mMinToi > 1.f)
 				break;
@@ -1910,12 +1888,14 @@ void PxsCCDContext::postCCDAdvance(PxBaseTask* /*continuation*/)
 				//Flag that we had a CCD contact
 				p.mCm->setHadCCDContact();
 
+				PxcNpWorkUnit& npUnit = p.mCm->getWorkUnit();
+
 				//Test/set the changed touch map
 				PxU16 oldTouch = p.mCm->getTouchStatus();
 				if (!oldTouch)
 				{
 					mContext->mContactManagerTouchEvent.growAndSet(p.mCm->getIndex());
-					p.mCm->mNpUnit.statusFlags = PxU16((p.mCm->mNpUnit.statusFlags & (~PxcNpWorkUnitStatusFlag::eHAS_NO_TOUCH)) | PxcNpWorkUnitStatusFlag::eHAS_TOUCH);
+					npUnit.mStatusFlags = PxU16((npUnit.mStatusFlags & (~PxcNpWorkUnitStatusFlag::eHAS_NO_TOUCH)) | PxcNpWorkUnitStatusFlag::eHAS_TOUCH);
 					//Also need to write it in the CmOutput structure!!!!!
 
 					////The achieve this, we need to unregister the CM from the Nphase, then re-register it with the status set. This is the only way to force a push to the GPU
@@ -1933,10 +1913,10 @@ void PxsCCDContext::postCCDAdvance(PxBaseTask* /*continuation*/)
 
 				//Do we want to create reports?
 				const bool createReports =
-					p.mCm->mNpUnit.flags & PxcNpWorkUnitFlag::eOUTPUT_CONTACTS
-					|| (p.mCm->mNpUnit.flags & PxcNpWorkUnitFlag::eFORCE_THRESHOLD
-						&& ((p.mCm->mNpUnit.flags & (PxcNpWorkUnitFlag::eDYNAMIC_BODY0 | PxcNpWorkUnitFlag::eARTICULATION_BODY0) && shouldCreateContactReports(p.mCm->mNpUnit.rigidCore0))
-					|| (p.mCm->mNpUnit.flags & (PxcNpWorkUnitFlag::eDYNAMIC_BODY1 | PxcNpWorkUnitFlag::eARTICULATION_BODY1)  && shouldCreateContactReports(p.mCm->mNpUnit.rigidCore1))));
+					npUnit.mFlags & PxcNpWorkUnitFlag::eOUTPUT_CONTACTS
+					|| (npUnit.mFlags & PxcNpWorkUnitFlag::eFORCE_THRESHOLD
+						&& ((npUnit.mFlags & (PxcNpWorkUnitFlag::eDYNAMIC_BODY0 | PxcNpWorkUnitFlag::eARTICULATION_BODY0) && shouldCreateContactReports(npUnit.mRigidCore0))
+					|| (npUnit.mFlags & (PxcNpWorkUnitFlag::eDYNAMIC_BODY1 | PxcNpWorkUnitFlag::eARTICULATION_BODY1)  && shouldCreateContactReports(npUnit.mRigidCore1))));
 
 				if(createReports)
 				{
@@ -1968,18 +1948,19 @@ void PxsCCDContext::postCCDAdvance(PxBaseTask* /*continuation*/)
 					PxU16 contactStreamSize;
 					PxU16 contactCount;
 					PxU8 nbPatches;
-					PxsCCDContactHeader* ccdHeader = reinterpret_cast<PxsCCDContactHeader*>(p.mCm->mNpUnit.ccdContacts);
+					PxU8* unusedU8Ptr = NULL;
+					PxsCCDContactHeader* ccdHeader = reinterpret_cast<PxsCCDContactHeader*>(npUnit.mCCDContacts);
 					if (writeCompressedContact(buffer.contacts, numContacts, mCCDThreadContext, contactCount, contactPatches,
-						contactPoints, contactStreamSize, contactForces, numContacts*sizeof(PxReal), mCCDThreadContext->mMaterialManager,
-												((p.mCm->mNpUnit.flags & PxcNpWorkUnitFlag::eMODIFIABLE_CONTACT) != 0), true, &matInfo, nbPatches, sizeof(PxsCCDContactHeader),NULL, NULL,
+						contactPoints, contactStreamSize, contactForces, numContacts*sizeof(PxReal), unusedU8Ptr, NULL, mCCDThreadContext->mMaterialManager,
+												((npUnit.mFlags & PxcNpWorkUnitFlag::eMODIFIABLE_CONTACT) != 0), true, &matInfo, nbPatches, sizeof(PxsCCDContactHeader),NULL, NULL,
 												false, NULL, NULL, NULL, p.mFaceIndex != PXC_CONTACT_NO_FACE_INDEX))
 					{
 						PxsCCDContactHeader* newCCDHeader = reinterpret_cast<PxsCCDContactHeader*>(contactPatches);
 						newCCDHeader->contactStreamSize = PxTo16(contactStreamSize);
 						newCCDHeader->isFromPreviousPass = 0;
 
-						p.mCm->mNpUnit.ccdContacts = contactPatches;	// put the latest stream at the head of the linked list since it needs to get accessed every CCD pass
-																	// to prepare the reports
+						npUnit.mCCDContacts = contactPatches;	// put the latest stream at the head of the linked list since it needs to get accessed every CCD pass
+																// to prepare the reports
 
 						if (!ccdHeader)
 							newCCDHeader->nextStream = NULL;
@@ -1995,7 +1976,7 @@ void PxsCCDContext::postCCDAdvance(PxBaseTask* /*continuation*/)
 					}
 					else if (!ccdHeader)
 					{
-						p.mCm->mNpUnit.ccdContacts = NULL;
+						npUnit.mCCDContacts = NULL;
 						// we do not set the status flag on failure because the pair might have written
 						// a contact stream sucessfully during discrete collision this frame.
 					}
@@ -2003,7 +1984,7 @@ void PxsCCDContext::postCCDAdvance(PxBaseTask* /*continuation*/)
 						ccdHeader->isFromPreviousPass = 1;
 
 					//If the touch event already existed, the solver would have already configured the threshold stream
-					if((p.mCm->mNpUnit.flags & (PxcNpWorkUnitFlag::eARTICULATION_BODY0 | PxcNpWorkUnitFlag::eARTICULATION_BODY1)) == 0 && p.mAppliedForce)
+					if((npUnit.mFlags & (PxcNpWorkUnitFlag::eARTICULATION_BODY0 | PxcNpWorkUnitFlag::eARTICULATION_BODY1)) == 0 && p.mAppliedForce)
 					{
 #if 1
 						ThresholdStreamElement elt;
@@ -2012,7 +1993,7 @@ void PxsCCDContext::postCCDAdvance(PxBaseTask* /*continuation*/)
 						elt.threshold = PxMin<float>(p.mBa0 == NULL ? PX_MAX_REAL : p.mBa0->mCore->contactReportThreshold, p.mBa1 == NULL ? PX_MAX_REAL : 
 							p.mBa1->mCore->contactReportThreshold);
 						elt.nodeIndexA = p.mCCDShape0->mNodeIndex;
-						elt.nodeIndexB =p.mCCDShape1->mNodeIndex;
+						elt.nodeIndexB = p.mCCDShape1->mNodeIndex;
 						PxOrder(elt.nodeIndexA,elt.nodeIndexB);
 						PX_ASSERT(elt.nodeIndexA.index() < elt.nodeIndexB.index());
 						mThresholdStream.pushBack(elt);
@@ -2126,12 +2107,12 @@ void PxsCCDContext::runCCDModifiableContact(PxModifiableContact* PX_RESTRICT con
 	if(!mCCDContactModifyCallback)
 		return;
 
-	class PxcContactSet: public PxContactSet
+	class PxcContactSet : public PxContactSet
 	{
 	public:
-		PxcContactSet(PxU32 count, PxModifiableContact* contacts_)
+		PxcContactSet(PxU32 count, PxModifiableContact* contacts)
 		{
-			mContacts = contacts_;
+			mContacts = contacts;
 			mCount = count;
 		}
 	};
@@ -2147,13 +2128,17 @@ void PxsCCDContext::runCCDModifiableContact(PxModifiableContact* PX_RESTRICT con
 		p.actor[1] = rigid1 != NULL ? gPxvOffsetTable.convertPxsRigidCore2PxRigidBody(rigidCore1) 
 									: gPxvOffsetTable.convertPxsRigidCore2PxRigidStatic(rigidCore1);
 
-		p.transform[0] = getShapeAbsPose(shapeCore0, rigidCore0, PxU32(rigid0 != NULL));
-		p.transform[1] = getShapeAbsPose(shapeCore1, rigidCore1, PxU32(rigid1 != NULL));
+		getShapeAbsPose(p.transform[0], shapeCore0, rigidCore0, rigid0);
+		getShapeAbsPose(p.transform[1], shapeCore1, rigidCore1, rigid1);
 
 		static_cast<PxcContactSet&>(p.contacts) = 
 			PxcContactSet(contactCount, contacts);
 
-		mCCDContactModifyCallback->onCCDContactModify(&p, 1);
+		{
+			// PT: TODO: could we change the code so that we call this only once for all pairs?
+			PX_PROFILE_ZONE("USERCODE - PxCCDContactModifyCallback::onCCDContactModify", mContext->mContextID);
+			mCCDContactModifyCallback->onCCDContactModify(&p, 1);
+		}
 	}
 }
 

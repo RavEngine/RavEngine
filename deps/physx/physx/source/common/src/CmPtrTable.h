@@ -22,19 +22,22 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef CM_PTR_TABLE_H
 #define CM_PTR_TABLE_H
 
+#include "foundation/PxConstructor.h"
+#include "foundation/PxIO.h"
 #include "common/PxPhysXCommonConfig.h"
 
 namespace physx
 {
 class PxSerializationContext;
 class PxDeserializationContext;
+class PxOutputStream;
 
 namespace Cm
 {
@@ -64,19 +67,12 @@ protected:
 //
 // capacity is implicit: 
 // if the memory is not owned (i.e. came from deserialization) then the capacity is exactly mCount
-// else if mCount==0,  capacity is 0
+// else if mCount==0, capacity is 0
 // else the capacity is the power of 2 >= mCount
 // 
 // one implication of this is that if we want to add or remove a pointer from unowned memory, we always realloc
 struct PX_PHYSX_COMMON_API PtrTable
 {
-//= ATTENTION! =====================================================================================
-// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-// accordingly.
-//==================================================================================================
-
 	PtrTable();
 	~PtrTable();
 
@@ -102,8 +98,6 @@ struct PX_PHYSX_COMMON_API PtrTable
 
 	void	exportExtraData(PxSerializationContext& stream);
 	void	importExtraData(PxDeserializationContext& context);
-
-	static void getBinaryMetaData(physx::PxOutputStream& stream);
 
 private:
 	void realloc(PxU32 oldCapacity, PxU32 newCapacity, PtrTableStorageManager& sm);

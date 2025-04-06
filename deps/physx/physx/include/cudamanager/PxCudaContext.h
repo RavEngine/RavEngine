@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #ifndef PX_CUDA_CONTEX_H
 #define PX_CUDA_CONTEX_H
@@ -103,6 +103,8 @@ namespace physx
 
 		virtual PxCUresult streamWaitEvent(CUstream hStream, CUevent hEvent, unsigned int Flags) = 0;
 
+		virtual PxCUresult streamWaitEvent(CUstream hStream, CUevent hEvent) = 0;
+
 		virtual PxCUresult streamDestroy(CUstream hStream) = 0;
 
 		virtual PxCUresult streamSynchronize(CUstream hStream) = 0;
@@ -129,7 +131,9 @@ namespace physx
 			CUstream hStream,
 			PxCudaKernelParam* kernelParams,
 			size_t kernelParamsSizeInBytes,
-			void** extra = NULL
+			void** extra,
+			const char* file,
+			int line
 		) = 0;
 
 		// PT: same as above but without copying the kernel params to a local stack before the launch
@@ -141,12 +145,14 @@ namespace physx
 			PxU32 sharedMemBytes,
 			CUstream hStream,
 			void** kernelParams,
-			void** extra = NULL
+			void** extra,
+			const char* file,
+			int line
 		) = 0;
 
 		virtual PxCUresult memcpyDtoH(void *dstHost, CUdeviceptr srcDevice, size_t ByteCount) = 0;
 
-		virtual PxCUresult memcpyDtoHAsync(void *dstHost, CUdeviceptr srcDevice, size_t ByteCount, CUstream hStream) = 0;
+		virtual PxCUresult memcpyDtoHAsync(void* dstHost, CUdeviceptr srcDevice, size_t ByteCount, CUstream hStream) = 0;
 
 		virtual PxCUresult memcpyHtoD(CUdeviceptr dstDevice, const void *srcHost, size_t ByteCount) = 0;
 
@@ -171,6 +177,10 @@ namespace physx
 		virtual PxCUresult getLastError() = 0;
 
 		PxDeviceAllocatorCallback* getAllocatorCallback() { return mAllocatorCallback; }
+
+		virtual void setAbortMode(bool abort) = 0;
+
+		virtual bool isInAbortMode() = 0;
 	};
 
 #if !PX_DOXYGEN

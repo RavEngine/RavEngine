@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -30,15 +30,12 @@
 #include "foundation/PxAllocator.h"
 #include "foundation/PxSList.h"
 
-namespace physx
-{
-namespace
-{
+using namespace physx;
+
 template <typename T>
-SLIST_HEADER* getDetail(T* impl)
+static PX_FORCE_INLINE SLIST_HEADER* getDetail(T* impl)
 {
 	return reinterpret_cast<SLIST_HEADER*>(impl);
-}
 }
 
 PxSListImpl::PxSListImpl()
@@ -69,5 +66,3 @@ uint32_t PxSListImpl::getSize()
 {
 	return sizeof(SLIST_HEADER);
 }
-
-} // namespace physx

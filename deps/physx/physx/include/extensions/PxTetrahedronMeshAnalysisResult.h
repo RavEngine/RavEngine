@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #ifndef PX_TETRAHEDRON_MESH_ANALYSIS_RESULT_H
 #define PX_TETRAHEDRON_MESH_ANALYSIS_RESULT_H
@@ -37,7 +37,7 @@ namespace physx
 #endif
 
 	/**
-	\brief These flags indicate what kind of deficiencies a tetrahedron mesh has and describe if the mesh is considered ok, problematic or invalid for softbody cooking
+	\brief These flags indicate what kind of deficiencies a tetrahedron mesh has and describe if the mesh is considered ok, problematic or invalid for deformable volume cooking
 	*/
 	class PxTetrahedronMeshAnalysisResult
 	{

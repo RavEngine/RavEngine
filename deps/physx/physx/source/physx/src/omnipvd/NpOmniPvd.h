@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -30,6 +30,8 @@
 #define NP_OMNI_PVD_H
 
 #include "omnipvd/PxOmniPvd.h"
+#include "foundation/PxMutex.h"
+#include "NpOmniPvdMetaData.h"
 
 class OmniPvdReader;
 class OmniPvdWriter;
@@ -51,16 +53,26 @@ public:
 	void release();
 
 	bool initOmniPvd();
+	
 	OmniPvdWriter* getWriter();
+	
+	OmniPvdWriter* blockingWriterLoad();
+
+	OmniPvdWriter* acquireExclusiveWriterAccess();
+	void releaseExclusiveWriterAccess();
+
 	OmniPvdFileWriteStream* getFileWriteStream();
 	bool startSampling();
 	
 	OmniPvdLoader* mLoader;
 	OmniPvdFileWriteStream* mFileWriteStream;
 	OmniPvdWriter* mWriter;
-	OmniPvdPxSampler* mPhysXSampler;	
+	OmniPvdPxSampler* mPhysXSampler;
+	NpOmniPvdMetaData mMetaData;
 	static PxU32 mRefCount;
 	static NpOmniPvd* mInstance;
+	PxMutex mMutex;
+	PxMutex mWriterLoadMutex;
 };
 
 }

@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -116,7 +116,7 @@ PxDefaultFileOutputStream::PxDefaultFileOutputStream(const char* filename)
 	// - the file does not already exist. If it does, check that it is not write protected.
 	if(NULL == mFile)
 	{
-		PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, 
+		PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, PX_FL, 
 			"Unable to open file %s, errno 0x%x\n",filename,errno);
 	}
 	PX_ASSERT(mFile);

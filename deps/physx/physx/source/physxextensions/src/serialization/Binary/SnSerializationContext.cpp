@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -74,7 +74,7 @@ void SerializationContext::registerReference(PxBase& serializable, PxU32 kind, s
 #if PX_CHECKED
 	if ((kind & PX_SERIAL_REF_KIND_PTR_TYPE_BIT) == 0 && reference > 0xffff)
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxSerializationContext::registerReference: only 16 bit handles supported.");
+		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "PxSerializationContext::registerReference: only 16 bit handles supported.");
 		return;
 	}
 #endif

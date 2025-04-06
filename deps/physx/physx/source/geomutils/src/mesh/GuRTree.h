@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,6 +33,7 @@
 #include "foundation/PxVec4.h"
 #include "foundation/PxBounds3.h"
 #include "foundation/PxAssert.h"
+#include "foundation/PxIO.h"
 #include "common/PxSerialFramework.h"
 #include "geometry/PxTriangleMesh.h"
 
@@ -81,13 +82,6 @@ namespace Gu {
 	PX_ALIGN_PREFIX(16)
 	struct RTreePage
 	{
-	//= ATTENTION! =====================================================================================
-	// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-	// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-	// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-	// accordingly.
-	//==================================================================================================
-
 		static const RTreeValue MN, MX;
 
 		RTreeValue minx[RTREE_N]; // [min=MX, max=MN] is used as a sentinel range for empty bounds
@@ -117,17 +111,10 @@ namespace Gu {
 	PX_ALIGN_PREFIX(16)
 	struct RTree
 	{
-	//= ATTENTION! =====================================================================================
-	// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-	// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-	// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-	// accordingly.
-	//==================================================================================================
 		// PX_SERIALIZATION
 		RTree(const PxEMPTY);
 		void	exportExtraData(PxSerializationContext&);
 		void	importExtraData(PxDeserializationContext& context);
-		static	void	getBinaryMetaData(PxOutputStream& stream);
 		//~PX_SERIALIZATION
 
 		PX_INLINE RTree(); // offline static rtree constructor used with cooking

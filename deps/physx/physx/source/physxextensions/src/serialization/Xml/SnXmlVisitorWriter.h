@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -45,7 +45,7 @@ namespace physx { namespace Sn {
 		const PxBase* s =  static_cast<const PxBase*>( inDatatype ) ;
 		if( inDatatype && !inCollection.contains( *const_cast<PxBase*>(s) ))
 		{
-			PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__,
+			PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, PX_FL,
 				"PxSerialization::serializeCollectionToXml: Reference \"%s\" could not be resolved.", inPropName);
 		}
 		
@@ -75,7 +75,7 @@ namespace physx { namespace Sn {
 		writeProperty( inWriter, inBuffer, inPropName );
 	}
 	
-	inline void writeProperty( XmlWriter& writer,  PxCollection& inCollection, MemoryBuffer& /*inBuffer*/, const char* inPropName, const PxConvexMesh* inDatatype )
+	inline void writeProperty( XmlWriter& writer, PxCollection& inCollection, MemoryBuffer& /*inBuffer*/, const char* inPropName, const PxConvexMesh* inDatatype )
 	{
 		writeReference( writer, inCollection, inPropName, inDatatype );
 	}
@@ -473,7 +473,7 @@ namespace physx { namespace Sn {
 		template<typename TAccessorType>
 		void enumProperty( PxU32 /*key*/, TAccessorType& inProp, const PxU32ToName* inConversions )
 		{
-			writeEnumProperty( mWriter, topName(),  inProp.get( mObj ), inConversions );
+			writeEnumProperty( mWriter, topName(), inProp.get( mObj ), inConversions );
 		}
 
 		template<typename TAccessorType>
@@ -748,7 +748,7 @@ namespace physx { namespace Sn {
 
 		void handleGeomProperty( const PxShapeGeomProperty& inProp )
 		{
-			switch( mObj->getGeometryType() )
+			switch( mObj->getGeometry().getType() )
 			{
 				case PxGeometryType::eSPHERE: writeGeomProperty<PxSphereGeometry>( inProp, "PxSphereGeometry" ); break;
 				case PxGeometryType::ePLANE: writeGeomProperty<PxPlaneGeometry>( inProp, "PxPlaneGeometry" ); break;

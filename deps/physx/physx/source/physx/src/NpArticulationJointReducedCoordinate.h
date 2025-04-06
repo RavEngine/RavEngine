@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -47,12 +47,6 @@ namespace physx
 
 	class NpArticulationJointReducedCoordinate : public PxArticulationJointReducedCoordinate, public NpBase
 	{
-		//= ATTENTION! =====================================================================================
-		// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-		// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-		// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-		// accordingly.
-		//==================================================================================================
 	public:
 		// PX_SERIALIZATION
 													NpArticulationJointReducedCoordinate(PxBaseFlags baseFlags)
@@ -61,7 +55,6 @@ namespace physx
 
 		virtual		void							resolveReferences(PxDeserializationContext& context);
 		static		NpArticulationJointReducedCoordinate* createObject(PxU8*& address, PxDeserializationContext& context);
-		static		void							getBinaryMetaData(PxOutputStream& stream);
 					void							exportExtraData(PxSerializationContext&) {}
 					void							importExtraData(PxDeserializationContext&) {}
 		virtual		void							requiresObjects(PxProcessPxBaseCallback&) {}
@@ -70,45 +63,46 @@ namespace physx
 													NpArticulationJointReducedCoordinate(NpArticulationLink& parent, const PxTransform& parentFrame, NpArticulationLink& child, const PxTransform& childFrame);
 		virtual										~NpArticulationJointReducedCoordinate();
 
-		//---------------------------------------------------------------------------------
-		// PxArticulationJoint implementation
-		//---------------------------------------------------------------------------------
+		// PxBase
+		virtual		void				release()	PX_OVERRIDE PX_FINAL;
+		//~PxBase
 
-		virtual		void							setJointType(PxArticulationJointType::Enum jointType);
-		virtual		PxArticulationJointType::Enum	getJointType() const;
-
-		virtual		void							setMotion(PxArticulationAxis::Enum axis, PxArticulationMotion::Enum motion);
-		virtual		PxArticulationMotion::Enum		getMotion(PxArticulationAxis::Enum axis) const;
-
-		virtual		void							setFrictionCoefficient(const PxReal coefficient);
-		virtual		PxReal							getFrictionCoefficient() const;
-
-		virtual		void							setMaxJointVelocity(const PxReal maxJointV);
-		virtual		PxReal							getMaxJointVelocity() const;
-
-		virtual		void							setLimitParams(PxArticulationAxis::Enum axis, const PxArticulationLimit& pair);
-		virtual		PxArticulationLimit				getLimitParams(PxArticulationAxis::Enum axis) const;
-
-		virtual		void							setDriveParams(PxArticulationAxis::Enum axis, const PxArticulationDrive& drive);
-		virtual		PxArticulationDrive				getDriveParams(PxArticulationAxis::Enum axis) const;
-
-		virtual		void							setDriveTarget(PxArticulationAxis::Enum axis, const PxReal target, bool autowake = true);
-		virtual		PxReal							getDriveTarget(PxArticulationAxis::Enum axis) const;
-
-		virtual		void							setDriveVelocity(PxArticulationAxis::Enum axis, const PxReal targetVel, bool autowake = true);
-		virtual		PxReal							getDriveVelocity(PxArticulationAxis::Enum axis) const;
-
-		virtual		void							setArmature(PxArticulationAxis::Enum axis, const PxReal armature);
-		virtual		PxReal							getArmature(PxArticulationAxis::Enum axis) const;
-
-		virtual	void								setJointPosition(PxArticulationAxis::Enum axis, const PxReal jointPos);
-		virtual	PxReal								getJointPosition(PxArticulationAxis::Enum axis) const;
-
-		virtual	void								setJointVelocity(PxArticulationAxis::Enum axis, const PxReal jointVel);
-		virtual	PxReal								getJointVelocity(PxArticulationAxis::Enum axis) const;
-
-		void										release();
-
+		// PxArticulationJointReducedCoordinate
+		virtual     PxArticulationLink&	getParentArticulationLink() const PX_OVERRIDE PX_FINAL	{ return *mParent; }
+		virtual		void				setParentPose(const PxTransform& pose)	PX_OVERRIDE PX_FINAL;
+		virtual		PxTransform			getParentPose() const	PX_OVERRIDE PX_FINAL;
+		virtual     PxArticulationLink&	getChildArticulationLink() const	PX_OVERRIDE PX_FINAL	{ return *mChild; }
+		virtual		void				setChildPose(const PxTransform& pose)	PX_OVERRIDE PX_FINAL;
+		virtual		PxTransform			getChildPose() const	PX_OVERRIDE PX_FINAL;
+		virtual		void				setJointType(PxArticulationJointType::Enum jointType)	PX_OVERRIDE PX_FINAL;
+		virtual		PxArticulationJointType::Enum	getJointType() const	PX_OVERRIDE PX_FINAL;
+		virtual		void				setMotion(PxArticulationAxis::Enum axis, PxArticulationMotion::Enum motion)	PX_OVERRIDE PX_FINAL;
+		virtual		PxArticulationMotion::Enum	getMotion(PxArticulationAxis::Enum axis) const	PX_OVERRIDE PX_FINAL;
+		virtual		void				setLimitParams(PxArticulationAxis::Enum axis, const PxArticulationLimit& limit)	PX_OVERRIDE PX_FINAL;
+		virtual		PxArticulationLimit	getLimitParams(PxArticulationAxis::Enum axis) const	PX_OVERRIDE PX_FINAL;
+		virtual		void				setDriveParams(PxArticulationAxis::Enum axis, const PxArticulationDrive& drive)	PX_OVERRIDE PX_FINAL;
+		virtual		PxArticulationDrive	getDriveParams(PxArticulationAxis::Enum axis) const	PX_OVERRIDE PX_FINAL;
+		virtual		void				setDriveTarget(PxArticulationAxis::Enum axis, const PxReal target, bool autowake = true)	PX_OVERRIDE PX_FINAL;
+		virtual		PxReal				getDriveTarget(PxArticulationAxis::Enum axis) const	PX_OVERRIDE PX_FINAL;
+		virtual		void				setDriveVelocity(PxArticulationAxis::Enum axis, const PxReal targetVel, bool autowake = true)	PX_OVERRIDE PX_FINAL;
+		virtual		PxReal				getDriveVelocity(PxArticulationAxis::Enum axis) const	PX_OVERRIDE PX_FINAL;
+		virtual		void				setArmature(PxArticulationAxis::Enum axis, const PxReal armature)	PX_OVERRIDE PX_FINAL;
+		virtual		PxReal				getArmature(PxArticulationAxis::Enum axis) const	PX_OVERRIDE PX_FINAL;
+		virtual		void				setFrictionCoefficient(const PxReal coefficient)	PX_OVERRIDE PX_FINAL;
+		virtual		PxReal				getFrictionCoefficient() const	PX_OVERRIDE PX_FINAL;
+		virtual		void				setMaxJointVelocity(const PxReal maxJointV)	PX_OVERRIDE PX_FINAL;
+		virtual		PxReal				getMaxJointVelocity() const	PX_OVERRIDE PX_FINAL;
+		virtual		void				setMaxJointVelocity(PxArticulationAxis::Enum axis, const PxReal maxJointV)	PX_OVERRIDE PX_FINAL;
+		virtual		PxReal				getMaxJointVelocity(PxArticulationAxis::Enum axis) const	PX_OVERRIDE PX_FINAL;
+		virtual		void				setFrictionParams(PxArticulationAxis::Enum axis, const PxJointFrictionParams& jointFrictionParams) PX_OVERRIDE PX_FINAL;
+		virtual		PxJointFrictionParams	getFrictionParams(PxArticulationAxis::Enum axis) const PX_OVERRIDE PX_FINAL;
+		virtual		void				setJointPosition(PxArticulationAxis::Enum axis, const PxReal jointPos)	PX_OVERRIDE PX_FINAL;
+		virtual		PxReal				getJointPosition(PxArticulationAxis::Enum axis) const	PX_OVERRIDE PX_FINAL;
+		virtual		void				setJointVelocity(PxArticulationAxis::Enum axis, const PxReal jointVel)	PX_OVERRIDE PX_FINAL;
+		virtual		PxReal				getJointVelocity(PxArticulationAxis::Enum axis) const	PX_OVERRIDE PX_FINAL;
+		virtual		void				setName(const char* name)	PX_OVERRIDE	PX_FINAL;
+		virtual		const char*			getName() const	PX_OVERRIDE	PX_FINAL;
+		//~PxArticulationJointReducedCoordinate
 
 		PX_FORCE_INLINE	Sc::ArticulationJointCore&	getCore()		{ return mCore; }
 		static PX_FORCE_INLINE size_t				getCoreOffset()	{ return PX_OFFSET_OF_RT(NpArticulationJointReducedCoordinate, mCore); }
@@ -139,10 +133,22 @@ namespace physx
 			mCore.setFrictionCoefficient(v);
 			UPDATE_PVD_PROPERTY
 		}
+		PX_INLINE void scSetFrictionParams(PxArticulationAxis::Enum axis, const PxJointFrictionParams& jointFrictionParams)
+		{
+			PX_ASSERT(!isAPIWriteForbidden());
+			mCore.setFrictionParams(axis, jointFrictionParams);
+			UPDATE_PVD_PROPERTY
+		}
 		PX_INLINE void						scSetMaxJointVelocity(const PxReal v)
 		{
 			PX_ASSERT(!isAPIWriteForbidden());
 			mCore.setMaxJointVelocity(v);
+			UPDATE_PVD_PROPERTY
+		}
+		PX_INLINE void						scSetMaxJointVelocity(PxArticulationAxis::Enum axis, const PxReal v)
+		{
+			PX_ASSERT(!isAPIWriteForbidden());
+			mCore.setMaxJointVelocity(axis, v);
 			UPDATE_PVD_PROPERTY
 		}
 
@@ -202,16 +208,6 @@ namespace physx
 			UPDATE_PVD_PROPERTY
 		}
 
-		virtual     PxArticulationLink&				getParentArticulationLink() const { return *mParent; }
-		virtual     PxArticulationLink&				getChildArticulationLink() const { return *mChild; }
-
-		virtual		PxTransform						getParentPose() const;
-		virtual		void							setParentPose(const PxTransform& t);
-
-		virtual		PxTransform						getChildPose() const;
-		virtual		void							setChildPose(const PxTransform& t); 
-
-
 		PX_INLINE	const NpArticulationLink&		getParent() const { return *mParent; }
 		PX_INLINE	NpArticulationLink&				getParent() { return *mParent; }
 
@@ -221,6 +217,7 @@ namespace physx
 		Sc::ArticulationJointCore					mCore;
 		NpArticulationLink*							mParent;
 		NpArticulationLink*							mChild;
+		const char*									mName;
 #if PX_CHECKED
 	private:
 					bool							isValidMotion(PxArticulationAxis::Enum axis, PxArticulationMotion::Enum motion);

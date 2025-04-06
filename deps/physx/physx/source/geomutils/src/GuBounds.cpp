@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -36,6 +36,7 @@
 #include "geometry/PxTriangleMeshGeometry.h"
 #include "geometry/PxHeightFieldGeometry.h"
 #include "geometry/PxCustomGeometry.h"
+#include "geometry/PxConvexCoreGeometry.h"
 #include "GuInternal.h"
 #include "CmUtils.h"
 #include "GuConvexMesh.h"
@@ -46,6 +47,8 @@
 #include "GuHeightField.h"
 #include "GuConvexUtilsInternal.h"
 #include "GuBoxConversion.h"
+#include "GuConvexGeometry.h"
+#include "GuConvexSupport.h"
 
 using namespace physx;
 using namespace Gu;
@@ -295,21 +298,32 @@ static PX_FORCE_INLINE void computeMeshBounds(PxBounds3& bounds, float contactOf
 	::inflateBounds(bounds, origin, extents, contactOffset, inflation);
 }
 
-static void computeTightBounds(PxBounds3& bounds, PxU32 nb, const PxVec3* PX_RESTRICT v, const PxMat33Padded& rot, const PxTransform& pose, float contactOffset, float inflation)
+void Gu::computeTightBounds(PxBounds3& bounds, PxU32 nb, const PxVec3* PX_RESTRICT v, const PxTransform& pose, const PxMeshScale& scale, float contactOffset, float inflation)
 {
-	Vec4V minV;
-	Vec4V maxV;
-
+	if(!nb)
 	{
-		const Vec4V vertexV = multiply3x3V(V4LoadU(&v->x), rot);
-		v++;
-
-		minV = vertexV;
-		maxV = vertexV;
-		nb--;
+		bounds.setEmpty();
+		return;
 	}
 
-	while(nb--)
+	PxMat33Padded rot(pose.q);
+
+	if(isNonIdentity(scale.scale))
+		computeScaledMatrix(rot, scale);
+
+	// PT: we can safely V4LoadU the first N-1 vertices. We must V3LoadU the last vertex, to make sure we don't read
+	// invalid memory. Since we have to special-case that last vertex anyway, we reuse that code to also initialize
+	// the minV/maxV values (bypassing the need for a 'setEmpty()' initialization).
+
+	PxU32 nbSafe = nb-1;
+
+	// PT: read last (unsafe) vertex using V3LoadU, initialize minV/maxV
+	const Vec4V lastVertexV = multiply3x3V(Vec4V_From_Vec3V(V3LoadU(&v[nbSafe].x)), rot);
+	Vec4V minV = lastVertexV;
+	Vec4V maxV = lastVertexV;
+
+	// PT: read N-1 first (safe) vertices using V4LoadU
+	while(nbSafe--)
 	{
 		const Vec4V vertexV = multiply3x3V(V4LoadU(&v->x), rot);
 		v++;
@@ -383,6 +397,16 @@ void Gu::computeBounds(PxBounds3& bounds, const PxGeometry& geometry, const PxTr
 		}
 		break;
 
+		case PxGeometryType::eCONVEXCORE:
+		{
+			Gu::ConvexShape s;
+			Gu::makeConvexShape(geometry, pose, s);
+			bounds = s.computeBounds();
+			bounds.fattenFast(contactOffset);
+			bounds.scaleFast(inflation);
+		}
+		break;
+
 		case PxGeometryType::eCONVEXMESH:
 		{
 			const PxConvexMeshGeometry& shape = static_cast<const PxConvexMeshGeometry&>(geometry);
@@ -390,14 +414,7 @@ void Gu::computeBounds(PxBounds3& bounds, const PxGeometry& geometry, const PxTr
 
 			const bool useTightBounds = shape.meshFlags & PxConvexMeshGeometryFlag::eTIGHT_BOUNDS;
 			if(useTightBounds)
-			{
-				PxMat33Padded rot(pose.q);
-
-				if(isNonIdentity(shape.scale.scale))
-					computeScaledMatrix(rot, shape.scale);
-
-				computeTightBounds(bounds, hullData.mNbHullVertices, hullData.getHullVertices(), rot, pose, contactOffset, inflation);
-			}
+				computeTightBounds(bounds, hullData.mNbHullVertices, hullData.getHullVertices(), pose, shape.scale, contactOffset, inflation);
 			else
 				computeMeshBounds(bounds, contactOffset, inflation, pose, &hullData.getPaddedBounds(), shape.scale);
 		}
@@ -410,14 +427,7 @@ void Gu::computeBounds(PxBounds3& bounds, const PxGeometry& geometry, const PxTr
 
 			const bool useTightBounds = shape.meshFlags & PxMeshGeometryFlag::eTIGHT_BOUNDS;
 			if(useTightBounds)
-			{
-				PxMat33Padded rot(pose.q);
-
-				if(isNonIdentity(shape.scale.scale))
-					computeScaledMatrix(rot, shape.scale);
-
-				computeTightBounds(bounds, triangleMesh->getNbVerticesFast(), triangleMesh->getVerticesFast(), rot, pose, contactOffset, inflation);
-			}
+				computeTightBounds(bounds, triangleMesh->getNbVerticesFast(), triangleMesh->getVerticesFast(), pose, shape.scale, contactOffset, inflation);
 			else
 				computeMeshBounds(bounds, contactOffset, inflation, pose, &triangleMesh->getPaddedBounds(), shape.scale);
 		}
@@ -441,13 +451,6 @@ void Gu::computeBounds(PxBounds3& bounds, const PxGeometry& geometry, const PxTr
 		{
 			// implement!
 			PX_ASSERT(0);			
-		}
-		break;
-		
-		case PxGeometryType::eHAIRSYSTEM:
-		{
-			// jcarius: Hairsystem bounds only available on GPU
-			bounds.setEmpty();
 		}
 		break;
 
@@ -512,8 +515,6 @@ static PX_FORCE_INLINE void computeMinMaxBounds(PxBounds3* PX_RESTRICT bounds, c
 
 ShapeData::ShapeData(const PxGeometry& g, const PxTransform& t, PxReal inflation)
 {
-	using namespace physx::aos;
-
 	// PT: this cast to matrix is already done in GeometryUnion::computeBounds (e.g. for boxes). So we do it first,
 	// then we'll pass the matrix directly to computeBoundsShapeData, to avoid the double conversion.
 	const bool isOBB = PxAbs(t.q.w) < 0.999999f;

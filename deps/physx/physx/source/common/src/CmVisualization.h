@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -52,28 +52,24 @@ namespace Cm
 							  PxReal scale,
 							  const PxTransform& t0,
 							  const PxTransform& t1,
-							  PxReal value,
-							  bool active);
+							  PxReal value);
 
 	PX_PHYSX_COMMON_API void visualizeAngularLimit(PxRenderOutput& out,
 							   PxReal scale,
 							   const PxTransform& t0,
 							   PxReal lower,
-							   PxReal upper,
-							   bool active);
+							   PxReal upper);
 
 	PX_PHYSX_COMMON_API void visualizeLimitCone(PxRenderOutput& out,
 							PxReal scale,
 							const PxTransform& t,
 							PxReal ySwing,
-							PxReal zSwing,
-							bool active);
+							PxReal zSwing);
 
 	PX_PHYSX_COMMON_API void visualizeDoubleCone(PxRenderOutput& out,
 							 PxReal scale,
 							 const PxTransform& t,
-							 PxReal angle,
-							 bool active);
+							 PxReal angle);
 	
 	struct ConstraintImmediateVisualizer : public PxConstraintVisualizer
 	{
@@ -91,32 +87,32 @@ namespace Cm
 		{
 		}
 
-		virtual void visualizeJointFrames(const PxTransform& parent, const PxTransform& child)
+		virtual void visualizeJointFrames(const PxTransform& parent, const PxTransform& child)	PX_OVERRIDE
 		{
 			Cm::visualizeJointFrames(mCmOutput, mFrameScale, parent, child);
 		}
 
-		virtual void visualizeLinearLimit(const PxTransform& t0, const PxTransform& t1, PxReal value, bool active)
+		virtual void visualizeLinearLimit(const PxTransform& t0, const PxTransform& t1, PxReal value)	PX_OVERRIDE
 		{
-			Cm::visualizeLinearLimit(mCmOutput, mLimitScale, t0, t1, value, active);
+			Cm::visualizeLinearLimit(mCmOutput, mLimitScale, t0, t1, value);
 		}
 
-		virtual void visualizeAngularLimit(const PxTransform& t0, PxReal lower, PxReal upper, bool active)
+		virtual void visualizeAngularLimit(const PxTransform& t0, PxReal lower, PxReal upper)	PX_OVERRIDE
 		{
-			Cm::visualizeAngularLimit(mCmOutput, mLimitScale, t0, lower, upper, active);
+			Cm::visualizeAngularLimit(mCmOutput, mLimitScale, t0, lower, upper);
 		}
 
-		virtual void visualizeLimitCone(const PxTransform& t, PxReal tanQSwingY, PxReal tanQSwingZ, bool active)
+		virtual void visualizeLimitCone(const PxTransform& t, PxReal tanQSwingY, PxReal tanQSwingZ)	PX_OVERRIDE
 		{
-			Cm::visualizeLimitCone(mCmOutput, mLimitScale, t, tanQSwingY, tanQSwingZ, active);
+			Cm::visualizeLimitCone(mCmOutput, mLimitScale, t, tanQSwingY, tanQSwingZ);
 		}
 
-		virtual void visualizeDoubleCone(const PxTransform& t, PxReal angle, bool active)
+		virtual void visualizeDoubleCone(const PxTransform& t, PxReal angle)	PX_OVERRIDE
 		{
-			Cm::visualizeDoubleCone(mCmOutput, mLimitScale, t, angle, active);
+			Cm::visualizeDoubleCone(mCmOutput, mLimitScale, t, angle);
 		}
 
-		virtual void visualizeLine( const PxVec3& p0, const PxVec3& p1, PxU32 color)
+		virtual void visualizeLine( const PxVec3& p0, const PxVec3& p1, PxU32 color)	PX_OVERRIDE
 		{
 			mCmOutput << color;
 			mCmOutput.outputSegment(p0, p1);

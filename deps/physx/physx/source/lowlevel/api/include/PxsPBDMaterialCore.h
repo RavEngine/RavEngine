@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -34,16 +34,6 @@
 
 namespace physx
 {
-	//Technically, this doesn't need the PxsParticleMaterialData types, but this allows us
-	//to have a common base and opens the scope for rigid-particle interactions.
-	struct PxsCustomMaterialData : public PxsParticleMaterialData
-	{	
-		PxsCustomMaterialData()					{}	// PT: TODO: ctor leaves things uninitialized, is that by design?
-		PxsCustomMaterialData(const PxEMPTY)	{}
-
-		void*		userData;				//24
-	};
-
 	struct PxsPBDMaterialData : public PxsParticleMaterialData
 	{
 		PxsPBDMaterialData()				{}	// PT: TODO: ctor leaves things uninitialized, is that by design?
@@ -62,7 +52,6 @@ namespace physx
 	};
 
 	typedef MaterialCoreT<PxsPBDMaterialData, PxPBDMaterial>		PxsPBDMaterialCore;
-	typedef MaterialCoreT<PxsCustomMaterialData, PxCustomMaterial>	PxsCustomMaterialCore;
 
 } //namespace phyxs
 

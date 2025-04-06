@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -39,7 +39,7 @@
 
 using namespace physx;
 
-PX_FORCE_INLINE PxReal computeTetrahedronVolume(const PxVec3& x0, const PxVec3& x1, const PxVec3& x2, const PxVec3& x3)
+static PX_FORCE_INLINE PxReal computeTetrahedronVolume(const PxVec3& x0, const PxVec3& x1, const PxVec3& x2, const PxVec3& x3)
 {
 	const PxVec3 u1 = x1 - x0;
 	const PxVec3 u2 = x2 - x0;
@@ -54,7 +54,7 @@ PX_FORCE_INLINE PxReal computeTetrahedronVolume(const PxVec3& x0, const PxVec3& 
 }
 
 //Remove tets with small volume
-void removeSmallVolumeTetrahedra(PxArray<::physx::PxVec3>& vertices, PxArray<PxU32>& indices, PxReal volumeThreshold = 1e-8f)
+static void removeSmallVolumeTetrahedra(PxArray<::physx::PxVec3>& vertices, PxArray<PxU32>& indices, PxReal volumeThreshold = 1e-8f)
 {
 	uint32_t indexer = 0;
 
@@ -78,7 +78,7 @@ void removeSmallVolumeTetrahedra(PxArray<::physx::PxVec3>& vertices, PxArray<PxU
 }
 
 //Removes vertices not referenced by any tetrahedron and maps the tet's indices to match the compacted vertex list
-void removeUnusedVertices(PxArray<::physx::PxVec3>& vertices, PxArray<PxU32>& tets, PxU32 numPointsToKeepAtBeginning = 0)
+static void removeUnusedVertices(PxArray<::physx::PxVec3>& vertices, PxArray<PxU32>& tets, PxU32 numPointsToKeepAtBeginning = 0)
 {
 	PxArray<PxI32> compressorMap;
 	compressorMap.resize(vertices.size());
@@ -125,6 +125,116 @@ void removeUnusedVertices(PxArray<::physx::PxVec3>& vertices, PxArray<PxU32>& te
 		vertices.removeRange(indexer, vertices.size() - indexer);
 }
 
+static PX_FORCE_INLINE PxU64 buildKey(PxI32 a, PxI32 b)
+{
+	if (a < b)
+		return ((PxU64(a)) << 32) | (PxU64(b));
+	else
+		return ((PxU64(b)) << 32) | (PxU64(a));
+}
+
+static const PxI32 neighborEdgeList[3][2] = { { 0, 1 }, { 0, 2 }, { 1, 2 } };
+
+static void buildTriangleNeighborhood(const PxI32* tris, PxU32 numTris, PxArray<PxI32>& result)
+{
+	PxU32 l = 4 * numTris; //Waste one element in neighborhood info but allow bit shift access instead
+	result.clear();
+	result.resize(l, -1);
+
+	PxHashMap<PxU64, PxI32> faces;
+	for (PxU32 i = 0; i < numTris; ++i)
+	{
+		const PxI32* tri = &tris[3 * i];
+		if (tris[0] < 0)
+			continue;
+
+		for (PxI32 j = 0; j < 3; ++j)
+		{
+			PxU64 key = buildKey(tri[neighborEdgeList[j][0]], tri[neighborEdgeList[j][1]]);
+			if (const PxPair<const PxU64, PxI32>* ptr = faces.find(key))
+			{
+				if (ptr->second < 0)
+				{
+					//PX_ASSERT(false); //Invalid tetmesh since a face is shared by more than 2 tetrahedra
+					continue;
+				}
+
+				result[4 * i + j] = ptr->second;
+				result[ptr->second] = 4 * i + j;
+
+				faces[key] = -1;
+			}
+			else
+				faces.insert(key, 4 * i + j);
+		}
+	}
+}
+
+void PxTetMaker::detectTriangleIslands(const PxI32* triangles, PxU32 numTriangles, PxArray<PxU32>& islandIndexPerTriangle)
+{
+	//Detect islands
+	PxArray<PxI32> neighborhood;
+	buildTriangleNeighborhood(triangles, numTriangles, neighborhood);
+	const PxU32 noIslandAssignedMarker = 0xFFFFFFFF;
+	islandIndexPerTriangle.resize(numTriangles, noIslandAssignedMarker);
+	PxU32 start = 0;
+	PxI32 color = -1;
+	PxArray<PxI32> stack;
+	while (true)
+	{
+		stack.clear();
+		while (start < islandIndexPerTriangle.size())
+		{
+			if (islandIndexPerTriangle[start] == noIslandAssignedMarker)
+			{
+				stack.pushBack(start);
+				++color;
+				islandIndexPerTriangle[start] = color;
+				break;
+			}
+			++start;
+		}
+
+		if (start == islandIndexPerTriangle.size())
+			break;
+
+		while (stack.size() > 0)
+		{
+			PxI32 id = stack.popBack();
+			for (PxI32 i = 0; i < 3; ++i)
+			{
+				PxI32 a = neighborhood[4 * id + i];
+				PxI32 tetId = a >> 2;
+				if (tetId >= 0 && islandIndexPerTriangle[tetId] == noIslandAssignedMarker)
+				{
+					stack.pushBack(tetId);
+					islandIndexPerTriangle[tetId] = color;
+				}
+			}
+		}
+	}
+}
+
+PxU32 PxTetMaker::findLargestIslandId(const PxU32* islandIndexPerTriangle, PxU32 numTriangles)
+{
+	PxU32 numIslands = 0;
+	for (PxU32 i = 0; i < numTriangles; ++i)
+		numIslands = PxMax(numIslands, islandIndexPerTriangle[i]);
+	++numIslands;
+
+	PxArray<PxU32> numEntriesPerColor;
+	numEntriesPerColor.resize(numIslands, 0);
+	for (PxU32 i = 0; i < numTriangles; ++i)
+		numEntriesPerColor[islandIndexPerTriangle[i]] += 1;
+
+	PxU32 colorWithHighestTetCount = 0;
+	for (PxU32 i = 1; i < numEntriesPerColor.size(); ++i)
+		if (numEntriesPerColor[i] > numEntriesPerColor[colorWithHighestTetCount])
+			colorWithHighestTetCount = i;
+
+	return colorWithHighestTetCount;
+}
+
 bool PxTetMaker::createConformingTetrahedronMesh(const PxSimpleTriangleMesh& triangleMesh,
 	physx::PxArray<physx::PxVec3>& outVertices, physx::PxArray<physx::PxU32>& outTetIndices, const bool validate, PxReal volumeThreshold)
 {
@@ -133,7 +243,7 @@ bool PxTetMaker::createConformingTetrahedronMesh(const PxSimpleTriangleMesh& tri
 		PxTriangleMeshAnalysisResults result = PxTetMaker::validateTriangleMesh(triangleMesh);		
 		if (result & PxTriangleMeshAnalysisResult::eMESH_IS_INVALID) 
 		{
-			PxGetFoundation().error(PxErrorCode::eDEBUG_INFO, __FILE__, __LINE__, "createConformingTetrahedronMesh(): Input triangle mesh is not suited to create a tetmesh due to deficiencies. Please call PxTetMaker::validateTriangleMesh(triangleMesh) for more details.");
+			PxGetFoundation().error(PxErrorCode::eDEBUG_INFO, PX_FL, "createConformingTetrahedronMesh(): Input triangle mesh is not suited to create a tetmesh due to deficiencies. Please call PxTetMaker::validateTriangleMesh(triangleMesh) for more details.");
 			return false;
 		}
 	}
@@ -153,16 +263,24 @@ bool PxTetMaker::createConformingTetrahedronMesh(const PxSimpleTriangleMesh& tri
 }
 
 bool PxTetMaker::createVoxelTetrahedronMesh(const PxTetrahedronMeshDesc& tetMesh,
-	const PxU32 numVoxelsAlongLongestBoundingBoxAxis, physx::PxArray<physx::PxVec3>& outVertices, physx::PxArray<physx::PxU32>& outTetIndices, PxI32* intputPointToOutputTetIndex, const PxU32* anchorNodeIndices)
+	const PxU32 numVoxelsAlongLongestBoundingBoxAxis, physx::PxArray<physx::PxVec3>& outVertices, physx::PxArray<physx::PxU32>& outTetIndices,
+	PxI32* intputPointToOutputTetIndex, const PxU32* anchorNodeIndices, PxU32 numTetsPerVoxel)
 {
-	Ext::generateVoxelTetmesh(tetMesh.points, tetMesh.tetrahedrons,	numVoxelsAlongLongestBoundingBoxAxis, outVertices, outTetIndices, intputPointToOutputTetIndex, anchorNodeIndices);
+	//numTetsPerVoxel has only two valid values.
+	if (numTetsPerVoxel != 5 && numTetsPerVoxel != 6)
+		numTetsPerVoxel = 5;
+	Ext::generateVoxelTetmesh(tetMesh.points, tetMesh.tetrahedrons,	numVoxelsAlongLongestBoundingBoxAxis, outVertices, outTetIndices, intputPointToOutputTetIndex, anchorNodeIndices, numTetsPerVoxel);
 	return true;
 }
 
 bool PxTetMaker::createVoxelTetrahedronMeshFromEdgeLength(const PxTetrahedronMeshDesc& tetMesh,
-	const PxReal voxelEdgeLength, physx::PxArray<physx::PxVec3>& outVertices, physx::PxArray<physx::PxU32>& outTetIndices, PxI32* intputPointToOutputTetIndex, const PxU32* anchorNodeIndices)
+	const PxReal voxelEdgeLength, physx::PxArray<physx::PxVec3>& outVertices, physx::PxArray<physx::PxU32>& outTetIndices, 
+	PxI32* intputPointToOutputTetIndex, const PxU32* anchorNodeIndices, PxU32 numTetsPerVoxel)
 {
-	Ext::generateVoxelTetmesh(tetMesh.points, tetMesh.tetrahedrons, voxelEdgeLength, outVertices, outTetIndices, intputPointToOutputTetIndex, anchorNodeIndices);
+	//numTetsPerVoxel has only two valid values.
+	if (numTetsPerVoxel != 5 && numTetsPerVoxel != 6)
+		numTetsPerVoxel = 5;
+	Ext::generateVoxelTetmesh(tetMesh.points, tetMesh.tetrahedrons, voxelEdgeLength, outVertices, outTetIndices, intputPointToOutputTetIndex, anchorNodeIndices, numTetsPerVoxel);
 	return true;
 }
 
@@ -178,15 +296,50 @@ PxTetrahedronMeshAnalysisResults PxTetMaker::validateTetrahedronMesh(const PxBou
 
 void PxTetMaker::simplifyTriangleMesh(const PxArray<PxVec3>& inputVertices, const PxArray<PxU32>&inputIndices, int targetTriangleCount, PxF32 maximalEdgeLength,
 	PxArray<PxVec3>& outputVertices, PxArray<PxU32>& outputIndices,
-	PxArray<PxU32> *vertexMap, PxReal edgeLengthCostWeight, PxReal flatnessDetectionThreshold)
+	PxArray<PxU32> *vertexMap, PxReal edgeLengthCostWeight, PxReal flatnessDetectionThreshold,
+	bool projectSimplifiedPointsOnInputMeshSurface, PxArray<PxU32>* outputVertexToInputTriangle, bool removeDisconnectedPatches)
 {
 	Ext::MeshSimplificator ms;
-	ms.init(inputVertices, inputIndices, edgeLengthCostWeight, flatnessDetectionThreshold);
-	ms.decimateBySize(targetTriangleCount, maximalEdgeLength);
-	ms.readBack(outputVertices, outputIndices, vertexMap);
+
+	PxArray<PxU32> indexMapToFullTriangleSet;
+	if (removeDisconnectedPatches)
+	{
+		PxU32 numTriangles = inputIndices.size() / 3;
+		PxArray<PxU32> islandIndexPerTriangle;
+		PxTetMaker::detectTriangleIslands(reinterpret_cast<const PxI32*>(inputIndices.begin()), numTriangles, islandIndexPerTriangle);
+
+		PxU32 biggestIslandIndex = PxTetMaker::findLargestIslandId(islandIndexPerTriangle.begin(), islandIndexPerTriangle.size());
+
+		PxArray<PxU32> connectedTriangleSet;
+		for (PxU32 i = 0; i < numTriangles; ++i)
+		{
+			if (islandIndexPerTriangle[i] == biggestIslandIndex)
+			{
+				for (PxU32 j = 0; j < 3; ++j)
+					connectedTriangleSet.pushBack(inputIndices[3 * i + j]);
+				indexMapToFullTriangleSet.pushBack(i);
+			}
+		}
+
+		ms.init(inputVertices, connectedTriangleSet, edgeLengthCostWeight, flatnessDetectionThreshold, projectSimplifiedPointsOnInputMeshSurface);
+		ms.decimateBySize(targetTriangleCount, maximalEdgeLength);
+		ms.readBack(outputVertices, outputIndices, vertexMap, outputVertexToInputTriangle);
+	}
+	else
+	{
+		ms.init(inputVertices, inputIndices, edgeLengthCostWeight, flatnessDetectionThreshold, projectSimplifiedPointsOnInputMeshSurface);
+		ms.decimateBySize(targetTriangleCount, maximalEdgeLength);
+		ms.readBack(outputVertices, outputIndices, vertexMap, outputVertexToInputTriangle);	
+	}
+
+	if (removeDisconnectedPatches && projectSimplifiedPointsOnInputMeshSurface && outputVertexToInputTriangle)
+	{
+		for (PxU32 i = 0; i < outputVertexToInputTriangle->size(); ++i)		
+			(*outputVertexToInputTriangle)[i] = indexMapToFullTriangleSet[(*outputVertexToInputTriangle)[i]];		
+	}
 }
 
-void PxTetMaker::remeshTriangleMesh(const PxArray<PxVec3>& inputVertices, const PxArray<PxU32>&inputIndices, int gridResolution,
+void PxTetMaker::remeshTriangleMesh(const PxArray<PxVec3>& inputVertices, const PxArray<PxU32>&inputIndices, PxU32 gridResolution,
 	PxArray<PxVec3>& outputVertices, PxArray<PxU32>& outputIndices, PxArray<PxU32> *vertexMap)
 {
 	Ext::Remesher rm;
@@ -194,6 +347,13 @@ void PxTetMaker::remeshTriangleMesh(const PxArray<PxVec3>& inputVertices, const 
 	rm.readBack(outputVertices, outputIndices);
 }
 
+void PxTetMaker::remeshTriangleMesh(const PxVec3* inputVertices, PxU32 nbVertices, const PxU32* inputIndices, PxU32 nbIndices, PxU32 gridResolution,
+	PxArray<PxVec3>& outputVertices, PxArray<PxU32>& outputIndices, PxArray<PxU32> *vertexMap)
+{
+	Ext::Remesher rm;
+	rm.remesh(inputVertices, nbVertices, inputIndices, nbIndices, gridResolution, vertexMap);
+	rm.readBack(outputVertices, outputIndices);
+}
 
 void PxTetMaker::createTreeBasedTetrahedralMesh(const PxArray<PxVec3>& inputVertices, const PxArray<PxU32>&inputIndices,
 	bool useTreeNodes, PxArray<PxVec3>& outputVertices, PxArray<PxU32>& outputIndices, PxReal volumeThreshold)
@@ -220,5 +380,4 @@ void PxTetMaker::createRelaxedVoxelTetrahedralMesh(const PxArray<PxVec3>& inputV
 	vt.createTetMesh(inputVertices, inputIndices, resolution, numRelaxationIters, relMinTetVolume);
 	vt.readBack(outputVertices, outputIndices);
 }
-
 

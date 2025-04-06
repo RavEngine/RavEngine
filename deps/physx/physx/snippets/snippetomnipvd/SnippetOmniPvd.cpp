@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -34,7 +34,7 @@
 #if PX_SUPPORT_OMNI_PVD
 #include "../pvdruntime/include/OmniPvdWriter.h"
 #include "../pvdruntime/include/OmniPvdFileWriteStream.h"
-#endif
+
 using namespace physx;
 
 static PxDefaultAllocator		gAllocator;
@@ -78,50 +78,51 @@ void initPhysicsWithOmniPvd()
 	gFoundation = PxCreateFoundation(PX_PHYSICS_VERSION, gAllocator, gErrorCallback);
 	if (!gFoundation)
 	{
-		printf("Error : could not create PxFoundation!");
+		printf("Error : could not create PxFoundation!\n");
 		return;
 	}
 
-#if PX_SUPPORT_OMNI_PVD
 	gOmniPvd = PxCreateOmniPvd(*gFoundation);
 	if (!gOmniPvd)
 	{
-		printf("Error : could not create PxOmniPvd!");
+		printf("Error : could not create PxOmniPvd!\n");
 		return;
 	}
 	OmniPvdWriter* omniWriter = gOmniPvd->getWriter();
 	if (!omniWriter)
 	{
-		printf("Error : could not get an instance of PxOmniPvdWriter!");
+		printf("Error : could not get an instance of PxOmniPvdWriter!\n");
 		return;
 	}
 	OmniPvdFileWriteStream* fStream = gOmniPvd->getFileWriteStream();
 	if (!fStream)
 	{
-		printf("Error : could not get an instance of PxOmniPvdFileWriteStream!");
+		printf("Error : could not get an instance of PxOmniPvdFileWriteStream!\n");
 		return;
 	}
 	fStream->setFileName(gOmniPvdPath);
-	omniWriter->setWriteStream(static_cast<OmniPvdWriteStream*>(fStream));
-#endif
+	omniWriter->setWriteStream(static_cast<OmniPvdWriteStream&>(*fStream));
 
 	gPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *gFoundation, PxTolerancesScale(), true, NULL, gOmniPvd);
 	if (!gPhysics)
 	{
-		printf("Error : could not create a PhysX instance!");
+		printf("Error : could not create a PhysX instance!\n");
 		return;
 	}
-#if PX_SUPPORT_OMNI_PVD
+
 	if (gPhysics->getOmniPvd())
 	{
-		gPhysics->getOmniPvd()->startSampling();
+		if (!gPhysics->getOmniPvd()->startSampling())
+		{
+			printf("Error : could not start OmniPvd sampling to file(%s)\n", gOmniPvdPath);
+		}
 	}
 	else
 	{
-		printf("Error : could not start OmniPvd sampling!");
+		printf("Error : could not start OmniPvd sampling to file(%s)\n", gOmniPvdPath);
 		return;
 	}
-#endif
+
 	initPhysXScene();
 }
 
@@ -129,10 +130,8 @@ void cleanupPhysics()
 {
 	PX_RELEASE(gScene);
 	PX_RELEASE(gDispatcher);
-	PX_RELEASE(gPhysics);	
-#if PX_SUPPORT_OMNI_PVD
+	PX_RELEASE(gPhysics);
 	PX_RELEASE(gOmniPvd);
-#endif
 	PX_RELEASE(gFoundation);	
 }
 
@@ -162,9 +161,11 @@ void keyPress(unsigned char key, const PxTransform& camera)
 	case ' ':	createDynamic(camera, PxSphereGeometry(3.0f), camera.rotate(PxVec3(0, 0, -1)) * 200);	break;
 	}
 }
+#endif  // PX_SUPPORT_OMNI_PVD
 
 int snippetMain(int argc, const char *const* argv)
 {
+#if PX_SUPPORT_OMNI_PVD
 	if (!parseOmniPvdOutputFile(argc, argv))
 	{ 
 		return 1;
@@ -179,5 +180,12 @@ int snippetMain(int argc, const char *const* argv)
 		stepPhysics();
 	cleanupPhysics();
 #endif
+#else
+	PX_UNUSED(argc);
+	PX_UNUSED(argv);
+
+	printf("PVD is not supported in release build configuration. Please use any of the other build configurations to run this snippet.\n");
+#endif  // PX_SUPPORT_OMNI_PVD
+
 	return 0;
 }

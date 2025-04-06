@@ -22,36 +22,52 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
-#ifndef DV_ARTICULATION_JOINT_CORE_H
-#define DV_ARTICULATION_JOINT_CORE_H
+#ifndef DY_ARTICULATION_JOINT_CORE_H
+#define DY_ARTICULATION_JOINT_CORE_H
 
 #include "DyArticulationCore.h"
 #include "solver/PxSolverDefs.h"
 #include "PxArticulationJointReducedCoordinate.h"
+#include "CmSpatialVector.h"
 
 namespace physx
 {
 	namespace Dy
 	{
+		// PT: avoid some multiplies when immediately normalizing a rotated vector
+		PX_CUDA_CALLABLE PX_FORCE_INLINE PxVec3 rotateAndNormalize(const PxQuat& q, const PxVec3& v)
+		{
+			const float vx = v.x;
+			const float vy = v.y;
+			const float vz = v.z;
+
+			const float x = q.x;
+			const float y = q.y;
+			const float z = q.z;
+			const float w = q.w;
+
+			const float w2 = w * w - 0.5f;
+			const float dot2 = (x * vx + y * vy + z * vz);
+			const PxVec3 rotated(	(vx * w2 + (y * vz - z * vy) * w + x * dot2),
+									(vy * w2 + (z * vx - x * vz) * w + y * dot2),
+									(vz * w2 + (x * vy - y * vx) * w + z * dot2));
+
+			return rotated.getNormalized();
+		}
+
 		class ArticulationJointCoreData;
 
 		PX_ALIGN_PREFIX(16)
 		struct ArticulationJointCore
 		{
-			//= ATTENTION! =====================================================================================
-			// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-			// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-			// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-			// accordingly.
-			//==================================================================================================
 		public:
 
 			// PX_SERIALIZATION
-			ArticulationJointCore(const PxEMPTY&) : jointDirtyFlag(PxEmpty) 
+			ArticulationJointCore(const PxEMPTY&) : jCalcUpdateFrames(false) 
 			{ 
 				PX_COMPILE_TIME_ASSERT(sizeof(PxArticulationMotions) == sizeof(PxU8)); 
 			}
@@ -64,11 +80,24 @@ namespace physx
 			}
 
 			// PT: these ones don't update the dirty flags
-			PX_FORCE_INLINE	void	initLimit(PxArticulationAxis::Enum axis, const PxArticulationLimit& limit)	{ limits[axis] = limit;					}
-			PX_FORCE_INLINE	void	initDrive(PxArticulationAxis::Enum axis, const PxArticulationDrive& drive)	{ drives[axis] = drive;					}
-			PX_FORCE_INLINE	void	initJointType(PxArticulationJointType::Enum type)							{ jointType = PxU8(type);				}
-			PX_FORCE_INLINE	void	initMaxJointVelocity(const PxReal maxJointV)								{ maxJointVelocity = maxJointV;			}
-			PX_FORCE_INLINE	void	initFrictionCoefficient(const PxReal coefficient)							{ frictionCoefficient = coefficient;	}
+			PX_FORCE_INLINE	void	setLimit(PxArticulationAxis::Enum axis, const PxArticulationLimit& limit)	{ limits[axis] = limit;					}
+			PX_FORCE_INLINE	void	setDrive(PxArticulationAxis::Enum axis, const PxArticulationDrive& drive)	{ drives[axis] = drive;					}
+			PX_FORCE_INLINE	void	setJointType(PxArticulationJointType::Enum type)							{ jointType = PxU8(type);				}
+			PX_FORCE_INLINE	void	setMaxJointVelocity(const PxReal maxJointV)								{ 
+				for(PxU32 i = 0; i < PxArticulationAxis::eCOUNT; i++)
+				{
+					maxJointVelocity[i] = maxJointV;
+				}
+			}
+			PX_FORCE_INLINE	void	setMaxJointVelocity(PxArticulationAxis::Enum axis, const PxReal maxJointV)								{ 
+				maxJointVelocity[axis] = maxJointV;
+			}
+			PX_FORCE_INLINE	void	setFrictionCoefficient(const PxReal coefficient)							{ frictionCoefficient = coefficient;	}
+
+			PX_FORCE_INLINE void setFrictionParams(PxArticulationAxis::Enum axis, const PxJointFrictionParams& jointFrictionParams) 
+			{ 
+				frictionParams[axis] = jointFrictionParams;
+			}
 
 			void	init(const PxTransform& parentFrame, const PxTransform& childFrame)
 			{
@@ -78,18 +107,18 @@ namespace physx
 				parentPose			= parentFrame;
 				childPose			= childFrame;
 				jointOffset			= 0;
-				// PT: TODO: don't we need ArticulationJointCoreDirtyFlag::eFRAME here?
-				jointDirtyFlag		= ArticulationJointCoreDirtyFlag::eMOTION;
+				jCalcUpdateFrames		= true;
 
-				initFrictionCoefficient(0.05f);
-				initMaxJointVelocity(100.0f);
-				initJointType(PxArticulationJointType::eUNDEFINED);
+				setFrictionCoefficient(0.05f);
+				setMaxJointVelocity(100.0f);
+				setJointType(PxArticulationJointType::eUNDEFINED);
 
 				for(PxU32 i=0; i<PxArticulationAxis::eCOUNT; i++)
 				{
-					initLimit(PxArticulationAxis::Enum(i), PxArticulationLimit(0.0f, 0.0f));
-					initDrive(PxArticulationAxis::Enum(i), PxArticulationDrive(0.0f, 0.0f, 0.0f, PxArticulationDriveType::eNONE));
-
+					setLimit(PxArticulationAxis::Enum(i), PxArticulationLimit(0.0f, 0.0f));
+					setDrive(PxArticulationAxis::Enum(i), PxArticulationDrive(0.0f, 0.0f, 0.0f, PxArticulationDriveType::eNONE));
+					setFrictionParams(PxArticulationAxis::Enum(i), PxJointFrictionParams(0.0f, 0.0f, 0.0f));
+					setFrictionParams(PxArticulationAxis::Enum(i), PxJointFrictionParams(0.0f, 0.0f, 0.0f));
 					targetP[i] = 0.0f;
 					targetV[i] = 0.0f;
 					armature[i] = 0.0f;
@@ -101,21 +130,75 @@ namespace physx
 					motion[i] = PxArticulationMotion::eLOCKED;
 				}
 			}
-
-			PX_CUDA_CALLABLE bool setJointFrame(PxQuat& relativeQuat)
+			
+			PX_CUDA_CALLABLE void setJointFrame(Cm::UnAlignedSpatialVector* motionMatrix, 
+                                                const Cm::UnAlignedSpatialVector* jointAxis,
+                                                PxQuat& relativeQuat,
+												const PxU32 dofs)
 			{
-				if (jointDirtyFlag & ArticulationJointCoreDirtyFlag::eFRAME)
+				if (jCalcUpdateFrames)
 				{
 					relativeQuat = (childPose.q * (parentPose.q.getConjugate())).getNormalized();
 
-					//ML: this way work in GPU
-					PxU8 flag = PxU8(ArticulationJointCoreDirtyFlag::eFRAME);
-					jointDirtyFlag &= ArticulationJointCoreDirtyFlags(~flag);
-				
-					return true;
-				}
+					computeMotionMatrix(motionMatrix, jointAxis, dofs);
 
-				return false;
+					jCalcUpdateFrames = false;
+
+				}
+			}
+
+			PX_CUDA_CALLABLE PX_FORCE_INLINE void computeMotionMatrix(Cm::UnAlignedSpatialVector* motionMatrix,
+																	  const Cm::UnAlignedSpatialVector* jointAxis,
+																	  const PxU32 dofs)
+			{
+				const PxVec3 childOffset = -childPose.p;
+
+				switch (jointType)
+				{
+				case PxArticulationJointType::ePRISMATIC:
+				{
+					const Cm::UnAlignedSpatialVector& jJointAxis = jointAxis[0];
+					const PxVec3 u = rotateAndNormalize(childPose.q, jJointAxis.bottom);
+
+					motionMatrix[0] = Cm::UnAlignedSpatialVector(PxVec3(0.0f), u);
+
+					PX_ASSERT(dofs == 1);
+
+					break;
+				}
+				case PxArticulationJointType::eREVOLUTE:
+				case PxArticulationJointType::eREVOLUTE_UNWRAPPED:
+				{
+					const Cm::UnAlignedSpatialVector& jJointAxis = jointAxis[0];
+					const PxVec3 u = rotateAndNormalize(childPose.q, jJointAxis.top);
+					const PxVec3 uXd = u.cross(childOffset);
+
+					motionMatrix[0] = Cm::UnAlignedSpatialVector(u, uXd);
+
+					break;
+				}
+				case PxArticulationJointType::eSPHERICAL:
+				{
+
+					for (PxU32 ind = 0; ind < dofs; ++ind)
+					{
+						const Cm::UnAlignedSpatialVector& jJointAxis = jointAxis[ind];
+						const PxVec3 u = rotateAndNormalize(childPose.q, jJointAxis.top);
+
+						const PxVec3 uXd = u.cross(childOffset);
+						motionMatrix[ind] = Cm::UnAlignedSpatialVector(u, uXd);
+					}
+
+					break;
+				}
+				case PxArticulationJointType::eFIX:
+				{
+					PX_ASSERT(dofs == 0);
+					break;
+				}
+				default:
+					break;
+				}
 			}
 
 			PX_CUDA_CALLABLE PX_FORCE_INLINE void operator=(ArticulationJointCore& other)
@@ -131,6 +214,8 @@ namespace physx
 					targetP[i] = other.targetP[i];
 					targetV[i] = other.targetV[i];
 					armature[i] = other.armature[i];
+					frictionParams[i] = other.frictionParams[i];
+					maxJointVelocity[i] = other.maxJointVelocity[i];
 
 					jointPos[i] = other.jointPos[i];
 					jointVel[i] = other.jointVel[i];
@@ -141,22 +226,17 @@ namespace physx
 				}
 
 				frictionCoefficient = other.frictionCoefficient;
-				maxJointVelocity = other.maxJointVelocity;
 				jointOffset = other.jointOffset;
-				jointDirtyFlag = other.jointDirtyFlag;
+				jCalcUpdateFrames = other.jCalcUpdateFrames;
 				jointType = other.jointType;
 			}
 
-			//Implementation is in DyFeatherstoneArticulation.cpp
-			void setJointFrame(	ArticulationJointCoreData& jointDatum, Cm::UnAlignedSpatialVector* motionMatrix, 
-								const Cm::UnAlignedSpatialVector* jointAxis, bool forceUpdate, PxQuat& relativeRot);
-
-			PX_FORCE_INLINE	void	setParentPose(const PxTransform& t)										{ parentPose = t;			jointDirtyFlag |= ArticulationJointCoreDirtyFlag::eFRAME;				}
-			PX_FORCE_INLINE	void	setChildPose(const PxTransform& t)										{ childPose = t;			jointDirtyFlag |= ArticulationJointCoreDirtyFlag::eFRAME;				}
-			PX_FORCE_INLINE	void	setMotion(PxArticulationAxis::Enum axis, PxArticulationMotion::Enum m)	{ motion[axis] = PxU8(m);	jointDirtyFlag |= Dy::ArticulationJointCoreDirtyFlag::eMOTION;			}
-			PX_FORCE_INLINE	void	setTargetP(PxArticulationAxis::Enum axis, PxReal value)					{ targetP[axis] = value;	jointDirtyFlag |= Dy::ArticulationJointCoreDirtyFlag::eTARGETPOSE;		}
-			PX_FORCE_INLINE	void	setTargetV(PxArticulationAxis::Enum axis, PxReal value)					{ targetV[axis] = value;	jointDirtyFlag |= Dy::ArticulationJointCoreDirtyFlag::eTARGETVELOCITY;	}
-			PX_FORCE_INLINE	void	setArmature(PxArticulationAxis::Enum axis, PxReal value)				{ armature[axis] = value;	jointDirtyFlag |= Dy::ArticulationJointCoreDirtyFlag::eARMATURE;		}
+			PX_FORCE_INLINE	void	setParentPose(const PxTransform& t)										{ parentPose = t;			jCalcUpdateFrames = true;				}
+			PX_FORCE_INLINE	void	setChildPose(const PxTransform& t)										{ childPose = t;			jCalcUpdateFrames = true;				}
+			PX_FORCE_INLINE	void	setMotion(PxArticulationAxis::Enum axis, PxArticulationMotion::Enum m)	{ motion[axis] = PxU8(m);}
+			PX_FORCE_INLINE	void	setTargetP(PxArticulationAxis::Enum axis, PxReal value)					{ targetP[axis] = value; }
+			PX_FORCE_INLINE	void	setTargetV(PxArticulationAxis::Enum axis, PxReal value)					{ targetV[axis] = value; }
+			PX_FORCE_INLINE	void	setArmature(PxArticulationAxis::Enum axis, PxReal value)				{ armature[axis] = value;}
 
 			// attachment points, don't change the order, otherwise it will break GPU code
 			PxTransform						parentPose;								//28		28
@@ -173,17 +253,19 @@ namespace physx
 			PxReal							jointVel[PxArticulationAxis::eCOUNT];	//24		320
 			
 			PxReal							frictionCoefficient;					//4			324
-			PxReal							maxJointVelocity;						//4			328
+			PxJointFrictionParams			frictionParams[PxArticulationAxis::eCOUNT]; //72	396
+			PxReal							maxJointVelocity[PxArticulationAxis::eCOUNT]; // 24			420
 
 			//this is the dof offset for the joint in the cache. 
-			PxU32							jointOffset;							//4			332
+			PxU32							jointOffset;							//4			424
 
-			PxU8							dofIds[PxArticulationAxis::eCOUNT];		//6			338
-			PxU8							motion[PxArticulationAxis::eCOUNT];		//6			344
-			PxU8							invDofIds[PxArticulationAxis::eCOUNT];	//6			350
+			PxU8							dofIds[PxArticulationAxis::eCOUNT];		//6			430
+			PxU8							motion[PxArticulationAxis::eCOUNT];		//6			436
+			PxU8							invDofIds[PxArticulationAxis::eCOUNT];	//6			442
 
-			ArticulationJointCoreDirtyFlags	jointDirtyFlag;							//1			351
-			PxU8							jointType;								//1			352
+			bool							jCalcUpdateFrames;						//1			443
+			PxU8							jointType;								//1			444
+			PxReal padding[1];														//4		````448
 		}PX_ALIGN_SUFFIX(16);
 	}
 }

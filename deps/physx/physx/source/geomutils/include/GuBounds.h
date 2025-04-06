@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -47,6 +47,8 @@
 
 namespace physx
 {
+	class PxMeshScale;
+
 namespace Gu
 {
 	PX_FORCE_INLINE void computeCapsuleBounds(PxBounds3& bounds, const PxCapsuleGeometry& capsuleGeom, const PxTransform& pose, float contactOffset=0.0f, float inflation=1.0f)
@@ -72,6 +74,7 @@ namespace Gu
 	void computeGlobalBox(PxBounds3& bounds, PxU32 nbPrims, const PxBounds3* PX_RESTRICT boxes, const PxU32* PX_RESTRICT primitives);
 
 	PX_PHYSX_COMMON_API void computeBoundsAroundVertices(PxBounds3& bounds, PxU32 nbVerts, const PxVec3* PX_RESTRICT verts);
+	PX_PHYSX_COMMON_API void computeTightBounds(PxBounds3& bounds, PxU32 nbVerts, const PxVec3* PX_RESTRICT verts, const PxTransform& pose, const PxMeshScale& scale, float contactOffset, float inflation);
 	PX_PHYSX_COMMON_API void computeLocalBoundsAndGeomEpsilon(const PxVec3* vertices, PxU32 nbVerties, PxBounds3& localBounds, PxReal& geomEpsilon);
 
 	#define StoreBounds(bounds, minV, maxV)	\

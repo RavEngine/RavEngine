@@ -22,14 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #pragma once
-/** \addtogroup vehicle2
-  @{
-*/
 
 #include "vehicle2/PxVehicleParams.h"
 #include "vehicle2/PxVehicleComponent.h"
@@ -56,7 +53,7 @@ Includes:
   - Clearing certain states if the actor is sleeping.
   - Reading the state from the PhysX actor and copy to the vehicle internal state.
 
-@see PxVehiclePhysxActorWakeup PxVehiclePhysxActorSleepCheck PxVehicleReadRigidBodyStateFromPhysXActor
+\see PxVehiclePhysxActorWakeup PxVehiclePhysxActorSleepCheck PxVehicleReadRigidBodyStateFromPhysXActor
 */
 class PxVehiclePhysXActorBeginComponent : public PxVehicleComponent
 {
@@ -172,6 +169,9 @@ public:
 	\param[out] wheelLocalPoses describes the local poses of the wheels in the rigid body frame.
 	\param[out] gearState The gear state. Can be set to NULL if the vehicle does
 	            not have gears.
+	\param[out] throttle The throttle command state (see #PxVehicleCommandState).
+                Can be set to NULL if the vehicle is not controlled through
+		        PxVehicleCommandState.
 	\param[out] physxActor is the PxRigidBody instance associated with the vehicle.
 	*/
 	virtual void getDataForPhysXActorEndComponent(
@@ -182,6 +182,7 @@ public:
 		PxVehicleArrayData<const PxVehicleWheelRigidBody1dState>& wheelRigidBody1dStates, 
 		PxVehicleArrayData<const PxVehicleWheelLocalPose>& wheelLocalPoses,
 		const PxVehicleGearboxState*& gearState,
+		const PxReal*& throttle,
 		PxVehiclePhysXActor*& physxActor) = 0;
 
 	virtual bool update(const PxReal dt, const PxVehicleSimulationContext& context)
@@ -197,10 +198,11 @@ public:
 		PxVehicleArrayData<const PxVehicleWheelRigidBody1dState> wheelRigidBody1dStates;
 		PxVehicleArrayData<const PxVehicleWheelLocalPose> wheelLocalPoses;
 		const PxVehicleGearboxState* gearState;
+		const PxReal* throttle;
 		PxVehiclePhysXActor* physxActor;
 
 		getDataForPhysXActorEndComponent(axleDescription, rigidBodyState,
-			wheelParams, wheelShapeLocalPoses, wheelRigidBody1dStates, wheelLocalPoses, gearState,
+			wheelParams, wheelShapeLocalPoses, wheelRigidBody1dStates, wheelLocalPoses, gearState, throttle,
 			physxActor);
 
 		for (PxU32 i = 0; i < axleDescription->nbWheels; i++)
@@ -218,7 +220,7 @@ public:
 			PxVehicleWriteRigidBodyStateToPhysXActor(physxContext.physxActorUpdateMode, *rigidBodyState, dt, *physxActor->rigidBody);
 
 			PxVehiclePhysxActorKeepAwakeCheck(*axleDescription, wheelParams, wheelRigidBody1dStates,
-				physxContext.physxActorWakeCounterThreshold, physxContext.physxActorWakeCounterResetValue, gearState,
+				physxContext.physxActorWakeCounterThreshold, physxContext.physxActorWakeCounterResetValue, gearState, throttle,
 				*physxActor->rigidBody);
 		}
 		else
@@ -235,4 +237,3 @@ public:
 } // namespace physx
 #endif
 
-/** @} */

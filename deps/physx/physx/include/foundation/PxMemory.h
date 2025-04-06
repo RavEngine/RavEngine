@@ -22,18 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 #ifndef PX_MEMORY_H
 #define PX_MEMORY_H
 
-/** \addtogroup foundation
-@{
-*/
 
-#include "foundation/Px.h"
+#include "foundation/PxSimpleTypes.h"
 #include "foundation/PxMathIntrinsics.h"
 #include "foundation/PxSimpleTypes.h"
 
@@ -52,7 +49,8 @@ namespace physx
 	*/
 	PX_FORCE_INLINE void* PxMemZero(void* dest, PxU32 count)
 	{
-		return physx::intrinsics::memZero(dest, count);
+		// This is to avoid undefined behavior
+		return (count != 0) ? physx::intrinsics::memZero(dest, count) : NULL;
 	}
 
 	/**
@@ -66,7 +64,8 @@ namespace physx
 	*/
 	PX_FORCE_INLINE void* PxMemSet(void* dest, PxI32 c, PxU32 count)
 	{
-		return physx::intrinsics::memSet(dest, c, count);
+		// This is to avoid undefined behavior
+		return (count != 0) ? physx::intrinsics::memSet(dest, c, count) : NULL;
 	}
 
 	/**
@@ -82,7 +81,8 @@ namespace physx
 	*/
 	PX_FORCE_INLINE void* PxMemCopy(void* dest, const void* src, PxU32 count)
 	{
-		return physx::intrinsics::memCopy(dest, src, count);
+		// This is to avoid undefined behavior
+		return (count != 0) ? physx::intrinsics::memCopy(dest, src, count) : NULL;
 	}
 
 	/**
@@ -122,6 +122,5 @@ namespace physx
 } // namespace physx
 #endif
 
-/** @} */
 #endif
 

@@ -22,14 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #ifndef PX_PVD_USER_RENDERER_H
 #define PX_PVD_USER_RENDERER_H
 
-/** \addtogroup pvd
-@{
-*/
 #include "foundation/PxVec3.h"
 #include "foundation/PxTransform.h"
 #include "common/PxRenderBuffer.h"
@@ -80,10 +77,10 @@ class PvdUserRenderer : public PxUserAllocated
 
 	// Constraint visualization routines
 	virtual void visualizeJointFrames(const PxTransform& parent, const PxTransform& child) = 0;
-	virtual void visualizeLinearLimit(const PxTransform& t0, const PxTransform& t1, float value, bool active) = 0;
-	virtual void visualizeAngularLimit(const PxTransform& t0, float lower, float upper, bool active) = 0;
-	virtual void visualizeLimitCone(const PxTransform& t, float tanQSwingY, float tanQSwingZ, bool active) = 0;
-	virtual void visualizeDoubleCone(const PxTransform& t, float angle, bool active) = 0;
+	virtual void visualizeLinearLimit(const PxTransform& t0, const PxTransform& t1, float value) = 0;
+	virtual void visualizeAngularLimit(const PxTransform& t0, float lower, float upper) = 0;
+	virtual void visualizeLimitCone(const PxTransform& t, float tanQSwingY, float tanQSwingZ) = 0;
+	virtual void visualizeDoubleCone(const PxTransform& t, float angle) = 0;
 
 	// Clear the immedate buffer.
 	virtual void flushRenderEvents() = 0;
@@ -103,6 +100,5 @@ class RendererEventClient
 }
 }
 #endif
-/** @} */
 #endif
 

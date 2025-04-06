@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -54,12 +54,12 @@ namespace physx
 		if (mFileWriteStream)
 		{
 			mFileWriteStream->closeStream();
-			mLoader->mDestroyOmniPvdFileWriteStream(mFileWriteStream);
+			mLoader->mDestroyOmniPvdFileWriteStream(*mFileWriteStream);
 			mFileWriteStream = NULL;
 		}
 		if (mWriter)
 		{
-			mLoader->mDestroyOmniPvdWriter(mWriter);
+			mLoader->mDestroyOmniPvdWriter(*mWriter);
 			mWriter = NULL;
 		}
 		if (mLoader)
@@ -79,14 +79,6 @@ namespace physx
 			mInstance->~NpOmniPvd();			
 			PX_FREE(mInstance);
 			mInstance = NULL;			
-		}
-		else
-		{
-			/*
-			mInstance->error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__,
-				"Foundation destruction failed due to pending module references. Close/release all depending "
-				"modules first.");
-				*/
 		}
 	}
 
@@ -142,7 +134,13 @@ namespace physx
 
 	OmniPvdWriter* NpOmniPvd::getWriter()
 	{
+		return blockingWriterLoad();
+	}
+
+	OmniPvdWriter* NpOmniPvd::blockingWriterLoad()
+	{
 #if PX_SUPPORT_OMNI_PVD
+		PxMutex::ScopedLock lock(mWriterLoadMutex);
 		if (mWriter)
 		{
 			return mWriter;
@@ -155,8 +153,26 @@ namespace physx
 		return mWriter;
 #else
 		return NULL;
+#endif		
+	}
+
+	OmniPvdWriter* NpOmniPvd::acquireExclusiveWriterAccess()
+	{
+#if PX_SUPPORT_OMNI_PVD
+		mMutex.lock();
+		return blockingWriterLoad();
+#else
+		return NULL;
 #endif
 	}
+	
+	void NpOmniPvd::releaseExclusiveWriterAccess()
+	{
+#if PX_SUPPORT_OMNI_PVD
+		mMutex.unlock();
+#endif
+	}
+
 
 	OmniPvdFileWriteStream* NpOmniPvd::getFileWriteStream()
 	{
@@ -181,8 +197,7 @@ namespace physx
 #if PX_SUPPORT_OMNI_PVD
 		if (mPhysXSampler)
 		{
-			mPhysXSampler->startSampling();
-			return true;
+			return mPhysXSampler->startSampling();
 		}		
 		return false;
 #else

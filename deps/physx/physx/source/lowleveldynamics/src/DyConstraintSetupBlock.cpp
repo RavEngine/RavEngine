@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -34,44 +34,26 @@
 #include "foundation/PxSort.h"
 #include "PxcConstraintBlockStream.h"
 #include "DyArticulationContactPrep.h"
+#include "DyAllocator.h"
+
 namespace physx
 {
+
+using namespace aos;
 
 namespace Dy
 {
 
-namespace
-{
-void setConstants(PxReal& constant, PxReal& unbiasedConstant, PxReal& velMultiplier, PxReal& impulseMultiplier,
-				  const Px1DConstraint& c, PxReal unitResponse, PxReal minRowResponse, PxReal erp, PxReal dt, PxReal recipdt,
-				  const PxSolverBodyData& b0, const PxSolverBodyData& b1, const bool finished)
-{
-	if(finished)
-	{
-		constant = 0.f;
-		unbiasedConstant = 0.f;
-		velMultiplier = 0.f;
-		impulseMultiplier = 0.f;
-		return;
-	}
-	PxReal nv = needsNormalVel(c) ? b0.projectVelocity(c.linear0, c.angular0) - b1.projectVelocity(c.linear1, c.angular1)
-								  : 0;
-	
-	setSolverConstants(constant, unbiasedConstant, velMultiplier, impulseMultiplier, 
-					   c, nv, unitResponse, minRowResponse, erp, dt, recipdt);
-}
-}
-
 SolverConstraintPrepState::Enum setupSolverConstraint4
 		(PxSolverConstraintPrepDesc* PX_RESTRICT constraintDescs,
 		const PxReal dt, const PxReal recipdt, PxU32& totalRows,
-		PxConstraintAllocator& allocator, PxU32 maxRows);
+		PxConstraintAllocator& allocator, PxU32 maxRows, bool residualReportingEnabled);
 
 SolverConstraintPrepState::Enum setupSolverConstraint4
 (SolverConstraintShaderPrepDesc* PX_RESTRICT constraintShaderDescs,
 PxSolverConstraintPrepDesc* PX_RESTRICT constraintDescs,
 const PxReal dt, const PxReal recipdt, PxU32& totalRows,
-PxConstraintAllocator& allocator)
+PxConstraintAllocator& allocator, bool residualReportingEnabled)
 
 {
 	//KS - we will never get here with constraints involving articulations so we don't need to stress about those in here
@@ -121,13 +103,13 @@ PxConstraintAllocator& allocator)
 		rows += constraintCount;
 	}
 
-	return setupSolverConstraint4(constraintDescs, dt, recipdt, totalRows, allocator, maxRows);
+	return setupSolverConstraint4(constraintDescs, dt, recipdt, totalRows, allocator, maxRows, residualReportingEnabled);
 }
 
 SolverConstraintPrepState::Enum setupSolverConstraint4
 (PxSolverConstraintPrepDesc* PX_RESTRICT constraintDescs,
-const PxReal dt, const PxReal recipdt, PxU32& totalRows,
-PxConstraintAllocator& allocator, PxU32 maxRows)
+const PxReal simDt, const PxReal recipSimDt, PxU32& totalRows,
+PxConstraintAllocator& allocator, PxU32 maxRows, bool residualReportingEnabled)
 {
 	const Vec4V zero = V4Zero();
 	Px1DConstraint* allSorted[MAX_CONSTRAINT_ROWS * 4];
@@ -150,14 +132,14 @@ PxConstraintAllocator& allocator, PxU32 maxRows)
 		numRows += desc.numRows;
 	}
 
-	const PxU32 stride = sizeof(SolverConstraint1DDynamic4);
+	const PxU32 stride = residualReportingEnabled ? sizeof(SolverConstraint1DDynamic4WithResidual) : sizeof(SolverConstraint1DDynamic4);
 
 	const PxU32 constraintLength = sizeof(SolverConstraint1DHeader4) + stride * maxRows;
 
 	//KS - +16 is for the constraint progress counter, which needs to be the last element in the constraint (so that we
 	//know SPU DMAs have completed)
 	PxU8* ptr = allocator.reserveConstraintData(constraintLength + 16u);
-	if(NULL == ptr || (reinterpret_cast<PxU8*>(-1))==ptr)
+	if(!checkConstraintDataPtr<true>(ptr))
 	{
 		for(PxU32 a = 0; a < 4; ++a)
 		{
@@ -167,22 +149,9 @@ PxConstraintAllocator& allocator, PxU32 maxRows)
 			desc.desc->writeBack = desc.writeback;
 		}
 
-		if(NULL==ptr)
-		{
-			PX_WARN_ONCE(
-				"Reached limit set by PxSceneDesc::maxNbContactDataBlocks - ran out of buffer space for constraint prep. "
-				"Either accept joints detaching/exploding or increase buffer size allocated for constraint prep by increasing PxSceneDesc::maxNbContactDataBlocks.");
-			return SolverConstraintPrepState::eOUT_OF_MEMORY;
-		}
-		else
-		{
-			PX_WARN_ONCE(
-				"Attempting to allocate more than 16K of constraint data. "
-				"Either accept joints detaching/exploding or simplify constraints.");
-			ptr=NULL;
-			return SolverConstraintPrepState::eOUT_OF_MEMORY;
-		}
+		return SolverConstraintPrepState::eOUT_OF_MEMORY;
 	}
+
 	//desc.constraint = ptr;
 
 	totalRows = numRows;
@@ -220,14 +189,12 @@ PxConstraintAllocator& allocator, PxU32 maxRows)
 		const Vec4V invMassScale1 = V4LoadXYZW(constraintDescs[0].invMassScales.linear1, constraintDescs[1].invMassScales.linear1, 
 			constraintDescs[2].invMassScales.linear1, constraintDescs[3].invMassScales.linear1);
 
-
 		const Vec4V iMass0 = V4LoadXYZW(bd00.invMass, bd01.invMass, bd02.invMass, bd03.invMass);
 
 		const Vec4V iMass1 = V4LoadXYZW(bd10.invMass, bd11.invMass, bd12.invMass, bd13.invMass);
 
 		const Vec4V invMass0 = V4Mul(iMass0, invMassScale0);
 		const Vec4V invMass1 = V4Mul(iMass1, invMassScale1);
-
 
 		const Vec4V invInertiaScale0 = V4LoadXYZW(constraintDescs[0].invMassScales.angular0, constraintDescs[1].invMassScales.angular0, 
 			constraintDescs[2].invMassScales.angular0, constraintDescs[3].invMassScales.angular0);
@@ -255,42 +222,36 @@ PxConstraintAllocator& allocator, PxU32 maxRows)
 		Vec4V angVel30 = V4LoadA(&bd03.angularVelocity.x);
 		Vec4V angVel31 = V4LoadA(&bd13.angularVelocity.x);
 
-
 		Vec4V linVel0T0, linVel0T1, linVel0T2;
 		Vec4V linVel1T0, linVel1T1, linVel1T2;
 		Vec4V angVel0T0, angVel0T1, angVel0T2;
 		Vec4V angVel1T0, angVel1T1, angVel1T2;
-
 
 		PX_TRANSPOSE_44_34(linVel00, linVel10, linVel20, linVel30, linVel0T0, linVel0T1, linVel0T2);
 		PX_TRANSPOSE_44_34(linVel01, linVel11, linVel21, linVel31, linVel1T0, linVel1T1, linVel1T2);
 		PX_TRANSPOSE_44_34(angVel00, angVel10, angVel20, angVel30, angVel0T0, angVel0T1, angVel0T2);
 		PX_TRANSPOSE_44_34(angVel01, angVel11, angVel21, angVel31, angVel1T0, angVel1T1, angVel1T2);
 
-
-
 		//body world offsets
-		Vec4V workOffset0 = Vec4V_From_Vec3V(V3LoadU(constraintDescs[0].body0WorldOffset));
-		Vec4V workOffset1 = Vec4V_From_Vec3V(V3LoadU(constraintDescs[1].body0WorldOffset));
-		Vec4V workOffset2 = Vec4V_From_Vec3V(V3LoadU(constraintDescs[2].body0WorldOffset));
-		Vec4V workOffset3 = Vec4V_From_Vec3V(V3LoadU(constraintDescs[3].body0WorldOffset));
+		Vec4V workOffset0 = V4LoadU(&constraintDescs[0].body0WorldOffset.x);
+		Vec4V workOffset1 = V4LoadU(&constraintDescs[1].body0WorldOffset.x);
+		Vec4V workOffset2 = V4LoadU(&constraintDescs[2].body0WorldOffset.x);
+		Vec4V workOffset3 = V4LoadU(&constraintDescs[3].body0WorldOffset.x);
 
 		Vec4V workOffsetX, workOffsetY, workOffsetZ;
 
 		PX_TRANSPOSE_44_34(workOffset0, workOffset1, workOffset2, workOffset3, workOffsetX, workOffsetY, workOffsetZ);
 
-		const FloatV dtV = FLoad(dt);
-		Vec4V linBreakForce = V4LoadXYZW(constraintDescs[0].linBreakForce, constraintDescs[1].linBreakForce,
-			constraintDescs[2].linBreakForce, constraintDescs[3].linBreakForce);
-		Vec4V angBreakForce = V4LoadXYZW(constraintDescs[0].angBreakForce, constraintDescs[1].angBreakForce,
-			constraintDescs[2].angBreakForce, constraintDescs[3].angBreakForce);
+		const FloatV dtV = FLoad(simDt);
+		const Vec4V linBreakForce = V4LoadXYZW(	constraintDescs[0].linBreakForce, constraintDescs[1].linBreakForce,
+												constraintDescs[2].linBreakForce, constraintDescs[3].linBreakForce);
+		const Vec4V angBreakForce = V4LoadXYZW(	constraintDescs[0].angBreakForce, constraintDescs[1].angBreakForce,
+												constraintDescs[2].angBreakForce, constraintDescs[3].angBreakForce);
 
-		
 		header->break0 = PxU8((constraintDescs[0].linBreakForce != PX_MAX_F32) || (constraintDescs[0].angBreakForce != PX_MAX_F32));
 		header->break1 = PxU8((constraintDescs[1].linBreakForce != PX_MAX_F32) || (constraintDescs[1].angBreakForce != PX_MAX_F32));
 		header->break2 = PxU8((constraintDescs[2].linBreakForce != PX_MAX_F32) || (constraintDescs[2].angBreakForce != PX_MAX_F32));
 		header->break3 = PxU8((constraintDescs[3].linBreakForce != PX_MAX_F32) || (constraintDescs[3].angBreakForce != PX_MAX_F32));
-
 
 		//OK, I think that's everything loaded in
 
@@ -322,8 +283,6 @@ PxConstraintAllocator& allocator, PxU32 maxRows)
 		PxU32 index3 = startIndex[3];
 		PxU32 endIndex3 = index3 + constraintDescs[3].numRows - 1;
 
-		const FloatV one = FOne();
-
 		for(PxU32 a = 0; a < maxRows; ++a)
 		{	
 			SolverConstraint1DDynamic4* c = reinterpret_cast<SolverConstraint1DDynamic4*>(currPtr);
@@ -349,17 +308,27 @@ PxConstraintAllocator& allocator, PxU32 maxRows)
 			index2 = index2 == endIndex2 ? index2 : index2 + 1;
 			index3 = index3 == endIndex3 ? index3 : index3 + 1;
 
-			Vec4V driveScale = V4Splat(one);
-			if (con0->flags&Px1DConstraintFlag::eHAS_DRIVE_LIMIT && constraintDescs[0].driveLimitsAreForces)
-				driveScale = V4SetX(driveScale, FMin(one, dtV));
-			if (con1->flags&Px1DConstraintFlag::eHAS_DRIVE_LIMIT && constraintDescs[1].driveLimitsAreForces)
-				driveScale = V4SetY(driveScale, FMin(one, dtV));
-			if (con2->flags&Px1DConstraintFlag::eHAS_DRIVE_LIMIT && constraintDescs[2].driveLimitsAreForces)
-				driveScale = V4SetZ(driveScale, FMin(one, dtV));
-			if (con3->flags&Px1DConstraintFlag::eHAS_DRIVE_LIMIT && constraintDescs[3].driveLimitsAreForces)
-				driveScale = V4SetW(driveScale, FMin(one, dtV));
-
-
+			PxReal minImpulse0, minImpulse1, minImpulse2, minImpulse3;
+			PxReal maxImpulse0, maxImpulse1, maxImpulse2, maxImpulse3;
+			Dy::computeMinMaxImpulseOrForceAsImpulse(
+				con0->minImpulse, con0->maxImpulse,		
+				con0->flags & Px1DConstraintFlag::eHAS_DRIVE_LIMIT, constraintDescs[0].driveLimitsAreForces, simDt,
+				minImpulse0, maxImpulse0);
+			Dy::computeMinMaxImpulseOrForceAsImpulse(
+				con1->minImpulse, con1->maxImpulse,		
+				con1->flags & Px1DConstraintFlag::eHAS_DRIVE_LIMIT, constraintDescs[1].driveLimitsAreForces, simDt,
+				minImpulse1, maxImpulse1);
+			Dy::computeMinMaxImpulseOrForceAsImpulse(
+				con2->minImpulse, con2->maxImpulse,		
+				con2->flags & Px1DConstraintFlag::eHAS_DRIVE_LIMIT, constraintDescs[2].driveLimitsAreForces, simDt,
+				minImpulse2, maxImpulse2);
+			Dy::computeMinMaxImpulseOrForceAsImpulse(
+				con3->minImpulse, con3->maxImpulse,		
+				con3->flags & Px1DConstraintFlag::eHAS_DRIVE_LIMIT, constraintDescs[3].driveLimitsAreForces, simDt,
+				minImpulse3, maxImpulse3);
+			const Vec4V minImpulse = V4LoadXYZW(minImpulse0, minImpulse1, minImpulse2, minImpulse3);
+			const Vec4V maxImpulse = V4LoadXYZW(maxImpulse0, maxImpulse1, maxImpulse2, maxImpulse3);
+			
 			Vec4V clin00 = V4LoadA(&con0->linear0.x);
 			Vec4V clin01 = V4LoadA(&con1->linear0.x);
 			Vec4V clin02 = V4LoadA(&con2->linear0.x);
@@ -376,9 +345,6 @@ PxConstraintAllocator& allocator, PxU32 maxRows)
 			PX_TRANSPOSE_44_34(clin00, clin01, clin02, clin03, clin0X, clin0Y, clin0Z);
 			PX_TRANSPOSE_44_34(cang00, cang01, cang02, cang03, cang0X, cang0Y, cang0Z);
 			
-			const Vec4V maxImpulse = V4LoadXYZW(con0->maxImpulse, con1->maxImpulse, con2->maxImpulse, con3->maxImpulse);
-			const Vec4V minImpulse = V4LoadXYZW(con0->minImpulse, con1->minImpulse, con2->minImpulse, con3->minImpulse);
-
 			Vec4V angDelta0X, angDelta0Y, angDelta0Z;
 
 			PX_TRANSPOSE_44_34(cangDelta00, cangDelta01, cangDelta02, cangDelta03, angDelta0X, angDelta0Y, angDelta0Z);
@@ -398,9 +364,15 @@ PxConstraintAllocator& allocator, PxU32 maxRows)
 			c->ang0WritebackY = cang0Y;
 			c->ang0WritebackZ = cang0Z;
 
-			c->minImpulse = V4Mul(minImpulse, driveScale);
-			c->maxImpulse = V4Mul(maxImpulse, driveScale);
+			c->minImpulse = minImpulse;
+			c->maxImpulse = maxImpulse;
 			c->appliedForce = zero;
+			if (residualReportingEnabled) 
+			{
+				SolverConstraint1DDynamic4WithResidual* cc = static_cast<SolverConstraint1DDynamic4WithResidual*>(c);
+				cc->residualPosIter = zero;
+				cc->residualVelIter = zero;
+			}
 
 			const Vec4V lin0MagSq = V4MulAdd(clin0Z, clin0Z, V4MulAdd(clin0Y, clin0Y, V4Mul(clin0X, clin0X)));
 			const Vec4V cang0DotAngDelta = V4MulAdd(angDelta0Z, angDelta0Z, V4MulAdd(angDelta0Y, angDelta0Y, V4Mul(angDelta0X, angDelta0X)));
@@ -463,34 +435,62 @@ PxConstraintAllocator& allocator, PxU32 maxRows)
 			
 			const Vec4V normalVel = V4Sub(projectVel0, projectVel1);
 
-
 			{
-				const PxVec4& ur				= reinterpret_cast<const PxVec4&>(unitResponse);
-				PxVec4& cConstant				= reinterpret_cast<PxVec4&>(c->constant);
-				PxVec4& cUnbiasedConstant		= reinterpret_cast<PxVec4&>(c->unbiasedConstant);
-				PxVec4& cVelMultiplier			= reinterpret_cast<PxVec4&>(c->velMultiplier);
-				PxVec4& cImpulseMultiplier		= reinterpret_cast<PxVec4&>(c->impulseMultiplier);
+				//const inputs.
+				const Px1DConstraint* constraints[4] ={con0, con1, con2, con3};
+				const PxReal* unitResponses4 = reinterpret_cast<const PxReal*>(&unitResponse);
+				const PxReal* initJointSpeeds4 = reinterpret_cast<const PxReal*>(&normalVel);
 
-				setConstants(cConstant.x, cUnbiasedConstant.x, cVelMultiplier.x, cImpulseMultiplier.x, 
-							 *con0, ur.x, constraintDescs[0].minResponseThreshold, erp[0], dt, recipdt, 
-							 *constraintDescs[0].data0, *constraintDescs[0].data1, a >= constraintDescs[0].numRows);
+				//outputs
+				PxReal* biasedConstants4 = reinterpret_cast<PxReal*>(&c->constant);
+				PxReal* unbiasedConstants4 = reinterpret_cast<PxReal*>(&c->unbiasedConstant);
+				PxReal* velMultipliers4 = reinterpret_cast<PxReal*>(&c->velMultiplier);
+				PxReal* impulseMultipliers4 = reinterpret_cast<PxReal*>(&c->impulseMultiplier);
 
-				setConstants(cConstant.y, cUnbiasedConstant.y, cVelMultiplier.y, cImpulseMultiplier.y, 
-							 *con1, ur.y, constraintDescs[1].minResponseThreshold, erp[1], dt, recipdt, 
-							 *constraintDescs[1].data0, *constraintDescs[1].data1, a >= constraintDescs[1].numRows);
-				
-				setConstants(cConstant.z, cUnbiasedConstant.z, cVelMultiplier.z, cImpulseMultiplier.z, 
-							 *con2, ur.z, constraintDescs[2].minResponseThreshold, erp[2], dt, recipdt, 
-							 *constraintDescs[2].data0, *constraintDescs[2].data1, a >= constraintDescs[2].numRows);
+				for(PxU32 i = 0; i < 4; i++)
+				{
+					if(a < constraintDescs[i].numRows)
+					{
+						const PxReal minRowResponseI = constraintDescs[i].minResponseThreshold;
+						const PxU16 constraintFlagsI = constraints[i]->flags;
+						const PxReal stiffnessI = constraints[i]->mods.spring.stiffness;
+						const PxReal dampingI = constraints[i]->mods.spring.damping;
+						const PxReal restitutionI = constraints[i]->mods.bounce.restitution;
+						const PxReal bounceVelocityThresholdI = constraints[i]->mods.bounce.velocityThreshold;
+						const PxReal geometricErrorI = constraints[i]->geometricError;
+						const PxReal velocityTargetI = constraints[i]->velocityTarget;
+						const PxReal jointSpeedForRestitutionBounceI = initJointSpeeds4[i];
+						const PxReal initJointSpeedI = initJointSpeeds4[i];
+						const PxReal unitResponseI = unitResponses4[i];
+						const PxReal erpI = erp[i];
+	
+						const PxReal recipResponseI = computeRecipUnitResponse(unitResponseI, minRowResponseI);
 
-				setConstants(cConstant.w, cUnbiasedConstant.w, cVelMultiplier.w, cImpulseMultiplier.w, 
-							 *con3, ur.w, constraintDescs[3].minResponseThreshold, erp[3], dt, recipdt, 
-							 *constraintDescs[3].data0, *constraintDescs[3].data1, a >= constraintDescs[3].numRows);
+						const Constraint1dSolverConstantsPGS solverConstants = 
+							 Dy::compute1dConstraintSolverConstantsPGS(
+								constraintFlagsI, 
+								stiffnessI, dampingI, 
+								restitutionI, bounceVelocityThresholdI,
+								geometricErrorI, velocityTargetI,
+								jointSpeedForRestitutionBounceI, initJointSpeedI,
+								unitResponseI, recipResponseI, 
+								erpI, 
+								simDt, recipSimDt);					
+
+						biasedConstants4[i] = solverConstants.constant;
+						unbiasedConstants4[i] = solverConstants.unbiasedConstant;
+						velMultipliers4[i] = solverConstants.velMultiplier;
+						impulseMultipliers4[i] = solverConstants.impulseMultiplier;
+					}
+					else
+					{
+						biasedConstants4[i] = 0;
+						unbiasedConstants4[i] = 0;
+						velMultipliers4[i] = 0;
+						impulseMultipliers4[i] = 0;
+					}
+				}
 			}
-
-			const Vec4V velBias = V4Mul(c->velMultiplier, normalVel);
-			c->constant = V4Add(c->constant, velBias);
-			c->unbiasedConstant = V4Add(c->unbiasedConstant, velBias);
 
 			if(con0->flags & Px1DConstraintFlag::eOUTPUT_FORCE)
 				c->flags[0] |= DY_SC_FLAG_OUTPUT_FORCE;

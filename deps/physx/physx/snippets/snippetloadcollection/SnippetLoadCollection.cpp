@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,7 +33,7 @@
 // The snippet supports connecting to PVD in order to display the scene.
 //
 // It is a simple command-line tool supporting the following options::
-// SnippetLoadCollection [--pvdhost=<ip address> ] [--pvdport=<ip port> ] [--pvdtimeout=<time ms> ] [--generateExampleFiles] <filename>...		   
+// SnippetLoadCollection [--pvdhost=<ip address> ] [--pvdport=<ip port> ] [--pvdtimeout=<time ms> ] [--generateExampleFiles] <filename>...
 //
 // --pvdhost=<ip address>              Defines ip address of PVD, default is 127.0.0.1
 // --pvdport=<ip port>                 Defines ip port of PVD, default is 5425
@@ -67,7 +67,6 @@ static PxDefaultAllocator		    gAllocator;
 static PxDefaultErrorCallback	    gErrorCallback;
 static PxFoundation*			    gFoundation = NULL;
 static PxPhysics*				    gPhysics	= NULL;
-static PxCooking*				    gCooking	= NULL;
 static PxSerializationRegistry*		gSerializationRegistry = NULL;
 static PxDefaultCpuDispatcher*		gDispatcher = NULL;
 static PxScene*						gScene		= NULL;
@@ -231,7 +230,10 @@ static PxCollection* deserializeCollection(PxInputData& inputData, bool isBinary
 	}
 	else
 	{
-		collection = PxSerialization::createCollectionFromXml(inputData, *gCooking, sr, sharedCollection);		
+		PxTolerancesScale scale;
+		PxCookingParams params(scale);
+
+		collection = PxSerialization::createCollectionFromXml(inputData, params, sr, sharedCollection);		
 	}
 
 	return collection;
@@ -263,10 +265,7 @@ void initPhysics()
 		pvdClient->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_SCENEQUERIES, true);
 	}
 
-	gCooking = PxCreateCooking(PX_PHYSICS_VERSION, *gFoundation, PxCookingParams(PxTolerancesScale()));	
-	
 	gSerializationRegistry = PxSerialization::createSerializationRegistry(*gPhysics);
-
 }
 
 void cleanupPhysics()
@@ -277,7 +276,6 @@ void cleanupPhysics()
 	PxCloseExtensions();
 		
 	PX_RELEASE(gPhysics);	// releases of all objects	
-	PX_RELEASE(gCooking);
 
 	for(PxU32 i=0; i<gNbMemBlocks; i++)
 		free(gMemBlocks[i]); // now that the objects have been released, it's safe to release the space they occupy
@@ -285,7 +283,7 @@ void cleanupPhysics()
 	if(gPvd)
 	{
 		PxPvdTransport* transport = gPvd->getTransport();
-		gPvd->release();	gPvd = NULL;
+		PX_RELEASE(gPvd);
 		PX_RELEASE(transport);
 	}
 

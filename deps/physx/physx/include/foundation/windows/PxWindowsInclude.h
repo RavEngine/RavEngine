@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -37,9 +37,9 @@
 #error "Only include windows.h through this file!!"
 #endif
 
-// We only support >= Windows XP, and we need this for critical section and
+// We only support >= Windows 7, and we need this for critical section and
 // Setting this hides some important APIs (e.g. LoadPackagedLibrary), so don't do it
-#define _WIN32_WINNT 0x0501
+#define _WIN32_WINNT 0x0601
 
 // turn off as much as we can for windows. All we really need is the thread functions(critical sections/Interlocked*
 // etc)

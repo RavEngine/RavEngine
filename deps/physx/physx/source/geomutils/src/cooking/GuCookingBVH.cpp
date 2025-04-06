@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -38,14 +38,7 @@ using namespace Gu;
 static bool buildBVH(const PxBVHDesc& desc, BVHData& data, const char* errorMessage)
 {
 	if(!desc.isValid())
-	{
-#if PX_CHECKED
-		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, errorMessage);
-#else
-		PX_UNUSED(errorMessage);
-#endif
-		return false;
-	}
+		return PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, errorMessage);
 
 	BVHBuildStrategy bs;
 	if(desc.buildStrategy==PxBVHBuildStrategy::eFAST)

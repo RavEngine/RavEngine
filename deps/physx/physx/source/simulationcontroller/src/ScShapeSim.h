@@ -22,54 +22,34 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef SC_SHAPE_SIM_H
 #define SC_SHAPE_SIM_H
 
-#include "ScElementSim.h"
-#include "ScShapeCore.h"
-#include "ScRigidSim.h"
-#include "PxsShapeSim.h"
 #include "ScShapeSimBase.h"
 
 namespace physx
 {
-	class PxsTransformCache;
 
 /** Simulation object corresponding to a shape core object. This object is created when
     a ShapeCore object is added to the simulation, and destroyed when it is removed
 */
 
-struct PxsRigidCore;
-
 namespace Sc
 {
-	class RigidSim;
+	class ActorSim;
 	class ShapeCore;
-	class BodySim;
 
 	class ShapeSim : public ShapeSimBase
 	{
-		ShapeSim &operator=(const ShapeSim &);
-	public:
-
-		// passing in a pointer for the shape to output its bounds allows us not to have to compute them twice.
-		// A neater way to do this would be to ask the AABB Manager for the bounds after the shape has been 
-		// constructed, but there is currently no spec for what the AABBMgr is allowed to do with the bounds, 
-		// hence better not to assume anything.
-
-										ShapeSim(RigidSim&, ShapeCore& core);
-										~ShapeSim();
-	private:
+		PX_NOCOPY(ShapeSim)
+		public:
+				ShapeSim(ActorSim&, ShapeCore& core);
+				~ShapeSim();
 	};
-
-#if !PX_P64_FAMILY
-//	PX_COMPILE_TIME_ASSERT(32==sizeof(Sc::ShapeSim)); // after removing bounds from shapes
-//	PX_COMPILE_TIME_ASSERT((sizeof(Sc::ShapeSim) % 16) == 0); // aligned mem bounds are better for prefetching
-#endif
 
 } // namespace Sc
 

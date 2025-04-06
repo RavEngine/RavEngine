@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,7 +32,6 @@
 #include "GuIntersectionRayTriangle.h"
 #include "GuIntersectionCapsuleTriangle.h"
 #include "GuIntersectionRayBox.h"
-#include "GuIntersectionRayBoxSIMD.h"
 #include "GuSphere.h"
 #include "GuBoxConversion.h"
 #include "GuConvexUtilsInternal.h"
@@ -48,7 +47,7 @@
 using namespace physx;
 using namespace Cm;
 using namespace Gu;
-using namespace physx::aos;
+using namespace aos;
 
 struct MeshRayCollider
 {
@@ -442,7 +441,7 @@ PxU32 physx::Gu::raycast_triangleMesh_RTREE(const TriangleMesh* mesh, const PxTr
 	const bool multipleHits = hitFlags & PxHitFlag::eMESH_MULTIPLE;
 
 	RayMeshColliderCallback callback(
-		multipleHits ? CallbackMode::eMULTIPLE : (hitFlags & PxHitFlag::eMESH_ANY ? CallbackMode::eANY : CallbackMode::eCLOSEST),
+		multipleHits ? CallbackMode::eMULTIPLE : (hitFlags & PxHitFlag::eANY_HIT ? CallbackMode::eANY : CallbackMode::eCLOSEST),
 		hits, maxHits, stride, &meshGeom.scale, &pose, world2vertexSkewP, hitFlags, rayDir, isDoubleSided, distCoeff);
 
 	MeshRayCollider::collide<0, 1>(orig, dir, maxDist, bothSides, static_cast<const RTreeTriangleMesh*>(meshData), callback, NULL);
@@ -783,8 +782,8 @@ void physx::Gu::intersectOBB_RTREE(const TriangleMesh* mesh, const Box& obb, Mes
 
 // PT: TODO: refactor/share bits of this
 bool physx::Gu::sweepCapsule_MeshGeom_RTREE(const TriangleMesh* mesh, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
-											const Capsule& lss, const PxVec3& unitDir, const PxReal distance,
-											PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation)
+											const Capsule& lss, const PxVec3& unitDir, PxReal distance,
+											PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, PxReal inflation)
 {
 	PX_ASSERT(mesh->getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH33);
 	const RTreeTriangleMesh* meshData = static_cast<const RTreeTriangleMesh*>(mesh);
@@ -826,8 +825,8 @@ bool physx::Gu::sweepCapsule_MeshGeom_RTREE(const TriangleMesh* mesh, const PxTr
 
 // PT: TODO: refactor/share bits of this
 bool physx::Gu::sweepBox_MeshGeom_RTREE(const TriangleMesh* mesh, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
-										const Box& box, const PxVec3& unitDir, const PxReal distance,
-										PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation)
+										const Box& box, const PxVec3& unitDir, PxReal distance,
+										PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, PxReal inflation)
 {
 	PX_ASSERT(mesh->getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH33);
 	const RTreeTriangleMesh* meshData = static_cast<const RTreeTriangleMesh*>(mesh);
@@ -849,7 +848,7 @@ bool physx::Gu::sweepBox_MeshGeom_RTREE(const TriangleMesh* mesh, const PxTriang
 		const PxMat33Padded worldToMeshRot(pose.q.getConjugate()); // extract rotation matrix from pose.q
 		meshSpaceOrigin = worldToMeshRot.transform(box.center - pose.p);
 		meshSpaceDir = worldToMeshRot.transform(unitDir) * distance;
-		PxMat33 boxToMeshRot = worldToMeshRot * box.rot;
+		const PxMat33 boxToMeshRot = worldToMeshRot * box.rot;
 		sweptAABBMeshSpaceExtents = boxToMeshRot.column0.abs() * box.extents.x + 
 						   boxToMeshRot.column1.abs() * box.extents.y + 
 						   boxToMeshRot.column2.abs() * box.extents.z;
@@ -903,7 +902,7 @@ bool physx::Gu::sweepBox_MeshGeom_RTREE(const TriangleMesh* mesh, const PxTriang
 }
 
 #include "GuInternal.h"
-void physx::Gu::sweepConvex_MeshGeom_RTREE(const TriangleMesh* mesh, const Box& hullBox, const PxVec3& localDir, const PxReal distance, SweepConvexMeshHitCallback& callback, bool)
+void physx::Gu::sweepConvex_MeshGeom_RTREE(const TriangleMesh* mesh, const Box& hullBox, const PxVec3& localDir, PxReal distance, SweepConvexMeshHitCallback& callback, bool)
 {
 	PX_ASSERT(mesh->getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH33);
 	const RTreeTriangleMesh* meshData = static_cast<const RTreeTriangleMesh*>(mesh);

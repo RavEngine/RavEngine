@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,48 +31,10 @@
 
 namespace physx
 {
-
 class PxsContactManager;
-class PxsRigidBody;
-namespace Dy
-{
-	struct Constraint;
-	class Articulation;
-}
 
 typedef PxU32 NodeType;
 typedef PxU32 EdgeType;
-typedef PxU32 IslandType;
-#define INVALID_NODE 0xffffffff
-#define INVALID_EDGE 0xffffffff
-#define INVALID_ISLAND 0xffffffff
-
-//----------------------------------------------------------------------------//
-
-template <class T, T INVLD> class PxsIslandManagerHook
-{
-	friend class PxsIslandManager;
-	T index;
-
-public:
-
-	static const T INVALID = INVLD;
-
-	PX_FORCE_INLINE PxsIslandManagerHook(): index(INVLD) {}
-	PX_FORCE_INLINE PxsIslandManagerHook(const T id): index(id) {}
-	PX_FORCE_INLINE PxsIslandManagerHook(const PxsIslandManagerHook<T,INVLD>& src) : index(src.index) {}
-	PX_FORCE_INLINE ~PxsIslandManagerHook(){}
-
-	PX_FORCE_INLINE bool isManaged() const { return index!=INVLD; }
-
-private:
-};
-
-typedef PxsIslandManagerHook<NodeType,INVALID_NODE> PxsIslandManagerNodeHook;
-typedef PxsIslandManagerHook<EdgeType,INVALID_EDGE> PxsIslandManagerEdgeHook;
-typedef PxsIslandManagerHook<IslandType,INVALID_ISLAND> PxsIslandManagerIslandHook;
-
-//----------------------------------------------------------------------------//
 
 class PxsIslandIndices
 {
@@ -87,17 +49,15 @@ public:
 	EdgeType	constraints;
 };
 
-//----------------------------------------------------------------------------//
-
+// PT: it needs to be a PxU64 because we store a PxNodeIndex there for articulations (and we do use all the data)
 typedef PxU64 PxsNodeType;
-
 
 /**
 \brief Each contact manager or constraint references two separate bodies, where
 a body can be a dynamic rigid body, a kinematic rigid body, an articulation or a static.
 The struct PxsIndexedInteraction describes the bodies that make up the pair.
 */
-struct PxsIndexedInteraction
+struct PxsIndexedInteraction	// 24
 {
 	/**
 	\brief An enumerated list of all possible body types.
@@ -121,12 +81,12 @@ struct PxsIndexedInteraction
 
 	\note If body0 is an articulation then the articulation is found directly from Dy::getArticulation(articulation0)
 
-	\note If body0 is an soft body then the soft body is found directly from Dy::getSoftBody(softBody0)
+	\note If body0 is an deformable volume then the deformable volume is found directly from Dy::getDeformableVolume(deformableVolume0)
 	*/
 	union
 	{
-		PxsNodeType				solverBody0;
-		PxsNodeType				articulation0;
+		PxsNodeType		solverBody0;
+		PxsNodeType		articulation0;
 	};
 
 	/**
@@ -139,12 +99,12 @@ struct PxsIndexedInteraction
 
 	\note If body1 is an articulation then the articulation is found directly from Dy::getArticulation(articulation1)
 	
-	\note If body0 is an soft body then the soft body is found directly from Dy::getSoftBody(softBody1)
+	\note If body0 is an deformable volume then the deformable volume is found directly from Dy::getDeformableVolume(deformableVolume1)
 	*/
 	union
 	{
-		PxsNodeType					solverBody1;
-		PxsNodeType					articulation1;
+		PxsNodeType		solverBody1;
+		PxsNodeType		articulation1;
 	};
 
 	/**
@@ -160,10 +120,11 @@ struct PxsIndexedInteraction
 	PxU8 pad[2];
 };
 
+// PT: TODO: this is the only type left, merge it with base class and stop wasting padding bytes
 /**
-@see PxsIslandObjects, PxsIndexedInteraction
+\see PxsIslandObjects, PxsIndexedInteraction
 */
-struct PxsIndexedContactManager : public PxsIndexedInteraction
+struct PxsIndexedContactManager : public PxsIndexedInteraction	// 32
 {
 	/**
 	\brief The contact manager corresponds to the value set in PxsIslandManager::setEdgeRigidCM
@@ -176,61 +137,6 @@ struct PxsIndexedContactManager : public PxsIndexedInteraction
 PX_COMPILE_TIME_ASSERT(0==(sizeof(PxsIndexedContactManager) & 0x0f));
 #endif
 
-/**
-@see PxsIslandObjects, PxsIndexedInteraction
-*/
-struct PxsIndexedConstraint : public PxsIndexedInteraction
-{
-	/**
-	\brief The constraint corresponds to the value set in PxsIslandManager::setEdgeConstraint
-	*/
-	Dy::Constraint* constraint;
-
-	PxsIndexedConstraint(Dy::Constraint* c) : constraint(c) {}
-};
-#if !PX_P64_FAMILY
-PX_COMPILE_TIME_ASSERT(0==(sizeof(PxsIndexedConstraint) & 0x0f));
-#endif
-
-//----------------------------------------------------------------------------//
-
-/**
-\brief Any sleeping contact pair that finds itself in an awake island after 1st pass island gen
-must participate in 2nd pass narrowphase so that contacts can be generated.
-
-\note Contact managers in sleeping pairs are NULL until PxsIslandManager::setWokenPairContactManagers is complete.
-
-@see PxsIslandManager::getNarrowPhaseSecondPassContactManagers, PxsIslandManager::getNumNarrowPhaseSecondPassContactManagers, 
-PxsIslandManager::setWokenPairContactManagers
-*/
-struct PxsNarrowPhaseSecondPassContactManager
-{
-	/**
-	\brief The contact manager that is to participate in 2nd pass narrowphase.
-
-	\note This pointer is NULL after 1st pass island gen and remains NULL until PxsIslandManager::setWokenPairContactManagers 
-	completes.
-	*/
-	PxsContactManager* mCM;
-
-	/**
-	\brief The corresponding entry in PxsIslandObjects::contactManagers.
-
-	\note All sleeping pairs have a null contact manager during 1st pass island gen.  After 1st pass island gen completes,
-	the bodies to be woken are externally processed.  Waking up bodies generates contact managers and passes the pointer to the
-	corresponding edge.  So that the contact manager can be efficiently passed to PxsIslandObjects we store mEdgeId and mSolverCMId.
-	The contact manager pointers are set in PxsIslandManager::setWokenPairContactManagers
-	*/
-	EdgeType mSolverCMId;	//Keeps a track of which entries in the solver islands temporarily have a null contact manager 
-
-	/**
-	\brief The internal id of the corresponding edge.
-	*/
-	EdgeType mEdgeId;
-};
-
-
 } //namespace physx
 
-
-#endif //PXS_ISLAND_MANAGER_TYPES_H
+#endif

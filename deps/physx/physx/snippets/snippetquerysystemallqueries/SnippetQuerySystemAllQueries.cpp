@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -285,9 +285,9 @@ void CustomScene::updateObjects()
 			pose.p.y = sinf(phase+time*1.17f)*amplitude;
 			pose.p.x = cosf(phase+time*1.17f)*amplitude;
 
-			PxMat33 rotX;	SnippetUtils::setRotX(rotX, time+coeff);
-			PxMat33 rotY;	SnippetUtils::setRotY(rotY, time*1.17f+coeff);
-			PxMat33 rotZ;	SnippetUtils::setRotZ(rotZ, time*0.33f+coeff);
+			PxMat33 rotX;	PxSetRotX(rotX, time+coeff);
+			PxMat33 rotY;	PxSetRotY(rotY, time*1.17f+coeff);
+			PxMat33 rotZ;	PxSetRotZ(rotZ, time*0.33f+coeff);
 			PxMat33 rot = rotX * rotY * rotZ;
 			pose.q = PxQuat(rot);
 			pose.q.normalize();
@@ -465,7 +465,7 @@ namespace
 	{
 		const ShapeData queryVolume(geom, pose, 0.0f);
 
-		CallbackT pcb(gFilterCallback, gCachedFuncs.mCachedSweepFuncs, geom, pose, queryVolume, unitDir, maxDist, PxHitFlag::eMESH_ANY | PxHitFlag::ePRECISE_SWEEP, true);
+		CallbackT pcb(gFilterCallback, gCachedFuncs.mCachedSweepFuncs, geom, pose, queryVolume, unitDir, maxDist, PxHitFlag::eANY_HIT | PxHitFlag::ePRECISE_SWEEP, true);
 
 		sqs.sweep(queryVolume, unitDir, pcb.mClosestHit.distance, pcb, NULL);
 

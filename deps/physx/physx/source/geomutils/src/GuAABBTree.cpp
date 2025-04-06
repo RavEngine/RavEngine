@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -34,6 +34,7 @@
 #include "GuSAH.h"
 #include "foundation/PxMathUtils.h"
 #include "foundation/PxFPU.h"
+#include "foundation/PxInlineArray.h"
 
 using namespace physx;
 using namespace Gu;
@@ -288,24 +289,6 @@ void AABBTreeBuildNode::subdivide(const AABBTreeBuildParams& params, BuildStats&
 	Neg->mNbPrimitives = mNbPrimitives - nbPos;
 }
 
-void AABBTreeBuildNode::_buildHierarchy(const AABBTreeBuildParams& params, BuildStats& stats, NodeAllocator& nodeBase, PxU32* const indices)
-{
-	// Subdivide current node
-	subdivide(params, stats, nodeBase, indices);
-
-	// Recurse
-	if (!isLeaf())
-	{
-		AABBTreeBuildNode* Pos = const_cast<AABBTreeBuildNode*>(getPos());
-		PX_ASSERT(Pos);
-		AABBTreeBuildNode* Neg = Pos + 1;
-		Pos->_buildHierarchy(params, stats, nodeBase, indices);
-		Neg->_buildHierarchy(params, stats, nodeBase, indices);
-	}
-
-	stats.mTotalPrims += mNbPrimitives;
-}
-
 void AABBTreeBuildNode::subdivideSAH(const AABBTreeBuildParams& params, SAH_Buffers& buffers, BuildStats& stats, NodeAllocator& allocator, PxU32* const indices)
 {
 	PxU32* const PX_RESTRICT primitives = indices + mNodeIndex;
@@ -345,24 +328,6 @@ void AABBTreeBuildNode::subdivideSAH(const AABBTreeBuildParams& params, SAH_Buff
 	Neg->mNbPrimitives = mNbPrimitives - leftCount;
 }
 
-void AABBTreeBuildNode::_buildHierarchySAH(const AABBTreeBuildParams& params, SAH_Buffers& sah, BuildStats& stats, NodeAllocator& nodeBase, PxU32* const indices)
-{
-	// Subdivide current node
-	subdivideSAH(params, sah, stats, nodeBase, indices);
-
-	// Recurse
-	if (!isLeaf())
-	{
-		AABBTreeBuildNode* Pos = const_cast<AABBTreeBuildNode*>(getPos());
-		PX_ASSERT(Pos);
-		AABBTreeBuildNode* Neg = Pos + 1;
-		Pos->_buildHierarchySAH(params, sah, stats, nodeBase, indices);
-		Neg->_buildHierarchySAH(params, sah, stats, nodeBase, indices);
-	}
-
-	stats.mTotalPrims += mNbPrimitives;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 
 static PxU32* initAABBTreeBuild(const AABBTreeBuildParams& params, NodeAllocator& nodeAllocator, BuildStats& stats)
@@ -400,21 +365,73 @@ static PxU32* initAABBTreeBuild(const AABBTreeBuildParams& params, NodeAllocator
 	return indices;
 }
 
+#define DEFAULT_BUILD_STACK_SIZE	256
+typedef PxInlineArray<AABBTreeBuildNode*, DEFAULT_BUILD_STACK_SIZE>	BuildStack;
+
+static void buildHierarchy(AABBTreeBuildNode* root, const AABBTreeBuildParams& params, BuildStats& stats, NodeAllocator& nodeBase, PxU32* const indices, bool useSAH)
+{
+	PxU32 nb = 1;
+	BuildStack stack;
+	stack.forceSize_Unsafe(DEFAULT_BUILD_STACK_SIZE);
+
+	stack[0] = root;
+
+	struct Local
+	{
+		static PX_FORCE_INLINE PxU32 pushBack(AABBTreeBuildNode* node, BuildStack& stack, PxU32 nb)
+		{
+			stack[nb++] = node;
+			if(nb == stack.capacity())
+				stack.resizeUninitialized(stack.capacity() * 2);
+			return nb;
+		}
+
+		static PX_FORCE_INLINE PxU32 processChildren(AABBTreeBuildNode* node, BuildStack& stack, PxU32 nb, BuildStats& stats)
+		{
+			stats.mTotalPrims += node->mNbPrimitives;
+
+			if(!node->isLeaf())
+			{
+				AABBTreeBuildNode* Pos = const_cast<AABBTreeBuildNode*>(node->getPos());
+				PX_ASSERT(Pos);
+				nb = pushBack(Pos + 1, stack, nb);
+				nb = pushBack(Pos, stack, nb);
+			}
+			return nb;
+		}
+	};
+
+	if(useSAH)
+	{
+		SAH_Buffers sah(params.mNbPrimitives);
+
+		do
+		{
+			AABBTreeBuildNode* node = stack[--nb];
+			node->subdivideSAH(params, sah, stats, nodeBase, indices);
+			nb = Local::processChildren(node, stack, nb, stats);
+
+		}while(nb);
+	}
+	else
+	{
+		do
+		{
+			AABBTreeBuildNode* node = stack[--nb];
+			node->subdivide(params, stats, nodeBase, indices);
+			nb = Local::processChildren(node, stack, nb, stats);
+
+		}while(nb);
+	}
+}
+
 PxU32* Gu::buildAABBTree(const AABBTreeBuildParams& params, NodeAllocator& nodeAllocator, BuildStats& stats)
 {
-	// initialize the build first
 	PxU32* indices = initAABBTreeBuild(params, nodeAllocator, stats);
 	if(!indices)
 		return NULL;
 
-	// Build the hierarchy
-	if(params.mBuildStrategy==BVH_SAH)
-	{
-		SAH_Buffers buffers(params.mNbPrimitives);
-		nodeAllocator.mPool->_buildHierarchySAH(params, buffers, stats, nodeAllocator, indices);
-	}
-	else
-		nodeAllocator.mPool->_buildHierarchy(params, stats, nodeAllocator, indices);
+	buildHierarchy(nodeAllocator.mPool, params, stats, nodeAllocator, indices, params.mBuildStrategy==BVH_SAH);
 
 	return indices;
 }
@@ -802,8 +819,9 @@ Exit:
 template<const bool hasIndices>
 static void refitMarkedLoop(const PxBounds3* PX_RESTRICT boxes, BVHNode* const PX_RESTRICT nodeBase, const PxU32* PX_RESTRICT indices, PxU32* PX_RESTRICT bits, PxU32 nbToGo)
 {
-#ifdef _DEBUG
+#if PX_DEBUG
 	PxU32 nbRefit=0;
+	PX_UNUSED(nbRefit);
 #endif
 
 	PxU32 size = nbToGo;
@@ -831,7 +849,7 @@ static void refitMarkedLoop(const PxBounds3* PX_RESTRICT boxes, BVHNode* const P
 					refitNode<1>(nodeBase + index, boxes, indices, nodeBase);
 				else
 					refitNode<0>(nodeBase + index, boxes, indices, nodeBase);
-#ifdef _DEBUG
+#if PX_DEBUG
 				nbRefit++;
 #endif
 			}
@@ -849,7 +867,7 @@ void BVHPartialRefitData::refitMarkedNodes(const PxBounds3* boxes)
 	{
 		/*const*/ PxU32* bits = const_cast<PxU32*>(mRefitBitmask.getBits());
 		PxU32 size = mRefitHighestSetWord+1;
-#ifdef _DEBUG
+#if PX_DEBUG
 		if(1)
 		{
 			const PxU32 totalSize = mRefitBitmask.getSize();
@@ -913,7 +931,7 @@ void BVHPartialRefitData::refitMarkedNodes(const PxBounds3* boxes)
 				if(currentBits & mask)
 				{
 					refitNode(nodeBase + index, boxes, indices, nodeBase);
-#ifdef _DEBUG
+#if PX_DEBUG
 					nbRefit++;
 #endif
 				}
@@ -1126,7 +1144,7 @@ void AABBTree::addRuntimeChilds(PxU32& nodeIndex, const AABBTreeMergeData& treeP
 	// copy the src tree into dest tree nodes, update its data
 	for (PxU32 i = 0; i < treeParams.mNbNodes; i++)
 	{
-		PX_ASSERT(nodeIndex < mNbNodes + treeParams.mNbNodes  + 1);
+		PX_ASSERT(nodeIndex < mNbNodes + treeParams.mNbNodes + 1);
 		mNodes[nodeIndex].mBV = treeParams.mNodes[i].mBV;
 		if (treeParams.mNodes[i].isLeaf())
 		{
@@ -1382,7 +1400,7 @@ void AABBTree::mergeTree(const AABBTreeMergeData& treeParams)
 		mNodes[0].mBV.include(treeParams.getRootNode().mBV);
 	}
 
-#ifdef _DEBUG
+#if PX_DEBUG
 	//verify parent indices
 	for (PxU32 i = 0; i < mNbNodes; i++)
 	{
@@ -1412,8 +1430,48 @@ void AABBTree::mergeTree(const AABBTreeMergeData& treeParams)
 			PX_ASSERT(nodeIndex < mNbNodes);
 		}
 	}
-#endif // _DEBUG
+#endif // PX_DEBUG
 
 	mNbIndices += treeParams.mNbIndices;
 }
 
+void TinyBVH::constructFromTriangles(const PxU32* triangles, const PxU32 numTriangles, const PxVec3* points,
+	TinyBVH& result, PxF32 enlargement)
+{
+	//Computes a bounding box for every triangle in triangles
+	Gu::AABBTreeBounds boxes;
+	boxes.init(numTriangles);
+	for (PxU32 i = 0; i < numTriangles; ++i)
+	{
+		const PxU32* tri = &triangles[3 * i];
+		PxBounds3 box = PxBounds3::empty();
+		box.include(points[tri[0]]);
+		box.include(points[tri[1]]);
+		box.include(points[tri[2]]);
+		box.fattenFast(enlargement);
+		boxes.getBounds()[i] = box;
+	}
+
+	Gu::buildAABBTree(numTriangles, boxes, result.mTree);
+}
+
+void TinyBVH::constructFromTetrahedra(const PxU32* tetrahedra, const PxU32 numTetrahedra, const PxVec3* points,
+	TinyBVH& result, PxF32 enlargement)
+{
+	//Computes a bounding box for every tetrahedron in tetrahedra
+	Gu::AABBTreeBounds boxes;
+	boxes.init(numTetrahedra);
+	for (PxU32 i = 0; i < numTetrahedra; ++i)
+	{
+		const PxU32* tri = &tetrahedra[4 * i];
+		PxBounds3 box = PxBounds3::empty();
+		box.include(points[tri[0]]);
+		box.include(points[tri[1]]);
+		box.include(points[tri[2]]);
+		box.include(points[tri[3]]);
+		box.fattenFast(enlargement);
+		boxes.getBounds()[i] = box;
+	}
+
+	Gu::buildAABBTree(numTetrahedra, boxes, result.mTree);
+}

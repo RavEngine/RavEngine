@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -51,14 +51,13 @@ namespace Gu
 #define TOLERANCE_MARGIN_RATIO		0.08f
 #define TOLERANCE_MIN_MARGIN_RATIO	0.05f
 
-
 	//This margin is used in Persistent contact manifold
 	PX_SUPPORT_FORCE_INLINE aos::FloatV CalculatePCMConvexMargin(const Gu::ConvexHullData* hullData, const aos::Vec3VArg scale, 
 		const PxReal toleranceLength, const PxReal toleranceRatio = TOLERANCE_MIN_MARGIN_RATIO)
 	{
 		
 		using namespace aos;
-		const Vec3V extents= V3Mul(V3LoadU(hullData->mInternal.mExtents), scale);
+		const Vec3V extents = V3Mul(V3LoadU_SafeReadW(hullData->mInternal.mInternalExtents), scale);
 		const FloatV min = V3ExtractMin(extents);
 		const FloatV toleranceMargin = FLoad(toleranceLength * toleranceRatio);
 		//ML: 25% of the minimum extents of the internal AABB as this convex hull's margin
@@ -68,12 +67,11 @@ namespace Gu
 	PX_SUPPORT_FORCE_INLINE aos::FloatV CalculateMTDConvexMargin(const Gu::ConvexHullData* hullData, const aos::Vec3VArg scale)
 	{
 		using namespace aos;
-		const Vec3V extents = V3Mul(V3LoadU(hullData->mInternal.mExtents), scale);
+		const Vec3V extents = V3Mul(V3LoadU_SafeReadW(hullData->mInternal.mInternalExtents), scale);
 		const FloatV min = V3ExtractMin(extents);
 		//ML: 25% of the minimum extents of the internal AABB as this convex hull's margin
 		return FMul(min, FLoad(0.25f));
 	}
-
 
 	//This minMargin is used in PCM contact gen
 	PX_SUPPORT_FORCE_INLINE void CalculateConvexMargin(const InternalObjectsData& internalObject, PxReal& margin, PxReal& minMargin, PxReal& sweepMargin,
@@ -81,7 +79,7 @@ namespace Gu
 	{
 		using namespace aos;
 		
-		const Vec3V extents = V3Mul(V3LoadU(internalObject.mExtents), scale);
+		const Vec3V extents = V3Mul(V3LoadU_SafeReadW(internalObject.mInternalExtents), scale);
 		const FloatV min_ = V3ExtractMin(extents);
 
 		PxReal minExtent;
@@ -441,10 +439,10 @@ namespace Gu
 
 			if(data)
 			{
-				const PxU32 maxIndex= hillClimbing(dir);
-				const PxU32 minIndex= hillClimbing(V3Neg(dir));
-				const Vec3V maxPoint= M33MulV3(vertex2Shape, V3LoadU_SafeReadW(verts[maxIndex]));	// PT: safe because of the way vertex memory is allocated in ConvexHullData (and 'verts' is initialized with ConvexHullData::getHullVertices())
-				const Vec3V minPoint= M33MulV3(vertex2Shape, V3LoadU_SafeReadW(verts[minIndex]));	// PT: safe because of the way vertex memory is allocated in ConvexHullData (and 'verts' is initialized with ConvexHullData::getHullVertices())
+				const PxU32 maxIndex = hillClimbing(dir);
+				const PxU32 minIndex = hillClimbing(V3Neg(dir));
+				const Vec3V maxPoint = M33MulV3(vertex2Shape, V3LoadU_SafeReadW(verts[maxIndex]));	// PT: safe because of the way vertex memory is allocated in ConvexHullData (and 'verts' is initialized with ConvexHullData::getHullVertices())
+				const Vec3V minPoint = M33MulV3(vertex2Shape, V3LoadU_SafeReadW(verts[minIndex]));	// PT: safe because of the way vertex memory is allocated in ConvexHullData (and 'verts' is initialized with ConvexHullData::getHullVertices())
 				min = V3Dot(_dir, minPoint);
 				max = V3Dot(_dir, maxPoint);
 			}
@@ -491,7 +489,7 @@ namespace Gu
 			//transform dir into the shape space
 //			const Vec3V dir_ = aTob.rotateInv(dir);//relTra.rotateInv(dir);
 			const Vec3V dir_ = aTobT.rotate(dir);//relTra.rotateInv(dir);
-			const Vec3V maxPoint =supportLocal(dir_);
+			const Vec3V maxPoint = supportLocal(dir_);
 			//translate maxPoint from shape space of a back to the b space
 			return aTob.transform(maxPoint);//relTra.transform(maxPoint);
 		}

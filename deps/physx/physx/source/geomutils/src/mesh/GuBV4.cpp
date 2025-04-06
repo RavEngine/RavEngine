@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -36,7 +36,7 @@
 using namespace physx;
 using namespace Gu;
 using namespace Cm;
-using namespace physx::aos;
+using namespace aos;
 
 SourceMeshBase::SourceMeshBase(MeshType meshType) : mNbVerts(0), mVerts(NULL), mType(meshType), mRemap(NULL)
 {

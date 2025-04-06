@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -49,10 +49,8 @@ PX_FORCE_INLINE bool isLegalProtocol(const int mutexProtocol)
 	return
 	(
 		(PTHREAD_PRIO_NONE == mutexProtocol) ||
-		(PTHREAD_PRIO_INHERIT == mutexProtocol)
-#if !__ANDROID__
-        || ((PTHREAD_PRIO_PROTECT == mutexProtocol) &&  ((sched_getscheduler(0) == SCHED_FIFO) || (sched_getscheduler(0) == SCHED_RR)))
-#endif
+		(PTHREAD_PRIO_INHERIT == mutexProtocol) ||
+		((PTHREAD_PRIO_PROTECT == mutexProtocol) &&  ((sched_getscheduler(0) == SCHED_FIFO) || (sched_getscheduler(0) == SCHED_RR)))
 	);
 }
 
@@ -93,7 +91,7 @@ PxMutexImpl::PxMutexImpl()
 	pthread_mutexattr_t attr;
 	pthread_mutexattr_init(&attr);
 	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-#if PX_LINUX && !__ANDROID__
+#if PX_LINUX
 	pthread_mutexattr_setprotocol(&attr, gMutexProtocol);
 	pthread_mutexattr_setprioceiling(&attr, 0);
 #endif

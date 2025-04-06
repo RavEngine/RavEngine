@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -120,6 +120,21 @@ public:
 		printf("end: %s\n", eventName);
 	}
 
+	virtual void recordData(int32_t value, const char* valueName, uint64_t contextId)
+	{
+		printf("data: %s (context ID %llu) = %d\n", valueName, (unsigned long long)contextId, value);
+	}
+
+	virtual void recordData(float value, const char* valueName, uint64_t contextId)
+	{
+		printf("data: %s (context ID %llu) = %f\n", valueName, (unsigned long long)contextId, (double)value);
+	}
+
+	virtual void recordFrame(const char* name, uint64_t contextId)
+	{
+		printf("frame: %s (context ID %llu)\n", name, (unsigned long long)contextId);
+	}
+
 }gCustomProfilerCallback;
 
 void initPhysics(bool interactive)
@@ -179,7 +194,7 @@ void cleanupPhysics(bool /*interactive*/)
 	if(gPvd)
 	{
 		PxPvdTransport* transport = gPvd->getTransport();
-		gPvd->release();	gPvd = NULL;
+		PX_RELEASE(gPvd);;
 		PX_RELEASE(transport);
 	}
 	PX_RELEASE(gFoundation);

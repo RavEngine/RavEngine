@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -79,7 +79,7 @@ namespace Cm
 			PxU32 newIndex;
 			PxU32 parentIndex = parent(mHeapSize);
 
-			for (newIndex = mHeapSize; newIndex > 0 && compare(value, mDataPtr[parentIndex]); newIndex = parentIndex, parentIndex= parent(newIndex)) 
+			for (newIndex = mHeapSize; newIndex > 0 && compare(value, mDataPtr[parentIndex]); newIndex = parentIndex, parentIndex = parent(newIndex)) 
 			{
 				mDataPtr[ newIndex ] = mDataPtr[parentIndex];
 			}
@@ -186,7 +186,7 @@ namespace Cm
 			: PriorityQueueBase<Element, Comparator>(less, NULL), Alloc(alloc), mCapacity(initialCapacity)
 		{
 			if(initialCapacity > 0)
-				this->mDataPtr = reinterpret_cast<Element*>(Alloc::allocate(sizeof(Element)*initialCapacity, __FILE__, __LINE__));
+				this->mDataPtr = reinterpret_cast<Element*>(Alloc::allocate(sizeof(Element)*initialCapacity, PX_FL));
 		}
 
 		~PriorityQueue()
@@ -213,7 +213,7 @@ namespace Cm
 		{
 			if(newCapacity > mCapacity)
 			{
-				Element* newElems = reinterpret_cast<Element*>(Alloc::allocate(sizeof(Element)*newCapacity, __FILE__, __LINE__));
+				Element* newElems = reinterpret_cast<Element*>(Alloc::allocate(sizeof(Element)*newCapacity, PX_FL));
 				if(this->mDataPtr)
 				{
 					physx::PxMemCopy(newElems, this->mDataPtr, sizeof(Element) * this->mHeapSize);

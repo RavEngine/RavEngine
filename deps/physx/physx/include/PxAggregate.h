@@ -22,16 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_AGGREGATE_H
 #define PX_AGGREGATE_H
-
-/** \addtogroup physics
-@{
-*/
 
 #include "PxPhysXConfig.h"
 #include "common/PxBase.h"
@@ -92,7 +88,7 @@ large number of attached shapes).
    filtering once and for all, for the aggregate containing the ragdoll, rather than filtering
    out each bone-bone collision in the filter shader.
 
-@see PxActor, PxPhysics.createAggregate
+\see PxActor, PxPhysics.createAggregate
 */
 class PxAggregate : public PxBase
 {
@@ -179,29 +175,25 @@ public:
 
 	\return Number of actors contained in the aggregate.
 
-	@see PxActor getActors()
+	\see PxActor getActors()
 	*/
 	virtual PxU32	getNbActors() const = 0;
 
 	/**
 	\brief Retrieves max amount of actors that can be contained in the aggregate.
 
-	\note PxAggregate now supports an arbitrary number of actors. This method return PX_MAX_U32 and will be
-	removed in a future release.
-
 	\return Max actor size. 
 
-	@see PxPhysics::createAggregate()
-	@deprecated
+	\see PxPhysics::createAggregate()
 	*/
-	PX_DEPRECATED virtual	PxU32	getMaxNbActors() const = 0;
+	virtual	PxU32	getMaxNbActors() const = 0;
 
 	/**
 	\brief Retrieves max amount of shapes that can be contained in the aggregate.
 
 	\return Max shape size.
 
-	@see PxPhysics::createAggregate()
+	\see PxPhysics::createAggregate()
 	*/
 	virtual	PxU32	getMaxNbShapes() const = 0;
 
@@ -215,7 +207,7 @@ public:
 	\param[in] startIndex Index of first actor pointer to be retrieved
 	\return Number of actor pointers written to the buffer.
 
-	@see PxShape getNbShapes()
+	\see PxShape getNbShapes()
 	*/
 	virtual PxU32	getActors(PxActor** userBuffer, PxU32 bufferSize, PxU32 startIndex=0) const = 0;
 
@@ -224,7 +216,7 @@ public:
 
 	\return Owner Scene. NULL if not part of a scene.
 
-	@see PxScene
+	\see PxScene
 	*/
 	virtual	PxScene*	getScene()	= 0;
 
@@ -235,7 +227,43 @@ public:
 	*/
 	virtual	bool		getSelfCollision()	const	= 0;
 
-	virtual	const char*	getConcreteTypeName() const	{ return "PxAggregate"; }
+	/**
+	\brief Sets the environment ID for this aggregate.
+
+	The environment ID is an extra built-in filter group for the GPU broadphase. Aggregates will only collide with actors or aggregates that
+	have the same environment ID.
+	
+	The default value is PX_INVALID_U32. Aggregates with this ID will collide with other actors or aggregates, regardless of which environment
+	they are a part of.
+
+	The environment ID must be set before adding the aggregate to a scene, and cannot change while the aggregate is in the scene.
+
+	If it is not PX_INVALID_U32, the environment ID must be smaller than 1<<24, i.e. the system does not support more than 1<<24 environments.
+
+	Aggregated actors must have a default environment ID (PX_INVALID_U32). The environment ID of the aggregate is used in the broadphase, not
+	the environment IDs from aggregated actors.
+
+	<b>Default:</b> PX_INVALID_U32
+
+	\note	This is not available for CPU broadphases.
+
+	\param[in]	envID	 Environment ID for this aggregate.
+	\return True if success.
+
+	\see getEnvironmentID()
+	*/
+	virtual	bool	setEnvironmentID(PxU32 envID)	= 0;
+
+	/**
+	\brief Returns the environment ID for this aggregate.
+
+	\return Environment ID for this aggregate.
+
+	\see setEnvironmentID()
+	*/
+	virtual	PxU32	getEnvironmentID()		const	= 0;
+
+	virtual	const char*	getConcreteTypeName() const	PX_OVERRIDE	PX_FINAL	{ return "PxAggregate"; }
 
 			void*		userData;	//!< user can assign this to whatever, usually to create a 1:1 relationship with a user object.
 
@@ -243,12 +271,11 @@ protected:
 	PX_INLINE			PxAggregate(PxType concreteType, PxBaseFlags baseFlags) : PxBase(concreteType, baseFlags), userData(NULL)  {}
 	PX_INLINE			PxAggregate(PxBaseFlags baseFlags) : PxBase(baseFlags) {}
 	virtual				~PxAggregate() {}
-	virtual	bool		isKindOf(const char* name) const { return !::strcmp("PxAggregate", name) || PxBase::isKindOf(name); }
+	virtual	bool		isKindOf(const char* name) const { PX_IS_KIND_OF(name, "PxAggregate", PxBase); }
 };
 
 #if !PX_DOXYGEN
 } // namespace physx
 #endif
 
-/** @} */
 #endif

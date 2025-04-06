@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,7 +33,7 @@ using namespace physx;
 using namespace Gu;
 
 #include "foundation/PxVecMath.h"
-using namespace physx::aos;
+using namespace aos;
 
 #include "GuSweepMesh.h"
 #include "GuBV4Build.h"
@@ -54,8 +54,6 @@ using namespace physx::aos;
 
 // PT: TODO: revisit/inline static sweep functions (TA34704)
 
-using namespace physx;
-using namespace Gu;
 using namespace Cm;
 
 PxIntBool	BV4_RaycastSingle		(const PxVec3& origin, const PxVec3& dir, const BV4Tree& tree, const PxMat44* PX_RESTRICT worldm_Aligned, PxGeomRaycastHit* PX_RESTRICT hit, float maxDist, float geomEpsilon, PxU32 flags, PxHitFlags hitFlags);
@@ -244,7 +242,7 @@ static PX_FORCE_INLINE bool raycastVsMesh(PxGeomRaycastHit& hitData, const BV4Tr
 	BV4_ALIGN16(PxMat44 World);
 	const PxMat44* TM = setupWorldMatrix(World, meshPos, meshRot);
 
-	const bool anyHit = hitFlags & PxHitFlag::eMESH_ANY;
+	const bool anyHit = hitFlags & PxHitFlag::eANY_HIT;
 	const PxU32 flags = setupFlags(anyHit, doubleSided, false);
 	
 	if(!BV4_RaycastSingle(orig, dir, tree, TM, &hitData, maxDist, geomEpsilon, flags, hitFlags))
@@ -258,7 +256,7 @@ static PX_FORCE_INLINE bool raycastVsMesh(PxGeomRaycastHit& hitData, const BV4Tr
 	BV4_ALIGN16(PxMat44 World);
 	const PxMat44* TM = setupWorldMatrix(World, meshPos, meshRot);
 
-	const bool anyHit = hitFlags & PxHitFlag::eMESH_ANY;
+	const bool anyHit = hitFlags & PxHitFlag::eANY_HIT;
 	const PxU32 flags = setupFlags(anyHit, doubleSided, false);
 	
 	return BV4_RaycastAll(orig, dir, tree, TM, hits, maxNbHits, maxDist, geomEpsilon, flags, hitFlags);
@@ -769,8 +767,8 @@ static bool gCapsuleMeshSweepCallback(void* userData, const PxVec3& p0, const Px
 
 // PT: TODO: refactor/share bits of this (TA34704)
 bool physx::Gu::sweepCapsule_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
-											const Capsule& lss, const PxVec3& unitDir, const PxReal distance,
-											PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation)
+											const Capsule& lss, const PxVec3& unitDir, PxReal distance,
+											PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, PxReal inflation)
 {
 	PX_ASSERT(mesh->getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH34);
 	const BV4TriangleMesh* meshData = static_cast<const BV4TriangleMesh*>(mesh);
@@ -784,7 +782,7 @@ bool physx::Gu::sweepCapsule_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTri
 	if(isIdentity)
 	{
 		const BV4Tree& tree = meshData->getBV4Tree();
-		const bool anyHit = hitFlags & PxHitFlag::eMESH_ANY;
+		const bool anyHit = hitFlags & PxHitFlag::eANY_HIT;
 
 		BV4_ALIGN16(PxMat44 World);
 		const PxMat44* TM = setupWorldMatrix(World, &pose.p.x, &pose.q.x);
@@ -873,8 +871,8 @@ static bool gBoxMeshSweepCallback(void* userData, const PxVec3& p0, const PxVec3
 
 // PT: TODO: refactor/share bits of this (TA34704)
 bool physx::Gu::sweepBox_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
-										const Box& box, const PxVec3& unitDir, const PxReal distance,
-										PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation)
+										const Box& box, const PxVec3& unitDir, PxReal distance,
+										PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, PxReal inflation)
 {
 	PX_ASSERT(mesh->getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH34);
 	const BV4TriangleMesh* meshData = static_cast<const BV4TriangleMesh*>(mesh);
@@ -886,7 +884,7 @@ bool physx::Gu::sweepBox_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTriangl
 
 	if(isIdentity && inflation==0.0f)
 	{
-		const bool anyHit = hitFlags & PxHitFlag::eMESH_ANY;
+		const bool anyHit = hitFlags & PxHitFlag::eANY_HIT;
 
 		// PT: TODO: this is wrong, we shouldn't actually sweep the inflated version
 //		const PxVec3 inflated = (box.extents + PxVec3(inflation)) * 1.01f;
@@ -912,7 +910,7 @@ bool physx::Gu::sweepBox_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTriangl
 
 			bool hasContacts = false;
 			if(hitFlags & PxHitFlag::eMTD)
-				hasContacts = computeBox_TriangleMeshMTD(triMeshGeom, pose, box, boxTransform, inflation, bothTriangleSidesCollide,  sweepHit);
+				hasContacts = computeBox_TriangleMeshMTD(triMeshGeom, pose, box, boxTransform, inflation, bothTriangleSidesCollide, sweepHit);
 
 			setupSweepHitForMTD(sweepHit, hasContacts, unitDir);
 		}
@@ -937,7 +935,7 @@ bool physx::Gu::sweepBox_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTriangl
 		const PxMat33Padded worldToMeshRot(pose.q.getConjugate()); // extract rotation matrix from pose.q
 		meshSpaceOrigin = worldToMeshRot.transform(box.center - pose.p);
 		meshSpaceDir = worldToMeshRot.transform(unitDir) * distance;
-		PxMat33 boxToMeshRot = worldToMeshRot * box.rot;
+		const PxMat33 boxToMeshRot = worldToMeshRot * box.rot;
 		sweptAABBMeshSpaceExtents = boxToMeshRot.column0.abs() * box.extents.x + 
 						   boxToMeshRot.column1.abs() * box.extents.y + 
 						   boxToMeshRot.column2.abs() * box.extents.z;
@@ -1000,7 +998,7 @@ static bool gConvexVsMeshSweepCallback(void* userData, const PxVec3& p0, const P
 	return !callback->SweepConvexMeshHitCallback::processHit(hit, p0, p1, p2, dist, NULL/*vertexIndices*/);
 }
 
-void physx::Gu::sweepConvex_MeshGeom_BV4(const TriangleMesh* mesh, const Box& hullBox, const PxVec3& localDir, const PxReal distance, SweepConvexMeshHitCallback& callback, bool anyHit)
+void physx::Gu::sweepConvex_MeshGeom_BV4(const TriangleMesh* mesh, const Box& hullBox, const PxVec3& localDir, PxReal distance, SweepConvexMeshHitCallback& callback, bool anyHit)
 {
 	PX_ASSERT(mesh->getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH34);
 	const BV4TriangleMesh* meshData = static_cast<const BV4TriangleMesh*>(mesh);
@@ -1055,14 +1053,22 @@ void Gu::pointMeshDistance_BV4(const TriangleMesh* mesh, const PxTriangleMeshGeo
 
 
 
-bool BV4_OverlapMeshVsMesh(PxReportCallback<PxGeomIndexPair>& callback, const BV4Tree& tree0, const BV4Tree& tree1, const PxMat44* mat0to1, const PxMat44* mat1to0, PxMeshMeshQueryFlags meshMeshFlags);
-
-bool BV4_OverlapMeshVsMesh(PxReportCallback<PxGeomIndexPair>& callback, const BV4Tree& tree0, const BV4Tree& tree1, const PxMat44* mat0to1, const PxMat44* mat1to0,
+bool BV4_OverlapMeshVsMesh(	PxReportCallback<PxGeomIndexPair>& callback,
+							const BV4Tree& tree0, const BV4Tree& tree1, const PxMat44* mat0to1, const PxMat44* mat1to0,
 							const PxTransform& meshPose0, const PxTransform& meshPose1,
 							const PxMeshScale& meshScale0, const PxMeshScale& meshScale1,
-							PxMeshMeshQueryFlags meshMeshFlags);
+							PxMeshMeshQueryFlags meshMeshFlags, float tolerance);
 
-bool physx::Gu::intersectMeshVsMesh_BV4(PxReportCallback<PxGeomIndexPair>& callback, const TriangleMesh& triMesh0, const TriangleMesh& triMesh1, const PxTransform& meshPose0, const PxTransform& meshPose1, const PxMeshScale& meshScale0, const PxMeshScale& meshScale1, PxMeshMeshQueryFlags meshMeshFlags)
+bool BV4_OverlapMeshVsMeshDistance(PxReportCallback<PxGeomIndexClosePair>& callback,
+							const BV4Tree& tree0, const BV4Tree& tree1, const PxMat44* mat0to1, const PxMat44* mat1to0,
+							const PxTransform& meshPose0, const PxTransform& meshPose1,
+							const PxMeshScale& meshScale0, const PxMeshScale& meshScale1,
+							PxMeshMeshQueryFlags meshMeshFlags, float tolerance);
+
+bool physx::Gu::intersectMeshVsMesh_BV4(PxReportCallback<PxGeomIndexPair>& callback,
+										const TriangleMesh& triMesh0, const PxTransform& meshPose0, const PxMeshScale& meshScale0,
+										const TriangleMesh& triMesh1, const PxTransform& meshPose1, const PxMeshScale& meshScale1,
+										PxMeshMeshQueryFlags meshMeshFlags, float tolerance)
 {
 	PX_ASSERT(triMesh0.getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH34);
 	PX_ASSERT(triMesh1.getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH34);
@@ -1078,8 +1084,27 @@ bool physx::Gu::intersectMeshVsMesh_BV4(PxReportCallback<PxGeomIndexPair>& callb
 	BV4_ALIGN16(PxMat44 World1to0);
 	const PxMat44* TM1to0 = setupWorldMatrix(World1to0, &t1to0.p.x, &t1to0.q.x);
 
-	if(!meshScale0.isIdentity() || !meshScale1.isIdentity())
-		return BV4_OverlapMeshVsMesh(callback, tree0, tree1, TM0to1, TM1to0, meshPose0, meshPose1, meshScale0, meshScale1, meshMeshFlags)!=0;
-	else
-		return BV4_OverlapMeshVsMesh(callback, tree0, tree1, TM0to1, TM1to0, meshMeshFlags)!=0;
+	return BV4_OverlapMeshVsMesh(callback, tree0, tree1, TM0to1, TM1to0, meshPose0, meshPose1, meshScale0, meshScale1, meshMeshFlags, tolerance)!=0;
+}
+
+bool physx::Gu::distanceMeshVsMesh_BV4(	PxReportCallback<PxGeomIndexClosePair>& callback,
+										const TriangleMesh& triMesh0, const PxTransform& meshPose0, const PxMeshScale& meshScale0,
+										const TriangleMesh& triMesh1, const PxTransform& meshPose1, const PxMeshScale& meshScale1,
+										PxMeshMeshQueryFlags meshMeshFlags, float tolerance)
+{
+	PX_ASSERT(triMesh0.getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH34);
+	PX_ASSERT(triMesh1.getConcreteType()==PxConcreteType::eTRIANGLE_MESH_BVH34);
+	const BV4Tree& tree0 = static_cast<const BV4TriangleMesh&>(triMesh0).getBV4Tree();
+	const BV4Tree& tree1 = static_cast<const BV4TriangleMesh&>(triMesh1).getBV4Tree();
+
+	const PxTransform t0to1 = meshPose1.transformInv(meshPose0);
+	const PxTransform t1to0 = meshPose0.transformInv(meshPose1);
+
+	BV4_ALIGN16(PxMat44 World0to1);
+	const PxMat44* TM0to1 = setupWorldMatrix(World0to1, &t0to1.p.x, &t0to1.q.x);
+
+	BV4_ALIGN16(PxMat44 World1to0);
+	const PxMat44* TM1to0 = setupWorldMatrix(World1to0, &t1to0.p.x, &t1to0.q.x);
+
+	return BV4_OverlapMeshVsMeshDistance(callback, tree0, tree1, TM0to1, TM1to0, meshPose0, meshPose1, meshScale0, meshScale1, meshMeshFlags, tolerance)!=0;
 }

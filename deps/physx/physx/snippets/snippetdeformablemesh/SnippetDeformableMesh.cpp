@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,7 +31,6 @@
 // ****************************************************************************
 
 #include <ctype.h>
-#include <vector>
 #include "PxPhysicsAPI.h"
 
 // temporary disable this snippet, cannot work without rendering we cannot include GL directly
@@ -176,7 +175,7 @@ void initPhysics(bool /*interactive*/)
 		pvdClient->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_SCENEQUERIES, true);
 	}
 
-	gMaterial = gPhysics->createMaterial(0.5f, 0.5f, 0.6f);
+	gMaterial = gPhysics->createMaterial(1.0f, 1.0f, 0.0f);
 
 	PxCookingParams cookingParams(gPhysics->getTolerancesScale());
 
@@ -229,22 +228,22 @@ void debugRender()
 	pts[6] = c + PxVec3( e.x,  e.y, -e.z);
 	pts[7] = c + PxVec3( e.x, -e.y, -e.z);
 
-	std::vector<PxVec3> gContactVertices;
+	PxArray<PxVec3> gContactVertices;
 	struct AddQuad
 	{
-		static void func(std::vector<PxVec3>& v, const PxVec3* pts, PxU32 index0, PxU32 index1, PxU32 index2, PxU32 index3)
+		static void func(PxArray<PxVec3>& v, const PxVec3* pts_, PxU32 index0, PxU32 index1, PxU32 index2, PxU32 index3)
 		{
-			v.push_back(pts[index0]);
-			v.push_back(pts[index1]);
+			v.pushBack(pts_[index0]);
+			v.pushBack(pts_[index1]);
 
-			v.push_back(pts[index1]);
-			v.push_back(pts[index2]);
+			v.pushBack(pts_[index1]);
+			v.pushBack(pts_[index2]);
 
-			v.push_back(pts[index2]);
-			v.push_back(pts[index3]);
+			v.pushBack(pts_[index2]);
+			v.pushBack(pts_[index3]);
 
-			v.push_back(pts[index3]);
-			v.push_back(pts[index0]);
+			v.pushBack(pts_[index3]);
+			v.pushBack(pts_[index0]);
 		}
 	};
 
@@ -291,7 +290,7 @@ void cleanupPhysics(bool /*interactive*/)
 	if(gPvd)
 	{
 		PxPvdTransport* transport = gPvd->getTransport();
-		gPvd->release();	gPvd = NULL;
+		PX_RELEASE(gPvd);
 		PX_RELEASE(transport);
 	}
 	PX_RELEASE(gFoundation);

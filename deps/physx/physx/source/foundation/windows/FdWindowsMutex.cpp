@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -34,7 +34,6 @@
 
 namespace physx
 {
-
 namespace
 {
 struct MutexWinImpl
@@ -42,13 +41,12 @@ struct MutexWinImpl
 	CRITICAL_SECTION mLock;
 	PxThread::Id mOwner;
 };
+}
 
-MutexWinImpl* getMutex(PxMutexImpl* impl)
+static PX_FORCE_INLINE MutexWinImpl* getMutex(PxMutexImpl* impl)
 {
 	return reinterpret_cast<MutexWinImpl*>(impl);
 }
-} // namespace
-
 
 PxMutexImpl::PxMutexImpl()
 {
@@ -86,11 +84,9 @@ void PxMutexImpl::unlock()
 	// ensure we are already holding the lock
 	if(getMutex(this)->mOwner != PxThread::getId())
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__,
-		                              "Mutex must be unlocked only by thread that has already acquired lock");
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "Mutex must be unlocked only by thread that has already acquired lock");
 		return;
 	}
-
 #endif
 
 	LeaveCriticalSection(&getMutex(this)->mLock);

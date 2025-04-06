@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -37,7 +37,7 @@ namespace physx
 	namespace Bp
 	{
 
-#define BP_USE_AGGREGATE_GROUP_TAIL
+#define BP_USE_AGGREGATE_GROUP_TAIL	1
 #define BP_FILTERING_TYPE_SHIFT_BIT	3
 #define BP_FILTERING_TYPE_MASK		7
 
@@ -48,16 +48,15 @@ namespace physx
 	If dynamics shapes are assigned group values greater than or equal to eDYNAMICS_BASE then
 	they are allowed to generate broadphase overlaps with statics, and other dynamic shapes provided 
 	they have different group values.
-	@see AABBManager::createVolume
+	\see AABBManager::createVolume
 	*/
 	struct FilterGroup
 	{
 		enum Enum
 		{
 			eSTATICS		= 0,
-			ePARTICLES		= 1,
-			eDYNAMICS_BASE	= 2,
-#ifdef BP_USE_AGGREGATE_GROUP_TAIL
+			eDYNAMICS_BASE	= 1,
+#if BP_USE_AGGREGATE_GROUP_TAIL
 			eAGGREGATE_BASE	= 0xfffffffe,
 #endif
 			eINVALID		= 0xffffffff
@@ -68,16 +67,15 @@ namespace physx
 	{
 		enum Enum
 		{
-			STATIC			= 0,
-			KINEMATIC		= 1,
-			DYNAMIC			= 2,
-			AGGREGATE		= 3,
-			SOFTBODY		= 4,
-			PARTICLESYSTEM	= 5,
-			FEMCLOTH        = 6,
-			HAIRSYSTEM		= 7,
+			STATIC				= 0,
+			KINEMATIC			= 1,
+			DYNAMIC				= 2,
+			AGGREGATE			= 3,
+			DEFORMABLE_SURFACE	= 4,
+			DEFORMABLE_VOLUME	= 5,
+			PARTICLESYSTEM		= 6,
 
-			COUNT			= 8
+			COUNT				= 7
 		};
 	};
 

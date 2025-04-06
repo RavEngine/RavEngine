@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -91,7 +91,7 @@ class PxSyncT : protected Alloc
 
 	PxSyncT(const Alloc& alloc = Alloc()) : Alloc(alloc)
 	{
-		mImpl = reinterpret_cast<PxSyncImpl*>(Alloc::allocate(PxSyncImpl::getSize(), __FILE__, __LINE__));
+		mImpl = reinterpret_cast<PxSyncImpl*>(Alloc::allocate(PxSyncImpl::getSize(), PX_FL));
 		PX_PLACEMENT_NEW(mImpl, PxSyncImpl)();
 	}
 

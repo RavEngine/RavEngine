@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -80,18 +80,19 @@ class PvdPhysicsClient : public PvdClient, public PxErrorCallback, public NpFact
 	void createPvdInstance(const PxMaterial* mat);
 	void destroyPvdInstance(const PxMaterial* mat);
 	void updatePvdProperties(const PxMaterial* mat);
+#if PX_SUPPORT_GPU_PHYSX
+	void createPvdInstance(const PxDeformableSurfaceMaterial* mat);
+	void destroyPvdInstance(const PxDeformableSurfaceMaterial* mat);
+	void updatePvdProperties(const PxDeformableSurfaceMaterial* mat);
 
-	void createPvdInstance(const PxFEMSoftBodyMaterial* mat);
-	void destroyPvdInstance(const PxFEMSoftBodyMaterial* mat);
-	void updatePvdProperties(const PxFEMSoftBodyMaterial* mat);
-
-	void createPvdInstance(const PxFEMClothMaterial* mat);
-	void destroyPvdInstance(const PxFEMClothMaterial* mat);
-	void updatePvdProperties(const PxFEMClothMaterial* mat);
+	void createPvdInstance(const PxDeformableVolumeMaterial* mat);
+	void destroyPvdInstance(const PxDeformableVolumeMaterial* mat);
+	void updatePvdProperties(const PxDeformableVolumeMaterial* mat);
 
 	void createPvdInstance(const PxPBDMaterial* mat);
 	void destroyPvdInstance(const PxPBDMaterial* mat);
 	void updatePvdProperties(const PxPBDMaterial* mat);
+#endif
 
 	PsPvd*  mPvd;
 	PvdDataStream* mPvdDataStream;

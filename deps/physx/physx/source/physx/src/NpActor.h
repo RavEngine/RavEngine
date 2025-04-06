@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -39,29 +39,33 @@ namespace physx
 	class NpScene;
 	class NpShape;
 
-	Sc::BodyCore* getBodyCore(PxRigidActor* actor);
+	const Sc::BodyCore* getBodyCore(const PxRigidActor* actor);
+	PX_FORCE_INLINE Sc::BodyCore* getBodyCore(PxRigidActor* actor)
+	{
+		const Sc::BodyCore* core = getBodyCore(static_cast<const PxRigidActor*>(actor));
+		return const_cast<Sc::BodyCore*>(core);
+	}
 
 class NpActor : public NpBase
 {
-//= ATTENTION! =====================================================================================
-// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-// accordingly.
-//==================================================================================================
-
 public:
 // PX_SERIALIZATION
 											NpActor(const PxEMPTY) : NpBase(PxEmpty)	{}				
 					void					exportExtraData(PxSerializationContext& stream);	
 					void					importExtraData(PxDeserializationContext& context);
 					void					resolveReferences(PxDeserializationContext& context);
-	static			void					getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
 											NpActor(NpType::Enum type);
 
 					void					removeConstraints(PxRigidActor& owner);
 					void					removeFromAggregate(PxActor& owner);
+#if PX_SUPPORT_GPU_PHYSX
+					void					removeAttachments(PxActor& owner, bool removeConnectors);
+					void					addAttachments(PxActor& owner);
+
+					void					removeElementFilters(PxActor& owner, bool removeConnectors);
+					void					addElementFilters(PxActor& owner);
+#endif
 
 					NpAggregate*			getNpAggregate(PxU32& index)	const;
 					void					setAggregate(NpAggregate* np, PxActor& owner);
@@ -83,8 +87,9 @@ public:
 	static			NpShapeManager*			getShapeManager_(PxRigidActor& actor);			// bit misplaced here, but we don't want a separate subclass just for this
 	static			const NpShapeManager*	getShapeManager_(const PxRigidActor& actor);	// bit misplaced here, but we don't want a separate subclass just for this
 
-	static			NpActor&				getFromPxActor(PxActor& actor)			{ 	return *PxPointerOffset<NpActor*>(&actor, ptrdiff_t(sOffsets.pxActorToNpActor[actor.getConcreteType()])); }
-	static			const NpActor&			getFromPxActor(const PxActor& actor)	{	return *PxPointerOffset<const NpActor*>(&actor, ptrdiff_t(sOffsets.pxActorToNpActor[actor.getConcreteType()])); }
+	static			NpActor&				getFromPxActor(PxActor& actor)			{ return *PxPointerOffset<NpActor*>(&actor, ptrdiff_t(sOffsets.pxActorToNpActor[actor.getConcreteType()])); }
+	static			const NpActor&			getFromPxActor(const PxActor& actor)	{ return *PxPointerOffset<const NpActor*>(&actor, ptrdiff_t(sOffsets.pxActorToNpActor[actor.getConcreteType()])); }
+	static			NpActor*				getNpActor(PxRigidActor* a)				{ return a ? &NpActor::getFromPxActor(*a) : NULL;	}
 				
 					const PxActor*			getPxActor() const;
 
@@ -133,7 +138,7 @@ public:
 												if((!aFlags.isSet(PxActorFlag::eDISABLE_SIMULATION)) && v.isSet(PxActorFlag::eDISABLE_SIMULATION) &&
 													(npType != NpType::eBODY) && (npType != NpType::eRIGID_STATIC))
 												{
-													PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+													PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, 
 														"PxActor::setActorFlag: PxActorFlag::eDISABLE_SIMULATION is only supported by PxRigidDynamic and PxRigidStatic objects.");
 												}
 #endif

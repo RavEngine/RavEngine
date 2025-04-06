@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,7 +32,6 @@
 // ****************************************************************************
 
 #include <ctype.h>
-#include <vector>
 #include "PxPhysicsAPI.h"
 
 // temporary disable this snippet, cannot work without rendering we cannot include GL directly
@@ -228,12 +227,12 @@ void cleanupPhysics(bool /*interactive*/)
 	if (gPvd)
 	{
 		PxPvdTransport* transport = gPvd->getTransport();
-		gPvd->release();	gPvd = NULL;
+		PX_RELEASE(gPvd);
 		PX_RELEASE(transport);
 	}
 	PX_RELEASE(gFoundation);
 
-	printf("SnippetGeometryQueries done.\n");
+	printf("SnippetCustomGeometryQueries done.\n");
 }
 
 void keyPress(unsigned char key, const PxTransform& camera)

@@ -22,17 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #pragma once
 
-/** \addtogroup vehicle2
-  @{
-*/
 
 #include "foundation/PxSimpleTypes.h"
+#include "foundation/PxTransform.h"
 
 #include "vehicle2/PxVehicleParams.h"
 
@@ -122,9 +120,9 @@ bool PxVehiclePhysxActorSleepCheck
 
 Certain criteria should keep the vehicle physx actor awake, for example, if the
 (mass normalized) rotational kinetic energy of the wheels is above a certain 
-threshold or if a gear change is pending. This method will reset the wake
-counter of the physx actor to a specified value, if any of the mentioned
-criterias are met.
+threshold or if a gear change is pending or if throttle is applied.
+This method will reset the wake counter of the physx actor to a specified value,
+if any of the mentioned criteria are met.
 
 \note The physx actor's sleep threshold will be used as threshold to test against
       for the energy criteria.
@@ -139,6 +137,9 @@ criterias are met.
            to, if any of the criteria to do so are met.
 \param[in] gearState The gear state. Can be set to NULL if the vehicle does
 	       not have gears or if the mentioned behavior is not desired.
+\param[in] throttle The throttle command state (see #PxVehicleCommandState).
+           Can be set to NULL if the vehicle is not controlled through
+		   PxVehicleCommandState or if the mentioned behavior is not desired.
 \param[in] physxActor is the PxRigidBody instance associated with the vehicle.
 */
 void PxVehiclePhysxActorKeepAwakeCheck
@@ -148,6 +149,7 @@ void PxVehiclePhysxActorKeepAwakeCheck
  const PxReal wakeCounterThreshold,
  const PxReal wakeCounterResetValue,
  const PxVehicleGearboxState* gearState,
+ const PxReal* throttle,
  PxRigidBody& physxActor);
 
 
@@ -192,4 +194,3 @@ void PxVehicleWriteRigidBodyStateToPhysXActor
 } // namespace physx
 #endif
 
-/** @} */

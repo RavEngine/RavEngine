@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -30,7 +30,7 @@
 #define EXT_CPU_WORKER_THREAD_H
 
 #include "foundation/PxThread.h"
-#include "ExtDefaultCpuDispatcher.h"
+#include "ExtTaskQueueHelper.h"
 #include "ExtSharedQueueEntryPool.h"
 
 namespace physx
@@ -47,20 +47,27 @@ class DefaultCpuDispatcher;
 	class CpuWorkerThread : public PxThread
 	{
 	public:
-								CpuWorkerThread();
-								~CpuWorkerThread();
+												CpuWorkerThread();
+												~CpuWorkerThread();
 		
-		void					initialize(DefaultCpuDispatcher* ownerDispatcher);
-		void					execute();
-		bool					tryAcceptJobToLocalQueue(PxBaseTask& task, PxThread::Id taskSubmitionThread);
-		PxBaseTask*				giveUpJob();
-		PxThread::Id			getWorkerThreadId() const { return mThreadId; }
+		PX_FORCE_INLINE	void					initialize(DefaultCpuDispatcher* ownerDispatcher)		{ mOwner = ownerDispatcher;				}
+		PX_FORCE_INLINE	PxThread::Id			getWorkerThreadId()								const	{ return mThreadId;						}
 
+		template<const bool highPriorityT>
+		PX_FORCE_INLINE	PxBaseTask*				getJob()	{ return mHelper.fetchTask<highPriorityT>();	}
+
+						void					execute();
+
+		PX_FORCE_INLINE	bool					tryAcceptJobToLocalQueue(PxBaseTask& task, PxThread::Id taskSubmitionThread)
+												{
+													if(taskSubmitionThread == mThreadId)
+														return mHelper.tryAcceptJobToQueue(task);
+													return false;
+												}
 	protected:
-		SharedQueueEntryPool<>	mQueueEntryPool;
-		DefaultCpuDispatcher*	mOwner;
-		PxSList					mLocalJobList;
-		PxThread::Id			mThreadId;
+						DefaultCpuDispatcher*	mOwner;
+						TaskQueueHelper			mHelper;
+						PxThread::Id			mThreadId;
 	};
 
 #if PX_VC

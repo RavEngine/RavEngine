@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -164,7 +164,7 @@ struct PointConvexV : ConvexV
 	Vec3V zero;
 	PointConvexV() : ConvexV(Gu::ConvexType::eCUSTOM)
 	{
-		zero = V3LoadU(PxVec3(0));
+		zero = V3Zero();
 		setMinMargin(FLoad(0.001f));
 		setSweepMargin(FLoad(0.001f));
 	}

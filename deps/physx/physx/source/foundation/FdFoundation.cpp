@@ -22,69 +22,114 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
-#include "foundation/PxProfiler.h"
-#include "foundation/PxErrorCallback.h"
-#include "foundation/PxString.h"
-#include "foundation/PxAllocator.h"
-#include "foundation/PxPhysicsVersion.h"
 #include "FdFoundation.h"
+#include "foundation/PxString.h"
+#include "foundation/PxPhysicsVersion.h"
+#include "foundation/PxUserAllocated.h"
+#include "foundation/PxBroadcast.h"
 
 namespace physx
 {
-
-Foundation::Foundation(PxErrorCallback& errc, PxAllocatorCallback& alloc)
-: mAllocatorCallback(alloc)
-, mErrorCallback(errc)
-, mBroadcastingAllocator(alloc, errc)
-, mBroadcastingError(errc)
-,
-#if PX_CHECKED
-    mReportAllocationNames(true),
-#else
-    mReportAllocationNames(false),
+#if PX_VC
+#pragma warning(push)
+#pragma warning(disable : 4251) // class needs to have dll-interface to be used by clients of class
 #endif
-    mErrorMask(PxErrorCode::Enum(~0))
-, mErrorMutex("Foundation::mErrorMutex")
-, mTempAllocMutex("Foundation::mTempAllocMutex")
-, mRefCount(0)
+
+class PX_FOUNDATION_API Foundation : public PxFoundation, public PxUserAllocated
+{
+	PX_NOCOPY(Foundation)
+
+  public:
+	// PxFoundation
+	virtual	void					release()								PX_OVERRIDE;
+	virtual PxErrorCallback&		getErrorCallback()						PX_OVERRIDE	{ return mErrorCallback;			}
+	virtual void					setErrorLevel(PxErrorCode::Enum mask)	PX_OVERRIDE	{ mErrorMask = mask;				}
+	virtual	PxErrorCode::Enum		getErrorLevel() const					PX_OVERRIDE	{ return mErrorMask;				}
+	virtual PxAllocatorCallback&	getAllocatorCallback()					PX_OVERRIDE	{ return mAllocatorCallback;		}
+	virtual bool					getReportAllocationNames() const		PX_OVERRIDE	{ return mReportAllocationNames;	}
+	virtual void					setReportAllocationNames(bool value)	PX_OVERRIDE	{ mReportAllocationNames = value;	}
+	virtual void					registerAllocationListener(physx::PxAllocationListener& listener)	PX_OVERRIDE;
+	virtual void					deregisterAllocationListener(physx::PxAllocationListener& listener)	PX_OVERRIDE;
+	virtual void					registerErrorCallback(PxErrorCallback& listener)	PX_OVERRIDE;
+	virtual void					deregisterErrorCallback(PxErrorCallback& listener)	PX_OVERRIDE;
+	virtual bool					error(PxErrorCode::Enum, const char* file, int line, const char* messageFmt, ...)		PX_OVERRIDE;
+	virtual bool					error(PxErrorCode::Enum, const char* file, int line, const char* messageFmt, va_list)	PX_OVERRIDE;
+	//~PxFoundation
+
+	Foundation(PxErrorCallback& errc, PxAllocatorCallback& alloc);
+	~Foundation();
+
+	// init order is tricky here: the mutexes require the allocator, the allocator may require the error stream
+	PxAllocatorCallback& mAllocatorCallback;
+	PxErrorCallback& mErrorCallback;
+
+	PxBroadcastingAllocator mBroadcastingAllocator;
+	PxBroadcastingErrorCallback mBroadcastingError;
+
+	bool mReportAllocationNames;
+
+	PxErrorCode::Enum mErrorMask;
+	Mutex mErrorMutex;
+
+	AllocFreeTable mTempAllocFreeTable;
+	Mutex mTempAllocMutex;
+
+	Mutex mListenerMutex;
+
+    PxU32 mRefCount;
+	static PxU32 mWarnOnceTimestap;
+};
+#if PX_VC
+#pragma warning(pop)
+#endif
+
+} // namespace physx
+
+using namespace physx;
+
+static PxProfilerCallback* gProfilerCallback = NULL;
+static Foundation* gInstance = NULL;
+
+// PT: not in header so that people don't use it, only for temp allocator, will be removed
+AllocFreeTable& getTempAllocFreeTable()
+{
+	PX_ASSERT(gInstance);
+	return gInstance->mTempAllocFreeTable;
+}
+
+// PT: not in header so that people don't use it, only for temp allocator, will be removed
+Mutex& getTempAllocMutex()
+{
+	PX_ASSERT(gInstance);
+	return gInstance->mTempAllocMutex;
+}
+
+Foundation::Foundation(PxErrorCallback& errc, PxAllocatorCallback& alloc) :
+	mAllocatorCallback		(alloc),
+	mErrorCallback			(errc),
+	mBroadcastingAllocator	(alloc, errc),
+	mBroadcastingError		(errc),
+#if PX_CHECKED
+    mReportAllocationNames	(true),
+#else
+    mReportAllocationNames	(false),
+#endif
+    mErrorMask				(PxErrorCode::Enum(~0)),
+	mErrorMutex				("Foundation::mErrorMutex"),
+	mTempAllocMutex			("Foundation::mTempAllocMutex"),
+	mRefCount				(0)
 {
 }
+
+void deallocateTempBufferAllocations(AllocFreeTable& mTempAllocFreeTable);
 
 Foundation::~Foundation()
 {
-	// deallocate temp buffer allocations
-	PxAllocator alloc;
-	for(PxU32 i = 0; i < mTempAllocFreeTable.size(); ++i)
-	{
-		for(PxTempAllocatorChunk* ptr = mTempAllocFreeTable[i]; ptr;)
-		{
-			PxTempAllocatorChunk* next = ptr->mNext;
-			alloc.deallocate(ptr);
-			ptr = next;
-		}
-	}
-	mTempAllocFreeTable.reset();
-}
-
-Foundation& Foundation::getInstance()
-{
-	PX_ASSERT(mInstance);
-	return *mInstance;
-}
-
-void Foundation::setInstance(Foundation& foundation)
-{
-	mInstance = &foundation;
-}
-
-PxU32 Foundation::getWarnOnceTimestamp()
-{
-	PX_ASSERT(mInstance != NULL);
-	return mWarnOnceTimestap;
+	deallocateTempBufferAllocations(mTempAllocFreeTable);
 }
 
 bool Foundation::error(PxErrorCode::Enum c, const char* file, int line, const char* messageFmt, ...)
@@ -119,111 +164,33 @@ bool Foundation::error(PxErrorCode::Enum e, const char* file, int line, const ch
 	return false;
 }
 
-Foundation* Foundation::createInstance(PxU32 version, PxErrorCallback& errc, PxAllocatorCallback& alloc)
-{
-	if(version != PX_PHYSICS_VERSION)
-	{
-		char* buffer = new char[256];
-		physx::Pxsnprintf(buffer, 256, "Wrong version: physics version is 0x%08x, tried to create 0x%08x",
-			PX_PHYSICS_VERSION, version);
-		errc.reportError(PxErrorCode::eINVALID_PARAMETER, buffer, __FILE__, __LINE__);
-		return 0;
-	}
-
-	if(!mInstance)
-	{
-		// if we don't assign this here, the Foundation object can't create member
-		// subobjects which require the allocator
-
-		mInstance = reinterpret_cast<Foundation*>(alloc.allocate(sizeof(Foundation), "Foundation", __FILE__, __LINE__));
-
-		if(mInstance)
-		{
-			PX_PLACEMENT_NEW(mInstance, Foundation)(errc, alloc);
-
-			PX_ASSERT(mInstance->mRefCount == 0);
-			mInstance->mRefCount = 1;
-
-			// skip 0 which marks uninitialized timestaps in PX_WARN_ONCE
-			mWarnOnceTimestap = (mWarnOnceTimestap == PX_MAX_U32) ? 1 : mWarnOnceTimestap + 1;
-
-			return mInstance;
-		}
-		else
-		{
-			errc.reportError(PxErrorCode::eINTERNAL_ERROR, "Memory allocation for foundation object failed.", __FILE__,
-			                 __LINE__);
-		}
-	}
-	else
-	{
-		errc.reportError(PxErrorCode::eINVALID_OPERATION,
-		                 "Foundation object exists already. Only one instance per process can be created.", __FILE__,
-		                 __LINE__);
-	}
-
-	return 0;
-}
-
-void Foundation::destroyInstance()
-{
-	PX_ASSERT(mInstance != NULL);
-
-	if(mInstance->mRefCount == 1)
-	{
-		PxAllocatorCallback& alloc = mInstance->getAllocatorCallback();
-		mInstance->~Foundation();
-		alloc.deallocate(mInstance);
-        mInstance = 0;
-	}
-	else
-	{
-		mInstance->error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__,
-		                 "Foundation destruction failed due to pending module references. Close/release all depending "
-		                 "modules first.");
-	}
-}
-
-void Foundation::incRefCount()
-{
-	PX_ASSERT(mInstance != NULL);
-
-	if(mInstance->mRefCount > 0)
-        mInstance->mRefCount++;
-	else
-		mInstance->error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "Foundation: Invalid registration detected.");
-}
-
-void Foundation::decRefCount()
-{
-	PX_ASSERT(mInstance != NULL);
-
-	if(mInstance->mRefCount > 0)
-        mInstance->mRefCount--;
-	else
-		mInstance->error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "Foundation: Invalid deregistration detected.");
-}
-
 void Foundation::release()
 {
-	Foundation::destroyInstance();
+	PX_ASSERT(gInstance);
+
+	if(gInstance->mRefCount == 1)
+	{
+		PxAllocatorCallback& alloc = gInstance->getAllocatorCallback();
+		gInstance->~Foundation();
+		alloc.deallocate(gInstance);
+        gInstance = NULL;
+	}
+	else
+	{
+		gInstance->error(PxErrorCode::eINVALID_OPERATION, PX_FL,
+		                 "Foundation destruction failed due to pending module references. Close/release all depending modules first.");
+	}
 }
 
-PxU32 Foundation::getRefCount()
-{
-	return mInstance->mRefCount;
-}
-
-Foundation* Foundation::mInstance = NULL;
 PxU32 Foundation::mWarnOnceTimestap = 0;
 
-void Foundation::registerAllocationListener(physx::PxAllocationListener& listener)
+void Foundation::registerAllocationListener(PxAllocationListener& listener)
 {
 	Mutex::ScopedLock lock(mListenerMutex);
 	mBroadcastingAllocator.registerListener(listener);
 }
 
-void Foundation::deregisterAllocationListener(physx::PxAllocationListener& listener)
+void Foundation::deregisterAllocationListener(PxAllocationListener& listener)
 {
 	Mutex::ScopedLock lock(mListenerMutex);
 	mBroadcastingAllocator.deregisterListener(listener);
@@ -241,68 +208,126 @@ void Foundation::deregisterErrorCallback(PxErrorCallback& callback)
 	mBroadcastingError.deregisterListener(callback);
 }
 
-physx::PxProfilerCallback* gProfilerCallback = NULL;
-
-} // namespace physx
-
-physx::PxFoundation* PxCreateFoundation(physx::PxU32 version, physx::PxAllocatorCallback& allocator,
-                                        physx::PxErrorCallback& errorCallback)
+PxFoundation* PxCreateFoundation(PxU32 version, PxAllocatorCallback& allocator, PxErrorCallback& errorCallback)
 {
-	return physx::Foundation::createInstance(version, errorCallback, allocator);
+	if(version != PX_PHYSICS_VERSION)
+	{
+		char buffer[256];
+		Pxsnprintf(buffer, 256, "Wrong version: physics version is 0x%08x, tried to create 0x%08x", PX_PHYSICS_VERSION, version);
+		errorCallback.reportError(PxErrorCode::eINVALID_PARAMETER, buffer, PX_FL);
+		return 0;
+	}
+
+	if(!gInstance)
+	{
+		// if we don't assign this here, the Foundation object can't create member
+		// subobjects which require the allocator
+
+		gInstance = reinterpret_cast<Foundation*>(allocator.allocate(sizeof(Foundation), "Foundation", PX_FL));
+
+		if(gInstance)
+		{
+			PX_PLACEMENT_NEW(gInstance, Foundation)(errorCallback, allocator);
+
+			PX_ASSERT(gInstance->mRefCount == 0);
+			gInstance->mRefCount = 1;
+
+			// skip 0 which marks uninitialized timestaps in PX_WARN_ONCE
+			gInstance->mWarnOnceTimestap = (gInstance->mWarnOnceTimestap == PX_MAX_U32) ? 1 : gInstance->mWarnOnceTimestap + 1;
+
+			return gInstance;
+		}
+		else
+		{
+			errorCallback.reportError(PxErrorCode::eINTERNAL_ERROR, "Memory allocation for foundation object failed.", PX_FL);
+		}
+	}
+	else
+	{
+		errorCallback.reportError(PxErrorCode::eINVALID_OPERATION, "Foundation object exists already. Only one instance per process can be created.", PX_FL);
+	}
+
+	return 0;
 }
 
-void PxSetFoundationInstance(physx::PxFoundation& foundation)
+void PxSetFoundationInstance(PxFoundation& foundation)
 {
-	physx::Foundation::setInstance(static_cast<physx::Foundation&>(foundation));
+	gInstance = &static_cast<Foundation&>(foundation);
 }
 
-physx::PxAllocatorCallback* PxGetAllocatorCallback()
+PxAllocatorCallback* PxGetAllocatorCallback()
 {
-	return &physx::Foundation::getInstance().getAllocatorCallback();
+	return &gInstance->getAllocatorCallback();
 }
 
-physx::PxAllocatorCallback* PxGetBroadcastAllocator()
+PxAllocatorCallback* PxGetBroadcastAllocator(bool* reportAllocationNames)
 {
-	return &physx::Foundation::getInstance().getBroadcastAllocator();
+	PX_ASSERT(gInstance);
+	if(reportAllocationNames)
+		*reportAllocationNames = gInstance->mReportAllocationNames;
+
+	return &gInstance->mBroadcastingAllocator;
 }
 
-physx::PxErrorCallback* PX_CALL_CONV PxGetErrorCallback()
+PxErrorCallback* PX_CALL_CONV PxGetErrorCallback()
 {
-	return &physx::Foundation::getInstance().getErrorCallback();
+	return &gInstance->getErrorCallback();
 }
 
-physx::PxErrorCallback* PX_CALL_CONV PxGetBroadcastError()
+PxErrorCallback* PX_CALL_CONV PxGetBroadcastError()
 {
-	return &physx::Foundation::getInstance().getInternalErrorCallback();
+	return &gInstance->mBroadcastingError;
 }
 
-physx::PxFoundation& PxGetFoundation()
+PxFoundation& PxGetFoundation()
 {
-	return physx::Foundation::getInstance();
+	PX_ASSERT(gInstance);
+	return *gInstance;
 }
 
-physx::PxProfilerCallback* PxGetProfilerCallback()
+PxFoundation* PxIsFoundationValid()
 {
-	return physx::gProfilerCallback;
+	return gInstance;
 }
 
-void PxSetProfilerCallback(physx::PxProfilerCallback* profiler)
+PxProfilerCallback* PxGetProfilerCallback()
 {
-	physx::gProfilerCallback = profiler;
+	return gProfilerCallback;
 }
 
-physx::PxU32 PxGetWarnOnceTimeStamp()
+void PxSetProfilerCallback(PxProfilerCallback* profiler)
 {
-	return physx::Foundation::getWarnOnceTimestamp();
+	gProfilerCallback = profiler;
+}
+
+PxU32 PxGetWarnOnceTimeStamp()
+{
+	PX_ASSERT(gInstance);
+	return gInstance->mWarnOnceTimestap;
 }
 
 void PxDecFoundationRefCount()
 {
-	physx::Foundation::decRefCount();
+	PX_ASSERT(gInstance);
+
+	if(gInstance->mRefCount > 0)
+        gInstance->mRefCount--;
+	else
+		gInstance->error(PxErrorCode::eINVALID_OPERATION, PX_FL, "Foundation: Invalid deregistration detected.");
 }
 
 void PxIncFoundationRefCount()
 {
-	physx::Foundation::incRefCount();
+	PX_ASSERT(gInstance);
+
+	if(gInstance->mRefCount > 0)
+        gInstance->mRefCount++;
+	else
+		gInstance->error(PxErrorCode::eINVALID_OPERATION, PX_FL, "Foundation: Invalid registration detected.");
 }
 
+// Private method to set the global foundation instance to NULL
+PX_C_EXPORT PX_FOUNDATION_API void PX_CALL_CONV PxResetFoundationInstance()
+{
+	gInstance = NULL;
+}

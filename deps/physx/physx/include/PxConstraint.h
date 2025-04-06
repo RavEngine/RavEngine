@@ -22,20 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_CONSTRAINT_H
 #define PX_CONSTRAINT_H
 
-/** \addtogroup physics
-@{
-*/
 
 #include "PxPhysXConfig.h"
 #include "PxConstraintDesc.h"
 #include "common/PxBase.h"
+#include "PxResidual.h"
 
 #if !PX_DOXYGEN
 namespace physx
@@ -56,16 +54,13 @@ struct PxConstraintFlag
 	enum Enum
 	{
 		eBROKEN						= 1<<0,		//!< whether the constraint is broken
-		ePROJECT_TO_ACTOR0			= 1<<1,		//!< @deprecated whether actor1 should get projected to actor0 for this constraint (note: projection of a static/kinematic actor to a dynamic actor will be ignored)
-		ePROJECT_TO_ACTOR1			= 1<<2,		//!< @deprecated whether actor0 should get projected to actor1 for this constraint (note: projection of a static/kinematic actor to a dynamic actor will be ignored)
-		ePROJECTION					= ePROJECT_TO_ACTOR0 | ePROJECT_TO_ACTOR1,	//!< @deprecated whether the actors should get projected for this constraint (the direction will be chosen by PhysX)
 		eCOLLISION_ENABLED			= 1<<3,		//!< whether contacts should be generated between the objects this constraint constrains
 		eVISUALIZATION				= 1<<4,		//!< whether this constraint should be visualized, if constraint visualization is turned on
 		eDRIVE_LIMITS_ARE_FORCES	= 1<<5,		//!< limits for drive strength are forces rather than impulses
 		eIMPROVED_SLERP				= 1<<7,		//!< perform preprocessing for improved accuracy on D6 Slerp Drive (this flag will be removed in a future release when preprocessing is no longer required)
 		eDISABLE_PREPROCESSING		= 1<<8,		//!< suppress constraint preprocessing, intended for use with rowResponseThreshold. May result in worse solver accuracy for ill-conditioned constraints.
 		eENABLE_EXTENDED_LIMITS		= 1<<9,		//!< enables extended limit ranges for angular limits (e.g., limit values > PxPi or < -PxPi)
-		eGPU_COMPATIBLE				= 1<<10,	//!< the constraint type is supported by gpu dynamics
+		eGPU_COMPATIBLE				= 1<<10,	//!< please do not raise this flag as it is for internal use only
 		eALWAYS_UPDATE				= 1<<11,	//!< updates the constraint each frame
 		eDISABLE_CONSTRAINT			= 1<<12		//!< disables the constraint. SolverPrep functions won't be called for this constraint.
 	};
@@ -73,7 +68,7 @@ struct PxConstraintFlag
 
 /**
 \brief constraint flags
-@see PxConstraintFlag
+\see PxConstraintFlag
 */
 typedef PxFlags<PxConstraintFlag::Enum, PxU16> PxConstraintFlags;
 PX_FLAGS_OPERATORS(PxConstraintFlag::Enum, PxU16)
@@ -81,12 +76,11 @@ PX_FLAGS_OPERATORS(PxConstraintFlag::Enum, PxU16)
 /**
 \brief a table of function pointers for a constraint
 
-@see PxConstraint
+\see PxConstraint
 */
 struct PxConstraintShaderTable
 {
 	PxConstraintSolverPrep	solverPrep;	//!< solver constraint generation function
-	PxConstraintProject		project;	//!< @deprecated constraint projection function
 	PxConstraintVisualize	visualize;	//!< constraint visualization function
 	PxConstraintFlag::Enum	flag;		//!< constraint flags
 };
@@ -94,7 +88,7 @@ struct PxConstraintShaderTable
 /**
 \brief A plugin class for implementing constraints
 
-@see PxPhysics.createConstraint
+\see PxPhysics.createConstraint
 */
 class PxConstraint : public PxBase
 {
@@ -105,7 +99,7 @@ public:
 
 	\note This call does not wake up the connected rigid bodies.
 
-	@see PxPhysics.createConstraint, PxBase.release()
+	\see PxPhysics.createConstraint, PxBase.release()
 	*/
 	virtual void				release()														= 0;
 
@@ -114,7 +108,7 @@ public:
 
 	\return Owner Scene. NULL if not part of a scene.
 
-	@see PxScene
+	\see PxScene
 	*/
 	virtual PxScene*			getScene()												const	= 0;
 
@@ -124,7 +118,7 @@ public:
 	\param[out] actor0 a reference to the pointer for the first actor
 	\param[out] actor1 a reference to the pointer for the second actor
 
-	@see PxActor
+	\see PxActor
 	*/
 	virtual void				getActors(PxRigidActor*& actor0, PxRigidActor*& actor1)	const	= 0;
 
@@ -134,7 +128,7 @@ public:
 	\param[in] actor0 a reference to the pointer for the first actor
 	\param[in] actor1 a reference to the pointer for the second actor
 
-	@see PxActor
+	\see PxActor
 	*/
 	virtual void				setActors(PxRigidActor* actor0, PxRigidActor* actor1)			= 0;
 
@@ -147,7 +141,7 @@ public:
 	\brief Retrieve the flags for this constraint
 
 	\return the constraint flags
-	@see PxConstraintFlags
+	\see PxConstraintFlags
 	*/
 	virtual PxConstraintFlags	getFlags()												const	= 0;
 
@@ -158,7 +152,7 @@ public:
 
 	default: PxConstraintFlag::eDRIVE_LIMITS_ARE_FORCES
 
-	@see PxConstraintFlags
+	\see PxConstraintFlags
 	*/
 	virtual void				setFlags(PxConstraintFlags flags)								= 0;
 
@@ -168,7 +162,7 @@ public:
 	\param[in] flag the constraint flag
 	\param[in] value the new value of the flag
 
-	@see PxConstraintFlags
+	\see PxConstraintFlags
 	*/
 	virtual void				setFlag(PxConstraintFlag::Enum flag, bool value)				= 0;
 
@@ -222,7 +216,7 @@ public:
 
 	\param[in] threshold the minimum response threshold
 
-	@see PxConstraintFlag::eDISABLE_PREPROCESSING
+	\see PxConstraintFlag::eDISABLE_PREPROCESSING
 	*/
 	virtual	void				setMinResponseThreshold(PxReal threshold)					= 0;
 
@@ -241,7 +235,7 @@ public:
 	\param[out] typeID Unique type identifier of the external object.
 	\return Reference to the external object which owns the constraint.
 
-	@see PxConstraintConnector.getExternalReference()
+	\see PxConstraintConnector.getExternalReference()
 	*/
 	virtual void*				getExternalReference(PxU32& typeID)							= 0;
 
@@ -251,11 +245,23 @@ public:
 	\param[in] connector the constraint connector object by which the SDK communicates with the constraint.
 	\param[in] shaders the shader table for the constraint
  
-	@see PxConstraintConnector PxConstraintSolverPrep PxConstraintProject PxConstraintVisualize
+	\see PxConstraintConnector PxConstraintSolverPrep PxConstraintVisualize
 	*/
 	virtual	void				setConstraintFunctions(PxConstraintConnector& connector, const PxConstraintShaderTable& shaders)	= 0;
 
-	virtual	const char*			getConcreteTypeName() const PX_OVERRIDE { return "PxConstraint"; }
+	virtual	const char*			getConcreteTypeName() const PX_OVERRIDE	PX_FINAL { return "PxConstraint"; }
+
+	/**
+	\brief Returns the residual for this constraint.
+
+	The residual represents the current error in this constraint measured as the delta impulse applied in the last velocity or position iteration.
+	If the solver converges perfectly, the residual should approach zero.
+
+	\return The residual for this constraint.
+
+	\see PxConstraintResidual
+	*/
+	virtual PxConstraintResidual getSolverResidual() const = 0;
 
 			void*				userData;	//!< user can assign this to whatever, usually to create a 1:1 relationship with a user object.
 
@@ -263,12 +269,23 @@ protected:
 	PX_INLINE					PxConstraint(PxType concreteType, PxBaseFlags baseFlags) : PxBase(concreteType, baseFlags), userData(NULL) {}
 	PX_INLINE					PxConstraint(PxBaseFlags baseFlags) : PxBase(baseFlags), userData(NULL) {}
 	virtual						~PxConstraint() {}
-	virtual	bool				isKindOf(const char* name) const PX_OVERRIDE { return !::strcmp("PxConstraint", name) || PxBase::isKindOf(name); }
+	virtual	bool				isKindOf(const char* name) const PX_OVERRIDE { PX_IS_KIND_OF(name, "PxConstraint", PxBase); }
+
+public:
+	/**
+	\cond
+	*/
+
+	// for internal use only
+	virtual PxConstraintGPUIndex getGPUIndex() const = 0;
+
+	/**
+	\endcond
+	*/
 };
 
 #if !PX_DOXYGEN
 } // namespace physx
 #endif
 
-/** @} */
 #endif

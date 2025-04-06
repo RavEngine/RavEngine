@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -105,7 +105,7 @@ namespace physx { namespace Sn {
 		TObjType* outObject = static_cast<TObjType*>(const_cast<PxBase*>(collection.find(id)));
 		if (outObject == NULL)
 		{
-			PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+			PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, 
 				"PxSerialization::createCollectionFromXml: "
 				"Reference to ID %d cannot be resolved. Make sure externalRefs collection is specified if required and "
 				"check Xml file for completeness.",
@@ -170,7 +170,7 @@ namespace physx { namespace Sn {
 	{	
 		PxAllocatorCallback& inAllocator = reader.mAllocator.getAllocator();
 		
-		TGeomType* shape = PX_PLACEMENT_NEW((inAllocator.allocate(sizeof(TGeomType), "parseGeometry",  __FILE__, __LINE__ )), TGeomType);
+		TGeomType* shape = PX_PLACEMENT_NEW((inAllocator.allocate(sizeof(TGeomType), "parseGeometry", PX_FL)), TGeomType);
 		PxClassInfoTraits<TGeomType> info;
 		readComplexObj( reader, shape);
 		return shape;
@@ -292,6 +292,9 @@ namespace physx { namespace Sn {
 					case PxGeometryType::eBOX :
 						static_cast<PxBoxGeometry*>(geometry)->~PxBoxGeometry();
 						break;
+					case PxGeometryType::eCONVEXCORE:
+						static_cast<PxConvexCoreGeometry*>(geometry)->~PxConvexCoreGeometry();
+						break;
 					case PxGeometryType::eCONVEXMESH :
 						static_cast<PxConvexMeshGeometry*>(geometry)->~PxConvexMeshGeometry();
 						break;
@@ -306,9 +309,6 @@ namespace physx { namespace Sn {
 						break;
 					case PxGeometryType::ePARTICLESYSTEM:
 						static_cast<PxParticleSystemGeometry*>(geometry)->~PxParticleSystemGeometry();
-						break;
-					case PxGeometryType::eHAIRSYSTEM:
-						static_cast<PxHairSystemGeometry*>(geometry)->~PxHairSystemGeometry();
 						break;
 					case PxGeometryType::eCUSTOM :
 						static_cast<PxCustomGeometry*>(geometry)->~PxCustomGeometry();
@@ -391,7 +391,7 @@ namespace physx { namespace Sn {
 					mReader.leaveChild();
 				mNames.popBack();
 			}
-			mValid =true;
+			mValid = true;
 			if ( mNames.size() && mNames.back().mValid == false )
 				mValid = false;
 		}

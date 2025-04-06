@@ -22,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #
 # Build PhysXCommon common
@@ -30,6 +30,7 @@
 
 SET(PHYSX_SOURCE_DIR ${PHYSX_ROOT_DIR}/source)
 SET(COMMON_SRC_DIR ${PHYSX_SOURCE_DIR}/common/src)
+SET(COMMON_INCLUDE_DIR ${PHYSX_SOURCE_DIR}/common/include)
 SET(GU_SOURCE_DIR ${PHYSX_SOURCE_DIR}/geomutils)
 
 SET(PXCOMMON_PLATFORM_LINK_FLAGS_DEBUG " ")
@@ -71,12 +72,18 @@ SET(PHYSX_COMMON_SOURCE
 )
 SOURCE_GROUP(common\\src FILES ${PHYSX_COMMON_SOURCE})
 
+SET(PHYSXCOMMON_COMMON_INTERNAL_HEADERS
+	${COMMON_INCLUDE_DIR}/omnipvd/CmOmniPvdAutoGenClearDefines.h
+	${COMMON_INCLUDE_DIR}/omnipvd/CmOmniPvdAutoGenCreateRegistrationStruct.h
+	${COMMON_INCLUDE_DIR}/omnipvd/CmOmniPvdAutoGenRegisterData.h
+	${COMMON_INCLUDE_DIR}/omnipvd/CmOmniPvdAutoGenSetData.h
+)
+SOURCE_GROUP(common\\include\\omnipvd FILES ${PHYSXCOMMON_COMMON_INTERNAL_HEADERS})
+
 SET(PHYSXCOMMON_COMMON_HEADERS
 	${PHYSX_ROOT_DIR}/include/common/PxBase.h
 	${PHYSX_ROOT_DIR}/include/common/PxCollection.h
 	${PHYSX_ROOT_DIR}/include/common/PxCoreUtilityTypes.h
-	${PHYSX_ROOT_DIR}/include/common/PxMetaData.h
-	${PHYSX_ROOT_DIR}/include/common/PxMetaDataFlags.h
 	${PHYSX_ROOT_DIR}/include/common/PxInsertionCallback.h
 	${PHYSX_ROOT_DIR}/include/common/PxPhysXCommonConfig.h
 	${PHYSX_ROOT_DIR}/include/common/PxRenderBuffer.h
@@ -96,6 +103,7 @@ SET(PHYSXCOMMON_GEOMETRY_HEADERS
 	${PHYSX_ROOT_DIR}/include/geometry/PxConvexMesh.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxConvexMeshGeometry.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxCustomGeometry.h
+	${PHYSX_ROOT_DIR}/include/geometry/PxConvexCoreGeometry.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxGeometry.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxGeometryInternal.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxGeometryHelpers.h
@@ -103,8 +111,6 @@ SET(PHYSXCOMMON_GEOMETRY_HEADERS
 	${PHYSX_ROOT_DIR}/include/geometry/PxGeometryQuery.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxGeometryQueryFlags.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxGeometryQueryContext.h
-	${PHYSX_ROOT_DIR}/include/geometry/PxHairSystemDesc.h
-	${PHYSX_ROOT_DIR}/include/geometry/PxHairSystemGeometry.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxHeightField.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxHeightFieldDesc.h
 	${PHYSX_ROOT_DIR}/include/geometry/PxHeightFieldFlag.h
@@ -168,7 +174,11 @@ SET(PHYSXCOMMON_GU_HEADERS
 	${GU_SOURCE_DIR}/include/GuDistancePointTetrahedron.h
 	${GU_SOURCE_DIR}/include/GuDistancePointTriangle.h
 	${GU_SOURCE_DIR}/include/GuIntersectionTriangleBox.h
+	${GU_SOURCE_DIR}/include/GuIntersectionTetrahedronTetrahedron.h
 	${GU_SOURCE_DIR}/include/GuCooking.h
+	${GU_SOURCE_DIR}/include/GuConvexSupport.h
+	${GU_SOURCE_DIR}/include/GuConvexGeometry.h
+	${GU_SOURCE_DIR}/include/GuRefGjkEpa.h
 )
 SOURCE_GROUP(geomutils\\include FILES ${PHYSXCOMMON_GU_HEADERS})
 
@@ -181,11 +191,10 @@ SOURCE_GROUP(geomutils\\include FILES ${PHYSXCOMMON_GU_HEADERS})
 SET(PHYSXCOMMON_GU_SOURCE
 	${GU_SOURCE_DIR}/src/GuBox.cpp
 	${GU_SOURCE_DIR}/src/GuCapsule.cpp
-	${GU_SOURCE_DIR}/src/GuCCTSweepTests.cpp	
+	${GU_SOURCE_DIR}/src/GuCCTSweepTests.cpp
 	${GU_SOURCE_DIR}/src/GuGeometryQuery.cpp
 	${GU_SOURCE_DIR}/src/GuInternal.cpp
 	${GU_SOURCE_DIR}/src/GuMeshFactory.cpp
-	${GU_SOURCE_DIR}/src/GuMetaData.cpp
 	${GU_SOURCE_DIR}/src/GuMTD.cpp
 	${GU_SOURCE_DIR}/src/GuOverlapTests.cpp
 	${GU_SOURCE_DIR}/src/GuRaycastTests.cpp
@@ -200,13 +209,13 @@ SET(PHYSXCOMMON_GU_SOURCE
 	${GU_SOURCE_DIR}/src/GuSweepSharedTests.h
 	${GU_SOURCE_DIR}/src/GuSDF.h
 	${GU_SOURCE_DIR}/src/GuSDF.cpp
-	${GU_SOURCE_DIR}/src/GuCookingSDF.h
-	${GU_SOURCE_DIR}/src/GuCookingSDF.cpp
 	${GU_SOURCE_DIR}/src/GuGjkQuery.cpp
 	${GU_SOURCE_DIR}/src/GuWindingNumber.cpp
 	${GU_SOURCE_DIR}/src/GuWindingNumber.h
 	${GU_SOURCE_DIR}/src/GuWindingNumberCluster.h
 	${GU_SOURCE_DIR}/src/GuWindingNumberT.h
+	${GU_SOURCE_DIR}/src/GuConvexGeometry.cpp
+	${GU_SOURCE_DIR}/src/GuConvexSupport.cpp
 )
 SOURCE_GROUP(geomutils\\src FILES ${PHYSXCOMMON_GU_SOURCE})
 
@@ -247,10 +256,18 @@ SET(PHYSXCOMMON_GU_CONTACT_SOURCE
 	${GU_SOURCE_DIR}/src/contact/GuContactCapsuleMesh.cpp
 	${GU_SOURCE_DIR}/src/contact/GuContactConvexConvex.cpp
 	${GU_SOURCE_DIR}/src/contact/GuContactConvexMesh.cpp
+	${GU_SOURCE_DIR}/src/contact/GuContactConvexCoreMesh.cpp
+	${GU_SOURCE_DIR}/src/contact/GuContactConvexCoreConvex.cpp
+	${GU_SOURCE_DIR}/src/contact/GuContactPlaneConvexCore.cpp
 	${GU_SOURCE_DIR}/src/contact/GuContactPlaneBox.cpp
 	${GU_SOURCE_DIR}/src/contact/GuContactPlaneCapsule.cpp
 	${GU_SOURCE_DIR}/src/contact/GuContactPlaneConvex.cpp
+	${GU_SOURCE_DIR}/src/contact/GuContactPlaneMesh.cpp
 	${GU_SOURCE_DIR}/src/contact/GuContactPolygonPolygon.cpp
+	${GU_SOURCE_DIR}/src/contact/GuContactMeshMesh.cpp
+	${GU_SOURCE_DIR}/src/contact/GuContactMeshMesh.h
+	${GU_SOURCE_DIR}/src/contact/GuContactReduction.h
+	${GU_SOURCE_DIR}/src/contact/GuCollisionSDF.h
 	${GU_SOURCE_DIR}/src/contact/GuContactSphereBox.cpp
 	${GU_SOURCE_DIR}/src/contact/GuContactSphereCapsule.cpp
 	${GU_SOURCE_DIR}/src/contact/GuContactSphereMesh.cpp
@@ -292,15 +309,12 @@ SET(PHYSXCOMMON_GU_DISTANCE_SOURCE
 	${GU_SOURCE_DIR}/src/distance/GuDistanceSegmentBox.cpp
 	${GU_SOURCE_DIR}/src/distance/GuDistanceSegmentSegment.cpp
 	${GU_SOURCE_DIR}/src/distance/GuDistanceSegmentTriangle.cpp
+	${GU_SOURCE_DIR}/src/distance/GuDistanceTriangleTriangle.cpp
 	${GU_SOURCE_DIR}/src/distance/GuDistancePointTetrahedron.cpp
 	${GU_SOURCE_DIR}/src/distance/GuDistancePointBox.h
 	${GU_SOURCE_DIR}/src/distance/GuDistancePointSegment.h
-	${GU_SOURCE_DIR}/src/distance/GuDistancePointTriangle.h
-	${GU_SOURCE_DIR}/src/distance/GuDistancePointTriangleSIMD.h
-	${GU_SOURCE_DIR}/src/distance/GuDistanceSegmentSegmentSIMD.h
 	${GU_SOURCE_DIR}/src/distance/GuDistanceSegmentTriangle.h
-	${GU_SOURCE_DIR}/src/distance/GuDistanceSegmentTriangleSIMD.h
-	${GU_SOURCE_DIR}/src/distance/GuDistancePointTetrahedron.h
+	${GU_SOURCE_DIR}/src/distance/GuDistanceTriangleTriangle.h
 )
 SOURCE_GROUP(geomutils\\src\\distance FILES ${PHYSXCOMMON_GU_DISTANCE_SOURCE})
 
@@ -356,7 +370,6 @@ SET(PHYSXCOMMON_GU_INTERSECTION_SOURCE
 	${GU_SOURCE_DIR}/src/intersection/GuIntersectionEdgeEdge.h
 	${GU_SOURCE_DIR}/src/intersection/GuIntersectionRay.h
 	${GU_SOURCE_DIR}/src/intersection/GuIntersectionRayBox.h
-	${GU_SOURCE_DIR}/src/intersection/GuIntersectionRayBoxSIMD.h
 	${GU_SOURCE_DIR}/src/intersection/GuIntersectionRayCapsule.h
 	${GU_SOURCE_DIR}/src/intersection/GuIntersectionRayPlane.h
 	${GU_SOURCE_DIR}/src/intersection/GuIntersectionRaySphere.h
@@ -396,6 +409,7 @@ SET(PHYSXCOMMON_GU_MESH_SOURCE
 	${GU_SOURCE_DIR}/src/mesh/GuBV32.cpp
 	${GU_SOURCE_DIR}/src/mesh/GuBV32Build.cpp
 	${GU_SOURCE_DIR}/src/mesh/GuTetrahedronMesh.cpp
+	${GU_SOURCE_DIR}/src/mesh/GuTetrahedronMeshUtils.cpp
 	${GU_SOURCE_DIR}/src/mesh/GuBV32.h
 	${GU_SOURCE_DIR}/src/mesh/GuBV32Build.h
 	${GU_SOURCE_DIR}/src/mesh/GuBV4.h
@@ -434,6 +448,8 @@ SET(PHYSXCOMMON_GU_MESH_SOURCE
 	${GU_SOURCE_DIR}/src/mesh/GuTriangleMeshRTree.h
 	${GU_SOURCE_DIR}/src/mesh/GuTetrahedron.h
 	${GU_SOURCE_DIR}/src/mesh/GuTetrahedronMesh.h
+	${GU_SOURCE_DIR}/src/mesh/GuTetrahedronMeshUtils.h
+	${GU_SOURCE_DIR}/src/mesh/GuTriangleRefinement.h
 )
 SOURCE_GROUP(geomutils\\src\\mesh FILES ${PHYSXCOMMON_GU_MESH_SOURCE})
 
@@ -571,11 +587,14 @@ SET(PHYSXCOMMON_GU_COOKING_SOURCE
 	${GU_SOURCE_DIR}/src/cooking/GuCookingConvexHullBuilder.cpp
 	${GU_SOURCE_DIR}/src/cooking/GuCookingBigConvexDataBuilder.h
 	${GU_SOURCE_DIR}/src/cooking/GuCookingBigConvexDataBuilder.cpp
+	${GU_SOURCE_DIR}/src/cooking/GuCookingSDF.h
+	${GU_SOURCE_DIR}/src/cooking/GuCookingSDF.cpp
 )
 SOURCE_GROUP(geomutils\\src\\cooking FILES ${PHYSXCOMMON_GU_COOKING_SOURCE})
 
 ADD_LIBRARY(PhysXCommon ${PHYSXCOMMON_LIBTYPE} 
 	${PHYSX_COMMON_SOURCE}
+    ${PHYSXCOMMON_COMMON_INTERNAL_HEADERS}
 	
 	${PHYSXCOMMON_COMMON_HEADERS}
 	${PHYSXCOMMON_GEOMETRY_HEADERS}
@@ -640,7 +659,7 @@ SET_TARGET_PROPERTIES(PhysXCommon PROPERTIES
 )
 
 
-IF(NV_USE_GAMEWORKS_OUTPUT_DIRS AND PHYSXCOMMON_LIBTYPE STREQUAL "STATIC")
+IF(PHYSXCOMMON_LIBTYPE STREQUAL "STATIC")
 	SET_TARGET_PROPERTIES(PhysXCommon PROPERTIES 
 		ARCHIVE_OUTPUT_NAME_DEBUG "PhysXCommon_static"
 		ARCHIVE_OUTPUT_NAME_CHECKED "PhysXCommon_static"
@@ -674,6 +693,7 @@ TARGET_LINK_LIBRARIES(PhysXCommon
 
 IF(PX_GENERATE_SOURCE_DISTRO)
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSX_COMMON_SOURCE})
+    LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_COMMON_INTERNAL_HEADERS})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_COMMON_HEADERS})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_GEOMETRY_HEADERS})
 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${PHYSXCOMMON_GEOMUTILS_HEADERS})

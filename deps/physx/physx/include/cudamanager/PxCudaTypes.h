@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #ifndef PX_CUDA_TYPES_H
 #define PX_CUDA_TYPES_H
@@ -37,9 +37,9 @@
 
 #include "foundation/PxSimpleTypes.h"
 
-#if PX_LINUX && !PX_A64
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wc++98-compat-pedantic"
+#if PX_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
 #endif
 
 #if PX_P64_FAMILY
@@ -48,8 +48,8 @@ typedef unsigned long long CUdeviceptr;
 typedef unsigned int CUdeviceptr;
 #endif
 
-#if PX_LINUX && !PX_A64
-#pragma GCC diagnostic pop
+#if PX_CLANG
+#pragma clang diagnostic pop
 #endif
 
 typedef int CUdevice;
@@ -65,6 +65,7 @@ typedef struct CUgraphicsResource_st* CUgraphicsResource;
 
 #else
 typedef struct CUstream_st* CUstream; // We declare some callbacks taking CUstream as an argument even when building with PX_SUPPORT_GPU_PHYSX = 0.
+typedef struct CUevent_st* CUevent;
 #endif // PX_SUPPORT_GPU_PHYSX
 #endif
 

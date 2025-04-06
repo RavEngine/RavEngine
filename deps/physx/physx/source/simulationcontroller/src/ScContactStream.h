@@ -22,14 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef SC_CONTACT_STREAM_H
 #define SC_CONTACT_STREAM_H
 
-#include "foundation/Px.h"
 #include "PxSimulationEventCallback.h"
 #include "ScObjectIDTracker.h"
 #include "ScRigidSim.h"
@@ -53,6 +52,7 @@ namespace Sc
 		const PxU8*				contactPatches;
 		const PxU8*				contactPoints;
 		const PxReal*			contactForces;
+		const PxU8*				frictionPatches;
 		PxU32					requiredBufferSize;
 		PxU8					contactCount;
 		PxU8					patchCount;
@@ -60,7 +60,7 @@ namespace Sc
 		PxU16					flags;
 		PxU16					events;
 		PxU32					shapeID[2];
-		//26 (or 38 on 64bit)
+		//38 on 64bit
 	};
 	PX_COMPILE_TIME_ASSERT(sizeof(ContactShapePair) == sizeof(PxContactPair));
 
@@ -149,8 +149,8 @@ namespace Sc
 		PX_FORCE_INLINE void setContactReportPostSolverVelocity(PxU8* stream, const ActorSim&, const ActorSim&);
 
 		PxU32				bufferIndex;  // marks the start of the shape pair stream of the actor pair (byte offset with respect to global contact buffer stream)
-		PxU16				maxPairCount;  // used to reserve the same amount of memory as in the last frame (as an initial guess)
-		PxU16				currentPairCount;  // number of shape pairs stored in the buffer
+		PxU32				maxPairCount;  // used to reserve the same amount of memory as in the last frame (as an initial guess)
+		PxU32				currentPairCount;  // number of shape pairs stored in the buffer
 		PxU16				extraDataSize;  // size of the extra data section in the stream
 	private:
 		PxU16				flags_and_maxExtraDataBlocks;  // used to reserve the same amount of memory as in the last frame (as an initial guess)
@@ -207,7 +207,7 @@ PX_FORCE_INLINE PxU32 Sc::ContactStreamManager::getMaxExtraDataSize() const
 
 PX_FORCE_INLINE void Sc::ContactStreamManager::setMaxExtraDataSize(PxU32 size)
 {
-	PxU32 nbBlocks = computeExtraDataBlockCount(size);
+	const PxU32 nbBlocks = computeExtraDataBlockCount(size);
 	flags_and_maxExtraDataBlocks = PxTo16((flags_and_maxExtraDataBlocks & sFlagMask) | (nbBlocks << sMaxExtraDataShift));
 }
 
@@ -309,6 +309,7 @@ PX_FORCE_INLINE void Sc::ContactStreamManager::fillInContactReportExtraData(PxCo
 		const BodySim& bs = static_cast<const BodySim&>(rs);
 		const BodyCore& bc = bs.getBodyCore();
 		const PxTransform& src = (!isCCDPass && useCurrentTransform) ? bc.getBody2World() : bs.getLowLevelBody().getLastCCDTransform();
+		// PT:: tag: scalar transform*transform
 		cpPose->globalPose[index] = src * bc.getBody2Actor().getInverse();
 	}
 	else

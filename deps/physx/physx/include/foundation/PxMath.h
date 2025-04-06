@@ -22,16 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 #ifndef PX_MATH_H
 #define PX_MATH_H
 
-/** \addtogroup foundation
-@{
-*/
 
 #include "foundation/PxPreprocessor.h"
 
@@ -45,6 +42,12 @@
 #pragma warning(pop)
 #endif
 
+#if (PX_LINUX_FAMILY && !PX_ARM_FAMILY)
+// Force linking against nothing newer than glibc v2.17 to remain compatible with platforms with older glibc versions
+__asm__(".symver expf,expf@GLIBC_2.2.5");
+__asm__(".symver powf,powf@GLIBC_2.2.5");
+#endif
+
 #include <float.h>
 #include "foundation/PxMathIntrinsics.h"
 #include "foundation/PxAssert.h"
@@ -55,15 +58,15 @@ namespace physx
 #endif
 
 // constants
-static const float PxPi = float(3.141592653589793);
-static const float PxHalfPi = float(1.57079632679489661923);
-static const float PxTwoPi = float(6.28318530717958647692);
-static const float PxInvPi = float(0.31830988618379067154);
-static const float PxInvTwoPi = float(0.15915494309189533577);
-static const float PxPiDivTwo = float(1.57079632679489661923);
-static const float PxPiDivFour = float(0.78539816339744830962);
-static const float PxSqrt2 = float(1.4142135623730951);
-static const float PxInvSqrt2 = float(0.7071067811865476);
+static constexpr float PxPi = float(3.141592653589793);
+static constexpr float PxHalfPi = float(1.57079632679489661923);
+static constexpr float PxTwoPi = float(6.28318530717958647692);
+static constexpr float PxInvPi = float(0.31830988618379067154);
+static constexpr float PxInvTwoPi = float(0.15915494309189533577);
+static constexpr float PxPiDivTwo = float(1.57079632679489661923);
+static constexpr float PxPiDivFour = float(0.78539816339744830962);
+static constexpr float PxSqrt2 = float(1.4142135623730951);
+static constexpr float PxInvSqrt2 = float(0.7071067811865476);
 
 /**
 \brief The return value is the greater of the two specified values.
@@ -201,7 +204,7 @@ PX_CUDA_CALLABLE PX_FORCE_INLINE double PxCos(double a)
 //! \brief compute sine and cosine at the same time
 PX_CUDA_CALLABLE PX_FORCE_INLINE void PxSinCos(const PxF32 a, PxF32& sin, PxF32& cos)
 {
-#if defined(__CUDACC__) && __CUDA_ARCH__ >= 350
+#if PX_CUDA_COMPILER && __CUDA_ARCH__ >= 350
 	__sincosf(a, &sin, &cos);
 #else
 	sin = PxSin(a);
@@ -373,6 +376,5 @@ PX_CUDA_CALLABLE PX_FORCE_INLINE float PxLog(float x)
 } // namespace physx
 #endif
 
-/** @} */
 #endif
 

@@ -22,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_JOINT_H
 #define PX_JOINT_H
-/** \addtogroup extensions
-  @{
-*/
 
 #include "foundation/PxTransform.h"
 #include "PxRigidActor.h"
@@ -50,7 +47,7 @@ class PxConstraint;
 /**
 \brief an enumeration of PhysX' built-in joint types
 
-@see PxJoint
+\see PxJoint
 */
 struct PxJointConcreteType
 {
@@ -62,7 +59,6 @@ struct PxJointConcreteType
 		eFIXED,
 		eDISTANCE,
 		eD6,
-		eCONTACT,
 		eGEAR,
 		eRACK_AND_PINION,
 		eLast
@@ -74,7 +70,6 @@ PX_DEFINE_TYPEINFO(PxRackAndPinionJoint,	PxJointConcreteType::eRACK_AND_PINION)
 PX_DEFINE_TYPEINFO(PxGearJoint,				PxJointConcreteType::eGEAR)
 PX_DEFINE_TYPEINFO(PxD6Joint,				PxJointConcreteType::eD6)
 PX_DEFINE_TYPEINFO(PxDistanceJoint,			PxJointConcreteType::eDISTANCE)
-PX_DEFINE_TYPEINFO(PxContactJoint,			PxJointConcreteType::eCONTACT)
 PX_DEFINE_TYPEINFO(PxFixedJoint,			PxJointConcreteType::eFIXED)
 PX_DEFINE_TYPEINFO(PxPrismaticJoint,		PxJointConcreteType::ePRISMATIC)
 PX_DEFINE_TYPEINFO(PxRevoluteJoint,			PxJointConcreteType::eREVOLUTE)
@@ -84,7 +79,7 @@ PX_DEFINE_TYPEINFO(PxSphericalJoint,		PxJointConcreteType::eSPHERICAL)
 /**
 \brief an enumeration for specifying one or other of the actors referenced by a joint
 
-@see PxJoint
+\see PxJoint
 */
 
 struct PxJointActorIndex
@@ -103,12 +98,6 @@ struct PxJointActorIndex
 
 class PxJoint : public PxBase
 {
-//= ATTENTION! =====================================================================================
-// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-// accordingly.
-//==================================================================================================
 public:
 
 	/**
@@ -119,7 +108,7 @@ public:
 	\param[in] actor0 the first actor.
 	\param[in] actor1 the second actor
 
-	@see getActors()
+	\see getActors()
 	*/
 	virtual void				setActors(PxRigidActor* actor0, PxRigidActor* actor1)	= 0;
 
@@ -129,7 +118,7 @@ public:
 	\param[out] actor0 the first actor.
 	\param[out] actor1 the second actor
 
-	@see setActors()
+	\see setActors()
 	*/
 	virtual void				getActors(PxRigidActor*& actor0, PxRigidActor*& actor1)	const	= 0;
 
@@ -141,7 +130,7 @@ public:
 	\param[in] actor 0 for the first actor, 1 for the second actor.
 	\param[in] localPose the local pose for the actor this joint
 
-	@see getLocalPose()
+	\see getLocalPose()
 	*/
 	virtual void				setLocalPose(PxJointActorIndex::Enum actor, const PxTransform& localPose) = 0;
 
@@ -152,7 +141,7 @@ public:
 
 	return the local pose for this joint
 
-	@see setLocalPose()
+	\see setLocalPose()
 	*/
 	virtual PxTransform			getLocalPose(PxJointActorIndex::Enum actor) const = 0;
 
@@ -175,7 +164,7 @@ public:
 	/**
 	\brief get the relative angular velocity of the joint
 
-	This function returns the angular velocity of  actor1 relative to actor0. The value is returned in the constraint frame of actor0
+	This function returns the angular velocity of actor1 relative to actor0. The value is returned in the constraint frame of actor0
 	*/
 	virtual PxVec3				getRelativeAngularVelocity()	const	= 0;
 
@@ -197,7 +186,7 @@ public:
 	\param[out] force the maximum force the joint can apply before breaking
 	\param[out] torque the maximum torque the joint can apply before breaking
 
-	@see setBreakForce() 
+	\see setBreakForce() 
 	*/
 	virtual void				getBreakForce(PxReal& force, PxReal& torque)	const	= 0;
 
@@ -206,7 +195,7 @@ public:
 	
 	\param[in] flags the constraint flags
 
-	@see PxConstraintFlag
+	\see PxConstraintFlag
 	*/
 	virtual void				setConstraintFlags(PxConstraintFlags flags)	= 0;
 
@@ -216,7 +205,7 @@ public:
 	\param[in] flag the constraint flag
 	\param[in] value the value to which to set the flag
 
-	@see PxConstraintFlag
+	\see PxConstraintFlag
 	*/
 	virtual void				setConstraintFlag(PxConstraintFlag::Enum flag, bool value)	= 0;
 
@@ -225,7 +214,7 @@ public:
 	
 	\return the constraint flags
 
-	@see PxConstraintFlag
+	\see PxConstraintFlag
 	*/
 	virtual PxConstraintFlags	getConstraintFlags()	const	= 0;
 
@@ -234,7 +223,7 @@ public:
 
 	\param[in] invMassScale the scale to apply to the inverse mass of actor 0 for resolving this constraint
 
-	@see getInvMassScale0
+	\see getInvMassScale0
 	*/
 	virtual void				setInvMassScale0(PxReal invMassScale)	= 0;
 
@@ -243,7 +232,7 @@ public:
 
 	\return inverse mass scale for actor0
 
-	@see setInvMassScale0
+	\see setInvMassScale0
 	*/
 	virtual PxReal				getInvMassScale0()	const	= 0;
 
@@ -252,7 +241,7 @@ public:
 
 	\param[in] invInertiaScale the scale to apply to the inverse inertia of actor0 for resolving this constraint
 
-	@see getInvMassScale0
+	\see getInvMassScale0
 	*/
 	virtual void				setInvInertiaScale0(PxReal invInertiaScale)	= 0;
 
@@ -261,7 +250,7 @@ public:
 
 	\return inverse inertia scale for actor0
 
-	@see setInvInertiaScale0
+	\see setInvInertiaScale0
 	*/
 	virtual PxReal				getInvInertiaScale0()	const	= 0;
 
@@ -270,7 +259,7 @@ public:
 
 	\param[in] invMassScale the scale to apply to the inverse mass of actor 1 for resolving this constraint
 
-	@see getInvMassScale1
+	\see getInvMassScale1
 	*/
 	virtual void				setInvMassScale1(PxReal invMassScale)	= 0;
 
@@ -279,7 +268,7 @@ public:
 
 	\return inverse mass scale for actor1
 
-	@see setInvMassScale1
+	\see setInvMassScale1
 	*/
 	virtual PxReal				getInvMassScale1()	const	= 0;
 
@@ -288,7 +277,7 @@ public:
 
 	\param[in] invInertiaScale the scale to apply to the inverse inertia of actor1 for resolving this constraint
 
-	@see getInvInertiaScale1
+	\see getInvInertiaScale1
 	*/
 	virtual void				setInvInertiaScale1(PxReal invInertiaScale)	= 0;
 
@@ -297,7 +286,7 @@ public:
 
 	\return inverse inertia scale for actor1
 
-	@see setInvInertiaScale1
+	\see setInvInertiaScale1
 	*/
 	virtual PxReal				getInvInertiaScale1()	const	= 0;
 
@@ -318,7 +307,7 @@ public:
 
 	\param[in] name String to set the objects name to.
 
-	@see getName()
+	\see getName()
 	*/
 	virtual void				setName(const char* name)	= 0;
 
@@ -327,7 +316,7 @@ public:
 
 	\return Name string associated with object.
 
-	@see setName()
+	\see setName()
 	*/
 	virtual const char*			getName()	const	= 0;
 
@@ -343,21 +332,12 @@ public:
 
 	\return Owner Scene. NULL if not part of a scene.
 
-	@see PxScene
+	\see PxScene
 	*/
 	virtual PxScene*			getScene()	const	= 0;
 
 	void*						userData;	//!< user can assign this to whatever, usually to create a 1:1 relationship with a user object.
 
-	//serialization
-
-	/**
-	\brief Put class meta data in stream, used for serialization
-	*/
-	static	void				getBinaryMetaData(PxOutputStream& stream);
-
-	//~serialization
-					
 protected:
 	virtual						~PxJoint() {}
 
@@ -376,19 +356,13 @@ protected:
 	/**
 	\brief Returns whether a given type name matches with the type of this instance
 	*/
-	virtual	bool				isKindOf(const char* name) const { return !::strcmp("PxJoint", name) || PxBase::isKindOf(name); }
+	virtual	bool				isKindOf(const char* name) const { PX_IS_KIND_OF(name, "PxJoint", PxBase); }
 
 	//~serialization
 };
 
 class PxSpring
 {
-//= ATTENTION! =====================================================================================
-// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-// accordingly.
-//==================================================================================================
 public:
 
 	PxReal	stiffness;	//!< the spring strength of the drive: that is, the force proportional to the position error
@@ -418,5 +392,4 @@ public:
 
 PX_C_EXPORT void PX_CALL_CONV PxSetJointGlobalFrame(physx::PxJoint& joint, const physx::PxVec3* wsAnchor, const physx::PxVec3* wsAxis);
 
-/** @} */
 #endif

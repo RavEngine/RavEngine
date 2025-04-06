@@ -22,18 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 #ifndef PX_VEC3_H
 #define PX_VEC3_H
 
-/** \addtogroup foundation
-@{
-*/
 
 #include "foundation/PxMath.h"
+#include "foundation/PxConstructor.h"
 
 #if !PX_DOXYGEN
 namespace physx
@@ -419,5 +417,4 @@ typedef PxVec3Padded	PxVec3p;
 } // namespace physx
 #endif
 
-/** @} */
 #endif

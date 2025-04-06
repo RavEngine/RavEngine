@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -113,14 +113,20 @@ bool TriangleMeshBuilder::cleanMesh(bool validate, PxTriangleMeshCookingResult::
 	PxF32 meshWeldTolerance = 0.0f;
 	if(mParams.meshPreprocessParams & PxMeshPreprocessingFlag::eWELD_VERTICES)
 	{
-		if(mParams.meshWeldTolerance == 0.f)
-			outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "TriangleMesh: Enable mesh welding with 0 weld tolerance!");
+		if(mParams.meshWeldTolerance == 0.0f)
+			outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "TriangleMeshBuilder::cleanMesh: mesh welding enabled with 0 weld tolerance!");
 		else
 			meshWeldTolerance = mParams.meshWeldTolerance;
 	}
-	MeshCleaner cleaner(mMeshData.mNbVertices, mMeshData.mVertices, mMeshData.mNbTriangles, reinterpret_cast<const PxU32*>(mMeshData.mTriangles), meshWeldTolerance);
+
+	MeshCleaner cleaner(mMeshData.mNbVertices, mMeshData.mVertices, mMeshData.mNbTriangles, reinterpret_cast<const PxU32*>(mMeshData.mTriangles), meshWeldTolerance, mParams.meshAreaMinLimit);
 	if(!cleaner.mNbTris)
-		return false;
+	{
+		if(condition)
+			*condition = PxTriangleMeshCookingResult::eEMPTY_MESH;
+
+		return outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "TriangleMeshBuilder::cleanMesh: mesh cleaning removed all triangles!");
+	}
 
 	if(validate)
 	{
@@ -175,8 +181,9 @@ bool TriangleMeshBuilder::cleanMesh(bool validate, PxTriangleMeshCookingResult::
 			mMeshData.allocateTriangles(cleaner.mNbTris, true);
 		}
 
-		const float testLength = 500.0f*500.0f*mParams.scale.length*mParams.scale.length;
-		bool bigTriangle = false;
+		const bool testEdgeLength = mParams.meshEdgeLengthMaxLimit!=0.0f;
+		const float testLengthSquared = mParams.meshEdgeLengthMaxLimit * mParams.meshEdgeLengthMaxLimit * mParams.scale.length * mParams.scale.length;
+		bool foundLargeTriangle = false;
 		const PxVec3* v = mMeshData.mVertices;
 		for(PxU32 i=0;i<mMeshData.mNbTriangles;i++)
 		{
@@ -189,13 +196,21 @@ bool TriangleMeshBuilder::cleanMesh(bool validate, PxTriangleMeshCookingResult::
 			reinterpret_cast<IndexedTriangle32*>(mMeshData.mTriangles)[i].mRef[1] = vref1;
 			reinterpret_cast<IndexedTriangle32*>(mMeshData.mTriangles)[i].mRef[2] = vref2;
 
-			if(		(v[vref0] - v[vref1]).magnitudeSquared() >= testLength
-				||	(v[vref1] - v[vref2]).magnitudeSquared() >= testLength
-				||	(v[vref2] - v[vref0]).magnitudeSquared() >= testLength
-				)
-				bigTriangle = true;
+			if(testEdgeLength)
+			{
+				const PxVec3& v0 = v[vref0];
+				const PxVec3& v1 = v[vref1];
+				const PxVec3& v2 = v[vref2];
+
+				if(		(v0 - v1).magnitudeSquared() >= testLengthSquared
+					||	(v1 - v2).magnitudeSquared() >= testLengthSquared
+					||	(v2 - v0).magnitudeSquared() >= testLengthSquared
+					)
+					foundLargeTriangle = true;
+			}
 		}
-		if(bigTriangle)
+
+		if(foundLargeTriangle)
 		{
 			if(condition)
 				*condition = PxTriangleMeshCookingResult::eLARGE_TRIANGLE;
@@ -318,11 +333,9 @@ void TriangleMeshBuilder::createSharedEdgeData(bool buildAdjacencies, bool build
 		}
 	}
 
-#if PX_DEBUG
+#if PX_ENABLE_ASSERTS
 	for(PxU32 i=0;i<mMeshData.mNbTriangles;i++)
 	{
-		const IndexedTriangle32& T = trigs[i];
-		PX_UNUSED(T);
 		const EdgeTriangleData& ET = mEdgeList->getEdgeTriangle(i);
 		PX_ASSERT((EdgeTriangleAC::HasActiveEdge01(ET) && (mMeshData.mExtraTrigData[i] & ETD_CONVEX_EDGE_01)) || (!EdgeTriangleAC::HasActiveEdge01(ET) && !(mMeshData.mExtraTrigData[i] & ETD_CONVEX_EDGE_01)));
 		PX_ASSERT((EdgeTriangleAC::HasActiveEdge12(ET) && (mMeshData.mExtraTrigData[i] & ETD_CONVEX_EDGE_12)) || (!EdgeTriangleAC::HasActiveEdge12(ET) && !(mMeshData.mExtraTrigData[i] & ETD_CONVEX_EDGE_12)));
@@ -440,7 +453,7 @@ void TriangleMeshBuilder::createGRBData()
 	PX_FREE(tempNormalsPerTri_prealloc);
 }
 
-void TriangleMeshBuilder::createGRBMidPhaseAndData(const PxU32 originalTriangleCount)
+bool TriangleMeshBuilder::createGRBMidPhaseAndData(const PxU32 originalTriangleCount)
 {
 	PX_UNUSED(originalTriangleCount);
 	if (mParams.buildGPUData)
@@ -450,14 +463,13 @@ void TriangleMeshBuilder::createGRBMidPhaseAndData(const PxU32 originalTriangleC
 		BV32Tree* bv32Tree = PX_NEW(BV32Tree);
 		mMeshData.mGRB_BV32Tree = bv32Tree;
 
-		BV32TriangleMeshBuilder::createMidPhaseStructure(mParams, mMeshData, *bv32Tree);
+		if(!BV32TriangleMeshBuilder::createMidPhaseStructure(mParams, mMeshData, *bv32Tree))
+			return false;
 		
 		createGRBData();
 
 		if (mParams.meshPreprocessParams & PxMeshPreprocessingFlag::eENABLE_VERT_MAPPING || mParams.buildGPUData)
-		{
 			createVertMapping();
-		}
 
 #if BV32_VALIDATE
 		IndTri32* grbTriIndices = reinterpret_cast<IndTri32*>(mMeshData.mGRB_primIndices);
@@ -471,6 +483,7 @@ void TriangleMeshBuilder::createGRBMidPhaseAndData(const PxU32 originalTriangleC
 		}
 #endif
 	}
+	return true;
 }
 
 bool TriangleMeshBuilder::loadFromDescInternal(PxTriangleMeshDesc& desc, PxTriangleMeshCookingResult::Enum* condition, bool validateMesh)
@@ -509,7 +522,7 @@ bool TriangleMeshBuilder::loadFromDescInternal(PxTriangleMeshDesc& desc, PxTrian
 		}
 
 		// Convert and clean the input mesh
-		if (!importMesh(desc, mParams, condition, validateMesh))
+		if (!importMesh(desc, condition, validateMesh))
 		{
 			PX_FREE(topology);
 			return false;
@@ -519,7 +532,8 @@ bool TriangleMeshBuilder::loadFromDescInternal(PxTriangleMeshDesc& desc, PxTrian
 		PX_FREE(topology);
 	}
 
-	createMidPhaseStructure();
+	if(!createMidPhaseStructure())
+		return false;
 
 	//copy the BV4 triangle indices to grb triangle indices if buildGRBData is true
 	recordTriangleIndices();
@@ -529,12 +543,10 @@ bool TriangleMeshBuilder::loadFromDescInternal(PxTriangleMeshDesc& desc, PxTrian
 
 	createSharedEdgeData(mParams.buildTriangleAdjacencies, !(mParams.meshPreprocessParams & PxMeshPreprocessingFlag::eDISABLE_ACTIVE_EDGES_PRECOMPUTE));
 
-	createGRBMidPhaseAndData(originalTriangleCount);
-
-	return true;
+	return createGRBMidPhaseAndData(originalTriangleCount);
 }
 
-void TriangleMeshBuilder::buildInertiaTensor()
+void TriangleMeshBuilder::buildInertiaTensor(bool flipNormals)
 {
 	PxTriangleMeshDesc simpleMesh;
 
@@ -545,6 +557,8 @@ void TriangleMeshBuilder::buildInertiaTensor()
 	simpleMesh.triangles.stride = sizeof(PxU32) * 3;
 	simpleMesh.triangles.data = mMeshData.mTriangles;
 	simpleMesh.flags &= (~PxMeshFlag::e16_BIT_INDICES);
+	if (flipNormals)
+		simpleMesh.flags.raise(PxMeshFlag::eFLIPNORMALS);
 
 	PxIntegrals integrals;
 	computeVolumeIntegrals(simpleMesh, 1, integrals);
@@ -559,6 +573,8 @@ void TriangleMeshBuilder::buildInertiaTensorFromSDF()
 	if (MeshAnalyzer::checkMeshWatertightness(reinterpret_cast<const Gu::Triangle*>(mMeshData.mTriangles), mMeshData.mNbTriangles))
 	{
 		buildInertiaTensor();
+		if (mMeshData.mMass < 0.0f)
+			buildInertiaTensor(true); //The mesh can be watertight but all triangles might be oriented the wrong way round
 		return;
 	}
 	
@@ -792,25 +808,33 @@ bool TriangleMeshBuilder::save(PxOutputStream& stream, bool platformMismatch, co
 #pragma warning(disable:4996)	// permitting use of gatherStrided until we have a replacement.
 #endif
 
-bool TriangleMeshBuilder::importMesh(const PxTriangleMeshDesc& desc,const PxCookingParams& params,PxTriangleMeshCookingResult::Enum* condition, bool validate)
+#if PX_CHECKED
+bool checkInputFloats(PxU32 nb, const float* values, const char* file, PxU32 line, const char* errorMsg)
+{
+	while(nb--)
+	{
+		if(!PxIsFinite(*values++))
+			return PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, file, line, errorMsg);
+	}
+	return true;
+}
+#endif
+
+bool TriangleMeshBuilder::importMesh(const PxTriangleMeshDesc& desc, PxTriangleMeshCookingResult::Enum* condition, bool validate)
 {
 	//convert and clean the input mesh
 	//this is where the mesh data gets copied from user mem to our mem
 
 	PxVec3* verts = mMeshData.allocateVertices(desc.points.count);
-	IndexedTriangle32* tris = reinterpret_cast<IndexedTriangle32*>(mMeshData.allocateTriangles(desc.triangles.count, true, PxU32(params.buildGPUData)));
+	IndexedTriangle32* tris = reinterpret_cast<IndexedTriangle32*>(mMeshData.allocateTriangles(desc.triangles.count, true, PxU32(mParams.buildGPUData)));
 
 	//copy, and compact to get rid of strides:
 	immediateCooking::gatherStrided(desc.points.data, verts, mMeshData.mNbVertices, sizeof(PxVec3), desc.points.stride);
 
 #if PX_CHECKED
 	// PT: check all input vertices are valid
-	for(PxU32 i=0;i<desc.points.count;i++)
-	{
-		const PxVec3& p = verts[i];
-		if(!PxIsFinite(p.x) || !PxIsFinite(p.y) || !PxIsFinite(p.z))
-			return outputError<PxErrorCode::eINTERNAL_ERROR>(__LINE__, "input mesh contains corrupted vertex data");
-	}
+	if(!checkInputFloats(desc.points.count*3, &verts->x, PX_FL, "input mesh contains corrupted vertex data"))
+		return false;
 #endif
 
 	//for trigs index stride conversion and eventual reordering is also needed, I don't think flexicopy can do that for us.
@@ -854,25 +878,22 @@ bool TriangleMeshBuilder::importMesh(const PxTriangleMeshDesc& desc,const PxCook
 		immediateCooking::gatherStrided(desc.materialIndices.data, materials, mMeshData.mNbTriangles, sizeof(PxMaterialTableIndex), desc.materialIndices.stride);
 
 		// Check material indices
-		for(PxU32 i=0;i<mMeshData.mNbTriangles;i++)	PX_ASSERT(materials[i]!=0xffff);
+		for(PxU32 i=0;i<mMeshData.mNbTriangles;i++)
+			PX_ASSERT(materials[i]!=0xffff);
 	}
 
 	// Clean the mesh using ICE's MeshBuilder
 	// This fixes the bug in ConvexTest06 where the inertia tensor computation fails for a mesh => it works with a clean mesh
 
-	if (!(params.meshPreprocessParams & PxMeshPreprocessingFlag::eDISABLE_CLEAN_MESH) || validate)
+	if (!(mParams.meshPreprocessParams & PxMeshPreprocessingFlag::eDISABLE_CLEAN_MESH) || validate)
 	{
 		if(!cleanMesh(validate, condition))
-		{
-			if(!validate)
-				outputError<PxErrorCode::eINTERNAL_ERROR>(__LINE__, "cleaning the mesh failed");
 			return false;
-		}
 	}
 	else
 	{
 		// we need to fill the remap table if no cleaning was done
-		if(params.suppressTriangleMeshRemapTable == false)
+		if(mParams.suppressTriangleMeshRemapTable == false)
 		{
 			PX_ASSERT(mMeshData.mFaceRemap == NULL);
 			mMeshData.mFaceRemap = PX_ALLOCATE(PxU32, mMeshData.mNbTriangles, "mFaceRemap");
@@ -881,7 +902,8 @@ bool TriangleMeshBuilder::importMesh(const PxTriangleMeshDesc& desc,const PxCook
 		}
 	}
 
-	if (mParams.meshPreprocessParams & PxMeshPreprocessingFlag::eENABLE_INERTIA)
+	const bool computeInertia = mParams.meshPreprocessParams & PxMeshPreprocessingFlag::eENABLE_INERTIA;
+	if (computeInertia)
 	{
 		buildInertiaTensor();
 	}
@@ -889,6 +911,9 @@ bool TriangleMeshBuilder::importMesh(const PxTriangleMeshDesc& desc,const PxCook
 	// Copy sdf data if enabled
 	if (desc.sdfDesc)
 	{
+		if(computeInertia && mMeshData.mMass <= 0.0f)
+			outputError<PxErrorCode::eDEBUG_WARNING>(__LINE__, "Requesting SDF for mesh without volume may have unexpected collision behavior.");
+
 		PxArray<PxReal> sdfData;
 		PxArray<PxU8> sdfDataSubgrids;
 		PxArray<PxU32> sdfSubgridsStartSlots;
@@ -903,14 +928,15 @@ bool TriangleMeshBuilder::importMesh(const PxTriangleMeshDesc& desc,const PxCook
 		newDesc.flags &= (~PxMeshFlag::e16_BIT_INDICES);
 		newDesc.sdfDesc = desc.sdfDesc;
 
-		buildSDF(newDesc, sdfData, sdfDataSubgrids, sdfSubgridsStartSlots);
+		// do we need to deallocate anything here?
+		if (!buildSDF(newDesc, sdfData, sdfDataSubgrids, sdfSubgridsStartSlots))
+			return false;
 
 		PxSDFDesc& sdfDesc = *desc.sdfDesc;
 
 		PxReal* sdf = mMeshData.mSdfData.allocateSdfs(sdfDesc.meshLower, sdfDesc.spacing, sdfDesc.dims.x, sdfDesc.dims.y, sdfDesc.dims.z, 
 			sdfDesc.subgridSize, sdfDesc.sdfSubgrids3DTexBlockDim.x, sdfDesc.sdfSubgrids3DTexBlockDim.y, sdfDesc.sdfSubgrids3DTexBlockDim.z,
 			sdfDesc.subgridsMinSdfValue, sdfDesc.subgridsMaxSdfValue, sdfDesc.bitsPerSubgridPixel);
-
 		
 		if (sdfDesc.subgridSize > 0)
 		{
@@ -933,11 +959,8 @@ bool TriangleMeshBuilder::importMesh(const PxTriangleMeshDesc& desc,const PxCook
 
 #if PX_CHECKED
 		// SN: check all input sdf values are valid
-		for (PxU32 i = 0; i < sdfDesc.sdf.count; ++i)
-		{
-			if (!PxIsFinite(sdf[i]))
-				return outputError<PxErrorCode::eINTERNAL_ERROR>(__LINE__, "input sdf contains corrupted data");
-		}
+		if(!checkInputFloats(sdfDesc.sdf.count, sdf, PX_FL, "input sdf contains corrupted data"))
+			return false;
 #endif
 	}
 
@@ -1005,7 +1028,7 @@ void BV4TriangleMeshBuilder::onMeshIndexFormatChange()
 	mData.mMeshInterface.setPointers(triangles32, triangles16, mMeshData.mVertices);
 }
 
-void BV4TriangleMeshBuilder::createMidPhaseStructure()
+bool BV4TriangleMeshBuilder::createMidPhaseStructure()
 {
 	GU_PROFILE_ZONE("createMidPhaseStructure_BV4")
 
@@ -1035,10 +1058,7 @@ void BV4TriangleMeshBuilder::createMidPhaseStructure()
 	else if(strategy==PxBVH34BuildStrategy::eFAST)
 		gubs = BV4_SPLATTER_POINTS;
 	if(!BuildBV4Ex(mData.mBV4Tree, mData.mMeshInterface, gBoxEpsilon, nbTrisPerLeaf, quantized, gubs))
-	{
-		outputError<PxErrorCode::eINTERNAL_ERROR>(__LINE__, "BV4 tree failed to build.");
-		return;
-	}
+		return outputError<PxErrorCode::eINTERNAL_ERROR>(__LINE__, "BV4 tree failed to build.");
 
 	{
 		GU_PROFILE_ZONE("..BV4 remap")
@@ -1065,6 +1085,7 @@ void BV4TriangleMeshBuilder::createMidPhaseStructure()
 		}
 		mData.mMeshInterface.releaseRemap();
 	}
+	return true;
 }
 
 void BV4TriangleMeshBuilder::saveMidPhaseStructure(PxOutputStream& stream, bool mismatch) const
@@ -1110,7 +1131,7 @@ void BV4TriangleMeshBuilder::saveMidPhaseStructure(PxOutputStream& stream, bool 
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void BV32TriangleMeshBuilder::createMidPhaseStructure(const PxCookingParams& params, TriangleMeshData& meshData, BV32Tree& bv32Tree)
+bool BV32TriangleMeshBuilder::createMidPhaseStructure(const PxCookingParams& params, TriangleMeshData& meshData, BV32Tree& bv32Tree)
 {
 	GU_PROFILE_ZONE("createMidPhaseStructure_BV32")
 
@@ -1131,10 +1152,7 @@ void BV32TriangleMeshBuilder::createMidPhaseStructure(const PxCookingParams& par
 	const PxU32 nbTrisPerLeaf = 32;
 
 	if (!BuildBV32Ex(bv32Tree, meshInterface, gBoxEpsilon, nbTrisPerLeaf))
-	{
-		outputError<PxErrorCode::eINTERNAL_ERROR>(__LINE__, "BV32 tree failed to build.");
-		return;
-	}
+		return outputError<PxErrorCode::eINTERNAL_ERROR>(__LINE__, "BV32 tree failed to build.");
 
 	{
 		GU_PROFILE_ZONE("..BV32 remap")
@@ -1161,6 +1179,7 @@ void BV32TriangleMeshBuilder::createMidPhaseStructure(const PxCookingParams& par
 	
 		meshInterface.releaseRemap();
 	}
+	return true;
 }
 
 void BV32TriangleMeshBuilder::saveMidPhaseStructure(BV32Tree* bv32Tree, PxOutputStream& stream, bool mismatch)
@@ -1244,7 +1263,7 @@ struct RTreeCookerRemap : RTreeCooker::RemapCallback
 	}
 };
 
-void RTreeTriangleMeshBuilder::createMidPhaseStructure()
+bool RTreeTriangleMeshBuilder::createMidPhaseStructure()
 {
 	GU_PROFILE_ZONE("createMidPhaseStructure_RTREE")
 
@@ -1263,6 +1282,7 @@ void RTreeTriangleMeshBuilder::createMidPhaseStructure()
 	PX_ASSERT(resultPermute.size() == mMeshData.mNbTriangles);
 
 	remapTopology(resultPermute.begin());
+	return true;
 }
 
 void RTreeTriangleMeshBuilder::saveMidPhaseStructure(PxOutputStream& stream, bool mismatch) const
@@ -1332,18 +1352,18 @@ PxTriangleMesh* immediateCooking::createTriangleMesh(const PxCookingParams& para
 {
 	struct Local
 	{
-		static PxTriangleMesh* createTriangleMesh(const PxCookingParams& params, TriangleMeshBuilder& builder, const PxTriangleMeshDesc& desc, PxInsertionCallback& insertionCallback, PxTriangleMeshCookingResult::Enum* condition)
+		static PxTriangleMesh* createTriangleMesh(const PxCookingParams& cookingParams_, TriangleMeshBuilder& builder, const PxTriangleMeshDesc& desc_, PxInsertionCallback& insertionCallback_, PxTriangleMeshCookingResult::Enum* condition_)
 		{	
 			// cooking code does lots of float bitwise reinterpretation that generates exceptions
 			PX_FPU_GUARD;
 
-			if(condition)
-				*condition = PxTriangleMeshCookingResult::eSUCCESS;
-			if(!builder.loadFromDesc(desc, condition, false))
+			if(condition_)
+				*condition_ = PxTriangleMeshCookingResult::eSUCCESS;
+			if(!builder.loadFromDesc(desc_, condition_, false))
 				return NULL;
 
 			// check if the indices can be moved from 32bits to 16bits
-			if(!(params.meshPreprocessParams & PxMeshPreprocessingFlag::eFORCE_32BIT_INDICES))
+			if(!(cookingParams_.meshPreprocessParams & PxMeshPreprocessingFlag::eFORCE_32BIT_INDICES))
 				builder.checkMeshIndicesSize();
 
 			PxConcreteType::Enum type;
@@ -1352,7 +1372,7 @@ PxTriangleMesh* immediateCooking::createTriangleMesh(const PxCookingParams& para
 			else
 				type = PxConcreteType::eTRIANGLE_MESH_BVH34;
 
-			return static_cast<PxTriangleMesh*>(insertionCallback.buildObjectFromData(type, &builder.getMeshData()));
+			return static_cast<PxTriangleMesh*>(insertionCallback_.buildObjectFromData(type, &builder.getMeshData()));
 		}
 	};
 
@@ -1374,17 +1394,17 @@ bool immediateCooking::cookTriangleMesh(const PxCookingParams& params, const PxT
 {
 	struct Local
 	{
-		static bool cookTriangleMesh(const PxCookingParams& params, TriangleMeshBuilder& builder, const PxTriangleMeshDesc& desc, PxOutputStream& stream, PxTriangleMeshCookingResult::Enum* condition)
+		static bool cookTriangleMesh(const PxCookingParams& cookingParams_, TriangleMeshBuilder& builder, const PxTriangleMeshDesc& desc_, PxOutputStream& stream_, PxTriangleMeshCookingResult::Enum* condition_)
 		{
 			// cooking code does lots of float bitwise reinterpretation that generates exceptions
 			PX_FPU_GUARD;
 
-			if(condition)
-				*condition = PxTriangleMeshCookingResult::eSUCCESS;
-			if(!builder.loadFromDesc(desc, condition, false))
+			if(condition_)
+				*condition_ = PxTriangleMeshCookingResult::eSUCCESS;
+			if(!builder.loadFromDesc(desc_, condition_, false))
 				return false;
 
-			builder.save(stream, immediateCooking::platformMismatch(), params);
+			builder.save(stream_, immediateCooking::platformMismatch(), cookingParams_);
 			return true;
 		}
 	};

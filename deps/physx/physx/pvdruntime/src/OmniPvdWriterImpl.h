@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -30,6 +30,8 @@
 #define OMNI_PVD_WRITER_IMPL_H
 
 #include "OmniPvdWriter.h"
+#include "OmniPvdCommands.h"
+#include "OmniPvdDefinesInternal.h"
 #include "OmniPvdLog.h"
 
 class OmniPvdWriterImpl : public OmniPvdWriter {
@@ -38,34 +40,90 @@ public:
 	~OmniPvdWriterImpl();
 	void OMNI_PVD_CALL setLogFunction(OmniPvdLogFunction logFunction);
 	void setVersionHelper();
-	void setVersion(const OmniPvdVersionType majorVersion, const OmniPvdVersionType minorVersion, const OmniPvdVersionType patch);
-	void OMNI_PVD_CALL setWriteStream(const OmniPvdWriteStream* stream);
+	void setVersion(OmniPvdVersionType majorVersion, OmniPvdVersionType minorVersion, OmniPvdVersionType patch);
+	void OMNI_PVD_CALL setWriteStream(OmniPvdWriteStream& stream);
 	OmniPvdWriteStream* OMNI_PVD_CALL getWriteStream();
 
 	OmniPvdClassHandle OMNI_PVD_CALL registerClass(const char* className, OmniPvdClassHandle baseClass);
-	OmniPvdAttributeHandle OMNI_PVD_CALL registerEnumValue(const OmniPvdClassHandle classHandle, const char* attributeName, const uint32_t value);
-	OmniPvdAttributeHandle OMNI_PVD_CALL registerAttribute(const OmniPvdClassHandle classHandle, const char* attributeName, const OmniPvdAttributeDataType attributeDataType, const uint32_t nbrFields);
-	OmniPvdAttributeHandle OMNI_PVD_CALL registerFlagsAttribute(const OmniPvdClassHandle classHandle, const OmniPvdClassHandle enumClassHandle, const char* attributeName);
-	OmniPvdAttributeHandle OMNI_PVD_CALL registerClassAttribute(const OmniPvdClassHandle classHandle, const char* attributeName, const OmniPvdClassHandle classAttributeHandle);
-	OmniPvdAttributeHandle OMNI_PVD_CALL registerSetAttribute(const OmniPvdClassHandle classHandle, const char* attributeName, const OmniPvdAttributeDataType attributeDataType);
-	void OMNI_PVD_CALL setAttribute(const OmniPvdContextHandle contextHandle, const OmniPvdObjectHandle objectHandle, const uint8_t handleDepth, const OmniPvdAttributeHandle* attributeHandles, const uint8_t* data, const uint32_t nbrBytes);
-	void OMNI_PVD_CALL setAttributeShallow(const OmniPvdContextHandle contextHandle, const OmniPvdObjectHandle objectHandle, const OmniPvdAttributeHandle attributeHandle, const uint8_t *data, const uint32_t nbrBytes);
+	OmniPvdAttributeHandle OMNI_PVD_CALL registerEnumValue(OmniPvdClassHandle classHandle, const char* attributeName, OmniPvdEnumValueType value);
+	OmniPvdAttributeHandle OMNI_PVD_CALL registerAttribute(OmniPvdClassHandle classHandle, const char* attributeName, OmniPvdDataType::Enum attributeDataType, uint32_t nbElements);
+	OmniPvdAttributeHandle OMNI_PVD_CALL registerFlagsAttribute(OmniPvdClassHandle classHandle, const char* attributeName, OmniPvdClassHandle enumClassHandle);
+	OmniPvdAttributeHandle OMNI_PVD_CALL registerClassAttribute(OmniPvdClassHandle classHandle, const char* attributeName, OmniPvdClassHandle classAttributeHandle);
+	OmniPvdAttributeHandle OMNI_PVD_CALL registerUniqueListAttribute(OmniPvdClassHandle classHandle, const char* attributeName, OmniPvdDataType::Enum attributeDataType);
+	void OMNI_PVD_CALL setAttribute(OmniPvdContextHandle contextHandle, OmniPvdObjectHandle objectHandle, const OmniPvdAttributeHandle* attributeHandles, uint8_t nbAttributeHandles, const uint8_t* data, uint32_t nbrBytes);
 	
-	void OMNI_PVD_CALL addToSetAttribute(const OmniPvdContextHandle contextHandle, const OmniPvdObjectHandle objectHandle, const uint8_t handleDepth, const OmniPvdAttributeHandle* attributeHandles, const uint8_t* data, const uint32_t nbrBytes);
-	void OMNI_PVD_CALL addToSetAttributeShallow(const OmniPvdContextHandle contextHandle, const OmniPvdObjectHandle objectHandle, const OmniPvdAttributeHandle attributeHandle, const uint8_t* data, const uint32_t nbrBytes);
+	void OMNI_PVD_CALL addToUniqueListAttribute(OmniPvdContextHandle contextHandle, OmniPvdObjectHandle objectHandle, const OmniPvdAttributeHandle* attributeHandles, uint8_t nbAttributeHandles, const uint8_t* data, uint32_t nbrBytes);
 
-	void OMNI_PVD_CALL removeFromSetAttribute(const OmniPvdContextHandle contextHandle, const OmniPvdObjectHandle objectHandle, const uint8_t handleDepth, const OmniPvdAttributeHandle* attributeHandles, const uint8_t* data, const uint32_t nbrBytes);
-	void OMNI_PVD_CALL removeFromSetAttributeShallow(const OmniPvdContextHandle contextHandle, const OmniPvdObjectHandle objectHandle, const OmniPvdAttributeHandle attributeHandle, const uint8_t* data, const uint32_t nbrBytes);
+	void OMNI_PVD_CALL removeFromUniqueListAttribute(OmniPvdContextHandle contextHandle, OmniPvdObjectHandle objectHandle, const OmniPvdAttributeHandle* attributeHandles, uint8_t nbAttributeHandles, const uint8_t* data, uint32_t nbrBytes);
 
-	void OMNI_PVD_CALL createObject(const OmniPvdContextHandle contextHandle, const OmniPvdClassHandle classHandle, const OmniPvdObjectHandle objectHandle, const char* objectName);
-	void OMNI_PVD_CALL destroyObject(const OmniPvdContextHandle contextHandle, const OmniPvdObjectHandle objectHandle);
-	void OMNI_PVD_CALL startFrame(const OmniPvdContextHandle contextHandle, const uint64_t timeStamp);
-	void OMNI_PVD_CALL stopFrame(const OmniPvdContextHandle contextHandle, const uint64_t timeStamp);
+	void OMNI_PVD_CALL createObject(OmniPvdContextHandle contextHandle, OmniPvdClassHandle classHandle, OmniPvdObjectHandle objectHandle, const char* objectName);
+	void OMNI_PVD_CALL destroyObject(OmniPvdContextHandle contextHandle, OmniPvdObjectHandle objectHandle);
+	void OMNI_PVD_CALL startFrame(OmniPvdContextHandle contextHandle, uint64_t timeStamp);
+	void OMNI_PVD_CALL stopFrame(OmniPvdContextHandle contextHandle, uint64_t timeStamp);
+
+	void OMNI_PVD_CALL recordMessage(OmniPvdContextHandle contextHandle, const char* message, const char* file, uint32_t line, uint32_t type, OmniPvdClassHandle handle) override;
+
+	uint32_t OMNI_PVD_CALL getStatus();
+	void OMNI_PVD_CALL clearStatus();
+
+	void resetParams();
+
+	bool isFlagOn(OmniPvdWriterStatusFlag::Enum flagBitMask)
+	{
+		return mStatusFlags & uint32_t(flagBitMask);
+	}
 	
+	void setFlagOn(OmniPvdWriterStatusFlag::Enum flagBitMask)
+	{
+		mStatusFlags = mStatusFlags | uint32_t(flagBitMask);
+	}
+
+	void setFlagOff(OmniPvdWriterStatusFlag::Enum flagBitMask)
+	{
+		mStatusFlags = mStatusFlags & ~uint32_t(flagBitMask);
+	}
+
+	void setFlagVal(OmniPvdWriterStatusFlag::Enum flagBitMask, bool value)
+	{
+		if (value) 
+		{
+			setFlagOn(flagBitMask);
+		}
+		else
+		{
+			setFlagOff(flagBitMask);
+		}
+	}
+
+	void writeWithStatus(const uint8_t* writePtr, uint64_t nbrBytesToWrite) 
+	{
+		if (! (mStream && writePtr && (nbrBytesToWrite > 0)) ) return;
+		uint64_t nbrBytesWritten = mStream->writeBytes(writePtr, nbrBytesToWrite);
+		const bool writeFailure = nbrBytesWritten != nbrBytesToWrite;
+		if (writeFailure) {
+			setFlagOn(OmniPvdWriterStatusFlag::eSTREAM_WRITE_FAILURE);
+		}
+	}
+	
+	void writeDataType(OmniPvdDataType::Enum attributeDataType)
+	{
+		const OmniPvdDataTypeStorageType dataType = static_cast<OmniPvdDataTypeStorageType>(attributeDataType);
+		writeWithStatus((const uint8_t*)&dataType, sizeof(OmniPvdDataTypeStorageType));
+	}
+	
+	void writeCommand(OmniPvdCommand::Enum command)
+	{
+		const OmniPvdCommandStorageType commandTmp = static_cast<OmniPvdCommandStorageType>(command);
+		writeWithStatus((const uint8_t*)&commandTmp, sizeof(OmniPvdCommandStorageType));
+	}
+
 	bool mIsFirstWrite;
 	OmniPvdLog mLog;
-	OmniPvdWriteStream *mStream;
+	OmniPvdWriteStream* mStream;
 	int mLastClassHandle;
-	int mLastAttributeHandle;};
+	int mLastAttributeHandle;
+
+	uint32_t mStatusFlags;
+};
 
 #endif

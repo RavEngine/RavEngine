@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 #ifndef PX_PHYSICS_NXPHYSICSWITHEXTENSIONS_API
@@ -47,8 +47,11 @@ static DisabledPropertyEntry gDisabledProperties[] = {
 	DisabledPropertyEntry( "PxSceneDesc", "TolerancesScale" ),
 	DisabledPropertyEntry( "PxSceneDesc", "IsValid" ),
 	DisabledPropertyEntry( "PxSceneDesc", "SceneQuerySystem" ),
+    DisabledPropertyEntry( "PxSceneDesc", "DeformableSurfacePostSolveCallback" ),
+    DisabledPropertyEntry( "PxSceneDesc", "DeformableVolumePostSolveCallback" ),
 	DisabledPropertyEntry( "PxShape", "Actor" ),
 	DisabledPropertyEntry( "PxShape", "Geometry" ),
+	DisabledPropertyEntry("PxShape", "GPUIndex"),
 	DisabledPropertyEntry( "PxArticulationLink", "Articulation" ),
 	DisabledPropertyEntry("PxArticulationJointReducedCoordinate", "ParentArticulationLink"),
 	DisabledPropertyEntry("PxArticulationJointReducedCoordinate", "ChildArticulationLink"),
@@ -57,11 +60,13 @@ static DisabledPropertyEntry gDisabledProperties[] = {
 	DisabledPropertyEntry("PxArticulationReducedCoordinate", "Dofs"),
 	DisabledPropertyEntry("PxArticulationReducedCoordinate", "CacheDataSize"),
 	DisabledPropertyEntry("PxArticulationReducedCoordinate", "CoefficientMatrixSize"),
+	DisabledPropertyEntry("PxArticulationReducedCoordinate", "GPUIndex"),
 	DisabledPropertyEntry( "PxRigidActor", "IsRigidActor" ),
 	DisabledPropertyEntry( "PxRigidActor", "ClassName" ),
 	DisabledPropertyEntry( "PxRigidActor", "InternalActorIndex" ),
 	DisabledPropertyEntry( "PxRigidStatic", "ClassName" ),
 	DisabledPropertyEntry( "PxRigidDynamic", "ClassName" ),
+	DisabledPropertyEntry("PxRigidDynamic", "GPUIndex" ),
 	DisabledPropertyEntry( "PxRigidBody", "IsRigidBody" ),
 	DisabledPropertyEntry( "PxRigidBody", "InternalIslandNodeIndex"),
 	DisabledPropertyEntry( "PxRigidBody", "LinearVelocity"),
@@ -91,7 +96,6 @@ static DisabledPropertyEntry gDisabledProperties[] = {
 	DisabledPropertyEntry( "PxCustomGeometry", "Callbacks" ),
 	DisabledPropertyEntry( "PxJoint", "ClassName" ),
 	DisabledPropertyEntry( "PxDistanceJoint", "ClassName" ),
-	DisabledPropertyEntry( "PxContactJoint", "ClassName"),
 	DisabledPropertyEntry( "PxGearJoint", "ClassName"),
 	DisabledPropertyEntry( "PxRackAndPinionJoint", "ClassName"),
 	DisabledPropertyEntry( "PxFixedJoint", "ClassName" ),
@@ -107,15 +111,16 @@ static DisabledPropertyEntry gDisabledProperties[] = {
 	DisabledPropertyEntry( "PxJointLimitCone", "IsValid" ),
 	DisabledPropertyEntry( "PxJointLimitPyramid", "IsValid" ),
 	DisabledPropertyEntry( "PxD6JointDrive", "IsValid" ),
-    DisabledPropertyEntry( "PxPhysics", "FLIPMaterials" ),
-    DisabledPropertyEntry( "PxPhysics", "MPMMaterials" ),
 	DisabledPropertyEntry( "PxScene", "ParticleSystems"),
-	DisabledPropertyEntry( "PxScene", "FEMCloths"),
-	DisabledPropertyEntry( "PxScene", "HairSystems"),
+	DisabledPropertyEntry( "PxScene", "DeformableSurfaces"),
 	// PT: added this for PVD-315. It's a mystery to me why we don't need to do that here for PxConvexMeshDesc. Maybe because the convex desc is in the cooking lib.
 	DisabledPropertyEntry( "PxHeightFieldDesc", "IsValid" ),
 //	DisabledPropertyEntry( "PxConstraint", "IsValid" ),
 //	DisabledPropertyEntry( "PxTolerancesScale", "IsValid" ),
+	DisabledPropertyEntry( "PxConstraint", "SolverResidual" ),
+	DisabledPropertyEntry( "PxArticulationReducedCoordinate", "SolverResidual" ),
+    DisabledPropertyEntry( "PxConstraint", "GPUIndex"),
+    DisabledPropertyEntry( "PxD6Joint", "GPUIndex"),
 };
 
 //Append these properties to this type.
@@ -140,13 +145,13 @@ static const char* gImportantPhysXTypes[] =
 	"PxArticulationReducedCoordinate",
 	"PxArticulationLink",
 	"PxMaterial",
-	"PxFEMSoftBodyMaterial",
+	"PxDeformableSurfaceMaterial",
+	"PxDeformableVolumeMaterial",
 	"PxPBDMaterial",
-	"PxFLIPMaterial",
-	"PxMPMMaterial",
 	"PxArticulationJointReducedCoordinate",
 	"PxArticulationLimit",
 	"PxArticulationDrive",
+	"PxJointFrictionParams",
 	"PxScene",
 	"PxPhysics",
 	"PxHeightFieldDesc",
@@ -156,7 +161,7 @@ static const char* gImportantPhysXTypes[] =
 	"PxSimulationStatistics",
 	"PxSceneDesc",
 	"PxSceneLimits",
-	"PxgDynamicsMemoryConfig",
+	"PxGpuDynamicsMemoryConfig",
 	"PxBroadPhaseDesc",
 	"PxGeometry",
 	"PxBoxGeometry",
@@ -170,12 +175,10 @@ static const char* gImportantPhysXTypes[] =
 	"PxCustomGeometry",
     "PxAggregate",
     "PxPruningStructure",
+	"PxGpuDynamicsMemoryConfigStatistics"
 	//The mesh and heightfield buffers will need to be
 	//handled by hand; they are very unorthodox compared
 	//to the rest of the objects.
-#if PX_SUPPORT_GPU_PHYSX
-	"PxgDynamicsMemoryConfig",
-#endif
 };
 
 static const char* gExtensionPhysXTypes[] =
@@ -190,7 +193,6 @@ static const char* gExtensionPhysXTypes[] =
 	"PxDistanceJoint",
 	"PxGearJoint",
 	"PxRackAndPinionJoint",
-	"PxContactJoint",
 	"PxFixedJoint",
 	"PxPrismaticJoint",
 	"PxRevoluteJoint",
@@ -207,6 +209,8 @@ static const char* gAvoidedPhysXTypes[] =
     "PxBaseFlag::Enum",
     "PxFLIPMaterial",
     "PxMPMMaterial",
+    "PxFEMSoftBodyMaterial",
+    "PxSoftBody"
 };
 
 #include "PxPhysicsAPI.h"

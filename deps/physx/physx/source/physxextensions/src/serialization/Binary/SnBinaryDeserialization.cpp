@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -36,7 +36,6 @@
 
 #include "SnFile.h"
 #include "SnSerializationContext.h"
-#include "SnConvX_Align.h"
 #include "serialization/SnSerializationRegistry.h"
 #include "serialization/SnSerialUtils.h"
 #include "CmCollection.h"
@@ -83,31 +82,21 @@ namespace
 		const PxU32 markedPadding = read32(address);
 		PX_UNUSED(markedPadding);
 
-#if PX_CHECKED
 		if (header != PX_MAKE_FOURCC('S','E','B','D'))
-		{
-			PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+			return PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, PX_FL, 
 				"Buffer contains data with wrong header indicating invalid binary data.");
-			return false;
-		}
 
 		if (!checkCompatibility(binaryVersionGuid))
-		{
-			PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+			return PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, PX_FL, 
 				"Buffer contains binary data version 0x%s and is incompatible with this PhysX sdk (0x%s).\n", 
 				binaryVersionGuid, getBinaryVersionGuid());
-			return false;
-		}
 
 		if (platformTag != getBinaryPlatformTag())
-		{
-			PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+			return PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, PX_FL, 
 				"Buffer contains data with platform mismatch:\nExpected: %s \nActual: %s\n",
 				getBinaryPlatformName(getBinaryPlatformTag()),
 				getBinaryPlatformName(platformTag));
-			return false;
-		}
-#endif
+
 		return true;
 	}
 
@@ -116,10 +105,7 @@ namespace
 		if (!externalRefs)
 		{
 			if (nbImportReferences > 0)
-			{
-				PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxSerialization::createCollectionFromBinary: External references needed but no externalRefs collection specified.");
-				return false;			
-			}
+				return PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "PxSerialization::createCollectionFromBinary: External references needed but no externalRefs collection specified.");
 		}
 		else
 		{
@@ -130,15 +116,10 @@ namespace
 
 				PxBase* referencedObject = externalRefs->find(id);
 				if (!referencedObject)
-				{
-					PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxSerialization::createCollectionFromBinary: External reference %" PX_PRIu64 " expected in externalRefs collection but not found.", id);
-					return false;
-				}
+					return PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "PxSerialization::createCollectionFromBinary: External reference %llu expected in externalRefs collection but not found.", id);
+
 				if (referencedObject->getConcreteType() != type)
-				{
-					PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxSerialization::createCollectionFromBinary: External reference %d type mismatch. Expected %d but found %d in externalRefs collection.", type, referencedObject->getConcreteType());
-					return false;
-				}
+					return PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "PxSerialization::createCollectionFromBinary: External reference %d type mismatch. Expected %d but found %d in externalRefs collection.", type, referencedObject->getConcreteType());
 			}
 		}
 		return true;
@@ -148,13 +129,12 @@ namespace
 
 PxCollection* PxSerialization::createCollectionFromBinary(void* memBlock, PxSerializationRegistry& sr, const PxCollection* pxExternalRefs)
 {
-#if PX_CHECKED
 	if(size_t(memBlock) & (PX_SERIAL_FILE_ALIGN-1))
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "Buffer must be 128-bytes aligned.");
+		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "Buffer must be 128-bytes aligned.");
 		return NULL;
 	}
-#endif
+
 	PxU8* address = reinterpret_cast<PxU8*>(memBlock);
 	const Cm::Collection* externalRefs = static_cast<const Cm::Collection*>(pxExternalRefs);
 			
@@ -164,6 +144,7 @@ PxCollection* PxSerialization::createCollectionFromBinary(void* memBlock, PxSeri
 	}
 
 	ManifestEntry* manifestTable;
+	PxU32 nbManifestEntries;
 	PxU32 nbObjectsInCollection;
 	PxU32 objectDataEndOffset;
 
@@ -174,7 +155,7 @@ PxCollection* PxSerialization::createCollectionFromBinary(void* memBlock, PxSeri
 	// read manifest (PxU32 offset, PxConcreteType type)
 	{
 		address = alignPtr(address);
-		PxU32 nbManifestEntries = read32(address);
+		nbManifestEntries = read32(address);
 		PX_ASSERT(*reinterpret_cast<PxU32*>(address) == 0); //first offset is always 0
 		manifestTable = (nbManifestEntries > 0) ? reinterpret_cast<ManifestEntry*>(address) : NULL;
 		address += nbManifestEntries*sizeof(ManifestEntry);
@@ -272,7 +253,7 @@ PxCollection* PxSerialization::createCollectionFromBinary(void* memBlock, PxSeri
 			PxBase* instance = serializer->createObject(address, context);
 			if (!instance)
 			{
-				PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+				PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, PX_FL, 
 					"Cannot create class instance for concrete type %d.", classType);
 				collection->release();
 				return NULL;
@@ -286,15 +267,31 @@ PxCollection* PxSerialization::createCollectionFromBinary(void* memBlock, PxSeri
 	
 	// update new collection with export references
 	{
+		bool manifestTableAccessError = false;
 		PX_ASSERT(addressObjectData != NULL);
 		for (PxU32 i=0;i<nbExportReferences;i++)
 		{
 			bool isExternal;
 			PxU32 manifestIndex = exportReferences[i].objIndex.getIndex(isExternal);
 			PX_ASSERT(!isExternal);
-			PxBase* obj = reinterpret_cast<PxBase*>(addressObjectData + manifestTable[manifestIndex].offset);
-			collection->mIds.insertUnique(exportReferences[i].id, obj);
-			collection->mObjects[obj] = exportReferences[i].id;
+
+			if (manifestIndex < nbManifestEntries)
+			{
+				PxBase* obj = reinterpret_cast<PxBase*>(addressObjectData + manifestTable[manifestIndex].offset);
+				collection->mIds.insertUnique(exportReferences[i].id, obj);
+				collection->mObjects[obj] = exportReferences[i].id;
+			}
+			else
+			{
+				manifestTableAccessError = true;
+			}
+		}
+
+		if (manifestTableAccessError)
+		{
+			PxGetFoundation().error(physx::PxErrorCode::eINTERNAL_ERROR, PX_FL, "Manifest table access error");
+			collection->release();
+			return NULL;
 		}
 	}
 

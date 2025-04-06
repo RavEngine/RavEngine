@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #ifndef OMNI_PVD_LOADER_H
 #define OMNI_PVD_LOADER_H
@@ -34,7 +34,9 @@
 #include <stdio.h>
 
 #ifdef OMNI_PVD_WIN
-	#include <windows.h>
+	#ifndef _WINDOWS_ // windows already included otherwise
+		#include <foundation/windows/PxWindowsInclude.h>
+	#endif
 #elif defined(__linux__)
 	#include <dlfcn.h>
 #endif

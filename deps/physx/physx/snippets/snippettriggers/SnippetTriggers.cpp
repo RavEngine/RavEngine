@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -172,10 +172,10 @@ static	PxFilterFlags triggersUsingFilterCallback(PxFilterObjectAttributes /*attr
 
 class TriggersFilterCallback : public PxSimulationFilterCallback
 {
-	virtual		PxFilterFlags	pairFound(PxU32 /*pairID*/,
-		PxFilterObjectAttributes /*attributes0*/, PxFilterData /*filterData0*/, const PxActor* /*a0*/, const PxShape* s0,
-		PxFilterObjectAttributes /*attributes1*/, PxFilterData /*filterData1*/, const PxActor* /*a1*/, const PxShape* s1,
-		PxPairFlags& pairFlags)
+	virtual		PxFilterFlags	pairFound(	PxU64 /*pairID*/,
+											PxFilterObjectAttributes /*attributes0*/, PxFilterData /*filterData0*/, const PxActor* /*a0*/, const PxShape* s0,
+											PxFilterObjectAttributes /*attributes1*/, PxFilterData /*filterData1*/, const PxActor* /*a1*/, const PxShape* s1,
+											PxPairFlags& pairFlags)	PX_OVERRIDE
 	{
 //		printf("pairFound\n");
 
@@ -192,17 +192,15 @@ class TriggersFilterCallback : public PxSimulationFilterCallback
 		return PxFilterFlags();
 	}
 
-	virtual		void			pairLost(PxU32 /*pairID*/,
-		PxFilterObjectAttributes /*attributes0*/,
-		PxFilterData /*filterData0*/,
-		PxFilterObjectAttributes /*attributes1*/,
-		PxFilterData /*filterData1*/,
-		bool /*objectRemoved*/)
+	virtual		void	pairLost(	PxU64 /*pairID*/,
+									PxFilterObjectAttributes /*attributes0*/, PxFilterData /*filterData0*/,
+									PxFilterObjectAttributes /*attributes1*/, PxFilterData /*filterData1*/,
+									bool /*objectRemoved*/)	PX_OVERRIDE
 	{
 //		printf("pairLost\n");
 	}
 
-	virtual		bool			statusChange(PxU32& /*pairID*/, PxPairFlags& /*pairFlags*/, PxFilterFlags& /*filterFlags*/)
+	virtual		bool	statusChange(PxU64& /*pairID*/, PxPairFlags& /*pairFlags*/, PxFilterFlags& /*filterFlags*/)	PX_OVERRIDE
 	{
 //		printf("statusChange\n");
 		return false;
@@ -211,22 +209,22 @@ class TriggersFilterCallback : public PxSimulationFilterCallback
 
 class ContactReportCallback: public PxSimulationEventCallback
 {
-	void onConstraintBreak(PxConstraintInfo* /*constraints*/, PxU32 /*count*/)
+	void onConstraintBreak(PxConstraintInfo* /*constraints*/, PxU32 /*count*/)	PX_OVERRIDE
 	{
 		printf("onConstraintBreak\n");
 	}
 
-	void onWake(PxActor** /*actors*/, PxU32 /*count*/)
+	void onWake(PxActor** /*actors*/, PxU32 /*count*/)	PX_OVERRIDE
 	{
 		printf("onWake\n");
 	}
 
-	void onSleep(PxActor** /*actors*/, PxU32 /*count*/)
+	void onSleep(PxActor** /*actors*/, PxU32 /*count*/)	PX_OVERRIDE
 	{
 		printf("onSleep\n");
 	}
 
-	void onTrigger(PxTriggerPair* pairs, PxU32 count)
+	void onTrigger(PxTriggerPair* pairs, PxU32 count)	PX_OVERRIDE
 	{
 //		printf("onTrigger: %d trigger pairs\n", count);
 		while(count--)
@@ -239,12 +237,12 @@ class ContactReportCallback: public PxSimulationEventCallback
 		}
 	}
 
-	void onAdvance(const PxRigidBody*const*, const PxTransform*, const PxU32)
+	void onAdvance(const PxRigidBody*const*, const PxTransform*, const PxU32)	PX_OVERRIDE
 	{
 		printf("onAdvance\n");
 	}
 
-	void onContact(const PxContactPairHeader& /*pairHeader*/, const PxContactPair* pairs, PxU32 count) 
+	void onContact(const PxContactPairHeader& /*pairHeader*/, const PxContactPair* pairs, PxU32 count)	PX_OVERRIDE
 	{
 //		printf("onContact: %d pairs\n", count);
 
@@ -441,6 +439,7 @@ void stepPhysics(bool /*interactive*/)
 
 	if(gScene)
 	{
+//		printf("Update...\n");
 		gScene->simulate(1.0f/60.0f);
 		gScene->fetchResults(true);
 	}
@@ -454,7 +453,7 @@ void initPhysics(bool /*interactive*/)
 	gPvd = PxCreatePvd(*gFoundation);
 	PxPvdTransport* transport = PxDefaultPvdSocketTransportCreate(PVD_HOST, 5425, 10);
 	gPvd->connect(*transport,PxPvdInstrumentationFlag::eALL);
-	gPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *gFoundation, PxTolerancesScale(),true,gPvd);
+	gPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *gFoundation, PxTolerancesScale(), true, gPvd);
 	PxInitExtensions(*gPhysics,gPvd);
 	const PxU32 numCores = SnippetUtils::getNbPhysicalCores();
 	gDispatcher = PxDefaultCpuDispatcherCreate(numCores == 0 ? 0 : numCores - 1);

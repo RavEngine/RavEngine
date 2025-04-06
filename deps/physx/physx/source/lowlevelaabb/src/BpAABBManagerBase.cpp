@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -39,6 +39,7 @@ AABBManagerBase::AABBManagerBase(	BroadPhase& bp, BoundsArray& boundsArray, PxFl
 	mRemovedHandleMap		(allocator),
 	mChangedHandleMap		(allocator),
 	mGroups					(allocator),
+	mEnvIDs					(allocator),
 	mContactDistance		(contactDistance),
 	mVolumeData				(allocator),
 	mFilters				(kineKineFilteringMode == PxPairFilteringMode::eKILL, staticKineFilteringMode == PxPairFilteringMode::eKILL),
@@ -47,11 +48,16 @@ AABBManagerBase::AABBManagerBase(	BroadPhase& bp, BoundsArray& boundsArray, PxFl
 	mRemovedHandles			(allocator),
 	mBroadPhase				(bp),
 	mBoundsArray			(boundsArray),
-	mOutOfBoundsObjects		("AABBManager::mOutOfBoundsObjects"),
-	mOutOfBoundsAggregates	("AABBManager::mOutOfBoundsAggregates"),
 	mUsedSize				(0),
 	mNbAggregates			(0),
-#ifdef BP_USE_AGGREGATE_GROUP_TAIL
+#if PX_ENABLE_SIM_STATS
+	mGpuDynamicsLostFoundPairsStats(0),
+	mGpuDynamicsTotalAggregatePairsStats(0),
+	mGpuDynamicsLostFoundAggregatePairsStats(0),
+#else
+	PX_CATCH_UNDEFINED_ENABLE_SIM_STATS
+#endif
+#if BP_USE_AGGREGATE_GROUP_TAIL
 	mAggregateGroupTide		(PxU32(Bp::FilterGroup::eAGGREGATE_BASE)),
 #endif
 	mContextID				(contextID),

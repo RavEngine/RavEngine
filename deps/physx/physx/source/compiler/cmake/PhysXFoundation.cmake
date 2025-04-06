@@ -22,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #
 # Build PhysXFoundation common
@@ -39,7 +39,6 @@ SET(PHYSXFOUNDATION_HEADERS
 	${PHYSX_ROOT_DIR}/include/foundation/PxAssert.h
 	${PHYSX_ROOT_DIR}/include/foundation/PxFoundationConfig.h
 	${PHYSX_ROOT_DIR}/include/foundation/PxMathUtils.h
-	${PHYSX_ROOT_DIR}/include/foundation/Px.h
 	${PHYSX_ROOT_DIR}/include/foundation/PxAlignedMalloc.h
 	${PHYSX_ROOT_DIR}/include/foundation/PxAllocatorCallback.h
 	${PHYSX_ROOT_DIR}/include/foundation/PxProfiler.h
@@ -54,6 +53,7 @@ SET(PHYSXFOUNDATION_HEADERS
 	${PHYSX_ROOT_DIR}/include/foundation/PxBitUtils.h
 	${PHYSX_ROOT_DIR}/include/foundation/PxBounds3.h
 	${PHYSX_ROOT_DIR}/include/foundation/PxBroadcast.h
+	${PHYSX_ROOT_DIR}/include/foundation/PxConstructor.h
 	${PHYSX_ROOT_DIR}/include/foundation/PxErrorCallback.h
 	${PHYSX_ROOT_DIR}/include/foundation/PxErrors.h
 	${PHYSX_ROOT_DIR}/include/foundation/PxFlags.h
@@ -130,14 +130,9 @@ ADD_LIBRARY(PhysXFoundation ${PHYSXFOUNDATION_LIBTYPE}
 INSTALL(FILES ${PHYSXFOUNDATION_HEADERS} DESTINATION include/foundation)
 
 TARGET_INCLUDE_DIRECTORIES(PhysXFoundation 
-	PRIVATE ${PHYSX_ROOT_DIR}/include
-	PRIVATE ${LL_SOURCE_DIR}/include
+	PUBLIC ${PHYSX_ROOT_DIR}/include
+    
 	PRIVATE ${PHYSXFOUNDATION_PLATFORM_INCLUDES}
-	
-	INTERFACE $<INSTALL_INTERFACE:include>$<BUILD_INTERFACE:${PHYSX_ROOT_DIR}/include>
-
-	# FIXME: This is really terrible! Don't export src directories
-	INTERFACE $<INSTALL_INTERFACE:source/foundation/include>$<BUILD_INTERFACE:${LL_SOURCE_DIR}/include>
 )
 
 TARGET_COMPILE_DEFINITIONS(PhysXFoundation 
@@ -148,7 +143,7 @@ SET_TARGET_PROPERTIES(PhysXFoundation PROPERTIES
 	OUTPUT_NAME PhysXFoundation
 )
 
-IF(NV_USE_GAMEWORKS_OUTPUT_DIRS AND PHYSXFOUNDATION_LIBTYPE STREQUAL "STATIC")	
+IF(PHYSXFOUNDATION_LIBTYPE STREQUAL "STATIC")	
 	SET_TARGET_PROPERTIES(PhysXFoundation PROPERTIES 			
 		ARCHIVE_OUTPUT_NAME_DEBUG "PhysXFoundation_static"
 		ARCHIVE_OUTPUT_NAME_CHECKED "PhysXFoundation_static"

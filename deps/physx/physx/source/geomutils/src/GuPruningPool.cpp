@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -230,7 +230,7 @@ static void updateAndInflateBounds(PruningPool& pool, const PrunerHandle* PX_RES
 			const PxU32 remappedIndex = *boundsIndices++;
 
 			if(hasTransforms)
-				transforms[poolIndex] = newTransforms[remappedIndex].transform;
+				transforms[poolIndex] = newTransforms[remappedIndex];
 
 			inflateBounds<true>(bounds[poolIndex], newBounds[remappedIndex], epsilon);
 		}
@@ -244,7 +244,7 @@ static void updateAndInflateBounds(PruningPool& pool, const PrunerHandle* PX_RES
 
 			if(hasTransforms)
 			{
-				transforms[poolIndex] = newTransforms->transform;
+				transforms[poolIndex] = *newTransforms;
 				newTransforms++;
 			}
 

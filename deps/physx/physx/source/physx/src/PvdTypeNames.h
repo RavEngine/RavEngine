@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 #ifndef PVD_TYPE_NAMES_H
@@ -117,10 +117,10 @@ DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxSimulationStatistics)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxSimulationStatisticsGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxMaterial)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxMaterialGeneratedValues)
-DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxFEMSoftBodyMaterial)
-DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxFEMSoftBodyMaterialGeneratedValues)
-// DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxFEMClothMaterial) // jcarius: Commented-out until FEMCloth is not under construction anymore
-// DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxFEMClothMaterialGeneratedValues) // jcarius: Commented-out until FEMCloth is not under construction anymore
+DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxDeformableSurfaceMaterial)
+DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxDeformableSurfaceMaterialGeneratedValues)
+DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxDeformableVolumeMaterial)
+DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxDeformableVolumeMaterialGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxPBDMaterial)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxPBDMaterialGeneratedValues)
 DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxHeightField)

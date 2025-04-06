@@ -1,6 +1,6 @@
 # NVIDIA PhysX
 
-Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -30,7 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Welcome to the NVIDIA PhysX source code repository.
 
-This repository contains source releases of the PhysX and Flow SDKs used in NVIDIA Omniverse.
+This repository contains source releases of the PhysX, Flow, and Blast SDKs used in NVIDIA Omniverse.
 
 ## Documentation
 
@@ -40,9 +40,12 @@ The user guide and API documentation are available on [GitHub Pages](https://nvi
 
 Please see instructions specific to each of the libraries in the respective subfolder.
 
+## Community-Maintained Build Configuration Fork
+
+Please see [the O3DE Fork](https://github.com/o3de/PhysX) for community-maintained additional build configurations.
+
 ## Support
 
 * Please use GitHub [Discussions](https://github.com/NVIDIA-Omniverse/PhysX/discussions/) for questions and comments.
 * GitHub [Issues](https://github.com/NVIDIA-Omniverse/PhysX/issues) should only be used for bug reports or documentation issues.
 * You can also ask questions in the NVIDIA Omniverse #physics [Discord Channel](https://discord.com/invite/XWQNJDNuaC).
-

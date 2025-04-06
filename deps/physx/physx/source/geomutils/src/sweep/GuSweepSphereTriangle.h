@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -137,7 +137,7 @@ namespace Gu
 	\param triNormalOut			[out] triangle normal
 	\param isDoubleSided		[in] true if input triangles are double-sided
 	\param meshBothSides		[in] true if PxHitFlag::eMESH_BOTH_SIDES is used
-	\param anyHit				[in] true if PxHitFlag::eMESH_ANY is used
+	\param anyHit				[in] true if PxHitFlag::eANY_HIT is used
 	\param testInitialOverlap	[in] true if PxHitFlag::eASSUME_NO_INITIAL_OVERLAP is not used
 	\return	true if an impact has been found
 	*/

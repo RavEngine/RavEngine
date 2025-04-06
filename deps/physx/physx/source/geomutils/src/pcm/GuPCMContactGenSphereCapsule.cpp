@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -40,7 +40,7 @@ using namespace Gu;
 using namespace aos;
 
 //ML: this function is shared by the sphere/capsule vs convex hulls full contact gen, capsule in the local space of polyData
-static bool testPolyDataAxis(const Gu::CapsuleV& capsule, const Gu::PolygonalData& polyData, SupportLocal* map,  const aos::FloatVArg contactDist, aos::FloatV& minOverlap, aos::Vec3V& separatingAxis)
+static bool testPolyDataAxis(const CapsuleV& capsule, const PolygonalData& polyData, const SupportLocal* map, const FloatVArg contactDist, FloatV& minOverlap, Vec3V& separatingAxis)
 {
 	FloatV _minOverlap = FMax();//minOverlap;
 	FloatV min0, max0;
@@ -50,7 +50,7 @@ static bool testPolyDataAxis(const Gu::CapsuleV& capsule, const Gu::PolygonalDat
 	//capsule in the local space of polyData
 	for(PxU32 i=0; i<polyData.mNbPolygons; ++i)
 	{
-		const Gu::HullPolygonData& polygon = polyData.mPolygons[i];
+		const HullPolygonData& polygon = polyData.mPolygons[i];
 
 		const Vec3V minVert = V3LoadU_SafeReadW(polyData.mVerts[polygon.mMinIndex]);	// PT: safe because of the way vertex memory is allocated in ConvexHullData
 		const FloatV planeDist = FLoad(polygon.mPlane.d);
@@ -95,16 +95,16 @@ static bool testPolyDataAxis(const Gu::CapsuleV& capsule, const Gu::PolygonalDat
 }  
 
 //ML: this function is shared by sphere/capsule. Point a and direction d need to be in the local space of polyData
-static bool intersectRayPolyhedron(const aos::Vec3VArg a, const aos::Vec3VArg dir, const PolygonalData& polyData, aos::FloatV& tEnter, aos::FloatV& tExit)
+static bool intersectRayPolyhedron(const Vec3VArg a, const Vec3VArg dir, const PolygonalData& polyData, FloatV& tEnter, FloatV& tExit)
 {
 	const FloatV zero = FZero();
 	const FloatV eps = FLoad(1e-7f);
 	FloatV tFirst = zero;
-	FloatV tLast= FMax();
+	FloatV tLast = FMax();
 
 	for(PxU32 k=0; k<polyData.mNbPolygons; ++k)
 	{
-		const Gu::HullPolygonData& data = polyData.mPolygons[k];
+		const HullPolygonData& data = polyData.mPolygons[k];
 		const Vec3V n = V3LoadU_SafeReadW(data.mPlane.n);	// PT: safe because 'd' follows 'n' in the plane class
 
 		FloatV d = FLoad(data.mPlane.d);
@@ -123,7 +123,7 @@ static bool intersectRayPolyhedron(const aos::Vec3VArg a, const aos::Vec3VArg di
 
 			//ML: denominator < 0 means the ray is entering halfspace; denominator > 0 means the ray is exiting halfspace
 			const BoolV con = FIsGrtr(zero, denominator);
-			const BoolV con0= FIsGrtr(tTemp, tFirst); 
+			const BoolV con0 = FIsGrtr(tTemp, tFirst); 
 			const BoolV con1 = FIsGrtr(tLast, tTemp);
 	
 			tFirst = FSel(BAnd(con, con0), tTemp, tFirst);
@@ -151,9 +151,8 @@ static bool intersectRayPolyhedron(const aos::Vec3VArg a, const aos::Vec3VArg di
 //  |/     |/      |/		6 = +++
 // 0+------+1      *---x	7 = -++
 
-static bool testSATCapsulePoly(const CapsuleV& capsule, const PolygonalData& polyData, SupportLocal* map,  const FloatVArg contactDist, FloatV& minOverlap, Vec3V& separatingAxis)
+static bool testSATCapsulePoly(const CapsuleV& capsule, const PolygonalData& polyData, const SupportLocal* map, const FloatVArg contactDist, FloatV& minOverlap, Vec3V& separatingAxis)
 {
-	using namespace aos;
 	FloatV _minOverlap = FMax();//minOverlap;
 	FloatV min0, max0;
 	FloatV min1, max1;
@@ -168,10 +167,10 @@ static bool testSATCapsulePoly(const CapsuleV& capsule, const PolygonalData& pol
 	
 	for(PxU32 i=0;i<polyData.mNbPolygons;i++)
 	{
-		const Gu::HullPolygonData& polygon = polyData.mPolygons[i];
+		const HullPolygonData& polygon = polyData.mPolygons[i];
 		const PxU8* inds1 = polyData.mPolygonVertexRefs + polygon.mVRef8;
 
-		for(PxU32 lStart = 0, lEnd =PxU32(polygon.mNbVerts-1); lStart<polygon.mNbVerts; lEnd = lStart++)
+		for(PxU32 lStart = 0, lEnd = PxU32(polygon.mNbVerts-1); lStart<polygon.mNbVerts; lEnd = lStart++)
 		{
 			//in the vertex space
 			const Vec3V p10 = V3LoadU_SafeReadW(polyData.mVerts[inds1[lStart]]);	// PT: safe because of the way vertex memory is allocated in ConvexHullData
@@ -219,10 +218,9 @@ static bool testSATCapsulePoly(const CapsuleV& capsule, const PolygonalData& pol
 	return true;
 }
 
-static void generatedCapsuleBoxFaceContacts(const CapsuleV& capsule,  PolygonalData& polyData, const HullPolygonData& referencePolygon, SupportLocal* map, const PxMatTransformV& aToB, PersistentContact* manifoldContacts, PxU32& numContacts, 
+static void generatedCapsuleBoxFaceContacts(const CapsuleV& capsule, const PolygonalData& polyData, const HullPolygonData& referencePolygon, const SupportLocal* map, const PxMatTransformV& aToB, PersistentContact* manifoldContacts, PxU32& numContacts, 
 	const FloatVArg contactDist, const Vec3VArg normal)
 {
-
 	const FloatV radius = FAdd(capsule.radius, contactDist);
 
 	//calculate the intersect point of ray to plane
@@ -285,13 +283,11 @@ static void generatedCapsuleBoxFaceContacts(const CapsuleV& capsule,  PolygonalD
 	}
 }
 
-static void generatedFaceContacts(const CapsuleV& capsule,  PolygonalData& polyData, SupportLocal* map, const PxMatTransformV& aToB, PersistentContact* manifoldContacts, PxU32& numContacts, 
+static void generatedFaceContacts(const CapsuleV& capsule, const PolygonalData& polyData, const SupportLocal* map, const PxMatTransformV& aToB, PersistentContact* manifoldContacts, PxU32& numContacts, 
 	const FloatVArg contactDist, const Vec3VArg normal)
 {
-	using namespace aos;
-
 	const FloatV zero = FZero();
-	FloatV tEnter=zero, tExit=zero;
+	FloatV tEnter = zero, tExit = zero;
 	const FloatV inflatedRadius = FAdd(capsule.radius, contactDist);
 	const Vec3V dir = V3Neg(normal);
 	const Vec3V vertexSpaceDir = M33MulV3(map->shape2Vertex, dir);
@@ -330,7 +326,7 @@ static void generateEE(const Vec3VArg p, const Vec3VArg q, const Vec3VArg normal
 		
 	// if colliding edge (p3,p4) and plane are parallel return no collision
 	const Vec3V pq = V3Sub(q, p);
-	const FloatV npq= V3Dot(n, pq); 
+	const FloatV npq = V3Dot(n, pq); 
 	if(FAllEq(npq, zero))	return;
 
 	//calculate the intersect point in the segment pq with plane n(x - a).
@@ -362,10 +358,9 @@ static void generateEE(const Vec3VArg p, const Vec3VArg q, const Vec3VArg normal
 	}
 }
 
-static void generatedContactsEEContacts(const CapsuleV& capsule, PolygonalData& polyData, const HullPolygonData& referencePolygon, SupportLocal* map,  const PxMatTransformV& aToB, 
+static void generatedContactsEEContacts(const CapsuleV& capsule, const PolygonalData& polyData, const HullPolygonData& referencePolygon, const SupportLocal* map, const PxMatTransformV& aToB, 
 	PersistentContact* manifoldContacts, PxU32& numContacts, const FloatVArg contactDist, const Vec3VArg contactNormal)
 {
-
 	const PxU8* inds = polyData.mPolygonVertexRefs + referencePolygon.mVRef8;
 
 	Vec3V* points0In0 = reinterpret_cast<Vec3V*>(PxAllocaAligned(sizeof(Vec3V)*referencePolygon.mNbVerts, 16));
@@ -377,21 +372,21 @@ static void generatedContactsEEContacts(const CapsuleV& capsule, PolygonalData& 
 
 	for (PxU32 rStart = 0, rEnd = PxU32(referencePolygon.mNbVerts - 1); rStart < referencePolygon.mNbVerts; rEnd = rStart++) 
 	{
-		generateEE(capsule.p0, capsule.p1, contactNormal,points0In0[rStart], points0In0[rEnd], aToB,  manifoldContacts, numContacts, inflatedRadius);
+		generateEE(capsule.p0, capsule.p1, contactNormal,points0In0[rStart], points0In0[rEnd], aToB, manifoldContacts, numContacts, inflatedRadius);
 	}
 }
 
-bool physx::Gu::generateCapsuleBoxFullContactManifold(const CapsuleV& capsule, PolygonalData& polyData, SupportLocal* map, const PxMatTransformV& aToB, PersistentContact* manifoldContacts, PxU32& numContacts,
-	const FloatVArg contactDist, Vec3V& normal, const Vec3VArg closest, const PxReal margin, const bool doOverlapTest, const PxReal toleranceScale, PxRenderOutput* renderOutput)
+bool Gu::generateCapsuleBoxFullContactManifold(const CapsuleV& capsule, const PolygonalData& polyData, const SupportLocal* map, const PxMatTransformV& aToB, PersistentContact* manifoldContacts, PxU32& numContacts,
+	const FloatVArg contactDist, Vec3V& normal, const Vec3VArg closest, PxReal margin, bool doOverlapTest, PxReal toleranceScale, PxRenderOutput* renderOutput)
 {
 	PX_UNUSED(renderOutput);
 	const PxU32 originalContacts = numContacts;
 
-	const Gu::HullPolygonData* referencePolygon = NULL;
+	const HullPolygonData* referencePolygon = NULL;
 
 	if(doOverlapTest)
 	{
-		aos::FloatV minOverlap;
+		FloatV minOverlap;
 		//overwrite the normal
 		if(!testSATCapsulePoly(capsule, polyData, map, contactDist, minOverlap, normal))
 			return false;
@@ -412,7 +407,7 @@ bool physx::Gu::generateCapsuleBoxFullContactManifold(const CapsuleV& capsule, P
 	const PxU8* inds = polyData.mPolygonVertexRefs + referencePolygon->mVRef8;
 	Vec3V* pointsInRef = reinterpret_cast<Vec3V*>(PxAllocaAligned(sizeof(Vec3V)*referencePolygon->mNbVerts, 16));
 	map->populateVerts(inds, referencePolygon->mNbVerts, polyData.mVerts, pointsInRef);
-	Gu::PersistentContactManifold::drawPolygon(*renderOutput, map->transform, pointsInRef, referencePolygon->mNbVerts, 0x00ff0000);
+	PersistentContactManifold::drawPolygon(*renderOutput, map->transform, pointsInRef, referencePolygon->mNbVerts, 0x00ff0000);
 #endif
 	generatedCapsuleBoxFaceContacts(capsule, polyData, *referencePolygon, map, aToB, manifoldContacts, numContacts, contactDist, normal);
 	const PxU32 faceContacts = numContacts - originalContacts;
@@ -424,9 +419,9 @@ bool physx::Gu::generateCapsuleBoxFullContactManifold(const CapsuleV& capsule, P
 	return true;
 }
 
-	//capsule is in the local space of polyData
-bool physx::Gu::generateFullContactManifold(const CapsuleV& capsule, PolygonalData& polyData, SupportLocal* map, const PxMatTransformV& aToB, PersistentContact* manifoldContacts, PxU32& numContacts,
-	const FloatVArg contactDist, Vec3V& normal, const Vec3VArg closest, const PxReal margin, const bool doOverlapTest, const PxReal toleranceLength)
+//capsule is in the local space of polyData
+bool Gu::generateFullContactManifold(const CapsuleV& capsule, const PolygonalData& polyData, const SupportLocal* map, const PxMatTransformV& aToB, PersistentContact* manifoldContacts, PxU32& numContacts,
+	const FloatVArg contactDist, Vec3V& normal, const Vec3VArg closest, PxReal margin, bool doOverlapTest, PxReal toleranceLength)
 {
 	const PxU32 originalContacts = numContacts;
 
@@ -445,8 +440,8 @@ bool physx::Gu::generateFullContactManifold(const CapsuleV& capsule, PolygonalDa
 		const PxU32 faceContacts = numContacts - originalContacts;
 		if(faceContacts < 2)
 		{
-			const Gu::HullPolygonData& referencePolygon = polyData.mPolygons[getPolygonIndex(polyData, map, V3Neg(tNormal))];
-			generatedContactsEEContacts(capsule, polyData,referencePolygon, map, aToB,  manifoldContacts, numContacts, contactDist, tNormal);
+			const HullPolygonData& referencePolygon = polyData.mPolygons[getPolygonIndex(polyData, map, V3Neg(tNormal))];
+			generatedContactsEEContacts(capsule, polyData,referencePolygon, map, aToB, manifoldContacts, numContacts, contactDist, tNormal);
 		}
 	}
 	else
@@ -456,14 +451,13 @@ bool physx::Gu::generateFullContactManifold(const CapsuleV& capsule, PolygonalDa
 		const PxU32 faceContacts = numContacts - originalContacts;
 		if(faceContacts < 2)
 		{
-			
 			const PxReal lowerEps = toleranceLength * PCM_WITNESS_POINT_LOWER_EPS;
 			const PxReal upperEps = toleranceLength * PCM_WITNESS_POINT_UPPER_EPS;
 			const PxReal tolerance = PxClamp(margin, lowerEps, upperEps);
 
 			const PxU32 featureIndex = getWitnessPolygonIndex(polyData, map, V3Neg(tNormal), closest, tolerance);
-			const Gu::HullPolygonData& referencePolygon = polyData.mPolygons[featureIndex];
-			generatedContactsEEContacts(capsule, polyData,referencePolygon, map, aToB,  manifoldContacts, numContacts, contactDist, tNormal);
+			const HullPolygonData& referencePolygon = polyData.mPolygons[featureIndex];
+			generatedContactsEEContacts(capsule, polyData,referencePolygon, map, aToB, manifoldContacts, numContacts, contactDist, tNormal);
 		}
 	}
 
@@ -473,8 +467,8 @@ bool physx::Gu::generateFullContactManifold(const CapsuleV& capsule, PolygonalDa
 }
 
 //sphere is in the local space of polyData, we treate sphere as capsule
-bool physx::Gu::generateSphereFullContactManifold(const CapsuleV& capsule, PolygonalData& polyData, SupportLocal* map, PersistentContact* manifoldContacts, PxU32& numContacts,
-	const FloatVArg contactDist, Vec3V& normal, const bool doOverlapTest)
+bool Gu::generateSphereFullContactManifold(const CapsuleV& capsule, const PolygonalData& polyData, const SupportLocal* map, PersistentContact* manifoldContacts, PxU32& numContacts,
+	const FloatVArg contactDist, Vec3V& normal, bool doOverlapTest)
 {
 	if(doOverlapTest)
 	{	
@@ -485,7 +479,7 @@ bool physx::Gu::generateSphereFullContactManifold(const CapsuleV& capsule, Polyg
 	}
 
 	const FloatV zero = FZero();
-	FloatV tEnter=zero, tExit=zero;
+	FloatV tEnter = zero, tExit = zero;
 	const FloatV inflatedRadius = FAdd(capsule.radius, contactDist);
 	const Vec3V dir = V3Neg(normal);
 	const Vec3V vertexSpaceDir = M33MulV3(map->shape2Vertex, dir);
@@ -502,7 +496,7 @@ bool physx::Gu::generateSphereFullContactManifold(const CapsuleV& capsule, Polyg
 }
 
 //capsule is in the shape space of polyData 
-bool physx::Gu::computeMTD(const CapsuleV& capsule, PolygonalData& polyData, SupportLocal* map, FloatV& penDepth, Vec3V& normal)
+bool Gu::computeMTD(const CapsuleV& capsule, const PolygonalData& polyData, const SupportLocal* map, FloatV& penDepth, Vec3V& normal)
 {
 	const FloatV contactDist = FZero();
 	Vec3V separatingAxis;

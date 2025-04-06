@@ -22,16 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_REPORT_CALLBACK_H
 #define PX_REPORT_CALLBACK_H
 
-/** \addtogroup geomutils
-  @{
-*/
 
 #include "common/PxPhysXCommonConfig.h"
 #include "foundation/PxArray.h"
@@ -40,6 +37,21 @@
 namespace physx
 {
 #endif
+
+	/**
+	\brief Base class for all report callbacks.
+
+	\see PxRegularReportCallback PxLocalStorageReportCallback PxExternalStorageReportCallback PxDynamicArrayReportCallback
+	*/
+	class PxReportCallbackBase
+	{
+		public:
+						PxReportCallbackBase(PxU32 capacity=0) : mCapacity(capacity), mSize(0)	{}
+		virtual			~PxReportCallbackBase()													{}
+		
+				PxU32	mCapacity;	// Capacity of mBuffer. If mBuffer is NULL, this controls how many items are reported to users at the same time (with a limit of 256).
+				PxU32	mSize;		// Current number of items in the buffer. This is entirely managed by the system.
+	};
 
 	/**
 	\brief Base class for callback reporting an unknown number of items to users.
@@ -53,19 +65,17 @@ namespace physx
 	- or pushed back to their own PxArray
 	- etc
 
-	@see PxRegularReportCallback PxLocalStorageReportCallback PxExternalStorageReportCallback PxDynamicArrayReportCallback
+	\see PxRegularReportCallback PxLocalStorageReportCallback PxExternalStorageReportCallback PxDynamicArrayReportCallback
 	*/
 	template<class T>
-	class PxReportCallback
+	class PxReportCallback : public PxReportCallbackBase
 	{
 		public:
-						PxReportCallback(T* buffer=NULL, PxU32 capacity=0) : mBuffer(buffer), mCapacity(capacity), mSize(0)	{}
-		virtual			~PxReportCallback()																					{}
+						PxReportCallback(T* buffer=NULL, PxU32 capacity=0) : PxReportCallbackBase(capacity), mBuffer(buffer)	{}
+		virtual			~PxReportCallback()																						{}
 		
 				T*		mBuffer;	// Destination buffer for writing results. if NULL, the system will use its internal buffer and set that pointer as it sees fit.
 									// Otherwise users can set it to where they want the results to be written.	
-				PxU32	mCapacity;	// Capacity of mBuffer. If mBuffer is NULL, this controls how many items are reported to users at the same time (with a limit of 256).
-				PxU32	mSize;		//!< Current number of items in the buffer. This is entirely managed by the system.
 
 		/**
 		\brief Reports query results to users.
@@ -92,7 +102,7 @@ namespace physx
 	The capacity parameter dictates how many items can be reported at a time,
 	i.e. how many times the flushResults/processResults function will be called by the system.
 
-	@see PxReportCallback
+	\see PxReportCallback
 	*/
 	template<class T>
 	class PxRegularReportCallback : public PxReportCallback<T>
@@ -132,7 +142,7 @@ namespace physx
 	The capacity of the embedded buffer (determined by a template parameter) dictates how many items can be reported at a time,
 	i.e. how many times the flushResults/processResults function will be called by the system.
 
-	@see PxReportCallback
+	\see PxReportCallback
 	*/
 	template<class T, const PxU32 capacityT>
 	class PxLocalStorageReportCallback : public PxReportCallback<T>
@@ -179,7 +189,7 @@ namespace physx
 	The capacity parameter dictates how many items can be reported at a time,
 	i.e. how many times the flushResults/processResults function will be called by the system.
 
-	@see PxReportCallback
+	\see PxReportCallback
 	*/
 	template<class T>
 	class PxExternalStorageReportCallback : public PxReportCallback<T>
@@ -218,7 +228,7 @@ namespace physx
 	available afterwards in the provided dynamic array. This would be the same as having a PxArray
 	directly in the query interface.
 
-	@see PxReportCallback
+	\see PxReportCallback
 	*/
 	template<class T>
 	class PxDynamicArrayReportCallback : public PxReportCallback<T>
@@ -255,5 +265,4 @@ namespace physx
 }
 #endif
 
-/** @} */
 #endif

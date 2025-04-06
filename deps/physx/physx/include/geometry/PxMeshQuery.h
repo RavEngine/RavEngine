@@ -22,17 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_MESH_QUERY_H
 #define PX_MESH_QUERY_H
 
-/** \addtogroup geomutils
-  @{
-*/
 
+#include "foundation/PxTransform.h"
 #include "common/PxPhysXCommonConfig.h"
 #include "geometry/PxGeometryHit.h"
 #include "geometry/PxGeometryQueryFlags.h"
@@ -55,7 +53,11 @@ class PxTriangle;
 		enum Enum
 		{
 			eDEFAULT			= 0,		//!< Report all overlaps
-			eDISCARD_COPLANAR	= (1<<0)	//!< Ignore coplanar triangle-triangle overlaps
+			eDISCARD_COPLANAR	= (1<<0),	//!< Ignore coplanar triangle-triangle overlaps
+			eRESERVED			= (1<<1),	//!< Reserved flag
+			eRESERVED1			= (1<<1),	//!< Reserved flag
+			eRESERVED2			= (1<<2),	//!< Reserved flag
+			eRESERVED3			= (1<<3)	//!< Reserved flag
 		};
 	};
 
@@ -79,7 +81,7 @@ public:
 
 	\note This function will flip the triangle normal whenever triGeom.scale.hasNegativeDeterminant() is true.
 
-	@see PxTriangle PxTriangleFlags PxTriangleID findOverlapTriangleMesh()
+	\see PxTriangle PxTriangleFlags PxTriangleID findOverlapTriangleMesh()
 	*/
 	PX_PHYSX_COMMON_API static void getTriangle(const PxTriangleMeshGeometry& triGeom, const PxTransform& transform, PxTriangleID triangleIndex, PxTriangle& triangle, PxU32* vertexIndices=NULL, PxU32* adjacencyIndices=NULL);
 
@@ -110,7 +112,7 @@ public:
 					}
 				}
 			}
-	@see PxTriangle PxTriangleFlags PxTriangleID findOverlapHeightField()
+	\see PxTriangle PxTriangleFlags PxTriangleID findOverlapHeightField()
 	*/
 	PX_PHYSX_COMMON_API static void getTriangle(const PxHeightFieldGeometry& hfGeom, const PxTransform& transform, PxTriangleID triangleIndex, PxTriangle& triangle, PxU32* vertexIndices=NULL, PxU32* adjacencyIndices=NULL);
 
@@ -133,7 +135,7 @@ public:
 	\param[in] queryFlags	Optional flags controlling the query.
 	\return Number of overlaps found, i.e. number of elements written to the results buffer
 
-	@see PxTriangleMeshGeometry getTriangle() PxGeometryQueryFlags
+	\see PxTriangleMeshGeometry getTriangle() PxGeometryQueryFlags
 	*/
 	PX_PHYSX_COMMON_API static PxU32 findOverlapTriangleMesh(	const PxGeometry& geom, const PxTransform& geomPose,
 																const PxTriangleMeshGeometry& meshGeom, const PxTransform& meshPose,
@@ -158,15 +160,50 @@ public:
 	\param[in] meshPose1		Pose of second triangle mesh geometry
 	\param[in] queryFlags		Optional flags controlling the query.
 	\param[in] meshMeshFlags	Optional flags controlling the query.
+	\param[in] tolerance		Optional tolerance distance
 	\return true if an overlap has been detected, false if the meshes are disjoint
 
-	@see PxTriangleMeshGeometry getTriangle() PxReportCallback PxGeometryQueryFlags PxMeshMeshQueryFlags
+	\see PxTriangleMeshGeometry getTriangle() PxReportCallback PxGeometryQueryFlags PxMeshMeshQueryFlags
 	*/
-	PX_PHYSX_COMMON_API static bool findOverlapTriangleMesh(PxReportCallback<PxGeomIndexPair>& callback,
+	PX_DEPRECATED	PX_PHYSX_COMMON_API static bool findOverlapTriangleMesh(PxReportCallback<PxGeomIndexPair>& callback,
 															const PxTriangleMeshGeometry& meshGeom0, const PxTransform& meshPose0,
 															const PxTriangleMeshGeometry& meshGeom1, const PxTransform& meshPose1,
 															PxGeometryQueryFlags queryFlags = PxGeometryQueryFlag::eDEFAULT,
-															PxMeshMeshQueryFlags meshMeshFlags = PxMeshMeshQueryFlag::eDEFAULT);
+															PxMeshMeshQueryFlags meshMeshFlags = PxMeshMeshQueryFlag::eDEFAULT,
+															float tolerance = 0.0f);
+
+	/**
+	\brief Mesh-vs-mesh overlap test
+
+	A specialized findOverlapTriangleMesh function for mesh-vs-mesh. The other findOverlapTriangleMesh() function above cannot be used
+	directly since it only returns a single set of triangle indices that belongs to one of the meshes only. This function returns pairs
+	of triangle indices that belong to both the first & second input meshes.
+
+	Returned triangle indices can be used with #getTriangle() to retrieve the triangle properties.
+
+	If a non-zero tolerance is used, the function performs distance queries (rather than pure overlaps) between involved triangles,
+	and returned data also includes the distance between reported triangles.
+
+	\note	This is only implemented for the PxMeshMidPhase::eBVH34 data structure.
+
+	\param[in] callback			The callback object used to report results
+	\param[in] meshGeom0		First triangle mesh geometry
+	\param[in] meshPose0		Pose of first triangle mesh geometry
+	\param[in] meshGeom1		Second triangle mesh geometry
+	\param[in] meshPose1		Pose of second triangle mesh geometry
+	\param[in] queryFlags		Optional flags controlling the query.
+	\param[in] meshMeshFlags	Optional flags controlling the query.
+	\param[in] tolerance		Optional tolerance distance
+	\return true if an overlap has been detected, false if the meshes are disjoint
+
+	\see PxTriangleMeshGeometry getTriangle() PxReportCallback PxGeometryQueryFlags PxMeshMeshQueryFlags
+	*/
+	PX_PHYSX_COMMON_API static bool findOverlapTriangleMesh(PxReportCallback<PxGeomIndexClosePair>& callback,
+															const PxTriangleMeshGeometry& meshGeom0, const PxTransform& meshPose0,
+															const PxTriangleMeshGeometry& meshGeom1, const PxTransform& meshPose1,
+															PxGeometryQueryFlags queryFlags = PxGeometryQueryFlag::eDEFAULT,
+															PxMeshMeshQueryFlags meshMeshFlags = PxMeshMeshQueryFlag::eDEFAULT,
+															float tolerance = 0.0f);
 
 	/**
 	\brief Find the height field triangles which touch the specified geometry object.
@@ -184,7 +221,7 @@ public:
 	\param[in] queryFlags	Optional flags controlling the query.
 	\return Number of overlaps found, i.e. number of elements written to the results buffer
 
-	@see PxHeightFieldGeometry getTriangle() PxGeometryQueryFlags
+	\see PxHeightFieldGeometry getTriangle() PxGeometryQueryFlags
 	*/
 	PX_PHYSX_COMMON_API static PxU32 findOverlapHeightField(const PxGeometry& geom, const PxTransform& geomPose,
 															const PxHeightFieldGeometry& hfGeom, const PxTransform& hfPose,
@@ -215,14 +252,14 @@ public:
 	\note Only the following geometry types are currently supported: PxSphereGeometry, PxCapsuleGeometry, PxBoxGeometry
 	\note If a shape from the scene is already overlapping with the query shape in its starting position, the hit is returned unless eASSUME_NO_INITIAL_OVERLAP was specified.
 	\note This function returns a single closest hit across all the input triangles. Multiple hits are not supported.
-	\note Supported hitFlags are PxHitFlag::eDEFAULT, PxHitFlag::eASSUME_NO_INITIAL_OVERLAP, PxHitFlag::ePRECISE_SWEEP, PxHitFlag::eMESH_BOTH_SIDES, PxHitFlag::eMESH_ANY.
+	\note Supported hitFlags are PxHitFlag::eDEFAULT, PxHitFlag::eASSUME_NO_INITIAL_OVERLAP, PxHitFlag::ePRECISE_SWEEP, PxHitFlag::eMESH_BOTH_SIDES, PxHitFlag::eANY_HIT.
 	\note ePOSITION is only defined when there is no initial overlap (sweepHit.hadInitialOverlap() == false)
 	\note The returned normal for initially overlapping sweeps is set to -unitDir.
 	\note Otherwise the returned normal is the front normal of the triangle even if PxHitFlag::eMESH_BOTH_SIDES is set.
 	\note The returned PxGeomSweepHit::faceIndex parameter will hold the index of the hit triangle in input array, i.e. the range is [0; triangleCount). For initially overlapping sweeps, this is the index of overlapping triangle.
 	\note The inflation parameter is not compatible with PxHitFlag::ePRECISE_SWEEP.
 
-	@see PxTriangle PxSweepHit PxGeometry PxTransform PxGeometryQueryFlags
+	\see PxTriangle PxSweepHit PxGeometry PxTransform PxGeometryQueryFlags
 	*/
 	PX_PHYSX_COMMON_API static bool sweep(const PxVec3& unitDir,
 							const PxReal distance,
@@ -243,5 +280,4 @@ public:
 }
 #endif
 
-/** @} */
 #endif

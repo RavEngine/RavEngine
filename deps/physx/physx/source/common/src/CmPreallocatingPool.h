@@ -22,14 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef CM_PREALLOCATING_POOL_H
 #define CM_PREALLOCATING_POOL_H
 
-#include "foundation/Px.h"
 #include "foundation/PxUserAllocated.h"
 #include "foundation/PxSort.h"
 #include "foundation/PxArray.h"
@@ -107,8 +106,6 @@ public:
 	void*		mFirstFree;
 	PxU32		mNbElements;
 };
-
-
 
 class PreallocatingRegionManager
 {
@@ -203,7 +200,6 @@ class PreallocatingRegionManager
 		PX_ASSERT(0);
 	}
 
-
 private:
 
 	PreallocatingRegionManager& operator=(const PreallocatingRegionManager&);
@@ -213,7 +209,6 @@ private:
 		const PxU32 activePoolIndex = mActivePoolIndex;
 		const PxU32 maxElements = mMaxElements;
 		const PxU32 elementSize = mElementSize;
-
 
 		for(PxU32 i=0;i<nbPools;i++)
 		{
@@ -238,14 +233,10 @@ private:
 		return newPool.allocateMemory(maxElements, elementSize);
 	}
 
-
-
 	PX_FORCE_INLINE	bool contains(PxU8* memory, const PxU32 slabSize, PxU8* element)
 	{
 		return element>=memory && element<memory+slabSize;
 	}
-
-
 
 	const PxU32			mMaxElements;
 	const PxU32			mElementSize;
@@ -414,12 +405,7 @@ public:
 			this->mPool.deallocateMemory(reinterpret_cast<PxU8*>(mDeletedElems[i]));
 		mDeletedElems.clear();
 	}
-
-
 };
-
-
-
 	
 } // namespace Cm
 

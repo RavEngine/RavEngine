@@ -22,17 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_TETRAHEDRON_MESH_EXT_H
 #define PX_TETRAHEDRON_MESH_EXT_H
-/** \addtogroup extensions
-  @{
-*/
 
 #include "foundation/PxVec3.h"
+#include "foundation/PxVec4.h"
 #include "foundation/PxArray.h"
 
 
@@ -54,7 +52,7 @@ namespace physx
 		\param[in] point The point to find the enclosing tetrahedron for
 		\param[in] bary The barycentric coordinates of the point inside the enclosing tetrahedron
 		\param[in] tolerance Tolerance value used classify points as inside if they lie exactly a tetrahedron's surface
-		\return The index of the tetrahedon containing the point, -1 if not tetrahedron contains the opoint
+		\return The index of the tetrahedron containing the point, -1 if not tetrahedron contains the opoint
 		*/
 		static PxI32 findTetrahedronContainingPoint(const PxTetrahedronMesh* mesh, const PxVec3& point, PxVec4& bary, PxReal tolerance = 1e-6f);
 
@@ -62,10 +60,21 @@ namespace physx
 
 		\param[in] mesh The tetmesh
 		\param[in] point The point to find the closest tetrahedron for
-		\param[in] bary The barycentric coordinates of the point in the tetrahedron
-		\return The index of the tetrahedon closest to the point
+		\param[out] bary The barycentric coordinates of the point in the tetrahedron
+		\return The index of the tetrahedron closest to the point
 		*/
 		static PxI32 findTetrahedronClosestToPoint(const PxTetrahedronMesh* mesh, const PxVec3& point, PxVec4& bary);
+
+		/** Associates points with closest tetrahedra from input tetrahedral mesh. If the tetmesh does not have any tetrahedra
+		or points, a warning will be generated and the result arrays will be empty, even if there are query points passed into the method.
+
+		\param[in] tetMeshVertices The tetrahedral mesh vertices
+		\param[in] tetMeshIndices The tetraheral mesh indices
+		\param[in] pointsToEmbed  The points for which the embedding should be created
+        \param[in] barycentricCoordinates  The output barycentric coordinates for each input point relative to its closest tetrahedron
+        \param[in] tetLinks The output indices of the closest tetrahedron for each input point
+		*/
+		static void createPointsToTetrahedronMap(const PxArray<PxVec3>& tetMeshVertices, const PxArray<PxU32>& tetMeshIndices, const PxArray<PxVec3>& pointsToEmbed, PxArray<PxVec4>& barycentricCoordinates, PxArray<PxU32>& tetLinks);
 
 		/** Extracts the surface triangles of a tetmesh
 
@@ -96,5 +105,4 @@ namespace physx
 } // namespace physx
 #endif
 
-/** @} */
 #endif

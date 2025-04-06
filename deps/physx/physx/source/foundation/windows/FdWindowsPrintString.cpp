@@ -22,29 +22,21 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 #include "foundation/PxString.h"
 #include <stdio.h>
-#pragma warning(push)
-#pragma warning(disable : 4668) //'symbol' is not defined as a preprocessor macro, replacing with '0' for 'directives'
-#include <windows.h>
-#pragma warning(pop)
+#include "foundation/windows/PxWindowsInclude.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
 
-namespace physx
-{
-
-void PxPrintString(const char* str)
+void physx::PxPrintString(const char* str)
 {
 	puts(str); // do not use printf here, since str can contain multiple % signs that will not be printed
 	OutputDebugStringA(str);
 	OutputDebugStringA("\n");
 }
-
-} // namespace physx

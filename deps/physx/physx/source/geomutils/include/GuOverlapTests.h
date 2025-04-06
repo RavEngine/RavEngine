@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -86,9 +86,6 @@ namespace Gu
 
 	// PT: retrieves the overlap function table (for access by external non-Gu modules)
 	PX_PHYSX_COMMON_API const GeomOverlapTable* getOverlapFuncTable();
-
-	// dynamic registration of height fields
-	PX_PHYSX_COMMON_API void registerHeightFields();
 
 	PX_FORCE_INLINE bool overlap(	const PxGeometry& geom0, const PxTransform& pose0,
 									const PxGeometry& geom1, const PxTransform& pose1,

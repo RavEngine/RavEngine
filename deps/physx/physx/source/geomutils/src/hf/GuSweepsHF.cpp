@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -42,7 +42,7 @@
 using namespace physx;
 using namespace Gu;
 using namespace Cm;
-using namespace physx::aos;
+using namespace aos;
 
 #include "GuSweepConvexTri.h"
 
@@ -93,7 +93,7 @@ public:
 		mStatus			(false),
 		mInitialOverlap	(false),
 		mIsDoubleSided	((hfUtil.getHeightFieldGeometry().heightFieldFlags & PxMeshGeometryFlag::eDOUBLE_SIDED) || (hitFlags & PxHitFlag::eMESH_BOTH_SIDES)),
-		mIsAnyHit		(hitFlags & PxHitFlag::eMESH_ANY)
+		mIsAnyHit		(hitFlags & PxHitFlag::eANY_HIT)
 	{
 	}
 
@@ -330,7 +330,7 @@ public:
 		{
 			if(mHitFlags & PxHitFlag::eMTD)
 			{
-				const bool hasContacts = computeConvex_HeightFieldMTD(hfGeom,  pose, convexGeom, convexPose, inflation, mIsDoubleSided, sweepHit);
+				const bool hasContacts = computeConvex_HeightFieldMTD(hfGeom, pose, convexGeom, convexPose, inflation, mIsDoubleSided, sweepHit);
 
 				sweepHit.faceIndex = mSweepHit.faceIndex;
 				sweepHit.flags = PxHitFlag::eNORMAL | PxHitFlag::eFACE_INDEX;

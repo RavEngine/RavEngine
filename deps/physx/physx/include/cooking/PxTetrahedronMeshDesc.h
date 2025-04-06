@@ -22,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_TETRAHEDRON_MESH_DESC_H
 #define PX_TETRAHEDRON_MESH_DESC_H
-/** \addtogroup cooking
-@{
-*/
 
 #include "PxPhysXConfig.h"
 #include "foundation/PxVec3.h"
@@ -46,7 +43,7 @@ namespace physx
 	/**
 	\brief Descriptor class for #PxTetrahedronMesh (contains only pure geometric data).
 
-	@see PxTetrahedronMesh PxShape
+	\see PxTetrahedronMesh PxShape
 	*/
 	class PxTetrahedronMeshDesc
 	{
@@ -58,7 +55,7 @@ namespace physx
 		enum PxMeshFormat
 		{
 			eTET_MESH,	//!< Normal tetmesh with arbitrary tetrahedra
-			eHEX_MESH 	//!< 6 tetrahedra in a row will form a hexahedron
+			eHEX_MESH 	//!< 5 or 6 tetrahedra in a row will form a hexahedron
 		};
 
 
@@ -69,16 +66,16 @@ namespace physx
 		When a tetrahedron mesh collides with another object, a material is required at the collision point.
 		If materialIndices is NULL, then the material of the PxShape instance is used.
 		Otherwise, if the point of contact is on a tetrahedron with index i, then the material index is determined as:
-		PxFEMMaterialTableIndex	index = *(PxFEMMaterialTableIndex *)(((PxU8*)materialIndices) + materialIndexStride * i);
+		PxDeformableMaterialTableIndex	index = *(PxDeformableMaterialTableIndex *)(((PxU8*)materialIndices) + materialIndexStride * i);
 
 		If the contact point falls on a vertex or an edge, a tetrahedron adjacent to the vertex or edge is selected, and its index
 		used to look up a material. The selection is arbitrary but consistent over time.
 
 		<b>Default:</b> NULL
 
-		@see materialIndexStride
+		\see materialIndexStride
 		*/
-		PxTypedStridedData<PxFEMMaterialTableIndex> materialIndices;
+		PxTypedBoundedData<PxDeformableMaterialTableIndex> materialIndices;
 
 		/**
 		\brief Pointer to first vertex point.
@@ -111,7 +108,7 @@ namespace physx
 		/**
 		\brief Used for simulation meshes only. Defines if this tet mesh should be simulated as a tet mesh,
 		or if a set of tetrahedra should be used to represent another shape, e.g. a hexahedral mesh constructed 
-		from 6 elements.
+		from 5 or 6 elements.
 		*/
 		PxU16 tetsPerElement;
 
@@ -134,7 +131,8 @@ namespace physx
 		/**
 		\brief Constructor to build a tetmeshdescription that links to the vertices and indices provided
 		*/
-		PxTetrahedronMeshDesc(physx::PxArray<physx::PxVec3>& meshVertices, physx::PxArray<physx::PxU32>& meshTetIndices, const PxTetrahedronMeshDesc::PxMeshFormat meshFormat = eTET_MESH)
+		PxTetrahedronMeshDesc(physx::PxArray<physx::PxVec3>& meshVertices, physx::PxArray<physx::PxU32>& meshTetIndices, 
+			const PxTetrahedronMeshDesc::PxMeshFormat meshFormat = eTET_MESH, PxU16 numberOfTetsPerHexElement = 5)
 		{
 			points.count = meshVertices.size();
 			points.stride = sizeof(float) * 3;
@@ -147,7 +145,7 @@ namespace physx
 			if (meshFormat == eTET_MESH)
 				tetsPerElement = 1;
 			else
-				tetsPerElement = 6;
+				tetsPerElement = numberOfTetsPerHexElement;
 		}
 
 		PX_INLINE bool isValid() const
@@ -165,7 +163,7 @@ namespace physx
 				return false;		
 
 			//add more validity checks here
-			if (materialIndices.data && materialIndices.stride < sizeof(PxFEMMaterialTableIndex))
+			if (materialIndices.data && materialIndices.stride < sizeof(PxDeformableMaterialTableIndex))
 				return false;
 
 			// The tetrahedrons pointer is not mandatory
@@ -178,19 +176,19 @@ namespace physx
 			}
 
 			//The model can only be either a tetmesh (1 tet per element), or have 5 or 6 tets per hex element, otherwise invalid.
-			if (tetsPerElement != 1 && tetsPerElement != 6)
+			if (tetsPerElement != 1 && tetsPerElement != 5 && tetsPerElement != 6)
 				return false;
 
 			return true;
 		}
 	};
 
-	///**
-	//\brief Descriptor class for #PxSoftBodyMesh (contains only additional data used for softbody simulation).
+	/**
+	\brief Descriptor class for #PxDeformableVolumeMesh (contains only additional data used for deformable volume simulation).
 
-	//@see PxSoftBodyMesh PxShape
-	//*/
-	class PxSoftBodySimulationDataDesc
+	\see PxDeformableVolumeMesh PxShape
+	*/
+	class PxDeformableVolumeSimulationDataDesc
 	{
 	public:
 		/**
@@ -202,7 +200,7 @@ namespace physx
 		/**
 		\brief Constructor to build an empty simulation description
 		*/
-		PxSoftBodySimulationDataDesc()
+		PxDeformableVolumeSimulationDataDesc()
 		{
 			vertexToTet.count = 0;
 			vertexToTet.stride = 0;
@@ -212,7 +210,7 @@ namespace physx
 		/**
 		\brief Constructor to build a simulation description with a defined vertex to tetrahedron mapping
 		*/
-		PxSoftBodySimulationDataDesc(physx::PxArray<physx::PxI32>& vertToTet)
+		PxDeformableVolumeSimulationDataDesc(physx::PxArray<physx::PxI32>& vertToTet)
 		{
 			vertexToTet.count = vertToTet.size();
 			vertexToTet.stride = sizeof(PxI32);
@@ -224,10 +222,11 @@ namespace physx
 			return true;
 		}
 	};
+
+	typedef PX_DEPRECATED PxDeformableVolumeSimulationDataDesc PxSoftBodySimulationDataDesc;
 	
 #if !PX_DOXYGEN
 } // namespace physx
 #endif
 
-  /** @} */
 #endif

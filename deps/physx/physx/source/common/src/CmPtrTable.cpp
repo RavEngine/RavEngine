@@ -22,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "foundation/PxAssert.h"
 #include "foundation/PxMemory.h"
-#include "common/PxMetaData.h"
 #include "foundation/PxBitUtils.h"
 #include "CmPtrTable.h"
 #include "CmUtils.h"
@@ -190,18 +189,3 @@ void PtrTable::replaceWithLast(PxU32 index, PtrTableStorageManager& sm)
 	}
 }
 
-void Cm::PtrTable::getBinaryMetaData(PxOutputStream& stream)
-{
-	PX_DEF_BIN_METADATA_CLASS(stream,	PtrTable)
-
-	PX_DEF_BIN_METADATA_ITEM(stream,	PtrTable, void,		mSingle,		PxMetaDataFlag::ePTR)		// PT: this is actually a union, beware
-	PX_DEF_BIN_METADATA_ITEM(stream,	PtrTable, PxU16,	mCount,			0)
-	PX_DEF_BIN_METADATA_ITEM(stream,	PtrTable, bool,		mOwnsMemory,	0)
-	PX_DEF_BIN_METADATA_ITEM(stream,	PtrTable, bool,		mBufferUsed,	0)
-	PX_DEF_BIN_METADATA_ITEM(stream,	PtrTable, PxU32,	mFreeSlot,		0)
-
-	//------ Extra-data ------
-
-	// mList
-	PX_DEF_BIN_METADATA_EXTRA_ITEMS(stream, PtrTable, void, mBufferUsed, mCount, PxMetaDataFlag::eCONTROL_FLIP|PxMetaDataFlag::ePTR, PX_SERIAL_ALIGN)
-}

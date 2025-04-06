@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -282,7 +282,8 @@ namespace Gu
 				mCurrentRectangle.mMaxu = ui + mOffsetU;
 				mCurrentRectangle.mMinv = vi - mOffsetV;
 				mCurrentRectangle.mMaxv = vi + mOffsetV;
-				OverlapLine line;
+				OverlapLine line = OverlapLine();
+				line.invalidate();
 				computeRectangleDifference(mCurrentRectangle,mPreviousRectangle,line);
 				
 				if(!visitCells(line))
@@ -711,19 +712,19 @@ namespace Gu
 								return;
 							if(hit1) // possible to hit both triangles in a cell with eMESH_MULTIPLE
 							{
-								PxVec3 hitPoint1((auhP0.x + duhvNormalized.x*triT1) * rowScale, auhP0.y  + duhvNormalized.y * triT1, (auhP0.z + duhvNormalized.z*triT1) * columnScale);
+								PxVec3 hitPoint1((auhP0.x + duhvNormalized.x*triT1) * rowScale, auhP0.y + duhvNormalized.y * triT1, (auhP0.z + duhvNormalized.z*triT1) * columnScale);
 								if(!aCallback->faceHit(*this, hitPoint1, cellIndex*2 + 1, triU1, triV1))
 									return;
 							}
 						}
 						else if(hit1 && triT1 <= triT0)
 						{
-							PxVec3 hitPoint((auhP0.x + duhvNormalized.x*triT1) * rowScale, auhP0.y  + duhvNormalized.y * triT1, (auhP0.z + duhvNormalized.z*triT1) * columnScale);
+							PxVec3 hitPoint((auhP0.x + duhvNormalized.x*triT1) * rowScale, auhP0.y + duhvNormalized.y * triT1, (auhP0.z + duhvNormalized.z*triT1) * columnScale);
 							if(!aCallback->faceHit(*this, hitPoint, cellIndex*2 + 1, triU1, triV1))
 								return;
 							if(hit0) // possible to hit both triangles in a cell with eMESH_MULTIPLE
 							{
-								PxVec3 hitPoint1((auhP0.x + duhvNormalized.x*triT0) * rowScale, auhP0.y  + duhvNormalized.y * triT0, (auhP0.z + duhvNormalized.z*triT0) * columnScale);
+								PxVec3 hitPoint1((auhP0.x + duhvNormalized.x*triT0) * rowScale, auhP0.y + duhvNormalized.y * triT0, (auhP0.z + duhvNormalized.z*triT0) * columnScale);
 								if(!aCallback->faceHit(*this, hitPoint1, cellIndex*2, triU0, triV0))
 									return;
 							}

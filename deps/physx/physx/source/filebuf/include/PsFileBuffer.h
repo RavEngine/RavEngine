@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #ifndef PSFILEBUFFER_PSFILEBUFFER_H
 #define PSFILEBUFFER_PSFILEBUFFER_H
@@ -92,7 +92,7 @@ public:
 		}
 	}
 
-	virtual SeekType isSeekable(void) const
+	virtual SeekType isSeekable() const
 	{
 		return mSeekType;
 	}
@@ -141,12 +141,12 @@ public:
 		return ret;
 	}
 
-	virtual uint32_t tellRead(void) const
+	virtual uint32_t tellRead() const
 	{
 		return mSeekRead;
 	}
 
-	virtual uint32_t tellWrite(void) const
+	virtual uint32_t tellWrite() const
 	{
 		return mSeekWrite;
 	}
@@ -171,7 +171,7 @@ public:
 		return mSeekWrite;
 	}
 
-	virtual void flush(void)
+	virtual void flush()
 	{
 		if ( mFph )
 		{
@@ -179,19 +179,19 @@ public:
 		}
 	}
 
-	virtual OpenMode	getOpenMode(void) const
+	virtual OpenMode	getOpenMode() const
 	{
 		return mOpenMode;
 	}
 
-	virtual uint32_t getFileLength(void) const
+	virtual uint32_t getFileLength() const
 	{
 		return mFileLength;
 	}
 
 private:
 	// Moves the actual file pointer to the current read location
-	void setSeekRead(void) 
+	void setSeekRead() 
 	{
 		if ( mSeekRead != mSeekCurrent && mFph )
 		{
@@ -207,7 +207,7 @@ private:
 		}
 	}
 	// Moves the actual file pointer to the current write location
-	void setSeekWrite(void)
+	void setSeekWrite()
 	{
 		if ( mSeekWrite != mSeekCurrent && mFph )
 		{

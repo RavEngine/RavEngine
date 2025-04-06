@@ -22,13 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifdef RENDER_SNIPPET
-
-#include <vector>
 
 #include "PxPhysicsAPI.h"
 
@@ -65,7 +63,7 @@ void renderCallback()
 		PxArticulationReducedCoordinate* articulation;
 		scene->getArticulations(&articulation, 1, i);
 		const PxU32 nbLinks = articulation->getNbLinks();
-		std::vector<PxArticulationLink*> links(nbLinks);
+		PxArray<PxArticulationLink*> links(nbLinks);
 		articulation->getLinks(&links[0], nbLinks);
 		const PxU32 numLinks = static_cast<PxU32>(links.size());
 		Snippets::renderActors(reinterpret_cast<PxRigidActor**>(&links[0]), 1, true, baseLinkColor);
@@ -82,7 +80,7 @@ void renderCallback()
 	Snippets::finishRender();
 }
 
-void exitCallback(void)
+void exitCallback()
 {
 	delete sCamera;
 	cleanupPhysics(true);

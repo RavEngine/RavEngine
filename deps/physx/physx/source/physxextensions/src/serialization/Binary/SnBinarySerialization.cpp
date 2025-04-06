@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -30,7 +30,6 @@
 #include "foundation/PxPhysicsVersion.h"
 #include "foundation/PxUtilities.h"
 #include "foundation/PxSort.h"
-#include "extensions/PxBinaryConverter.h"
 #include "SnSerializationContext.h"
 #include "serialization/SnSerialUtils.h"
 #include "serialization/SnSerializationRegistry.h"
@@ -194,7 +193,7 @@ namespace
 
 		virtual void	registerReference(PxBase&, PxU32, size_t)
 		{
-			PxGetFoundation().error(physx::PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, 
+			PxGetFoundation().error(physx::PxErrorCode::eINVALID_OPERATION, PX_FL, 
 					"Cannot register references during exportData, exportExtraData.");
 		}
 
@@ -415,27 +414,3 @@ bool PxSerialization::serializeCollectionToBinary(PxOutputStream& outputStream, 
 
 	return true;
 }
-
-bool PxSerialization::serializeCollectionToBinaryDeterministic(PxOutputStream& outputStream, PxCollection& pxCollection, PxSerializationRegistry& sr, const PxCollection* pxExternalRefs, bool exportNames)
-{
-	PxDefaultMemoryOutputStream tmpOutputStream;
-	if (!serializeCollectionToBinary(tmpOutputStream, pxCollection, sr, pxExternalRefs, exportNames))
-		return false;
-
-	PxDefaultMemoryOutputStream metaDataOutput;
-	dumpBinaryMetaData(metaDataOutput, sr);
-
-	PxBinaryConverter* converter = createBinaryConverter();
-	PxDefaultMemoryInputData srcMetaData(metaDataOutput.getData(), metaDataOutput.getSize());
-	PxDefaultMemoryInputData dstMetaData(metaDataOutput.getData(), metaDataOutput.getSize());
-	
-	if (!converter->setMetaData(srcMetaData, dstMetaData))
-		return false;
-	
-	PxDefaultMemoryInputData srcBinaryData(tmpOutputStream.getData(), tmpOutputStream.getSize());
-	bool ret = converter->convert(srcBinaryData, srcBinaryData.getLength(), outputStream);
-	converter->release();
-
-	return ret;
-}
-

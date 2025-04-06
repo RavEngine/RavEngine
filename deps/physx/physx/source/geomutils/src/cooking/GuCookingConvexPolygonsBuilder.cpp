@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -318,7 +318,7 @@ static bool CleanFaces(PxU32& nbFaces, IndexedTriangle32* faces, PxU32& nbVerts,
 {
 	// Brute force mesh cleaning.
 	// PT: I added this back on Feb-18-05 because it fixes bugs with hulls from QHull.	
-	MeshCleaner cleaner(nbVerts, verts, nbFaces, faces->mRef, 0.0f);
+	MeshCleaner cleaner(nbVerts, verts, nbFaces, faces->mRef, 0.0f, 0.0f);
 	if (!cleaner.mNbTris)
 		return false;
 
@@ -777,7 +777,7 @@ static bool extractHullPolygons(PxU32& nb_polygons, PxArray<PxU32>& polygon_data
 				{
 					//const AdjTriangle& AT = faces[indices.GetEntry(i)];
 
-					for(PxU32 j= i + 1;j<indices.size();j++)
+					for(PxU32 j = i + 1;j<indices.size();j++)
 					{						
 						const AdjTriangle& testAT = faces[indices[j]];
 

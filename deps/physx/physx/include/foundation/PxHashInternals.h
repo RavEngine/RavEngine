@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -39,6 +39,7 @@
 #pragma warning(push)
 #pragma warning(disable : 4127) // conditional expression is constant
 #endif
+
 #if !PX_DOXYGEN
 namespace physx
 {
@@ -366,7 +367,7 @@ class PxHashBase : private PxAllocator
 			newEntriesByteOffset += (16 - (newEntriesByteOffset & 15)) & 15;
 			uint32_t newBufferByteSize = newEntriesByteOffset + newEntriesCapacity * sizeof(Entry);
 
-			newBuffer = reinterpret_cast<uint8_t*>(PxAllocator::allocate(newBufferByteSize, __FILE__, __LINE__));
+			newBuffer = reinterpret_cast<uint8_t*>(PxAllocator::allocate(newBufferByteSize, PX_FL));
 			PX_ASSERT(newBuffer);
 
 			newHash = reinterpret_cast<uint32_t*>(newBuffer + newHashByteOffset);
@@ -375,7 +376,7 @@ class PxHashBase : private PxAllocator
 		}
 
 		// initialize new hash table
-		intrinsics::memSet(newHash, uint32_t(EOL), newHashSize * sizeof(uint32_t));
+		intrinsics::memSet(newHash, int32_t(EOL), newHashSize * sizeof(uint32_t));
 
 		// iterate over old entries, re-hash and create new entries
 		if(resizeCompact)
@@ -789,4 +790,3 @@ class PxHashMapBase
 #pragma warning(pop)
 #endif
 #endif
-

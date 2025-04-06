@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #ifndef DY_PARTICLESYSTEM_CORE_H
 #define DY_PARTICLESYSTEM_CORE_H
@@ -34,16 +34,13 @@
 #include "PxParticleSystem.h"
 #include "PxParticleBuffer.h"
 #include "CmIDPool.h"
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-#include "PxFLIPParticleSystem.h"
-#include "PxMPMParticleSystem.h"
-#endif
 #include "PxParticleSolverType.h"
-#include "PxCustomParticleSystemSolverCallback.h"
 #include "PxSparseGridParams.h"
 
 namespace physx
 {
+	class PxsParticleBuffer;
+
 namespace Dy
 {	
 
@@ -59,18 +56,9 @@ public:
 	PxU32					gridSizeY;
 	PxU32					gridSizeZ;
 
-	PxParticleSolverType::Enum	solverType;
-
-	bool					enableCCD;
-
 	PxU16					solverIterationCounts;
 
 	PxSparseGridParams		sparseGridParams;
-			
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-	PxFLIPParams			flipParams;
-	PxMPMParams				mpmParams;
-#endif
 
 	PxReal					restOffset;
 	PxReal					particleContactOffset;
@@ -84,191 +72,47 @@ public:
 	PxReal					maxDepenetrationVelocity;
 	PxReal					maxVelocity;
 
-	PxVec3					periodicBoundary;
-
 	PxParticleFlags			mFlags;
+	PxParticleLockFlags		mLockFlags;
 			
 	PxVec3					mWind;
 
-	PxU32					mMaxNeighborhood; 
+	PxU32					mMaxNeighborhood;
+	PxReal					mNeighborhoodScale;
 		
 	PxArray<PxU16>			mPhaseGroupToMaterialHandle;
+	PxArray<PxU16>			mUniqueMaterialHandles; //just for reporting
 
-	void addParticleBuffer(PxParticleBuffer* particleBuffer)
-	{
-		if (particleBuffer->bufferIndex == 0xffffffff)
-		{
-			switch (particleBuffer->getConcreteType())
-			{
-				case (PxConcreteType::ePARTICLE_BUFFER):
-				{
-					particleBuffer->bufferIndex = mParticleBuffers.size();
-					mParticleBuffers.pushBack(particleBuffer);
-					mParticleBufferUpdate = true;
-					particleBuffer->setInternalData(this);
-					return;
-				}
-
-				case (PxConcreteType::ePARTICLE_DIFFUSE_BUFFER):
-				{
-					particleBuffer->bufferIndex = mParticleAndDiffuseBuffers.size();
-					mParticleAndDiffuseBuffers.pushBack(reinterpret_cast<PxParticleAndDiffuseBuffer*>(particleBuffer));
-					mParticleAndDiffuseBufferUpdate = true;
-					particleBuffer->setInternalData(this);
-					return;
-				}
-
-				case (PxConcreteType::ePARTICLE_CLOTH_BUFFER):
-				{
-					particleBuffer->bufferIndex = mClothBuffers.size();
-					mClothBuffers.pushBack(reinterpret_cast<PxParticleClothBuffer*>(particleBuffer)); 
-					mClothBufferUpdate = true;
-					particleBuffer->setInternalData(this);
-					return;
-				}
-
-				case (PxConcreteType::ePARTICLE_RIGID_BUFFER):
-				{
-					particleBuffer->bufferIndex = mRigidBuffers.size();
-					mRigidBuffers.pushBack(reinterpret_cast<PxParticleRigidBuffer*>(particleBuffer));
-					mRigidBufferUpdate = true;
-					particleBuffer->setInternalData(this);
-					return;
-				}
-
-				default:
-				{
-					PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "addParticleBuffer : Error, this buffer does not have a valid type!");
-					return;
-				}
-					
-			}
-		}
-		else
-		{
-			PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "addParticleBuffer : Error, this buffer cannot be added to multiple particle systems!");
-		}
+	PxU32 getNumUserBuffers() const
+	{ 
+		return mParticleBuffers.size() + 
+			   mParticleDiffuseBuffers.size() +
+			   mParticleClothBuffers.size() + 
+			   mParticleRigidBuffers.size();
 	}
 
-	void removeParticleBuffer(PxParticleBuffer* particleBuffer)
-	{
-		const PxU32 index = particleBuffer->bufferIndex;
-
-		switch (particleBuffer->getConcreteType())
-		{
-			case (PxConcreteType::ePARTICLE_BUFFER):
-			{
-				if (index < mParticleBuffers.size())
-				{ 
-					mParticleBuffers.replaceWithLast(particleBuffer->bufferIndex);
-					if (mParticleBuffers.size() > index)
-						mParticleBuffers[index]->bufferIndex = index;
-					mParticleBufferUpdate = true;
-					particleBuffer->bufferIndex = 0xffffffff;
-					particleBuffer->onParticleSystemDestroy();
-				}
-				return;
-			}
-
-			case (PxConcreteType::ePARTICLE_DIFFUSE_BUFFER):
-			{
-				if (index < mParticleAndDiffuseBuffers.size())
-				{ 
-					mParticleAndDiffuseBuffers.replaceWithLast(particleBuffer->bufferIndex);
-					if (mParticleAndDiffuseBuffers.size() > index)
-						mParticleAndDiffuseBuffers[index]->bufferIndex = index;
-
-					mParticleAndDiffuseBufferUpdate = true;
-					particleBuffer->bufferIndex = 0xffffffff;
-					particleBuffer->onParticleSystemDestroy();
-				}
-				return;
-			}
-
-			case (PxConcreteType::ePARTICLE_CLOTH_BUFFER):
-			{
-				if (index < mClothBuffers.size())
-				{
-					mClothBuffers.replaceWithLast(particleBuffer->bufferIndex);
-					if (mClothBuffers.size() > index)
-						mClothBuffers[index]->bufferIndex = index;
-					mClothBufferUpdate = true;
-					particleBuffer->bufferIndex = 0xffffffff;
-					particleBuffer->onParticleSystemDestroy();
-				}
-				return;
-			}
-
-			case (PxConcreteType::ePARTICLE_RIGID_BUFFER):
-			{
-				if (index < mParticleBuffers.size())
-				{
-					mRigidBuffers.replaceWithLast(particleBuffer->bufferIndex);
-					if (mRigidBuffers.size() > index)
-						mRigidBuffers[index]->bufferIndex = index;
-
-					mRigidBufferUpdate = true;
-					particleBuffer->bufferIndex = 0xffffffff;
-					particleBuffer->onParticleSystemDestroy();
-				}
-				return;
-			}
-
-			default:
-			{
-				PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "removeParticleBuffer : Error, this buffer does not have a valid type!");
-				return;
-			}
-
-		}
-	}
-
-	PxU32 getNumUserBuffers() const { return mParticleBuffers.size() + mClothBuffers.size() + mRigidBuffers.size() + mParticleAndDiffuseBuffers.size(); }
 	//device
-	PxArray<PxParticleBuffer*>				mParticleBuffers;
-	PxArray<PxParticleClothBuffer*>			mClothBuffers;
-	PxArray<PxParticleRigidBuffer*>			mRigidBuffers;
-	PxArray<PxParticleAndDiffuseBuffer*>	mParticleAndDiffuseBuffers;
+	PxArray<PxsParticleBuffer*>		mParticleBuffers;
+	PxArray<PxsParticleBuffer*>		mParticleDiffuseBuffers;
+	PxArray<PxsParticleBuffer*>		mParticleClothBuffers;
+	PxArray<PxsParticleBuffer*>		mParticleRigidBuffers;
 
 	bool							mParticleBufferUpdate;
-	bool							mClothBufferUpdate;
-	bool							mRigidBufferUpdate;
-	bool							mParticleAndDiffuseBufferUpdate;
+	bool							mParticleDiffuseBufferUpdate;
+	bool							mParticleClothBufferUpdate;
+	bool							mParticleRigidBufferUpdate;
 
 	PxParticleSystemCallback* mCallback;
-	PxCustomParticleSystemSolverCallback*	mSolverCallback;
 
 	ParticleSystemCore()
 	{
 		PxMemSet(this, 0, sizeof(*this));
 		mParticleBufferUpdate = false;
-		mClothBufferUpdate = false;
-		mRigidBufferUpdate = false;
-		mParticleAndDiffuseBufferUpdate = false;
+		mParticleDiffuseBufferUpdate = false;
+		mParticleClothBufferUpdate = false;
+		mParticleRigidBufferUpdate = false;
 	}
 
-	~ParticleSystemCore()
-	{
-		for(PxU32 i = 0; i < mParticleBuffers.size(); ++i)
-		{ 
-			mParticleBuffers[i]->onParticleSystemDestroy();
-		}
-
-		for (PxU32 i = 0; i < mClothBuffers.size(); ++i)
-		{
-			mClothBuffers[i]->onParticleSystemDestroy();
-		}
-
-		for (PxU32 i = 0; i < mRigidBuffers.size(); ++i)
-		{
-			mRigidBuffers[i]->onParticleSystemDestroy();
-		}
-
-		for (PxU32 i = 0; i < mParticleAndDiffuseBuffers.size(); ++i)
-		{
-			mParticleAndDiffuseBuffers[i]->onParticleSystemDestroy();
-		}
-	}
 };
 
 } // namespace Dy

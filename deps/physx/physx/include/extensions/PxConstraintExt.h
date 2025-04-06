@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,9 +31,6 @@
 
 #include "foundation/PxPreprocessor.h"
 
-/** \addtogroup extensions
-  @{
-*/
 
 #if !PX_DOXYGEN
 namespace physx
@@ -46,15 +43,13 @@ namespace physx
 \note Users which want to create their own custom constraint types should choose an ID larger or equal to eNEXT_FREE_ID
 and not eINVALID_ID.
 
-@see PxConstraint PxSimulationEventCallback.onConstraintBreak()
+\see PxConstraint PxSimulationEventCallback.onConstraintBreak()
 */
 struct PxConstraintExtIDs
 {
 	enum Enum
 	{
 		eJOINT,
-		eVEHICLE_SUSP_LIMIT_DEPRECATED,
-		eVEHICLE_STICKY_TYRE_DEPRECATED,
 		eVEHICLE_JOINT,
 		eNEXT_FREE_ID,
 		eINVALID_ID = 0x7fffffff
@@ -65,5 +60,4 @@ struct PxConstraintExtIDs
 } // namespace physx
 #endif
 
-/** @} */
 #endif

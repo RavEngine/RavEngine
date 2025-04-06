@@ -22,16 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_SAMPLING_EXT_H
 #define PX_SAMPLING_EXT_H
-/** \addtogroup extensions
-  @{
-*/
 
+#include "foundation/PxTransform.h"
+#include "foundation/PxBounds3.h"
 #include "foundation/PxArray.h"
 #include "geometry/PxGeometry.h"
 #include "foundation/PxUserAllocated.h"
@@ -60,8 +59,9 @@ public:
 	\param[in] boxOrientation The orientation of the box that limits the space where samples can get created	
 	\param[in] maxNumSamples If larger than zero, the sampler will stop when the sample count reaches maxNumSamples
 	\param[in] numSampleAttemptsAroundPoint Number of repetitions the underlying algorithm performs to find a new valid sample that matches all criteria like minimal distance to existing samples etc.
+	\return Returns true if the sampling was successful and false if there was a problem. Usually an internal overflow is the problem for very big meshes or very small sampling radii.
 	*/
-	static void poissonSample(const PxSimpleTriangleMesh& mesh, PxReal r, PxArray<PxVec3>& result, PxReal rVolume = 0.0f, PxArray<PxI32>* triangleIds = NULL, PxArray<PxVec3>* barycentricCoordinates = NULL,
+	static bool poissonSample(const PxSimpleTriangleMesh& mesh, PxReal r, PxArray<PxVec3>& result, PxReal rVolume = 0.0f, PxArray<PxI32>* triangleIds = NULL, PxArray<PxVec3>* barycentricCoordinates = NULL,
 		const PxBounds3* axisAlignedBox = NULL, const PxQuat* boxOrientation = NULL, PxU32 maxNumSamples = 0, PxU32 numSampleAttemptsAroundPoint = 30);
 	
 	/** Computes samples on a geometry's surface that are not closer to each other than a given distance.
@@ -76,8 +76,9 @@ public:
 	\param[in] boxOrientation The orientation of the box that limits the space where samples can get created	
 	\param[in] maxNumSamples If larger than zero, the sampler will stop when the sample count reaches maxNumSamples
 	\param[in] numSampleAttemptsAroundPoint Number of repetitions the underlying algorithm performs to find a new valid sample that matches all criteria like minimal distance to existing samples etc.
+	\return Returns true if the sampling was successful and false if there was a problem. Usually an internal overflow is the problem for very big meshes or very small sampling radii.
 	*/
-	static void poissonSample(const PxGeometry& geometry, const PxTransform& transform, const PxBounds3& worldBounds, PxReal r, PxArray<PxVec3>& result, PxReal rVolume = 0.0f,
+	static bool poissonSample(const PxGeometry& geometry, const PxTransform& transform, const PxBounds3& worldBounds, PxReal r, PxArray<PxVec3>& result, PxReal rVolume = 0.0f,
 		const PxBounds3* axisAlignedBox = NULL, const PxQuat* boxOrientation = NULL, PxU32 maxNumSamples = 0, PxU32 numSampleAttemptsAroundPoint = 30);
 };
 
@@ -89,8 +90,9 @@ class PxPoissonSampler : public PxUserAllocated
 public:
 	/** Sets the sampling radius
 	\param[in] samplingRadius The closest distance two surface samples are allowed to have. Changing the sampling radius is a bit an expensive operation.
+	\return Returns true if the sampling was successful and false if there was a problem. Usually an internal overflow is the problem for very big meshes or very small sampling radii.
 	*/
-	virtual void setSamplingRadius(PxReal samplingRadius) = 0;
+	virtual bool setSamplingRadius(PxReal samplingRadius) = 0;
 	
 	/** Adds samples
 	\param[in] samples The samples to add. Adding samples is a bit an expensive operation.
@@ -178,5 +180,4 @@ PxTriangleMeshPoissonSampler* PxCreateTriangleMeshSampler(const PxU32* triangles
 } // namespace physx
 #endif
 
-/** @} */
 #endif

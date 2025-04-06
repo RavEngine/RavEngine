@@ -22,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #pragma once
 
-/** \addtogroup vehicle2
-  @{
-*/
 
 #include "vehicle2/PxVehicleComponent.h"
 #include "vehicle2/PxVehicleParams.h"
@@ -60,6 +57,7 @@ public:
 		const PxVehicleSuspensionStateCalculationParams*& suspStateCalcParams,
 		PxVehicleSizedArrayData<const PxVehicleBrakeCommandResponseParams>& brakeResponseParams,
 		const PxVehicleSteerCommandResponseParams*& steerResponseParams, 
+		const PxVehicleAckermannParams*& ackermannParams,
 		PxVehicleArrayData<PxReal>& brakeResponseStates,
 		PxVehicleArrayData<PxReal>& steerResponseStates, 
 		PxVehicleArrayData<const PxVehicleWheelParams>& wheelParams,
@@ -94,7 +92,9 @@ public:
 		const PxVehicleAutoboxParams*& autoboxParams,
 		const PxVehicleMultiWheelDriveDifferentialParams*& multiWheelDiffParams,
 		const PxVehicleFourWheelDriveDifferentialParams*& fourWheelDiffParams,
+		const PxVehicleTankDriveDifferentialParams*& tankDiffParams,
 		const PxVehicleEngineDriveTransmissionCommandState*& engineDriveTransmissionState,
+		const PxVehicleTankDriveTransmissionCommandState*& tankDriveTransmissionState,
 		const PxVehicleClutchCommandResponseState*& clutchResponseState,
 		const PxVehicleEngineDriveThrottleCommandResponseState*& engineDriveThrottleResponseState,
 		const PxVehicleEngineState*& engineState,
@@ -108,6 +108,7 @@ public:
 		const PxVehiclePhysXRoadGeometryQueryParams*& physxRoadGeomQryParams,
 		PxVehicleArrayData<const PxVehiclePhysXRoadGeometryQueryState>& physxRoadGeomStates,
 		PxVehicleArrayData<const PxVehiclePhysXConstraintState>& physxConstraintStates,
+		const PxVehiclePhysXSteerState*& physxSteerState,
 		PxVehiclePvdObjectHandles*& objectHandles) = 0;
 
 	virtual bool update(const PxReal dt, const PxVehicleSimulationContext& context)
@@ -115,7 +116,9 @@ public:
 		PX_UNUSED(dt);
 		PX_UNUSED(context);
 
-		if(!context.pvdContext.attributeHandles || !context.pvdContext.writer)
+		OmniPvdWriter* pvdWriter = context.pvdContext.writer;
+
+		if(!context.pvdContext.attributeHandles || !pvdWriter)
 			return true;
 
 		const PxVehicleAxleDescription* axleDesc = NULL;
@@ -124,6 +127,7 @@ public:
 		const PxVehicleSuspensionStateCalculationParams* suspStateCalcParams = NULL;
 		VEHICLE_SIZED_ARRAY_DATA(PxVehicleBrakeCommandResponseParams, brakeResponseParams);
 		const PxVehicleSteerCommandResponseParams* steerResponseParams = NULL;
+		const PxVehicleAckermannParams* ackermannParams = NULL;
 		VEHICLE_FLOAT_ARRAY_DATA(brakeResponseStates);
 		VEHICLE_FLOAT_ARRAY_DATA(steerResponseStates);
 		VEHICLE_ARRAY_DATA(PxVehicleWheelParams, wheelParams);
@@ -158,7 +162,9 @@ public:
 		const PxVehicleAutoboxParams* autoboxParams = NULL;
 		const PxVehicleMultiWheelDriveDifferentialParams* multiWheelDiffParams = NULL;
 		const PxVehicleFourWheelDriveDifferentialParams* fourWheelDiffParams = NULL;
+		const PxVehicleTankDriveDifferentialParams* tankDiffParams = NULL;
 		const PxVehicleEngineDriveTransmissionCommandState* engineDriveTransmissionCommandState = NULL;
+		const PxVehicleTankDriveTransmissionCommandState* tankDriveTransmissionCommandState = NULL;
 		const PxVehicleClutchCommandResponseState* clutchResponseState = NULL;
 		const PxVehicleEngineDriveThrottleCommandResponseState* throttleResponseState = NULL;
 		const PxVehicleEngineState* engineState = NULL;
@@ -172,13 +178,14 @@ public:
 		const PxVehiclePhysXRoadGeometryQueryParams* physxRoadGeomQryParams = NULL;
 		VEHICLE_ARRAY_DATA(PxVehiclePhysXRoadGeometryQueryState, physxRoadGeomStates);
 		VEHICLE_ARRAY_DATA(PxVehiclePhysXConstraintState, physxConstraintStates);
+		const PxVehiclePhysXSteerState* physxSteerState = NULL;
 		PxVehiclePvdObjectHandles* omniPvdObjectHandles = NULL;
 
 		getDataForPVDComponent(
 			axleDesc, 
 			rbodyParams, rbodyState,
 			suspStateCalcParams,
-			brakeResponseParams, steerResponseParams,
+			brakeResponseParams, steerResponseParams, ackermannParams,
 			brakeResponseStates, steerResponseStates,
 			wheelParams, 
 			wheelActuationStates, wheelRigidBody1dStates, wheelLocalPoses,
@@ -192,11 +199,12 @@ public:
 			antiRollParams, antiRollTorque,
 			commandState,
 			directDriveThrottleResponseParams, directDriveTransmissionState, directDrivethrottleResponseState,
-			clutchResponseParams, clutchParams, engineParams, gearboxParams, autoboxParams, multiWheelDiffParams, fourWheelDiffParams,
-			engineDriveTransmissionCommandState,
+			clutchResponseParams, clutchParams, engineParams, gearboxParams, autoboxParams, 
+			multiWheelDiffParams, fourWheelDiffParams, tankDiffParams,
+			engineDriveTransmissionCommandState, tankDriveTransmissionCommandState,
 			clutchResponseState, throttleResponseState, engineState, gearboxState, autoboxState, diffState, clutchSlipState,
 			physxConstraintParams, physxMaterialFrictionParams,
-			physxActor, physxRoadGeomQryParams, physxRoadGeomStates, physxConstraintStates,
+			physxActor, physxRoadGeomQryParams, physxRoadGeomStates, physxConstraintStates, physxSteerState,
 			omniPvdObjectHandles);
 
 		if(!omniPvdObjectHandles)
@@ -205,17 +213,17 @@ public:
 		if(firstTime)
 		{
 			PxVehiclePvdRigidBodyRegister(
-				rbodyParams, rbodyState,  
-				*context.pvdContext.attributeHandles, omniPvdObjectHandles, context.pvdContext.writer);
+				rbodyParams, rbodyState,
+				*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
 
 			PxVehiclePvdSuspensionStateCalculationParamsRegister(
 				suspStateCalcParams,
-				*context.pvdContext.attributeHandles, omniPvdObjectHandles, context.pvdContext.writer);
+				*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
 	
 			PxVehiclePvdCommandResponseRegister(
-				brakeResponseParams, steerResponseParams, 
+				brakeResponseParams, steerResponseParams, ackermannParams,
 				brakeResponseStates, steerResponseStates,
-				*context.pvdContext.attributeHandles, omniPvdObjectHandles, context.pvdContext.writer);
+				*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
 			
 			PxVehiclePvdWheelAttachmentsRegister(
 				*axleDesc,
@@ -226,48 +234,59 @@ public:
 				tireForceParams,
 				tireDirectionStates, tireSpeedStates, tireSlipStates, tireStickyStates, tireGripStates, tireCamberStates,
 				tireForces,
-				*context.pvdContext.attributeHandles, omniPvdObjectHandles, context.pvdContext.writer);
+				*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
 
 			PxVehiclePvdAntiRollsRegister(
 				antiRollParams, antiRollTorque, 
-				*context.pvdContext.attributeHandles, omniPvdObjectHandles, context.pvdContext.writer);
+				*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
 
-			PxVehiclePvdDirectDrivetrainRegister(
-				commandState, directDriveTransmissionState, 
-				directDriveThrottleResponseParams, 
-				directDrivethrottleResponseState, 
-				*context.pvdContext.attributeHandles, omniPvdObjectHandles, context.pvdContext.writer);
-
-			PxVehiclePvdEngineDrivetrainRegister(
-				commandState, engineDriveTransmissionCommandState, 
-				clutchResponseParams, clutchParams, engineParams, gearboxParams, autoboxParams, multiWheelDiffParams, fourWheelDiffParams,
-				clutchResponseState, throttleResponseState, engineState, gearboxState, autoboxState, diffState, clutchSlipState,
-				*context.pvdContext.attributeHandles, omniPvdObjectHandles, context.pvdContext.writer);
+			if (engineParams)
+			{
+				PxVehiclePvdEngineDrivetrainRegister(
+					commandState, engineDriveTransmissionCommandState, tankDriveTransmissionCommandState,
+					clutchResponseParams, clutchParams, engineParams, gearboxParams, autoboxParams, 
+					multiWheelDiffParams, fourWheelDiffParams, tankDiffParams,
+					clutchResponseState, throttleResponseState, engineState, gearboxState, autoboxState, diffState, clutchSlipState,
+					*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
+			}
+			else
+			{
+				PxVehiclePvdDirectDrivetrainRegister(
+					commandState, directDriveTransmissionState,
+					directDriveThrottleResponseParams,
+					directDrivethrottleResponseState,
+					*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
+			}
 
 			PxVehiclePvdPhysXWheelAttachmentRegister(
 				*axleDesc, 
 				physxConstraintParams, physxMaterialFrictionParams,
-				physxActor, physxRoadGeomQryParams,  physxRoadGeomStates, physxConstraintStates,
-				*context.pvdContext.attributeHandles, omniPvdObjectHandles, context.pvdContext.writer);
+				physxActor, physxRoadGeomQryParams, physxRoadGeomStates, physxConstraintStates,
+				*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
 
 			PxVehiclePvdPhysXRigidActorRegister(
 				physxActor, 
-				*context.pvdContext.attributeHandles, omniPvdObjectHandles, context.pvdContext.writer);
+				*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
+
+			PxVehiclePvdPhysXSteerStateRegister(
+				physxSteerState, 
+				*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
 						
 			firstTime = false;
 		}
 
 		PxVehiclePvdRigidBodyWrite(
 			rbodyParams, rbodyState,
-			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, context.pvdContext.writer);
+			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
 
 		PxVehiclePvdSuspensionStateCalculationParamsWrite(
 			suspStateCalcParams,
-			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, context.pvdContext.writer);
+			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
 
 		PxVehiclePvdCommandResponseWrite(
-			*axleDesc, brakeResponseParams, steerResponseParams, brakeResponseStates, steerResponseStates,
-			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, context.pvdContext.writer);
+			*axleDesc, brakeResponseParams, steerResponseParams, ackermannParams,
+			brakeResponseStates, steerResponseStates,
+			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
 		
 		PxVehiclePvdWheelAttachmentsWrite(
 			*axleDesc,
@@ -278,34 +297,44 @@ public:
 			tireForceParams,
 			tireDirectionStates, tireSpeedStates, tireSlipStates, tireStickyStates, tireGripStates, tireCamberStates,
 			tireForces,
-			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, context.pvdContext.writer);
+			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
 
 		PxVehiclePvdAntiRollsWrite(
 			antiRollParams, antiRollTorque, 
-			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, context.pvdContext.writer);
+			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
 		
-		PxVehiclePvdDirectDrivetrainWrite(
-			*axleDesc, 
-			commandState, directDriveTransmissionState, 
-			directDriveThrottleResponseParams, 
-			directDrivethrottleResponseState, 
-			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, context.pvdContext.writer);
-
-		PxVehiclePvdEngineDrivetrainWrite(
-			commandState, engineDriveTransmissionCommandState, 
-			clutchResponseParams, clutchParams, engineParams, gearboxParams, autoboxParams, multiWheelDiffParams, fourWheelDiffParams,
-			clutchResponseState, throttleResponseState, engineState, gearboxState, autoboxState, diffState, clutchSlipState,
-			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, context.pvdContext.writer);
+		if (engineParams)
+		{
+			PxVehiclePvdEngineDrivetrainWrite(
+				commandState, engineDriveTransmissionCommandState, tankDriveTransmissionCommandState,
+				clutchResponseParams, clutchParams, engineParams, gearboxParams, autoboxParams, 
+				multiWheelDiffParams, fourWheelDiffParams, tankDiffParams,
+				clutchResponseState, throttleResponseState, engineState, gearboxState, autoboxState, diffState, clutchSlipState,
+				*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
+		}
+		else
+		{
+			PxVehiclePvdDirectDrivetrainWrite(
+				*axleDesc,
+				commandState, directDriveTransmissionState,
+				directDriveThrottleResponseParams,
+				directDrivethrottleResponseState,
+				*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
+		}
 
 		PxVehiclePvdPhysXWheelAttachmentWrite(
 			*axleDesc, 
 			physxConstraintParams, physxMaterialFrictionParams,
 			physxActor, physxRoadGeomQryParams, physxRoadGeomStates, physxConstraintStates, 
-			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, context.pvdContext.writer);
+			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
 		
 		PxVehiclePvdPhysXRigidActorWrite(
 			physxActor, 
-			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, context.pvdContext.writer);
+			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
+
+		PxVehiclePvdPhysXSteerStateWrite(
+			physxSteerState, 
+			*context.pvdContext.attributeHandles, *omniPvdObjectHandles, *pvdWriter);
 
 		return true;
 	}
@@ -320,4 +349,3 @@ private:
 } // namespace physx
 #endif
 
-/** @} */

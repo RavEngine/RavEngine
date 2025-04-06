@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -39,6 +39,7 @@
 #include "foundation/PxMemory.h"
 #include "DyArticulationCore.h"
 #include "DyArticulationJointCore.h"
+#include "DyArticulationMimicJointCore.h"
 
 namespace physx
 {
@@ -47,7 +48,6 @@ namespace physx
 	class PxsContactManagerOutputIterator;
 	struct PxSolverConstraintDesc;
 	struct PxSolverBodyData;
-	class PxContactJoint;
 	struct PxTGSSolverBodyData;
 	struct PxTGSSolverBodyTxInertia;
 	struct PxSolverConstraintDesc;
@@ -67,8 +67,8 @@ namespace physx
 		class ArticulationSpatialTendon;
 		class ArticulationFixedTendon;
 		class ArticulationTendonJoint;
-		struct ArticulationSensor;
 
+		typedef PxU64 ArticulationBitField;
 
 		struct ArticulationLoopConstraint
 		{
@@ -80,12 +80,8 @@ namespace physx
 
 #define DY_ARTICULATION_LINK_NONE 0xffffffff
 
-		typedef PxU64 ArticulationBitField;
-
 		struct ArticulationLink
 		{
-			ArticulationBitField		children;		// child bitmap
-			ArticulationBitField		pathToRoot;		// path to root, including link and root
 			PxU32						mPathToRootStartIndex;
 			PxU32						mChildrenStartIndex;
 			PxU16						mPathToRootCount;

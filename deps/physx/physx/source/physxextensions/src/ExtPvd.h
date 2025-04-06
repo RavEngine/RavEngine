@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -57,7 +57,6 @@ class PxFixedJoint;
 class PxPrismaticJoint;
 class PxRevoluteJoint;
 class PxSphericalJoint;
-class PxContactJoint;
 class PxGearJoint;
 class PxRackAndPinionJoint;
 }
@@ -74,8 +73,6 @@ namespace pvdsdk {
 	DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxFixedJointGeneratedValues)
 	DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxDistanceJoint)
 	DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxDistanceJointGeneratedValues)
-	DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxContactJoint)
-	DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxContactJointGeneratedValues)
 	DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxPrismaticJoint)
 	DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxPrismaticJointGeneratedValues)
 	DEFINE_NATIVE_PVD_PHYSX3_TYPE_MAP(PxRevoluteJoint)

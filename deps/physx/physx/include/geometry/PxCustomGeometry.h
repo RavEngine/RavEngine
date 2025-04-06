@@ -22,16 +22,15 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_CUSTOMGEOMETRY_H
 #define PX_CUSTOMGEOMETRY_H
-/** \addtogroup geomutils
-@{
-*/
 
+#include "foundation/PxTransform.h"
+#include "foundation/PxBounds3.h"
 #include "geometry/PxGeometry.h"
 #include "geometry/PxGeometryHit.h"
 #include "geometry/PxGeometryQueryContext.h"
@@ -169,9 +168,9 @@ namespace physx
 			virtual bool overlap(const PxGeometry& geom0, const PxTransform& pose0, const PxGeometry& geom1, const PxTransform& pose1, PxOverlapThreadContext* threadContext) const = 0;
 
 			/**
-			\brief Sweep. Sweep one geometry against the other.
+			\brief Sweep. Sweep geom1 against geom0.
 
-			\param[in] unitDir			Normalized direction of the sweep.
+			\param[in] unitDir			Normalized direction of the sweep. geom1 is swept along this direction.
 			\param[in] maxDist			Length of the sweep. Has to be in the [0, inf) range.
 			\param[in] geom0			This custom geometry
 			\param[in] pose0			This custom geometry pose
@@ -260,7 +259,7 @@ namespace physx
 
 		\return  True if the current settings are valid for shape creation.
 
-		@see PxRigidActor::createShape, PxPhysics::createShape
+		\see PxPhysics::createShape
 		*/
 		PX_INLINE bool isValid() const;
 
@@ -306,5 +305,4 @@ namespace physx
 	return TYPE();													\
 }
 
-/** @} */
 #endif

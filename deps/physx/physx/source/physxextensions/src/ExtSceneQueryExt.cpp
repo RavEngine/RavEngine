@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -536,7 +536,7 @@ PxBatchQueryExt* create
 
 	PxAllocatorCallback& allocator = *PxGetAllocatorCallback();
 
-	PxU8* buf = reinterpret_cast<PxU8*>(allocator.allocate(byteSize, "NpBatchQueryExt", __FILE__, __LINE__));
+	PxU8* buf = reinterpret_cast<PxU8*>(allocator.allocate(byteSize, "NpBatchQueryExt", PX_FL));
 	PX_CHECK_AND_RETURN_NULL(buf, "PxCreateBatchQueryExt - alllocation failed");
 	ExtBatchQuery* bq = reinterpret_cast<ExtBatchQuery*>(buf);
 	buf += sizeof(ExtBatchQuery);

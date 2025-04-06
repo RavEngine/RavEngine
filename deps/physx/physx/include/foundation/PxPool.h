@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -50,18 +50,7 @@ class PxPoolBase : public PxUserAllocated, public Alloc
 	: Alloc(alloc), mSlabs(alloc), mElementsPerSlab(elementsPerSlab), mUsed(0), mSlabSize(slabSize), mFreeElement(0)
 	{
 		mSlabs.reserve(64);
-#if PX_CLANG
-#if PX_LINUX
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-local-typedef"
-#endif // PX_LINUX
-#endif // PX_CLANG
 		PX_COMPILE_TIME_ASSERT(sizeof(T) >= sizeof(size_t));
-#if PX_CLANG
-#if PX_LINUX
-#pragma clang diagnostic pop
-#endif
-#endif
 	}
 
   public:
@@ -101,7 +90,7 @@ class PxPoolBase : public PxUserAllocated, public Alloc
 	PX_INLINE T* construct()
 	{
 		T* t = allocate();
-		return t ? PX_PLACEMENT_NEW(t,  T()) : NULL;
+		return t ? PX_PLACEMENT_NEW(t, T()) : NULL;
 	}
 
 	template <class A1>
@@ -152,6 +141,13 @@ class PxPoolBase : public PxUserAllocated, public Alloc
 		T* t = allocate();
 		return t ? PX_PLACEMENT_NEW(t, T(a, b, c, d, e, f)) : NULL;
 	}
+
+	template <class A1, class A2, class A3, class A4, class A5, class A6>
+	PX_INLINE T* construct(const A1& a, A2& b, const A3& c, A4& d, A5& e, A6& f)
+	{
+		T* t = allocate();
+		return t ? PX_PLACEMENT_NEW(t, T(a, b, c, d, e, f)) : NULL;
+	}
 	
 	template <class A1, class A2, class A3, class A4, class A5, class A6, class A7>
 	PX_INLINE T* construct(A1& a, A2& b, A3& c, A4& d, A5& e, A6& f, A7& g)
@@ -185,9 +181,9 @@ class PxPoolBase : public PxUserAllocated, public Alloc
 	// All the allocated slabs, sorted by pointer
 	PxArray<void*, Alloc> mSlabs;
 
-	uint32_t mElementsPerSlab;
+	const uint32_t mElementsPerSlab;
 	uint32_t mUsed;
-	uint32_t mSlabSize;
+	const uint32_t mSlabSize;
 
 	FreeList* mFreeElement; // Head of free-list
 
@@ -202,7 +198,7 @@ class PxPoolBase : public PxUserAllocated, public Alloc
 	// Allocate a slab and segregate it into the freelist
 	void allocateSlab()
 	{
-		T* slab = reinterpret_cast<T*>(Alloc::allocate(mSlabSize, __FILE__, __LINE__));
+		T* slab = reinterpret_cast<T*>(Alloc::allocate(mSlabSize, PX_FL));
 
 		mSlabs.pushBack(slab);
 
@@ -260,10 +256,10 @@ class PxPool2 : public PxPoolBase<T, Alloc>
   public:
 	PxPool2(const Alloc& alloc = Alloc()) : PxPoolBase<T, Alloc>(alloc, slabSize / sizeof(T), slabSize)
 	{
+		PX_COMPILE_TIME_ASSERT(slabSize > sizeof(T));
 	}
 };
 
 } // namespace physx
 
 #endif
-

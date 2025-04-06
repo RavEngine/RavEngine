@@ -22,14 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #pragma once
-/** \addtogroup vehicle2
-  @{
-*/
 
 #include "foundation/PxTransform.h"
 #include "foundation/PxMat33.h"
@@ -125,7 +122,7 @@ Call this method to adjust the internal data structures of vehicles to reflect t
 \param[in] physxActor stores the PxRigidActor that is the vehicle's PhysX representation. 
 \param[in] physxQueryStates stores the hit point of the most recent execution of PxVehiclePhysXRoadGeometryQueryUpdate() for each wheel.
 \note It is the user's responsibility to keep track of the summed total origin shift and adjust all input/output to/from the vehicle accordingly.
-\note This call will not automatically shift the PhysX scene and its objects. PxScene::shiftOrigin() must be called seperately to keep the systems in sync.
+\note This call will not automatically shift the PhysX scene and its objects. PxScene::shiftOrigin() must be called separately to keep the systems in sync.
 \note If there is no associated PxRigidActor then set physxActor to NULL.
 \note If there is an associated PxRigidActor and it is already in a PxScene then the complementary call to PxScene::shiftOrigin() will take care of
 shifting the associated PxRigidActor.  This being the case, set physxActor to NULL.  physxActor should be a non-NULL pointer only when there is an
@@ -196,4 +193,3 @@ PX_FORCE_INLINE void PxVehicleShiftOrigin
 } // namespace physx
 #endif
 
-/** @} */

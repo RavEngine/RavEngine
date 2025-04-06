@@ -22,11 +22,9 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #ifdef RENDER_SNIPPET
-
-#include <vector>
 
 #include "PxPhysicsAPI.h"
 
@@ -59,7 +57,7 @@ void renderCallback()
 	{
 		const PxVec3 dynColor(1.0f, 0.5f, 0.25f);
 
-		std::vector<PxRigidActor*> actors(nbActors);
+		PxArray<PxRigidActor*> actors(nbActors);
 		scene->getActors(PxActorTypeFlag::eRIGID_DYNAMIC | PxActorTypeFlag::eRIGID_STATIC, reinterpret_cast<PxActor**>(&actors[0]), nbActors);
 		Snippets::renderActors(&actors[0], PxU32(actors.size()), true, dynColor);
 	}
@@ -67,7 +65,7 @@ void renderCallback()
 	Snippets::finishRender();
 }
 
-void exitCallback(void)
+void exitCallback()
 {
 	delete sCamera;
 	cleanupPhysics(true);

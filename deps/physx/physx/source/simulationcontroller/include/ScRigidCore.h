@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -46,12 +46,11 @@ namespace Sc
 		enum Enum
 		{
 			eGEOMETRY			= 1<<0,
-			eMATERIAL			= 1<<1,
-			eSHAPE2BODY			= 1<<2,
-			eFILTERDATA			= 1<<3,
-			eCONTACTOFFSET		= 1<<4,
-			eRESTOFFSET			= 1<<5,
-			eRESET_FILTERING	= 1<<6
+			eSHAPE2BODY			= 1<<1,
+			eFILTERDATA			= 1<<2,
+			eCONTACTOFFSET		= 1<<3,
+			eRESTOFFSET			= 1<<4,
+			eRESET_FILTERING	= 1<<5
 		};
 	};
 	typedef PxFlags<ShapeChangeNotifyFlag::Enum, PxU32> ShapeChangeNotifyFlags;
@@ -59,12 +58,6 @@ namespace Sc
 
 	class RigidCore : public ActorCore
 	{
-	//= ATTENTION! =====================================================================================
-	// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-	// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-	// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-	// accordingly.
-	//==================================================================================================
 	public:
 
 	PX_FORCE_INLINE	PxActor*	getPxActor()	const
@@ -82,7 +75,6 @@ namespace Sc
 					RigidSim*	getSim() const;
 
 					PxU32		getRigidID() const;
-	static			void		getBinaryMetaData(PxOutputStream& stream);
 	protected:
 								RigidCore(const PxEMPTY) :	ActorCore(PxEmpty)	{}
 								RigidCore(PxActorType::Enum type);

@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -53,22 +53,21 @@ struct Constraint
 {
 public:
 
-	PxReal					linBreakForce;			//0
-	PxReal					angBreakForce;			//4
-	PxU16					constantBlockSize;		//6
-	PxU16					flags;					//8
+	PxReal					linBreakForce;
+	PxReal					angBreakForce;
+	PxU16					constantBlockSize;
+	PxU16					flags;
 
-	PxConstraintSolverPrep	solverPrep;				//12
-	PxConstraintProject		project;				//16
-	void*					constantBlock;			//20
+	PxConstraintSolverPrep	solverPrep;
+	void*					constantBlock;
 
-	PxsRigidBody*			body0;					//24
-	PxsRigidBody*			body1;					//28
+	PxsRigidBody*			body0;
+	PxsRigidBody*			body1;
 
-	PxsBodyCore*			bodyCore0;				//32
-	PxsBodyCore*			bodyCore1;				//36
-	PxU32					index;					//40 //this is also a constraint write back index
-	PxReal					minResponseThreshold;	//44
+	PxsBodyCore*			bodyCore0;
+	PxsBodyCore*			bodyCore1;
+	PxU32					index;
+	PxReal					minResponseThreshold;
 }
 PX_ALIGN_SUFFIX(16);
 #if PX_VC 

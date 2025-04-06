@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,6 +31,7 @@
 
 #include "common/PxPhysXCommonConfig.h"
 #include "GuSegment.h"
+#include "foundation/PxVecMath.h"
 
 namespace physx
 {
@@ -57,8 +58,19 @@ namespace Gu
 												s, t);
 	}
 
-} // namespace Gu
+	PX_PHYSX_COMMON_API aos::FloatV distanceSegmentSegmentSquared(	const aos::Vec3VArg p1, const aos::Vec3VArg d1, const aos::Vec3VArg p2, const aos::Vec3VArg d2,
+					 								aos::FloatV& param0, 
+					 								aos::FloatV& param1);
 
+	// This function do four segment segment closest point test in one go
+	aos::Vec4V distanceSegmentSegmentSquared4(  const aos::Vec3VArg p, const aos::Vec3VArg d, 
+												const aos::Vec3VArg p02, const aos::Vec3VArg d02, 
+												const aos::Vec3VArg p12, const aos::Vec3VArg d12, 
+												const aos::Vec3VArg p22, const aos::Vec3VArg d22,
+												const aos::Vec3VArg p32, const aos::Vec3VArg d32,
+												aos::Vec4V& s, aos::Vec4V& t);
+
+} // namespace Gu
 }
 
 #endif

@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -73,6 +73,7 @@ namespace physx
 namespace Cm
 {
 
+// PT: actor2World * shape2Actor
 PX_FORCE_INLINE void getStaticGlobalPoseAligned(const PxTransform& actor2World, const PxTransform& shape2Actor, PxTransform& outTransform)
 {
 	using namespace aos;
@@ -98,6 +99,7 @@ PX_FORCE_INLINE void getStaticGlobalPoseAligned(const PxTransform& actor2World, 
 	V4StoreA(V4SetW(v,w), &outTransform.q.x);
 }
 
+// PT: body2World * body2Actor.getInverse() * shape2Actor
 PX_FORCE_INLINE void getDynamicGlobalPoseAligned(const PxTransform& body2World, const PxTransform& shape2Actor, const PxTransform& body2Actor, PxTransform& outTransform)
 {
 	PX_ASSERT((size_t(&body2World)&15) == 0);

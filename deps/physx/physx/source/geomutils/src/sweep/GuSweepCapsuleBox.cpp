@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -41,8 +41,6 @@
 using namespace physx;
 using namespace Gu;
 
-namespace
-{
 /**
 *	Returns triangles.
 *	\return		36 indices (12 triangles) indexing the list returned by ComputePoints()
@@ -58,7 +56,6 @@ static const PxU8* getBoxTriangles()
 		5,0,1,	5,4,0
 	};
 	return Indices;
-}
 }
 
 #define OUTPUT_TRI(t, p0, p1, p2){	\
@@ -194,7 +191,7 @@ bool Gu::sweepCapsuleBox(const Capsule& capsule, const PxTransform& boxWorldPose
 	{
 		const PxBounds3 aabb(-boxDim, boxDim);
 
-		PX_ALLOCA(triangles, PxTriangle, 12*7);
+		PxTriangle triangles[12*7];	// PT: about 3 kb
 		const PxU32 nbTris = extrudeBox(aabb, &boxWorldPose, extrusionDir, triangles, dir);
 		PX_ASSERT(nbTris<=12*7);
 

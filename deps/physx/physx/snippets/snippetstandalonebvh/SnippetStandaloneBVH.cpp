@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -123,9 +123,9 @@ void CustomScene::updateObjects()
 			obj.mPose.p.y = sinf(time*1.17f)*cosf(time*1.17f+coeff)*2.0f;
 			obj.mPose.p.z = sinf(time*0.33f)*cosf(time*0.33f+coeff)*10.0f;
 
-			PxMat33 rotX;	SnippetUtils::setRotX(rotX, time+coeff);
-			PxMat33 rotY;	SnippetUtils::setRotY(rotY, time*1.17f+coeff);
-			PxMat33 rotZ;	SnippetUtils::setRotZ(rotZ, time*0.33f+coeff);
+			PxMat33 rotX;	PxSetRotX(rotX, time+coeff);
+			PxMat33 rotY;	PxSetRotY(rotY, time*1.17f+coeff);
+			PxMat33 rotZ;	PxSetRotZ(rotZ, time*0.33f+coeff);
 			PxMat33 rot = rotX * rotY * rotZ;
 			obj.mPose.q = PxQuat(rot);
 			obj.mPose.q.normalize();
@@ -155,9 +155,9 @@ void CustomScene::updateObjects()
 			obj.mPose.p.y = sinf(time*1.17f)*cosf(time*1.17f+coeff)*2.0f;
 			obj.mPose.p.z = sinf(time*0.33f)*cosf(time*0.33f+coeff)*10.0f;
 
-			PxMat33 rotX;	SnippetUtils::setRotX(rotX, time+coeff);
-			PxMat33 rotY;	SnippetUtils::setRotY(rotY, time*1.17f+coeff);
-			PxMat33 rotZ;	SnippetUtils::setRotZ(rotZ, time*0.33f+coeff);
+			PxMat33 rotX;	PxSetRotX(rotX, time+coeff);
+			PxMat33 rotY;	PxSetRotY(rotY, time*1.17f+coeff);
+			PxMat33 rotZ;	PxSetRotZ(rotZ, time*0.33f+coeff);
 			PxMat33 rot = rotX * rotY * rotZ;
 			obj.mPose.q = PxQuat(rot);
 			obj.mPose.q.normalize();

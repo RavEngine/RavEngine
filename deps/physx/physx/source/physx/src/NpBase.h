@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -141,19 +141,17 @@ namespace physx
 			eCONSTRAINT,
 			eARTICULATION,
 			eARTICULATION_JOINT,
-			eARTICULATION_SENSOR,
 			eARTICULATION_SPATIAL_TENDON,
 			eARTICULATION_ATTACHMENT,
 			eARTICULATION_FIXED_TENDON,
 			eARTICULATION_TENDON_JOINT,
+			eARTICULATION_MIMIC_JOINT,
 			eAGGREGATE,
-			eSOFTBODY,
-			eFEMCLOTH,
+			eDEFORMABLE_SURFACE,
+			eDEFORMABLE_VOLUME,
 			ePBD_PARTICLESYSTEM,
-			eFLIP_PARTICLESYSTEM,
-			eMPM_PARTICLESYSTEM,
-			eCUSTOM_PARTICLESYSTEM,
-			eHAIRSYSTEM,
+			eDEFORMABLE_ATTACHMENT,
+			eDEFORMABLE_ELEMENT_FILTER,
 			eTYPE_COUNT,
 
 			eFORCE_DWORD = 0x7fffffff
@@ -175,7 +173,6 @@ namespace physx
 											// PT: preserve type, reset base index
 											setBaseIndex(NP_UNUSED_BASE_INDEX);
 										}
-		static			void			getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
 										NpBase(NpType::Enum type) :
 											mScene		(NULL),

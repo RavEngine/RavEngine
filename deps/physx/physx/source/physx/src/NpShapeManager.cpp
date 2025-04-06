@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -35,6 +35,7 @@
 #include "NpAggregate.h"
 #include "CmTransformUtils.h"
 #include "NpRigidStatic.h"
+#include "foundation/PxSIMDHelpers.h"
 
 using namespace physx;
 using namespace Sq;
@@ -285,12 +286,18 @@ PxBounds3 NpShapeManager::getWorldBounds_(const PxRigidActor& actor) const
 	PxBounds3 bounds(PxBounds3::empty());
 
 	const PxU32 nbShapes = getNbShapes();
-	const PxTransform actorPose = actor.getGlobalPose();
 	NpShape*const* PX_RESTRICT shapes = getShapes();
 
+	const PxTransform32 actorPose(actor.getGlobalPose());
+
 	for(PxU32 i=0;i<nbShapes;i++)
-		bounds.include(computeBounds(shapes[i]->getCore().getGeometry(), actorPose * shapes[i]->getLocalPoseFast()));
-		
+	{
+		PxTransform32 shapeAbsPose;
+		aos::transformMultiply<true, true>(shapeAbsPose, actorPose, shapes[i]->getLocalPoseFast());
+
+		bounds.include(computeBounds(shapes[i]->getCore().getGeometry(), shapeAbsPose));
+	}
+
 	return bounds;
 }
 

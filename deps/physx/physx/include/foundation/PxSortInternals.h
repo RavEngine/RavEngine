@@ -22,16 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 #ifndef PX_SORT_INTERNALS_H
 #define PX_SORT_INTERNALS_H
 
-/** \addtogroup foundation
-@{
-*/
 
 #include "foundation/PxAssert.h"
 #include "foundation/PxMathIntrinsics.h"
@@ -149,7 +146,7 @@ class PxStack
 	{
 		mCapacity *= 2;
 		int32_t* newMem =
-		    reinterpret_cast<int32_t*>(mAllocator.allocate(sizeof(int32_t) * mCapacity, __FILE__, __LINE__));
+		    reinterpret_cast<int32_t*>(mAllocator.allocate(sizeof(int32_t) * mCapacity, PX_FL));
 		intrinsics::memCopy(newMem, mMemory, mSize * sizeof(int32_t));
 		if(mRealloc)
 			mAllocator.deallocate(mMemory);
@@ -181,6 +178,5 @@ class PxStack
 #if !PX_DOXYGEN
 } // namespace physx
 #endif
-  /** @} */
 #endif
 

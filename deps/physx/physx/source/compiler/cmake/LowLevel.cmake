@@ -22,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #
 # Build LowLevel common
@@ -39,11 +39,9 @@ SET(LL_API_DIR ${LL_SOURCE_DIR}/api/)
 SET(LL_API_HEADERS	
 	${LL_API_DIR}/include/PxsMaterialShared.h
 	${LL_API_DIR}/include/PxsMaterialCore.h
-	${LL_API_DIR}/include/PxsFEMSoftBodyMaterialCore.h
-	${LL_API_DIR}/include/PxsFEMClothMaterialCore.h
+	${LL_API_DIR}/include/PxsDeformableSurfaceMaterialCore.h
+	${LL_API_DIR}/include/PxsDeformableVolumeMaterialCore.h
 	${LL_API_DIR}/include/PxsPBDMaterialCore.h
-	${LL_API_DIR}/include/PxsFLIPMaterialCore.h
-	${LL_API_DIR}/include/PxsMPMMaterialCore.h
 	${LL_API_DIR}/include/PxsMaterialManager.h
 	${LL_API_DIR}/include/PxvConfig.h
 	${LL_API_DIR}/include/PxvDynamics.h
@@ -101,17 +99,16 @@ SET(LL_SOFTWARE_HEADERS
 	${LL_SOFTWARE_DIR}/include/PxsContactManager.h
 	${LL_SOFTWARE_DIR}/include/PxsContactManagerState.h
 	${LL_SOFTWARE_DIR}/include/PxsContext.h
-	${LL_SOFTWARE_DIR}/include/PxsDefaultMemoryManager.h
 	${LL_SOFTWARE_DIR}/include/PxsHeapMemoryAllocator.h
-	${LL_SOFTWARE_DIR}/include/PxsIncrementalConstraintPartitioning.h
 	${LL_SOFTWARE_DIR}/include/PxsIslandManagerTypes.h
 	${LL_SOFTWARE_DIR}/include/PxsIslandSim.h
+	${LL_SOFTWARE_DIR}/include/PxsPartitionEdge.h
 	${LL_SOFTWARE_DIR}/include/PxsKernelWrangler.h
 	${LL_SOFTWARE_DIR}/include/PxsMaterialCombiner.h
 	${LL_SOFTWARE_DIR}/include/PxsMemoryManager.h
 	${LL_SOFTWARE_DIR}/include/PxsNphaseImplementationContext.h
 	${LL_SOFTWARE_DIR}/include/PxsRigidBody.h
-	${LL_SOFTWARE_DIR}/include/PxsShapeSim.h
+    ${LL_SOFTWARE_DIR}/include/PxsParticleBuffer.h
 	${LL_SOFTWARE_DIR}/include/PxsSimpleIslandManager.h
 	${LL_SOFTWARE_DIR}/include/PxsSimulationController.h
 	${LL_SOFTWARE_DIR}/include/PxsTransformCache.h
@@ -180,8 +177,9 @@ TARGET_INCLUDE_DIRECTORIES(LowLevel
 	PRIVATE ${PHYSX_SOURCE_DIR}/lowlevel/common/include/pipeline
 	PRIVATE ${PHYSX_SOURCE_DIR}/lowlevel/common/include/utils
 	PRIVATE ${PHYSX_SOURCE_DIR}/lowlevel/software/include
+    
 	PRIVATE ${PHYSX_SOURCE_DIR}/lowleveldynamics/include
-
+	PRIVATE ${PHYSX_SOURCE_DIR}/lowleveldynamics/shared
 )
 
 TARGET_COMPILE_DEFINITIONS(LowLevel 
@@ -193,14 +191,12 @@ SET_TARGET_PROPERTIES(LowLevel PROPERTIES
 )
 
 
-IF(NV_USE_GAMEWORKS_OUTPUT_DIRS)	
-	SET_TARGET_PROPERTIES(LowLevel PROPERTIES 
-		ARCHIVE_OUTPUT_NAME_DEBUG "LowLevel_static"
-		ARCHIVE_OUTPUT_NAME_CHECKED "LowLevel_static"
-		ARCHIVE_OUTPUT_NAME_PROFILE "LowLevel_static"
-		ARCHIVE_OUTPUT_NAME_RELEASE "LowLevel_static"
-	)
-ENDIF()
+SET_TARGET_PROPERTIES(LowLevel PROPERTIES 
+    ARCHIVE_OUTPUT_NAME_DEBUG "LowLevel_static"
+    ARCHIVE_OUTPUT_NAME_CHECKED "LowLevel_static"
+    ARCHIVE_OUTPUT_NAME_PROFILE "LowLevel_static"
+    ARCHIVE_OUTPUT_NAME_RELEASE "LowLevel_static"
+)
 
 IF(LL_COMPILE_PDB_NAME_DEBUG)
 	SET_TARGET_PROPERTIES(LowLevel PROPERTIES 

@@ -22,15 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #ifndef PX_PVD_OBJECT_MODEL_BASE_TYPES_H
 #define PX_PVD_OBJECT_MODEL_BASE_TYPES_H
 
-/** \addtogroup pvd
-@{
-*/
 #include "foundation/PxAssert.h"
+#include "foundation/PxVec2.h"
+#include "foundation/PxVec3.h"
+#include "foundation/PxVec4.h"
+#include "foundation/PxQuat.h"
+#include "foundation/PxMat44.h"
+#include "foundation/PxBounds3.h"
 
 #if !PX_DOXYGEN
 namespace physx
@@ -423,6 +426,5 @@ DEFINE_PVD_TYPE_NAME_MAP(PvdUserRenderer, "_debugger_", "PvdUserRenderer")
 }
 #endif
 
-/** @} */
 #endif
 

@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -43,7 +43,7 @@ NpPBDMaterial::NpPBDMaterial(const PxsPBDMaterialCore& desc) :
 
 NpPBDMaterial::~NpPBDMaterial()
 {
-	NpPhysics::getInstance().removePBDMaterialFromTable(*this);
+	NpPhysics::getInstance().removeMaterialFromTable(*this);
 }
 
 // PX_SERIALIZATION
@@ -100,7 +100,7 @@ PxU32 NpPBDMaterial::getReferenceCount() const
 
 PX_INLINE void NpPBDMaterial::updateMaterial()
 {
-	NpPhysics::getInstance().updatePBDMaterial(*this);
+	NpPhysics::getInstance().updateMaterial(*this);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -108,10 +108,9 @@ PX_INLINE void NpPBDMaterial::updateMaterial()
 void NpPBDMaterial::setFriction(PxReal x)
 {
 	PX_CHECK_AND_RETURN(x >= 0.f, "PxPBDMaterial::setFriction: invalid float");
-
 	mMaterial.friction = x;
-
 	updateMaterial();
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxPBDMaterial, friction, static_cast<PxPBDMaterial&>(*this), x); // @@@
 }
 
 PxReal NpPBDMaterial::getFriction() const
@@ -125,8 +124,8 @@ void NpPBDMaterial::setViscosity(PxReal x)
 {
 	PX_CHECK_AND_RETURN(x >= 0.f, "PxPBDMaterial::setViscosity: invalid float");
 	mMaterial.viscosity = x;
-
 	updateMaterial();
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxPBDMaterial, viscosity, static_cast<PxPBDMaterial&>(*this), x); // @@@
 }
 
 PxReal NpPBDMaterial::getViscosity() const
@@ -140,8 +139,8 @@ void NpPBDMaterial::setDamping(PxReal x)
 {
 	PX_CHECK_AND_RETURN(x >= 0.f, "PxPBDMaterial::setDamping: invalid float");
 	mMaterial.damping = x;
-
 	updateMaterial();
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxPBDMaterial, damping, static_cast<PxPBDMaterial&>(*this), x); // @@@
 }
 
 PxReal NpPBDMaterial::getDamping() const
@@ -155,8 +154,8 @@ void NpPBDMaterial::setLift(PxReal x)
 {
 	PX_CHECK_AND_RETURN(x >= 0.f, "PxPBDMaterial::setLift: invalid float");
 	mMaterial.lift = x;
-
 	updateMaterial();
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxPBDMaterial, lift, static_cast<PxPBDMaterial&>(*this), x); // @@@
 }
 
 PxReal NpPBDMaterial::getLift() const
@@ -169,10 +168,9 @@ PxReal NpPBDMaterial::getLift() const
 void NpPBDMaterial::setDrag(PxReal x)
 {
 	PX_CHECK_AND_RETURN(x >= 0.f, "PxPBDMaterial::setDrag: invalid float");
-
 	mMaterial.drag = x;
-
 	updateMaterial();
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxPBDMaterial, drag, static_cast<PxPBDMaterial&>(*this), x); // @@@
 }
 
 PxReal NpPBDMaterial::getDrag() const
@@ -184,11 +182,10 @@ PxReal NpPBDMaterial::getDrag() const
 
 void NpPBDMaterial::setCFLCoefficient(PxReal x)
 {
-	PX_CHECK_AND_RETURN(x >= 1.f, "PxPBDMaterial::setCFLCoefficient: invalid float");
-
+	PX_CHECK_AND_RETURN(x >= 0.f, "PxPBDMaterial::setCFLCoefficient: invalid float");
 	mMaterial.cflCoefficient = x;
-
 	updateMaterial();
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxPBDMaterial, CFLCoefficient, static_cast<PxPBDMaterial&>(*this), x); // @@@
 }
 
 PxReal NpPBDMaterial::getCFLCoefficient() const
@@ -202,10 +199,9 @@ PxReal NpPBDMaterial::getCFLCoefficient() const
 void NpPBDMaterial::setVorticityConfinement(PxReal x)
 {
 	PX_CHECK_AND_RETURN(x >= 0.f, "PxPBDMaterial::setVorticityConfinement: invalid float");
-
 	mMaterial.vorticityConfinement = x;
-
 	updateMaterial();
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxPBDMaterial, vorticityConfinement, static_cast<PxPBDMaterial&>(*this), x); // @@@
 }
 
 PxReal NpPBDMaterial::getVorticityConfinement() const
@@ -218,10 +214,9 @@ PxReal NpPBDMaterial::getVorticityConfinement() const
 void NpPBDMaterial::setSurfaceTension(PxReal x)
 {
 	PX_CHECK_AND_RETURN(x >= 0.f, "PxPBDMaterial::setSurfaceTension: invalid float");
-
 	mMaterial.surfaceTension = x;
-
 	updateMaterial();
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxPBDMaterial, surfaceTension, static_cast<PxPBDMaterial&>(*this), x); // @@@
 }
 
 PxReal NpPBDMaterial::getSurfaceTension() const
@@ -234,10 +229,9 @@ PxReal NpPBDMaterial::getSurfaceTension() const
 void NpPBDMaterial::setCohesion(PxReal x)
 {
 	PX_CHECK_AND_RETURN(x >= 0.f, "PxPBDMaterial::setCohesion: invalid float");
-
 	mMaterial.cohesion = x;
-
 	updateMaterial();
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxPBDMaterial, cohesion, static_cast<PxPBDMaterial&>(*this), x); // @@@
 }
 
 PxReal NpPBDMaterial::getCohesion() const
@@ -249,10 +243,10 @@ PxReal NpPBDMaterial::getCohesion() const
 
 void NpPBDMaterial::setAdhesion(PxReal x)
 {
-	PX_CHECK_AND_RETURN(x >= 0.f, "PxFLIPMaterial::setAdhesion: invalid float");
+	PX_CHECK_AND_RETURN(x >= 0.f, "PxPBDPMaterial::setAdhesion: invalid float");
 	mMaterial.adhesion = x;
-
 	updateMaterial();
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxPBDMaterial, adhesion, static_cast<PxPBDMaterial&>(*this), x); // @@@
 }
 
 PxReal NpPBDMaterial::getAdhesion() const
@@ -264,10 +258,10 @@ PxReal NpPBDMaterial::getAdhesion() const
 
 void NpPBDMaterial::setGravityScale(PxReal x)
 {
-	PX_CHECK_AND_RETURN(PxIsFinite(x), "PxFLIPMaterial::setAdhesion: invalid float");
+	PX_CHECK_AND_RETURN(PxIsFinite(x), "PxPBDMaterial::setGravityScale: invalid float");
 	mMaterial.gravityScale = x;
-
 	updateMaterial();
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxPBDMaterial, gravityScale, static_cast<PxPBDMaterial&>(*this), x); // @@@
 }
 
 PxReal NpPBDMaterial::getGravityScale() const
@@ -275,152 +269,14 @@ PxReal NpPBDMaterial::getGravityScale() const
 	return mMaterial.gravityScale;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-NpCustomMaterial::NpCustomMaterial(const PxsCustomMaterialCore& desc) :
-	PxCustomMaterial(PxConcreteType::eCUSTOM_MATERIAL, PxBaseFlag::eOWNS_MEMORY | PxBaseFlag::eIS_RELEASABLE),
-	mMaterial(desc)
-{
-	mMaterial.mMaterial = this;  // back-reference	
-}
-
-NpCustomMaterial::~NpCustomMaterial()
-{
-	NpPhysics::getInstance().removeCustomMaterialFromTable(*this);
-}
-
-// PX_SERIALIZATION
-void NpCustomMaterial::resolveReferences(PxDeserializationContext&)
-{
-	// ### this one could be automated if NpMaterial would inherit from MaterialCore
-	// ### well actually in that case the pointer would not even be needed....
-	mMaterial.mMaterial = this;	// Resolve MaterialCore::mMaterial
-
-	// Maybe not the best place to do it but it has to be done before the shapes resolve material indices
-	// since the material index translation table is needed there. This requires that the materials have
-	// been added to the table already.
-	// PT: TODO: missing line here?
-}
-
-void NpCustomMaterial::onRefCountZero()
-{
-	void* ud = userData;
-
-	if (getBaseFlags() & PxBaseFlag::eOWNS_MEMORY)
-	{
-		NpFactory::getInstance().releaseCustomMaterialToPool(*this);
-	}
-	else
-		this->~NpCustomMaterial();
-
-	NpPhysics::getInstance().notifyDeletionListenersMemRelease(this, ud);
-}
-
-NpCustomMaterial* NpCustomMaterial::createObject(PxU8*& address, PxDeserializationContext& context)
-{
-	NpCustomMaterial* obj = PX_PLACEMENT_NEW(address, NpCustomMaterial(PxBaseFlag::eIS_RELEASABLE));
-	address += sizeof(NpCustomMaterial);
-	obj->importExtraData(context);
-	obj->resolveReferences(context);
-	return obj;
-}
-//~PX_SERIALIZATION
-
-void NpCustomMaterial::release()
-{
-	RefCountable_decRefCount(*this);
-}
-
-void NpCustomMaterial::acquireReference()
-{
-	RefCountable_incRefCount(*this);
-}
-
-PxU32 NpCustomMaterial::getReferenceCount() const
-{
-	return RefCountable_getRefCount(*this);
-}
-
-PX_INLINE void NpCustomMaterial::updateMaterial()
-{
-	NpPhysics::getInstance().updateCustomMaterial(*this);
-}
-
-void NpCustomMaterial::setFriction(PxReal x)
-{
-	PX_UNUSED(x);
-}
-
-PxReal NpCustomMaterial::getFriction() const
-{
-	return 0.0f;
-}
-
-void NpCustomMaterial::setDamping(PxReal x)
-{
-	PX_UNUSED(x);
-}
-
-PxReal NpCustomMaterial::getDamping() const
-{
-	return 0.0f;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-
-void NpCustomMaterial::setAdhesion(PxReal x)
-{
-	PX_CHECK_AND_RETURN(x >= 0.f, "PxCustomMaterial::setAdhesion: invalid float");
-	mMaterial.adhesion = x;
-
-	updateMaterial();
-}
-
-PxReal NpCustomMaterial::getAdhesion() const
-{
-	return mMaterial.adhesion;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void NpCustomMaterial::setGravityScale(PxReal x)
-{
-	PX_CHECK_AND_RETURN(PxIsFinite(x), "PxCustomMaterial::setAdhesion: invalid float");
-	mMaterial.gravityScale = x;
-
-	updateMaterial();
-}
-
-PxReal NpCustomMaterial::getGravityScale() const
-{
-	return mMaterial.gravityScale;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void NpCustomMaterial::setAdhesionRadiusScale(PxReal x)
-{
-	PX_CHECK_AND_RETURN(x >= 0.f , "PxCustomMaterial::setAdhesionRadiusScale: scale must be positive");
-	mMaterial.adhesionRadiusScale = x;
-
-	updateMaterial();
-}
-PxReal NpCustomMaterial::getAdhesionRadiusScale() const
-{
-	return mMaterial.adhesionRadiusScale;
-}
-#endif
-
 //////////////////////////////////////////////////////////////////////////////
 
 void NpPBDMaterial::setAdhesionRadiusScale(PxReal x)
 {
 	PX_CHECK_AND_RETURN(x >= 0.f, "PxPBDMaterial::setAdhesionRadiusScale: invalid float");
-
 	mMaterial.adhesionRadiusScale = x;
-
 	updateMaterial();
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxPBDMaterial, adhesionRadiusScale, static_cast<PxPBDMaterial&>(*this), x); // @@@
 }
 
 PxReal NpPBDMaterial::getAdhesionRadiusScale() const
@@ -433,10 +289,9 @@ PxReal NpPBDMaterial::getAdhesionRadiusScale() const
 void NpPBDMaterial::setParticleFrictionScale(PxReal x)
 {
 	PX_CHECK_AND_RETURN(x >= 0.f, "PxPBDMaterial::setParticleFrictionScale: invalid float");
-
 	mMaterial.particleFrictionScale = x;
-
 	updateMaterial();
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxPBDMaterial, particleFrictionScale, static_cast<PxPBDMaterial&>(*this), x); // @@@
 }
 
 PxReal NpPBDMaterial::getParticleFrictionScale() const
@@ -449,12 +304,10 @@ PxReal NpPBDMaterial::getParticleFrictionScale() const
 void NpPBDMaterial::setParticleAdhesionScale(PxReal adhesionScale)
 {
 	PX_CHECK_AND_RETURN(adhesionScale >= 0.f, "PxPBDMaterial::setParticleAdhesionScale: adhesion value must be >= 0");
-
 	mMaterial.particleAdhesionScale = adhesionScale;
-
 	updateMaterial();
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxPBDMaterial, particleAdhesionScale, static_cast<PxPBDMaterial&>(*this), adhesionScale); // @@@
 }
-
 
 PxReal NpPBDMaterial::getParticleAdhesionScale() const
 {

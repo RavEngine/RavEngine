@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -30,6 +30,7 @@
 #define GU_MTD_H
 
 #include "foundation/PxVec3.h"
+#include "foundation/PxTransform.h"
 #include "geometry/PxGeometry.h"
 
 namespace physx
@@ -45,9 +46,9 @@ namespace Gu
 	// \param[in]	geom1	second geometry object
 	// \param[in]	pose1	pose of second geometry object
 	// \param[in]	cache	optional cached data for triggers
-	#define GU_MTD_FUNC_PARAMS	PxVec3& mtd, PxF32& depth,							\
-								const PxGeometry& geom0, const PxTransform& pose0,	\
-								const PxGeometry& geom1, const PxTransform& pose1
+	#define GU_MTD_FUNC_PARAMS	PxVec3& mtd, PxF32& depth,								\
+								const PxGeometry& geom0, const PxTransform32& pose0,	\
+								const PxGeometry& geom1, const PxTransform32& pose1
 
 	// PT: function pointer for Geom-indexed MTD functions
 	// See GU_MTD_FUNC_PARAMS for function parameters details.

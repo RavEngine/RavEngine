@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,10 +31,8 @@
 // ****************************************************************************
 
 #include <ctype.h>
-#include <vector>
 #include "PxPhysicsAPI.h"
 #include "geometry/PxGjkQuery.h"
-#include "CustomConvex.h"
 #include "extensions/PxCustomGeometryExt.h"
 
 // temporary disable this snippet, cannot work without rendering we cannot include GL directly
@@ -55,11 +53,10 @@ static PxDefaultCpuDispatcher* gDispatcher = NULL;
 static PxScene* gScene = NULL;
 static PxMaterial* gMaterial = NULL;
 static PxPvd* gPvd = NULL;
-//static std::vector<CustomConvex*> gConvexes;
-static std::vector<PxCustomGeometryExt::BaseConvexCallbacks*> gConvexes;
-static std::vector<PxRigidActor*> gActors;
+static PxArray<PxCustomGeometryExt::BaseConvexCallbacks*> gConvexes;
+static PxArray<PxRigidActor*> gActors;
 struct RenderMesh;
-static std::vector<RenderMesh*> gMeshes;
+static PxArray<RenderMesh*> gMeshes;
 
 RenderMesh* createRenderCylinder(float radius, float height, float margin);
 RenderMesh* createRenderCone(float height, float radius, float margin);
@@ -79,9 +76,8 @@ static PxRigidDynamic* createDynamic(const PxTransform& t, const PxGeometry& geo
 
 static void createCylinderActor(float height, float radius, float margin, const PxTransform& pose)
 {
-	//CustomCylinder* cylinder = new CustomCylinder(height, radius, margin);
 	PxCustomGeometryExt::CylinderCallbacks* cylinder = new PxCustomGeometryExt::CylinderCallbacks(height, radius, 0, margin);
-	gConvexes.push_back(cylinder);
+	gConvexes.pushBack(cylinder);
 
 	PxRigidDynamic* actor = gPhysics->createRigidDynamic(pose);
 	actor->setActorFlag(PxActorFlag::eVISUALIZATION, true);
@@ -90,17 +86,16 @@ static void createCylinderActor(float height, float radius, float margin, const 
 	shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
 	PxRigidBodyExt::updateMassAndInertia(*actor, 100);
 	gScene->addActor(*actor);
-	gActors.push_back(actor);
+	gActors.pushBack(actor);
 
 	RenderMesh* mesh = createRenderCylinder(height, radius, margin);
-	gMeshes.push_back(mesh);
+	gMeshes.pushBack(mesh);
 }
 
 static void createConeActor(float height, float radius, float margin, const PxTransform& pose)
 {
-	//CustomCone* cone = new CustomCone(height, radius, margin);
 	PxCustomGeometryExt::ConeCallbacks* cone = new PxCustomGeometryExt::ConeCallbacks(height, radius, 0, margin);
-	gConvexes.push_back(cone);
+	gConvexes.pushBack(cone);
 
 	PxRigidDynamic* actor = gPhysics->createRigidDynamic(pose);
 	actor->setActorFlag(PxActorFlag::eVISUALIZATION, true);
@@ -109,10 +104,10 @@ static void createConeActor(float height, float radius, float margin, const PxTr
 	shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
 	PxRigidBodyExt::updateMassAndInertia(*actor, 100);
 	gScene->addActor(*actor);
-	gActors.push_back(actor);
+	gActors.pushBack(actor);
 
 	RenderMesh* mesh = createRenderCone(height, radius, margin);
-	gMeshes.push_back(mesh);
+	gMeshes.pushBack(mesh);
 }
 
 void initPhysics(bool /*interactive*/)
@@ -228,20 +223,23 @@ void cleanupPhysics(bool /*interactive*/)
 	while (!gConvexes.empty())
 	{
 		delete gConvexes.back();
-		gConvexes.pop_back();
+		gConvexes.popBack();
 	}
+	gConvexes.reset();
 
 	while (!gMeshes.empty())
 	{
 		destroyRenderMesh(gMeshes.back());
-		gMeshes.pop_back();
+		gMeshes.popBack();
 	}
+	gMeshes.reset();
 
 	while (!gActors.empty())
 	{
 		PX_RELEASE(gActors.back());
-		gActors.pop_back();
+		gActors.popBack();
 	}
+	gActors.reset();
 
 	PX_RELEASE(gScene);
 	PX_RELEASE(gDispatcher);
@@ -249,7 +247,7 @@ void cleanupPhysics(bool /*interactive*/)
 	if (gPvd)
 	{
 		PxPvdTransport* transport = gPvd->getTransport();
-		gPvd->release();	gPvd = NULL;
+		PX_RELEASE(gPvd);
 		PX_RELEASE(transport);
 	}
 	PX_RELEASE(gFoundation);

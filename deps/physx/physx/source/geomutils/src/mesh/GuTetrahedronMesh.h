@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -50,19 +50,20 @@ namespace physx
 #pragma warning(disable: 4324)	// Padding was added at the end of a structure because of a __declspec(align) value.
 #endif
 
-		class SoftBodyAuxData : public PxSoftBodyAuxData, public PxUserAllocated
+		class DeformableVolumeAuxData : public PxDeformableVolumeAuxData, public PxUserAllocated
 		{
 		public:
-			SoftBodyAuxData(SoftBodySimulationData& d, SoftBodyCollisionData& c, CollisionMeshMappingData& e);
+			DeformableVolumeAuxData(DeformableVolumeSimulationData& d, DeformableVolumeCollisionData& c, CollisionMeshMappingData& e);
 
-			virtual ~SoftBodyAuxData();
+			virtual ~DeformableVolumeAuxData();
 
-			virtual const char*				getConcreteTypeName()	const { return "PxSoftBodyAuxData"; }
+			virtual const char*				getConcreteTypeName()	const { return "PxDeformableVolumeAuxData"; }
 
 			virtual	void					acquireReference()				{ Cm::RefCountable_incRefCount(*this);			}
 			virtual	PxU32					getReferenceCount()		const	{ return Cm::RefCountable_getRefCount(*this);	}
 			virtual	void					release()						{ Cm::RefCountable_decRefCount(*this);			}
 			virtual	void					onRefCountZero()				{ PX_DELETE_THIS; }
+			virtual PxReal*					getGridModelInvMass()			{ return mGridModelInvMass; }
 
 			PX_FORCE_INLINE				PxU32					getNbTetRemapSizeFast()					const { return mTetsRemapSize; }
 			PX_FORCE_INLINE				PxReal*					getGridModelInvMassFast()				{ return mGridModelInvMass; }	
@@ -184,7 +185,7 @@ namespace physx
 		class BVTetrahedronMesh : public TetrahedronMesh
 		{
 		public:
-			BVTetrahedronMesh(TetrahedronMeshData& mesh, SoftBodyCollisionData& d, MeshFactory* factory = NULL);
+			BVTetrahedronMesh(TetrahedronMeshData& mesh, DeformableVolumeCollisionData& d, MeshFactory* factory = NULL);
 
 			virtual ~BVTetrahedronMesh()
 			{
@@ -229,22 +230,15 @@ namespace physx
 		};
 
 		// Possible optimization: align the whole struct to cache line
-		class SoftBodyMesh : public PxSoftBodyMesh, public PxUserAllocated
+		class DeformableVolumeMesh : public PxDeformableVolumeMesh, public PxUserAllocated
 		{
-			//= ATTENTION! =====================================================================================
-			// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-			// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-			// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-			// accordingly.
-			//==================================================================================================
 		public:
 
-			virtual const char*				getConcreteTypeName()	const { return "PxSoftBodyMesh"; }
+			virtual const char*				getConcreteTypeName()	const { return "PxDeformableVolumeMesh"; }
 
 			// PX_SERIALIZATION
 			virtual void								exportExtraData(PxSerializationContext& ctx);
 			void										importExtraData(PxDeserializationContext&);
-			//PX_PHYSX_COMMON_API	static	void		getBinaryMetaData(PxOutputStream& stream);
 			virtual	void								release();
 
 			void										resolveReferences(PxDeserializationContext&) {}
@@ -257,9 +251,9 @@ namespace physx
 
 			//virtual	PxMeshMidPhase::Enum	getMidphaseID()			const { return PxMeshMidPhase::eBVH34; }
 
-			SoftBodyMesh(MeshFactory* factory, SoftBodyMeshData& data);
+			DeformableVolumeMesh(MeshFactory* factory, DeformableVolumeMeshData& data);
 			
-			virtual										~SoftBodyMesh();
+			virtual										~DeformableVolumeMesh();
 
 			void										setMeshFactory(MeshFactory* factory) { mMeshFactory = factory; }
 			
@@ -275,16 +269,16 @@ namespace physx
 			PX_FORCE_INLINE const TetrahedronMesh*		getSimulationMeshFast() const { return mSimulationMesh; }
 			PX_FORCE_INLINE TetrahedronMesh*			getSimulationMeshFast() { return mSimulationMesh; }
 
-			virtual const PxSoftBodyAuxData*	getSoftBodyAuxData() const { return mSoftBodyAuxData; }
-			virtual PxSoftBodyAuxData*			getSoftBodyAuxData() { return mSoftBodyAuxData; }
+			virtual const PxDeformableVolumeAuxData*	getDeformableVolumeAuxData() const { return mDeformableVolumeAuxData; }
+			virtual PxDeformableVolumeAuxData*			getDeformableVolumeAuxData() { return mDeformableVolumeAuxData; }
 
-			PX_FORCE_INLINE const SoftBodyAuxData* getSoftBodyAuxDataFast() const { return mSoftBodyAuxData; }
-			PX_FORCE_INLINE SoftBodyAuxData*	getSoftBodyAuxDataFast() { return mSoftBodyAuxData; }
+			PX_FORCE_INLINE const DeformableVolumeAuxData*	getDeformableVolumeAuxDataFast() const { return mDeformableVolumeAuxData; }
+			PX_FORCE_INLINE DeformableVolumeAuxData*		getDeformableVolumeAuxDataFast() { return mDeformableVolumeAuxData; }
 
 		protected:
 			TetrahedronMesh*			mSimulationMesh;
 			BVTetrahedronMesh*			mCollisionMesh;
-			SoftBodyAuxData*			mSoftBodyAuxData;
+			DeformableVolumeAuxData*	mDeformableVolumeAuxData;
 
 			MeshFactory*				mMeshFactory;					// PT: changed to pointer for serialization
 		};

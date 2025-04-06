@@ -22,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #pragma once
 
-/** \addtogroup vehicle2
-  @{
-*/
 
 #include "foundation/PxFoundation.h"
 
@@ -69,26 +66,40 @@ struct PxVehiclePhysXRoadGeometryQueryType
 struct PxVehiclePhysXRoadGeometryQueryParams
 {
 	/**
-	\brief A description of the type of physx scene query to employ.
-	@see PxSceneQuerySystemBase::raycast
-	@see PxSceneQuerySystemBase::sweep
+	\brief The default filter data to use for the physx scene query.
+
+	If per wheel filter data is provided in #filterDataEntries, then this member
+	will be ignored.
+
+	\see PxSceneQuerySystemBase::raycast
+	\see PxSceneQuerySystemBase::sweep
 	*/
-	PxVehiclePhysXRoadGeometryQueryType::Enum roadGeometryQueryType;
+	PxQueryFilterData defaultFilterData;
 
 	/**
-	\brief The filter data to use for the physx scene query.
-	@see PxSceneQuerySystemBase::raycast
-	@see PxSceneQuerySystemBase::sweep
+	\brief Array of filter data entries (one per wheel) to use for the physx scene query.
+
+	A null pointer is allowed in which case #defaultFilterData will be used for all wheels.
+
+	\see PxSceneQuerySystemBase::raycast
+	\see PxSceneQuerySystemBase::sweep
 	*/
-	PxQueryFilterData filterData;
+	PxQueryFilterData* filterDataEntries;
 
 	/**
 	\brief A filter callback to be used by the physx scene query
 	\note A null pointer is allowed.
-	@see PxSceneQuerySystemBase::raycast
-	@see PxSceneQuerySystemBase::sweep
+	\see PxSceneQuerySystemBase::raycast
+	\see PxSceneQuerySystemBase::sweep
 	*/
 	PxQueryFilterCallback* filterCallback;
+
+	/**
+	\brief A description of the type of physx scene query to employ.
+	\see PxSceneQuerySystemBase::raycast
+	\see PxSceneQuerySystemBase::sweep
+	*/
+	PxVehiclePhysXRoadGeometryQueryType::Enum roadGeometryQueryType;
 
 	PX_FORCE_INLINE PxVehiclePhysXRoadGeometryQueryParams transformAndScale(
 		const PxVehicleFrame& srcFrame, const PxVehicleFrame& trgFrame, const PxVehicleScale& srcScale, const PxVehicleScale& trgScale) const
@@ -109,7 +120,7 @@ struct PxVehiclePhysXRoadGeometryQueryParams
 
 /**
 A mapping between PxMaterial and a friction value to be used by the tire model.
-@see PxVehiclePhysXMaterialFrictionParams
+\see PxVehiclePhysXMaterialFrictionParams
 */
 struct PxVehiclePhysXMaterialFriction
 {
@@ -124,7 +135,7 @@ struct PxVehiclePhysXMaterialFriction
 
 	<b>Range:</b> [0, inf)<br>
 
-	@see PxVehicleTireGripState::friction
+	\see PxVehicleTireGripState::friction
 	*/
 	PxReal friction;
 
@@ -161,4 +172,3 @@ struct PxVehiclePhysXMaterialFrictionParams
 } // namespace physx
 #endif
 
-/** @} */

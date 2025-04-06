@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -34,8 +34,8 @@
 #include "foundation/PxPinnedArray.h"
 #include "common/PxPhysXCommonConfig.h"
 #include "PxSceneDesc.h"
-#include "PxBuffer.h"
 #include "cudamanager/PxCudaContextManager.h"
+#include "PxSparseGridParams.h"
 
 namespace physx
 {
@@ -46,16 +46,26 @@ class PxvNphaseImplementationContext;
 class PxsContext;
 class PxsKernelWranglerManager;
 class PxvNphaseImplementationFallback;
-struct PxgDynamicsMemoryConfig;
+struct PxGpuDynamicsMemoryConfig;
 class PxsMemoryManager;
 class PxsHeapMemoryAllocatorManager;
 class PxsSimulationController;
 class PxsSimulationControllerCallback;
+class PxsParticleBuffer;
+class PxsParticleAndDiffuseBuffer;
+class PxsParticleClothBuffer;
+class PxsParticleRigidBuffer;
 class PxDelayLoadHook;
-class PxParticleBuffer;
-class PxParticleAndDiffuseBuffer;
-class PxParticleClothBuffer;
-class PxParticleRigidBuffer;
+class PxsTransformCache;
+
+class PxIsosurfaceExtractor;
+class PxSparseGridIsosurfaceExtractor;
+struct PxIsosurfaceParams;
+
+class PxAnisotropyGenerator;
+class PxSmoothedPositionGenerator;
+class PxParticleNeighborhoodProvider;
+class PxPhysicsGpu;
 
 struct PxvSimStats;
 
@@ -100,25 +110,11 @@ public:
 	*/
 	virtual		void					release() = 0;
 
-	/**
-	Create GPU user buffers.
-	*/
-	virtual PxBuffer* createBuffer(PxU64 byteSize, PxBufferType::Enum bufferType, PxCudaContextManager* cudaContexManager, PxU64* memStat) = 0;
-	virtual	PxBuffer* createBuffer(PxU64 byteSyte, PxBufferType::Enum type, PxCudaContextManager* contextManager, PxU64* memStat, PxsHeapMemoryAllocatorManager* heapMemoryManager, void* stream) = 0;
-
-	virtual PxParticleBuffer* createParticleBuffer(PxU32 maxNumParticles, PxU32 maxVolumes, PxCudaContextManager* cudaContextManager, PxU64* memStat, void (*onParticleBufferRelease)(PxParticleBuffer* buffer)) = 0;
-	virtual PxParticleClothBuffer* createParticleClothBuffer(PxU32 maxNumParticles, PxU32 maxVolumes, PxU32 maxNumCloths, PxU32 maxNumTriangles, PxU32 maxNumSprings, PxCudaContextManager* cudaContextManager, PxU64* memStat, void (*onParticleBufferRelease)(PxParticleBuffer* buffer)) = 0;
-	virtual PxParticleRigidBuffer* createParticleRigidBuffer(PxU32 maxNumParticles, PxU32 maxVolumes, PxU32 maxNumRigids, PxCudaContextManager* cudaContextManager, PxU64* memStat, void (*onParticleBufferRelease)(PxParticleBuffer* buffer)) = 0;
-	virtual PxParticleAndDiffuseBuffer* createParticleAndDiffuseBuffer(PxU32 maxParticles, PxU32 maxVolumes, PxU32 maxDiffuseParticles, PxCudaContextManager* cudaContextManager, PxU64* memStat, void (*onParticleBufferRelease)(PxParticleBuffer* buffer)) = 0;
+	virtual PxsParticleBuffer* createParticleBuffer(PxU32 maxNumParticles, PxU32 maxVolumes, PxCudaContextManager& cudaContextManager) = 0;
+	virtual PxsParticleAndDiffuseBuffer* createParticleAndDiffuseBuffer(PxU32 maxParticles, PxU32 maxVolumes, PxU32 maxDiffuseParticles, PxCudaContextManager& cudaContextManager) = 0;
+	virtual PxsParticleClothBuffer* createParticleClothBuffer(PxU32 maxNumParticles, PxU32 maxVolumes, PxU32 maxNumCloths, PxU32 maxNumTriangles, PxU32 maxNumSprings, PxCudaContextManager& cudaContextManager) = 0;
+	virtual PxsParticleRigidBuffer* createParticleRigidBuffer(PxU32 maxNumParticles, PxU32 maxVolumes, PxU32 maxNumRigids, PxCudaContextManager& cudaContextManager) = 0;
 	
-	virtual void resizeBuffer(PxBuffer* buffer, PxU64 byteSize) = 0;
-
-	/**
-	Queue user buffer copy command.
-	*/
-	virtual void addCopyCommand(PxBuffer& dst, PxBuffer& src, bool flush) = 0;
-	virtual void addCopyCommand(PxBuffer& dst, PxBuffer& src, PxU32 srcOffset, PxU32 dstOffset, PxU32 size, bool flush) = 0;
-
 	/**
 	Create GPU memory manager.
 	*/
@@ -129,13 +125,12 @@ public:
 		PxsMemoryManager* memoryManager,
 		const PxU32 gpuComputeVersion) = 0;
 
-	/**
-	Create GPU kernel wrangler manager.
+	/** 
+	Create GPU kernel wrangler manager. If a kernel wrangler manager already exists, then that one will be returned.
+	The kernel wrangler manager should not be deleted. It will automatically be deleted when the PxPhysXGpu singleton gets released.
 	*/
-	virtual PxsKernelWranglerManager* createGpuKernelWranglerManager(
-		PxCudaContextManager* cudaContextManager, 
-		PxErrorCallback& errorCallback, 
-		const PxU32 gpuComputeVersion) = 0;
+	virtual PxsKernelWranglerManager* getGpuKernelWranglerManager(
+		PxCudaContextManager* cudaContextManager) = 0;
 
 	/**
 	Create GPU broadphase.
@@ -144,7 +139,7 @@ public:
 		PxsKernelWranglerManager* gpuKernelWrangler,
 		PxCudaContextManager* cudaContextManager,
 		const PxU32 gpuComputeVersion,
-		const PxgDynamicsMemoryConfig& config,
+		const PxGpuDynamicsMemoryConfig& config,
 		PxsHeapMemoryAllocatorManager* heapMemoryManager, PxU64 contextID) = 0;
 
 
@@ -155,7 +150,7 @@ public:
 		PxsKernelWranglerManager* gpuKernelWrangler,
 		PxCudaContextManager* cudaContextManager,
 		const PxU32 gpuComputeVersion,
-		const PxgDynamicsMemoryConfig& config,
+		const PxGpuDynamicsMemoryConfig& config,
 		PxsHeapMemoryAllocatorManager* heapMemoryManager,
 		Bp::BroadPhase& bp, 
 		Bp::BoundsArray& boundsArray, 
@@ -166,13 +161,16 @@ public:
 		PxPairFilteringMode::Enum kineKineFilteringMode, 
 		PxPairFilteringMode::Enum staticKineFilteringMode) = 0;
 
+
+	virtual Bp::BoundsArray* createGpuBounds(PxVirtualAllocator& allocator) = 0;
+
 	/**
 	Create GPU narrow phase context.
 	*/
 	virtual PxvNphaseImplementationContext* createGpuNphaseImplementationContext(PxsContext& context,
 		PxsKernelWranglerManager* gpuKernelWrangler,
 		PxvNphaseImplementationFallback* fallbackForUnsupportedCMs,
-		const PxgDynamicsMemoryConfig& gpuDynamicsConfig, void* contactStreamBase, void* patchStreamBase, void* forceAndIndiceStreamBase,
+		const PxGpuDynamicsMemoryConfig& gpuDynamicsConfig, void* contactStreamBase, void* patchStreamBase, void* forceAndIndiceStreamBase,
 		PxBoundsArrayPinned& bounds, IG::IslandSim* islandSim,
 		physx::Dy::Context* dynamicsContext, const PxU32 gpuComputeVersion, PxsHeapMemoryAllocatorManager* heapMemoryManager,
 		bool useGpuBP) = 0;
@@ -183,20 +181,21 @@ public:
 	virtual PxsSimulationController* createGpuSimulationController(PxsKernelWranglerManager* gpuWranglerManagers, 
 		PxCudaContextManager* cudaContextManager,
 		Dy::Context* dynamicContext, PxvNphaseImplementationContext* npContext, Bp::BroadPhase* bp, 
-		const bool useGpuBroadphase, IG::SimpleIslandManager* simpleIslandSim,
-		PxsSimulationControllerCallback* callback, const PxU32 gpuComputeVersion, PxsHeapMemoryAllocatorManager* heapMemoryManager,
-		const PxU32 maxSoftBodyContacts, const PxU32 maxFemClothContacts, const PxU32 maxParticleContacts, const PxU32 maxHairContacts) = 0;
+		bool useGpuBroadphase,
+		PxsSimulationControllerCallback* callback, PxU32 gpuComputeVersion, PxsHeapMemoryAllocatorManager* heapMemoryManager,
+		PxU32 maxSoftBodyContacts, PxU32 maxDeformableSurfaceContacts, PxU32 maxParticleContacts,
+		PxU32 collisionStackSizeBytes, bool enableBodyAccelerations) = 0;
 
 	/**
 	Create GPU dynamics context.
 	*/
 	virtual Dy::Context* createGpuDynamicsContext(Cm::FlushPool& taskPool, PxsKernelWranglerManager* gpuKernelWragler, 
 		PxCudaContextManager* cudaContextManager, 
-		const PxgDynamicsMemoryConfig& config, IG::SimpleIslandManager* islandManager, const PxU32 maxNumPartitions, const PxU32 maxNumStaticPartitions,
-		const bool enableStabilization, const bool useEnhancedDeterminism, const PxReal maxBiasCoefficient,
-		const PxU32 gpuComputeVersion, PxvSimStats& simStats, PxsHeapMemoryAllocatorManager* heapMemoryManager,
-		const bool frictionEveryIteration, PxSolverType::Enum solverType, const PxReal lengthScale) = 0;
-
+		const PxGpuDynamicsMemoryConfig& config, IG::SimpleIslandManager& islandManager, PxU32 maxNumPartitions, PxU32 maxNumStaticPartitions,
+		bool enableStabilization, bool useEnhancedDeterminism, PxReal maxBiasCoefficient,
+		PxU32 gpuComputeVersion, PxvSimStats& simStats, PxsHeapMemoryAllocatorManager* heapMemoryManager,
+		bool frictionEveryIteration, bool externalForcesEveryTgsIterationEnabled, PxSolverType::Enum solverType,
+		PxReal lengthScale, bool enableDirectGPUAPI, PxU64 contextID, bool isResidualReportingEnabled) = 0;
 };
 
 }
@@ -207,14 +206,19 @@ Create PxPhysXGpu interface class.
 PX_C_EXPORT PX_PHYSX_GPU_API physx::PxPhysXGpu* PX_CALL_CONV PxCreatePhysXGpu();
 
 /**
-Create a cuda context manager.
+Create a cuda context manager. Set launchSynchronous to true for Cuda to report the actual point of failure.
 */
-PX_C_EXPORT PX_PHYSX_GPU_API physx::PxCudaContextManager* PX_CALL_CONV PxCreateCudaContextManager(physx::PxFoundation& foundation, const physx::PxCudaContextManagerDesc& desc, physx::PxProfilerCallback* profilerCallback = NULL);
+PX_C_EXPORT PX_PHYSX_GPU_API physx::PxCudaContextManager* PX_CALL_CONV PxCreateCudaContextManager(physx::PxFoundation& foundation, const physx::PxCudaContextManagerDesc& desc, physx::PxProfilerCallback* profilerCallback = NULL, bool launchSynchronous = false);
 
 /**
 Set profiler callback.
 */
 PX_C_EXPORT PX_PHYSX_GPU_API void PX_CALL_CONV PxSetPhysXGpuProfilerCallback(physx::PxProfilerCallback* profilerCallback);
+
+/**
+Set PhysXFoundation instance.
+*/
+PX_C_EXPORT PX_PHYSX_GPU_API void PX_CALL_CONV PxSetPhysXGpuFoundationInstance(physx::PxFoundation& foundation);
 
 /**
 Query the device ordinal - depends on control panel settings.
@@ -229,6 +233,8 @@ PX_C_EXPORT PX_PHYSX_GPU_API physx::PxKernelIndex* PX_CALL_CONV PxGpuGetCudaFunc
 PX_C_EXPORT PX_PHYSX_GPU_API physx::PxU32 PX_CALL_CONV PxGpuGetCudaFunctionTableSize();
 PX_C_EXPORT PX_PHYSX_GPU_API void** PX_CALL_CONV PxGpuGetCudaModuleTable();
 PX_C_EXPORT PX_PHYSX_GPU_API physx::PxU32 PX_CALL_CONV PxGpuGetCudaModuleTableSize();
+PX_C_EXPORT PX_PHYSX_GPU_API physx::PxPhysicsGpu* PX_CALL_CONV PxGpuCreatePhysicsGpu();
+
 #endif
 
 #endif // PX_PHYSX_GPU_H

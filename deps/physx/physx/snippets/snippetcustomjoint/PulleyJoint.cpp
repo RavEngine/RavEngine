@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -91,17 +91,6 @@ static PxU32 solverPrep(Px1DConstraint* constraints,
 	return 1;
 }
 
-static void project(const void* constantBlock,
-					PxTransform& bodyAToWorld,
-					PxTransform& bodyBToWorld,
-					bool projectToA)
-{
-	PX_UNUSED(constantBlock);
-	PX_UNUSED(bodyAToWorld);
-	PX_UNUSED(bodyBToWorld);
-	PX_UNUSED(projectToA);
-}
-
 static void visualize(	PxConstraintVisualizer&	viz,
 						const void*				constantBlock,
 						const PxTransform&		body0Transform,
@@ -117,7 +106,7 @@ static void visualize(	PxConstraintVisualizer&	viz,
 	viz.visualizeJointFrames(PxTransform(data.attachment0), PxTransform(data.attachment1));
 }
 
-static PxConstraintShaderTable sShaderTable = { solverPrep, project, visualize, PxConstraintFlag::Enum(0) };
+static PxConstraintShaderTable sShaderTable = { solverPrep, visualize, PxConstraintFlag::Enum(0) };
 
 PxConstraintSolverPrep PulleyJoint::getPrep() const { return solverPrep; }
 

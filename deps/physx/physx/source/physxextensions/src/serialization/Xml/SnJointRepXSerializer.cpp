@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 #include "PxMetaDataObjects.h"
@@ -59,14 +59,6 @@ namespace physx {
 											  PxRigidActor* actor1, const PxTransform& localFrame1)
 	{
 		return PxDistanceJointCreate( physics, actor0, localFrame0, actor1, localFrame1 );
-	}
-
-	template<>
-	inline PxContactJoint*	createJoint<PxContactJoint>(PxPhysics& physics, 
-									 		  PxRigidActor* actor0, const PxTransform& localFrame0, 
-											  PxRigidActor* actor1, const PxTransform& localFrame1)
-	{
-		return PxContactJointCreate( physics, actor0, localFrame0, actor1, localFrame1 );
 	}
 	
 	template<>
@@ -136,7 +128,6 @@ namespace physx {
 	// explicit template instantiations
 	template struct PxJointRepXSerializer<PxFixedJoint>;
 	template struct PxJointRepXSerializer<PxDistanceJoint>;
-	template struct PxJointRepXSerializer<PxContactJoint>;
 	template struct PxJointRepXSerializer<PxD6Joint>;
 	template struct PxJointRepXSerializer<PxPrismaticJoint>;
 	template struct PxJointRepXSerializer<PxRevoluteJoint>;

@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -55,11 +55,11 @@ namespace Ext
 										GearJoint(PxBaseFlags baseFlags) : GearJointT(baseFlags) {}
 				void					resolveReferences(PxDeserializationContext& context);
 		static	GearJoint*				createObject(PxU8*& address, PxDeserializationContext& context)	{ return createJointObject<GearJoint>(address, context);	}
-		static	void					getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
 										GearJoint(const PxTolerancesScale& /*scale*/, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1);
 		// PxGearJoint
 		virtual	bool					setHinges(const PxBase* hinge0, const PxBase* hinge1)	PX_OVERRIDE;
+		virtual	void					getHinges(const PxBase*& hinge0, const PxBase*& hinge1)	const	PX_OVERRIDE;
 		virtual	void					setGearRatio(float ratio)	PX_OVERRIDE;
 		virtual	float					getGearRatio()	const	PX_OVERRIDE;
 		//~PxGearJoint

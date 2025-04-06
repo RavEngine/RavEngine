@@ -1,6 +1,6 @@
 # NVIDIA PhysX SDK 5
 
-Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -31,9 +31,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Welcome to the NVIDIA PhysX SDK source code repository.
 
-The NVIDIA PhysX SDK is a scalable multi-platform physics solution supporting a wide range of devices, from smartphones to high-end multicore CPUs and GPUs. PhysX is already integrated into some of the most popular game engines, including Unreal Engine, and Unity3D. [PhysX SDK on developer.nvidia.com](https://developer.nvidia.com/physx-sdk).
+The NVIDIA PhysX SDK is a scalable multi-platform physics solution for CPUs and GPUs.  See [PhysX SDK on developer.nvidia.com](https://developer.nvidia.com/physx-sdk).
 
-Please see [Release Notes](./CHANGELOG.md) for updates pertaining to the latest version.
+The [Release Notes](./CHANGELOG.md) contain updates pertaining to the latest version.
 
 ## User Guide and API Documentation
 
@@ -45,6 +45,8 @@ Platform specific environment and build information can be found in [documentati
 
 To begin, clone this repository onto your local drive.  Then change directory to physx/, run ./generate_projects.[bat|sh] and follow on-screen prompts.  This will let you select a platform specific solution to build.  You can then build from the generated solution/make file in the platform- and configuration-specific folders in the ``compiler`` folder.
 
+Note that the PhysX distribution downloads binary content, such as the PhysX GPU binaries, from Amazon CloudFront on demand, using the packman package manager.
+
 ## Acknowledgements
 
 This depot references packages of third party open source software copyright their respective owners.
@@ -52,8 +54,7 @@ For copyright details, please refer to the license files included in the package
 
 | Software                  | Copyright Holder                                                                    | Package                          |
 |---------------------------|-------------------------------------------------------------------------------------|----------------------------------|
-| CMake                     | Kitware, Inc. and Contributors                                                      | CMakeModules                     |
-| FindCUDA                  | James Bigler: NVIDIA Corp, Abe Stephens: SCI Institute                              | CMakeModules                     |
+| CMake                     | Kitware, Inc. and Contributors                                                      | cmake                            |
 | LLVM                      | University of Illinois at Urbana-Champaign                                          | clang-physxmetadata              |
 | Visual Studio Locator     | Microsoft Corporation                                                               | VsWhere                          |
 | Freeglut                  | Pawel W. Olszta                                                                     | freeglut-windows<br>opengl-linux |

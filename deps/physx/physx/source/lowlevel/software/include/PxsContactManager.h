@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -34,7 +34,6 @@
 
 namespace physx
 {
-class PxsContext;
 class PxsRigidBody;
 
 namespace Dy
@@ -76,43 +75,45 @@ PX_COMPILE_TIME_ASSERT((sizeof(PxsCCDContactHeader) & 0xF) == 0);
 class PxsContactManager
 {
 public:
-											PxsContactManager(PxsContext* context, PxU32 index);
+											PxsContactManager(PxU32 index);
 											~PxsContactManager();
 
-	PX_FORCE_INLINE	void					setDisableStrongFriction(PxU32 d)	{ (!d)	? mNpUnit.flags &= ~PxcNpWorkUnitFlag::eDISABLE_STRONG_FRICTION 
-																								: mNpUnit.flags |= PxcNpWorkUnitFlag::eDISABLE_STRONG_FRICTION; }
+	PX_FORCE_INLINE	void					setDisableStrongFriction(PxU32 d)	{ (!d)	? mNpUnit.mFlags &= ~PxcNpWorkUnitFlag::eDISABLE_STRONG_FRICTION 
+																						: mNpUnit.mFlags |= PxcNpWorkUnitFlag::eDISABLE_STRONG_FRICTION; }
 
-	PX_FORCE_INLINE	PxReal					getRestDistance()			const	{ return mNpUnit.restDistance;				}
-	PX_FORCE_INLINE	void					setRestDistance(PxReal v)			{ mNpUnit.restDistance = v;					}
+	PX_FORCE_INLINE	PxReal					getRestDistance()			const	{ return mNpUnit.mRestDistance;	}
+	PX_FORCE_INLINE	void					setRestDistance(PxReal v)			{ mNpUnit.mRestDistance = v;	}
 
-	PX_FORCE_INLINE	PxU8					getDominance0()				const	{ return mNpUnit.dominance0;				}
-	PX_FORCE_INLINE	void					setDominance0(PxU8 v)				{ mNpUnit.dominance0 = v;					}
+	PX_FORCE_INLINE	PxU8					getDominance0()				const	{ return mNpUnit.getDominance0();	}
+	PX_FORCE_INLINE	void					setDominance0(PxU8 v)				{ mNpUnit.setDominance0(v);			}
 
-	PX_FORCE_INLINE	PxU8					getDominance1()				const	{ return mNpUnit.dominance1;				}
-	PX_FORCE_INLINE	void					setDominance1(PxU8 v)				{ mNpUnit.dominance1 = v;					}
+	PX_FORCE_INLINE	PxU8					getDominance1()				const	{ return mNpUnit.getDominance1();	}
+	PX_FORCE_INLINE	void					setDominance1(PxU8 v)				{ mNpUnit.setDominance1(v);			}
 
-	PX_FORCE_INLINE	PxU16					getTouchStatus()			const	{ return PxU16(mNpUnit.statusFlags & PxcNpWorkUnitStatusFlag::eHAS_TOUCH); }
-	PX_FORCE_INLINE	PxU16					touchStatusKnown()			const	{ return PxU16(mNpUnit.statusFlags & PxcNpWorkUnitStatusFlag::eTOUCH_KNOWN); }
-	PX_FORCE_INLINE	PxI32					getTouchIdx()				const	{ return (mNpUnit.statusFlags& PxcNpWorkUnitStatusFlag::eHAS_TOUCH) ? 1 : (mNpUnit.statusFlags& PxcNpWorkUnitStatusFlag::eHAS_NO_TOUCH ? -1 : 0); }
+	PX_FORCE_INLINE	PxU16					getTouchStatus()			const	{ return PxU16(mNpUnit.mStatusFlags & PxcNpWorkUnitStatusFlag::eHAS_TOUCH); }
+	PX_FORCE_INLINE	PxU16					touchStatusKnown()			const	{ return PxU16(mNpUnit.mStatusFlags & PxcNpWorkUnitStatusFlag::eTOUCH_KNOWN); }
+	PX_FORCE_INLINE	PxI32					getTouchIdx()				const	{ return (mNpUnit.mStatusFlags & PxcNpWorkUnitStatusFlag::eHAS_TOUCH) ? 1 : (mNpUnit.mStatusFlags & PxcNpWorkUnitStatusFlag::eHAS_NO_TOUCH ? -1 : 0); }
 
-	PX_FORCE_INLINE	PxU32					getIndex()					const	{ return mNpUnit.index;						}
+	PX_FORCE_INLINE	PxU32					getIndex()					const	{ return mCmIndex;	}
 
-	PX_FORCE_INLINE	PxU16					getHasCCDRetouch()			const	{ return PxU16(mNpUnit.statusFlags & PxcNpWorkUnitStatusFlag::eHAS_CCD_RETOUCH); }
-	PX_FORCE_INLINE	void					clearCCDRetouch()					{ mNpUnit.statusFlags &= ~PxcNpWorkUnitStatusFlag::eHAS_CCD_RETOUCH; }
-	PX_FORCE_INLINE	void					raiseCCDRetouch()					{ mNpUnit.statusFlags |= PxcNpWorkUnitStatusFlag::eHAS_CCD_RETOUCH; }
+	PX_FORCE_INLINE	PxU16					getHasCCDRetouch()			const	{ return PxU16(mNpUnit.mStatusFlags & PxcNpWorkUnitStatusFlag::eHAS_CCD_RETOUCH); }
+	PX_FORCE_INLINE	void					clearCCDRetouch()					{ mNpUnit.mStatusFlags &= ~PxcNpWorkUnitStatusFlag::eHAS_CCD_RETOUCH; }
+	PX_FORCE_INLINE	void					raiseCCDRetouch()					{ mNpUnit.mStatusFlags |= PxcNpWorkUnitStatusFlag::eHAS_CCD_RETOUCH; }
 
 	// flags stuff - needs to be refactored
 
 	PX_FORCE_INLINE	PxIntBool				isChangeable()				const	{ return PxIntBool(mFlags & PXS_CM_CHANGEABLE);		}
-	PX_FORCE_INLINE	PxIntBool				getCCD()					const	{ return PxIntBool((mFlags & PXS_CM_CCD_LINEAR) && (mNpUnit.flags & PxcNpWorkUnitFlag::eDETECT_CCD_CONTACTS)); }
+	PX_FORCE_INLINE	PxIntBool				getCCD()					const	{ return PxIntBool((mFlags & PXS_CM_CCD_LINEAR) && (mNpUnit.mFlags & PxcNpWorkUnitFlag::eDETECT_CCD_CONTACTS)); }
 	PX_FORCE_INLINE	PxIntBool				getHadCCDContact()			const	{ return PxIntBool(mFlags & PXS_CM_CCD_CONTACT); }
 	PX_FORCE_INLINE	void					setHadCCDContact()					{ mFlags |= PXS_CM_CCD_CONTACT; }
 					void					setCCD(bool enable);
-	PX_FORCE_INLINE	void					clearCCDContactInfo()				{ mFlags &= ~PXS_CM_CCD_CONTACT; mNpUnit.ccdContacts = NULL; }
+	PX_FORCE_INLINE	void					clearCCDContactInfo()				{ mFlags &= ~PXS_CM_CCD_CONTACT; mNpUnit.mCCDContacts = NULL; }
 
 	PX_FORCE_INLINE	PxcNpWorkUnit&			getWorkUnit()						{ return mNpUnit;	}
 	PX_FORCE_INLINE	const PxcNpWorkUnit&	getWorkUnit()				const	{ return mNpUnit;	}
 
+	PX_FORCE_INLINE	PxsRigidBody*			getRigidBody0()				const	{ return mRigidBody0;		}
+	PX_FORCE_INLINE	PxsRigidBody*			getRigidBody1()				const	{ return mRigidBody1;		}
 	PX_FORCE_INLINE	Sc::ShapeInteraction*	getShapeInteraction()		const	{ return mShapeInteraction; }
 	
 	// Setup solver-constraints
@@ -124,27 +125,22 @@ public:
 private:
 					//KS - moving this up - we want to get at flags
 					
-					PxsRigidBody*			mRigidBody0;		//4		//8
-					PxsRigidBody*			mRigidBody1;		//8		//16	
-					PxU32					mFlags;				//20	//36
-					Sc::ShapeInteraction*	mShapeInteraction;	//16	//32
+					PxsRigidBody*			mRigidBody0;
+					PxsRigidBody*			mRigidBody1;
+					PxU32					mFlags;
+					PxU32					mCmIndex;	// PT: moved to padding bytes from mNpUnit
+					Sc::ShapeInteraction*	mShapeInteraction;
 
-					friend class PxsContext;
 	// everything required for narrow phase to run
 					PxcNpWorkUnit			mNpUnit;
 	enum
 	{
-		PXS_CM_CHANGEABLE	= (1<<0),
-		PXS_CM_CCD_LINEAR	= (1<<1),
+		PXS_CM_CHANGEABLE	= (1 << 0),
+		PXS_CM_CCD_LINEAR	= (1 << 1),
 		PXS_CM_CCD_CONTACT	= (1 << 2)
 	};
 
-	friend class Dy::DynamicsContext;
-	friend struct PxsCCDPair;
-	friend class PxsIslandManager;
-	friend class PxsCCDContext;
 	friend class Sc::ShapeInteraction;
-	//friend class Sc::SoftBodyShapeInteraction;
 };
 
 }

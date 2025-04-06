@@ -22,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_BROAD_PHASE_EXT_H
 #define PX_BROAD_PHASE_EXT_H
-/** \addtogroup extensions
-  @{
-*/
 
 #include "PxPhysXConfig.h"
 #include "common/PxPhysXCommonConfig.h"
@@ -38,6 +35,7 @@
 #if !PX_DOXYGEN
 namespace physx
 {
+class PxBounds3;
 #endif
 
 class PxBroadPhaseExt
@@ -60,7 +58,7 @@ public:
 	\param[in]	upAxis			Up axis (0 for X, 1 for Y, 2 for Z).
 	\return		number of regions written out to the 'regions' array
 
-	@see PxSceneDesc PxBroadPhaseType
+	\see PxSceneDesc PxBroadPhaseType
 	*/
 	static	PxU32	createRegionsFromWorldBounds(PxBounds3* regions, const PxBounds3& globalBounds, PxU32 nbSubdiv, PxU32 upAxis=1);
 };
@@ -69,5 +67,4 @@ public:
 } // namespace physx
 #endif
 
-/** @} */
 #endif

@@ -22,10 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
-// Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
+// Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
+#include "PxParticleBuffer.h"
+#include "extensions/PxCudaHelpersExt.h"
 #include "extensions/PxParticleExt.h"
 
 #include "foundation/PxUserAllocated.h"
@@ -42,28 +44,32 @@ namespace ExtGpu
 
 void PxDmaDataToDevice(PxCudaContextManager* cudaContextManager, PxParticleBuffer* particleBuffer, const PxParticleBufferDesc& desc)
 {
-#if PX_OSX==0 && !(PX_WIN64 && (PX_ARM || PX_A64))
+#if PX_SUPPORT_GPU_PHYSX
 	cudaContextManager->acquireContext();
-	
+
 	PxVec4* posInvMass = particleBuffer->getPositionInvMasses();
 	PxVec4* velocities = particleBuffer->getVelocities();
 	PxU32* phases = particleBuffer->getPhases();
 	PxParticleVolume* volumes = particleBuffer->getParticleVolumes();
-	
+
 	PxCudaContext* cudaContext = cudaContextManager->getCudaContext();
-	
+
 	//KS - TODO - use an event to wait for this
 	cudaContext->memcpyHtoDAsync(CUdeviceptr(posInvMass), desc.positions, desc.numActiveParticles * sizeof(PxVec4), 0);
 	cudaContext->memcpyHtoDAsync(CUdeviceptr(velocities), desc.velocities, desc.numActiveParticles * sizeof(PxVec4), 0);
 	cudaContext->memcpyHtoDAsync(CUdeviceptr(phases), desc.phases, desc.numActiveParticles * sizeof(PxU32), 0);
 	cudaContext->memcpyHtoDAsync(CUdeviceptr(volumes), desc.volumes, desc.numVolumes * sizeof(PxParticleVolume), 0);
-	
+
 	particleBuffer->setNbActiveParticles(desc.numActiveParticles);
 	particleBuffer->setNbParticleVolumes(desc.numVolumes);
-	
+
 	cudaContext->streamSynchronize(0);
-	
+
 	cudaContextManager->releaseContext();
+#else
+	PX_UNUSED(cudaContextManager);
+	PX_UNUSED(particleBuffer);
+	PX_UNUSED(desc);
 #endif
 }
 
@@ -85,50 +91,54 @@ PxParticleAndDiffuseBuffer* PxCreateAndPopulateParticleAndDiffuseBuffer(const Px
 
 PxParticleClothBuffer* PxCreateAndPopulateParticleClothBuffer(const PxParticleBufferDesc& desc, const PxParticleClothDesc& clothDesc, PxPartitionedParticleCloth& output, PxCudaContextManager* cudaContextManager)
 {
-#if PX_OSX==0 && !(PX_WIN64 && (PX_ARM || PX_A64))
+#if PX_SUPPORT_GPU_PHYSX
 	cudaContextManager->acquireContext();
-	
+
 	PxParticleClothBuffer* clothBuffer = PxGetPhysics().createParticleClothBuffer(desc.maxParticles, desc.maxVolumes, clothDesc.nbCloths, clothDesc.nbTriangles, clothDesc.nbSprings, cudaContextManager);
-	
+
 	PxVec4* posInvMass = clothBuffer->getPositionInvMasses();
 	PxVec4* velocities = clothBuffer->getVelocities();
 	PxU32* phases = clothBuffer->getPhases();
 	PxParticleVolume* volumes = clothBuffer->getParticleVolumes();
 	PxU32* triangles = clothBuffer->getTriangles();
 	PxVec4* restPositions = clothBuffer->getRestPositions();
-	
+
 	PxCudaContext* cudaContext = cudaContextManager->getCudaContext();
-	
+
 	cudaContext->memcpyHtoDAsync(CUdeviceptr(posInvMass), desc.positions, desc.numActiveParticles * sizeof(PxVec4), 0);
 	cudaContext->memcpyHtoDAsync(CUdeviceptr(velocities), desc.velocities, desc.numActiveParticles * sizeof(PxVec4), 0);
 	cudaContext->memcpyHtoDAsync(CUdeviceptr(phases), desc.phases, desc.numActiveParticles * sizeof(PxU32), 0);
 	cudaContext->memcpyHtoDAsync(CUdeviceptr(volumes), desc.volumes, desc.numVolumes * sizeof(PxParticleVolume), 0);
 	cudaContext->memcpyHtoDAsync(CUdeviceptr(triangles), clothDesc.triangles, clothDesc.nbTriangles * sizeof(PxU32) * 3, 0);
 	cudaContext->memcpyHtoDAsync(CUdeviceptr(restPositions), clothDesc.restPositions, desc.numActiveParticles * sizeof(PxVec4), 0);
-	
+
 	clothBuffer->setNbActiveParticles(desc.numActiveParticles);
 	clothBuffer->setNbParticleVolumes(desc.numVolumes);
 	clothBuffer->setNbTriangles(clothDesc.nbTriangles);
-	
+
 	clothBuffer->setCloths(output);
-	
+
 	cudaContext->streamSynchronize(0);
-	
+
 	cudaContextManager->releaseContext();
-	
+
 	return clothBuffer;
 #else
-	return nullptr;
+	PX_UNUSED(desc);
+	PX_UNUSED(clothDesc);
+	PX_UNUSED(output);
+	PX_UNUSED(cudaContextManager);
+	return NULL;
 #endif
 }
 
 PxParticleRigidBuffer* PxCreateAndPopulateParticleRigidBuffer(const PxParticleBufferDesc& desc, const PxParticleRigidDesc& rigidDesc, PxCudaContextManager* cudaContextManager)
 {
-#if PX_OSX==0 && !(PX_WIN64 && (PX_ARM || PX_A64))
+#if PX_SUPPORT_GPU_PHYSX
 	cudaContextManager->acquireContext();
-	
+
 	PxParticleRigidBuffer* rigidBuffer = PxGetPhysics().createParticleRigidBuffer(desc.maxParticles, desc.maxVolumes, rigidDesc.maxRigids, cudaContextManager);
-	
+
 	PxVec4* posInvMassd = rigidBuffer->getPositionInvMasses();
 	PxVec4* velocitiesd = rigidBuffer->getVelocities();
 	PxU32* phasesd = rigidBuffer->getPhases();
@@ -139,12 +149,12 @@ PxParticleRigidBuffer* PxCreateAndPopulateParticleRigidBuffer(const PxParticleBu
 	PxVec4* rigidRotationsd = rigidBuffer->getRigidRotations();
 	PxVec4* rigidLocalPositionsd = rigidBuffer->getRigidLocalPositions();
 	PxVec4* rigidLocalNormalsd = rigidBuffer->getRigidLocalNormals();
-	
+
 	PxCudaContext* cudaContext = cudaContextManager->getCudaContext();
-	
+
 	const PxU32 numRigids = rigidDesc.numActiveRigids;
 	const PxU32 numActiveParticles = desc.numActiveParticles;
-	
+
 	cudaContext->memcpyHtoDAsync(CUdeviceptr(posInvMassd), desc.positions, numActiveParticles * sizeof(PxVec4), 0);
 	cudaContext->memcpyHtoDAsync(CUdeviceptr(velocitiesd), desc.velocities, numActiveParticles * sizeof(PxVec4), 0);
 	cudaContext->memcpyHtoDAsync(CUdeviceptr(phasesd), desc.phases, numActiveParticles * sizeof(PxU32), 0);
@@ -155,60 +165,63 @@ PxParticleRigidBuffer* PxCreateAndPopulateParticleRigidBuffer(const PxParticleBu
 	cudaContext->memcpyHtoDAsync(CUdeviceptr(rigidRotationsd), rigidDesc.rigidRotations, sizeof(PxQuat) * numRigids, 0);
 	cudaContext->memcpyHtoDAsync(CUdeviceptr(rigidLocalPositionsd), rigidDesc.rigidLocalPositions, sizeof(PxVec4) * desc.numActiveParticles, 0);
 	cudaContext->memcpyHtoDAsync(CUdeviceptr(rigidLocalNormalsd), rigidDesc.rigidLocalNormals, sizeof(PxVec4) * desc.numActiveParticles, 0);
-	
+
 	rigidBuffer->setNbActiveParticles(numActiveParticles);
 	rigidBuffer->setNbRigids(numRigids);
 	rigidBuffer->setNbParticleVolumes(desc.numVolumes);
-	
+
 	cudaContext->streamSynchronize(0);
-	
+
 	cudaContextManager->releaseContext();
-	
+
 	return rigidBuffer;
 #else
-	return nullptr;
+	PX_UNUSED(desc);
+	PX_UNUSED(rigidDesc);
+	PX_UNUSED(cudaContextManager);
+	return NULL;
 #endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-PxParticleAttachmentBuffer::PxParticleAttachmentBuffer(PxParticleBuffer& particleBuffer, PxParticleSystem& particleSystem) : mParticleBuffer(particleBuffer),
-mDeviceAttachments(NULL), mDeviceFilters(NULL), mNumDeviceAttachments(0), mNumDeviceFilters(0), mCudaContextManager(particleSystem.getCudaContextManager()),
-mParticleSystem(particleSystem), mDirty(false)
+PxParticleAttachmentBuffer::PxParticleAttachmentBuffer(PxParticleBuffer& particleBuffer, PxPBDParticleSystem& particleSystem) : mParticleBuffer(particleBuffer),
+	mDeviceAttachments(NULL), mDeviceFilters(NULL), mNumDeviceAttachments(0), mNumDeviceFilters(0), mCudaContextManager(particleSystem.getCudaContextManager()),
+	mParticleSystem(particleSystem), mDirty(false)
 {
 }
 
 PxParticleAttachmentBuffer::~PxParticleAttachmentBuffer()
 {
-#if PX_OSX==0 && !(PX_WIN64 && (PX_ARM || PX_A64))
+#if PX_SUPPORT_GPU_PHYSX
 	mCudaContextManager->acquireContext();
-	
+
 	PxCudaContext* cudaContext = mCudaContextManager->getCudaContext();
-	
+
 	if (mDeviceAttachments)
 		cudaContext->memFree((CUdeviceptr)mDeviceAttachments);
 	if (mDeviceFilters)
 		cudaContext->memFree((CUdeviceptr)mDeviceFilters);
-	
+
 	mDeviceAttachments = NULL;
 	mDeviceFilters = NULL;
-	
+
 	mCudaContextManager->releaseContext();
 #endif
 }
 
 void PxParticleAttachmentBuffer::copyToDevice(CUstream stream)
 {
-#if PX_OSX==0 && !(PX_WIN64 && (PX_ARM || PX_A64))
+#if PX_SUPPORT_GPU_PHYSX
 	mCudaContextManager->acquireContext();
-	
+
 	PxCudaContext* cudaContext = mCudaContextManager->getCudaContext();
-	
+
 	if (mAttachments.size() > mNumDeviceAttachments)
 	{
 		if (mDeviceAttachments)
 			cudaContext->memFree((CUdeviceptr)mDeviceAttachments);
-		
+
 		cudaContext->memAlloc((CUdeviceptr*)&mDeviceAttachments, sizeof(PxParticleRigidAttachment)*mAttachments.size());
 		mNumDeviceAttachments = mAttachments.size();
 	}
@@ -216,57 +229,63 @@ void PxParticleAttachmentBuffer::copyToDevice(CUstream stream)
 	{
 		if (mDeviceFilters)
 			cudaContext->memFree((CUdeviceptr)mDeviceFilters);
-		
+
 		cudaContext->memAlloc((CUdeviceptr*)&mDeviceFilters, sizeof(PxParticleRigidFilterPair)*mFilters.size());
 		mNumDeviceFilters = mFilters.size();
 	}
-	
+
 	if (mAttachments.size())
 		cudaContext->memcpyHtoDAsync((CUdeviceptr)mDeviceAttachments, mAttachments.begin(), sizeof(PxParticleRigidAttachment)*mAttachments.size(), stream);
-	
+
 	if (mFilters.size())
 		cudaContext->memcpyHtoDAsync((CUdeviceptr)mDeviceFilters, mFilters.begin(), sizeof(PxParticleRigidFilterPair)*mFilters.size(), stream);
-	
+
 	mParticleBuffer.setRigidAttachments(mDeviceAttachments, mAttachments.size());
 	mParticleBuffer.setRigidFilters(mDeviceFilters, mFilters.size());
-	
+
 	mDirty = true;
-	
+
 	for (PxU32 i = 0; i < mNewReferencedBodies.size(); ++i)
 	{
 		if (mReferencedBodies[mNewReferencedBodies[i]] > 0)
 			mParticleSystem.addRigidAttachment(mNewReferencedBodies[i]);
 	}
-	
+
 	for (PxU32 i = 0; i < mDestroyedRefrencedBodies.size(); ++i)
 	{
 		if (mReferencedBodies[mDestroyedRefrencedBodies[i]] == 0)
 			mParticleSystem.removeRigidAttachment(mDestroyedRefrencedBodies[i]);
 	}
-	
+
 	mNewReferencedBodies.resize(0);
 	mDestroyedRefrencedBodies.resize(0);
-	
+
 	mCudaContextManager->releaseContext();
+#else
+	PX_UNUSED(stream);
 #endif
 }
 
 void PxParticleAttachmentBuffer::addRigidAttachment(PxRigidActor* rigidActor, const PxU32 particleID, const PxVec3& localPose, PxConeLimitedConstraint* coneLimit)
 {
+	PX_CHECK_AND_RETURN(coneLimit == NULL || coneLimit->isValid(), "PxParticleAttachmentBuffer::addRigidAttachment: PxConeLimitedConstraint needs to be valid if specified.");
+
 	PX_ASSERT(particleID < mParticleBuffer.getNbActiveParticles());
-	PxParticleRigidAttachment attachment;
-	
+	PxParticleRigidAttachment attachment(PxConeLimitedConstraint(), PxVec4(0.0f));
+
+	if (rigidActor == NULL)
+	{
+		PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, PX_FL,
+				"PxParticleAttachmentBuffer::addRigidAttachment: rigidActor cannot be NULL.");
+			return;
+	}
+		
 	if (coneLimit)
 	{
-		attachment.mParams.axisAngle = PxVec4(coneLimit->mAxis, coneLimit->mAngle);
-		attachment.mParams.lowHighLimits = PxVec4(coneLimit->mLowLimit, coneLimit->mHighLimit, 0.f, 0.f);
+		attachment.mConeLimitParams.axisAngle = PxVec4(coneLimit->mAxis, coneLimit->mAngle);
+		attachment.mConeLimitParams.lowHighLimits = PxVec4(coneLimit->mLowLimit, coneLimit->mHighLimit, 0.f, 0.f);
 	}
-	else
-	{
-		attachment.mParams.axisAngle = PxVec4(0.f);
-		attachment.mParams.lowHighLimits = PxVec4(0.f);
-	}
-	
+
 	if (rigidActor->getType() == PxActorType::eRIGID_STATIC)
 	{
 		// attachments to rigid static work in global space
@@ -282,15 +301,15 @@ void PxParticleAttachmentBuffer::addRigidAttachment(PxRigidActor* rigidActor, co
 		attachment.mID0 = rigid->getInternalIslandNodeIndex().getInd();
 	}
 	attachment.mID1 = particleID;
-	
+			
 	//Insert in order...
-	
+
 	PxU32 l = 0, r = PxU32(mAttachments.size());
-	
+
 	while (l < r) //If difference is just 1, we've found an item...
 	{
 		PxU32 index = (l + r) / 2;
-		
+
 		if (attachment < mAttachments[index])
 			r = index;
 		else if (attachment > mAttachments[index])
@@ -298,21 +317,21 @@ void PxParticleAttachmentBuffer::addRigidAttachment(PxRigidActor* rigidActor, co
 		else
 			l = r = index; //This is a match so insert before l
 	}
-	
+
 	mAttachments.insert();
-	
+
 	for (PxU32 i = mAttachments.size()-1; i > l; --i)
 	{
 		mAttachments[i] = mAttachments[i - 1];
 	}
 	mAttachments[l] = attachment;
-	
+
 	mDirty = true;
-	
+
 	if (rigidActor)
 	{
 		PxU32& refCount = mReferencedBodies[rigidActor];
-		
+
 		if (refCount == 0)
 			mNewReferencedBodies.pushBack(rigidActor);
 		refCount++;
@@ -322,26 +341,33 @@ void PxParticleAttachmentBuffer::addRigidAttachment(PxRigidActor* rigidActor, co
 bool PxParticleAttachmentBuffer::removeRigidAttachment(PxRigidActor* rigidActor, const PxU32 particleID)
 {
 	PX_ASSERT(particleID < mParticleBuffer.getNbActiveParticles());
-	
+
+	if (rigidActor == NULL)
+	{
+		PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, PX_FL,
+				"PxParticleAttachmentBuffer::removeRigidAttachment: rigidActor cannot be NULL.");
+		return false;
+	}
+
 	if (rigidActor)
 	{
 		PxU32& refCount = mReferencedBodies[rigidActor];
 		refCount--;
-		
+
 		if (refCount == 0)
 			mDestroyedRefrencedBodies.pushBack(rigidActor);
 	}
-	
+
 	PxParticleRigidFilterPair attachment;
 	attachment.mID0 = rigidActor->getType() != PxActorType::eRIGID_STATIC ? static_cast<PxRigidBody*>(rigidActor)->getInternalIslandNodeIndex().getInd() :
-	PxNodeIndex().getInd();
+		PxNodeIndex().getInd();
 	attachment.mID1 = particleID;
 	PxU32 l = 0, r = PxU32(mAttachments.size());
-	
+
 	while (l < r) //If difference is just 1, we've found an item...
 	{
 		PxU32 index = (l + r) / 2;
-		
+
 		if (attachment < mAttachments[index])
 			r = index;
 		else if (attachment > mAttachments[index])
@@ -349,7 +375,7 @@ bool PxParticleAttachmentBuffer::removeRigidAttachment(PxRigidActor* rigidActor,
 		else
 			l = r = index; //This is a match so insert before l
 	}
-	
+
 	if (mAttachments[l] == attachment)
 	{
 		mDirty = true;
@@ -365,17 +391,17 @@ void PxParticleAttachmentBuffer::addRigidFilter(PxRigidActor* rigidActor, const 
 	PX_ASSERT(particleID < mParticleBuffer.getNbActiveParticles());
 	PxParticleRigidFilterPair attachment;
 	attachment.mID0 = rigidActor->getType() != PxActorType::eRIGID_STATIC ? static_cast<PxRigidBody*>(rigidActor)->getInternalIslandNodeIndex().getInd() :
-	PxNodeIndex().getInd();
+		PxNodeIndex().getInd();
 	attachment.mID1 = particleID;
-	
+
 	//Insert in order...
-	
+
 	PxU32 l = 0, r = PxU32(mFilters.size());
-	
+
 	while (l < r) //If difference is just 1, we've found an item...
 	{
 		PxU32 index = (l + r) / 2;
-		
+
 		if (attachment < mFilters[index])
 			r = index;
 		else if (attachment > mFilters[index])
@@ -383,15 +409,15 @@ void PxParticleAttachmentBuffer::addRigidFilter(PxRigidActor* rigidActor, const 
 		else
 			l = r = index; //This is a match so insert before l
 	}
-	
+
 	mFilters.insert();
-	
+
 	for (PxU32 i = mFilters.size() - 1; i > l; --i)
 	{
 		mFilters[i] = mFilters[i - 1];
 	}
 	mFilters[l] = attachment;
-	
+
 	mDirty = true;
 }
 
@@ -400,14 +426,14 @@ bool PxParticleAttachmentBuffer::removeRigidFilter(PxRigidActor* rigidActor, con
 	PX_ASSERT(particleID < mParticleBuffer.getNbActiveParticles());
 	PxParticleRigidFilterPair attachment;
 	attachment.mID0 = rigidActor->getType() != PxActorType::eRIGID_STATIC ? static_cast<PxRigidBody*>(rigidActor)->getInternalIslandNodeIndex().getInd() :
-	PxNodeIndex().getInd();
+		PxNodeIndex().getInd();
 	attachment.mID1 = particleID;
 	PxU32 l = 0, r = PxU32(mFilters.size());
-	
+
 	while (l < r) //If difference is just 1, we've found an item...
 	{
 		PxU32 index = (l + r) / 2;
-		
+
 		if (attachment < mFilters[index])
 			r = index;
 		else if (attachment > mFilters[index])
@@ -415,7 +441,7 @@ bool PxParticleAttachmentBuffer::removeRigidFilter(PxRigidActor* rigidActor, con
 		else
 			l = r = index; //This is a match so insert before l
 	}
-	
+
 	if (mFilters[l] == attachment)
 	{
 		mDirty = true;
@@ -436,38 +462,39 @@ PxParticleAttachmentBuffer* PxCreateParticleAttachmentBuffer(PxParticleBuffer& b
 struct ParticleClothBuffersImpl : public PxParticleClothBufferHelper, public PxUserAllocated
 {
 	ParticleClothBuffersImpl(const PxU32 maxCloths, const PxU32 maxTriangles, const PxU32 maxSprings, const PxU32 maxParticles, PxCudaContextManager* cudaContextManager)
-	: mCudaContextManager(cudaContextManager)
+		: mCudaContextManager(cudaContextManager)
 	{
-#if PX_OSX==0 && !(PX_WIN64 && (PX_ARM || PX_A64))
 		mMaxParticles = maxParticles;
 		mClothDesc.nbParticles = 0;
-		mClothDesc.restPositions = mCudaContextManager->allocPinnedHostBuffer<PxVec4>(maxParticles);
-		
+
 		mMaxTriangles = maxTriangles;
 		mClothDesc.nbTriangles = 0;
-		mClothDesc.triangles = mCudaContextManager->allocPinnedHostBuffer<PxU32>(maxTriangles * 3);
-		
+
 		mMaxSprings = maxSprings;
 		mClothDesc.nbSprings = 0;
-		mClothDesc.springs = mCudaContextManager->allocPinnedHostBuffer<PxParticleSpring>(maxSprings);
-		
+
 		mMaxCloths = maxCloths;
 		mClothDesc.nbCloths = 0;
-		mClothDesc.cloths = mCudaContextManager->allocPinnedHostBuffer<PxParticleCloth>(maxCloths);
+#if PX_SUPPORT_GPU_PHYSX
+		mClothDesc.restPositions = PX_EXT_PINNED_MEMORY_ALLOC(PxVec4, *mCudaContextManager, maxParticles);
+		mClothDesc.triangles = PX_EXT_PINNED_MEMORY_ALLOC(PxU32, *mCudaContextManager, maxTriangles * 3);
+		mClothDesc.springs = PX_EXT_PINNED_MEMORY_ALLOC(PxParticleSpring, *mCudaContextManager, maxSprings);
+		mClothDesc.cloths = PX_EXT_PINNED_MEMORY_ALLOC(PxParticleCloth, *mCudaContextManager, maxCloths);
 #endif
 	}
-	
+
 	void release()
 	{
-#if PX_OSX==0 && !(PX_WIN64 && (PX_ARM || PX_A64))
-		mCudaContextManager->freePinnedHostBuffer(mClothDesc.cloths);
-		mCudaContextManager->freePinnedHostBuffer(mClothDesc.restPositions);
-		mCudaContextManager->freePinnedHostBuffer(mClothDesc.triangles);
-		mCudaContextManager->freePinnedHostBuffer(mClothDesc.springs);
+#if PX_SUPPORT_GPU_PHYSX
+		PX_EXT_PINNED_MEMORY_FREE(*mCudaContextManager, mClothDesc.cloths);
+		PX_EXT_PINNED_MEMORY_FREE(*mCudaContextManager, mClothDesc.restPositions);
+		PX_EXT_PINNED_MEMORY_FREE(*mCudaContextManager, mClothDesc.triangles);
+		PX_EXT_PINNED_MEMORY_FREE(*mCudaContextManager, mClothDesc.springs);
 #endif
+		
 		PX_DELETE_THIS;
 	}
-	
+
 	PxU32 getMaxCloths() const { return mMaxCloths; }
 	PxU32 getNumCloths() const { return mClothDesc.nbCloths; }
 	PxU32 getMaxSprings() const { return mMaxSprings; }
@@ -476,41 +503,41 @@ struct ParticleClothBuffersImpl : public PxParticleClothBufferHelper, public PxU
 	PxU32 getNumTriangles() const { return mClothDesc.nbTriangles; }
 	PxU32 getMaxParticles() const { return mMaxParticles; }
 	PxU32 getNumParticles() const { return mClothDesc.nbParticles; }
-	
+
 	void addCloth(const PxParticleCloth& particleCloth, const PxU32* triangles, const PxU32 numTriangles,
-				  const PxParticleSpring* springs, const PxU32 numSprings, const PxVec4* restPositions, const PxU32 numParticles)
+		const PxParticleSpring* springs, const PxU32 numSprings, const PxVec4* restPositions, const PxU32 numParticles)
 	{
 		if (mClothDesc.nbCloths + 1 > mMaxCloths)
 		{
-			PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__,
-									"PxParticleClothBufferHelper::addCloth: exceeding maximal number of cloths that can be added.");
+			PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, PX_FL,
+				"PxParticleClothBufferHelper::addCloth: exceeding maximal number of cloths that can be added.");
 			return;
 		}
-		
+
 		if (mClothDesc.nbSprings + numSprings > mMaxSprings)
 		{
-			PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__,
-									"PxParticleClothBufferHelper::addCloth: exceeding maximal number of springs that can be added.");
+			PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, PX_FL,
+				"PxParticleClothBufferHelper::addCloth: exceeding maximal number of springs that can be added.");
 			return;
 		}
-		
+
 		if (mClothDesc.nbTriangles + numTriangles > mMaxTriangles)
 		{
-			PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__,
-									"PxParticleClothBufferHelper::addCloth: exceeding maximal number of triangles that can be added.");
+			PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, PX_FL,
+				"PxParticleClothBufferHelper::addCloth: exceeding maximal number of triangles that can be added.");
 			return;
 		}
-		
+
 		if (mClothDesc.nbParticles + numParticles > mMaxParticles)
 		{
-			PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__,
-									"PxParticleClothBufferHelper::addCloth: exceeding maximal number of particles that can be added.");
+			PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, PX_FL,
+				"PxParticleClothBufferHelper::addCloth: exceeding maximal number of particles that can be added.");
 			return;
 		}
-		
+
 		mClothDesc.cloths[mClothDesc.nbCloths] = particleCloth;
 		mClothDesc.nbCloths += 1;
-		
+
 		for (PxU32 i = 0; i < numSprings; ++i)
 		{
 			PxParticleSpring& dst = mClothDesc.springs[mClothDesc.nbSprings + i];
@@ -519,20 +546,20 @@ struct ParticleClothBuffersImpl : public PxParticleClothBufferHelper, public PxU
 			dst.ind1 += mClothDesc.nbParticles;
 		}
 		mClothDesc.nbSprings += numSprings;
-		
+
 		for (PxU32 i = 0; i < numTriangles*3; ++i)
 		{
 			PxU32& dst = mClothDesc.triangles[mClothDesc.nbTriangles*3 + i];
 			dst = triangles[i] + mClothDesc.nbParticles;
 		}
 		mClothDesc.nbTriangles += numTriangles;
-		
+
 		PxMemCopy(mClothDesc.restPositions + mClothDesc.nbParticles, restPositions, sizeof(PxVec4)*numParticles);
 		mClothDesc.nbParticles += numParticles;
 	}
-	
+
 	void addCloth(const PxReal blendScale, const PxReal restVolume, const PxReal pressure, const PxU32* triangles, const PxU32 numTriangles,
-				  const PxParticleSpring* springs, const PxU32 numSprings, const PxVec4* restPositions, const PxU32 numParticles)
+		const PxParticleSpring* springs, const PxU32 numSprings, const PxVec4* restPositions, const PxU32 numParticles)
 	{
 		PX_UNUSED(blendScale);
 		PxParticleCloth particleCloth;
@@ -543,15 +570,15 @@ struct ParticleClothBuffersImpl : public PxParticleClothBufferHelper, public PxU
 		particleCloth.numVertices = numParticles;
 		particleCloth.startTriangleIndex = mClothDesc.nbTriangles * 3;
 		particleCloth.numTriangles = numTriangles;
-		
+
 		addCloth(particleCloth, triangles, numTriangles, springs, numSprings, restPositions, numParticles);
 	}
-	
+
 	PxParticleClothDesc& getParticleClothDesc()
 	{
 		return mClothDesc;
 	}
-	
+
 	PxU32 mMaxCloths;
 	PxU32 mMaxSprings;
 	PxU32 mMaxTriangles;
@@ -572,67 +599,71 @@ struct ParticleVolumeBuffersImpl : public PxParticleVolumeBufferHelper, public P
 		mNumTriangles = 0;
 		mParticleVolumeMeshes = reinterpret_cast<PxParticleVolumeMesh*>(PX_ALLOC(sizeof(PxParticleVolumeMesh) * maxVolumes, "ParticleVolumeBuffersImpl::mParticleVolumeMeshes"));
 		mTriangles = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32) * maxTriangles * 3, "ParticleVolumeBuffersImpl::mTriangles"));
-#if PX_OSX==0 && !(PX_WIN64 && (PX_ARM || PX_A64))
-		mParticleVolumes = cudaContextManager->allocPinnedHostBuffer<PxParticleVolume>(maxVolumes);
-#endif
+
+#if PX_SUPPORT_GPU_PHYSX
+		mParticleVolumes = PX_EXT_PINNED_MEMORY_ALLOC(PxParticleVolume, *cudaContextManager, maxVolumes);
 		mCudaContextManager = cudaContextManager;
+#else
+		PX_UNUSED(cudaContextManager);
+#endif
 	}
-	
+
 	void release()
 	{
-#if PX_OSX==0 && !(PX_WIN64 && (PX_ARM || PX_A64))
-		mCudaContextManager->freePinnedHostBuffer(mParticleVolumes);
+#if PX_SUPPORT_GPU_PHYSX
+		PX_EXT_PINNED_MEMORY_FREE(*mCudaContextManager, mParticleVolumes);
 #endif
+		
 		PX_FREE(mParticleVolumeMeshes);
 		PX_FREE(mTriangles);
 		PX_DELETE_THIS;
 	}
-	
+
 	virtual PxU32 getMaxVolumes() const
 	{
 		return mMaxVolumes;
 	}
-	
+
 	virtual PxU32 getNumVolumes() const
 	{
 		return mNumVolumes;
 	}
-	
+
 	virtual PxU32 getMaxTriangles() const
 	{
 		return mMaxTriangles;
 	}
-	
+
 	virtual PxU32 getNumTriangles() const
 	{
 		return mNumTriangles;
 	}
-	
+
 	virtual PxParticleVolume* getParticleVolumes()
 	{
 		return mParticleVolumes;
 	}
-	
+
 	virtual PxParticleVolumeMesh* getParticleVolumeMeshes()
 	{
 		return mParticleVolumeMeshes;
 	}
-	
+
 	virtual PxU32* getTriangles()
 	{
 		return mTriangles;
 	}
-	
+
 	virtual void addVolume(const PxParticleVolume& volume, const PxParticleVolumeMesh& volumeMesh, const PxU32* triangles, const PxU32 numTriangles)
 	{
 		if (mNumVolumes < mMaxVolumes && mNumTriangles + numTriangles <=  mMaxTriangles)
 		{
 			PX_ASSERT(volumeMesh.startIndex == mNumTriangles);
-			
+
 			mParticleVolumes[mNumVolumes] = volume;
 			mParticleVolumeMeshes[mNumVolumes] = volumeMesh;
 			mNumVolumes++;
-			
+
 			for (PxU32 i = 0; i < numTriangles*3; ++i)
 			{
 				mTriangles[mNumTriangles*3 + i] = triangles[i] + volumeMesh.startIndex;
@@ -640,7 +671,7 @@ struct ParticleVolumeBuffersImpl : public PxParticleVolumeBufferHelper, public P
 			mNumTriangles += numTriangles;
 		}
 	}
-	
+
 	virtual void addVolume(const PxU32 particleOffset, const PxU32 numParticles, const PxU32* triangles, const PxU32 numTriangles)
 	{
 		if (mNumVolumes < mMaxVolumes && mNumTriangles + numTriangles <=  mMaxTriangles)
@@ -652,11 +683,11 @@ struct ParticleVolumeBuffersImpl : public PxParticleVolumeBufferHelper, public P
 			PxParticleVolumeMesh particleVolumeMesh;
 			particleVolumeMesh.startIndex = mNumTriangles;
 			particleVolumeMesh.count = numTriangles;
-			
+
 			mParticleVolumes[mNumVolumes] = particleVolume;
 			mParticleVolumeMeshes[mNumVolumes] = particleVolumeMesh;
 			mNumVolumes++;
-			
+
 			for (PxU32 i = 0; i < numTriangles*3; ++i)
 			{
 				mTriangles[mNumTriangles*3 + i] = triangles[i] + particleOffset;
@@ -664,7 +695,7 @@ struct ParticleVolumeBuffersImpl : public PxParticleVolumeBufferHelper, public P
 			mNumTriangles += numTriangles;
 		}
 	}
-	
+
 	PxU32 mMaxVolumes;
 	PxU32 mNumVolumes;
 	PxU32 mMaxTriangles;
@@ -680,46 +711,49 @@ struct ParticleVolumeBuffersImpl : public PxParticleVolumeBufferHelper, public P
 struct ParticleRigidBuffersImpl : public PxParticleRigidBufferHelper, public PxUserAllocated
 {
 	ParticleRigidBuffersImpl(PxU32 maxRigids, PxU32 maxParticles, PxCudaContextManager* cudaContextManager)
-	: mCudaContextManager(cudaContextManager)
+		: mCudaContextManager(cudaContextManager)
 	{
 		mRigidDesc.maxRigids = maxRigids;
 		mRigidDesc.numActiveRigids = 0;
 		mMaxParticles = maxParticles;
 		mNumParticles = 0;
-#if PX_OSX==0 && !(PX_WIN64 && (PX_ARM || PX_A64))
-		mCudaContextManager->allocPinnedHostBuffer<PxU32>(mRigidDesc.rigidOffsets, maxRigids + 1);
-		mCudaContextManager->allocPinnedHostBuffer<PxReal>(mRigidDesc.rigidCoefficients, maxRigids);
-		mCudaContextManager->allocPinnedHostBuffer<PxVec4>(mRigidDesc.rigidTranslations, maxRigids);
-		mCudaContextManager->allocPinnedHostBuffer<PxQuat>(mRigidDesc.rigidRotations, maxRigids);
-		mCudaContextManager->allocPinnedHostBuffer<PxVec4>(mRigidDesc.rigidLocalPositions, maxParticles);
-		mCudaContextManager->allocPinnedHostBuffer<PxVec4>(mRigidDesc.rigidLocalNormals, maxParticles);
+
+#if PX_SUPPORT_GPU_PHYSX
+		mRigidDesc.rigidOffsets = PX_EXT_PINNED_MEMORY_ALLOC(PxU32, *mCudaContextManager, maxRigids + 1);
+		mRigidDesc.rigidCoefficients = PX_EXT_PINNED_MEMORY_ALLOC(PxReal, *mCudaContextManager, maxRigids);
+		mRigidDesc.rigidTranslations = PX_EXT_PINNED_MEMORY_ALLOC(PxVec4, *mCudaContextManager, maxRigids);
+		mRigidDesc.rigidRotations = PX_EXT_PINNED_MEMORY_ALLOC(PxQuat, *mCudaContextManager, maxRigids);
+		mRigidDesc.rigidLocalPositions = PX_EXT_PINNED_MEMORY_ALLOC(PxVec4, *mCudaContextManager, maxParticles);
+		mRigidDesc.rigidLocalNormals = PX_EXT_PINNED_MEMORY_ALLOC(PxVec4, *mCudaContextManager, maxParticles);
 #endif
+		
 	}
-	
+
 	void release()
 	{
-#if PX_OSX==0 && !(PX_WIN64 && (PX_ARM || PX_A64))
-		mCudaContextManager->freePinnedHostBuffer(mRigidDesc.rigidOffsets);
-		mCudaContextManager->freePinnedHostBuffer(mRigidDesc.rigidCoefficients);
-		mCudaContextManager->freePinnedHostBuffer(mRigidDesc.rigidTranslations);
-		mCudaContextManager->freePinnedHostBuffer(mRigidDesc.rigidRotations);
-		mCudaContextManager->freePinnedHostBuffer(mRigidDesc.rigidLocalPositions);
-		mCudaContextManager->freePinnedHostBuffer(mRigidDesc.rigidLocalNormals);
+#if PX_SUPPORT_GPU_PHYSX
+		PX_EXT_PINNED_MEMORY_FREE(*mCudaContextManager, mRigidDesc.rigidOffsets);
+		PX_EXT_PINNED_MEMORY_FREE(*mCudaContextManager, mRigidDesc.rigidCoefficients);
+		PX_EXT_PINNED_MEMORY_FREE(*mCudaContextManager, mRigidDesc.rigidTranslations);
+		PX_EXT_PINNED_MEMORY_FREE(*mCudaContextManager, mRigidDesc.rigidRotations);
+		PX_EXT_PINNED_MEMORY_FREE(*mCudaContextManager, mRigidDesc.rigidLocalPositions);
+		PX_EXT_PINNED_MEMORY_FREE(*mCudaContextManager, mRigidDesc.rigidLocalNormals);
 #endif
+		
 		PX_DELETE_THIS;
 	}
-	
+
 	virtual PxU32 getMaxRigids() const { return mRigidDesc.maxRigids; }
 	virtual PxU32 getNumRigids() const { return mRigidDesc.numActiveRigids; }
 	virtual PxU32 getMaxParticles() const { return mMaxParticles; }
 	virtual PxU32 getNumParticles() const { return mNumParticles; }
-	
+
 	void addRigid(const PxVec3& translation, const PxQuat& rotation, const PxReal coefficient,
-				  const PxVec4* localPositions, const PxVec4* localNormals, PxU32 numParticles)
+		const PxVec4* localPositions, const PxVec4* localNormals, PxU32 numParticles)
 	{
 		PX_ASSERT(numParticles > 0);
 		const PxU32 numRigids = mRigidDesc.numActiveRigids;
-		
+
 		if (numParticles > 0 && numRigids < mRigidDesc.maxRigids && mNumParticles + numParticles <= mMaxParticles)
 		{
 			mRigidDesc.rigidOffsets[numRigids] = mNumParticles;
@@ -733,12 +767,12 @@ struct ParticleRigidBuffersImpl : public PxParticleRigidBufferHelper, public PxU
 			mNumParticles += numParticles;
 		}
 	}
-	
+
 	PxParticleRigidDesc& getParticleRigidDesc()
 	{
 		return mRigidDesc;
 	}
-	
+
 	PxU32 mMaxParticles;
 	PxU32 mNumParticles;
 	PxParticleRigidDesc mRigidDesc;

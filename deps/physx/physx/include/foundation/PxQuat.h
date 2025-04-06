@@ -22,22 +22,21 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 #ifndef PX_QUAT_H
 #define PX_QUAT_H
 
-/** \addtogroup foundation
-@{
-*/
 
 #include "foundation/PxVec3.h"
 #if !PX_DOXYGEN
 namespace physx
 {
 #endif
+
+template<class Type> class PxMat33T;
 
 /**
 \brief This is a quaternion class. For more information on quaternion mathematics
@@ -289,10 +288,34 @@ class PxQuatT
 		const Type vx = Type(2.0) * v.x;
 		const Type vy = Type(2.0) * v.y;
 		const Type vz = Type(2.0) * v.z;
-		const Type w2 = w * w - 0.5f;
+		const Type w2 = w * w - Type(0.5);
 		const Type dot2 = (x * vx + y * vy + z * vz);
 		return PxVec3T<Type>((vx * w2 + (y * vz - z * vy) * w + x * dot2), (vy * w2 + (z * vx - x * vz) * w + y * dot2),
 						     (vz * w2 + (x * vy - y * vx) * w + z * dot2));
+	}
+
+	/** \brief computes inverse rotation of x-axis */
+	PX_CUDA_CALLABLE PX_FORCE_INLINE PxVec3T<Type> getInvBasisVector0() const
+	{
+		const Type x2 = x * Type(2.0);
+		const Type w2 = w * Type(2.0);
+		return PxVec3T<Type>((w * w2) - Type(1.0) + x * x2, (-z * w2) + y * x2, (y * w2) + z * x2);
+	}
+
+	/** \brief computes the inverse rotation of the y-axis */
+	PX_CUDA_CALLABLE PX_FORCE_INLINE PxVec3T<Type> getInvBasisVector1() const
+	{
+		const Type y2 = y * Type(2.0);
+		const Type w2 = w * Type(2.0);
+		return PxVec3T<Type>((z * w2) + x * y2, (w * w2) - Type(1.0) + y * y2, (-x * w2) + z * y2);
+	}
+
+	/** \brief computes the inverse rotation of the z-axis */
+	PX_CUDA_CALLABLE PX_FORCE_INLINE PxVec3T<Type> getInvBasisVector2() const
+	{
+		const Type z2 = z * Type(2.0);
+		const Type w2 = w * Type(2.0);
+		return PxVec3T<Type>((-y * w2) + x * z2, (x * w2) + y * z2, (w * w2) - Type(1.0) + z * z2);
 	}
 
 	/**
@@ -303,7 +326,7 @@ class PxQuatT
 		const Type vx = Type(2.0) * v.x;
 		const Type vy = Type(2.0) * v.y;
 		const Type vz = Type(2.0) * v.z;
-		const Type w2 = w * w - 0.5f;
+		const Type w2 = w * w - Type(0.5);
 		const Type dot2 = (x * vx + y * vy + z * vz);
 		return PxVec3T<Type>((vx * w2 - (y * vz - z * vy) * w + x * dot2), (vy * w2 - (z * vx - x * vz) * w + y * dot2),
 						    (vz * w2 - (x * vy - y * vx) * w + z * dot2));
@@ -401,6 +424,5 @@ typedef PxQuatT<double>	PxQuatd;
 } // namespace physx
 #endif
 
-/** @} */
 #endif
 

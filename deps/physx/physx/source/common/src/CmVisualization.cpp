@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -30,6 +30,8 @@
 
 using namespace physx;
 using namespace Cm;
+
+static const PxU32 gLimitColor = PxU32(PxDebugColor::eARGB_YELLOW);
 
 void Cm::visualizeJointFrames(PxRenderOutput& out, PxReal scale, const PxTransform& parent, const PxTransform& child)
 {
@@ -41,26 +43,26 @@ void Cm::visualizeJointFrames(PxRenderOutput& out, PxReal scale, const PxTransfo
 	out << child << PxDebugBasis(PxVec3(scale, scale, scale));	
 }
 
-void Cm::visualizeLinearLimit(PxRenderOutput& out, PxReal scale, const PxTransform& t0, const PxTransform& /*t1*/, PxReal value, bool active)
+void Cm::visualizeLinearLimit(PxRenderOutput& out, PxReal scale, const PxTransform& t0, const PxTransform& /*t1*/, PxReal value)
 {
 	if(scale==0.0f)
 		return;
 
 	// debug circle is around z-axis, and we want it around x-axis
 	PxTransform r(t0.p+value*t0.q.getBasisVector0(), t0.q*PxQuat(PxPi/2,PxVec3(0,1.f,0)));
-	out << (active ? PxDebugColor::eARGB_RED : PxDebugColor::eARGB_GREY);
+	out << gLimitColor;
 	out << PxTransform(PxIdentity);
 	out << PxDebugArrow(t0.p,r.p-t0.p);
 
 	out << r << PxDebugCircle(20, scale*0.3f);
 }
 
-void Cm::visualizeAngularLimit(PxRenderOutput& out, PxReal scale, const PxTransform& t, PxReal lower, PxReal upper, bool active)
+void Cm::visualizeAngularLimit(PxRenderOutput& out, PxReal scale, const PxTransform& t, PxReal lower, PxReal upper)
 {
 	if(scale==0.0f)
 		return;
 
-	out << t << (active ? PxDebugColor::eARGB_RED : PxDebugColor::eARGB_GREY);
+	out << t << gLimitColor;
 	
 	out << PxRenderOutput::LINES 
 		<< PxVec3(0) << PxVec3(0, PxCos(lower), PxSin(lower)) * scale
@@ -73,12 +75,12 @@ void Cm::visualizeAngularLimit(PxRenderOutput& out, PxReal scale, const PxTransf
 		out << PxVec3(0, PxCos(angle), PxSin(angle)) * scale;
 }
 
-void Cm::visualizeLimitCone(PxRenderOutput& out, PxReal scale, const PxTransform& t, PxReal tanQSwingY, PxReal tanQSwingZ, bool active)
+void Cm::visualizeLimitCone(PxRenderOutput& out, PxReal scale, const PxTransform& t, PxReal tanQSwingY, PxReal tanQSwingZ)
 {
 	if(scale==0.0f)
 		return;
 
-	out << t << (active ? PxDebugColor::eARGB_RED : PxDebugColor::eARGB_GREY);	
+	out << t << gLimitColor;
 	out << PxRenderOutput::LINES;
 
 	PxVec3 prev(0,0,0);
@@ -99,12 +101,12 @@ void Cm::visualizeLimitCone(PxRenderOutput& out, PxReal scale, const PxTransform
 	}
 }
 
-void Cm::visualizeDoubleCone(PxRenderOutput& out, PxReal scale, const PxTransform& t, PxReal angle, bool active)
+void Cm::visualizeDoubleCone(PxRenderOutput& out, PxReal scale, const PxTransform& t, PxReal angle)
 {
 	if(scale==0.0f)
 		return;
 
-	out << t << (active ? PxDebugColor::eARGB_RED : PxDebugColor::eARGB_GREY);	
+	out << t << gLimitColor;
 
 	const PxReal height = PxTan(angle);
 

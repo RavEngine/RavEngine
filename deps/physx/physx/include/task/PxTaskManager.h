@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #ifndef PX_TASK_MANAGER_H
 #define PX_TASK_MANAGER_H
@@ -45,8 +45,8 @@ typedef unsigned int PxTaskID;
 
 \note This enum type is only used by PxTask objects, PxLightCpuTasks do not use this enum.
 
-@see PxTask
-@see PxLightCpuTask
+\see PxTask
+\see PxLightCpuTask
 */
 struct PxTaskType
 {
@@ -57,10 +57,7 @@ struct PxTaskType
 	{
 		eCPU,				//!< PxTask will be run on the CPU
 		eNOT_PRESENT,		//!< Return code when attempting to find a task that does not exist
-		eCOMPLETED,			//!< PxTask execution has been completed
-		TT_CPU PX_DEPRECATED = eCPU,
-		TT_NOT_PRESENT PX_DEPRECATED = eNOT_PRESENT,
-		TT_COMPLETED PX_DEPRECATED = eCOMPLETED
+		eCOMPLETED			//!< PxTask execution has been completed
 	};
 };
 
@@ -74,7 +71,7 @@ class PxCpuDispatcher;
  Users should not implement the PxTaskManager interface, the SDK creates its own concrete PxTaskManager object
  per-scene which users can configure by passing dispatcher objects into the PxSceneDesc.
 
- @see PxCpuDispatcher
+ \see PxCpuDispatcher
  
 */
 class PxTaskManager
@@ -86,7 +83,7 @@ public:
 
 	\param[in] ref The dispatcher object.
 
-	@see PxCpuDispatcher
+	\see PxCpuDispatcher
 	*/
 	virtual void     setCpuDispatcher(PxCpuDispatcher& ref) = 0;
 
@@ -95,7 +92,7 @@ public:
 
 	\return The CPU dispatcher object.
 
-	@see PxCpuDispatcher
+	\see PxCpuDispatcher
 	*/
 	virtual PxCpuDispatcher*	getCpuDispatcher() const = 0;
 
@@ -104,7 +101,7 @@ public:
 
 	\note Will be called at the start of every frame before tasks are submitted.
 
-	@see PxTask
+	\see PxTask
 	*/
 	virtual void	resetDependencies() = 0;
 	
@@ -113,7 +110,7 @@ public:
 
 	\note All tasks with ref count of 1 will be dispatched.
 
-	@see PxTask
+	\see PxTask
 	*/
 	virtual void	startSimulation() = 0;
 

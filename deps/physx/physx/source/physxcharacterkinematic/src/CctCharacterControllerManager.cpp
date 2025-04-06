@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -67,8 +67,22 @@ CharacterControllerManager::~CharacterControllerManager()
 	PX_DELETE(mRenderBuffer);
 }
 
+static PxArray<CharacterControllerManager*>* gControllerManagers = NULL;
+
 void CharacterControllerManager::release() 
 {
+	if(gControllerManagers)
+	{
+		const bool found = gControllerManagers->findAndReplaceWithLast(this);
+		PX_ASSERT(found);
+		PX_UNUSED(found);
+
+		if(!gControllerManagers->size())
+		{
+			PX_DELETE(gControllerManagers);
+		}
+	}
+
 	// PT: TODO: use non virtual calls & move to dtor
 	while(getNbControllers()!= 0)
 		releaseController(*getController(0));
@@ -82,6 +96,29 @@ void CharacterControllerManager::release()
 	PX_DELETE_THIS;
 
 	PxDecFoundationRefCount();
+}
+
+PX_C_EXPORT PxControllerManager* PX_CALL_CONV PxCreateControllerManager(PxScene& scene, bool lockingEnabled)
+{
+	if(gControllerManagers)
+	{
+		// PT: make sure we cannot create two controller managers for the same scene
+		const PxU32 nbManagers = gControllerManagers->size();
+		for(PxU32 i=0;i<nbManagers;i++)
+		{
+			if(&scene==&(*gControllerManagers)[i]->getScene())
+				return NULL;
+		}
+	}
+
+	PxIncFoundationRefCount();
+	CharacterControllerManager* controllerManager = PX_NEW(CharacterControllerManager)(scene, lockingEnabled);
+
+	if(!gControllerManagers)
+		gControllerManagers = new PxArray<CharacterControllerManager*>;
+	gControllerManagers->pushBack(controllerManager);
+
+	return controllerManager;
 }
 
 PxScene& CharacterControllerManager::getScene() const
@@ -121,7 +158,7 @@ PxController* CharacterControllerManager::getController(PxU32 index)
 {
 	if(index>=mControllers.size())
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxControllerManager::getController(): out-of-range index");
+		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "PxControllerManager::getController(): out-of-range index");
 		return NULL;
 	}
 
@@ -133,7 +170,7 @@ PxController* CharacterControllerManager::createController(const PxControllerDes
 {
 	if(!desc.isValid())
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxControllerManager::createController(): desc.isValid() fails.");
+		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "PxControllerManager::createController(): desc.isValid() fails.");
 		return NULL;
 	}
 
@@ -276,7 +313,7 @@ PxObstacleContext* CharacterControllerManager::getObstacleContext(PxU32 index)
 {
 	if(index>=mObstacleContexts.size())
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PxControllerManager::getObstacleContext(): out-of-range index");
+		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "PxControllerManager::getObstacleContext(): out-of-range index");
 		return NULL;
 	}
 
@@ -676,11 +713,3 @@ void CharacterControllerManager::computeInteractions(PxF32 elapsedTime, PxContro
 	PX_FREE(boxes);
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Public factory methods
-
-PX_C_EXPORT PxControllerManager* PX_CALL_CONV PxCreateControllerManager(PxScene& scene, bool lockingEnabled)
-{
-	PxIncFoundationRefCount();
-	return PX_NEW(CharacterControllerManager)(scene, lockingEnabled);
-}

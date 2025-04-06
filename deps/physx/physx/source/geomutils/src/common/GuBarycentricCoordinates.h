@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -52,7 +52,7 @@ namespace Gu
 
 	void barycentricCoordinates(const aos::Vec3VArg v0, 
 		const aos::Vec3VArg v1, 
-		const aos::Vec3VArg v2,  
+		const aos::Vec3VArg v2,
 		aos::FloatV& v, 
 		aos::FloatV& w);
 
@@ -72,7 +72,7 @@ namespace Gu
 	{
 		using namespace aos;
 		const Vec4V eps = V4Splat(FEps());
-		const Vec4V zero =V4Neg(eps);
+		const Vec4V zero = V4Neg(eps);
 		const Vec4V one = V4Add(V4One(), eps);
 
 		const Vec4V v0v1v0v1 = V4PermXZXZ(vwvw);

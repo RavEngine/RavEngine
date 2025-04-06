@@ -22,14 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 // ****************************************************************************
 // This snippet illustrates how to use a standalone broadphase.
 // It creates a small custom scene (no PxScene) and creates a broadphase for the
-// scene objects. These objects are they updated each frame and rendered in red
+// scene objects. These objects are then updated each frame and rendered in red
 // when they touch another object, or green if they don't. Use the P and O keys
 // to pause and step the simulation one frame, to visually check the results.
 // ****************************************************************************
@@ -140,7 +140,7 @@ void CustomScene::createBroadphase()
 void CustomScene::runBroadphase()
 {
 	PxBroadPhaseResults results;
-	mAABBManager->update(results);
+	mAABBManager->updateAndFetchResults(results);
 
 	for(PxU32 i=0;i<results.mNbCreatedPairs;i++)
 	{

@@ -22,24 +22,10 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.16)
 project(Snippets C CXX)
-
-IF(NOT DEFINED CMAKEMODULES_VERSION)
-	SET(CMAKEMODULES_PATH $ENV{PM_CMakeModules_PATH} CACHE INTERNAL "Path to CMakeModules")
-	SET(CMAKEMODULES_NAME $ENV{PM_CMakeModules_NAME} CACHE INTERNAL "CMakeModules name")
-	SET(CMAKEMODULES_VERSION $ENV{PM_CMakeModules_VERSION} CACHE INTERNAL "CMakeModules version from generation batch")
-
-	#TODO: More elegance
-	IF(NOT EXISTS ${CMAKEMODULES_PATH})
-		MESSAGE(FATAL_ERROR "Could not find ${CMAKEMODULES_PATH}")
-	ENDIF()
-
-ENDIF()
-
-SET(CMAKE_MODULE_PATH ${CMAKEMODULES_PATH})
 
 # This is required to be defined by external callers!
 IF(NOT DEFINED PHYSX_ROOT_DIR)
@@ -82,8 +68,8 @@ SET(SOURCE_DISTRO_FILE_LIST "")
 
 # Include all of the projects
 SET(SNIPPETS_LIST ArticulationRC BVHStructure CCD ContactModification ContactReport ContactReportCCD ConvexMeshCreate
-	CustomJoint CustomProfiler DeformableMesh FrustumQuery GearJoint GeometryQuery Gyroscopic HelloWorld ImmediateArticulation ImmediateMode Joint MassProperties
-	MBP MultiPruners MultiThreading OmniPvd PathTracing PointDistanceQuery PrunerSerialization QuerySystemAllQueries QuerySystemCustomCompound RackJoint Serialization SplitFetchResults
+	CustomJoint CustomProfiler DeformableMesh FrustumQuery GearJoint GeometryQuery Gyroscopic HelloWorld ImmediateArticulation ImmediateMode Joint JointDrive MassProperties
+	MBP MimicJoint MultiPruners MultiThreading OmniPvd PathTracing PointDistanceQuery ProfilerConverter PrunerSerialization QuerySystemAllQueries QuerySystemCustomCompound RackJoint Serialization SplitFetchResults
 	SplitSim StandaloneBVH StandaloneBroadphase StandaloneQuerySystem Stepper ToleranceScale TriangleMeshCreate Triggers CustomGeometry CustomConvex CustomGeometryCollision CustomGeometryQueries FixedTendon SpatialTendon)
 LIST(APPEND SNIPPETS_LIST ${PLATFORM_SNIPPETS_LIST})
 
@@ -91,21 +77,17 @@ LIST(APPEND SNIPPETS_LIST ${PLATFORM_SNIPPETS_LIST})
 # These are separate because we don't ship CUDA in the public release yet.
 # To be changed if we decide otherwise.
 SET(GPU_SNIPPET_LIST
-	HelloGRB SoftBody SoftBodyAttachment SDF PBF PBFMultiMat PBDCloth PBDInflatable)
-
-# Add snippets of GPU features that are under development OR require PhysXGpuExtensions
-IF(NOT PUBLIC_RELEASE AND NOT PX_GENERATE_SOURCE_DISTRO)
-	LIST(APPEND GPU_SNIPPET_LIST
-		BigHairSystem FLIPFluid HairSystem MPM Isosurface)
-ENDIF()
+	HelloGRB DeformableSurface DeformableVolume DeformableVolumeAttachment DeformableVolumeKinematic DeformableSurfaceSkinning DeformableVolumeSkinning SDF PBF PBFMultiMat PBDCloth PBDInflatable Isosurface
+	RBDirectGPUAPI DirectGPUAPIArticulation)
 
 #TODO, create a propper define for whether GPU features are enabled or not!
-IF ((PUBLIC_RELEASE OR PX_GENERATE_GPU_PROJECTS) AND (CMAKE_SIZEOF_VOID_P EQUAL 8))
-	LIST(APPEND SNIPPETS_LIST ${GPU_SNIPPET_LIST})
+IF (PX_GENERATE_GPU_PROJECTS AND 
+    (NOT (CMAKE_CROSSCOMPILING OR CMAKE_GENERATOR_PLATFORM STREQUAL "NX64")))
+    LIST(APPEND SNIPPETS_LIST ${GPU_SNIPPET_LIST})
 ENDIF()
 	
-SET(SNIPPETS_VEHICLE2_LIST Vehicle2DirectDrive Vehicle2FourWheelDrive Vehicle2TankDrive Vehicle2Customization Vehicle2Multithreading Vehicle2Truck)	
-LIST(APPEND SNIPPETS_VEHICLE2_LIST ${PLATFORM_SNIPPETS_VEHICLE2_LIST})
+SET(SNIPPETS_VEHICLE_LIST VehicleDirectDrive VehicleFourWheelDrive VehicleTankDrive VehicleCustomSuspension VehicleMultithreading VehicleTruck VehicleCustomTire)
+LIST(APPEND SNIPPETS_VEHICLE_LIST ${PLATFORM_SNIPPETS_VEHICLE_LIST})
 	
 IF(SNIPPET_RENDER_ENABLED)
 	INCLUDE(SnippetRender.cmake)
@@ -121,11 +103,18 @@ FOREACH(SNIPPET_NAME ${SNIPPETS_LIST})
 	SET_PROPERTY(TARGET Snippet${SNIPPET_NAME} PROPERTY FOLDER "Snippets")
 ENDFOREACH()
 
-# Compile vehicle2 snippets
-FOREACH(SNIPPET_NAME ${SNIPPETS_VEHICLE2_LIST})
-	INCLUDE(SnippetVehicle2Template.cmake)
+# Compile vehicle snippets
+FOREACH(SNIPPET_NAME ${SNIPPETS_VEHICLE_LIST})
+	INCLUDE(SnippetVehicleTemplate.cmake)
 	SET_PROPERTY(TARGET Snippet${SNIPPET_NAME} PROPERTY FOLDER "Snippets")
 ENDFOREACH()
+
+# For internal builds, make sure the GPU lib is built (but not linked!) before GPU snippets
+IF (PX_GENERATE_GPU_PROJECTS OR PX_GENERATE_GPU_PROJECTS_ONLY)
+	FOREACH(SNIPPET_NAME ${GPU_SNIPPET_LIST})
+		ADD_DEPENDENCIES(Snippet${SNIPPET_NAME} PhysXGpu)
+	ENDFOREACH()
+ENDIF()
 
 IF(PX_GENERATE_SOURCE_DISTRO)
 	FOREACH(FILE_NAME ${SOURCE_DISTRO_FILE_LIST})

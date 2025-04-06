@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -149,9 +149,6 @@ SerializationRegistry::SerializationRegistry(PxPhysics& physics)
 {	
 	PxRegisterPhysicsSerializers(*this);
 	Ext::RegisterExtensionsSerializers(*this);
-
-	registerBinaryMetaDataCallback(PxGetPhysicsBinaryMetaData);
-	registerBinaryMetaDataCallback(Ext::GetExtensionsBinaryMetaData);
 }
 
 SerializationRegistry::~SerializationRegistry()
@@ -161,13 +158,13 @@ SerializationRegistry::~SerializationRegistry()
 
 	if(mSerializers.size() > 0)
 	{
-		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, PX_FL, 
 			"PxSerializationRegistry::release(): some registered PxSerializer instances were not unregistered");	
 	}
 
 	if(mRepXSerializers.size() > 0)
 	{
-		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, PX_FL, 
 			"PxSerializationRegistry::release(): some registered PxRepXSerializer instances were not unregistered");	
 	}
 }
@@ -176,7 +173,7 @@ void SerializationRegistry::registerSerializer(PxType type, PxSerializer& serial
 {
 	if(mSerializers.find(type))
 	{
-		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, PX_FL, 
 			"PxSerializationRegistry::registerSerializer: Type %d has already been registered", type);		
 	}
 
@@ -190,7 +187,7 @@ PxSerializer* SerializationRegistry::unregisterSerializer(PxType type)
 
 	if(!mSerializers.erase(type))
 	{
-		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, PX_FL, 
 			"PxSerializationRegistry::unregisterSerializer: failed to find PxSerializer instance for type %d", type);
 	}
 	return s;
@@ -202,7 +199,7 @@ const PxSerializer* SerializationRegistry::getSerializer(PxType type) const
 #if PX_CHECKED
 	if (!e)
 	{
-		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, PX_FL, 
 			"PxSerializationRegistry::getSerializer: failed to find PxSerializer instance for type %d", type);
 	}
 #endif
@@ -221,24 +218,11 @@ const char* SerializationRegistry::getSerializerName(PxU32 index) const
 	return mSerializers.getEntries()[index].second->getConcreteTypeName();
 }
 
-void SerializationRegistry::registerBinaryMetaDataCallback(PxBinaryMetaDataCallback callback)
-{
-	mMetaDataCallbacks.pushBack(callback);
-}
-
-void SerializationRegistry::getBinaryMetaData(PxOutputStream& stream) const
-{
-	for(PxU32 i = 0; i < mMetaDataCallbacks.size(); i++)
-	{
-		mMetaDataCallbacks[i](stream);
-	}
-}
-
 void SerializationRegistry::registerRepXSerializer(PxType type, PxRepXSerializer& serializer)
 {
 	if(mRepXSerializers.find(type))
 	{
-		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, PX_FL, 
 			"PxSerializationRegistry::registerRepXSerializer: Type %d has already been registered", type);	
 	}
 
@@ -263,7 +247,7 @@ PxRepXSerializer* SerializationRegistry::unregisterRepXSerializer(PxType type)
 
 	if(!mRepXSerializers.erase(type))
 	{
-		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(physx::PxErrorCode::eDEBUG_WARNING, PX_FL, 
 			"PxSerializationRegistry::unregisterRepXSerializer: failed to find PxRepXSerializer instance for type %d", type);	
 	}
 	return s;

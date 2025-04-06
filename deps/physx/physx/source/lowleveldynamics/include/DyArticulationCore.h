@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -37,12 +37,6 @@ namespace physx
 	{
 		struct ArticulationCore
 		{
-			//= ATTENTION! =====================================================================================
-			// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-			// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-			// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-			// accordingly.
-			//==================================================================================================
 // PX_SERIALIZATION
 			ArticulationCore(const PxEMPTY) : flags(PxEmpty) {}
 			ArticulationCore() {}
@@ -54,30 +48,7 @@ namespace physx
 			PxReal					freezeThreshold;
 			PxReal					wakeCounter;
 			PxU32					gpuRemapIndex;
-			PxReal					maxLinearVelocity;
-			PxReal					maxAngularVelocity;
 		};
-
-		struct ArticulationJointCoreDirtyFlag
-		{
-			enum Enum
-			{
-				eNONE = 0,
-				eMOTION = 1 << 0,
-				eFRAME = 1 << 1,
-				eTARGETPOSE = 1 << 2,
-				eTARGETVELOCITY = 1 << 3,
-				eARMATURE = 1 << 4,
-				eLIMIT = 1 << 5,
-				eDRIVE = 1 << 6,
-				eJOINT_POS = 1 << 7,
-				eJOINT_VEL = 1 << 8,
-				eALL = eMOTION | eFRAME | eTARGETPOSE | eTARGETVELOCITY  | eARMATURE | eLIMIT | eDRIVE | eJOINT_POS | eJOINT_VEL
-			};
-		};
-
-		typedef PxFlags<ArticulationJointCoreDirtyFlag::Enum, PxU8> ArticulationJointCoreDirtyFlags;
-		PX_FLAGS_OPERATORS(ArticulationJointCoreDirtyFlag::Enum, PxU8)
 	}
 }
 

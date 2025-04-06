@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -39,10 +39,10 @@
 #include "CmUtils.h"
 #include "NpRigidStatic.h"
 #include "NpRigidDynamic.h"
+#include "omnipvd/OmniPvdPxSampler.h"
 #if PX_SUPPORT_GPU_PHYSX
-#include "NpSoftBody.h"
-#include "NpParticleSystem.h"
-#include "NpHairSystem.h"
+#include "NpDeformableVolume.h"
+#include "NpPBDParticleSystem.h"
 #endif
 #include "NpArticulationReducedCoordinate.h"
 #include "NpArticulationLink.h"
@@ -57,6 +57,9 @@
 #include "PxDeletionListener.h"
 #include "PxPhysicsSerialization.h"
 #include "PvdPhysicsClient.h"
+#include "omnipvd/NpOmniPvdSetData.h"
+#include "cudamanager/PxCudaContext.h"
+#include "common/PxProfileZone.h"
 
 #if PX_SUPPORT_OMNI_PVD
 #include "omnipvd/NpOmniPvd.h"
@@ -90,18 +93,11 @@ bool		NpPhysics::apiReentryLock	= false;
 NpPhysics*	NpPhysics::mInstance		= NULL;
 PxU32		NpPhysics::mRefCount		= 0;
 
-#if PX_CHECKED
-bool		NpPhysics::mHeightFieldsRegistered = false;	//just for error checking
-#endif
-
 NpPhysics::NpPhysics(const PxTolerancesScale& scale, const PxvOffsetTable& pxvOffsetTable, bool trackOutstandingAllocations, pvdsdk::PsPvd* pvd, PxFoundation& foundation, PxOmniPvd* omniPvd) :
 	mSceneArray					("physicsSceneArray"),
 	mPhysics					(scale, pxvOffsetTable),
 	mDeletionListenersExist		(false),
 	mFoundation					(foundation)
-#if PX_SUPPORT_GPU_PHYSX
-	, mNbRegisteredGpuClients	(0)
-#endif	
 {
 	PX_UNUSED(trackOutstandingAllocations);
 
@@ -161,7 +157,9 @@ NpPhysics::NpPhysics(const PxTolerancesScale& scale, const PxvOffsetTable& pxvOf
 			NpOmniPvd* npOmniPvd = static_cast<NpOmniPvd*>(mOmniPvd);
 			NpOmniPvd::incRefCount();
 			npOmniPvd->mPhysXSampler = mOmniPvdSampler; // Dirty hack to do startSampling from PxOmniPvd
-			mOmniPvdSampler->setOmniPvdWriter(omniPvd->getWriter());
+			mOmniPvdSampler->setOmniPvdInstance(npOmniPvd);
+
+			foundation.registerErrorCallback(*mOmniPvdSampler);
 		}
 	}
 #else
@@ -189,15 +187,10 @@ NpPhysics::~NpPhysics()
 	//mMasterMaterialTable.clear();
 
 	mMasterMaterialManager.releaseMaterials();
-	mMasterFEMSoftBodyMaterialManager.releaseMaterials();
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-	mMasterFEMClothMaterialManager.releaseMaterials();
-#endif
+#if PX_SUPPORT_GPU_PHYSX
+	mMasterDeformableSurfaceMaterialManager.releaseMaterials();
+	mMasterDeformableVolumeMaterialManager.releaseMaterials();
 	mMasterPBDMaterialManager.releaseMaterials();
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-	mMasterFLIPMaterialManager.releaseMaterials();
-	mMasterMPMMaterialManager.releaseMaterials();
-	mMasterCustomMaterialManager.releaseMaterials();
 #endif
 
 #if PX_SUPPORT_PVD	
@@ -221,12 +214,20 @@ NpPhysics::~NpPhysics()
 	mDeletionListenerMap.clear();
 
 #if PX_SUPPORT_OMNI_PVD
-	OMNI_PVD_DESTROY(physics, static_cast<PxPhysics&>(*this))
-	PX_DELETE(mOmniPvdSampler);
+	OMNI_PVD_DESTROY(OMNI_PVD_CONTEXT_HANDLE, PxPhysics, static_cast<PxPhysics&>(*this))
 	if (mOmniPvd)
 	{
+		mFoundation.deregisterErrorCallback(*mOmniPvdSampler);
 		NpOmniPvd::decRefCount();
 	}
+
+	PX_DELETE(mOmniPvdSampler);
+#endif
+
+#if PX_SUPPORT_GPU_PHYSX
+	PxPhysXGpu* gpu = PxvGetPhysXGpu(false);
+	if (gpu)
+		PxvReleasePhysXGpu(gpu);
 #endif
 }
 
@@ -244,35 +245,27 @@ void NpPhysics::initOffsetTables(PxvOffsetTable& pxvOffsetTable)
 	// init offset tables for Pxs/Sc/Px conversions
 	{
 		Sc::OffsetTable& offsetTable =  Sc::gOffsetTable;
-		offsetTable.scRigidStatic2PxActor				= -ptrdiff_t(NpRigidStatic::getCoreOffset());
-		offsetTable.scRigidDynamic2PxActor				= -ptrdiff_t(NpRigidDynamic::getCoreOffset());
-		offsetTable.scArticulationLink2PxActor			= -ptrdiff_t(NpArticulationLink::getCoreOffset());
+		offsetTable.scRigidStatic2PxActor			= -ptrdiff_t(NpRigidStatic::getCoreOffset());
+		offsetTable.scRigidDynamic2PxActor			= -ptrdiff_t(NpRigidDynamic::getCoreOffset());
+		offsetTable.scArticulationLink2PxActor		= -ptrdiff_t(NpArticulationLink::getCoreOffset());
 #if PX_SUPPORT_GPU_PHYSX
-		offsetTable.scSoftBody2PxActor					= -ptrdiff_t(NpSoftBody::getCoreOffset());
-		offsetTable.scPBDParticleSystem2PxActor			= -ptrdiff_t(NpPBDParticleSystem::getCoreOffset());
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-		offsetTable.scFLIPParticleSystem2PxActor		= -ptrdiff_t(NpFLIPParticleSystem::getCoreOffset());
-		offsetTable.scMPMParticleSystem2PxActor			= -ptrdiff_t(NpMPMParticleSystem::getCoreOffset());
-		offsetTable.scCustomParticleSystem2PxActor		= -ptrdiff_t(NpCustomParticleSystem::getCoreOffset());
-		offsetTable.scHairSystem2PxActor				= -ptrdiff_t(NpHairSystem::getCoreOffset());
+		offsetTable.scDeformableSurface2PxActor	= -ptrdiff_t(NpDeformableSurface::getCoreOffset());
+		offsetTable.scDeformableVolume2PxActor	= -ptrdiff_t(NpDeformableVolume::getCoreOffset());
+		offsetTable.scPBDParticleSystem2PxActor		= -ptrdiff_t(NpPBDParticleSystem::getCoreOffset());
 #endif
-#endif
-		offsetTable.scArticulationRC2Px					= -ptrdiff_t(NpArticulationReducedCoordinate::getCoreOffset());
-		offsetTable.scArticulationJointRC2Px			= -ptrdiff_t(NpArticulationJointReducedCoordinate::getCoreOffset());
-		offsetTable.scConstraint2Px						= -ptrdiff_t(NpConstraint::getCoreOffset());
-		offsetTable.scShape2Px							= -ptrdiff_t(NpShape::getCoreOffset());
+		offsetTable.scArticulationRC2Px				= -ptrdiff_t(NpArticulationReducedCoordinate::getCoreOffset());
+		offsetTable.scArticulationJointRC2Px		= -ptrdiff_t(NpArticulationJointReducedCoordinate::getCoreOffset());
+		offsetTable.scConstraint2Px					= -ptrdiff_t(NpConstraint::getCoreOffset());
+		offsetTable.scShape2Px						= -ptrdiff_t(NpShape::getCoreOffset());
 
 		for(PxU32 i=0;i<PxActorType::eACTOR_COUNT;i++)
 			offsetTable.scCore2PxActor[i] = 0;
 		offsetTable.scCore2PxActor[PxActorType::eRIGID_STATIC] = offsetTable.scRigidStatic2PxActor;
 		offsetTable.scCore2PxActor[PxActorType::eRIGID_DYNAMIC] = offsetTable.scRigidDynamic2PxActor;
 		offsetTable.scCore2PxActor[PxActorType::eARTICULATION_LINK] = offsetTable.scArticulationLink2PxActor;
-		offsetTable.scCore2PxActor[PxActorType::eSOFTBODY] = offsetTable.scSoftBody2PxActor;
+		offsetTable.scCore2PxActor[PxActorType::eDEFORMABLE_SURFACE] = offsetTable.scDeformableSurface2PxActor;
+		offsetTable.scCore2PxActor[PxActorType::eDEFORMABLE_VOLUME] = offsetTable.scDeformableVolume2PxActor;
 		offsetTable.scCore2PxActor[PxActorType::ePBD_PARTICLESYSTEM] = offsetTable.scPBDParticleSystem2PxActor;
-		offsetTable.scCore2PxActor[PxActorType::eFLIP_PARTICLESYSTEM] = offsetTable.scFLIPParticleSystem2PxActor;
-		offsetTable.scCore2PxActor[PxActorType::eMPM_PARTICLESYSTEM] = offsetTable.scMPMParticleSystem2PxActor;
-		offsetTable.scCore2PxActor[PxActorType::eCUSTOM_PARTICLESYSTEM] = offsetTable.scCustomParticleSystem2PxActor;
-		offsetTable.scCore2PxActor[PxActorType::eHAIRSYSTEM] = offsetTable.scHairSystem2PxActor;
 	}
 	{
 		Sc::OffsetTable& scOffsetTable = Sc::gOffsetTable;
@@ -292,13 +285,13 @@ NpPhysics* NpPhysics::createInstance(PxU32 version, PxFoundation& foundation, co
 	{
 		char buffer[256];
 		Pxsnprintf(buffer, 256, "Wrong version: PhysX version is 0x%08x, tried to create 0x%08x", PX_PHYSICS_VERSION, version);
-		foundation.getErrorCallback().reportError(PxErrorCode::eINVALID_PARAMETER, buffer, __FILE__, __LINE__);
+		foundation.getErrorCallback().reportError(PxErrorCode::eINVALID_PARAMETER, buffer, PX_FL);
 		return NULL;
 	}
 
 	if (!scale.isValid())
 	{
-		foundation.getErrorCallback().reportError(PxErrorCode::eINVALID_PARAMETER, "Scale invalid.\n", __FILE__, __LINE__);
+		foundation.getErrorCallback().reportError(PxErrorCode::eINVALID_PARAMETER, "Scale invalid.\n", PX_FL);
 		return NULL; 
 	}
 
@@ -367,7 +360,6 @@ void NpPhysics::release()
 PxScene* NpPhysics::createScene(const PxSceneDesc& desc)
 {
 	PX_CHECK_AND_RETURN_NULL(desc.isValid(), "Physics::createScene: desc.isValid() is false!");
-
 	const PxTolerancesScale& scale = mPhysics.getTolerancesScale();
 	const PxTolerancesScale& descScale = desc.getTolerancesScale();
 	PX_UNUSED(scale);
@@ -379,20 +371,18 @@ PxScene* NpPhysics::createScene(const PxSceneDesc& desc)
 	NpScene* npScene = PX_NEW (NpScene)(desc, *this);
 	if(!npScene)
 	{
-		mFoundation.error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "Unable to create scene.");
+		mFoundation.error(PxErrorCode::eINTERNAL_ERROR, PX_FL, "Unable to create scene.");
 		return NULL;
 	}
 	if(!npScene->getTaskManagerFast())
 	{
-		mFoundation.error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "Unable to create scene. Task manager creation failed.");
+		mFoundation.error(PxErrorCode::eINTERNAL_ERROR, PX_FL, "Unable to create scene. Task manager creation failed.");
 		return NULL;
 	}
 
 	npScene->loadFromDesc(desc);
 
-#if PX_SUPPORT_OMNI_PVD
-	OMNI_PVD_ADD(physics, scenes, static_cast<PxPhysics&>(*this), static_cast<PxScene&>(*npScene))
-#endif
+	OMNI_PVD_ADD(OMNI_PVD_CONTEXT_HANDLE, PxPhysics, scenes, static_cast<PxPhysics&>(*this), static_cast<PxScene&>(*npScene))
 
 #if PX_SUPPORT_PVD
 	if(mPvd)
@@ -402,10 +392,22 @@ PxScene* NpPhysics::createScene(const PxSceneDesc& desc)
 	}
 #endif
 
-	if (!sendMaterialTable(*npScene) || !npScene->getScScene().isValid())
+	// checks for allocation errors in cuda context.
+#if PX_SUPPORT_GPU_PHYSX
+	bool gpuValid = true;
+
+	if (npScene->getCudaContextManager() && npScene->getScScene().isUsingGpuDynamicsOrBp())
+	{
+		gpuValid = !npScene->getCudaContextManager()->getCudaContext()->isInAbortMode();
+	}
+#else
+	bool gpuValid = true;
+#endif
+
+	if (!sendMaterialTable(*npScene) || !npScene->getScScene().isValid() || !gpuValid)
 	{
 		PX_DELETE(npScene);
-		mFoundation.error(PxErrorCode::eOUT_OF_MEMORY, __FILE__, __LINE__, "Unable to create scene.");
+		mFoundation.error(PxErrorCode::eOUT_OF_MEMORY, PX_FL, "Unable to create scene.");
 		return NULL;
 	}
 
@@ -417,9 +419,7 @@ void NpPhysics::releaseSceneInternal(PxScene& scene)
 {
 	NpScene* pScene =  static_cast<NpScene*>(&scene);
 
-#if PX_SUPPORT_OMNI_PVD
-	OMNI_PVD_REMOVE(physics, scenes, static_cast<PxPhysics&>(*this), scene)
-#endif
+	OMNI_PVD_REMOVE(OMNI_PVD_CONTEXT_HANDLE, PxPhysics, scenes, static_cast<PxPhysics&>(*this), scene)
 
 	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
 	for(PxU32 i=0;i<mSceneArray.size();i++)
@@ -458,10 +458,6 @@ PxShape* NpPhysics::createShape(const PxGeometry& geometry, PxMaterial*const * m
 
 #if PX_CHECKED
 	const bool isHeightfield = geometry.getType() == PxGeometryType::eHEIGHTFIELD;
-	if (isHeightfield)
-		{
-		PX_CHECK_AND_RETURN_NULL(mHeightFieldsRegistered, "NpPhysics::createShape: Creating Heightfield shape without having called PxRegister[Unified]HeightFields()!");
-		}
 	const bool hasMeshTypeGeom = isHeightfield || (geometry.getType() == PxGeometryType::eTRIANGLEMESH) || (geometry.getType() == PxGeometryType::eTETRAHEDRONMESH);
 	PX_CHECK_AND_RETURN_NULL(!(hasMeshTypeGeom && (shapeFlags & PxShapeFlag::eTRIGGER_SHAPE)), "NpPhysics::createShape: triangle mesh/heightfield/tetrahedron mesh triggers are not supported!");
 	PX_CHECK_AND_RETURN_NULL(!((shapeFlags & PxShapeFlag::eSIMULATION_SHAPE) && (shapeFlags & PxShapeFlag::eTRIGGER_SHAPE)), "NpPhysics::createShape: shapes cannot simultaneously be trigger shapes and simulation shapes.");
@@ -470,28 +466,38 @@ PxShape* NpPhysics::createShape(const PxGeometry& geometry, PxMaterial*const * m
 	return NpFactory::getInstance().createShape(geometry, shapeFlags, materials, materialCount, isExclusive);
 }
 
-PxShape* NpPhysics::createShape(const PxGeometry& geometry, PxFEMSoftBodyMaterial*const * materials, PxU16 materialCount, bool isExclusive, PxShapeFlags shapeFlags)
+#if PX_SUPPORT_GPU_PHYSX
+PxShape* NpPhysics::createShape(const PxGeometry& geometry, PxDeformableSurfaceMaterial* const* materials, PxU16 materialCount, bool isExclusive, PxShapeFlags shapeFlags)
 {
 	PX_CHECK_AND_RETURN_NULL(materials, "createShape: material pointer is NULL");
 	PX_CHECK_AND_RETURN_NULL(materialCount > 0, "createShape: material count is zero");
-	PX_CHECK_AND_RETURN_NULL(geometry.getType() == PxGeometryType::eTETRAHEDRONMESH, "createShape: soft bodies only accept PxTetrahedronMeshGeometry");
-	PX_CHECK_AND_RETURN_NULL(shapeFlags & PxShapeFlag::eSIMULATION_SHAPE, "createShape: soft body shapes must be simulation shapes");
+	PX_CHECK_AND_RETURN_NULL(geometry.getType() == PxGeometryType::eTRIANGLEMESH, "createShape: deformable surface only accept PxTriangleMeshGeometry");
+	PX_CHECK_AND_RETURN_NULL(shapeFlags & PxShapeFlag::eSIMULATION_SHAPE, "createShape: deformable surface shapes must be simulation shapes");
 
 	return NpFactory::getInstance().createShape(geometry, shapeFlags, materials, materialCount, isExclusive);
 }
 
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-PxShape* NpPhysics::createShape(const PxGeometry& geometry, PxFEMClothMaterial*const * materials, PxU16 materialCount, bool isExclusive, PxShapeFlags shapeFlags)
+PxShape* NpPhysics::createShape(const PxGeometry& geometry, PxDeformableVolumeMaterial*const * materials, PxU16 materialCount, bool isExclusive, PxShapeFlags shapeFlags)
 {
 	PX_CHECK_AND_RETURN_NULL(materials, "createShape: material pointer is NULL");
 	PX_CHECK_AND_RETURN_NULL(materialCount > 0, "createShape: material count is zero");
-	PX_CHECK_AND_RETURN_NULL(geometry.getType() == PxGeometryType::eTRIANGLEMESH, "createShape: cloth only accept PxTriangleMeshGeometry");
-	PX_CHECK_AND_RETURN_NULL(shapeFlags & PxShapeFlag::eSIMULATION_SHAPE, "createShape: cloth shapes must be simulation shapes");
+	PX_CHECK_AND_RETURN_NULL(geometry.getType() == PxGeometryType::eTETRAHEDRONMESH, "createShape: deformable volumes only accept PxTetrahedronMeshGeometry");
+	PX_CHECK_AND_RETURN_NULL(shapeFlags & PxShapeFlag::eSIMULATION_SHAPE, "createShape: deformable volume shapes must be simulation shapes");
 
 	return NpFactory::getInstance().createShape(geometry, shapeFlags, materials, materialCount, isExclusive);
 }
 #else
-PxShape* NpPhysics::createShape(const PxGeometry&, PxFEMClothMaterial*const *, PxU16, bool, PxShapeFlags)
+PxShape* NpPhysics::createShape(const PxGeometry& geometry, PxDeformableSurfaceMaterial* const* materials, PxU16 materialCount, bool isExclusive, PxShapeFlags shapeFlags)
+{
+	PX_UNUSED(geometry);
+	PX_UNUSED(materials);
+	PX_UNUSED(materialCount);
+	PX_UNUSED(isExclusive);
+	PX_UNUSED(shapeFlags);
+	return NULL;
+}
+
+PxShape* NpPhysics::createShape(const PxGeometry&, PxDeformableVolumeMaterial*const *, PxU16, bool, PxShapeFlags)
 {
 	return NULL;
 }
@@ -518,83 +524,69 @@ PxConstraint* NpPhysics::createConstraint(PxRigidActor* actor0, PxRigidActor* ac
 	return NpFactory::getInstance().createConstraint(actor0, actor1, connector, shaders, dataSize);
 }
 
+PxU32 NpPhysics::getNbConstraints() const
+{
+	return NpFactory::getInstance().getNbConstraints();
+}
+
 PxArticulationReducedCoordinate* NpPhysics::createArticulationReducedCoordinate()
 {
 	return NpFactory::getInstance().createArticulationRC();
 }
 
-PxSoftBody* NpPhysics::createSoftBody(PxCudaContextManager& cudaContextManager)
+PxU32 NpPhysics::getNbArticulations() const
 {
-	return NpFactory::getInstance().createSoftBody(cudaContextManager);
+	return NpFactory::getInstance().getNbArticulations();
 }
 
-PxPBDParticleSystem* NpPhysics::createPBDParticleSystem(PxCudaContextManager& cudaContexManager, PxU32 maxNeighborhood)
+PxDeformableAttachment* NpPhysics::createDeformableAttachment(const PxDeformableAttachmentData& data)
 {
-	return NpFactory::getInstance().createPBDParticleSystem(maxNeighborhood, cudaContexManager);
-}
-
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-PxFLIPParticleSystem* NpPhysics::createFLIPParticleSystem(PxCudaContextManager& cudaContexManager)
-{
-	return NpFactory::getInstance().createFLIPParticleSystem(cudaContexManager);
-}
-
-PxMPMParticleSystem* NpPhysics::createMPMParticleSystem(PxCudaContextManager& cudaContexManager)
-{
-	return NpFactory::getInstance().createMPMParticleSystem( cudaContexManager);
-}
-
-PxCustomParticleSystem* NpPhysics::createCustomParticleSystem(PxCudaContextManager& cudaContexManager, PxU32 maxNeighborhood)
-{
-	return NpFactory::getInstance().createCustomParticleSystem(cudaContexManager, maxNeighborhood);
-}
-
-	PxFEMCloth* NpPhysics::createFEMCloth(PxCudaContextManager& cudaContextManager)
-	{
-		return NpFactory::getInstance().createFEMCloth(cudaContextManager);
-	}
-
-PxHairSystem* NpPhysics::createHairSystem(PxCudaContextManager& cudaContextManager)
-{
-	return NpFactory::getInstance().createHairSystem(cudaContextManager);
-}
-#else
-	PxFLIPParticleSystem* NpPhysics::createFLIPParticleSystem(PxCudaContextManager&)
-	{
-		return NULL;
-	}
-
-	PxMPMParticleSystem* NpPhysics::createMPMParticleSystem(PxCudaContextManager&)
-	{
-		return NULL;
-	}
-
-	PxCustomParticleSystem* NpPhysics::createCustomParticleSystem(PxCudaContextManager&, PxU32)
-	{
-		return NULL;
-	}
-	PxFEMCloth* NpPhysics::createFEMCloth(PxCudaContextManager&)
-	{
-		return NULL;
-	}
-	PxHairSystem* NpPhysics::createHairSystem(PxCudaContextManager&)
-	{
-		return NULL;
-	}
-#endif
-
-PxBuffer* NpPhysics::createBuffer(PxU64 byteSize, PxBufferType::Enum bufferType, PxCudaContextManager* cudaContexManager)
-{
-	if(!cudaContexManager)
-		return NULL;
-
 #if PX_SUPPORT_GPU_PHYSX
-	PxPhysXGpu* physxGpu = PxvGetPhysXGpu(true);
-	PX_ASSERT(physxGpu);
-	return physxGpu->createBuffer(byteSize, bufferType, cudaContexManager, NULL);
+	return NpFactory::getInstance().createDeformableAttachment(data);
 #else
-	PX_UNUSED(byteSize);
-	PX_UNUSED(bufferType);
+	PX_UNUSED(data);
+	return NULL;
+#endif
+}
+
+PxDeformableElementFilter* NpPhysics::createDeformableElementFilter(const PxDeformableElementFilterData& data)
+{
+#if PX_SUPPORT_GPU_PHYSX
+	return NpFactory::getInstance().createDeformableElementFilter(data);
+#else
+	PX_UNUSED(data);
+	return NULL;
+#endif
+}
+
+PxDeformableSurface* NpPhysics::createDeformableSurface(PxCudaContextManager& cudaContextManager)
+{
+#if PX_SUPPORT_GPU_PHYSX
+	return NpFactory::getInstance().createDeformableSurface(cudaContextManager);
+#else
+	PX_UNUSED(cudaContextManager);
+	return NULL;
+#endif
+}
+
+PxDeformableVolume* NpPhysics::createDeformableVolume(PxCudaContextManager& cudaContextManager)
+{
+#if PX_SUPPORT_GPU_PHYSX
+	return NpFactory::getInstance().createDeformableVolume(cudaContextManager);
+#else
+	PX_UNUSED(cudaContextManager);
+	return NULL;
+#endif
+}
+
+PxPBDParticleSystem* NpPhysics::createPBDParticleSystem(PxCudaContextManager& cudaContextManager, PxU32 maxNeighborhood, PxReal neighborhoodScale)
+{
+#if PX_SUPPORT_GPU_PHYSX
+	return NpFactory::getInstance().createPBDParticleSystem(maxNeighborhood, neighborhoodScale, cudaContextManager);
+#else
+	PX_UNUSED(cudaContextManager);
+	PX_UNUSED(maxNeighborhood);
+	PX_UNUSED(neighborhoodScale);
 	return NULL;
 #endif
 }
@@ -607,59 +599,52 @@ PxAggregate* NpPhysics::createAggregate(PxU32 maxActors, PxU32 maxShapes, PxAggr
 	return NpFactory::getInstance().createAggregate(maxActors, maxShapes, filterHint);
 }
 
+PxU32 NpPhysics::getNbAggregates() const
+{
+	return NpFactory::getInstance().getNbAggregates();
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
-NpMaterial* NpPhysics::addMaterial(NpMaterial* m)
+template<class NpMaterialT>
+static NpMaterialT* addMaterial(
+#if PX_SUPPORT_OMNI_PVD
+	NpPhysics::OmniPvdListener& mOmniPvdListener,
+#endif
+	NpMaterialT* m, NpMaterialManager<NpMaterialT>& materialManager, PxMutex& mutex, PxArray<NpScene*>& sceneArray, const char* error)
 {
 	if(!m)
 		return NULL;
 
 	OMNI_PVD_NOTIFY_ADD(m);
 
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
+	PxMutex::ScopedLock lock(mutex);
 
 	//the handle is set inside the setMaterial method
-	if(mMasterMaterialManager.setMaterial(*m))
+	if(materialManager.setMaterial(*m))
 	{
 		// Let all scenes know of the new material
-		for(PxU32 i=0; i < mSceneArray.size(); i++)
-		{
-			NpScene* s = getScene(i);
-			s->addMaterial(*m);
-		}
+		const PxU32 nbScenes = sceneArray.size();
+		for(PxU32 i=0; i<nbScenes; i++)
+			sceneArray[i]->addMaterial(*m);
 		return m;
 	}
 	else
 	{
-		mFoundation.error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "PxPhysics::createMaterial: limit of 64K materials reached.");
+		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, error);
 		m->release();
 		return NULL;
 	}
 }
 
-PxMaterial* NpPhysics::createMaterial(PxReal staticFriction, PxReal dynamicFriction, PxReal restitution)
+template<class NpMaterialT, class PxMaterialT>
+static PxU32 getMaterials(const NpMaterialManager<NpMaterialT>& materialManager, const PxMutex& mutex, PxMaterialT** userBuffer, PxU32 bufferSize, PxU32 startIndex)
 {
-	PxMaterial* m = NpFactory::getInstance().createMaterial(staticFriction, dynamicFriction, restitution);
-
-	if (m)
-		return addMaterial(static_cast<NpMaterial*>(m));
-	else
-		return NULL;
-}
-
-PxU32 NpPhysics::getNbMaterials() const
-{
-	PxMutex::ScopedLock lock(const_cast<PxMutex&>(mSceneAndMaterialMutex));
-	return mMasterMaterialManager.getNumMaterials();
-}
-
-PxU32 NpPhysics::getMaterials(PxMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
-{
-	PxMutex::ScopedLock lock(const_cast<PxMutex&>(mSceneAndMaterialMutex));
-	NpMaterialManagerIterator<NpMaterial> iter(mMasterMaterialManager);
+	PxMutex::ScopedLock lock(const_cast<PxMutex&>(mutex));
+	NpMaterialManagerIterator<NpMaterialT> iter(materialManager);
 	PxU32 writeCount =0;
 	PxU32 index = 0;
-	NpMaterial* mat;
+	NpMaterialT* mat;
 	while(iter.getNextMaterial(mat))
 	{
 		if(index++ < startIndex)
@@ -671,777 +656,194 @@ PxU32 NpPhysics::getMaterials(PxMaterial** userBuffer, PxU32 bufferSize, PxU32 s
 	return writeCount;
 }
 
-void NpPhysics::removeMaterialFromTable(NpMaterial& m)
+template<class NpMaterialT>
+static void removeMaterialFromTable(
+#if PX_SUPPORT_OMNI_PVD
+	NpPhysics::OmniPvdListener& mOmniPvdListener,
+#endif
+	NpMaterialT& m, NpMaterialManager<NpMaterialT>& materialManager, PxMutex& mutex, PxArray<NpScene*>& sceneArray)
 {
 	OMNI_PVD_NOTIFY_REMOVE(&m);
 
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
+	PxMutex::ScopedLock lock(mutex);
 
 	// Let all scenes know of the deleted material
-	for(PxU32 i=0; i < mSceneArray.size(); i++)
-	{
-		NpScene* s = getScene(i);
-		s->removeMaterial(m);
-	}
+	const PxU32 nbScenes = sceneArray.size();
+	for(PxU32 i=0; i<nbScenes; i++)
+		sceneArray[i]->removeMaterial(m);
 
-	mMasterMaterialManager.removeMaterial(m);
+	materialManager.removeMaterial(m);
 }
 
-void NpPhysics::updateMaterial(NpMaterial& m)
+template<class NpMaterialT>
+static void updateMaterial(NpMaterialT& m, NpMaterialManager<NpMaterialT>& materialManager, PxMutex& mutex, PxArray<NpScene*>& sceneArray)
 {
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
+	PxMutex::ScopedLock lock(mutex);
 
 	// Let all scenes know of the updated material
-	for(PxU32 i=0; i < mSceneArray.size(); i++)
-	{
-		NpScene* s = getScene(i);
-		s->updateMaterial(m);
-	}
-	mMasterMaterialManager.updateMaterial(m);
+	const PxU32 nbScenes = sceneArray.size();
+	for(PxU32 i=0; i<nbScenes; i++)
+		sceneArray[i]->updateMaterial(m);
+
+	materialManager.updateMaterial(m);
+}
+
+#if PX_SUPPORT_OMNI_PVD
+	#define	_addMaterial(p0, p1, p2, p3, p4)			::addMaterial(mOmniPvdListener, p0, p1, p2, p3, p4)
+	#define	_removeMaterialFromTable(p0, p1, p2, p3)	::removeMaterialFromTable(mOmniPvdListener, p0, p1, p2, p3)
+#else
+	#define	_addMaterial(p0, p1, p2, p3, p4)			::addMaterial(p0, p1, p2, p3, p4)
+	#define	_removeMaterialFromTable(p0, p1, p2, p3)	::removeMaterialFromTable(p0, p1, p2, p3)
+#endif
+
+#define IMPLEMENT_INTERNAL_MATERIAL_FUNCTIONS(NpMaterialT, manager, errorMsg)		\
+NpMaterialT* NpPhysics::addMaterial(NpMaterialT* m)									\
+{																					\
+	return _addMaterial(m, manager, mSceneAndMaterialMutex, mSceneArray, errorMsg);	\
+}																					\
+void NpPhysics::removeMaterialFromTable(NpMaterialT& m)								\
+{																					\
+	_removeMaterialFromTable(m, manager, mSceneAndMaterialMutex, mSceneArray);		\
+}																					\
+void NpPhysics::updateMaterial(NpMaterialT& m)										\
+{																					\
+	::updateMaterial(m, manager, mSceneAndMaterialMutex, mSceneArray);				\
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+template<class NpMaterialT>
+static void sendMaterialTable(NpScene& scene, const NpMaterialManager<NpMaterialT>& materialManager)
+{
+	NpMaterialManagerIterator<NpMaterialT> iter(materialManager);
+	NpMaterialT* mat;
+	while(iter.getNextMaterial(mat))
+		scene.addMaterial(*mat);
 }
 
 bool NpPhysics::sendMaterialTable(NpScene& scene)
 {
-	// note: no lock here because this method gets only called at scene creation and there we do lock
+	// relies on NpPhysics::mSceneAndMaterialMutex being locked when calling this to
+	// prevent clashes with mMasterMaterialManager access as well as access to the
+	// event list in NpScene::addMaterial()
 
-	NpMaterialManagerIterator<NpMaterial> iter(mMasterMaterialManager);
-	NpMaterial* mat;
-	while(iter.getNextMaterial(mat))
-		scene.addMaterial(*mat);
+	::sendMaterialTable(scene, mMasterMaterialManager);
 
 #if PX_SUPPORT_GPU_PHYSX
-	
-	NpMaterialManagerIterator<NpFEMSoftBodyMaterial> iterSoftBody(mMasterFEMSoftBodyMaterialManager);
-	NpFEMSoftBodyMaterial* softmat;
-	while (iterSoftBody.getNextMaterial(softmat))
-		scene.addMaterial(*softmat);
-	
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-	NpMaterialManagerIterator<NpFEMClothMaterial> iterCloth(mMasterFEMClothMaterialManager);
-	NpFEMClothMaterial* clothmat;
-	while (iterCloth.getNextMaterial(clothmat))
-		scene.addMaterial(*clothmat);
+	::sendMaterialTable(scene, mMasterDeformableSurfaceMaterialManager);
+	::sendMaterialTable(scene, mMasterDeformableVolumeMaterialManager);
+	::sendMaterialTable(scene, mMasterPBDMaterialManager);
 #endif
-
-	NpMaterialManagerIterator<NpPBDMaterial> iterPBD(mMasterPBDMaterialManager);
-	NpPBDMaterial* pbdmat;
-	while (iterPBD.getNextMaterial(pbdmat))
-		scene.addMaterial(*pbdmat);
-
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-	NpMaterialManagerIterator<NpFLIPMaterial> iterFLIP(mMasterFLIPMaterialManager);
-	NpFLIPMaterial* flipmat;
-	while (iterFLIP.getNextMaterial(flipmat))
-		scene.addMaterial(*flipmat);
-
-	NpMaterialManagerIterator<NpMPMMaterial> iterMPM(mMasterMPMMaterialManager);
-	NpMPMMaterial* mpmmat;
-	while (iterMPM.getNextMaterial(mpmmat))
-		scene.addMaterial(*mpmmat);
-
-	NpMaterialManagerIterator<NpCustomMaterial> iterCustom(mMasterCustomMaterialManager);
-	NpCustomMaterial* custommat;
-	while (iterCustom.getNextMaterial(custommat))
-		scene.addMaterial(*custommat);
-#endif
-
-#endif //PX_SUPPORT_GPU_PHYSX
 
 	return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-NpFEMSoftBodyMaterial* NpPhysics::addFEMMaterial(NpFEMSoftBodyMaterial* m)
+PxMaterial* NpPhysics::createMaterial(PxReal staticFriction, PxReal dynamicFriction, PxReal restitution)
 {
-	if (!m)
-		return NULL;
-
-#if PX_SUPPORT_GPU_PHYSX
-	OMNI_PVD_NOTIFY_ADD(m);
-
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	//the handle is set inside the setMaterial method
-	if (mMasterFEMSoftBodyMaterialManager.setMaterial(*m))
-	{
-		// Let all scenes know of the new material
-		for (PxU32 i = 0; i < mSceneArray.size(); i++)
-		{
-			NpScene* s = getScene(i);
-			s->addMaterial(*m);
-		}
-		return m;
-	}
-	else
-	{
-		mFoundation.error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "PxPhysics::createMaterial: limit of 64K materials reached.");
-		m->release();
-		return NULL;
-	}
-#else
-	m->release();
-	return NULL;
-#endif
+	PxMaterial* m = NpFactory::getInstance().createMaterial(staticFriction, dynamicFriction, restitution);
+	return addMaterial(static_cast<NpMaterial*>(m));
 }
 
-PxFEMSoftBodyMaterial* NpPhysics::createFEMSoftBodyMaterial(PxReal youngs, PxReal poissons, PxReal dynamicFriction)
-{
-	PxFEMSoftBodyMaterial* m = NpFactory::getInstance().createFEMSoftBodyMaterial(youngs, poissons, dynamicFriction);
-	return addFEMMaterial(static_cast<NpFEMSoftBodyMaterial*>(m));
-}
-
-PxU32 NpPhysics::getNbFEMSoftBodyMaterials() const
+PxU32 NpPhysics::getNbMaterials() const
 {
 	PxMutex::ScopedLock lock(const_cast<PxMutex&>(mSceneAndMaterialMutex));
-	return mMasterFEMSoftBodyMaterialManager.getNumMaterials();
+	return mMasterMaterialManager.getNumMaterials();
 }
 
-PxU32 NpPhysics::getFEMSoftBodyMaterials(PxFEMSoftBodyMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
+PxU32 NpPhysics::getMaterials(PxMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
 {
-	PxMutex::ScopedLock lock(const_cast<PxMutex&>(mSceneAndMaterialMutex));
-	NpMaterialManagerIterator<NpFEMSoftBodyMaterial> iter(mMasterFEMSoftBodyMaterialManager);
-	PxU32 writeCount = 0;
-	PxU32 index = 0;
-	NpFEMSoftBodyMaterial* mat;
-	while (iter.getNextMaterial(mat))
-	{
-		if (index++ < startIndex)
-			continue;
-		if (writeCount == bufferSize)
-			break;
-		userBuffer[writeCount++] = mat;
-	}
-	return writeCount;
+	return ::getMaterials(mMasterMaterialManager, mSceneAndMaterialMutex, userBuffer, bufferSize, startIndex);
 }
 
-void NpPhysics::removeFEMSoftBodyMaterialFromTable(NpFEMSoftBodyMaterial& m)
-{
-#if PX_SUPPORT_GPU_PHYSX
-	OMNI_PVD_NOTIFY_REMOVE(&m);
-
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	// Let all scenes know of the deleted material
-	for (PxU32 i = 0; i < mSceneArray.size(); i++)
-	{
-		NpScene* s = getScene(i);
-		s->removeMaterial(m);
-	}
-
-	mMasterFEMSoftBodyMaterialManager.removeMaterial(m);
-#else
-	PX_UNUSED(m);
-#endif
-}
-
-void NpPhysics::updateFEMSoftBodyMaterial(NpFEMSoftBodyMaterial& m)
-{
-
-#if PX_SUPPORT_GPU_PHYSX
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	// Let all scenes know of the updated material
-	for (PxU32 i = 0; i < mSceneArray.size(); i++)
-	{
-		NpScene* s = getScene(i);
-		s->updateMaterial(m);
-	}
-	mMasterFEMSoftBodyMaterialManager.updateMaterial(m);
-#else
-	PX_UNUSED(m);
-#endif
-}
+IMPLEMENT_INTERNAL_MATERIAL_FUNCTIONS(NpMaterial, mMasterMaterialManager, "PxPhysics::createMaterial: limit of 64K materials reached.")
 
 ///////////////////////////////////////////////////////////////////////////////
 
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-NpFEMClothMaterial* NpPhysics::addFEMClothMaterial(NpFEMClothMaterial* m)
-{
-	if (!m)
-		return NULL;
+// PT: all the virtual functions that are unconditionally defined in the API / virtual interface cannot be compiled away entirely.
+// But the internal functions like addXXXX() can.
 
 #if PX_SUPPORT_GPU_PHYSX
-	OMNI_PVD_NOTIFY_ADD(m);
-
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	//the handle is set inside the setMaterial method
-	if (mMasterFEMClothMaterialManager.setMaterial(*m))
-	{
-		// Let all scenes know of the new material
-		for (PxU32 i = 0; i < mSceneArray.size(); i++)
-		{
-			NpScene* s = getScene(i);
-			s->addMaterial(*m);
-		}
-		return m;
-	}
-	else
-	{
-		mFoundation.error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "PxPhysics::addFEMClothMaterial: limit of 64K materials reached.");
-		m->release();
-		return NULL;
-	}
-#else
-	m->release();
-	return NULL;
-#endif
+PxDeformableSurfaceMaterial* NpPhysics::createDeformableSurfaceMaterial(PxReal youngs, PxReal poissons, PxReal dynamicFriction, PxReal thickness, 
+	PxReal bendingStiffness, PxReal elasticityDamping, PxReal bendingDamping)
+{
+	PxDeformableSurfaceMaterial* m = NpFactory::getInstance().createDeformableSurfaceMaterial(youngs, poissons, dynamicFriction, thickness, bendingStiffness, elasticityDamping, bendingDamping);
+	return addMaterial(static_cast<NpDeformableSurfaceMaterial*>(m));
 }
 
-PxFEMClothMaterial* NpPhysics::createFEMClothMaterial(PxReal youngs, PxReal poissons, PxReal dynamicFriction)
+PxU32 NpPhysics::getNbDeformableSurfaceMaterials() const
 {
-	PxFEMClothMaterial* m = NpFactory::getInstance().createFEMClothMaterial(youngs, poissons, dynamicFriction);
-	return addFEMClothMaterial(static_cast<NpFEMClothMaterial*>(m));
-}
-#else
-PxFEMClothMaterial* NpPhysics::createFEMClothMaterial(PxReal, PxReal, PxReal)
-{
-	return NULL;
-}
-#endif
-
-PxU32 NpPhysics::getNbFEMClothMaterials() const
-{
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
 	PxMutex::ScopedLock lock(const_cast<PxMutex&>(mSceneAndMaterialMutex));
-	return mMasterFEMClothMaterialManager.getNumMaterials();
-#else
-	return 0;
-#endif
+	return mMasterDeformableSurfaceMaterialManager.getNumMaterials();
 }
 
-PxU32 NpPhysics::getFEMClothMaterials(PxFEMClothMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
+PxU32 NpPhysics::getDeformableSurfaceMaterials(PxDeformableSurfaceMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
 {
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-	PxMutex::ScopedLock lock(const_cast<PxMutex&>(mSceneAndMaterialMutex));
-	NpMaterialManagerIterator<NpFEMClothMaterial> iter(mMasterFEMClothMaterialManager);
-	PxU32 writeCount = 0;
-	PxU32 index = 0;
-	NpFEMClothMaterial* mat;
-	while (iter.getNextMaterial(mat))
-	{
-		if (index++ < startIndex)
-			continue;
-		if (writeCount == bufferSize)
-			break;
-		userBuffer[writeCount++] = mat;
-	}
-	return writeCount;
-#else
-	PX_UNUSED(userBuffer); PX_UNUSED(bufferSize); PX_UNUSED(startIndex);
-	return 0;
-#endif
+	return ::getMaterials(mMasterDeformableSurfaceMaterialManager, mSceneAndMaterialMutex, userBuffer, bufferSize, startIndex);
 }
 
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-void NpPhysics::removeFEMClothMaterialFromTable(NpFEMClothMaterial& m)
-{
-#if PX_SUPPORT_GPU_PHYSX
-	OMNI_PVD_NOTIFY_REMOVE(&m);
-
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	// Let all scenes know of the deleted material
-	for (PxU32 i = 0; i < mSceneArray.size(); i++)
-	{
-		NpScene* s = getScene(i);
-		s->removeMaterial(m);
-	}
-
-	mMasterFEMClothMaterialManager.removeMaterial(m);
+IMPLEMENT_INTERNAL_MATERIAL_FUNCTIONS(NpDeformableSurfaceMaterial, mMasterDeformableSurfaceMaterialManager, "PxPhysics::createDeformableSurfaceMaterial: limit of 64K materials reached.")
 #else
-	PX_UNUSED(m);
-#endif
-}
-
-void NpPhysics::updateFEMClothMaterial(NpFEMClothMaterial& m)
-{
-#if PX_SUPPORT_GPU_PHYSX
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	// Let all scenes know of the updated material
-	for (PxU32 i = 0; i < mSceneArray.size(); i++)
-	{
-		NpScene* s = getScene(i);
-		s->updateMaterial(m);
-	}
-	mMasterFEMClothMaterialManager.updateMaterial(m);
-#else
-	PX_UNUSED(m);
-#endif
-}
+PxDeformableSurfaceMaterial* NpPhysics::createDeformableSurfaceMaterial(PxReal, PxReal, PxReal, PxReal, PxReal, PxReal, PxReal) { return NULL; }
+PxU32 NpPhysics::getNbDeformableSurfaceMaterials() const { return 0; }
+PxU32 NpPhysics::getDeformableSurfaceMaterials(PxDeformableSurfaceMaterial**, PxU32, PxU32) const { return 0; }
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
 
-NpPBDMaterial* NpPhysics::addPBDMaterial(NpPBDMaterial* m)
-{
-	if (!m)
-		return NULL;
-
 #if PX_SUPPORT_GPU_PHYSX
-	OMNI_PVD_NOTIFY_ADD(m);
-
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	//the handle is set inside the setMaterial method
-	if (mMasterPBDMaterialManager.setMaterial(*m))
+	PxDeformableVolumeMaterial* NpPhysics::createDeformableVolumeMaterial(PxReal youngs, PxReal poissons, PxReal dynamicFriction, PxReal elasticityDamping)
 	{
-		// Let all scenes know of the new material
-		for (PxU32 i = 0; i < mSceneArray.size(); i++)
-		{
-			NpScene* s = getScene(i);
-			s->addMaterial(*m);
-		}
-		return m;
+		PxDeformableVolumeMaterial* m = NpFactory::getInstance().createDeformableVolumeMaterial(youngs, poissons, dynamicFriction, elasticityDamping);
+		return addMaterial(static_cast<NpDeformableVolumeMaterial*>(m));
 	}
-	else
+
+	PxU32 NpPhysics::getNbDeformableVolumeMaterials() const
 	{
-		mFoundation.error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "PxPhysics::addPBDMaterial: limit of 64K materials reached.");
-		m->release();
-		return NULL;
+		PxMutex::ScopedLock lock(const_cast<PxMutex&>(mSceneAndMaterialMutex));
+		return mMasterDeformableVolumeMaterialManager.getNumMaterials();
 	}
+
+	PxU32 NpPhysics::getDeformableVolumeMaterials(PxDeformableVolumeMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
+	{
+		return ::getMaterials(mMasterDeformableVolumeMaterialManager, mSceneAndMaterialMutex, userBuffer, bufferSize, startIndex);
+	}
+
+	IMPLEMENT_INTERNAL_MATERIAL_FUNCTIONS(NpDeformableVolumeMaterial, mMasterDeformableVolumeMaterialManager, "PxPhysics::createDeformableVolumeMaterial: limit of 64K materials reached.")
 #else
-	m->release();
-	return NULL;
+	PxDeformableVolumeMaterial* NpPhysics::createDeformableVolumeMaterial(PxReal, PxReal, PxReal, PxReal)	{ return NULL;	}
+	PxU32 NpPhysics::getNbDeformableVolumeMaterials()												const	{ return 0;		}
+	PxU32 NpPhysics::getDeformableVolumeMaterials(PxDeformableVolumeMaterial**, PxU32, PxU32)		const	{ return 0;		}
 #endif
-}
-
-PxPBDMaterial* NpPhysics::createPBDMaterial(PxReal friction, PxReal damping, PxReal adhesion, PxReal viscosity, PxReal vorticityConfinement, PxReal surfaceTension, 
-	PxReal cohesion, PxReal lift, PxReal drag, PxReal cflCoefficient, PxReal gravityScale)
-{
-	PxPBDMaterial* m = NpFactory::getInstance().createPBDMaterial(friction, damping, adhesion, viscosity, vorticityConfinement, surfaceTension, cohesion, lift, drag, cflCoefficient, gravityScale);
-	return addPBDMaterial(static_cast<NpPBDMaterial*>(m));
-}
-
-PxU32 NpPhysics::getNbPBDMaterials() const
-{
-	PxMutex::ScopedLock lock(const_cast<PxMutex&>(mSceneAndMaterialMutex));
-	return mMasterPBDMaterialManager.getNumMaterials();
-}
-
-PxU32 NpPhysics::getPBDMaterials(PxPBDMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
-{
-	PxMutex::ScopedLock lock(const_cast<PxMutex&>(mSceneAndMaterialMutex));
-	NpMaterialManagerIterator<NpPBDMaterial> iter(mMasterPBDMaterialManager);
-	PxU32 writeCount = 0;
-	PxU32 index = 0;
-	NpPBDMaterial* mat;
-	while (iter.getNextMaterial(mat))
-	{
-		if (index++ < startIndex)
-			continue;
-		if (writeCount == bufferSize)
-			break;
-		userBuffer[writeCount++] = mat;
-	}
-	return writeCount;
-}
-
-void NpPhysics::removePBDMaterialFromTable(NpPBDMaterial& m)
-{
-#if PX_SUPPORT_GPU_PHYSX
-	OMNI_PVD_NOTIFY_REMOVE(&m);
-
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	// Let all scenes know of the deleted material
-	for (PxU32 i = 0; i < mSceneArray.size(); i++)
-	{
-		NpScene* s = getScene(i);
-		s->removeMaterial(m);
-	}
-
-	mMasterPBDMaterialManager.removeMaterial(m);
-#else
-	PX_UNUSED(m);
-#endif
-}
-
-void NpPhysics::updatePBDMaterial(NpPBDMaterial& m)
-{
-#if PX_SUPPORT_GPU_PHYSX
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	// Let all scenes know of the updated material
-	for (PxU32 i = 0; i < mSceneArray.size(); i++)
-	{
-		NpScene* s = getScene(i);
-		s->updateMaterial(m);
-	}
-	mMasterPBDMaterialManager.updateMaterial(m);
-#else
-	PX_UNUSED(m);
-#endif
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-NpFLIPMaterial* NpPhysics::addFLIPMaterial(NpFLIPMaterial* m)
-{
-	if (!m)
-		return NULL;
-
 #if PX_SUPPORT_GPU_PHYSX
-	OMNI_PVD_NOTIFY_ADD(m);
-
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	//the handle is set inside the setMaterial method
-	if (mMasterFLIPMaterialManager.setMaterial(*m))
+	PxPBDMaterial* NpPhysics::createPBDMaterial(PxReal friction, PxReal damping, PxReal adhesion, PxReal viscosity, PxReal vorticityConfinement, PxReal surfaceTension, 
+		PxReal cohesion, PxReal lift, PxReal drag, PxReal cflCoefficient, PxReal gravityScale)
 	{
-		// Let all scenes know of the new material
-		for (PxU32 i = 0; i < mSceneArray.size(); i++)
-		{
-			NpScene* s = getScene(i);
-			s->addMaterial(*m);
-		}
-		return m;
-	}
-	else
-	{
-		mFoundation.error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "PxPhysics::addFLIPMaterial: limit of 64K materials reached.");
-		m->release();
-		return NULL;
-	}
-#else
-	m->release();
-	return NULL;
-#endif
-}
-#endif
-
-
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-PxFLIPMaterial* NpPhysics::createFLIPMaterial(PxReal friction, PxReal damping, PxReal maxVelocity, PxReal viscosity, PxReal gravityScale)
-{
-	PxFLIPMaterial* m = NpFactory::getInstance().createFLIPMaterial(friction, damping, maxVelocity, viscosity, gravityScale);
-	return addFLIPMaterial(static_cast<NpFLIPMaterial*>(m));
-}
-#else
-PxFLIPMaterial* NpPhysics::createFLIPMaterial(PxReal, PxReal, PxReal, PxReal, PxReal)
-{
-	return NULL;
-}
-#endif
-
-PxU32 NpPhysics::getNbFLIPMaterials() const
-{
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-	PxMutex::ScopedLock lock(const_cast<PxMutex&>(mSceneAndMaterialMutex));
-	return mMasterFLIPMaterialManager.getNumMaterials();
-#else
-	return 0;
-#endif
-}
-
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-PxU32 NpPhysics::getFLIPMaterials(PxFLIPMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
-{
-	PxMutex::ScopedLock lock(const_cast<PxMutex&>(mSceneAndMaterialMutex));
-	NpMaterialManagerIterator<NpFLIPMaterial> iter(mMasterFLIPMaterialManager);
-	PxU32 writeCount = 0;
-	PxU32 index = 0;
-	NpFLIPMaterial* mat;
-	while (iter.getNextMaterial(mat))
-	{
-		if (index++ < startIndex)
-			continue;
-		if (writeCount == bufferSize)
-			break;
-		userBuffer[writeCount++] = mat;
-	}
-	return writeCount;
-}
-#else
-PxU32 NpPhysics::getFLIPMaterials(PxFLIPMaterial** , PxU32, PxU32) const
-{
-	return 0;
-}
-#endif
-
-
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-void NpPhysics::removeFLIPMaterialFromTable(NpFLIPMaterial& m)
-{
-#if PX_SUPPORT_GPU_PHYSX
-	OMNI_PVD_NOTIFY_REMOVE(&m);
-
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	// Let all scenes know of the deleted material
-	for (PxU32 i = 0; i < mSceneArray.size(); i++)
-	{
-		NpScene* s = getScene(i);
-		s->removeMaterial(m);
+		PxPBDMaterial* m = NpFactory::getInstance().createPBDMaterial(friction, damping, adhesion, viscosity, vorticityConfinement, surfaceTension, cohesion, lift, drag, cflCoefficient, gravityScale);
+		return addMaterial(static_cast<NpPBDMaterial*>(m));
 	}
 
-	mMasterFLIPMaterialManager.removeMaterial(m);
-#else
-	PX_UNUSED(m);
-#endif
-}
-
-void NpPhysics::updateFLIPMaterial(NpFLIPMaterial& m)
-{
-#if PX_SUPPORT_GPU_PHYSX
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	// Let all scenes know of the updated material
-	for (PxU32 i = 0; i < mSceneArray.size(); i++)
+	PxU32 NpPhysics::getNbPBDMaterials() const
 	{
-		NpScene* s = getScene(i);
-		s->updateMaterial(m);
-	}
-	mMasterFLIPMaterialManager.updateMaterial(m);
-#else
-	PX_UNUSED(m);
-#endif
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-NpMPMMaterial* NpPhysics::addMPMMaterial(NpMPMMaterial* m)
-{
-	if (!m)
-		return NULL;
-
-#if PX_SUPPORT_GPU_PHYSX
-	OMNI_PVD_NOTIFY_ADD(m);
-
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	//the handle is set inside the setMaterial method
-	if (mMasterMPMMaterialManager.setMaterial(*m))
-	{
-		// Let all scenes know of the new material
-		for (PxU32 i = 0; i < mSceneArray.size(); i++)
-		{
-			NpScene* s = getScene(i);
-			s->addMaterial(*m);
-		}
-		return m;
-	}
-	else
-	{
-		mFoundation.error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "PxPhysics::addMPMMaterial: limit of 64K materials reached.");
-		m->release();
-		return NULL;
-	}
-#else
-	m->release();
-	return NULL;
-#endif
-}
-#endif // PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-PxMPMMaterial* NpPhysics::createMPMMaterial(PxReal friction, PxReal damping, PxReal maxVelocity, bool isPlastic, PxReal youngsModulus, PxReal poissons, PxReal hardening, PxReal criticalCompression, PxReal criticalStretch, PxReal tensileDamageSensitivity, PxReal compressiveDamageSensitivity, PxReal attractiveForceResidual, PxReal gravityScale)
-{
-	PxMPMMaterial* m = NpFactory::getInstance().createMPMMaterial(friction, damping, maxVelocity, isPlastic, youngsModulus, poissons, hardening, criticalCompression, criticalStretch, tensileDamageSensitivity, compressiveDamageSensitivity, attractiveForceResidual, gravityScale);
-	return addMPMMaterial(static_cast<NpMPMMaterial*>(m));
-}
-#else
-PxMPMMaterial* NpPhysics::createMPMMaterial(PxReal, PxReal, PxReal, bool, PxReal, PxReal, PxReal, PxReal, PxReal, PxReal, PxReal, PxReal, PxReal)
-{
-	return NULL;
-}
-#endif
-
-PxU32 NpPhysics::getNbMPMMaterials() const
-{
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-	PxMutex::ScopedLock lock(const_cast<PxMutex&>(mSceneAndMaterialMutex));
-	return mMasterMPMMaterialManager.getNumMaterials();
-#else
-	return 0;
-#endif
-}
-
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-PxU32 NpPhysics::getMPMMaterials(PxMPMMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
-{
-	PxMutex::ScopedLock lock(const_cast<PxMutex&>(mSceneAndMaterialMutex));
-	NpMaterialManagerIterator<NpMPMMaterial> iter(mMasterMPMMaterialManager);
-	PxU32 writeCount = 0;
-	PxU32 index = 0;
-	NpMPMMaterial* mat;
-	while (iter.getNextMaterial(mat))
-	{
-		if (index++ < startIndex)
-			continue;
-		if (writeCount == bufferSize)
-			break;
-		userBuffer[writeCount++] = mat;
-	}
-	return writeCount;
-}
-#else
-PxU32 NpPhysics::getMPMMaterials(PxMPMMaterial**, PxU32, PxU32) const
-{
-	return 0;
-}
-#endif
-
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-void NpPhysics::removeMPMMaterialFromTable(NpMPMMaterial& m)
-{
-#if PX_SUPPORT_GPU_PHYSX
-	OMNI_PVD_NOTIFY_REMOVE(&m);
-
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	// Let all scenes know of the deleted material
-	for (PxU32 i = 0; i < mSceneArray.size(); i++)
-	{
-		NpScene* s = getScene(i);
-		s->removeMaterial(m);
+		PxMutex::ScopedLock lock(const_cast<PxMutex&>(mSceneAndMaterialMutex));
+		return mMasterPBDMaterialManager.getNumMaterials();
 	}
 
-	mMasterMPMMaterialManager.removeMaterial(m);
-#else
-	PX_UNUSED(m);
-#endif
-}
-
-void NpPhysics::updateMPMMaterial(NpMPMMaterial& m)
-{
-#if PX_SUPPORT_GPU_PHYSX
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	// Let all scenes know of the updated material
-	for (PxU32 i = 0; i < mSceneArray.size(); i++)
+	PxU32 NpPhysics::getPBDMaterials(PxPBDMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
 	{
-		NpScene* s = getScene(i);
-		s->updateMaterial(m);
-	}
-	mMasterMPMMaterialManager.updateMaterial(m);
-#else
-	PX_UNUSED(m);
-#endif
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-NpCustomMaterial* NpPhysics::addCustomMaterial(NpCustomMaterial* m)
-{
-	if (!m)
-		return NULL;
-
-#if PX_SUPPORT_GPU_PHYSX
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	//the handle is set inside the setMaterial method
-	if (mMasterCustomMaterialManager.setMaterial(*m))
-	{
-		// Let all scenes know of the new material
-		for (PxU32 i = 0; i < mSceneArray.size(); i++)
-		{
-			NpScene* s = getScene(i);
-			s->addMaterial(*m);
-		}
-		return m;
-	}
-	else
-	{
-		mFoundation.error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "PxPhysics::addCustomMaterial: limit of 64K materials reached.");
-		m->release();
-		return NULL;
-	}
-#else
-	m->release();
-	return NULL;
-#endif
-}
-#endif
-
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-PxCustomMaterial* NpPhysics::createCustomMaterial(void* gpuBuffer)
-{
-	PxCustomMaterial* m = NpFactory::getInstance().createCustomMaterial(gpuBuffer);
-	return addCustomMaterial(static_cast<NpCustomMaterial*>(m));
-}
-#else
-PxCustomMaterial* NpPhysics::createCustomMaterial(void*)
-{
-	return NULL;
-}
-#endif
-
-PxU32 NpPhysics::getNbCustomMaterials() const
-{
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-	PxMutex::ScopedLock lock(const_cast<PxMutex&>(mSceneAndMaterialMutex));
-	return mMasterCustomMaterialManager.getNumMaterials();
-#else
-	return 0;
-#endif
-}
-
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-PxU32 NpPhysics::getCustomMaterials(PxCustomMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
-{
-	PxMutex::ScopedLock lock(const_cast<PxMutex&>(mSceneAndMaterialMutex));
-	NpMaterialManagerIterator<NpCustomMaterial> iter(mMasterCustomMaterialManager);
-	PxU32 writeCount = 0;
-	PxU32 index = 0;
-	NpCustomMaterial* mat;
-	while (iter.getNextMaterial(mat))
-	{
-		if (index++ < startIndex)
-			continue;
-		if (writeCount == bufferSize)
-			break;
-		userBuffer[writeCount++] = mat;
-	}
-	return writeCount;
-}
-#else
-PxU32 NpPhysics::getCustomMaterials(PxCustomMaterial**, PxU32, PxU32) const
-{
-	return 0;
-}
-#endif
-
-#if PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
-void NpPhysics::removeCustomMaterialFromTable(NpCustomMaterial& m)
-{
-#if PX_SUPPORT_GPU_PHYSX
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	// Let all scenes know of the deleted material
-	for (PxU32 i = 0; i < mSceneArray.size(); i++)
-	{
-		NpScene* s = getScene(i);
-		s->removeMaterial(m);
+		return ::getMaterials(mMasterPBDMaterialManager, mSceneAndMaterialMutex, userBuffer, bufferSize, startIndex);
 	}
 
-	mMasterCustomMaterialManager.removeMaterial(m);
+	IMPLEMENT_INTERNAL_MATERIAL_FUNCTIONS(NpPBDMaterial, mMasterPBDMaterialManager, "PxPhysics::createPBDMaterial: limit of 64K materials reached.")
 #else
-	PX_UNUSED(m);
+	PxPBDMaterial* NpPhysics::createPBDMaterial(PxReal, PxReal, PxReal, PxReal, PxReal, PxReal, PxReal, PxReal, PxReal, PxReal, PxReal)	{ return NULL;	}
+	PxU32 NpPhysics::getNbPBDMaterials()																						const	{ return 0;		}
+	PxU32 NpPhysics::getPBDMaterials(PxPBDMaterial**, PxU32, PxU32)																const	{ return 0;		}
 #endif
-}
-
-void NpPhysics::updateCustomMaterial(NpCustomMaterial& m)
-{
-
-#if PX_SUPPORT_GPU_PHYSX
-	PxMutex::ScopedLock lock(mSceneAndMaterialMutex);
-
-	// Let all scenes know of the updated material
-	for (PxU32 i = 0; i < mSceneArray.size(); i++)
-	{
-		NpScene* s = getScene(i);
-		s->updateMaterial(m);
-	}
-	mMasterCustomMaterialManager.updateMaterial(m);
-#else
-	PX_UNUSED(m);
-#endif
-}
-#endif // PX_ENABLE_FEATURES_UNDER_CONSTRUCTION
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -1477,9 +879,9 @@ PxU32 NpPhysics::getTetrahedronMeshes(PxTetrahedronMesh** userBuffer, PxU32 buff
 	return NpFactory::getInstance().getTetrahedronMeshes(userBuffer, bufferSize, startIndex);
 }
 
-PxSoftBodyMesh* NpPhysics::createSoftBodyMesh(PxInputStream& stream)
+PxDeformableVolumeMesh* NpPhysics::createDeformableVolumeMesh(PxInputStream& stream)
 {
-	return NpFactory::getInstance().createSoftBodyMesh(stream);
+	return NpFactory::getInstance().createDeformableVolumeMesh(stream);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1535,25 +937,63 @@ PxU32 NpPhysics::getBVHs(PxBVH** userBuffer, PxU32 bufferSize, PxU32 startIndex)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-PxParticleBuffer* NpPhysics::createParticleBuffer(PxU32 maxParticles, PxU32 maxVolumes, PxCudaContextManager* cudaContexManager)
+#if PX_SUPPORT_GPU_PHYSX
+PxParticleBuffer* NpPhysics::createParticleBuffer(PxU32 maxParticles, PxU32 maxVolumes, PxCudaContextManager* cudaContextManager)
 {
-	return NpFactory::getInstance().createParticleBuffer(maxParticles, maxVolumes, cudaContexManager);
+	if (cudaContextManager)
+	{
+		return NpFactory::getInstance().createParticleBuffer(maxParticles, maxVolumes, *cudaContextManager);
+	}
+	return NULL;
 }
 
-PxParticleAndDiffuseBuffer* NpPhysics::createParticleAndDiffuseBuffer(PxU32 maxParticles, PxU32 maxVolumes, PxU32 maxDiffuseParticles, PxCudaContextManager* cudaContexManager)
+PxParticleAndDiffuseBuffer* NpPhysics::createParticleAndDiffuseBuffer(PxU32 maxParticles, PxU32 maxVolumes, PxU32 maxDiffuseParticles, PxCudaContextManager* cudaContextManager)
 {
-	return NpFactory::getInstance().createParticleAndDiffuseBuffer(maxParticles, maxVolumes, maxDiffuseParticles, cudaContexManager);
+	if (cudaContextManager)
+	{
+		return NpFactory::getInstance().createParticleAndDiffuseBuffer(maxParticles, maxVolumes, maxDiffuseParticles, *cudaContextManager);
+	}
+	return NULL;
 }
 
-PxParticleClothBuffer* NpPhysics::createParticleClothBuffer(PxU32 maxParticles, PxU32 maxNumVolumes, PxU32 maxNumCloths, PxU32 maxNumTriangles, PxU32 maxNumSprings, PxCudaContextManager* cudaContexManager)
+PxParticleClothBuffer* NpPhysics::createParticleClothBuffer(PxU32 maxParticles, PxU32 maxNumVolumes, PxU32 maxNumCloths, PxU32 maxNumTriangles, PxU32 maxNumSprings, PxCudaContextManager* cudaContextManager)
 {
-	return NpFactory::getInstance().createParticleClothBuffer(maxParticles, maxNumVolumes, maxNumCloths, maxNumTriangles, maxNumSprings, cudaContexManager);
+	if (cudaContextManager)
+	{
+		return NpFactory::getInstance().createParticleClothBuffer(maxParticles, maxNumVolumes, maxNumCloths, maxNumTriangles, maxNumSprings, *cudaContextManager);
+	}
+	return NULL;
 }
 
-PxParticleRigidBuffer* NpPhysics::createParticleRigidBuffer(PxU32 maxParticles, PxU32 maxNumVolumes, PxU32 maxNumRigids, PxCudaContextManager* cudaContexManager)
+PxParticleRigidBuffer* NpPhysics::createParticleRigidBuffer(PxU32 maxParticles, PxU32 maxNumVolumes, PxU32 maxNumRigids, PxCudaContextManager* cudaContextManager)
 {
-	return NpFactory::getInstance().createParticleRigidBuffer(maxParticles, maxNumVolumes, maxNumRigids, cudaContexManager);
+	if (cudaContextManager)
+	{
+		return NpFactory::getInstance().createParticleRigidBuffer(maxParticles, maxNumVolumes, maxNumRigids, *cudaContextManager);
+	}
+	return NULL;
 }
+#else
+PxParticleBuffer* NpPhysics::createParticleBuffer(PxU32, PxU32, PxCudaContextManager*)
+{
+	return NULL;
+}
+
+PxParticleAndDiffuseBuffer* NpPhysics::createParticleAndDiffuseBuffer(PxU32, PxU32, PxU32, PxCudaContextManager*)
+{
+	return NULL;
+}
+
+PxParticleClothBuffer* NpPhysics::createParticleClothBuffer(PxU32, PxU32, PxU32, PxU32, PxU32, PxCudaContextManager*)
+{
+	return NULL;
+}
+
+PxParticleRigidBuffer* NpPhysics::createParticleRigidBuffer(PxU32, PxU32, PxU32, PxCudaContextManager*)
+{
+	return NULL;
+}
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -1571,29 +1011,6 @@ PxPruningStructure* NpPhysics::createPruningStructure(PxRigidActor*const* actors
 	}
 	return ps;
 }
-
-///////////////////////////////////////////////////////////////////////////////
-
-#if PX_SUPPORT_GPU_PHYSX
-void NpPhysics::registerPhysXIndicatorGpuClient()
-{
-	PxMutex::ScopedLock lock(mPhysXIndicatorMutex);
-
-	++mNbRegisteredGpuClients;
-
-	mPhysXIndicator.setIsGpu(mNbRegisteredGpuClients>0);
-}
-
-void NpPhysics::unregisterPhysXIndicatorGpuClient()
-{
-	PxMutex::ScopedLock lock(mPhysXIndicatorMutex);
-
-	if (mNbRegisteredGpuClients)
-		--mNbRegisteredGpuClients;
-
-	mPhysXIndicator.setIsGpu(mNbRegisteredGpuClients>0);
-}
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -1696,13 +1113,11 @@ void NpPhysics::notifyDeletionListeners(const PxBase* base, void* userData, PxDe
 			
 			if (entry->flags & deletionEvent)
 			{
-				if (entry->restrictedObjectSet)
+				if(!entry->restrictedObjectSet || entry->registeredObjects.contains(base))
 				{
-					if (entry->registeredObjects.contains(base))
-						delListenerEntries[i].first->onRelease(base, userData, deletionEvent);
-				}
-				else
+					PX_PROFILE_ZONE("USERCODE - PxDeletionListener::onRelease", 0);	// PT: note that we do not have a scene context ID here
 					delListenerEntries[i].first->onRelease(base, userData, deletionEvent);
+				}
 			}
 		}
 	}
@@ -1711,12 +1126,16 @@ void NpPhysics::notifyDeletionListeners(const PxBase* base, void* userData, PxDe
 #if PX_SUPPORT_OMNI_PVD
 void NpPhysics::OmniPvdListener::onObjectAdd(const PxBase* object)
 {
-	::OmniPvdPxSampler::getInstance()->onObjectAdd(object);
+	OmniPvdPxSampler* sampler = ::OmniPvdPxSampler::getInstance();
+	if (sampler)
+		sampler->onObjectAdd(*object);
 }
 
 void NpPhysics::OmniPvdListener::onObjectRemove(const PxBase* object)
 {
-	::OmniPvdPxSampler::getInstance()->onObjectRemove(object);
+	OmniPvdPxSampler* sampler = ::OmniPvdPxSampler::getInstance();
+	if (sampler)
+		sampler->onObjectRemove(*object);
 }
 #endif
 
@@ -1737,35 +1156,9 @@ PxPhysics& PxGetPhysics()
 	return NpPhysics::getInstance();
 }
 
-PxPhysics* PxCreateBasePhysics(PxU32 version, PxFoundation& foundation, const PxTolerancesScale& scale, bool trackOutstandingAllocations, PxPvd* pvd, PxOmniPvd* omniPvd)
+PxPhysics* PxCreatePhysics(PxU32 version, PxFoundation& foundation, const physx::PxTolerancesScale& scale, bool trackOutstandingAllocations, PxPvd* pvd, PxOmniPvd* omniPvd)
 {
 	return NpPhysics::createInstance(version, foundation, scale, trackOutstandingAllocations, static_cast<pvdsdk::PsPvd*>(pvd), omniPvd);
-}
-
-//void PxRegisterArticulations(PxPhysics& physics)
-//{
-//	PX_UNUSED(&physics);	// for the moment
-//	Dy::PxvRegisterArticulations();
-//	NpFactory::registerArticulations();	
-//}
-
-void PxRegisterArticulationsReducedCoordinate(PxPhysics& physics)
-{
-	PX_UNUSED(&physics);	// for the moment
-	Dy::PxvRegisterArticulationsReducedCoordinate();
-	NpFactory::registerArticulationRCs();
-}
-
-void PxRegisterHeightFields(PxPhysics& physics)
-{
-	PX_UNUSED(&physics);	// for the moment
-	PX_CHECK_AND_RETURN(NpPhysics::getInstance().getNumScenes() == 0, "PxRegisterHeightFields: it is illegal to call a heightfield registration function after you have a scene.");
-
-	PxvRegisterHeightFields();
-	Gu::registerHeightFields();	
-#if PX_CHECKED
-	NpPhysics::heightfieldsAreRegistered();
-#endif
 }
 
 void PxAddCollectionToPhysics(const PxCollection& collection)

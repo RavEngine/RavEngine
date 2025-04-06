@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -36,7 +36,7 @@
 
 namespace physx
 {
-class PxShape;
+class PxShape;	// PT: TODO: fw decl of higher-level class isn't great
 
 namespace Sc
 {
@@ -44,24 +44,17 @@ namespace Sc
 
 	class ShapeCore
 	{
-	//= ATTENTION! =====================================================================================
-	// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-	// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-	// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-	// accordingly.
-	//==================================================================================================
 	public:
 // PX_SERIALIZATION
 													ShapeCore(const PxEMPTY);
 						void						exportExtraData(PxSerializationContext& stream);
 						void						importExtraData(PxDeserializationContext& context);
 						void						resolveReferences(PxDeserializationContext& context);
-		static			void						getBinaryMetaData(PxOutputStream& stream);
 		                void                        resolveMaterialReference(PxU32 materialTableIndex, PxU16 materialIndex);
 //~PX_SERIALIZATION
-													ShapeCore(const PxGeometry& geometry, PxShapeFlags shapeFlags,
-															  const PxU16* materialIndices, PxU16 materialCount, bool isExclusive,
-														PxShapeCoreFlag::Enum softOrClothFlags = PxShapeCoreFlag::Enum(0));
+													ShapeCore(	const PxGeometry& geometry, PxShapeFlags shapeFlags,
+																const PxU16* materialIndices, PxU16 materialCount, bool isExclusive,
+																PxShapeCoreFlag::Enum coreFlags = PxShapeCoreFlag::Enum(0));
 
 													~ShapeCore();
 
@@ -104,31 +97,27 @@ namespace Sc
 		PX_FORCE_INLINE const PxsShapeCore&			getCore()									const	{ return mCore;								}
 		static PX_FORCE_INLINE size_t				getCoreOffset()										{ return PX_OFFSET_OF(ShapeCore, mCore);	}
 		static PX_FORCE_INLINE ShapeCore&			getCore(PxsShapeCore& core)			
-		{ 
-			return *reinterpret_cast<ShapeCore*>(reinterpret_cast<PxU8*>(&core) - getCoreOffset());
-		}	
+													{
+														return *reinterpret_cast<ShapeCore*>(reinterpret_cast<PxU8*>(&core) - getCoreOffset());
+													}	
 
-		PX_FORCE_INLINE ShapeSim*					getSim() const			
-		{
-			return reinterpret_cast<ShapeSim*>(size_t(mSimAndIsExclusive) & ~1);
-		}
-		PX_FORCE_INLINE void						setSim(ShapeSim* sim)	
-		{ 
-			PX_ASSERT((NULL == mSimAndIsExclusive) || (1 == size_t(mSimAndIsExclusive)));
-			PX_ASSERT(0 == (size_t(sim) & 1));
-			mSimAndIsExclusive = mSimAndIsExclusive ? reinterpret_cast<ShapeSim*>(size_t(sim) | size_t(mSimAndIsExclusive)) : mSimAndIsExclusive;
-		}
-		PX_FORCE_INLINE void						clearSim()
-		{
-			mSimAndIsExclusive = reinterpret_cast<ShapeSim*>(size_t(mSimAndIsExclusive) & 1);
-		}
+		PX_FORCE_INLINE ShapeSim*					getExclusiveSim() const			
+													{
+														return mExclusiveSim;
+													}
+
+		PX_FORCE_INLINE void						setExclusiveSim(ShapeSim* sim)	
+													{
+														if(!sim || mCore.mShapeCoreFlags.isSet(PxShapeCoreFlag::eIS_EXCLUSIVE))
+															mExclusiveSim = sim;
+													}
 
 #if PX_WINDOWS_FAMILY	// PT: to avoid "error: offset of on non-standard-layout type" on Linux
 	protected:
 #endif
 						PxFilterData				mSimulationFilterData;	// Simulation filter data
 						PxsShapeCore				PX_ALIGN(16, mCore);	
-						ShapeSim*					mSimAndIsExclusive;
+						ShapeSim*					mExclusiveSim;   //only set if shape is exclusive
 #if PX_WINDOWS_FAMILY	// PT: to avoid "error: offset of on non-standard-layout type" on Linux
 	public:
 #endif

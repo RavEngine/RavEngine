@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -70,7 +70,7 @@ static PX_FORCE_INLINE PxU32 getHashValue(const Indices& v)
 	return c;
 }
 
-MeshCleaner::MeshCleaner(PxU32 nbVerts, const PxVec3* srcVerts, PxU32 nbTris, const PxU32* srcIndices, PxF32 meshWeldTolerance)
+MeshCleaner::MeshCleaner(PxU32 nbVerts, const PxVec3* srcVerts, PxU32 nbTris, const PxU32* srcIndices, PxF32 meshWeldTolerance, PxF32 areaLimit)
 {
 	PxVec3* cleanVerts = PX_ALLOCATE(PxVec3, nbVerts, "MeshCleaner");
 	PX_ASSERT(cleanVerts);
@@ -141,6 +141,12 @@ MeshCleaner::MeshCleaner(PxU32 nbVerts, const PxVec3* srcVerts, PxU32 nbTris, co
 		else remapVerts[i] = offset;
 	}
 
+	// PT: area = ((p0 - p1).cross(p0 - p2)).magnitude() * 0.5
+	// area < areaLimit
+	// <=> ((p0 - p1).cross(p0 - p2)).magnitude() < areaLimit * 2.0
+	// <=> ((p0 - p1).cross(p0 - p2)).magnitudeSquared() < (areaLimit * 2.0)^2
+	const PxF32 limit = areaLimit * areaLimit * 4.0f;
+
 	PxU32 nbCleanedTris = 0;
 	for(PxU32 i=0;i<nbTris;i++)
 	{
@@ -154,8 +160,9 @@ MeshCleaner::MeshCleaner(PxU32 nbVerts, const PxVec3* srcVerts, PxU32 nbTris, co
 		const PxVec3& p0 = srcVerts[vref0];
 		const PxVec3& p1 = srcVerts[vref1];
 		const PxVec3& p2 = srcVerts[vref2];
+
 		const float area2 = ((p0 - p1).cross(p0 - p2)).magnitudeSquared();
-		if(area2==0.0f)
+		if(area2<=limit)
 			continue;
 
 		vref0 = remapVerts[vref0];

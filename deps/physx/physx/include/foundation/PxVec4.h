@@ -22,16 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 #ifndef PX_VEC4_H
 #define PX_VEC4_H
 
-/** \addtogroup foundation
-@{
-*/
 #include "foundation/PxMath.h"
 #include "foundation/PxVec3.h"
 
@@ -331,7 +328,7 @@ class PxVec4T
 	*/
 	PX_CUDA_CALLABLE PX_INLINE PxVec4T minimum(const PxVec4T& v) const
 	{
-		return PxVec4(PxMin(x, v.x), PxMin(y, v.y), PxMin(z, v.z), PxMin(w, v.w));
+		return PxVec4T(PxMin(x, v.x), PxMin(y, v.y), PxMin(z, v.z), PxMin(w, v.w));
 	}
 
 	/**
@@ -363,6 +360,5 @@ typedef PxVec4T<double>	PxVec4d;
 } // namespace physx
 #endif
 
-/** @} */
 #endif
 

@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -31,12 +31,12 @@
 
 #include "common/PxPhysXCommonConfig.h"
 #include "GuSegment.h"
+#include "foundation/PxVecMath.h"
 
 namespace physx
 {
 namespace Gu
 {
-
 	PX_PHYSX_COMMON_API PxReal distanceSegmentTriangleSquared(
 		const PxVec3& segmentOrigin, const PxVec3& segmentExtent,
 		const PxVec3& triangleOrigin, const PxVec3& triangleEdge0, const PxVec3& triangleEdge1,
@@ -44,19 +44,21 @@ namespace Gu
 
 	PX_INLINE PxReal distanceSegmentTriangleSquared(
 		const Gu::Segment& segment, 
-		const PxVec3& triangleOrigin, 
-		const PxVec3& triangleEdge0, 
-		const PxVec3& triangleEdge1,
-		PxReal* t=NULL, 
-		PxReal* u=NULL, 
-		PxReal* v=NULL)
+		const PxVec3& triangleOrigin, const PxVec3& triangleEdge0, const PxVec3& triangleEdge1,
+		PxReal* t=NULL, PxReal* u=NULL, PxReal* v=NULL)
 	{
 		return distanceSegmentTriangleSquared(
 			segment.p0, segment.computeDirection(), triangleOrigin, triangleEdge0, triangleEdge1, t, u, v);
 	}
 
-} // namespace Gu
+	//	closest0 is the closest point on segment pq
+	//	closest1 is the closest point on triangle abc
+	PX_PHYSX_COMMON_API aos::FloatV distanceSegmentTriangleSquared(
+		const aos::Vec3VArg p, const aos::Vec3VArg q,
+		const aos::Vec3VArg a, const aos::Vec3VArg b, const aos::Vec3VArg c,
+		aos::Vec3V& closest0, aos::Vec3V& closest1);
 
+} // namespace Gu
 }
 
 #endif

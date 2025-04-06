@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -42,7 +42,6 @@
 // 
 // ****************************************************************************
 
-#include <vector>
 #include "PxPhysicsAPI.h"
 #include "../snippetutils/SnippetUtils.h"
 #include "../snippetcommon/SnippetPrint.h"
@@ -63,9 +62,9 @@ static PxRigidDynamic*			gSphereActor		= NULL;
 static PxPvd*					gPvd                = NULL;
 static PxU32					gSimStepCount		= 0;
 
-std::vector<PxVec3> gContactPositions;
-std::vector<PxVec3> gContactImpulses;
-std::vector<PxVec3> gContactSphereActorPositions;
+PxArray<PxVec3> gContactPositions;
+PxArray<PxVec3> gContactImpulses;
+PxArray<PxVec3> gContactSphereActorPositions;
 
 static PxFilterFlags contactReportFilterShader(	PxFilterObjectAttributes attributes0, PxFilterData filterData0, 
 												PxFilterObjectAttributes attributes1, PxFilterData filterData1,
@@ -102,7 +101,7 @@ class ContactReportCallback: public PxSimulationEventCallback
 	void onAdvance(const PxRigidBody*const*, const PxTransform*, const PxU32) {}
 	void onContact(const PxContactPairHeader& pairHeader, const PxContactPair* pairs, PxU32 nbPairs) 
 	{
-		std::vector<PxContactPairPoint> contactPoints;
+		PxArray<PxContactPairPoint> contactPoints;
 
 		PxTransform spherePose(PxIdentity);
 		PxU32 nextPairIndex = 0xffffffff;
@@ -124,7 +123,7 @@ class ContactReportCallback: public PxSimulationEventCallback
 				else
 					spherePose = iter.eventPose->globalPose[1];
 
-				gContactSphereActorPositions.push_back(spherePose.p);
+				gContactSphereActorPositions.pushBack(spherePose.p);
 
 				hasItemSet = iter.nextItemSet();
 				if (hasItemSet)
@@ -143,8 +142,8 @@ class ContactReportCallback: public PxSimulationEventCallback
 
 				for(PxU32 j=0; j < contactCount; j++)
 				{
-					gContactPositions.push_back(contactPoints[j].position);
-					gContactImpulses.push_back(contactPoints[j].impulse);
+					gContactPositions.pushBack(contactPoints[j].position);
+					gContactImpulses.pushBack(contactPoints[j].impulse);
 				}
 			}
 		}
@@ -215,7 +214,7 @@ static void initScene()
 	//
 
 	PxTransform spherePose(PxVec3(0.0f, 5.0f, 1.0f));
-	gContactSphereActorPositions.push_back(spherePose.p);
+	gContactSphereActorPositions.pushBack(spherePose.p);
 	gSphereActor = gPhysics->createRigidDynamic(spherePose);
 	gSphereActor->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
 
@@ -246,7 +245,7 @@ void initPhysics(bool /*interactive*/)
 	PxPvdTransport* transport = PxDefaultPvdSocketTransportCreate(PVD_HOST, 5425, 10);
 	gPvd->connect(*transport,PxPvdInstrumentationFlag::eALL);
 
-	gPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *gFoundation, PxTolerancesScale(),true,gPvd);
+	gPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *gFoundation, PxTolerancesScale(), true, gPvd);
 	PxInitExtensions(*gPhysics, gPvd);
 
 	PxU32 numCores = SnippetUtils::getNbPhysicalCores();
@@ -279,7 +278,7 @@ void stepPhysics(bool /*interactive*/)
 		printf("%d contact points\n", PxU32(gContactPositions.size()));
 
 		if (gSphereActor)
-			gContactSphereActorPositions.push_back(gSphereActor->getGlobalPose().p);
+			gContactSphereActorPositions.pushBack(gSphereActor->getGlobalPose().p);
 
 		gSimStepCount = 1;
 	}
@@ -287,6 +286,10 @@ void stepPhysics(bool /*interactive*/)
 
 void cleanupPhysics(bool /*interactive*/)
 {
+	gContactPositions.reset();
+	gContactImpulses.reset();
+	gContactSphereActorPositions.reset();
+
 	PX_RELEASE(gSphereActor);
 	PX_RELEASE(gTriangleMeshActor);
 	PX_RELEASE(gTriangleMesh);
@@ -298,7 +301,7 @@ void cleanupPhysics(bool /*interactive*/)
 	if(gPvd)
 	{
 		PxPvdTransport* transport = gPvd->getTransport();
-		gPvd->release();	gPvd = NULL;
+		PX_RELEASE(gPvd);
 		PX_RELEASE(transport);
 	}
 	PX_RELEASE(gFoundation);

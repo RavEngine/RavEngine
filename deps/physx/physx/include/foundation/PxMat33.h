@@ -22,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 #ifndef PX_MAT33_H
 #define PX_MAT33_H
-/** \addtogroup foundation
-@{
-*/
 
 #include "foundation/PxVec3.h"
 #include "foundation/PxQuat.h"
@@ -416,10 +413,96 @@ PX_CUDA_CALLABLE PX_INLINE PxQuatT<Type>::PxQuatT(const PxMat33T<Type>& m)
 typedef PxMat33T<float>		PxMat33;
 typedef PxMat33T<double>	PxMat33d;
 
+	/**
+	\brief Sets a rotation matrix around the X axis.
+	\param m		[out] output rotation matrix
+	\param angle	[in] desired angle
+	*/
+	PX_INLINE	void PxSetRotX(PxMat33& m, PxReal angle)
+	{
+		m = PxMat33(PxIdentity);
+
+		PxReal sin, cos;
+		PxSinCos(angle, sin, cos);
+
+		m[1][1] = m[2][2] = cos;
+		m[1][2] = sin;
+		m[2][1] = -sin;
+	}
+
+	/**
+	\brief Sets a rotation matrix around the Y axis.
+	\param m		[out] output rotation matrix
+	\param angle	[in] desired angle
+	*/
+	PX_INLINE	void PxSetRotY(PxMat33& m, PxReal angle)
+	{
+		m = PxMat33(PxIdentity);
+
+		PxReal sin, cos;
+		PxSinCos(angle, sin, cos);
+
+		m[0][0] = m[2][2] = cos;
+		m[0][2] = -sin;
+		m[2][0] = sin;
+	}
+
+	/**
+	\brief Sets a rotation matrix around the Z axis.
+	\param m		[out] output rotation matrix
+	\param angle	[in] desired angle
+	*/
+	PX_INLINE	void PxSetRotZ(PxMat33& m, PxReal angle)
+	{
+		m = PxMat33(PxIdentity);
+
+		PxReal sin, cos;
+		PxSinCos(angle, sin, cos);
+
+		m[0][0] = m[1][1] = cos;
+		m[0][1] = sin;
+		m[1][0] = -sin;
+	}
+
+	/**
+	\brief Returns a rotation quaternion around the X axis.
+	\param angle	[in] desired angle
+	\return Quaternion that rotates around the desired axis
+	*/
+	PX_INLINE	PxQuat PxGetRotXQuat(float angle)
+	{
+		PxMat33 m;
+		PxSetRotX(m, angle);
+		return PxQuat(m);
+	}
+
+	/**
+	\brief Returns a rotation quaternion around the Y axis.
+	\param angle	[in] desired angle
+	\return Quaternion that rotates around the desired axis
+	*/
+	PX_INLINE	PxQuat PxGetRotYQuat(float angle)
+	{
+		PxMat33 m;
+		PxSetRotY(m, angle);
+		return PxQuat(m);
+	}
+
+	/**
+	\brief Returns a rotation quaternion around the Z axis.
+	\param angle	[in] desired angle
+	\return Quaternion that rotates around the desired axis
+	*/
+	PX_INLINE	PxQuat PxGetRotZQuat(float angle)
+	{
+		PxMat33 m;
+		PxSetRotZ(m, angle);
+		return PxQuat(m);
+	}
+
 #if !PX_DOXYGEN
 } // namespace physx
 #endif
 
-/** @} */
 #endif
 

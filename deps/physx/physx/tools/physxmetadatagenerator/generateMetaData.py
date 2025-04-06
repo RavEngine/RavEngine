@@ -22,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 import argparse
 import os
@@ -135,7 +135,7 @@ includes += includeString(sdkRoot + '/tools/physxmetadatagenerator')
 
 print("platform:", platform.system())
 
-commonFlags = '-DNDEBUG -DPX_GENERATE_META_DATA -DPX_ENABLE_FEATURES_UNDER_CONSTRUCTION=0 -x c++-header -w -Wno-c++11-narrowing -fms-extensions '
+commonFlags = '-DNDEBUG -DPX_GENERATE_META_DATA -x c++-header -w -Wno-c++11-narrowing -fms-extensions '
 
 
 if platform.system() == "Windows":
@@ -196,31 +196,9 @@ print(cmd, file=debugFile)
 (stdout, stderr) = utils.run_cmd(cmd)
 if (stderr != "" or stdout != ""):
 	print(stderr, "\n", stdout)
+if (stderr != ""):
+	print("failed to compile metadata!")
+	sys.exit(1)
 print("wrote meta data files in", targetDir)
 
 test_targetdir(targetDir, metaDataDir, args.test)
-
-###############################
-# PxVehicleExtension          #
-###############################
-
-print("PxVehicleExtension:")
-
-srcPath = "PxVehicleExtensionAPI.h"
-metaDataDir = os.path.join(sdkRoot, os.path.normpath("source/physxvehicle/src/physxmetadata"))
-
-includes += includeString(sdkRoot + '/include/vehicle')
-#TODO, get rid of source include
-includes += includeString(sdkRoot + '/source/physxvehicle/src')
-
-targetDir = setup_targetdir(metaDataDir, args.test)
-
-cmd = " ".join(["", clangExe, commonFlags, "", platformFlags, includes, srcPath, "-o", '"'+targetDir+'"'])
-print(cmd, file=debugFile)
-(stdout, stderr) = utils.run_cmd(cmd)
-if (stderr != "" or stdout != ""):
-	print(stderr, "\n", stdout)
-print("wrote meta data files in", targetDir)
-
-test_targetdir(targetDir, metaDataDir, args.test)
-

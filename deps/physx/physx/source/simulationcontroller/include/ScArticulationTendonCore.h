@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -46,7 +46,6 @@ namespace Sc
 // PX_SERIALIZATION
 															ArticulationTendonCore(const PxEMPTY) {}
 						void								preExportDataReset() { }
-		static			void								getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
 
 		ArticulationTendonCore() : mStiffness(0.f), mDamping(0.f), mOffset(0.f), mLimitStiffness(0.f)
@@ -66,7 +65,6 @@ namespace Sc
 // PX_SERIALIZATION
 															ArticulationSpatialTendonCore(const PxEMPTY) : ArticulationTendonCore(PxEmpty), mSim(NULL) {}
 						void								preExportDataReset() { }
-		static			void								getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
 
 		ArticulationSpatialTendonCore() : ArticulationTendonCore() { mSim = NULL; }
@@ -103,7 +101,6 @@ namespace Sc
 		// PX_SERIALIZATION
 		ArticulationFixedTendonCore(const PxEMPTY) : ArticulationTendonCore(PxEmpty), mSim(NULL) {}
 		void preExportDataReset() {}
-		static void getBinaryMetaData(PxOutputStream& stream);
 		//~PX_SERIALIZATION
 
 		ArticulationFixedTendonCore() : ArticulationTendonCore(), mLowLimit(PX_MAX_F32), mHighLimit(-PX_MAX_F32), mRestLength(0.f)

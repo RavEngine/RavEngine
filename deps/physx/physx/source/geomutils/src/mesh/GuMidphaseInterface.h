@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -142,12 +142,12 @@ namespace Gu
 	PX_PHYSX_COMMON_API bool intersectCapsuleVsMesh_RTREE(const Capsule& capsule,	const TriangleMesh& triMesh, const PxTransform& meshTransform, const PxMeshScale& meshScale, LimitedResults* results);
 	PX_PHYSX_COMMON_API void intersectOBB_RTREE(const TriangleMesh* mesh, const Box& obb, MeshHitCallback<PxGeomRaycastHit>& callback, bool bothTriangleSidesCollide, bool checkObbIsAligned);
 	PX_PHYSX_COMMON_API bool sweepCapsule_MeshGeom_RTREE(	const TriangleMesh* mesh, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
-										const Gu::Capsule& lss, const PxVec3& unitDir, const PxReal distance,
-										PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation);
+										const Gu::Capsule& lss, const PxVec3& unitDir, PxReal distance,
+										PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, PxReal inflation);
 	PX_PHYSX_COMMON_API bool sweepBox_MeshGeom_RTREE(	const TriangleMesh* mesh, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
-									const Gu::Box& box, const PxVec3& unitDir, const PxReal distance,
-									PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation);
-	PX_PHYSX_COMMON_API void sweepConvex_MeshGeom_RTREE(const TriangleMesh* mesh, const Gu::Box& hullBox, const PxVec3& localDir, const PxReal distance, SweepConvexMeshHitCallback& callback, bool anyHit);
+									const Gu::Box& box, const PxVec3& unitDir, PxReal distance,
+									PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, PxReal inflation);
+	PX_PHYSX_COMMON_API void sweepConvex_MeshGeom_RTREE(const TriangleMesh* mesh, const Gu::Box& hullBox, const PxVec3& localDir, PxReal distance, SweepConvexMeshHitCallback& callback, bool anyHit);
 	PX_PHYSX_COMMON_API	void pointMeshDistance_RTREE(const TriangleMesh* mesh, const PxTriangleMeshGeometry& meshGeom, const PxTransform& pose, const PxVec3& point, float maxDist, PxU32& index, float& dist, PxVec3& closestPt);
 
 	// BV4 forward declarations
@@ -160,14 +160,21 @@ namespace Gu
 	PX_PHYSX_COMMON_API void intersectOBB_BV4(const TriangleMesh* mesh, const Box& obb, MeshHitCallback<PxGeomRaycastHit>& callback, bool bothTriangleSidesCollide, bool checkObbIsAligned);
 	PX_PHYSX_COMMON_API void intersectOBB_BV4(const TetrahedronMesh* mesh, const Box& obb, TetMeshHitCallback<PxGeomRaycastHit>& callback);
 	PX_PHYSX_COMMON_API bool sweepCapsule_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
-									const Gu::Capsule& lss, const PxVec3& unitDir, const PxReal distance,
-									PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation);
+									const Gu::Capsule& lss, const PxVec3& unitDir, PxReal distance,
+									PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, PxReal inflation);
 	PX_PHYSX_COMMON_API bool sweepBox_MeshGeom_BV4(	const TriangleMesh* mesh, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
-								const Gu::Box& box, const PxVec3& unitDir, const PxReal distance,
-								PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation);
-	PX_PHYSX_COMMON_API void sweepConvex_MeshGeom_BV4(const TriangleMesh* mesh, const Gu::Box& hullBox, const PxVec3& localDir, const PxReal distance, SweepConvexMeshHitCallback& callback, bool anyHit);
+								const Gu::Box& box, const PxVec3& unitDir, PxReal distance,
+								PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, PxReal inflation);
+	PX_PHYSX_COMMON_API void sweepConvex_MeshGeom_BV4(const TriangleMesh* mesh, const Gu::Box& hullBox, const PxVec3& localDir, PxReal distance, SweepConvexMeshHitCallback& callback, bool anyHit);
 	PX_PHYSX_COMMON_API	void pointMeshDistance_BV4(const TriangleMesh* mesh, const PxTriangleMeshGeometry& meshGeom, const PxTransform& pose, const PxVec3& point, float maxDist, PxU32& index, float& dist, PxVec3& closestPt);
-	PX_PHYSX_COMMON_API bool intersectMeshVsMesh_BV4(PxReportCallback<PxGeomIndexPair>& callback, const TriangleMesh& triMesh0, const TriangleMesh& triMesh1, const PxTransform& meshPose0, const PxTransform& meshPose1, const PxMeshScale& meshScale0, const PxMeshScale& meshScale1, PxMeshMeshQueryFlags meshMeshFlags);
+	PX_PHYSX_COMMON_API bool intersectMeshVsMesh_BV4(	PxReportCallback<PxGeomIndexPair>& callback,
+														const TriangleMesh& triMesh0, const PxTransform& meshPose0, const PxMeshScale& meshScale0,
+														const TriangleMesh& triMesh1, const PxTransform& meshPose1, const PxMeshScale& meshScale1,
+														PxMeshMeshQueryFlags meshMeshFlags, float tolerance);
+	PX_PHYSX_COMMON_API bool distanceMeshVsMesh_BV4(	PxReportCallback<PxGeomIndexClosePair>& callback,
+														const TriangleMesh& triMesh0, const PxTransform& meshPose0, const PxMeshScale& meshScale0,
+														const TriangleMesh& triMesh1, const PxTransform& meshPose1, const PxMeshScale& meshScale1,
+														PxMeshMeshQueryFlags meshMeshFlags, float tolerance);
 
 	typedef PxU32 (*MidphaseRaycastFunction)(	const TriangleMesh* mesh, const PxTriangleMeshGeometry& meshGeom, const PxTransform& pose,
 												const PxVec3& rayOrigin, const PxVec3& rayDir, PxReal maxDist,
@@ -179,12 +186,12 @@ namespace Gu
 	typedef void (*MidphaseBoxCBOverlapFunction)	(const TriangleMesh* mesh, const Box& obb, MeshHitCallback<PxGeomRaycastHit>& callback, bool bothTriangleSidesCollide, bool checkObbIsAligned);
 
 	typedef bool (*MidphaseCapsuleSweepFunction)(	const TriangleMesh* mesh, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
-													const Gu::Capsule& lss, const PxVec3& unitDir, const PxReal distance,
-													PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation);
+													const Gu::Capsule& lss, const PxVec3& unitDir, PxReal distance,
+													PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, PxReal inflation);
 	typedef bool (*MidphaseBoxSweepFunction)(		const TriangleMesh* mesh, const PxTriangleMeshGeometry& triMeshGeom, const PxTransform& pose,
-													const Gu::Box& box, const PxVec3& unitDir, const PxReal distance,
-													PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation);
-	typedef void (*MidphaseConvexSweepFunction)(	const TriangleMesh* mesh, const Gu::Box& hullBox, const PxVec3& localDir, const PxReal distance, SweepConvexMeshHitCallback& callback, bool anyHit);
+													const Gu::Box& box, const PxVec3& unitDir, PxReal distance,
+													PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, PxReal inflation);
+	typedef void (*MidphaseConvexSweepFunction)(	const TriangleMesh* mesh, const Gu::Box& hullBox, const PxVec3& localDir, PxReal distance, SweepConvexMeshHitCallback& callback, bool anyHit);
 	typedef void (*MidphasePointMeshFunction)(const TriangleMesh* mesh, const PxTriangleMeshGeometry& meshGeom, const PxTransform& pose, const PxVec3& point, float maxDist, PxU32& index, float& dist, PxVec3& closestPt);
 
 	static const MidphaseRaycastFunction	gMidphaseRaycastTable[PxMeshMidPhase::eLAST] =
@@ -274,7 +281,6 @@ namespace Midphase
 		return gMidphaseSphereOverlapTable[index](sphere, mesh, meshTransform, meshScale, results);
 	}
 
-
 	// \param[in]	box				box
 	// \param[in]	mesh			triangle mesh
 	// \param[in]	meshTransform	pose/transform of triangle mesh
@@ -329,8 +335,8 @@ namespace Midphase
 	// \param[in]	inflation		optional inflation value for swept shape
 	// \return		true if a hit was found, false otherwise
 	PX_FORCE_INLINE bool sweepCapsuleVsMesh(const TriangleMesh* mesh, const PxTriangleMeshGeometry& meshGeom, const PxTransform& meshTransform,
-											const Gu::Capsule& capsule, const PxVec3& unitDir, const PxReal distance,
-											PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation)
+											const Gu::Capsule& capsule, const PxVec3& unitDir, PxReal distance,
+											PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, PxReal inflation)
 	{
 		const PxU32 index = PxU32(mesh->getConcreteType() - PxConcreteType::eTRIANGLE_MESH_BVH33);
 		return gMidphaseCapsuleSweepTable[index](mesh, meshGeom, meshTransform, capsule, unitDir, distance, sweepHit, hitFlags, inflation);
@@ -347,8 +353,8 @@ namespace Midphase
 	// \param[in]	inflation		optional inflation value for swept shape
 	// \return		true if a hit was found, false otherwise
 	PX_FORCE_INLINE bool sweepBoxVsMesh(const TriangleMesh* mesh, const PxTriangleMeshGeometry& meshGeom, const PxTransform& meshTransform,
-										const Gu::Box& box, const PxVec3& unitDir, const PxReal distance,
-										PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, const PxReal inflation)
+										const Gu::Box& box, const PxVec3& unitDir, PxReal distance,
+										PxGeomSweepHit& sweepHit, PxHitFlags hitFlags, PxReal inflation)
 	{
 		const PxU32 index = PxU32(mesh->getConcreteType() - PxConcreteType::eTRIANGLE_MESH_BVH33);
 		return gMidphaseBoxSweepTable[index](mesh, meshGeom, meshTransform, box, unitDir, distance, sweepHit, hitFlags, inflation);
@@ -359,8 +365,8 @@ namespace Midphase
 	// \param[in]	localDir		sweep's unit dir, in local/mesh space
 	// \param[in]	distance		sweep's length/max distance
 	// \param[in]	callback		callback object, called each time a hit is found
-	// \param[in]	anyHit			true for PxHitFlag::eMESH_ANY queries
-	PX_FORCE_INLINE void sweepConvexVsMesh(const TriangleMesh* mesh, const Gu::Box& hullBox, const PxVec3& localDir, const PxReal distance, SweepConvexMeshHitCallback& callback, bool anyHit)
+	// \param[in]	anyHit			true for PxHitFlag::eANY_HIT queries
+	PX_FORCE_INLINE void sweepConvexVsMesh(const TriangleMesh* mesh, const Gu::Box& hullBox, const PxVec3& localDir, PxReal distance, SweepConvexMeshHitCallback& callback, bool anyHit)
 	{
 		const PxU32 index = PxU32(mesh->getConcreteType() - PxConcreteType::eTRIANGLE_MESH_BVH33);
 		gMidphaseConvexSweepTable[index](mesh, hullBox, localDir, distance, callback, anyHit);

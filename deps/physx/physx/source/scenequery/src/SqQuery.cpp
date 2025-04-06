@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -183,7 +183,7 @@ template<typename HitType>
 struct GeomQueryAny
 {
 	static PX_FORCE_INLINE PxU32 geomHit(
-		const CachedFuncs& funcs, const MultiQueryInput& input, const Gu::ShapeData& sd,
+		const CachedFuncs& funcs, const MultiQueryInput& input, const Gu::ShapeData* sd,
 		const PxGeometry& sceneGeom, const PxTransform& pose, PxHitFlags hitFlags,
 		PxU32 maxHits, HitType* hits, const PxReal shrunkMaxDistance, const PxBounds3* precomputedBounds,
 		PxQueryThreadContext* context)
@@ -217,6 +217,7 @@ struct GeomQueryAny
 		else if(HitTypeSupport<HitType>::IsSweep)
 		{
 			PX_ASSERT(precomputedBounds != NULL);
+			PX_ASSERT(sd != NULL);
 			// b0 = query shape bounds
 			// b1 = scene shape bounds
 			// AP: Here we clip the sweep to bounds with sum of extents. This is needed for GJK stability.
@@ -274,7 +275,7 @@ struct GeomQueryAny
 				{
 					const bool precise = hitFlags & PxHitFlag::ePRECISE_SWEEP;
 					const SweepCapsuleFunc func = precise ? sf.preciseCapsuleMap[geom1.getType()] : sf.capsuleMap[geom1.getType()];
-					retVal = PxU32(func(geom1, pose1Offset, static_cast<const PxCapsuleGeometry&>(geom0), pose0, sd.getGuCapsule(), unitDir, distance, sweepHit, hitFlags, inflation, context));
+					retVal = PxU32(func(geom1, pose1Offset, static_cast<const PxCapsuleGeometry&>(geom0), pose0, sd->getGuCapsule(), unitDir, distance, sweepHit, hitFlags, inflation, context));
 				}
 				break;
 	
@@ -282,7 +283,7 @@ struct GeomQueryAny
 				{
 					const bool precise = hitFlags & PxHitFlag::ePRECISE_SWEEP;
 					const SweepBoxFunc func = precise ? sf.preciseBoxMap[geom1.getType()] : sf.boxMap[geom1.getType()];
-					retVal = PxU32(func(geom1, pose1Offset, static_cast<const PxBoxGeometry&>(geom0), pose0, sd.getGuBox(), unitDir, distance, sweepHit, hitFlags, inflation, context));
+					retVal = PxU32(func(geom1, pose1Offset, static_cast<const PxBoxGeometry&>(geom0), pose0, sd->getGuBox(), unitDir, distance, sweepHit, hitFlags, inflation, context));
 				}
 				break;
 	
@@ -371,6 +372,7 @@ static PX_FORCE_INLINE bool applyAllPreFiltersSQ(
 
 static PX_NOINLINE void computeCompoundShapeTransform(PxTransform* PX_RESTRICT transform, const PxTransform* PX_RESTRICT compoundPose, const PxTransform* PX_RESTRICT transforms, PxU32 primIndex)
 {
+	// PT:: tag: scalar transform*transform
 	*transform = (*compoundPose) * transforms[primIndex];
 }
 
@@ -409,7 +411,7 @@ struct MultiQueryCallback : public PrunerRaycastCallback, public PrunerOverlapCa
 			mFilterData			(filterData),
 			mFilterCall			(filterCall),
 			mShrunkDistance		(shrunkDistance),
-			mMeshAnyHitFlags	((hitFlags.isSet(PxHitFlag::eMESH_ANY) || anyHit) ? PxHitFlag::eMESH_ANY : PxHitFlag::Enum(0)),
+			mMeshAnyHitFlags	((hitFlags.isSet(PxHitFlag::eANY_HIT) || anyHit) ? PxHitFlag::eANY_HIT : PxHitFlag::Enum(0)),
 			mReportTouchesAgain	(true),
 			mFarBlockFound		(filterData.flags & PxQueryFlag::eNO_BLOCK),
 			mNoBlock			(filterData.flags & PxQueryFlag::eNO_BLOCK),
@@ -553,7 +555,7 @@ struct MultiQueryCallback : public PrunerRaycastCallback, public PrunerOverlapCa
 
 		// call the geometry specific intersection template
 		const PxU32 nbSubHits = GeomQueryAny<HitType>::geomHit(
-			mScene.mCachedFuncs, mInput, *mShapeData, shapeGeom,
+			mScene.mCachedFuncs, mInput, mShapeData, shapeGeom,
 			*shapeTransform, filteredHitFlags | mMeshAnyHitFlags,
 			maxSubHits1, subHits1, mShrunkDistance, mQueryShapeBounds, &mHitCall);
 
@@ -590,7 +592,7 @@ struct MultiQueryCallback : public PrunerRaycastCallback, public PrunerOverlapCa
 				return false; // found a hit for ANY qType, can early exit now
 			}
 
-			if(mNoBlock)
+			if(mNoBlock && hitType==PxQueryHitType::eBLOCK)
 				hitType = PxQueryHitType::eTOUCH;
 
 			PX_WARN_ONCE_IF(HitTypeSupport<HitType>::IsOverlap && hitType == PxQueryHitType::eBLOCK, 
@@ -626,23 +628,23 @@ struct MultiQueryCallback : public PrunerRaycastCallback, public PrunerOverlapCa
 		return true;
 	}
 
-	virtual bool	invoke(PxReal& aDist, PxU32 primIndex, const PrunerPayload* payloads, const PxTransform* transforms)
+	virtual bool	invoke(PxReal& aDist, PxU32 primIndex, const PrunerPayload* payloads, const PxTransform* transforms)	PX_OVERRIDE PX_FINAL
 	{
 		return _invoke<false>(aDist, primIndex, payloads, transforms, NULL);
 	}
 
-	virtual bool	invoke(PxU32 primIndex, const PrunerPayload* payloads, const PxTransform* transforms)
+	virtual bool	invoke(PxU32 primIndex, const PrunerPayload* payloads, const PxTransform* transforms)	PX_OVERRIDE PX_FINAL
 	{
 		float unused = 0.0f;
 		return _invoke<false>(unused, primIndex, payloads, transforms, NULL);
 	}
 
-	virtual bool	invoke(PxReal& aDist, PxU32 primIndex, const PrunerPayload* payloads, const PxTransform* transforms, const PxTransform* compoundPose)
+	virtual bool	invoke(PxReal& aDist, PxU32 primIndex, const PrunerPayload* payloads, const PxTransform* transforms, const PxTransform* compoundPose)	PX_OVERRIDE PX_FINAL
 	{
 		return _invoke<false>(aDist, primIndex, payloads, transforms, compoundPose);
 	}
 
-	virtual bool	invoke(PxU32 primIndex, const PrunerPayload* payloads, const PxTransform* transforms, const PxTransform* compoundPose)
+	virtual bool	invoke(PxU32 primIndex, const PrunerPayload* payloads, const PxTransform* transforms, const PxTransform* compoundPose)	PX_OVERRIDE PX_FINAL
 	{
 		float unused = 0.0f;
 		return _invoke<false>(unused, primIndex, payloads, transforms, compoundPose);
@@ -935,6 +937,11 @@ bool SceneQueries::_overlap(
 	PX_PROFILE_ZONE("SceneQuery.overlap", getContextId());
 	PX_SIMD_GUARD_CNDT(flags & PxGeometryQueryFlag::eSIMD_GUARD)
 
+#if PX_CHECKED
+	if (!PxGeometryQuery::isValid(geometry))
+		return outputError<PxErrorCode::eINVALID_PARAMETER>(__LINE__, "Provided geometry is not valid");
+#endif
+
 	MultiQueryInput input(&geometry, &pose);
 	return multiQuery<PxOverlapHit>(input, hits, PxHitFlags(), cache, filterData, filterCall);
 }
@@ -1025,6 +1032,7 @@ static bool doQueryVsCached(const PrunerHandle handle, PxU32 prunerIndex, const 
 		pcb.mShapeData = &sd;
 //		againAfterCache = pcb.invoke(dummyDist, 0);
 		againAfterCache = pcb.template _invoke<true>(dummyDist, 0, payloads, transform, compoundPosePtr);
+		pcb.mQueryShapeBounds = NULL;
 		pcb.mShapeData = NULL;
 	} else
 //		againAfterCache = pcb.invoke(dummyDist, 0);

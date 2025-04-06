@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -47,7 +47,7 @@ namespace physx
 
 		virtual	PxMeshMidPhase::Enum		getMidphaseID()									const	= 0;
 		// Called by base code when midphase structure should be built
-		virtual	void						createMidPhaseStructure()								= 0;
+		virtual	bool						createMidPhaseStructure()								= 0;
 
 		// Called by base code when midphase structure should be saved
 		virtual	void						saveMidPhaseStructure(PxOutputStream& stream, bool mismatch)	const	= 0;
@@ -61,7 +61,7 @@ namespace physx
 				void						createSharedEdgeData(bool buildAdjacencies, bool buildActiveEdges);
 
 				void						recordTriangleIndices();
-				void						createGRBMidPhaseAndData(const PxU32 originalTriangleCount);
+				bool						createGRBMidPhaseAndData(const PxU32 originalTriangleCount);
 				void						createGRBData();
 
 				bool						loadFromDesc(const PxTriangleMeshDesc&, PxTriangleMeshCookingResult::Enum* condition, bool validate = false);
@@ -70,13 +70,11 @@ namespace physx
 				void						checkMeshIndicesSize();
 	PX_FORCE_INLINE	Gu::TriangleMeshData&	getMeshData()	{ return mMeshData;	}
 	protected:
-				//void						computeLocalBounds();
-				bool						importMesh(const PxTriangleMeshDesc& desc, const PxCookingParams& params, PxTriangleMeshCookingResult::Enum* condition, bool validate = false);
-				
+				bool						importMesh(const PxTriangleMeshDesc& desc, PxTriangleMeshCookingResult::Enum* condition, bool validate = false);
 
 				bool						loadFromDescInternal(PxTriangleMeshDesc&, PxTriangleMeshCookingResult::Enum* condition, bool validate = false);
 
-				void						buildInertiaTensor();
+				void						buildInertiaTensor(bool flipNormals = false);
 				void						buildInertiaTensorFromSDF();
 
 				TriangleMeshBuilder& operator=(const TriangleMeshBuilder&);
@@ -91,9 +89,9 @@ namespace physx
 											RTreeTriangleMeshBuilder(const PxCookingParams& params);
 		virtual								~RTreeTriangleMeshBuilder();
 
-		virtual	PxMeshMidPhase::Enum		getMidphaseID()	const	{ return PxMeshMidPhase::eBVH33;	}
-		virtual	void						createMidPhaseStructure();
-		virtual	void						saveMidPhaseStructure(PxOutputStream& stream, bool mismatch)	const;
+		virtual	PxMeshMidPhase::Enum		getMidphaseID()	const		PX_OVERRIDE	{ return PxMeshMidPhase::eBVH33;	}
+		virtual	bool						createMidPhaseStructure()	PX_OVERRIDE;
+		virtual	void						saveMidPhaseStructure(PxOutputStream& stream, bool mismatch)	const	PX_OVERRIDE;
 
 				Gu::RTreeTriangleData		mData;
 	};
@@ -104,9 +102,9 @@ namespace physx
 											BV4TriangleMeshBuilder(const PxCookingParams& params);
 		virtual								~BV4TriangleMeshBuilder();
 
-		virtual	PxMeshMidPhase::Enum		getMidphaseID()	const	{ return PxMeshMidPhase::eBVH34;	}
-		virtual	void						createMidPhaseStructure();
-		virtual	void						saveMidPhaseStructure(PxOutputStream& stream, bool mismatch)	const;
+		virtual	PxMeshMidPhase::Enum		getMidphaseID()	const		PX_OVERRIDE	{ return PxMeshMidPhase::eBVH34;	}
+		virtual	bool						createMidPhaseStructure()	PX_OVERRIDE;
+		virtual	void						saveMidPhaseStructure(PxOutputStream& stream, bool mismatch)	const	PX_OVERRIDE;
 		virtual	void						onMeshIndexFormatChange();
 
 				Gu::BV4TriangleData			mData;
@@ -115,7 +113,7 @@ namespace physx
 	class BV32TriangleMeshBuilder
 	{
 	public:
-		static	void						createMidPhaseStructure(const PxCookingParams& params, Gu::TriangleMeshData& meshData, Gu::BV32Tree& bv32Tree);
+		static	bool						createMidPhaseStructure(const PxCookingParams& params, Gu::TriangleMeshData& meshData, Gu::BV32Tree& bv32Tree);
 		static	void						saveMidPhaseStructure(Gu::BV32Tree* tree, PxOutputStream& stream, bool mismatch);
 	};
 

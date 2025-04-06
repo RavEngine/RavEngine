@@ -22,79 +22,35 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_FEM_SOFT_BODY_MATERIAL_H
 #define PX_FEM_SOFT_BODY_MATERIAL_H
-/** \addtogroup physics
-@{
-*/
 
-#include "PxFEMMaterial.h"
+#include "PxDeformableVolumeMaterial.h"
+#include "PxFEMMaterial.h" // deprecated
 
 #if !PX_DOXYGEN
 namespace physx
 {
 #endif
 
-	class PxScene;
-	/**
-	\brief Material class to represent a set of softbody FEM material properties.
+/**
+\brief Deprecated
+\see PxDeformableVolumeMaterialModel
+*/
+typedef PX_DEPRECATED PxDeformableVolumeMaterialModel PxFEMSoftBodyMaterialModel;
 
-	@see PxPhysics.createFEMSoftBodyMaterial
-	*/
-	class PxFEMSoftBodyMaterial : public PxFEMMaterial
-	{
-	public:
-
-		/**
-		\brief Sets material velocity damping term
-
-		\param[in] damping Material velocity damping term. <b>Range:</b> [0, PX_MAX_F32)<br>		
-
-		@see getDamping
-		*/
-		virtual		void	setDamping(PxReal damping) = 0;
-
-		/**
-		\brief Retrieves velocity damping
-		\return The velocity damping.
-
-		@see setDamping()
-		*/
-		virtual		PxReal	getDamping() const = 0;
-
-		/**
-		\brief Sets material damping scale. A scale of 1 corresponds to default damping, a value of 0 will only apply damping to certain motions leading to special effects that look similar to water filled softbodies.
-
-		\param[in] scale Damping scale term. <b>Default:</b> 1 <b>Range:</b> [0, 1]
-
-		@see getDampingScale
-		*/
-		virtual		void	setDampingScale(PxReal scale) = 0;
-
-		/**
-		\brief Retrieves material damping scale.
-		\return The damping scale term.
-
-		@see setDamping()
-		*/
-		virtual		PxReal	getDampingScale() const = 0;
-
-		virtual		const char*		getConcreteTypeName() const { return "PxFEMSoftBodyMaterial"; }
-
-	protected:
-		PX_INLINE			PxFEMSoftBodyMaterial(PxType concreteType, PxBaseFlags baseFlags) : PxFEMMaterial(concreteType, baseFlags) {}
-		PX_INLINE			PxFEMSoftBodyMaterial(PxBaseFlags baseFlags) : PxFEMMaterial(baseFlags) {}
-		virtual				~PxFEMSoftBodyMaterial() {}
-		virtual		bool	isKindOf(const char* name) const { return !::strcmp("PxFEMSoftBodyMaterial", name) || PxFEMMaterial::isKindOf(name); }
-	};
+/**
+\brief Deprecated
+\see PxDeformableVolumeMaterial
+*/
+typedef PX_DEPRECATED PxDeformableVolumeMaterial PxFEMSoftBodyMaterial;
 
 #if !PX_DOXYGEN
 } // namespace physx
 #endif
 
-/** @} */
-#endif
+#endif // PX_FEM_SOFT_BODY_MATERIAL_H

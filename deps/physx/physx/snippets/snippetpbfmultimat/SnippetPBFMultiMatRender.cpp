@@ -22,13 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifdef RENDER_SNIPPET
-
-#include <vector>
 
 #include "PxPhysicsAPI.h"
 #include "cudamanager/PxCudaContext.h"
@@ -118,11 +116,11 @@ void onBeforeRenderParticles()
 
 		PxScene* scene;
 		PxGetPhysics().getScenes(&scene, 1);
-		PxCudaContextManager* cudaContexManager = scene->getCudaContextManager();
+		PxCudaContextManager* cudaContextManager = scene->getCudaContextManager();
 
-		cudaContexManager->acquireContext();
+		cudaContextManager->acquireContext();
 
-		PxCudaContext* cudaContext = cudaContexManager->getCudaContext();
+		PxCudaContext* cudaContext = cudaContextManager->getCudaContext();
 		cudaContext->memcpyDtoH(sPosBufferH->begin(), CUdeviceptr(positions), sizeof(PxVec4) * numParticles);
 		cudaContext->memcpyDtoH(sVelBufferH->begin(), CUdeviceptr(vels), sizeof(PxVec4) * numParticles);
 		cudaContext->memcpyDtoH(sPhasesH->begin(), CUdeviceptr(phases), sizeof(PxU32) * numParticles);
@@ -130,26 +128,25 @@ void onBeforeRenderParticles()
 		copyVec4ToVec3(*sPosBuffer3H, *sPosBufferH);
 		mapVec4ToColor3(*sColorBuffer3H, *sVelBufferH, *sPhasesH);
 
-		cudaContexManager->releaseContext();
+		cudaContextManager->releaseContext();
 	}
 
 }
 
 void renderParticles()
 {
-
-	Snippets::DrawPoints(*sPosBuffer3H, *sColorBuffer3H, 2.0f);
+	if (sPosBuffer3H && sColorBuffer3H)
+	{
+		Snippets::DrawPoints(*sPosBuffer3H, *sColorBuffer3H, 2.0f);
+	}
 }
 
 void allocParticleBuffers()
 {
-	PxParticleSystem* particleSystem = getParticleSystem();
-	//const PxU32 maxParticles = particleSystem->getMaxParticles();
-	if (particleSystem)
+	PxParticleBuffer* userBuffer = getParticleBuffer();
+	if (userBuffer)
 	{
-		PxParticleBuffer* userBuffer = getParticleBuffer();
 		const PxU32 maxParticles = userBuffer->getMaxParticles();
-
 		sPosBufferH = new PxArray<PxVec4>(maxParticles);
 		sPosBuffer3H = new PxArray<PxVec3>(maxParticles);
 		sVelBufferH = new PxArray<PxVec4>(maxParticles);
@@ -180,7 +177,7 @@ void renderCallback()
 	PxU32 nbActors = scene->getNbActors(PxActorTypeFlag::eRIGID_DYNAMIC | PxActorTypeFlag::eRIGID_STATIC);
 	if(nbActors)
 	{
-		std::vector<PxRigidActor*> actors(nbActors);
+		PxArray<PxRigidActor*> actors(nbActors);
 		scene->getActors(PxActorTypeFlag::eRIGID_DYNAMIC | PxActorTypeFlag::eRIGID_STATIC, reinterpret_cast<PxActor**>(&actors[0]), nbActors);
 		Snippets::renderActors(&actors[0], static_cast<PxU32>(actors.size()), true);
 	}
@@ -197,11 +194,8 @@ void cleanup()
 	cleanupPhysics(true);
 }
 
-void exitCallback(void)
+void exitCallback()
 {
-#if PX_WINDOWS
-		cleanup();
-#endif
 }
 }
 
@@ -209,7 +203,7 @@ void renderLoop()
 {
 	sCamera = new Snippets::Camera(PxVec3(15.0f, 10.0f, 15.0f), PxVec3(-0.6f,-0.2f,-0.6f));
 
-	Snippets::setupDefault("PhysX Snippet PBFFluid", sCamera, keyPress, renderCallback, exitCallback);
+	Snippets::setupDefault("PhysX Snippet PBFFluid MultiMat", sCamera, keyPress, renderCallback, exitCallback);
 
 	initPhysics(true);
 
@@ -217,8 +211,6 @@ void renderLoop()
 
 	glutMainLoop();
 
-#if PX_LINUX_FAMILY
 	cleanup();
-#endif
 }
 #endif

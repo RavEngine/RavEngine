@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -90,20 +90,12 @@ extern PxvOffsetTable gPxvOffsetTable;
 /*!
 Initialize low-level implementation.
 */
-
 void PxvInit(const PxvOffsetTable& offsetTable);
-
 
 /*!
 Shut down low-level implementation.
 */
 void PxvTerm();
-
-/*!
-Initialize low-level implementation.
-*/
-
-void PxvRegisterHeightFields();
 
 #if PX_SUPPORT_GPU_PHYSX
 class PxPhysXGpu* PxvGetPhysXGpu(bool createIfNeeded);

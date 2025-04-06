@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
            
@@ -33,16 +33,18 @@
 
 using namespace physx;
 
+PX_IMPLEMENT_OUTPUT_ERROR
+
 Sc::ShapeInteraction::ShapeInteraction(ShapeSimBase& s1, ShapeSimBase& s2, PxPairFlags pairFlags, PxsContactManager* contactManager) :
 	ElementSimInteraction	(s1, s2, InteractionType::eOVERLAP, InteractionFlag::eRB_ELEMENT|InteractionFlag::eFILTERABLE),
 	mActorPair				(NULL),
 	mManager				(NULL),
 	mContactReportStamp		(PX_INVALID_U32),
 	mReportPairIndex		(INVALID_REPORT_PAIR_ID),
-	mEdgeIndex				(IG_INVALID_EDGE),
 	mReportStreamIndex		(0)
 {
 	mFlags = 0;
+	mEdgeIndex = IG_INVALID_EDGE;
 
 	// The PxPairFlags get stored in the SipFlag, make sure any changes get noticed
 	PX_COMPILE_TIME_ASSERT(PxPairFlag::eSOLVE_CONTACT == (1<<0));
@@ -72,59 +74,53 @@ Sc::ShapeInteraction::ShapeInteraction(ShapeSimBase& s1, ShapeSimBase& s2, PxPai
 	//Sc::BodySim* bs0 = getShape0().getBodySim();
 	//Sc::BodySim* bs1 = getShape1().getBodySim();
 
-	Sc::ActorSim& bs0 = getShape0().getActor();
-	Sc::ActorSim& bs1 = getShape1().getActor();
+	Sc::ActorSim& bs0 = getActor0();
+	Sc::ActorSim& bs1 = getActor1();
 
 	updateFlags(scene, bs0, bs1, pairFlags);
 
 	if(contactManager == NULL)
 	{
-		PxNodeIndex indexA, indexB;
+		PxNodeIndex index0, index1;
 		//if(bs0)  // the first shape always belongs to a dynamic body (we assert for this above)
 		{
-			indexA = bs0.getNodeIndex();
+			index0 = bs0.getNodeIndex();
 			bs0.registerCountedInteraction();
 		}
 		if(!bs1.isStaticRigid())
 		{
-			indexB = bs1.getNodeIndex();
+			index1 = bs1.getNodeIndex();
 			bs1.registerCountedInteraction();
 		}
 
 		IG::SimpleIslandManager* simpleIslandManager = scene.getSimpleIslandManager();
 
-		PxActorType::Enum actorTypeLargest = PxMax(bs0.getActorType(), bs1.getActorType());
+		const PxActorType::Enum actorTypeLargest = PxMax(bs0.getActorType(), bs1.getActorType());
 
-		IG::Edge::EdgeType type = IG::Edge::eCONTACT_MANAGER;
-		if (actorTypeLargest == PxActorType::eSOFTBODY)
-			type = IG::Edge::eSOFT_BODY_CONTACT;
-		if (actorTypeLargest == PxActorType::eFEMCLOTH)
-			type = IG::Edge::eFEM_CLOTH_CONTACT;
-		else if (isParticleSystem(actorTypeLargest))
-			type = IG::Edge::ePARTICLE_SYSTEM_CONTACT;
-		else if (actorTypeLargest == PxActorType::eHAIRSYSTEM)
-			type = IG::Edge::eHAIR_SYSTEM_CONTACT;
+		const IG::Edge::EdgeType type = getInteractionEdgeType(actorTypeLargest);
 
-		mEdgeIndex = simpleIslandManager->addContactManager(NULL, indexA, indexB, this, type);
+		mEdgeIndex = simpleIslandManager->addContactManager(NULL, index0, index1, this, type);
 
-		const bool active = registerInActors(contactManager);	// this will call onActivate_() on the interaction
-		scene.getNPhaseCore()->registerInteraction(this);
-		scene.registerInteraction(this, active);
+		{
+			const bool active = onActivate(contactManager);
+			registerInActors();
+			scene.registerInteraction(this, active);
+		}
 
-		//If it is a soft body or particle overlap, treat it as a contact for now (we can hook up touch found/lost events later maybe)
+		//If it is a deformable volume or particle overlap, treat it as a contact for now (we can hook up touch found/lost events later maybe)
 		if (actorTypeLargest > PxActorType::eARTICULATION_LINK)
 			simpleIslandManager->setEdgeConnected(mEdgeIndex, type);
 	}
 	else
 	{
-		onActivate_(contactManager);
+		onActivate(contactManager);
 	}
 }
 
 Sc::ShapeInteraction::~ShapeInteraction()
 {
-	Sc::ActorSim* body0 = &getShape0().getActor();
-	Sc::ActorSim* body1 = &getShape1().getActor();
+	Sc::ActorSim* body0 = &getActor0();
+	Sc::ActorSim* body1 = &getActor1();
 
 	body0->unregisterCountedInteraction();
 	if (body1)
@@ -141,7 +137,6 @@ Sc::ShapeInteraction::~ShapeInteraction()
 		mEdgeIndex = IG_INVALID_EDGE;
 
 		scene.unregisterInteraction(this);
-		scene.getNPhaseCore()->unregisterInteraction(this);
 	}
 
 	// This will remove the interaction from the actors list, which will prevent
@@ -152,84 +147,12 @@ Sc::ShapeInteraction::~ShapeInteraction()
 		removeFromReportPairList();
 }
 
-void Sc::ShapeInteraction::clearIslandGenData()
+void Sc::ShapeInteraction::clearIslandGenData(IG::SimpleIslandManager& islandManager)
 {
 	if(mEdgeIndex != IG_INVALID_EDGE)
 	{
-		Scene& scene = getScene();
-		scene.getSimpleIslandManager()->removeConnection(mEdgeIndex);
+		islandManager.removeConnection(mEdgeIndex);
 		mEdgeIndex = IG_INVALID_EDGE;
-	}
-}
-
-void Sc::ShapeInteraction::visualize(PxRenderOutput& out, PxsContactManagerOutputIterator& outputs,
-									float scale, float param_contactForce, float param_contactNormal, float param_contactError, float param_contactPoint)
-{
-	if(mManager)  // sleeping pairs have no contact points -> do not visualize
-	{
-		Sc::ActorSim* actorSim0 = &getShape0().getActor();
-		Sc::ActorSim* actorSim1 = &getShape1().getActor();
-		if(!actorSim0->isNonRigid() && !actorSim1->isNonRigid())
-		{
-			PxU32 offset;
-			PxU32 nextOffset = 0;
-			do
-			{
-				const void* contactPatches;
-				const void* contactPoints;
-				PxU32 contactDataSize;
-				PxU32 contactPointCount;
-				PxU32 contactPatchCount;
-				const PxReal* impulses;
-
-				offset = nextOffset;
-				nextOffset = getContactPointData(contactPatches, contactPoints, contactDataSize, contactPointCount, contactPatchCount, impulses, offset, outputs);
-
-				const PxU32* faceIndices = reinterpret_cast<const PxU32*>(impulses + contactPointCount);
-				PxContactStreamIterator iter(reinterpret_cast<const PxU8*>(contactPatches), reinterpret_cast<const PxU8*>(contactPoints), faceIndices, contactPatchCount, contactPointCount);
-
-				PxU32 i = 0;
-				while(iter.hasNextPatch())
-				{
-					iter.nextPatch();
-					while(iter.hasNextContact())
-					{
-						iter.nextContact();
-
-						if((param_contactForce != 0.0f) && impulses)
-						{
-							out << PxU32(PxDebugColor::eARGB_RED);
-							out.outputSegment(iter.getContactPoint(), iter.getContactPoint() + iter.getContactNormal() * (scale * param_contactForce * impulses[i]));
-						}
-						else if(param_contactNormal != 0.0f)
-						{
-							out << PxU32(PxDebugColor::eARGB_BLUE);
-							out.outputSegment(iter.getContactPoint(), iter.getContactPoint() + iter.getContactNormal() * (scale * param_contactNormal));
-						}
-						else if(param_contactError != 0.0f)
-						{
-							out << PxU32(PxDebugColor::eARGB_YELLOW);
-							out.outputSegment(iter.getContactPoint(), iter.getContactPoint() + iter.getContactNormal() * PxAbs(scale * param_contactError * PxMin(0.f, iter.getSeparation())));
-						}
-
-						if(param_contactPoint != 0.0f)
-						{
-							const PxReal s = scale * 0.1f;
-							const PxVec3& point = iter.getContactPoint();
-
-							//if (0) //temp debug to see identical contacts
-							//	point.x += scale * 0.01f * (contactPointCount - i + 1);
-
-							out << PxU32(PxDebugColor::eARGB_RED);
-							out.outputSegment(point + PxVec3(-s, 0, 0), point + PxVec3(s, 0, 0));
-							out.outputSegment(point + PxVec3(0, -s, 0), point + PxVec3(0, s, 0));
-							out.outputSegment(point + PxVec3(0, 0, -s), point + PxVec3(0, 0, s));
-						}
-						i++;
-					}
-				}
-			} while (nextOffset != offset);
-		}
 	}
 }
 
@@ -314,7 +237,7 @@ void Sc::ShapeInteraction::processUserNotificationSync()
 }
 
 void Sc::ShapeInteraction::processUserNotificationAsync(PxU32 contactEvent, PxU16 infoFlags, bool touchLost, 
-	const PxU32 ccdPass, const bool useCurrentTransform, PxsContactManagerOutputIterator& outputs, ContactReportAllocationManager* alloc)
+	PxU32 ccdPass, bool useCurrentTransform, PxsContactManagerOutputIterator& outputs, ContactReportAllocationManager* alloc)
 {
 	contactEvent = (!ccdPass) ? contactEvent : (contactEvent | PxPairFlag::eNOTIFY_TOUCH_CCD);
 
@@ -337,7 +260,7 @@ void Sc::ShapeInteraction::processUserNotificationAsync(PxU32 contactEvent, PxU1
 	PxU8* stream = NULL;
 	ContactShapePair* pairStream = NULL;
 
-	const bool unswapped = &aPairReport.getActorA() == &getShape0().getActor();
+	const bool unswapped = &aPairReport.getActorA() == &getActor0();
 	const Sc::ShapeSimBase& shapeA = unswapped ? getShape0() : getShape1();
 	const Sc::ShapeSimBase& shapeB = unswapped ? getShape1() : getShape0();
 
@@ -345,7 +268,7 @@ void Sc::ShapeInteraction::processUserNotificationAsync(PxU32 contactEvent, PxU1
 	{
 		PX_ASSERT(mContactReportStamp != shapePairTimeStamp);  // actor pair and shape pair timestamps must both be out of sync in this case
 
-		PxU16 maxCount;
+		PxU32 maxCount;
 		if(cs.maxPairCount != 0)
 			maxCount = cs.maxPairCount;  // use value from previous report
 		else
@@ -482,7 +405,7 @@ void Sc::ShapeInteraction::processUserNotificationAsync(PxU32 contactEvent, PxU1
 			}
 		}
 
-		//!!! why is alignment important here? Looks almost like some refactor nonsense
+		//!!! why is alignment important here?
 		PX_ASSERT(0==(reinterpret_cast<uintptr_t>(stream) & 0x0f));  // check 16Byte alignment
 		
 		mReportStreamIndex = cs.currentPairCount;
@@ -491,6 +414,7 @@ void Sc::ShapeInteraction::processUserNotificationAsync(PxU32 contactEvent, PxU1
 		cp->contactPatches = NULL;
 		cp->contactPoints = NULL;
 		cp->contactForces = NULL;
+		cp->frictionPatches = NULL;
 		cp->contactCount = 0;
 		cp->patchCount = 0;
 		cp->constraintStreamSize = 0;
@@ -520,13 +444,13 @@ void Sc::ShapeInteraction::processUserNotificationAsync(PxU32 contactEvent, PxU1
 	if((getPairFlags() & PxPairFlag::eNOTIFY_CONTACT_POINTS) && mManager && (!cp->contactPatches) && !(contactEvent & PxU32(PxPairFlag::eNOTIFY_TOUCH_LOST | PxPairFlag::eNOTIFY_THRESHOLD_FORCE_LOST)))
 	{
 		const PxcNpWorkUnit& workUnit = mManager->getWorkUnit();
-		PxsContactManagerOutput* output = NULL;
+		const PxsContactManagerOutput* output = NULL;
 		if(workUnit.mNpIndex & PxsContactManagerBase::NEW_CONTACT_MANAGER_MASK)
 			output = &getScene().getLowLevelContext()->getNphaseImplementationContext()->getNewContactManagerOutput(workUnit.mNpIndex);
 		else
-			output = &outputs.getContactManager(workUnit.mNpIndex);
+			output = &outputs.getContactManagerOutput(workUnit.mNpIndex);
 
-		const PxsCCDContactHeader* ccdContactData = reinterpret_cast<const PxsCCDContactHeader*>(workUnit.ccdContacts);
+		const PxsCCDContactHeader* ccdContactData = reinterpret_cast<const PxsCCDContactHeader*>(workUnit.mCCDContacts);
 
 		const bool isCCDPass = (ccdPass != 0);
 		if((output->nbPatches && !isCCDPass) || (ccdContactData && (!ccdContactData->isFromPreviousPass) && isCCDPass))
@@ -536,6 +460,7 @@ void Sc::ShapeInteraction::processUserNotificationAsync(PxU32 contactEvent, PxU1
 			PxU32 cDataSize;
 			PxU32 alignedContactDataSize;
 			const PxReal* impulses;
+			const PxU8* frictionPatches = output->frictionPatches;
 
 			PxU32 nbPoints = output->nbContacts;
 			PxU32 contactPatchCount = output->nbPatches;
@@ -560,6 +485,7 @@ void Sc::ShapeInteraction::processUserNotificationAsync(PxU32 contactEvent, PxU1
 				impulses = reinterpret_cast<const PxReal*>(contactPatchData + alignedContactDataSize);
 				nbPoints = 1;
 				contactPatchCount = 1;
+				frictionPatches = NULL;
 			}
 
 			infoFlags = cp->flags;
@@ -572,6 +498,7 @@ void Sc::ShapeInteraction::processUserNotificationAsync(PxU32 contactEvent, PxU1
 				infoFlags |= PxContactPairFlag::eINTERNAL_HAS_IMPULSES;
 			cp->contactPatches = contactPatchData;
 			cp->contactPoints = contactPointData;
+			cp->frictionPatches = frictionPatches;
 			cp->contactCount = PxTo8(nbPoints);
 			cp->patchCount = PxTo8(contactPatchCount);
 			cp->constraintStreamSize = PxTo16(cDataSize);
@@ -583,26 +510,77 @@ void Sc::ShapeInteraction::processUserNotificationAsync(PxU32 contactEvent, PxU1
 	}
 }
 
-void Sc::ShapeInteraction::processUserNotification(PxU32 contactEvent, PxU16 infoFlags, bool touchLost, const PxU32 ccdPass, const bool useCurrentTransform, PxsContactManagerOutputIterator& outputs)
+void Sc::ShapeInteraction::processUserNotification(PxU32 contactEvent, PxU16 infoFlags, bool touchLost, PxU32 ccdPass, bool useCurrentTransform, PxsContactManagerOutputIterator& outputs)
 {
 	processUserNotificationSync();
 	processUserNotificationAsync(contactEvent, infoFlags, touchLost, ccdPass, useCurrentTransform, outputs);
 }
 
+void Sc::ShapeInteraction::sendLostTouchReport(bool shapeVolumeRemoved, PxU32 ccdPass, PxsContactManagerOutputIterator& outputs)
+{
+	PX_ASSERT(hasTouch());
+	PX_ASSERT(isReportPair());
+
+	// PT: adding this test here because:
+	// - we dereference the pointer below
+	// - the code in processUserNotification has a similar test and does nothing if mActorPair is null
+	// - getActorPairReport below would also dereference a null pointer
+	// => overall this function does nothing if that pointer is null.
+	// ### DEFENSIVE
+	if(!mActorPair)
+	{
+		outputError<PxErrorCode::eINTERNAL_ERROR>(__LINE__, "Encountered lost touch report for invalid actor pair.");
+		return;
+	}
+
+	const PxU32 pairFlags = getPairFlags();
+	const PxU32 notifyTouchLost = pairFlags & PxU32(PxPairFlag::eNOTIFY_TOUCH_LOST);
+	const PxIntBool thresholdExceeded = readFlag(ShapeInteraction::FORCE_THRESHOLD_EXCEEDED_NOW);
+	const PxU32 notifyThresholdLost = thresholdExceeded ? (pairFlags & PxU32(PxPairFlag::eNOTIFY_THRESHOLD_FORCE_LOST)) : 0;
+	if(!notifyTouchLost && !notifyThresholdLost)
+		return;
+
+	PxU16 infoFlag = 0;
+	if(mActorPair->getTouchCount() == 1)  // this code assumes that the actor pair touch count does get decremented afterwards
+		infoFlag |= PxContactPairFlag::eACTOR_PAIR_LOST_TOUCH;
+
+	//Lost touch is processed after solver, so we should use the previous transform to update the pose for objects if user request eCONTACT_EVENT_POSE
+	const bool useCurrentTransform = false;
+
+	const PxU32 triggeredFlags = notifyTouchLost | notifyThresholdLost;
+	PX_ASSERT(triggeredFlags); 
+	processUserNotification(triggeredFlags, infoFlag, true, ccdPass, useCurrentTransform, outputs);
+
+	if(shapeVolumeRemoved)
+	{
+		ActorPairReport& apr = getActorPairReport();
+		ContactStreamManager& cs = apr.getContactStreamManager();
+		cs.raiseFlags(ContactStreamManagerFlag::eTEST_FOR_REMOVED_SHAPES);
+	}
+}
+
 PxU32 Sc::ShapeInteraction::getContactPointData(const void*& contactPatches, const void*& contactPoints, PxU32& contactDataSize, PxU32& contactPointCount, PxU32& numPatches, const PxReal*& impulses, PxU32 startOffset,
 	PxsContactManagerOutputIterator& outputs)
+{
+	const void* frictionPatches;
+	return getContactPointData(contactPatches, contactPoints, contactDataSize,
+							   contactPointCount, numPatches, impulses, startOffset,
+							   outputs, frictionPatches);
+}
+
+PxU32 Sc::ShapeInteraction::getContactPointData(const void*& contactPatches, const void*& contactPoints, PxU32& contactDataSize, PxU32& contactPointCount, PxU32& numPatches, const PxReal*& impulses, PxU32 startOffset,
+	PxsContactManagerOutputIterator& outputs, const void*& frictionPatches)
 {
 	// Process LL generated contacts
 	if(mManager != NULL)
 	{
 		const PxcNpWorkUnit& workUnit = mManager->getWorkUnit();
 
-		PxsContactManagerOutput* output = NULL;
-		
+		const PxsContactManagerOutput* output = NULL;
 		if(workUnit.mNpIndex & PxsContactManagerBase::NEW_CONTACT_MANAGER_MASK)
 			output = &getScene().getLowLevelContext()->getNphaseImplementationContext()->getNewContactManagerOutput(workUnit.mNpIndex);
 		else
-			output = &outputs.getContactManager(workUnit.mNpIndex);
+			output = &outputs.getContactManagerOutput(workUnit.mNpIndex);
 
 		/*const void* dcdContactPatches;
 		const void* dcdContactPoints;
@@ -613,50 +591,59 @@ PxU32 Sc::ShapeInteraction::getContactPointData(const void*& contactPatches, con
 
 		PX_ASSERT(((dcdContactCount == 0) && (!ccdContactStream)) || ((dcdContactCount > 0) && hasTouch()) || (ccdContactStream && hasCCDTouch()));*/
 
-		const PxsCCDContactHeader* ccdContactStream = reinterpret_cast<const PxsCCDContactHeader*>(workUnit.ccdContacts);
+		const PxsCCDContactHeader* ccdContactStream = reinterpret_cast<const PxsCCDContactHeader*>(workUnit.mCCDContacts);
 
 		PxU32 idx = 0;
-		if(output->nbContacts)
+		if(output) // preventive measure for omnicrash OM-109664 / PX-4510.	### DEFENSIVE
 		{
-			if(startOffset == 0)
+			if(output->nbContacts)
 			{
-				contactPatches = output->contactPatches;
-				contactPoints = output->contactPoints;
-				contactDataSize = sizeof(PxContactPatch) * output->nbPatches + sizeof(PxContact) * output->nbContacts;
-				contactPointCount = output->nbContacts;
-				numPatches = output->nbPatches;
-				impulses = output->contactForces;
+				if(startOffset == 0)
+				{
+					contactPatches = output->contactPatches;
+					contactPoints = output->contactPoints;
+					contactDataSize = sizeof(PxContactPatch) * output->nbPatches + sizeof(PxContact) * output->nbContacts;
+					contactPointCount = output->nbContacts;
+					numPatches = output->nbPatches;
+					impulses = output->contactForces;
+					frictionPatches = output->frictionPatches;
 
-				if(!ccdContactStream)
-					return startOffset;
-				else
-					return (startOffset + 1);
+					if(!ccdContactStream)
+						return startOffset;
+					else
+						return (startOffset + 1);
+				}
+
+				idx++;
 			}
 
-			idx++;
+			while(ccdContactStream)
+			{
+				if(startOffset == idx)
+				{
+					const PxU8* stream = reinterpret_cast<const PxU8*>(ccdContactStream);
+					PxU16 streamSize = ccdContactStream->contactStreamSize;
+					contactPatches = stream + sizeof(PxsCCDContactHeader);
+					contactPoints = stream + sizeof(PxsCCDContactHeader) + sizeof(PxContactPatch);
+					contactDataSize = streamSize - sizeof(PxsCCDContactHeader);
+					contactPointCount = 1;
+					numPatches = 1;
+					impulses = reinterpret_cast<const PxReal*>(stream + ((streamSize + 0xf) & 0xfffffff0));
+					frictionPatches = NULL;
+
+					if(!ccdContactStream->nextStream)
+						return startOffset;
+					else
+						return (startOffset + 1);
+				}
+				
+				idx++;
+				ccdContactStream = ccdContactStream->nextStream;
+			}
 		}
-
-		while(ccdContactStream)
+		else
 		{
-			if(startOffset == idx)
-			{
-				const PxU8* stream = reinterpret_cast<const PxU8*>(ccdContactStream);
-				PxU16 streamSize = ccdContactStream->contactStreamSize;
-				contactPatches = stream + sizeof(PxsCCDContactHeader);
-				contactPoints = stream + sizeof(PxsCCDContactHeader) + sizeof(PxContactPatch);
-				contactDataSize = streamSize - sizeof(PxsCCDContactHeader);
-				contactPointCount = 1;
-				numPatches = 1;
-				impulses = reinterpret_cast<const PxReal*>(stream + ((streamSize + 0xf) & 0xfffffff0));
-
-				if(!ccdContactStream->nextStream)
-					return startOffset;
-				else
-					return (startOffset + 1);
-			}
-			
-			idx++;
-			ccdContactStream = ccdContactStream->nextStream;
+			outputError<PxErrorCode::eINTERNAL_ERROR>(__LINE__, "PxsContactManagerOutput output is null!");
 		}
 	}
 
@@ -666,18 +653,20 @@ PxU32 Sc::ShapeInteraction::getContactPointData(const void*& contactPatches, con
 	contactPointCount = 0;
 	numPatches = 0;
 	impulses = NULL;
+	frictionPatches = NULL;
 	return startOffset;
 }
 
 // Note that LL will not send end touch events for managers that are destroyed while having contact
-void Sc::ShapeInteraction::managerNewTouch(const PxU32 ccdPass, bool adjustCounters, PxsContactManagerOutputIterator& outputs)
+void Sc::ShapeInteraction::managerNewTouch(PxU32 ccdPass, PxsContactManagerOutputIterator& outputs)
 {
 	if(readFlag(HAS_TOUCH))
 		return; // Do not count the touch twice (for instance when recreating a manager with touch)
 	// We have contact this frame
     setHasTouch();
 
-	if(adjustCounters)
+	// PT: new design: don't create ActorPair instances for non-report pairs
+	if(isReportPair())
 		adjustCountersOnNewTouch();
 	
 	if(!isReportPair())
@@ -693,9 +682,7 @@ void Sc::ShapeInteraction::managerNewTouch(const PxU32 ccdPass, bool adjustCount
 		{
 			PxU16 infoFlag = 0;
 			if(mActorPair->getTouchCount() == 1)  // this code assumes that the actor pair touch count does get incremented beforehand
-			{
 				infoFlag = PxContactPairFlag::eACTOR_PAIR_HAS_FIRST_TOUCH;
-			}
 
 			processUserNotification(PxPairFlag::eNOTIFY_TOUCH_FOUND, infoFlag, false, ccdPass, true, outputs);
 		}
@@ -713,19 +700,14 @@ void Sc::ShapeInteraction::managerNewTouch(const PxU32 ccdPass, bool adjustCount
 	}
 }
 
-
-bool Sc::ShapeInteraction::managerLostTouch(const PxU32 ccdPass, bool adjustCounters, PxsContactManagerOutputIterator& outputs)
+bool Sc::ShapeInteraction::managerLostTouch(PxU32 ccdPass, PxsContactManagerOutputIterator& outputs)
 {
 	if(!readFlag(HAS_TOUCH))
 		return false;
 
 	// We do not have LL contacts this frame and also we lost LL contact this frame
 
-	if(!isReportPair())
-	{
-		setHasNoTouch();
-	}
-	else
+	if(isReportPair())
 	{
 		PX_ASSERT(hasTouch());
 		
@@ -747,19 +729,16 @@ bool Sc::ShapeInteraction::managerLostTouch(const PxU32 ccdPass, bool adjustCoun
 
 			clearFlag(FORCE_THRESHOLD_EXCEEDED_FLAGS);
 		}
-
-		setHasNoTouch();
 	}
+	setHasNoTouch();
 
-	ActorSim& body0 = getShape0().getActor();
-	ActorSim& body1 = getShape1().getActor();
-
-	if(adjustCounters)
+	// PT: new design: don't create ActorPair instances for non-report pairs
+	if(isReportPair())
 		adjustCountersOnLostTouch();
 
-	if(body1.isStaticRigid())
+	if(getActor1().isStaticRigid())
 	{
-		body0.internalWakeUp();
+		getActor0().internalWakeUp();
 		return false;
 	}
 	return true;
@@ -767,7 +746,7 @@ bool Sc::ShapeInteraction::managerLostTouch(const PxU32 ccdPass, bool adjustCoun
 
 PX_FORCE_INLINE void Sc::ShapeInteraction::updateFlags(const Sc::Scene& scene, const Sc::ActorSim& bs0, const Sc::ActorSim& bs1, const PxU32 pairFlags)
 {
-	// the first shape always belongs to a dynamic body/ a soft body
+	// the first shape always belongs to a dynamic body/ a deformable volume
 
 	bool enabled = true;
 	if (bs0.isDynamicRigid())
@@ -789,10 +768,16 @@ PX_FORCE_INLINE void Sc::ShapeInteraction::updateFlags(const Sc::Scene& scene, c
 	// Check if contact points needed
 	setFlag(CONTACTS_COLLECT_POINTS, (	(pairFlags & PxPairFlag::eNOTIFY_CONTACT_POINTS) ||
 										(pairFlags & PxPairFlag::eMODIFY_CONTACTS) || 
+#if PX_SUPPORT_GPU_PHYSX
+										scene.getSimulationController()->getEnableOVDCollisionReadback() ||
+#endif
 										scene.getVisualizationParameter(PxVisualizationParameter::eCONTACT_POINT) ||
 										scene.getVisualizationParameter(PxVisualizationParameter::eCONTACT_NORMAL) ||
 										scene.getVisualizationParameter(PxVisualizationParameter::eCONTACT_ERROR) ||
-										scene.getVisualizationParameter(PxVisualizationParameter::eCONTACT_FORCE)) );
+										scene.getVisualizationParameter(PxVisualizationParameter::eCONTACT_IMPULSE) ||
+										scene.getVisualizationParameter(PxVisualizationParameter::eFRICTION_POINT) ||
+										scene.getVisualizationParameter(PxVisualizationParameter::eFRICTION_NORMAL) ||
+										scene.getVisualizationParameter(PxVisualizationParameter::eFRICTION_IMPULSE)	) );
 }
 
 PX_INLINE PxReal ScGetRestOffset(const Sc::ShapeSimBase& shapeSim)
@@ -802,6 +787,17 @@ PX_INLINE PxReal ScGetRestOffset(const Sc::ShapeSimBase& shapeSim)
 		return static_cast<Sc::ParticleSystemSim&>(shapeSim.getActor()).getCore().getRestOffset();
 #endif
 	return shapeSim.getRestOffset();
+}
+
+static PX_INLINE void setupDominance(PxcNpWorkUnit& unit, Sc::Scene& scene, Sc::ActorSim& bs0, Sc::ActorSim& bs1)
+{
+	// Static actors are in dominance group zero and must remain there
+	const PxDominanceGroup dom0 = bs0.getActorCore().getDominanceGroup();
+	const PxDominanceGroup dom1 = bs1.isStaticRigid() ? PxDominanceGroup(0) : bs1.getActorCore().getDominanceGroup();
+	const PxDominanceGroupPair cdom = scene.getDominanceGroupPair(dom0, dom1);
+
+	unit.setDominance0(cdom.dominance0);
+	unit.setDominance1(cdom.dominance1);
 }
 
 void Sc::ShapeInteraction::updateState(const PxU8 externalDirtyFlags)
@@ -815,8 +811,8 @@ void Sc::ShapeInteraction::updateState(const PxU8 externalDirtyFlags)
 
 	if(dirtyFlags & (InteractionDirtyFlag::eFILTER_STATE | InteractionDirtyFlag::eVISUALIZATION))
 	{
-		Sc::ActorSim& bs0 = getShape0().getActor();
-		Sc::ActorSim& bs1 = getShape1().getActor();
+		Sc::ActorSim& bs0 = getActor0();
+		Sc::ActorSim& bs1 = getActor1();
 
 		PxIntBool wasDisabled = readFlag(CONTACTS_RESPONSE_DISABLED);
 
@@ -849,14 +845,7 @@ void Sc::ShapeInteraction::updateState(const PxU8 externalDirtyFlags)
 		{
 			Sc::ActorSim& bs0 = shapeSim0.getActor();
 			Sc::ActorSim& bs1 = shapeSim1.getActor();
-
-			// Static actors are in dominance group zero and must remain there
-			const PxDominanceGroup dom0 = bs0.getActorCore().getDominanceGroup();
-			const PxDominanceGroup dom1 = !bs1.isStaticRigid() ? bs1.getActorCore().getDominanceGroup() : PxDominanceGroup(0);
-
-			const PxDominanceGroupPair cdom = getScene().getDominanceGroupPair(dom0, dom1);
-			mManager->setDominance0(cdom.dominance0);
-			mManager->setDominance1(cdom.dominance1);
+			setupDominance(mManager->getWorkUnit(), getScene(), bs0, bs1);
 		}
 
 		if (dirtyFlags & InteractionDirtyFlag::eBODY_KINEMATIC)
@@ -866,9 +855,9 @@ void Sc::ShapeInteraction::updateState(const PxU8 externalDirtyFlags)
 			if (bs1.isDynamicRigid())
 			{
 				if (static_cast<BodySim&>(bs1).isKinematic())
-					mManager->getWorkUnit().flags |= PxcNpWorkUnitFlag::eHAS_KINEMATIC_ACTOR;
+					mManager->getWorkUnit().mFlags |= PxcNpWorkUnitFlag::eHAS_KINEMATIC_ACTOR;
 				else
-					mManager->getWorkUnit().flags &= (~PxcNpWorkUnitFlag::eHAS_KINEMATIC_ACTOR);
+					mManager->getWorkUnit().mFlags &= (~PxcNpWorkUnitFlag::eHAS_KINEMATIC_ACTOR);
 			}
 		}
 
@@ -893,13 +882,13 @@ void Sc::ShapeInteraction::updateState(const PxU8 externalDirtyFlags)
 
 			//
 			//check whether active in the speculative sim!
-			const ActorSim& bodySim0 = getShape0().getActor();
-			const ActorSim& bodySim1 = getShape1().getActor();
+			const ActorSim& bodySim0 = getActor0();
+			const ActorSim& bodySim1 = getActor1();
 
 			if (!islandSim.getNode(bodySim0.getNodeIndex()).isActiveOrActivating() &&
 				(bodySim1.isStaticRigid() || !islandSim.getNode(bodySim1.getNodeIndex()).isActiveOrActivating()))
 			{
-				onDeactivate_();
+				onDeactivate();
 				scene.notifyInteractionDeactivated(this);
 			}
 			else
@@ -929,7 +918,7 @@ void Sc::ShapeInteraction::updateState(const PxU8 externalDirtyFlags)
 	}
 }
 
-bool Sc::ShapeInteraction::onActivate_(void* contactManager)
+bool Sc::ShapeInteraction::onActivate(PxsContactManager* contactManager)
 {
 	if(isReportPair())
 	{
@@ -947,12 +936,12 @@ bool Sc::ShapeInteraction::onActivate_(void* contactManager)
 		return false;
 }
 
-bool Sc::ShapeInteraction::onDeactivate_()
+bool Sc::ShapeInteraction::onDeactivate()
 {
-	PX_ASSERT(!getShape0().getActor().isStaticRigid() || !getShape1().getActor().isStaticRigid());
+	PX_ASSERT(!getActor0().isStaticRigid() || !getActor1().isStaticRigid());
 	
-	const ActorSim& bodySim0 = getShape0().getActor();
-	const ActorSim& bodySim1 = getShape1().getActor();
+	const ActorSim& bodySim0 = getActor0();
+	const ActorSim& bodySim1 = getActor1();
 
 	PX_ASSERT(	(bodySim0.isStaticRigid() && !bodySim1.isStaticRigid() && !bodySim1.isActive()) || 
 				(bodySim1.isStaticRigid() && !bodySim0.isStaticRigid() && !bodySim0.isActive()) ||
@@ -1012,7 +1001,7 @@ bool Sc::ShapeInteraction::onDeactivate_()
 	}
 }
 
-void Sc::ShapeInteraction::createManager(void* contactManager)
+void Sc::ShapeInteraction::createManager(PxsContactManager* contactManager)
 {
 	//PX_PROFILE_ZONE("ShapeInteraction.createManager", 0);
 
@@ -1023,7 +1012,7 @@ void Sc::ShapeInteraction::createManager(void* contactManager)
 	const int disableCCDContact = !(pairFlags & PxPairFlag::eDETECT_CCD_CONTACT);
 
 	PxsContactManager* manager = scene.getLowLevelContext()->createContactManager(reinterpret_cast<PxsContactManager*>(contactManager), !disableCCDContact);
-	PxcNpWorkUnit& mNpUnit = manager->getWorkUnit();
+	PxcNpWorkUnit& unit = manager->getWorkUnit();
 
 	// Check if contact generation callback has been ordered on the pair
 	int contactChangeable = 0;
@@ -1033,8 +1022,11 @@ void Sc::ShapeInteraction::createManager(void* contactManager)
 	ShapeSimBase& shapeSim0 = getShape0();
 	ShapeSimBase& shapeSim1 = getShape1();
 
-	const PxActorType::Enum type0 = shapeSim0.getActor().getActorType();
-	const PxActorType::Enum type1 = shapeSim1.getActor().getActorType();
+	Sc::ActorSim& bs0 = shapeSim0.getActor();
+	Sc::ActorSim& bs1 = shapeSim1.getActor();
+
+	const PxActorType::Enum type0 = bs0.getActorType();
+	const PxActorType::Enum type1 = bs1.getActorType();
 
 	const int disableResponse = readFlag(CONTACTS_RESPONSE_DISABLED) ? 1 : 0;
 	const int disableDiscreteContact = !(pairFlags & PxPairFlag::eDETECT_DISCRETE_CONTACT);
@@ -1046,20 +1038,7 @@ void Sc::ShapeInteraction::createManager(void* contactManager)
 	else
 		touching = 0;
 
-	// Static actors are in dominance group zero and must remain there
-
-	Sc::ActorSim& bs0 = shapeSim0.getActor();
-	Sc::ActorSim& bs1 = shapeSim1.getActor();
-
-	const PxDominanceGroup dom0 = bs0.getActorCore().getDominanceGroup();
-	const PxDominanceGroup dom1 = bs1.isStaticRigid() ? PxDominanceGroup(0) : bs1.getActorCore().getDominanceGroup();
-
 	const bool kinematicActor = bs1.isDynamicRigid() ? static_cast<BodySim&>(bs1).isKinematic() : false;
-
-	const PxDominanceGroupPair cdom = scene.getDominanceGroupPair(dom0, dom1);
-
-	/*const PxI32 hasArticulations= (type0 == PxActorType::eARTICULATION_LINK) | (type1 == PxActorType::eARTICULATION_LINK)<<1;
-	const PxI32 hasDynamics		= (type0 != PxActorType::eRIGID_STATIC)      | (type1 != PxActorType::eRIGID_STATIC)<<1;*/ 
 
 	const PxsShapeCore* shapeCore0 = &shapeSim0.getCore().getCore();
 	const PxsShapeCore* shapeCore1 = &shapeSim1.getCore().getCore();
@@ -1069,28 +1048,24 @@ void Sc::ShapeInteraction::createManager(void* contactManager)
 	manager->mRigidBody0		= bs0.isDynamicRigid() ? &static_cast<BodySim&>(bs0).getLowLevelBody() : NULL;
 	manager->mRigidBody1		= bs1.isDynamicRigid() ? &static_cast<BodySim&>(bs1).getLowLevelBody() : NULL;
 	manager->mShapeInteraction	= this;
-	mNpUnit.shapeCore0			= shapeCore0;
-	mNpUnit.shapeCore1			= shapeCore1;
+	unit.setShapeCore0(shapeCore0);
+	unit.setShapeCore1(shapeCore1);
 
 	PX_ASSERT(shapeCore0->getTransform().isValid() && shapeCore1->getTransform().isValid());
 
-	mNpUnit.rigidCore0			= !bs0.isNonRigid() ? &static_cast<ShapeSim&>(shapeSim0).getPxsRigidCore() : NULL;
-	mNpUnit.rigidCore1			= !bs1.isNonRigid() ? &static_cast<ShapeSim&>(shapeSim1).getPxsRigidCore() : NULL;
+	unit.mRigidCore0			= !bs0.isNonRigid() ? &static_cast<ShapeSim&>(shapeSim0).getPxsRigidCore() : NULL;
+	unit.mRigidCore1			= !bs1.isNonRigid() ? &static_cast<ShapeSim&>(shapeSim1).getPxsRigidCore() : NULL;
 
-	mNpUnit.restDistance		= ScGetRestOffset(shapeSim0) + ScGetRestOffset(shapeSim1);
-	mNpUnit.dominance0			= cdom.dominance0;
-	mNpUnit.dominance1			= cdom.dominance1;
-	mNpUnit.geomType0			= PxU8(shapeCore0->mGeometry.getType());
-	mNpUnit.geomType1			= PxU8(shapeCore1->mGeometry.getType());
-	mNpUnit.mTransformCache0	= shapeSim0.getTransformCacheID();
-	mNpUnit.mTransformCache1	= shapeSim1.getTransformCacheID();
+	unit.mRestDistance			= ScGetRestOffset(shapeSim0) + ScGetRestOffset(shapeSim1);
+	unit.mTransformCache0		= shapeSim0.getTransformCacheID();
+	unit.mTransformCache1		= shapeSim1.getTransformCacheID();
 
-	mNpUnit.mTorsionalPatchRadius = PxMax(shapeSim0.getTorsionalPatchRadius(),shapeSim1.getTorsionalPatchRadius());
-	mNpUnit.mMinTorsionalPatchRadius = PxMax(shapeSim0.getMinTorsionalPatchRadius(), shapeSim1.getMinTorsionalPatchRadius());
+	unit.mTorsionalPatchRadius = PxMax(shapeSim0.getTorsionalPatchRadius(),shapeSim1.getTorsionalPatchRadius());
+	unit.mMinTorsionalPatchRadius = PxMax(shapeSim0.getMinTorsionalPatchRadius(), shapeSim1.getMinTorsionalPatchRadius());
 
-	PxReal slop0 = manager->mRigidBody0 ? manager->mRigidBody0->getCore().offsetSlop : 0.f;
-	PxReal slop1 = manager->mRigidBody1 ? manager->mRigidBody1->getCore().offsetSlop : 0.f;
-	mNpUnit.mOffsetSlop = PxMax(slop0, slop1);
+	const PxReal slop0 = manager->mRigidBody0 ? manager->mRigidBody0->getCore().offsetSlop : 0.0f;
+	const PxReal slop1 = manager->mRigidBody1 ? manager->mRigidBody1->getCore().offsetSlop : 0.0f;
+	unit.mOffsetSlop = PxMax(slop0, slop1);
 
 	PxU16 wuflags = 0;
 
@@ -1106,12 +1081,13 @@ void Sc::ShapeInteraction::createManager(void* contactManager)
 	if(type1 == PxActorType::eRIGID_DYNAMIC)
 		wuflags |= PxcNpWorkUnitFlag::eDYNAMIC_BODY1;
 
-	if (type0 == PxActorType::eSOFTBODY)
+#if PX_SUPPORT_GPU_PHYSX
+	if (type0 == PxActorType::eDEFORMABLE_VOLUME)
 		wuflags |= PxcNpWorkUnitFlag::eSOFT_BODY;
 
-	if (type1 == PxActorType::eSOFTBODY)
+	if (type1 == PxActorType::eDEFORMABLE_VOLUME)
 		wuflags |= PxcNpWorkUnitFlag::eSOFT_BODY;
-
+#endif
 	if(!disableResponse && !contactChangeable)
 		wuflags |= PxcNpWorkUnitFlag::eOUTPUT_CONSTRAINTS;
 
@@ -1135,13 +1111,12 @@ void Sc::ShapeInteraction::createManager(void* contactManager)
 	if(contactChangeable)
 		wuflags |= PxcNpWorkUnitFlag::eMODIFIABLE_CONTACT;
 
-	mNpUnit.flags = wuflags;
+	unit.mFlags = wuflags;
+	setupDominance(unit, scene, bs0, bs1);
 
 	manager->mFlags = PxU32(contactChangeable ? PxsContactManager::PXS_CM_CHANGEABLE : 0) | PxU32(disableCCDContact ? 0 : PxsContactManager::PXS_CM_CCD_LINEAR);
 
-	//manager->mUserData				= this;
-	
-	mNpUnit.mNpIndex = 0xFFffFFff;
+	unit.mNpIndex = 0xFFffFFff;
 
 	mManager = manager;
 
@@ -1152,7 +1127,7 @@ void Sc::ShapeInteraction::createManager(void* contactManager)
 	else if (touching < 0)
 		statusFlags |= PxcNpWorkUnitStatusFlag::eHAS_NO_TOUCH;
 
-	mNpUnit.statusFlags = statusFlags;
+	unit.mStatusFlags = statusFlags;
 
 	//KS - do not register the CMs here if contactManager isn't null. This implies this is a newly-found pair so we'll do that addition outside in parallel
 
@@ -1174,8 +1149,8 @@ void Sc::ShapeInteraction::onShapeChangeWhileSleeping(bool shapeOfDynamicChanged
 	{
 		Scene& scene = getScene();
 
-		//soft body/dynamic before static
-		ActorSim& body0 = getShape0().getActor();
+		//deformable volume/dynamic before static
+		ActorSim& body0 = getActor0();
 	
 		if(shapeOfDynamicChanged && !readFlag(TOUCH_KNOWN))
 		{
@@ -1184,7 +1159,7 @@ void Sc::ShapeInteraction::onShapeChangeWhileSleeping(bool shapeOfDynamicChanged
 			// the case where the objects fell asleep rather than have been added asleep (in that case the object will be 
 			// woken up with one frame delay).
 
-			ActorSim& body1 = getShape1().getActor();
+			ActorSim& body1 = getActor1();
 			
 			if(body1.isDynamicRigid() && !readFlag(ShapeInteraction::CONTACTS_RESPONSE_DISABLED))  // the first shape always belongs to a dynamic body, hence no need to test body0
 				scene.addToLostTouchList(body0, body1);  // note: this will cause duplicate entries if the pair loses AABB overlap the next frame

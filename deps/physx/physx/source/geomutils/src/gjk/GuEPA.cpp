@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -547,7 +547,7 @@ namespace Gu
 				aBuf[numVertsLocal]=tempa;
 				bBuf[numVertsLocal]=tempb;
 
-				const PxU32 index =PxU32(numVertsLocal++);
+				const PxU32 index = PxU32(numVertsLocal++);
 
 				// Compute the silhouette cast by the new vertex
 				// Note that the new vertex is on the positive side

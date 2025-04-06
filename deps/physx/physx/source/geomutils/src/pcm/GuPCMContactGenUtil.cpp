@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,7 +32,7 @@ using namespace physx;
 using namespace Gu;
 using namespace aos;
 
-bool physx::Gu::contains(aos::Vec3V* verts, const PxU32 numVerts, const aos::Vec3VArg p, const aos::Vec3VArg min, const aos::Vec3VArg max)
+bool Gu::contains(Vec3V* verts, PxU32 numVerts, const Vec3VArg p, const Vec3VArg min, const Vec3VArg max)
 {
 	const BoolV tempCon = BOr(V3IsGrtr(min, p), V3IsGrtr(p, max));
 	const BoolV con = BOr(BGetX(tempCon), BGetY(tempCon));
@@ -80,8 +80,8 @@ bool physx::Gu::contains(aos::Vec3V* verts, const PxU32 numVerts, const aos::Vec
 			//const FloatV jtx = FSub(tx, jy);
 			const FloatV jty = FSub(ty, jy);
 			const FloatV part1 = FMul(jty, jix);
-			//const FloatV part2 = FMul(jx,  jiy);
-			//const FloatV part3 = FMul(V3Sub(tx, eps),  jiy);
+			//const FloatV part2 = FMul(jx, jiy);
+			//const FloatV part3 = FMul(V3Sub(tx, eps), jiy);
 			const FloatV part2 = FMul(FAdd(jx, eps), jiy);
 			const FloatV part3 = FMul(tx, jiy);
 
@@ -102,7 +102,7 @@ bool physx::Gu::contains(aos::Vec3V* verts, const PxU32 numVerts, const aos::Vec
 	return intersectionPoints> 0;
 }
 
-PxI32 physx::Gu::getPolygonIndex(const Gu::PolygonalData& polyData, SupportLocal* map, const aos::Vec3VArg normal, PxI32& polyIndex2)
+PxI32 Gu::getPolygonIndex(const PolygonalData& polyData, const SupportLocal* map, const Vec3VArg normal, PxI32& polyIndex2)
 {
 	//normal is in shape space, need to transform the vertex space
 	const Vec3V n = M33TrnspsMulV3(map->vertex2Shape, normal);
@@ -133,6 +133,8 @@ PxI32 physx::Gu::getPolygonIndex(const Gu::PolygonalData& polyData, SupportLocal
 	PxU32 closestEdge = 0xffffffff;
 	FloatV maxDpSq = FMul(minProj, minProj);
 
+	FloatV maxDpSq2 = FLoad(-10.0f);
+
 	for (PxU32 i = 0; i < numEdges; ++i)//, inc = VecI32V_Add(inc, vOne))
 	{
 		const PxU32 index = i * 2;
@@ -148,6 +150,15 @@ PxI32 physx::Gu::getPolygonIndex(const Gu::PolygonalData& polyData, SupportLocal
 		//Test normal of current edge - squared test is valid if dp and maxDp both >= 0
 		const FloatV dp = V3Dot(edgeNormal, nnormal);//edgeNormal.dot(normal);
 		const FloatV sqDp = FMul(dp, dp);
+
+		if(f0==closestFaceIndex || f1==closestFaceIndex)
+		{
+			if(BAllEqTTTT(FIsGrtrOrEq(sqDp, maxDpSq2)))
+			{
+				maxDpSq2 = sqDp;
+				polyIndex2 = f0==closestFaceIndex ? PxI32(f1) : PxI32(f0);
+			}
+		}
 
 		const BoolV con0 = FIsGrtrOrEq(dp, zero);
 		const BoolV con1 = FIsGrtr(sqDp, FMul(maxDpSq, enMagSq));
@@ -187,8 +198,7 @@ PxI32 physx::Gu::getPolygonIndex(const Gu::PolygonalData& polyData, SupportLocal
 	return closestFaceIndex;
 }
 
-PxU32 physx::Gu::getWitnessPolygonIndex(const Gu::PolygonalData& polyData, SupportLocal* map, const aos::Vec3VArg normal,
-	const aos::Vec3VArg closest, const PxReal tolerance)
+PxU32 Gu::getWitnessPolygonIndex(const PolygonalData& polyData, const SupportLocal* map, const Vec3VArg normal, const Vec3VArg closest, PxReal tolerance)
 {
 	PxReal pd[256];
 	//first pass : calculate the smallest distance from the closest point to the polygon face
@@ -261,7 +271,7 @@ PxU32 physx::Gu::getWitnessPolygonIndex(const Gu::PolygonalData& polyData, Suppo
 	return closestFaceIndex;
 }
 
-/*	PX_FORCE_INLINE bool boxContainsInXY(const aos::FloatVArg x, const aos::FloatVArg y, const aos::Vec3VArg p, const aos::Vec3V* verts, const aos::Vec3VArg min, const aos::Vec3VArg max)
+/*	PX_FORCE_INLINE bool boxContainsInXY(const FloatVArg x, const FloatVArg y, const Vec3VArg p, const Vec3V* verts, const Vec3VArg min, const Vec3VArg max)
 	{
 		using namespace aos;
 
@@ -286,9 +296,9 @@ PxU32 physx::Gu::getWitnessPolygonIndex(const Gu::PolygonalData& polyData, Suppo
 			// => similar to backface culling, check each one of the 4 triangles are consistent, in which case
 			// the point is within the parallelogram.
 			const FloatV v00 = FSub(CurrentX, PreviousX);
-			const FloatV v01 = FSub(y,  PreviousY);
+			const FloatV v01 = FSub(y, PreviousY);
 			const FloatV v10 = FSub(CurrentY, PreviousY);
-			const FloatV v11 = FSub(x,  PreviousX);
+			const FloatV v11 = FSub(x, PreviousX);
 			const FloatV temp0 = FMul(v00, v01);
 			const FloatV temp1 = FMul(v10, v11);
 			if(FAllGrtrOrEq(FSub(temp0, temp1), zero))

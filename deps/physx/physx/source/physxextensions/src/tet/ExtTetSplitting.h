@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #ifndef EXT_TET_SPLITTING_H
 #define EXT_TET_SPLITTING_H
@@ -41,7 +41,7 @@ namespace Ext
 
 	//Splits all edges specified in edgesToSplit. The tets are modified in place. The poitns referenced by index in the key-value pari in 
 	//edgesToSplit must already pe present in the points array. This functions guarantees that the tetmesh will remain watertight.
-	PX_C_EXPORT void PX_CALL_CONV split(PxArray<Tetrahedron>& tets, const PxArray<Vec3>& points, const PxHashMap<PxU64, PxI32>& edgesToSplit);
+	PX_C_EXPORT void PX_CALL_CONV split(PxArray<Tetrahedron>& tets, const PxArray<PxVec3d>& points, const PxHashMap<PxU64, PxI32>& edgesToSplit);
 }
 }
 

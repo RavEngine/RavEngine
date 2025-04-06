@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -38,7 +38,6 @@
 // ****************************************************************************
 
 #include <ctype.h>
-#include <vector>
 #include "PxPhysicsAPI.h"
 #include "../snippetutils/SnippetUtils.h"
 #include "../snippetcommon/SnippetPrint.h"
@@ -87,7 +86,7 @@ static void createStack(const PxTransform& t, PxU32 size, PxReal halfExtent)
 
 class SnippetMBPBroadPhaseCallback : public physx::PxBroadPhaseCallback
 {
-	std::vector<PxActor*> outOfBoundsActors;
+	PxArray<PxActor*> outOfBoundsActors;
 public:
 	virtual void onObjectOutOfBounds(PxShape& /*shape*/, PxActor& actor)
 	{
@@ -99,7 +98,7 @@ public:
 		}
 		if(i == outOfBoundsActors.size())
 		{
-			outOfBoundsActors.push_back(&actor);
+			outOfBoundsActors.pushBack(&actor);
 		}
 	}
 
@@ -116,6 +115,11 @@ public:
 		}
 		outOfBoundsActors.clear();
 	}
+    
+    void release()
+    {
+        outOfBoundsActors.reset();
+    }
 } gBroadPhaseCallback;
 
 
@@ -126,7 +130,7 @@ void initPhysics(bool interactive)
 	PxPvdTransport* transport = PxDefaultPvdSocketTransportCreate(PVD_HOST, 5425, 10);
 	gPvd->connect(*transport,PxPvdInstrumentationFlag::eALL);
 
-	gPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *gFoundation, PxTolerancesScale(),true,gPvd);
+	gPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *gFoundation, PxTolerancesScale(), true, gPvd);
 		
 	PxSceneDesc sceneDesc(gPhysics->getTolerancesScale());
 	sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
@@ -180,13 +184,15 @@ void stepPhysics(bool /*interactive*/)
 	
 void cleanupPhysics(bool /*interactive*/)
 {
+    gBroadPhaseCallback.release();
+    
 	PX_RELEASE(gScene);
 	PX_RELEASE(gDispatcher);
 	PX_RELEASE(gPhysics);
 	if(gPvd)
 	{
 		PxPvdTransport* transport = gPvd->getTransport();
-		gPvd->release();	gPvd = NULL;
+		PX_RELEASE(gPvd);
 		PX_RELEASE(transport);
 	}
 	PX_RELEASE(gFoundation);

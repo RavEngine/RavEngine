@@ -22,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_RACK_AND_PINION_JOINT_H
 #define PX_RACK_AND_PINION_JOINT_H
-/** \addtogroup extensions
-  @{
-*/
 
 #include "extensions/PxJoint.h"
 
@@ -50,7 +47,7 @@ namespace physx
 	\param[in] actor1		An actor to which the joint is attached. NULL may be used to attach the joint to a specific point in the world frame
 	\param[in] localFrame1	The position and orientation of the joint relative to actor1
 
-	@see PxRackAndPinionJoint
+	\see PxRackAndPinionJoint
 	*/
 	PxRackAndPinionJoint*	PxRackAndPinionJointCreate(PxPhysics& physics, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1);
 
@@ -58,7 +55,7 @@ namespace physx
 	\brief A joint that connects an existing revolute joint to an existing prismatic joint,
 	and constrains their relative angular/linear velocity and position with respect to each other.
 
-	@see PxRackAndPinionJointCreate PxJoint
+	\see PxRackAndPinionJointCreate PxJoint
 	*/
 	class PxRackAndPinionJoint : public PxJoint
 	{
@@ -67,8 +64,8 @@ namespace physx
 		/**
 		\brief Set the hinge & prismatic joints connected by the rack & pinion joint.
 
-		The passed hinge joint can be either PxRevoluteJoint, PxD6Joint or PxArticulationJointReducedCoordinate. It cannot be null.
-		The passed prismatic joint can be either PxPrismaticJoint or PxD6Joint. It cannot be null.
+		The passed hinge joint can be either PxRevoluteJoint, PxD6Joint or PxArticulationJointReducedCoordinate.
+		The passed prismatic joint can be either PxPrismaticJoint or PxD6Joint.
 
 		Note that these joints are only used to compute the positional error correction term,
 		used to adjust potential drift between jointed actors. The rack & pinion joint can run without
@@ -82,6 +79,14 @@ namespace physx
 		\return		true if success
 		*/
 		virtual	bool		setJoints(const PxBase* hinge, const PxBase* prismatic)	= 0;
+
+		/**
+		\brief Get the hinge & prismatic joints connected by the rack & pinion joint.
+
+		\param[out]	hinge		The hinge joint (pinion)
+		\param[out]	prismatic	The prismatic joint (rack)
+		*/
+		virtual	void		getJoints(const PxBase*& hinge, const PxBase*& prismatic)	const	= 0;
 
 		/**
 		\brief Set the desired ratio directly.
@@ -117,7 +122,7 @@ namespace physx
 		*/
 		virtual	bool		setData(PxU32 nbRackTeeth, PxU32 nbPinionTeeth, float rackLength)	= 0;
 
-		virtual	const char*	getConcreteTypeName() const { return "PxRackAndPinionJoint"; }
+		virtual	const char*	getConcreteTypeName() const	PX_OVERRIDE	{ return "PxRackAndPinionJoint"; }
 
 	protected:
 
@@ -125,12 +130,11 @@ namespace physx
 
 		PX_INLINE			PxRackAndPinionJoint(PxBaseFlags baseFlags) : PxJoint(baseFlags)	{}
 
-		virtual	bool		isKindOf(const char* name) const { return !::strcmp("PxRackAndPinionJoint", name) || PxJoint::isKindOf(name);	}
+		virtual	bool		isKindOf(const char* name) const { PX_IS_KIND_OF(name, "PxRackAndPinionJoint", PxJoint);	}
 	};
 
 #if !PX_DOXYGEN
 } // namespace physx
 #endif
 
-/** @} */
 #endif

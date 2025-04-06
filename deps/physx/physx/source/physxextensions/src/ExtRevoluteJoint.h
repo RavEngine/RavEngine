@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -43,24 +43,14 @@ namespace Ext
 {
 	struct RevoluteJointData : public JointData
 	{
-	//= ATTENTION! =====================================================================================
-	// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-	// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-	// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-	// accordingly.
-	//==================================================================================================
-
 		PxReal					driveVelocity;
 		PxReal					driveForceLimit;
 		PxReal					driveGearRatio;
 
 		PxJointAngularLimitPair	limit;
 							
-		PxReal					projectionLinearTolerance;
-		PxReal					projectionAngularTolerance;
-							
 		PxRevoluteJointFlags	jointFlags;
-	private:
+//	private:	// PT: must be public for a benchmark
 		RevoluteJointData(const PxJointAngularLimitPair& pair) : limit(pair)	{}
 	};
 
@@ -68,20 +58,13 @@ namespace Ext
     
 	class RevoluteJoint : public RevoluteJointT
 	{
-	//= ATTENTION! =====================================================================================
-	// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-	// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-	// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-	// accordingly.
-	//==================================================================================================
 	public:
 // PX_SERIALIZATION
 										RevoluteJoint(PxBaseFlags baseFlags) : RevoluteJointT(baseFlags) {}
 				void					resolveReferences(PxDeserializationContext& context);
 		static	RevoluteJoint*			createObject(PxU8*& address, PxDeserializationContext& context)	{ return createJointObject<RevoluteJoint>(address, context);	}
-		static	void					getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
-										RevoluteJoint(const PxTolerancesScale& /*scale*/, PxRigidActor* actor0, const PxTransform& localFrame0,  PxRigidActor* actor1, const PxTransform& localFrame1);
+										RevoluteJoint(const PxTolerancesScale& /*scale*/, PxRigidActor* actor0, const PxTransform& localFrame0, PxRigidActor* actor1, const PxTransform& localFrame1);
 		// PxRevoluteJoint
 		virtual	PxReal					getAngle() const	PX_OVERRIDE;
 		virtual	PxReal					getVelocity() const	PX_OVERRIDE;
@@ -96,10 +79,6 @@ namespace Ext
 		virtual	void					setRevoluteJointFlags(PxRevoluteJointFlags flags)	PX_OVERRIDE;
 		virtual	void					setRevoluteJointFlag(PxRevoluteJointFlag::Enum flag, bool value)	PX_OVERRIDE;
 		virtual	PxRevoluteJointFlags	getRevoluteJointFlags()	const	PX_OVERRIDE;
-		virtual	void					setProjectionLinearTolerance(PxReal distance)	PX_OVERRIDE;
-		virtual	PxReal					getProjectionLinearTolerance()	const	PX_OVERRIDE;
-		virtual	void					setProjectionAngularTolerance(PxReal tolerance)	PX_OVERRIDE;
-		virtual	PxReal					getProjectionAngularTolerance()	const	PX_OVERRIDE;
 		//~PxRevoluteJoint
 	
 		// PxConstraintConnector

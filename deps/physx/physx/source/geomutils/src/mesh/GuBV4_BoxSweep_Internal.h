@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -38,6 +38,8 @@
 
 #ifdef SWEEP_AABB_IMPL
 	// PT: TODO: refactor structure (TA34704)
+namespace
+{
 	struct RayParams
 	{
 		BV4_ALIGN16(PxVec3p	mCenterOrMinCoeff_PaddedAligned);
@@ -50,7 +52,7 @@
 	#endif
 		BV4_ALIGN16(PxVec3p	mOrigin_Padded);		// PT: TODO: this one could be switched to PaddedAligned & V4LoadA (TA34704)
 	};
-
+}
 	#include "GuBV4_AABBAABBSweepTest.h"
 #else
 	#include "GuBV4_BoxBoxOverlapTest.h"
@@ -127,7 +129,7 @@ static bool /*__fastcall*/ triBoxSweep(BoxSweepParams* PX_RESTRICT params, PxU32
 			setupRayData(params, Dist, params->mOrigin_Padded, params->mLocalDir_PaddedAligned);
 	#endif
 #else
-			params->ShrinkOBB(Dist);
+			params->shrinkOBB(Dist);
 #endif
 		}
 		return true;
@@ -307,7 +309,7 @@ public:
 			if(triBoxSweep(params, primIndex, params->mNodeSorting))
 			{
 				// PT: TODO: in this version we must compute the impact data immediately,
-				// which is a terrible idea in general, but I'm not sure what else I can do.
+				// which is a bad idea in general, but I'm not sure what else I can do.
 				SweepHit hit;
 				const bool b = computeImpactData(params->mBoxCB, params->mDirCB, &hit, params, (params->mFlags & QUERY_MODIFIER_DOUBLE_SIDED)!=0, (params->mFlags & QUERY_MODIFIER_MESH_BOTH_SIDES)!=0);
 				PX_ASSERT(b);
@@ -445,7 +447,7 @@ public:
 					setupRayData(params, Dist, params->mOrigin_Padded, params->mLocalDir_PaddedAligned);
 	#endif
 #else
-					params->ShrinkOBB(Dist);
+					params->shrinkOBB(Dist);
 #endif
 				}
 			}

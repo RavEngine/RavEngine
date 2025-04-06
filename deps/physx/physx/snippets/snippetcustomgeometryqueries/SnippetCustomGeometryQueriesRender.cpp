@@ -22,13 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifdef RENDER_SNIPPET
-
-#include <vector>
 
 #include "PxPhysicsAPI.h"
 
@@ -60,7 +58,7 @@ namespace
 		{
 			const PxVec3 dynColor(1.0f, 0.5f, 0.25f);
 
-			std::vector<PxRigidActor*> actors(nbActors);
+			PxArray<PxRigidActor*> actors(nbActors);
 			scene->getActors(PxActorTypeFlag::eRIGID_DYNAMIC | PxActorTypeFlag::eRIGID_STATIC, reinterpret_cast<PxActor**>(&actors[0]), nbActors);
 			Snippets::renderActors(&actors[0], static_cast<PxU32>(actors.size()), true, dynColor);
 		}
@@ -70,7 +68,7 @@ namespace
 		Snippets::finishRender();
 	}
 
-	void exitCallback(void)
+	void exitCallback()
 	{
 		delete sCamera;
 		cleanupPhysics(true);
@@ -81,7 +79,7 @@ void renderLoop()
 {
 	sCamera = new Snippets::Camera(PxVec3(30.0f, 30.0f, 30.0f), PxVec3(-0.6f, -0.5f, -0.6f));
 
-	Snippets::setupDefault("PhysX Snippet GeometryQueries", sCamera, keyPress, renderCallback, exitCallback);
+	Snippets::setupDefault("PhysX Snippet CustomGeometryQueries", sCamera, keyPress, renderCallback, exitCallback);
 
 	initPhysics(true);
 	glutMainLoop();

@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -70,22 +70,22 @@ namespace physx
 		PxU8* contactPatches;				//Start index/ptr for contact patches
 		PxU8* contactPoints;				//Start index/ptr for contact points
 		PxReal* contactForces;				//Start index/ptr for contact forces
+		PxU8* frictionPatches;				//Contact patches friction information
 		PxU8 allflagsStart;					//padding for compatibility with existing code
 		PxU8 nbPatches;						//Num patches
 		PxU8 statusFlag;					//Status flag (has touch etc.)
 		PxU8 prevPatches;					//Previous number of patches
 		PxU16 nbContacts;					//Num contacts
 		PxU16 flags;						//Not really part of outputs, but we have 4 bytes of padding, so why not?
-#if PX_X86
-		PxU32 pad[3];
-#endif		
+		PxU8 pad[8];
 
-		PX_FORCE_INLINE PxU32* getInternalFaceIndice()
+		PX_FORCE_INLINE PxU32* getInternalFaceIndice()	const
 		{
-			return reinterpret_cast<PxU32*>(contactForces + nbContacts);
+			return contactForces ? reinterpret_cast<PxU32*>(contactForces + nbContacts) : NULL;
 		}
 	} 
 	PX_ALIGN_SUFFIX(16);
+	PX_COMPILE_TIME_ASSERT((sizeof(PxsContactManagerOutput) & 0xf) == 0);
 
 	struct PX_ALIGN_PREFIX(4) PxsContactManagerOutputCounts
 	{
@@ -93,14 +93,6 @@ namespace physx
 		PxU8 prevPatches;					//Previous number of patches
 		PxU8 statusFlag;					//Status flag;
 		PxU8 unused;						//Unused
-	} PX_ALIGN_SUFFIX(4);
-
-	struct PX_ALIGN_PREFIX(4) PxsContactManagerPersistency
-	{
-		PxU8 mPrevPatches;
-		PxU8 mNbFrictionPatches;
-		PxU8 mNbPrevFrictionPatches;
-		PxU8 pad;
 	} PX_ALIGN_SUFFIX(4);
 
 	struct PX_ALIGN_PREFIX(8) PxsTorsionalFrictionData

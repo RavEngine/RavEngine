@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -72,7 +72,7 @@ void visualizeTree(PxRenderOutput& out, PxU32 color, const IncrementalAABBTree* 
 	{
 		struct Local
 		{
-			static void _draw(const IncrementalAABBTreeNode* root, const IncrementalAABBTreeNode* node, PxRenderOutput& out_, DebugVizCallback* cb)
+			static void _draw(const IncrementalAABBTreeNode* root, const IncrementalAABBTreeNode* node, PxRenderOutput& out_, DebugVizCallback* cb_)
 			{
 				PxBounds3 bounds;
 				V4StoreU(node->mBVMin, &bounds.minimum.x);
@@ -81,16 +81,16 @@ void visualizeTree(PxRenderOutput& out, PxU32 color, const IncrementalAABBTree* 
 				bounds.maximum = PxVec3(max4.x, max4.y, max4.z);
 
 				bool discard = false;
-				if(cb)
-					discard = cb->visualizeNode(*node, bounds);
+				if(cb_)
+					discard = cb_->visualizeNode(*node, bounds);
 
 				if(!discard)
 					Cm::renderOutputDebugBox(out_, bounds);
 
 				if(node->isLeaf())
 					return;
-				_draw(root, node->getPos(root), out_, cb);
-				_draw(root, node->getNeg(root), out_, cb);
+				_draw(root, node->getPos(root), out_, cb_);
+				_draw(root, node->getNeg(root), out_, cb_);
 			}
 		};
 		out << PxTransform(PxIdentity);

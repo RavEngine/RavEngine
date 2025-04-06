@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -30,9 +30,9 @@
 #define GU_ADJACENCIES_H
 
 #define MSH_ADJACENCIES_INCLUDE_CONVEX_BITS
-#include "foundation/Px.h"
 #include "GuTriangle.h"
 #include "common/PxPhysXCommonConfig.h"
+#include "foundation/PxIO.h"
 
 namespace physx
 {

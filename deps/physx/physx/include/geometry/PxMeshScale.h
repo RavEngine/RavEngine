@@ -22,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_MESH_SCALE_H
 #define PX_MESH_SCALE_H
-/** \addtogroup geomutils
-@{
-*/
 
 #include "common/PxPhysXCommonConfig.h"
 #include "foundation/PxMat33.h"
@@ -63,16 +60,10 @@ the coordinates of vertex v from the mesh-local frame to the scaling-axes frame.
 \note	Only positive scale values are supported for PxConvexMeshGeometry
 		with values for each component within [PX_MIN_ABS_MESH_SCALE, PX_MAX_ABS_MESH_SCALE] range).
 
-@see PxConvexMeshGeometry PxTriangleMeshGeometry
+\see PxConvexMeshGeometry PxTriangleMeshGeometry
 */
 class PxMeshScale
 {
-//= ATTENTION! =====================================================================================
-// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-// accordingly.
-//==================================================================================================
 public:
 	/**
 	\brief Constructor initializes to identity scale.
@@ -168,5 +159,4 @@ public:
 } // namespace physx
 #endif
 
-/** @} */
 #endif

@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -40,7 +40,7 @@ bool Gu::pcmContactPlaneCapsule(GU_CONTACT_METHOD_ARGS)
 
 	using namespace aos;
 
-	Gu::PersistentContactManifold& manifold = cache.getManifold();
+	PersistentContactManifold& manifold = cache.getManifold();
 	PxPrefetchLine(&manifold, 256);
 
 	// Get actual shape data
@@ -87,7 +87,7 @@ bool Gu::pcmContactPlaneCapsule(GU_CONTACT_METHOD_ARGS)
 		manifold.mNumContacts = 0;
 		manifold.setRelativeTransform(aToB);
 		//calculate the distance from s to the plane
-		const FloatV signDist0  = V3GetX(s);//V3Dot(localNormal, s);
+		const FloatV signDist0 = V3GetX(s);//V3Dot(localNormal, s);
 		if(FAllGrtr(inflatedRadius, signDist0))
 		{
 			const Vec3V localPointA = aToB.transformInv(s);
@@ -101,7 +101,6 @@ bool Gu::pcmContactPlaneCapsule(GU_CONTACT_METHOD_ARGS)
 		if(FAllGrtr(inflatedRadius, signDist1))
 		{
 			const Vec3V localPointA = aToB.transformInv(e);
-			
 			const Vec3V localPointB = V3NegScaleSub(localNormal, signDist1, e);
 			const Vec4V localNormalPen = V4SetW(Vec4V_From_Vec3V(localNormal), signDist1);
 			//add to manifold

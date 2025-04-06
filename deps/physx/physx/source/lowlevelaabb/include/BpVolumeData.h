@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -108,7 +108,7 @@ namespace physx
 			PX_CUDA_INLINE	AggregateHandle		getAggregate()		const { return mAggregate >> 1; }
 
 		private:
-							void*				mUserData;
+							void*				mUserData;	// PT: in PhysX this is an Sc::ElementSim ptr
 			// PT: TODO: consider moving this to a separate array, which wouldn't be allocated at all for people not using aggregates.
 			// PT: current encoding:
 			// aggregate == PX_INVALID_U32 => single actor

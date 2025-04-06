@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -32,7 +32,7 @@ using namespace physx;
 using namespace Gu;
 
 #include "foundation/PxVecMath.h"
-using namespace physx::aos;
+using namespace aos;
 
 #include "GuBV4_Common.h"
 #include "GuInternal.h"
@@ -40,6 +40,8 @@ using namespace physx::aos;
 #define SWEEP_AABB_IMPL
 
 	// PT: TODO: refactor structure (TA34704)
+namespace
+{
 	struct RayParams
 	{
 		BV4_ALIGN16(PxVec3p	mCenterOrMinCoeff_PaddedAligned);
@@ -52,7 +54,7 @@ using namespace physx::aos;
 	#endif
 		BV4_ALIGN16(PxVec3p	mOrigin_Padded);		// PT: TODO: this one could be switched to PaddedAligned & V4LoadA (TA34704)
 	};
-
+}
 #include "GuBV4_BoxSweep_Params.h"
 
 namespace

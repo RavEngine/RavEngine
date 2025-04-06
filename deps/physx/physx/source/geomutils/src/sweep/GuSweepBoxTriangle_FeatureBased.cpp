@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -39,8 +39,6 @@ using namespace Gu;
 
 #define LOCAL_EPSILON 0.00001f	// PT: this value makes the 'basicAngleTest' pass. Fails because of a ray almost parallel to a triangle
 
-namespace
-{
 static const PxReal gFatTriangleCoeff = 0.02f;
 
 static const PxVec3 gNearPlaneNormal[] = 
@@ -52,7 +50,6 @@ static const PxVec3 gNearPlaneNormal[] =
 	PxVec3(0.0f, -1.0f, 0.0f),
 	PxVec3(0.0f, 0.0f, -1.0f)
 };
-}
 
 #define	INVSQRT3 0.577350269189f	//!< 1 / sqrt(3)
 

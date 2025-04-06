@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -43,7 +43,6 @@ namespace Sc
 // PX_SERIALIZATION
 															ArticulationAttachmentCore(const PxEMPTY) :  mTendonSim(NULL) {}
 						void								preExportDataReset() { }
-		static			void								getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
 
 		ArticulationAttachmentCore() : mLowLimit(PX_MAX_F32), mHighLimit(-PX_MAX_F32), mRestLength(0.f)

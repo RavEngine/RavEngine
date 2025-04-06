@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -38,8 +38,8 @@
 #include "geometry/PxTetrahedronMeshGeometry.h"
 #include "geometry/PxTriangleMeshGeometry.h"
 #include "geometry/PxHeightFieldGeometry.h"
-#include "geometry/PxHairSystemGeometry.h"
 #include "geometry/PxCustomGeometry.h"
+#include "geometry/PxConvexCoreGeometry.h"
 
 namespace physx
 {
@@ -62,11 +62,11 @@ namespace physx
 	template <> struct PxcGeometryTraits<PxCapsuleGeometry>				{ enum { TypeID = PxGeometryType::eCAPSULE }; };
 	template <> struct PxcGeometryTraits<PxPlaneGeometry>				{ enum { TypeID = PxGeometryType::ePLANE }; };
 	template <> struct PxcGeometryTraits<PxParticleSystemGeometry>		{ enum { TypeID = PxGeometryType::ePARTICLESYSTEM}; };
+	template <> struct PxcGeometryTraits<PxConvexCoreGeometry>			{ enum { TypeID = PxGeometryType::eCONVEXCORE }; };
 	template <> struct PxcGeometryTraits<PxConvexMeshGeometry>			{ enum { TypeID = PxGeometryType::eCONVEXMESH }; };
 	template <> struct PxcGeometryTraits<PxTriangleMeshGeometry>		{ enum { TypeID = PxGeometryType::eTRIANGLEMESH }; };
 	template <> struct PxcGeometryTraits<PxTetrahedronMeshGeometry>		{ enum { TypeID = PxGeometryType::eTETRAHEDRONMESH }; };
 	template <> struct PxcGeometryTraits<PxHeightFieldGeometry>			{ enum { TypeID = PxGeometryType::eHEIGHTFIELD }; };
-	template <> struct PxcGeometryTraits<PxHairSystemGeometry>			{ enum { TypeID = PxGeometryType::eHAIRSYSTEM }; };
 	template <> struct PxcGeometryTraits<PxCustomGeometry>				{ enum { TypeID = PxGeometryType::eCUSTOM }; };
 
 	template<class T> PX_CUDA_CALLABLE PX_FORCE_INLINE void checkType(const PxGeometry& geometry)
@@ -88,7 +88,9 @@ namespace physx
 	}
 }
 
+#if !PX_CUDA_COMPILER
 // the shape structure relies on punning capsules and spheres 
 PX_COMPILE_TIME_ASSERT(PX_OFFSET_OF(physx::PxCapsuleGeometry, radius) == PX_OFFSET_OF(physx::PxSphereGeometry, radius));
+#endif
 
 #endif

@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -34,9 +34,9 @@
 #include "geometry/PxTriangleMeshGeometry.h"
 #include "geometry/PxConvexMeshGeometry.h"
 #include "geometry/PxHeightFieldGeometry.h"
-#include "geometry/PxHairSystemGeometry.h"
 #include "geometry/PxParticleSystemGeometry.h"
 #include "geometry/PxCustomGeometry.h"
+#include "geometry/PxConvexCoreGeometry.h"
 #include "foundation/PxAtomic.h"
 
 #include "GuInternal.h"
@@ -76,12 +76,12 @@ bool PxGeometryQuery::isValid(const PxGeometry& g)
 		case PxGeometryType::ePLANE:			return static_cast<const PxPlaneGeometry&>(g).isValid();
 		case PxGeometryType::eCAPSULE:			return static_cast<const PxCapsuleGeometry&>(g).isValid();
 		case PxGeometryType::eBOX:				return static_cast<const PxBoxGeometry&>(g).isValid();
+		case PxGeometryType::eCONVEXCORE:		return static_cast<const PxConvexCoreGeometry&>(g).isValid();
 		case PxGeometryType::eCONVEXMESH:		return static_cast<const PxConvexMeshGeometry&>(g).isValid();
 		case PxGeometryType::eTRIANGLEMESH:		return static_cast<const PxTriangleMeshGeometry&>(g).isValid();
 		case PxGeometryType::eHEIGHTFIELD:		return static_cast<const PxHeightFieldGeometry&>(g).isValid();
 		case PxGeometryType::eTETRAHEDRONMESH:	return static_cast<const PxTetrahedronMeshGeometry&>(g).isValid();
 		case PxGeometryType::ePARTICLESYSTEM:	return static_cast<const PxParticleSystemGeometry&>(g).isValid();
-		case PxGeometryType::eHAIRSYSTEM:		return static_cast<const PxHairSystemGeometry&>(g).isValid();
 		case PxGeometryType::eCUSTOM:			return static_cast<const PxCustomGeometry&>(g).isValid();
 	}
 	return false;
@@ -200,7 +200,7 @@ PxU32 PxGeometryQuery::raycast(	const PxVec3& rayOrigin, const PxVec3& rayDir,
 
 ///////////////////////////////////////////////////////////////////////////////
 
-bool pointConvexDistance(PxVec3& normal_, PxVec3& closestPoint_, PxReal& sqDistance, const PxVec3& pt, const ConvexMesh* convexMesh, const PxMeshScale& meshScale, const PxTransform& convexPose);
+bool pointConvexDistance(PxVec3& normal_, PxVec3& closestPoint_, PxReal& sqDistance, const PxVec3& pt, const ConvexMesh* convexMesh, const PxMeshScale& meshScale, const PxTransform32& convexPose);
 
 PxReal PxGeometryQuery::pointDistance(const PxVec3& point, const PxGeometry& geom, const PxTransform& pose, PxVec3* closestPoint, PxU32* closestIndex, PxGeometryQueryFlags queryFlags)
 {
@@ -274,9 +274,11 @@ PxReal PxGeometryQuery::pointDistance(const PxVec3& point, const PxGeometry& geo
 		{
 			const PxConvexMeshGeometry& convexGeom = static_cast<const PxConvexMeshGeometry&>(geom);
 
+			const PxTransform32 poseA(pose);
+
 			PxVec3 normal, cp;
 			PxReal sqDistance;
-			const bool intersect = pointConvexDistance(normal, cp, sqDistance, point, static_cast<ConvexMesh*>(convexGeom.convexMesh), convexGeom.scale, pose);
+			const bool intersect = pointConvexDistance(normal, cp, sqDistance, point, static_cast<ConvexMesh*>(convexGeom.convexMesh), convexGeom.scale, poseA);
 			if(!intersect && closestPoint)
 				*closestPoint = cp;
 			return sqDistance;
@@ -313,17 +315,6 @@ void PxGeometryQuery::computeGeomBounds(PxBounds3& bounds, const PxGeometry& geo
 	PX_ASSERT(bounds.isValid());
 }
 
-PxBounds3 PxGeometryQuery::getWorldBounds(const PxGeometry& geom, const PxTransform& pose, float inflation)
-{
-	PX_SIMD_GUARD;
-	PX_CHECK_AND_RETURN_VAL(pose.isValid(), "PxGeometryQuery::getWorldBounds(): pose is not valid.", PxBounds3::empty());
-
-	PxBounds3 bounds;
-	Gu::computeBounds(bounds, geom, pose, 0.0f, inflation);
-	PX_ASSERT(bounds.isValid());
-	return bounds;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 
 extern GeomMTDFunc gGeomMTDMethodTable[][PxGeometryType::eGEOMETRY_COUNT];
@@ -336,11 +327,14 @@ bool PxGeometryQuery::computePenetration(	PxVec3& mtd, PxF32& depth,
 	PX_CHECK_AND_RETURN_VAL(pose0.isValid(), "PxGeometryQuery::computePenetration(): pose0 is not valid.", false);
 	PX_CHECK_AND_RETURN_VAL(pose1.isValid(), "PxGeometryQuery::computePenetration(): pose1 is not valid.", false);
 
+	const PxTransform32 pose0A(pose0);
+	const PxTransform32 pose1A(pose1);
+
 	if(geom0.getType() > geom1.getType())
 	{
 		GeomMTDFunc mtdFunc = gGeomMTDMethodTable[geom1.getType()][geom0.getType()];
 		PX_ASSERT(mtdFunc);
-		if(!mtdFunc(mtd, depth, geom1, pose1, geom0, pose0))
+		if(!mtdFunc(mtd, depth, geom1, pose1A, geom0, pose0A))
 			return false;
 		mtd = -mtd;
 		return true;
@@ -349,7 +343,7 @@ bool PxGeometryQuery::computePenetration(	PxVec3& mtd, PxF32& depth,
 	{
 		GeomMTDFunc mtdFunc = gGeomMTDMethodTable[geom0.getType()][geom1.getType()];
 		PX_ASSERT(mtdFunc);
-		return mtdFunc(mtd, depth, geom0, pose0, geom1, pose1);
+		return mtdFunc(mtd, depth, geom0, pose0A, geom1, pose1A);
 	}
 }
 
@@ -408,7 +402,7 @@ bool PxGeometryQuery::generateTriangleContacts(const PxGeometry& geom, const PxT
 			const FloatV contactDist = FLoad(contactDistance + meshContactMargin);
 			const FloatV replaceBreakingThreshold = FMul(minMargin, FLoad(0.05f));
 
-			BoxV boxV(V3Zero(), boxExtents);
+			const BoxV boxV(V3Zero(), boxExtents);
 
 			const PxTransformV boxTransform = geomTransform;
 			const PxTransformV meshTransform = triangleTransform;
@@ -417,12 +411,13 @@ bool PxGeometryQuery::generateTriangleContacts(const PxGeometry& geom, const PxT
 			PCMPolygonalBox polyBox(box.halfExtents);
 			polyBox.getPolygonalData(&polyData);
 
-			Mat33V identity = M33Identity();
+			const Mat33V identity = M33Identity();
 			SupportLocalImpl<BoxV> boxMap(boxV, boxTransform, identity, identity, true);
 
 			Gu::PCMConvexVsMeshContactGeneration contactGeneration(contactDist, replaceBreakingThreshold, boxTransform, meshTransform, multiManifold, contactBuffer0, polyData, &boxMap, &deferredContacts, idtScaling, true, true, NULL);
 			contactGeneration.processTriangle(triangleVertices, triangleIndex, Gu::ETD_CONVEX_EDGE_ALL, triangleIndices);
-			contactGeneration.processContacts(GU_CAPSULE_MANIFOLD_CACHE_SIZE, false);
+			contactGeneration.generateLastContacts();
+			contactGeneration.processContacts(GU_SINGLE_MANIFOLD_CACHE_SIZE, false);
 
 			break;
 		}
@@ -452,11 +447,13 @@ bool PxGeometryQuery::generateTriangleContacts(const PxGeometry& geom, const PxT
 
 			Gu::PCMConvexVsMeshContactGeneration contactGeneration(contactDist, replaceBreakingThreshold, convexTransform, meshTransform, multiManifold, contactBuffer0, polyData, &convexMap, &deferredContacts, convexScaling, idtConvexScale, true, NULL);
 			contactGeneration.processTriangle(triangleVertices, triangleIndex, Gu::ETD_CONVEX_EDGE_ALL, triangleIndices);
-			contactGeneration.processContacts(GU_CAPSULE_MANIFOLD_CACHE_SIZE, false);
+			contactGeneration.generateLastContacts();
+			contactGeneration.processContacts(GU_SINGLE_MANIFOLD_CACHE_SIZE, false);
 
 			break;
 		}
 		default:
+			PX_ASSERT(0); // Unsupported gepmetry type
 			break;
 	}
 

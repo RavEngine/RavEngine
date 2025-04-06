@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #ifndef PX_TASK_H
 #define PX_TASK_H
@@ -78,6 +78,18 @@ public:
 	 * provided no additional user references to the task exist
 	 */
     virtual void		release() = 0;
+
+    /**
+     * \brief Tells the scheduler if a task is high priority or not.
+     *
+     * This function is a hint to the scheduler, to let it know that some tasks are
+     * higher priority than others. The scheduler should try to execute high priority
+     * tasks first, but there is no guarantee that it does (some schedulers can ignore
+     * this information).
+	 *
+	 * \return True for high priority task, false for regular tasks
+     */
+	virtual bool		isHighPriority()	const	{ return false; }
 
     /**
      * \brief Return PxTaskManager to which this task was submitted
@@ -233,8 +245,8 @@ public:
 		mRefCount = 1;
 		mCont = c;
 		mTm = &tm;
-		if(mCont)
-			mCont->addReference();
+		if(c)
+			c->addReference();
 	}
 
     /**
@@ -250,10 +262,10 @@ public:
 		PX_ASSERT(mRefCount == 0);
 		mRefCount = 1;
 		mCont = c;
-		if(mCont)
+		if(c)
 		{
-			mCont->addReference();
-			mTm = mCont->getTaskManager();
+			c->addReference();
+			mTm = c->getTaskManager();
 			PX_ASSERT(mTm);
 		}
 	}

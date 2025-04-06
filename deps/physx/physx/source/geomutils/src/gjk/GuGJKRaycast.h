@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -141,7 +141,7 @@ namespace Gu
 						const Vec3V bPreCenter = x;
 						x = V3ScaleAdd(r, _lambda, s);
 						
-						const Vec3V offSet =V3Sub(x, bPreCenter);
+						const Vec3V offSet = V3Sub(x, bPreCenter);
 						const Vec3V b0 = V3Add(B[0], offSet);
 						const Vec3V b1 = V3Add(B[1], offSet);
 						const Vec3V b2 = V3Add(B[2], offSet);

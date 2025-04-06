@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -40,7 +40,10 @@ Sc::ArticulationJointSim::ArticulationJointSim(ArticulationJointCore& joint, Act
 	Interaction	(parent, child, InteractionType::eARTICULATION, 0),
 	mCore		(joint)
 {
-	registerInActors();
+	{
+		onActivate();
+		registerInActors();
+	}
 
 	BodySim& childBody = static_cast<BodySim&>(child),
 		   & parentBody = static_cast<BodySim&>(parent);
@@ -71,7 +74,7 @@ Sc::BodySim& Sc::ArticulationJointSim::getChild() const
 	return static_cast<BodySim&>(getActorSim1());
 }
 
-bool Sc::ArticulationJointSim::onActivate_(void*)
+bool Sc::ArticulationJointSim::onActivate()
 {
 	if(!(getParent().isActive() && getChild().isActive()))
 		return false;
@@ -80,7 +83,7 @@ bool Sc::ArticulationJointSim::onActivate_(void*)
 	return true; 
 }
 
-bool Sc::ArticulationJointSim::onDeactivate_()
+bool Sc::ArticulationJointSim::onDeactivate()
 {
 	clearInteractionFlag(InteractionFlag::eIS_ACTIVE);
 	return true;

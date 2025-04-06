@@ -1,0 +1,64 @@
+########################################################################################################################
+# Repo tool base settings
+########################################################################################################################
+
+[repo]
+
+# Repository Name. It is used for solution name and final package name
+name = "blast-sdk"
+
+
+########################################################################################################################
+# Build tool setup
+########################################################################################################################
+
+[repo_build]
+
+# List of packman projects to pull (in order)
+fetch.packman_host_files_to_pull = [
+    "${root}/deps/host-deps.packman.xml",
+]
+fetch.packman_target_files_to_pull = [
+    "${root}/deps/target-deps.packman.xml",
+]
+
+vscode.python = "${root}/_build/target-deps/python36"
+vscode.python_env.PYTHONPATH= [
+    "$$$${PYTHONPATH}",
+    "${env:PYTHONPATH}"
+]
+vscode.python_env.PATH= [
+    "$$$${PATH}", 
+    "$root/_build/$platform/$config",
+]
+vscode.write_python_paths_in_settings_json = true
+vscode.generate_python_env_file = false
+
+#licensing.enabled = true
+#licensing.packages = [
+#    "${root}/deps/target-deps.packman.xml",
+#    "${root}/deps/usd-deps.packman.xml",
+#]
+#licensing.fail_on_missing = true
+
+# Disable pip license gathering (we don't have any)
+fetch.pip.gather_licenses_path = ""
+
+msbuild.sln_file = "blast-sdk.sln"
+msbuild.vs_version = "vs2017"
+
+[[repo_build.argument]]
+name = "-py"
+help = "Python version."
+kwargs.choices = ["0", "27", "36", "37"]
+kwargs.nargs = 1
+extra_premake_args = ["--python-version={}"]
+
+
+########################################################################################################################
+# Code Format Tool
+########################################################################################################################
+
+[repo_format]
+
+

@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -143,10 +143,10 @@ namespace Gu
 
 			if(data)
 			{
-				const PxU32 maxIndex= hillClimbing(dir);
-				const PxU32 minIndex= hillClimbing(V3Neg(dir));
-				const Vec3V maxPoint= V3LoadU_SafeReadW(verts[maxIndex]);	// PT: safe because of the way vertex memory is allocated in ConvexHullData (and 'verts' is initialized with ConvexHullData::getHullVertices())
-				const Vec3V minPoint= V3LoadU_SafeReadW(verts[minIndex]);	// PT: safe because of the way vertex memory is allocated in ConvexHullData (and 'verts' is initialized with ConvexHullData::getHullVertices())
+				const PxU32 maxIndex = hillClimbing(dir);
+				const PxU32 minIndex = hillClimbing(V3Neg(dir));
+				const Vec3V maxPoint = V3LoadU_SafeReadW(verts[maxIndex]);	// PT: safe because of the way vertex memory is allocated in ConvexHullData (and 'verts' is initialized with ConvexHullData::getHullVertices())
+				const Vec3V minPoint = V3LoadU_SafeReadW(verts[minIndex]);	// PT: safe because of the way vertex memory is allocated in ConvexHullData (and 'verts' is initialized with ConvexHullData::getHullVertices())
 				min = V3Dot(dir, minPoint);
 				max = V3Dot(dir, maxPoint);
 			}

@@ -22,16 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 #ifndef PX_CONE_LIMITED_CONSTRAINT_H
 #define PX_CONE_LIMITED_CONSTRAINT_H
 
-/** \addtogroup physics
-@{
-*/
 
 #include "foundation/PxVec3.h"
 #include "foundation/PxVec4.h"
@@ -48,25 +45,74 @@ struct PxConeLimitedConstraint
 {
 	PxConeLimitedConstraint()
 	{
-		mAxis = PxVec3(0.f, 0.f, 0.f);
-		mAngle = 0.f;
-		mLowLimit = 0.f;
-		mHighLimit = 0.f;
+		setToDefault();
 	}
 
-	PxVec3 mAxis;  //!< Axis of the cone in the actor space of the rigid body
-	PxReal mAngle; //!< Opening angle in radians
-	PxReal mLowLimit; //!< Minimum distance
-	PxReal mHighLimit; //!< Maximum distance
+	/**
+	\brief Set values such that constraint is disabled.
+	*/
+	PX_INLINE void setToDefault()
+	{
+		mAxis = PxVec3(0.f, 0.f, 0.f);
+		mAngle = -1.f;
+		mLowLimit = -1.f;
+		mHighLimit = -1.f;
+	}
+
+	/**
+	\brief Checks for valitity.
+
+	\return	true if the constaint is valid
+	*/
+	PX_INLINE bool isValid() const
+	{
+		//disabled
+		if (mAngle < 0.f && mLowLimit < 0.f && mHighLimit < 0.f)
+		{
+			return true;
+		}
+
+		if (!mAxis.isNormalized())
+		{
+			return false;
+		}
+
+		//negative signifies that cone is disabled
+		if (mAngle >= PxPi)
+		{
+			return false;
+		}
+
+		//negative signifies that distance limits are disabled
+		if (mLowLimit > mHighLimit && mHighLimit >= 0.0f && mLowLimit >= 0.0f)
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	PxVec3 mAxis;		//!< Axis of the cone in actor space
+	PxReal mAngle;		//!< Opening angle in radians, negative indicates unlimited
+	PxReal mLowLimit;	//!< Minimum distance, negative indicates unlimited
+	PxReal mHighLimit;	//!< Maximum distance, negative indicates unlimited
 };
 
 /**
 \brief Compressed form of cone limit parameters
-@see PxConeLimitedConstraint
+\see PxConeLimitedConstraint
 */
 PX_ALIGN_PREFIX(16)
 struct PxConeLimitParams
 {
+	PX_CUDA_CALLABLE PxConeLimitParams() {}
+
+	PX_CUDA_CALLABLE PxConeLimitParams(const PxConeLimitedConstraint& coneLimitedConstraint) :
+		lowHighLimits(coneLimitedConstraint.mLowLimit, coneLimitedConstraint.mHighLimit, 0.0f, 0.0f),
+		axisAngle(coneLimitedConstraint.mAxis, coneLimitedConstraint.mAngle)
+	{
+	}
+
 	PxVec4 lowHighLimits; // [lowLimit, highLimit, unused, unused]
 	PxVec4 axisAngle; // [axis.x, axis.y, axis.z, angle]
 }PX_ALIGN_SUFFIX(16);
@@ -75,5 +121,4 @@ struct PxConeLimitParams
 } // namespace physx
 #endif
 
-/** @} */
 #endif

@@ -22,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #pragma once
 
-/** \addtogroup vehicle2
-  @{
-*/
 
 #include "foundation/PxPreprocessor.h"
 #include "foundation/PxSimpleTypes.h"
@@ -52,23 +49,23 @@ struct PxVehicleCommandState;
 \param[in] steer is the input steer command value.
 \param[in] longitudinalSpeed is the longitudinal speed of the vehicle.
 \param[in] wheelId specifies the wheel to have its steer response computed.
-\param[in] steerResponseParmas specifies the per wheel yaw angle response to the steer command as a nonlinear function of steer command and longitudinal speed.
+\param[in] steerResponseParams specifies the per wheel yaw angle response to the steer command as a nonlinear function of steer command and longitudinal speed.
 \param[out] steerResponseState is the yaw angle response to the input steer command.
 */
 void PxVehicleSteerCommandResponseUpdate
 (const PxReal steer, const PxReal longitudinalSpeed,
- const PxU32 wheelId, const PxVehicleSteerCommandResponseParams& steerResponseParmas,
+ const PxU32 wheelId, const PxVehicleSteerCommandResponseParams& steerResponseParams,
  PxReal& steerResponseState);
 
 /**
 \brief Account for Ackermann correction by modifying the per wheel steer response multipliers to engineer an asymmetric steer response across axles.
 \param[in] steer is the input steer command value.
-\param[in] steerResponseParmas describes the maximum response and a response multiplier per axle.
-\param[in] ackermannParams is an array that describes the wheels affected by Ackerman steer correction.
+\param[in] steerResponseParams describes the maximum response and a response multiplier per axle.
+\param[in] ackermannParams is an array that describes the wheels affected by Ackermann steer correction.
 \param[in,out] steerResponseStates contains the corrected per wheel steer response multipliers that take account of Ackermann steer correction.
 */
 void  PxVehicleAckermannSteerUpdate
-(const PxReal steer, const PxVehicleSteerCommandResponseParams& steerResponseParmas,
+(const PxReal steer, const PxVehicleSteerCommandResponseParams& steerResponseParams,
  const PxVehicleSizedArrayData<const PxVehicleAckermannParams>& ackermannParams,
  PxVehicleArrayData<PxReal>& steerResponseStates);
 
@@ -77,4 +74,3 @@ void  PxVehicleAckermannSteerUpdate
 } // namespace physx
 #endif
 
-/** @} */

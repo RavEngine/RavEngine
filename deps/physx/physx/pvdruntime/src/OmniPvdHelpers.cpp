@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,7 +33,7 @@ uint8_t OmniPvdCompressInt(uint64_t handle, uint8_t *bytes) {
 	uint8_t shiftBits = 0;
 	for (int i = 0; i < 8; i++) {
 		if ((handle >> shiftBits) & 0x7f) {
-			lastBitGroupIndex = i;
+			lastBitGroupIndex = static_cast<uint8_t>(i);
 		}
 		shiftBits += 7;
 	}
@@ -46,6 +46,8 @@ uint8_t OmniPvdCompressInt(uint64_t handle, uint8_t *bytes) {
 		bytes[i] = currentBitGroup;
 		shiftBits += 7;
 	}
+
+	return lastBitGroupIndex;
 }
 
 uint64_t OmniPvdDeCompressInt(uint8_t *bytes, uint8_t maxBytes) {

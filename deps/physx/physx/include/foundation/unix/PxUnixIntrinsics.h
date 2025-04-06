@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -52,14 +52,29 @@ PX_FORCE_INLINE void PxMemoryBarrier()
 /*!
 Return the index of the highest set bit. Undefined for zero arg.
 */
-PX_INLINE uint32_t PxHighestSetBitUnsafe(uint32_t v)
+PX_INLINE uint32_t PxHighestSetBitUnsafe(uint64_t v)
 {
-
-	return uint32_t(31 - __builtin_clz(v));
+	return uint32_t(63 - __builtin_clzl(v));
 }
 
 /*!
 Return the index of the highest set bit. Undefined for zero arg.
+*/
+PX_INLINE uint32_t PxHighestSetBitUnsafe(uint32_t v)
+{
+	return uint32_t(31 - __builtin_clz(v));
+}
+
+/*!
+Return the index of the lowest set bit. Undefined for zero arg.
+*/
+PX_INLINE uint32_t PxLowestSetBitUnsafe(uint64_t v)
+{
+	return uint32_t(__builtin_ctzl(v));
+}
+
+/*!
+Return the index of the lowest set bit. Undefined for zero arg.
 */
 PX_INLINE uint32_t PxLowestSetBitUnsafe(uint32_t v)
 {
@@ -82,7 +97,11 @@ Prefetch aligned 64B x86, 32b ARM around \c ptr+offset.
 */
 PX_FORCE_INLINE void PxPrefetchLine(const void* ptr, uint32_t offset = 0)
 {
+#if PX_CUDA_COMPILER
+	__builtin_prefetch(reinterpret_cast<const char*>(ptr) + offset, 0, 3);
+#else
 	__builtin_prefetch(reinterpret_cast<const char* PX_RESTRICT>(ptr) + offset, 0, 3);
+#endif
 }
 
 /*!

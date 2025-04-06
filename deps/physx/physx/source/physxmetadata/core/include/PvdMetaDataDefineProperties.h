@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -63,7 +63,6 @@ namespace Vd
 	template<> struct PropertyDefinitionOp<type> { void defineProperty( PvdPropertyDefinitionHelper&, NamespacedName ){} };
 
 	//NOP out these two types.
-	DEFINE_PROPERTY_DEFINITION_OP_NOP( PxStridedData )
 	DEFINE_PROPERTY_DEFINITION_OP_NOP( PxBoundedData )
 
 #define DEFINE_PROPERTY_DEFINITION_OBJECT_REF( type )										\
@@ -223,7 +222,6 @@ struct SimplePropertyValueStructOp
 #define DEFINE_SIMPLE_PROPERTY_VALUE_STRUCT_OP_NOP( type ) \
 template<> struct SimplePropertyValueStructOp<type> { void addPropertyMessageArg( PvdPropertyDefinitionHelper&, PxU32 ){}};
 
-DEFINE_SIMPLE_PROPERTY_VALUE_STRUCT_OP_NOP( PxStridedData )
 DEFINE_SIMPLE_PROPERTY_VALUE_STRUCT_OP_NOP( PxBoundedData )
 
 #define DEFINE_SIMPLE_PROPERTY_VALUE_STRUCT_VOIDPTR_OP( type )						\

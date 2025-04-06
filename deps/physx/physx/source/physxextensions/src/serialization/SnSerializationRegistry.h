@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -57,8 +57,6 @@ namespace Sn {
 		//binary
 		void						registerSerializer(PxType type, PxSerializer& serializer);
 		PxSerializer*               unregisterSerializer(PxType type);
-		void						registerBinaryMetaDataCallback(PxBinaryMetaDataCallback callback);	
-		void						getBinaryMetaData(PxOutputStream& stream) const;
 		const PxSerializer*			getSerializer(PxType type) const;
 		const char*			        getSerializerName(PxU32 index) const;
 		PxType                      getSerializerType(PxU32 index) const;
@@ -77,10 +75,9 @@ namespace Sn {
 		PxPhysics&										mPhysics;
 		SerializerMap									mSerializers;
 		RepXSerializerMap								mRepXSerializers;
-		PxArray<PxBinaryMetaDataCallback>				mMetaDataCallbacks;	
 	};
 
-	void  sortCollection(Cm::Collection& collection,  SerializationRegistry& sr, bool isRepx);
+	void  sortCollection(Cm::Collection& collection, SerializationRegistry& sr, bool isRepx);
 } // Sn
 
 } // physx

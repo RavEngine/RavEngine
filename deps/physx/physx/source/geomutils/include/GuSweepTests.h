@@ -22,13 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef GU_SWEEP_TESTS_H
 #define GU_SWEEP_TESTS_H
 
+#include "foundation/PxTransform.h"
 #include "geometry/PxGeometry.h"
 #include "geometry/PxGeometryHit.h"
 #include "geometry/PxGeometryQueryContext.h"
@@ -124,9 +125,9 @@ namespace physx
 		// \param[in]	hitFlags		query behavior flags
 		#define GU_SWEEP_TRIANGLES_FUNC_PARAMS(x)	PxU32 nbTris, const PxTriangle* triangles, bool doubleSided,	\
 													const x& geom, const PxTransform& pose,							\
-													const PxVec3& unitDir, const PxReal distance,					\
+													const PxVec3& unitDir, PxReal distance,							\
 													PxGeomSweepHit& hit, const PxU32* cachedIndex,					\
-													const PxReal inflation, PxHitFlags hitFlags
+													PxReal inflation, PxHitFlags hitFlags
 
 		bool sweepCapsuleTriangles		(GU_SWEEP_TRIANGLES_FUNC_PARAMS(PxCapsuleGeometry));
 		bool sweepBoxTriangles			(GU_SWEEP_TRIANGLES_FUNC_PARAMS(PxBoxGeometry));

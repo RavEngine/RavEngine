@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -35,33 +35,29 @@ namespace physx
 {
 namespace Sc
 {
-	class ArticulationJointCore;
-	class BodySim;
 
-	class ArticulationJointSim : public Interaction
-	{
-		ArticulationJointSim&	operator=(const ArticulationJointSim &);
+class ArticulationJointCore;
+class BodySim;
 
-	public:
-												ArticulationJointSim(ArticulationJointCore& joint, ActorSim& parent, ActorSim& child);
-												~ArticulationJointSim();
+class ArticulationJointSim : public Interaction
+{
+	PX_NOCOPY(ArticulationJointSim)
+public:
+											ArticulationJointSim(ArticulationJointCore& joint, ActorSim& parent, ActorSim& child);
+											~ArticulationJointSim();
 
-						bool					onActivate_(void*);
-						bool					onDeactivate_();
+					bool					onActivate();
+					bool					onDeactivate();
 
-		PX_FORCE_INLINE	ArticulationJointCore&	getCore()	const	{ return mCore; }
+	PX_FORCE_INLINE	ArticulationJointCore&	getCore()	const	{ return mCore; }
 
-						BodySim&				getParent()	const;
-						BodySim&				getChild()	const;
+					BodySim&				getParent()	const;
+					BodySim&				getChild()	const;
 
-						void					setDirty();
-
-		//---------------------------------------------------------------------------------
-		// Low Level data access
-		//---------------------------------------------------------------------------------
-	private:
-						ArticulationJointCore&	mCore;
-	};
+					void					setDirty();
+private:
+					ArticulationJointCore&	mCore;
+};
 
 } // namespace Sc
 

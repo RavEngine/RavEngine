@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -114,9 +114,9 @@ bool BoxController::updateKinematicProxy()
 	{
 		PxShape* shape = getKineShape();
 
-		PX_ASSERT(shape->getGeometryType() == PxGeometryType::eBOX);
-		PxBoxGeometry bg;
-		shape->getBoxGeometry(bg);
+		const PxGeometry& geom = shape->getGeometry();
+		PX_ASSERT(geom.getType() == PxGeometryType::eBOX);
+		PxBoxGeometry bg = static_cast<const PxBoxGeometry&>(geom);
 
 		bg.halfExtents = CCTtoProxyExtents(mHalfHeight, mHalfSideExtent, mHalfForwardExtent, mProxyScaleCoeff);
 		shape->setGeometry(bg);
@@ -156,14 +156,14 @@ bool BoxController::setHalfForwardExtent(PxF32 halfForwardExtent)
 PxExtendedVec3 BoxController::getFootPosition() const
 {
 	PxExtendedVec3 groundPosition = mPosition;													// Middle of the CCT
-	groundPosition -= mUserParams.mUpDirection * (mHalfHeight + mUserParams.mContactOffset);	// Ground
+	sub(groundPosition, mUserParams.mUpDirection * (mHalfHeight + mUserParams.mContactOffset));	// Ground
 	return groundPosition;
 }
 
 bool BoxController::setFootPosition(const PxExtendedVec3& position)
 {
 	PxExtendedVec3 centerPosition = position;
-	centerPosition += mUserParams.mUpDirection * (mHalfHeight + mUserParams.mContactOffset);
+	add(centerPosition, mUserParams.mUpDirection * (mHalfHeight + mUserParams.mContactOffset));
 	return setPosition(centerPosition);
 }
 
@@ -189,7 +189,7 @@ void BoxController::resize(PxReal height)
 
 	const float delta = height - oldHeight;
 	PxExtendedVec3 pos = getPosition();
-	pos += mUserParams.mUpDirection * delta;
+	add(pos, mUserParams.mUpDirection * delta);
 	setPosition(pos);
 }
 

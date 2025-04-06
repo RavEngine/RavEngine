@@ -22,11 +22,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.  
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.  
 
 #ifndef SC_PARTICLESYSTEM_SHAPECORE_H
 #define SC_PARTICLESYSTEM_SHAPECORE_H
 
+#include "foundation/PxPreprocessor.h"
+#if PX_SUPPORT_GPU_PHYSX
 #include "foundation/PxUserAllocated.h"
 #include "PxvGeometry.h"
 #include "foundation/PxUtilities.h"
@@ -46,12 +48,6 @@ namespace physx
 
 		class ParticleSystemShapeCore : public Sc::ShapeCore
 		{
-			//= ATTENTION! =====================================================================================
-			// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-			// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-			// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-			// accordingly.
-			//==================================================================================================
 		public:
 			// PX_SERIALIZATION
 			ParticleSystemShapeCore(const PxEMPTY);
@@ -64,13 +60,7 @@ namespace physx
 
 			PX_FORCE_INLINE	Dy::ParticleSystemCore&	getLLCore() { return mLLCore; }
 
-			void initializeLLCoreData( PxU32 maxNeighborhood);	
-
-			void addParticleBuffer(PxParticleBuffer* particleBuffer);
-			void removeParticleBuffer(PxParticleBuffer* particleBuffer);
-
-			void setPeriodicBoundary(const PxVec3& boundary) { mLLCore.periodicBoundary = boundary; }
-			PxVec3 getPeriodicBoundary() const { return mLLCore.periodicBoundary; }
+			void initializeLLCoreData(PxU32 maxNeighborhood, PxReal neighborhoodScale);
 
 			PxU64 getGpuMemStat() { return mGpuMemStat; }
 
@@ -80,8 +70,7 @@ namespace physx
 		};
 
 	} // namespace Sc
-
-
 }
+#endif
 
 #endif

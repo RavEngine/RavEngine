@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved. 
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved. 
 
 #define USE_GJK_VIRTUAL
 
@@ -30,6 +30,7 @@
 #include "GuTetrahedron.h"
 #include "GuInternal.h"
 #include "foundation/PxHashMap.h"
+#include "foundation/PxHashSet.h"
 #include "GuCookingTriangleMesh.h"
 #include "GuBV4Build.h"
 #include "GuBV32Build.h"
@@ -54,6 +55,8 @@ using namespace Cm;
 
 using namespace physx;
 
+#define SB_PARTITION_LIMIT 8 // max # partitions allowed. This value SHOULD NOT change. See also PxgSoftBody.h.
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*TetrahedronMeshBuilder::TetrahedronMeshBuilder(const PxCookingParams& params) : mParams(params)
@@ -61,7 +64,7 @@ using namespace physx;
 
 }*/
 
-void TetrahedronMeshBuilder::recordTetrahedronIndices(const TetrahedronMeshData& collisionMesh, SoftBodyCollisionData& collisionData, bool buildGPUData)
+void TetrahedronMeshBuilder::recordTetrahedronIndices(const TetrahedronMeshData& collisionMesh, DeformableVolumeCollisionData& collisionData, bool buildGPUData)
 {
 	if (buildGPUData)
 	{
@@ -168,8 +171,12 @@ struct SortedTriangleIndsHash
 	}
 };
 
+#if PX_CHECKED
+bool checkInputFloats(PxU32 nb, const float* values, const char* file, PxU32 line, const char* errorMsg);
+#endif
+
 bool TetrahedronMeshBuilder::importMesh(const PxTetrahedronMeshDesc& collisionMeshDesc, const PxCookingParams& params, 
-	TetrahedronMeshData& collisionMesh, SoftBodyCollisionData& collisionData, bool validateMesh)
+	TetrahedronMeshData& collisionMesh, DeformableVolumeCollisionData& collisionData, bool validateMesh)
 {
 	PX_UNUSED(validateMesh);
 	//convert and clean the input mesh
@@ -188,17 +195,15 @@ bool TetrahedronMeshBuilder::importMesh(const PxTetrahedronMeshDesc& collisionMe
 		
 #if PX_CHECKED
 	// PT: check all input vertices are valid
-	for (PxU32 i = 0; i < collisionMeshDesc.points.count; i++)
-	{
-		const PxVec3& p = verts[i];
-		if (!PxIsFinite(p.x) || !PxIsFinite(p.y) || !PxIsFinite(p.z))
-			return PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "input mesh contains corrupted vertex data");
-	}
+	if(!checkInputFloats(collisionMeshDesc.points.count*3, &verts->x, PX_FL, "input mesh contains corrupted vertex data"))
+		return false;
 #endif
 
 	TetrahedronT<PxU32>* dest = tets;
 	const TetrahedronT<PxU32>* pastLastDest = tets + collisionMesh.mNbTetrahedrons;
 	const PxU8* source = reinterpret_cast<const PxU8*>(collisionMeshDesc.tetrahedrons.data);
+
+	PX_ASSERT(source);
 
 	//4 combos of 16 vs 32, feed in collisionMesh.mTetrahedrons
 	if (collisionMeshDesc.flags & PxMeshFlag::e16_BIT_INDICES)
@@ -231,7 +236,7 @@ bool TetrahedronMeshBuilder::importMesh(const PxTetrahedronMeshDesc& collisionMe
 	//copy the material index list if any:
 	if (collisionMeshDesc.materialIndices.data)
 	{
-		PxFEMMaterialTableIndex* materials = collisionMesh.allocateMaterials();
+		PxDeformableMaterialTableIndex* materials = collisionMesh.allocateMaterials();
 		immediateCooking::gatherStrided(collisionMeshDesc.materialIndices.data, materials, collisionMesh.mNbTetrahedrons, sizeof(PxMaterialTableIndex), collisionMeshDesc.materialIndices.stride);
 
 		// Check material indices
@@ -250,7 +255,7 @@ bool TetrahedronMeshBuilder::importMesh(const PxTetrahedronMeshDesc& collisionMe
 	return true;
 }
 
-void TetrahedronMeshBuilder::createGRBMidPhaseAndData(const PxU32 originalTetrahedronCount, TetrahedronMeshData& collisionMesh, SoftBodyCollisionData& collisionData, const PxCookingParams& params)
+bool TetrahedronMeshBuilder::createGRBMidPhaseAndData(const PxU32 originalTetrahedronCount, TetrahedronMeshData& collisionMesh, DeformableVolumeCollisionData& collisionData, const PxCookingParams& params)
 {
 	PX_UNUSED(originalTetrahedronCount);
 	if (params.buildGPUData)
@@ -260,7 +265,8 @@ void TetrahedronMeshBuilder::createGRBMidPhaseAndData(const PxU32 originalTetrah
 		BV32Tree* bv32Tree = PX_NEW(BV32Tree);
 		collisionData.mGRB_BV32Tree = bv32Tree;
 
-		BV32TetrahedronMeshBuilder::createMidPhaseStructure(params, collisionMesh, *bv32Tree, collisionData);
+		if(!BV32TetrahedronMeshBuilder::createMidPhaseStructure(params, collisionMesh, *bv32Tree, collisionData))
+			return false;
 
 		//create surface triangles, one tetrahedrons has 4 triangles
 		PxHashMap<SortedTriangleInds, PxU32, SortedTriangleIndsHash> triIndsMap;
@@ -294,7 +300,6 @@ void TetrahedronMeshBuilder::createGRBMidPhaseAndData(const PxU32 originalTetrah
 
 		PxU8* tetHint = reinterpret_cast<PxU8*>(collisionData.mGRB_tetraSurfaceHint);
 
-		PxU32 triCount = 0;
 		//compute the surface triangles for the tetrahedron mesh
 		for (PxHashMap<SortedTriangleInds, PxU32, SortedTriangleIndsHash>::Iterator iter = triIndsMap.getIterator(); !iter.done(); ++iter)
 		{
@@ -340,8 +345,6 @@ void TetrahedronMeshBuilder::createGRBMidPhaseAndData(const PxU32 originalTetrah
 				}
 
 				tetHint[key.mTetIndex] |= mask;
-
-				triCount++;
 			}
 		}
 			
@@ -358,6 +361,7 @@ void TetrahedronMeshBuilder::createGRBMidPhaseAndData(const PxU32 originalTetrah
 		}
 #endif
 	}
+	return true;
 }
 
 void computeRestPoseAndPointMass(TetrahedronT<PxU32>* tetIndices, const PxU32 nbTets, 
@@ -366,12 +370,19 @@ void computeRestPoseAndPointMass(TetrahedronT<PxU32>* tetIndices, const PxU32 nb
 	for (PxU32 i = 0; i < nbTets; ++i)
 	{
 		TetrahedronT<PxU32>& tetInd = tetIndices[i];
-		PxMat33 Q;
+		PxMat33 Q, QInv;
 		const PxReal volume = computeTetrahedronVolume(verts[tetInd.v[0]], verts[tetInd.v[1]], verts[tetInd.v[2]], verts[tetInd.v[3]], Q);
 		if (volume <= 1.e-9f)
 		{
-			PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "computeRestPoseAndPointMass(): tretrahedron is degenerate or inverted");
+			//Neo-hookean model can deal with bad tets, so not issueing this error anymore
+			//PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "computeRestPoseAndPointMass(): tretrahedron is degenerate or inverted");
+			if (volume == 0)
+				QInv = PxMat33(PxZero);
+			else
+				QInv = Q.getInverse();
 		}
+		else
+			QInv = Q.getInverse();
 
 		// add volume fraction to particles
 		if (invMasses != NULL) 
@@ -382,11 +393,23 @@ void computeRestPoseAndPointMass(TetrahedronT<PxU32>* tetIndices, const PxU32 nb
 			invMasses[tetInd.v[3]] += volume * 0.25f;
 		}
 
-		restPoses[i] = Q.getInverse();
+		restPoses[i] = QInv;
 	}
 }
 
 #define MAX_NUM_PARTITIONS 32
+
+const PxI32 tetIndicesFromVoxels[8] = { 0, 1, 3, 14, 6, 11, 2, 18 };
+//const PxI32 tets6PerVoxel[24] = { 0,1,6,2,  0,1,4,6,  1,4,6,5,  1,2,3,6,  1,3,7,6,  1,5,6,7 };
+
+const PxI32 tetIndicesFromVoxelsA[8] = { 0, 5, 16, 2, 12, 3, 1, 9 };
+const PxI32 tetIndicesFromVoxelsB[8] = { 5, 0, 3, 16, 2, 12, 9, 1 };
+
+//const PxU32 tets5PerVoxel[] = {
+//			 0, 6, 3, 5, 0, 1, 5, 3, 6, 7, 3, 5, 4, 5, 6, 0, 2, 3, 0, 6,
+//			 1, 7, 4, 2, 1, 0, 2, 4, 7, 6, 4, 2, 5, 4, 1, 7, 3, 2, 7, 1 };
+//           0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19
+
 
 PxU32 computeTetrahedronPartition(const TetrahedronT<PxU32>* tets, const PxU32 partitionStartIndex, PxU32* partitionProgresses,
 	const PxU32 numTetsPerElement)
@@ -548,7 +571,7 @@ void writeTetrahedrons(const TetrahedronT<PxU32>* tets, const PxU32 numTets, con
 	}
 }
 
-PxU32* computeGridModelTetrahedronPartitions(const TetrahedronMeshData& simulationMesh, SoftBodySimulationData& simulationData)
+PxU32* computeGridModelTetrahedronPartitions(const TetrahedronMeshData& simulationMesh, DeformableVolumeSimulationData& simulationData)
 {
 	const PxU32 numTets = simulationMesh.mNbTetrahedrons;
 	const PxU32 numVerts = simulationMesh.mNbVertices;
@@ -593,25 +616,173 @@ PxU32* computeGridModelTetrahedronPartitions(const TetrahedronMeshData& simulati
 
 	simulationData.mGridModelOrderedTetrahedrons = PX_ALLOCATE(PxU32, numTets, "mGridModelPartitionTetrahedrons");
 	simulationData.mGridModelNbPartitions = maxPartition;
-
 	PxU32* orderedTetrahedrons = simulationData.mGridModelOrderedTetrahedrons;
 
 	writeTetrahedrons(tetGM, numTets, numVerts, simulationData.mNumTetsPerElement, partitionProgresses, tempTetrahedrons,
 		orderedTetrahedrons, accumulatedTetrahedronPerPartition);
-
-	////validate ordertedTetrahedrons
-	//for (PxU32 i = 0; i < numTets; ++i)
-	//{
-	//	PxU32 tetrahedronIdx = orderedTetrahedrons[i];
-	//	for (PxU32 j = i + 1; j < numTets; ++j)
-	//	{
-	//		PxU32 tetIdx = orderedTetrahedrons[j];
-	//		PX_ASSERT(tetrahedronIdx != tetIdx);
-	//	}
-	//}
 		
 	PX_FREE(partitionProgresses);
 	PX_FREE(tempTetrahedrons);
+
+	return accumulatedTetrahedronPerPartition;
+}
+
+// 8 partition GS + 1 extra jacobi partition for duplicated voxels (if any).
+PxU32* computeGridModelVoxelPartitions(const TetrahedronMeshData& simulationMesh, DeformableVolumeSimulationData& simulationData)
+{
+	// following the structure of "computeGridModelTetrahedronPartitions"
+	const PxU32 numTets = simulationMesh.mNbTetrahedrons;
+	const PxU32 numVertices = simulationMesh.mNbVertices;
+	const PxU32 numTetsPerElement = simulationData.mNumTetsPerElement;
+
+	PX_ASSERT(numTets != 0 && numVertices != 0);
+	const PxU32 numElements = numTets / numTetsPerElement;
+	PxU32 numPartitions = SB_PARTITION_LIMIT + 1; // max 8 partitions + 1 extra partition for jacobi update when needed.
+	const PxU32 extraPartition = SB_PARTITION_LIMIT;
+
+	const TetrahedronT<PxU32>* const tetGM = reinterpret_cast<TetrahedronT<PxU32>*>(simulationMesh.mTetrahedrons);
+	const PxVec3* const vertexPositions = simulationMesh.mVertices;
+
+	// instead of reusing grid information, etc., computed in "generateVoxelTetmesh.cpp", grid index is computed here
+	// again, not to pass extra data from tetgen to simulation via Px-level descriptions.
+
+	// measuring the width of a voxel
+	const TetrahedronT<PxU32>& tet0 = tetGM[0];
+	PxVec3 minPos(vertexPositions[0]);
+	PxVec3 maxPos(vertexPositions[0]);
+	for(PxU32 j = 1; j < 4; ++j)
+	{
+		const PxVec3& pos = vertexPositions[tet0.v[j]];
+		for(PxU32 d = 0; d < 3; ++d)
+		{
+			minPos[d] = PxMin(minPos[d], pos[d]);
+			maxPos[d] = PxMax(maxPos[d], pos[d]);
+		}
+	}
+	const PxVec3 voxelWidth = maxPos - minPos;
+	const PxVec3 voxelWidthInv(1.f / voxelWidth[0], 1.f / voxelWidth[1], 1.f / voxelWidth[2]);
+
+	// finding global min/max position
+	for(PxU32 i = 0; i < numVertices; ++i)
+	{
+		const PxVec3& pos = vertexPositions[i];
+		for(PxU32 d = 0; d < 3; ++d)
+		{
+			minPos[d] = PxMin(minPos[d], pos[d]);
+			maxPos[d] = PxMax(maxPos[d], pos[d]);
+		}
+	}
+
+	PxArray<PxArray<PxU32> > tetIndicesPerPartition;
+	tetIndicesPerPartition.resize(numPartitions);
+	for(PxU32 i = 0; i < numPartitions; ++i)
+	{
+		tetIndicesPerPartition.reserve(numElements);
+	}
+
+	const PxVec3 gridWidth = maxPos - minPos;
+	const PxU32 numVoxelsX = PxU32(gridWidth[0] * voxelWidthInv[0] + 0.5f); // any conservative number is fine.
+	const PxU32 numVoxelsY = PxU32(gridWidth[1] * voxelWidthInv[1] + 0.5f);
+	const PxU32 numVoxelsXY = numVoxelsX * numVoxelsY;
+
+	// If current grid index is the same as the previous one, the voxel is a duplicate.
+	// For duplicated voxels, if they have an overlapping vertex, put them into 9th partition for Jacobi-style update.
+	// First 8 partitions will be used for GS-style update.
+
+	PxU32 prevGridIndex = PX_MAX_U32;
+	PxHashSet<PxU32> voxelVertexIndices; // checking overlapping vertices for duplicated voxels.
+	voxelVertexIndices.reserve(800);     // reserved for 100 independent voxels.
+
+	bool hasSameVertexIndex = false; // checking overlapping vertices
+
+	for(PxU32 i = 0; i < numTets; i += numTetsPerElement)
+	{
+		// compute grid index using a barycenter of a tet
+		const TetrahedronT<PxU32>& tet = tetGM[i];
+		PxVec3 tetCenter(0.f);
+
+		for(PxU32 j = 0; j < 4; ++j)
+		{
+			tetCenter += vertexPositions[tet.v[j]];
+		}
+		tetCenter *= 0.25f;
+
+		PxVec3 indices = tetCenter - minPos;
+		indices[0] *= voxelWidthInv[0];
+		indices[1] *= voxelWidthInv[1];
+		indices[2] *= voxelWidthInv[2];
+
+		const PxU8 partition = (PxU32(indices[0]) % 2) | (PxU32(indices[1]) % 2) << 1 |
+		                       (PxU32(indices[2]) % 2) << 2; // partition index from 0 to 7
+		PxU32 gridIndex = PxU32(indices[0]) + PxU32(indices[1]) * numVoxelsX + PxU32(indices[2]) * numVoxelsXY;
+
+		if(prevGridIndex != gridIndex) // new voxel
+		{
+			voxelVertexIndices.clear();
+			hasSameVertexIndex = false;
+		}
+
+		// query corner vertices and check overlap
+		{
+			const PxI32* map = NULL;
+			const PxU32* tetInds = reinterpret_cast<const PxU32*>(&tet);
+			bool flipped = tetInds[0] == tetInds[19];
+			if(numTetsPerElement == 6)
+			{
+				map = tetIndicesFromVoxels;
+			}
+			else
+			{
+				if(!flipped)
+					map = tetIndicesFromVoxelsA;
+				else
+					map = tetIndicesFromVoxelsB;
+			}
+
+			for(PxU32 v = 0; v < 8; ++v)
+			{
+				PxU32 vertInd = tetInds[map[v]];
+				if(!voxelVertexIndices.insert(vertInd))
+				{
+					hasSameVertexIndex = true;
+				}
+			}
+		}
+
+		if(prevGridIndex == gridIndex && hasSameVertexIndex) // duplicated voxels with overlapping vertices
+		{
+			tetIndicesPerPartition[extraPartition].pushBack(i);
+		}
+		else
+		{
+			tetIndicesPerPartition[partition].pushBack(i);
+		}
+
+		prevGridIndex = gridIndex;
+	}
+
+	if(tetIndicesPerPartition[extraPartition].empty()) // extra Jacobi update is not used.
+	{
+		numPartitions = SB_PARTITION_LIMIT;
+	}
+
+	PxU32* accumulatedTetrahedronPerPartition =
+	    PX_ALLOCATE(PxU32, numPartitions, "accumulatedTetrahedronPerPartition"); // freed in "computeSimData"
+
+	simulationData.mGridModelOrderedTetrahedrons = PX_ALLOCATE(PxU32, numElements, "mGridModelPartitionTetrahedrons");
+	simulationData.mGridModelNbPartitions = numPartitions;
+
+	// compute run sum
+	PxU32* orderedTetrahedrons = simulationData.mGridModelOrderedTetrahedrons;
+	PxU32 accumulation = 0;
+	for(PxU32 i = 0; i < numPartitions; ++i)
+	{
+		const PxU32 voxelCount = tetIndicesPerPartition[i].size();
+		accumulatedTetrahedronPerPartition[i] = accumulation + voxelCount;
+
+		PxMemCopy(&orderedTetrahedrons[accumulation], tetIndicesPerPartition[i].begin(), sizeof(PxU32) * voxelCount);
+		accumulation += voxelCount;
+	}
 
 	return accumulatedTetrahedronPerPartition;
 }
@@ -715,7 +886,7 @@ void computeNumberOfCopiesPerVerts(const PxU32 maximumPartitions, PxU32* combine
 //compute remapOutput
 void computeRemapOutputForVertsAndAccumulatedBuffer(const PxU32 maximumPartitions, PxU32* combineAccumulatedTetraPerPartitions,
 	const TetrahedronT<PxU32>* tetraIndices, const PxU32* orderedTetrahedrons, const PxU32 offset, bool* occupied, PxU32* tempNumCopiesEachVerts, const PxU32* accumulatedCopies,
-	const PxU32 numVerts,  PxU32* remapOutput,
+	const PxU32 numVerts, PxU32* remapOutput,
 	PxU32* accumulatedWriteBackIndex, const PxU32 totalNumCopies)
 {
 	PxMemZero(tempNumCopiesEachVerts, sizeof(PxU32) *  numVerts);
@@ -808,216 +979,15 @@ void computeRemapOutputForVertsAndAccumulatedBuffer(const PxU32 maximumPartition
 	}
 }
 
-//void combineGridModelPartitions(const TetrahedronMeshData& simulationMesh, SoftBodySimulationData& simulationData, PxU32** accumulatedTetrahedronPerPartitions)
-//{
-//	const PxU32 numTets = simulationMesh.mNbTetrahedrons;
-//	const PxU32 numVerts = simulationMesh.mNbVertices;
+PxU32 setBit(PxU32 value, PxU32 bitLocation, bool bitState)
+{
+	if (bitState)
+		return value | (1 << bitLocation);
+	else
+		return value & (~(1 << bitLocation));
+}
 
-//	const PxU32 nbPartitions = simulationData.mGridModelNbPartitions;
-
-//	PxU32* accumulatedTetrahedronPerPartition = *accumulatedTetrahedronPerPartitions;
-
-//	
-//	const PxU32 maximumPartitions = 8;
-//	PxU32* combineAccumulatedTetraPerPartitions = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32) * maximumPartitions, "combineAccumulatedTetraPerPartitions"));
-//	simulationData.mGMAccumulatedPartitionsCP = combineAccumulatedTetraPerPartitions;
-//	
-//	PxMemZero(combineAccumulatedTetraPerPartitions, sizeof(PxU32) * maximumPartitions);
-
-//	const PxU32 maxAccumulatedPartitionsPerPartitions = (nbPartitions + maximumPartitions - 1) / maximumPartitions;
-
-//	PxU32* orderedTetrahedrons = simulationData.mGridModelOrderedTetrahedrons;
-
-//	PxU32* tempOrderedTetrahedrons = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32) * numTets, "tempOrderedTetrahedrons"));
-
-//	const TetrahedronT<PxU32>* tetrahedrons = reinterpret_cast<TetrahedronT<PxU32>*>( simulationMesh.mTetrahedrons);
-//	
-//	const PxU32 maxAccumulatedCP = (nbPartitions + maximumPartitions - 1) / maximumPartitions;
-
-//	const PxU32 partitionArraySize = maxAccumulatedCP * maximumPartitions;
-//	const PxU32 nbPartitionTables = partitionArraySize * numVerts;
-
-//	PxU32* tempPartitionTablePerVert = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32) * nbPartitionTables, "tempPartitionTablePerVert"));
-//	PxU32* tempRemapTablePerVert = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32) * nbPartitionTables, "tempRemapTablePerVert"));
-
-//	PxU32* pullIndices = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32) * numTets*4, "tempRemapTablePerVert"));
-//	PxU32* lastRef = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32)* maxAccumulatedCP*numVerts, "refCounts"));
-
-//	PxU32* accumulatedCopiesEachVerts = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32) * numVerts, "accumulatedCopiesEachVerts"));
-//	simulationData.mGMAccumulatedCopiesCP = accumulatedCopiesEachVerts;
-
-//	PxU32* tempNumCopiesEachVerts = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32) * numVerts, "numCopiesEachVerts"));
-//	PxMemZero(tempNumCopiesEachVerts, sizeof(PxU32) * numVerts);
-
-//	PxMemSet(pullIndices, 0xffffffff, sizeof(PxU32)*numTets*4);
-//	PxMemSet(lastRef, 0xffffffff, sizeof(PxU32)*maxAccumulatedCP*numVerts);
-
-//	//initialize partitionTablePerVert
-//	for (PxU32 i = 0; i < nbPartitionTables; ++i)
-//	{
-//		tempPartitionTablePerVert[i] = 0xffffffff;
-//		tempRemapTablePerVert[i] = 0xffffffff;
-//		
-//	}
-
-//	PxU32 maxTetPerPartitions = 0;
-//	PxU32 count = 0;
-
-//	const PxU32 totalNumVerts = numTets * 4;
-
-//	PxU32 totalCopies = numVerts * maxAccumulatedCP;
-//	simulationData.mGridModelNbPartitions = maximumPartitions;
-//	simulationData.mGMRemapOutputSize = totalNumVerts + totalCopies;
-
-//	////allocate enough memory for the verts and the accumulation buffer
-//	//PxVec4* orderedVertsInMassCP = reinterpret_cast<PxVec4*>(PX_ALLOC(sizeof(PxVec4) * totalNumVerts, "mGMOrderedVertInvMassCP"));
-//	//data.mGMOrderedVertInvMassCP = orderedVertsInMassCP;
-
-//	//compute remap table
-//	PxU32* remapOutput = reinterpret_cast<PxU32*>(PX_ALLOC(sizeof(PxU32) * simulationData.mGMRemapOutputSize, "remapOutput"));
-//	simulationData.mGMRemapOutputCP = remapOutput;
-
-
-//	for (PxU32 i = 0; i < maximumPartitions; ++i)
-//	{
-//		PxU32 totalTets = 0;
-//		for (PxU32 j = 0; j < maxAccumulatedPartitionsPerPartitions; ++j)
-//		{
-//			PxU32 partitionId = i + maximumPartitions * j;
-//			if (partitionId < nbPartitions)
-//			{
-//				const PxU32 startInd = partitionId == 0 ? 0 : accumulatedTetrahedronPerPartition[partitionId - 1];
-//				const PxU32 endInd = accumulatedTetrahedronPerPartition[partitionId];
-
-//				for (PxU32 k = startInd; k < endInd; ++k)
-//				{
-//					const PxU32 tetraInd = orderedTetrahedrons[k];
-//					tempOrderedTetrahedrons[count] = tetraInd;
-//					//tempCombinedTetraIndices[count] = tetGM[tetraInd];
-//					//tempTetRestPose[count] = tetRestPose[tetraInd];
-
-//					PxU32 index = i * maxAccumulatedCP + j;
-
-//					TetrahedronT<PxU32> tet = tetrahedrons[tetraInd];
-//					tempPartitionTablePerVert[tet.v[0] * partitionArraySize + index] = count;
-//					tempPartitionTablePerVert[tet.v[1] * partitionArraySize + index] = count + numTets;
-//					tempPartitionTablePerVert[tet.v[2] * partitionArraySize + index] = count + numTets * 2;
-//					tempPartitionTablePerVert[tet.v[3] * partitionArraySize + index] = count + numTets * 3;
-
-//					if (lastRef[tet.v[0] * maxAccumulatedCP + j] == 0xffffffff)
-//					{
-//						pullIndices[4 * count] = tet.v[0];
-//						tempNumCopiesEachVerts[tet.v[0]]++;
-//					}
-//					else
-//					{
-//						remapOutput[lastRef[tet.v[0] * maxAccumulatedCP + j]] = count;
-//					}
-//					lastRef[tet.v[0] * maxAccumulatedCP + j] = 4*count;
-
-//					if (lastRef[tet.v[1] * maxAccumulatedCP + j] == 0xffffffff)
-//					{
-//						pullIndices[4 * count + 1] = tet.v[1];
-//						tempNumCopiesEachVerts[tet.v[1]]++;
-//					}
-//					else
-//					{
-//						remapOutput[lastRef[tet.v[1] * maxAccumulatedCP + j]] = count + numTets;
-//					}
-//					lastRef[tet.v[1] * maxAccumulatedCP + j] = 4*count + 1;
-
-//					if (lastRef[tet.v[2] * maxAccumulatedCP + j] == 0xffffffff)
-//					{
-//						pullIndices[4 * count + 2] = tet.v[2];
-//						tempNumCopiesEachVerts[tet.v[2]]++;
-//						
-//					}
-//					else
-//					{
-//						remapOutput[lastRef[tet.v[2] * maxAccumulatedCP + j]] = count + 2*numTets;
-//					}
-//					lastRef[tet.v[2] * maxAccumulatedCP + j] = 4*count+2;
-
-//					if (lastRef[tet.v[3] * maxAccumulatedCP + j] == 0xffffffff)
-//					{
-//						pullIndices[4 * count + 3] = tet.v[3];
-//						tempNumCopiesEachVerts[tet.v[3]]++;
-//					}
-//					else
-//					{
-//						remapOutput[lastRef[tet.v[3] * maxAccumulatedCP + j]] = count + 3*numTets;
-//					}
-//					lastRef[tet.v[3] * maxAccumulatedCP + j] = 4*count+3;
-
-//					count++;
-//				}
-
-//				totalTets += (endInd - startInd);
-//			}
-//		}
-
-//		combineAccumulatedTetraPerPartitions[i] = count;
-//		maxTetPerPartitions = PxMax(maxTetPerPartitions, totalTets);
-//	}
-
-//	//Last bit - output accumulation buffer...
-
-//	
-//	PxU32 outIndex = 0;
-//	simulationData.mGridModelMaxTetsPerPartitions = maxTetPerPartitions;
-
-//	//If this commented out, we don't use combined partition anymore
-//	PxMemCopy(orderedTetrahedrons, tempOrderedTetrahedrons, sizeof(PxU32) * numTets);
-
-
-//	/*bool* tempOccupied = reinterpret_cast <bool*>( PX_ALLOC(sizeof(bool) * totalNumVerts, "tempOccupied"));
-//	PxMemZero(tempOccupied, sizeof(bool) * totalNumVerts);*/
-
-//	
-//	//data.mGridModelNbPartitions = maximumPartitions;
-//	//data.mGMRemapOutputSize = totalNumVerts + totalCopies;
-//	simulationData.mGridModelNbPartitions = maximumPartitions;
-//	simulationData.mGMRemapOutputSize = totalNumVerts + totalCopies;
-
-//	//data.mGMOrderedVertInvMassCP = orderedVertsInMassCP;
-//	//mGMOrderedVertInvMassCP = orderedVertsInMassCP;
-
-//	//Last bit - output accumulation buffer...
-
-//	outIndex = 0;
-//	for (PxU32 i = 0; i < numVerts; ++i)
-//	{
-
-//		for (PxU32 j = 0; j < maxAccumulatedCP; ++j)
-//		{
-//			if (lastRef[i * maxAccumulatedCP + j] != 0xffffffff)
-//			{
-//				remapOutput[lastRef[i * maxAccumulatedCP + j]] = totalNumVerts + outIndex++;
-//			}
-//		}
-//		accumulatedCopiesEachVerts[i] = outIndex;
-//	}
-
-
-//	PX_ASSERT(count == numTets);
-
-//	simulationData.mGridModelMaxTetsPerPartitions = maxTetPerPartitions;
-
-//	simulationData.mGMPullIndices = pullIndices;
-
-//	//If this commented out, we don't use combined partition anymore
-//	PxMemCopy(orderedTetrahedrons, tempOrderedTetrahedrons, sizeof(PxU32) * numTets);
-
-//	PX_FREE(tempNumCopiesEachVerts);
-//	PX_FREE(tempOrderedTetrahedrons);
-//	PX_FREE(tempPartitionTablePerVert);
-//	PX_FREE(tempRemapTablePerVert);
-//
-//	PX_FREE(lastRef);
-
-//}
-
-void combineGridModelPartitions(const TetrahedronMeshData& simulationMesh, SoftBodySimulationData& simulationData, PxU32** accumulatedTetrahedronPerPartitions)
+void combineGridModelPartitions(const TetrahedronMeshData& simulationMesh, DeformableVolumeSimulationData& simulationData, PxU32** accumulatedTetrahedronPerPartitions)
 {
 const PxU32 numTets = simulationMesh.mNbTetrahedrons;
 const PxU32 numVerts = simulationMesh.mNbVertices;
@@ -1026,13 +996,12 @@ const PxU32 nbPartitions = simulationData.mGridModelNbPartitions;
 
 PxU32* accumulatedTetrahedronPerPartition = *accumulatedTetrahedronPerPartitions;
 
-const PxU32 maximumPartitions = 8;
-PxU32* combineAccumulatedTetraPerPartitions = PX_ALLOCATE(PxU32, maximumPartitions, "combineAccumulatedTetraPerPartitions");
+PxU32* combineAccumulatedTetraPerPartitions = PX_ALLOCATE(PxU32, SB_PARTITION_LIMIT, "combineAccumulatedTetraPerPartitions");
 simulationData.mGMAccumulatedPartitionsCP = combineAccumulatedTetraPerPartitions;
 
-PxMemZero(combineAccumulatedTetraPerPartitions, sizeof(PxU32) * maximumPartitions);
+PxMemZero(combineAccumulatedTetraPerPartitions, sizeof(PxU32) * SB_PARTITION_LIMIT);
 
-const PxU32 maxAccumulatedPartitionsPerPartitions = (nbPartitions + maximumPartitions - 1) / maximumPartitions;
+const PxU32 maxAccumulatedPartitionsPerPartitions = (nbPartitions + SB_PARTITION_LIMIT - 1) / SB_PARTITION_LIMIT;
 
 PxU32* orderedTetrahedrons = simulationData.mGridModelOrderedTetrahedrons;
 
@@ -1040,15 +1009,17 @@ PxU32* tempOrderedTetrahedrons = PX_ALLOCATE(PxU32, numTets, "tempOrderedTetrahe
 
 const TetrahedronT<PxU32>* tetrahedrons = reinterpret_cast<TetrahedronT<PxU32>*>(simulationMesh.mTetrahedrons);
 
-const PxU32 maxAccumulatedCP = (nbPartitions + maximumPartitions - 1) / maximumPartitions;
+const PxU32 maxAccumulatedCP = (nbPartitions + SB_PARTITION_LIMIT - 1) / SB_PARTITION_LIMIT;
 
-const PxU32 partitionArraySize = maxAccumulatedCP * maximumPartitions;
+const PxU32 partitionArraySize = maxAccumulatedCP * SB_PARTITION_LIMIT;
 const PxU32 nbPartitionTables = partitionArraySize * numVerts;
 
 PxU32* tempPartitionTablePerVert = PX_ALLOCATE(PxU32, nbPartitionTables, "tempPartitionTablePerVert");
 PxU32* tempRemapTablePerVert = PX_ALLOCATE(PxU32, nbPartitionTables, "tempRemapTablePerVert");
 
-PxU32* pullIndices = PX_ALLOCATE(PxU32, (numTets * 4), "tempRemapTablePerVert");
+const PxU32 numVertsPerElement = (simulationData.mNumTetsPerElement == 5 || simulationData.mNumTetsPerElement == 6) ? 8 : 4;
+const PxU32 numElements = simulationMesh.mNbTetrahedrons / simulationData.mNumTetsPerElement;
+PxU32* pullIndices = PX_ALLOCATE(PxU32, numElements * numVertsPerElement, "pullIndices");
 PxU32* lastRef = PX_ALLOCATE(PxU32, (maxAccumulatedCP*numVerts), "refCounts");
 
 PxU32* accumulatedCopiesEachVerts = PX_ALLOCATE(PxU32, numVerts, "accumulatedCopiesEachVerts");
@@ -1057,7 +1028,7 @@ simulationData.mGMAccumulatedCopiesCP = accumulatedCopiesEachVerts;
 PxU32* tempNumCopiesEachVerts = PX_ALLOCATE(PxU32, numVerts, "numCopiesEachVerts");
 PxMemZero(tempNumCopiesEachVerts, sizeof(PxU32) * numVerts);
 
-PxMemSet(pullIndices, 0xffffffff, sizeof(PxU32)*numTets * 4);
+PxMemSet(pullIndices, 0xffffffff, sizeof(PxU32) * numElements * numVertsPerElement);
 PxMemSet(lastRef, 0xffffffff, sizeof(PxU32)*maxAccumulatedCP*numVerts);
 
 //initialize partitionTablePerVert
@@ -1074,7 +1045,7 @@ PxU32 count = 0;
 const PxU32 totalNumVerts = numTets * 4;
 
 PxU32 totalCopies = numVerts * maxAccumulatedCP;
-simulationData.mGridModelNbPartitions = maximumPartitions;
+simulationData.mGridModelNbPartitions = SB_PARTITION_LIMIT;
 simulationData.mGMRemapOutputSize = totalNumVerts + totalCopies;
 
 ////allocate enough memory for the verts and the accumulation buffer
@@ -1082,15 +1053,15 @@ simulationData.mGMRemapOutputSize = totalNumVerts + totalCopies;
 //data.mGMOrderedVertInvMassCP = orderedVertsInMassCP;
 
 //compute remap table
-PxU32* remapOutput = PX_ALLOCATE(PxU32, simulationData.mGMRemapOutputSize, "remapOutput");
+PxU32* remapOutput = PX_ALLOCATE(PxU32, totalNumVerts, "remapOutput"); // numElements * numVertsPerElement
 simulationData.mGMRemapOutputCP = remapOutput;
 
-for (PxU32 i = 0; i < maximumPartitions; ++i)
+for (PxU32 i = 0; i < SB_PARTITION_LIMIT; ++i)
 {
 	PxU32 totalTets = 0;
 	for (PxU32 j = 0; j < maxAccumulatedPartitionsPerPartitions; ++j)
 	{
-		PxU32 partitionId = i + maximumPartitions * j;
+		PxU32 partitionId = i + SB_PARTITION_LIMIT * j;
 		if (partitionId < nbPartitions)
 		{
 			const PxU32 startInd = partitionId == 0 ? 0 : accumulatedTetrahedronPerPartition[partitionId - 1];
@@ -1183,7 +1154,6 @@ for (PxU32 i = 0; i < numVerts; ++i)
 }
 
 PX_ASSERT(count == numTets);
-
 simulationData.mGridModelMaxTetsPerPartitions = maxTetPerPartitions;
 
 simulationData.mGMPullIndices = pullIndices;
@@ -1198,28 +1168,25 @@ PX_FREE(tempRemapTablePerVert);
 PX_FREE(lastRef);
 }
 
-const PxI32 tetIndicesFromVoxels[8] = { 0, 1, 3, 14, 6, 11, 2, 18 };
-//const PxI32 tets6PerVoxel[24] = { 0,1,6,2,  0,1,4,6,  1,4,6,5,  1,2,3,6,  1,3,7,6,  1,5,6,7 };
-
-void combineGridModelPartitionsHexMesh(const TetrahedronMeshData& simulationMesh, SoftBodySimulationData& simulationData, PxU32** accumulatedTetrahedronPerPartitions)
+void combineGridModelPartitionsHexMesh(const TetrahedronMeshData& simulationMesh, DeformableVolumeSimulationData& simulationData,
+	PxU32** accumulatedTetrahedronPerPartitions, PxU32 numTetsPerElement)
 {
 //const PxU32 numTets = simulationMesh.mNbTetrahedrons;
 const PxU32 numElements = simulationMesh.mNbTetrahedrons/simulationData.mNumTetsPerElement;
 const PxU32 numVerts = simulationMesh.mNbVertices;
 
-const PxU32 NumVertsPerElement = 8;
+const PxU32 numVertsPerElement = 8;
 
 const PxU32 nbPartitions = simulationData.mGridModelNbPartitions;
 
 PxU32* accumulatedTetrahedronPerPartition = *accumulatedTetrahedronPerPartitions;
 
-const PxU32 maximumPartitions = 8;
-PxU32* combineAccumulatedTetraPerPartitions = PX_ALLOCATE(PxU32, maximumPartitions, "combineAccumulatedTetraPerPartitions");
+PxU32* combineAccumulatedTetraPerPartitions = PX_ALLOCATE(PxU32, SB_PARTITION_LIMIT, "combineAccumulatedTetraPerPartitions");
 simulationData.mGMAccumulatedPartitionsCP = combineAccumulatedTetraPerPartitions;
 
-PxMemZero(combineAccumulatedTetraPerPartitions, sizeof(PxU32) * maximumPartitions);
+PxMemZero(combineAccumulatedTetraPerPartitions, sizeof(PxU32) * SB_PARTITION_LIMIT);
 
-const PxU32 maxAccumulatedPartitionsPerPartitions = (nbPartitions + maximumPartitions - 1) / maximumPartitions;
+const PxU32 maxAccumulatedPartitionsPerPartitions = (nbPartitions + SB_PARTITION_LIMIT - 1) / SB_PARTITION_LIMIT;
 
 PxU32* orderedTetrahedrons = simulationData.mGridModelOrderedTetrahedrons;
 
@@ -1227,16 +1194,16 @@ PxU32* tempOrderedTetrahedrons = PX_ALLOCATE(PxU32, numElements, "tempOrderedTet
 
 const TetrahedronT<PxU32>* tetrahedrons = reinterpret_cast<TetrahedronT<PxU32>*>(simulationMesh.mTetrahedrons);
 
-const PxU32 maxAccumulatedCP = (nbPartitions + maximumPartitions - 1) / maximumPartitions;
+const PxU32 maxAccumulatedCP = (nbPartitions + SB_PARTITION_LIMIT - 1) / SB_PARTITION_LIMIT;
 
-const PxU32 partitionArraySize = maxAccumulatedCP * maximumPartitions;
+const PxU32 partitionArraySize = maxAccumulatedCP * SB_PARTITION_LIMIT;
 const PxU32 nbPartitionTables = partitionArraySize * numVerts;
 
 PxU32* tempPartitionTablePerVert = PX_ALLOCATE(PxU32, nbPartitionTables, "tempPartitionTablePerVert");
 PxU32* tempRemapTablePerVert = PX_ALLOCATE(PxU32, nbPartitionTables, "tempRemapTablePerVert");
 
-PxU32* pullIndices = PX_ALLOCATE(PxU32, (numElements * NumVertsPerElement), "tempRemapTablePerVert");
-PxU32* lastRef = PX_ALLOCATE(PxU32, (maxAccumulatedCP*numVerts), "refCounts");
+PxU32* pullIndices = PX_ALLOCATE(PxU32, (numElements * numVertsPerElement), "tempRemapTablePerVert");
+PxU32* lastRef = PX_ALLOCATE(PxU32, (maxAccumulatedCP * numVerts), "refCounts");
 
 PxU32* accumulatedCopiesEachVerts = PX_ALLOCATE(PxU32, numVerts, "accumulatedCopiesEachVerts");
 simulationData.mGMAccumulatedCopiesCP = accumulatedCopiesEachVerts;
@@ -1244,8 +1211,8 @@ simulationData.mGMAccumulatedCopiesCP = accumulatedCopiesEachVerts;
 PxU32* tempNumCopiesEachVerts = PX_ALLOCATE(PxU32, numVerts, "numCopiesEachVerts");
 PxMemZero(tempNumCopiesEachVerts, sizeof(PxU32) * numVerts);
 
-PxMemSet(pullIndices, 0xffffffff, sizeof(PxU32)*numElements * NumVertsPerElement);
-PxMemSet(lastRef, 0xffffffff, sizeof(PxU32)*maxAccumulatedCP*numVerts);
+PxMemSet(pullIndices, 0xffffffff, sizeof(PxU32) * numElements * numVertsPerElement);
+PxMemSet(lastRef, 0xffffffff, sizeof(PxU32) * maxAccumulatedCP * numVerts);
 
 //initialize partitionTablePerVert
 for (PxU32 i = 0; i < nbPartitionTables; ++i)
@@ -1258,10 +1225,10 @@ for (PxU32 i = 0; i < nbPartitionTables; ++i)
 PxU32 maxTetPerPartitions = 0;
 PxU32 count = 0;
 
-const PxU32 totalNumVerts = numElements* NumVertsPerElement;
+const PxU32 totalNumVerts = numElements * numVertsPerElement;
 
 PxU32 totalCopies = numVerts * maxAccumulatedCP;
-simulationData.mGridModelNbPartitions = maximumPartitions;
+simulationData.mGridModelNbPartitions = SB_PARTITION_LIMIT;
 simulationData.mGMRemapOutputSize = totalNumVerts + totalCopies;
 
 ////allocate enough memory for the verts and the accumulation buffer
@@ -1269,15 +1236,15 @@ simulationData.mGMRemapOutputSize = totalNumVerts + totalCopies;
 //data.mGMOrderedVertInvMassCP = orderedVertsInMassCP;
 
 //compute remap table
-PxU32* remapOutput = PX_ALLOCATE(PxU32, simulationData.mGMRemapOutputSize, "remapOutput");
+PxU32* remapOutput = PX_ALLOCATE(PxU32, totalNumVerts, "remapOutput"); // numElements * numVertsPerElement
 simulationData.mGMRemapOutputCP = remapOutput;
 
-for (PxU32 i = 0; i < maximumPartitions; ++i)
+for (PxU32 i = 0; i < SB_PARTITION_LIMIT; ++i)
 {
 	PxU32 totalTets = 0;
 	for (PxU32 j = 0; j < maxAccumulatedPartitionsPerPartitions; ++j)
 	{
-		PxU32 partitionId = i + maximumPartitions * j;
+		PxU32 partitionId = i + SB_PARTITION_LIMIT * j;
 		if (partitionId < nbPartitions)
 		{
 			const PxU32 startInd = partitionId == 0 ? 0 : accumulatedTetrahedronPerPartition[partitionId - 1];
@@ -1290,11 +1257,33 @@ for (PxU32 i = 0; i < maximumPartitions; ++i)
 
 				PxU32 index = i * maxAccumulatedCP + j;
 
+				const PxI32* map = NULL;
 				const PxU32* tetInds = reinterpret_cast<const PxU32*>(&tetrahedrons[tetraInd]);
+
+				//If 5 tets are used per voxel, some voxels have a flipped tetrahedron configuration
+				//Tetmaker uses the following table to generate 5 tets per hex. The first row is the standard configuration, the second row the flipped config.
+				//To distinguish the two, a pattern must be found that is only present in one of the two configurations
+				//While 5 tets get created, this leads to 20 indices. The flipped configuration references the same vertex at indices[0] and indices[19] while 
+				//the default config references different tets at indices[0] and indices[19]. This means that this comparsion can reliably detect flipped configurations.
+				//const PxU32 tets5PerVoxel[] = {
+				//			 0, 6, 3, 5, 0, 1, 5, 3, 6, 7, 3, 5, 4, 5, 6, 0, 2, 3, 0, 6,
+				//			 1, 7, 4, 2, 1, 0, 2, 4, 7, 6, 4, 2, 5, 4, 1, 7, 3, 2, 7, 1
+				bool flipped = tetInds[0] == tetInds[19];
+				if (numTetsPerElement == 6)
+				{
+					map = tetIndicesFromVoxels;
+				}
+				else
+				{
+					if (!flipped)					
+						map = tetIndicesFromVoxelsA;					
+					else					
+						map = tetIndicesFromVoxelsB;					
+				}
 
 				for (PxU32 v = 0; v < 4; ++v)
 				{
-					PxU32 vertInd = tetInds[tetIndicesFromVoxels[v]];
+					PxU32 vertInd = tetInds[map[v]];
 					tempPartitionTablePerVert[vertInd * partitionArraySize + index] = count + numElements * v;
 
 					if (lastRef[vertInd * maxAccumulatedCP + j] == 0xffffffff)
@@ -1312,7 +1301,7 @@ for (PxU32 i = 0; i < maximumPartitions; ++i)
 				for (PxU32 v = 0; v < 4; ++v)
 				{
 					//vertex index
-					PxU32 vertInd = tetInds[tetIndicesFromVoxels[v+4]];
+					PxU32 vertInd = tetInds[map[v+4]];
 					//Where the vertex data will be written to/read from
 					tempPartitionTablePerVert[vertInd * partitionArraySize + index] = count + numElements * (v+4);
 
@@ -1326,6 +1315,13 @@ for (PxU32 i = 0; i < maximumPartitions; ++i)
 						remapOutput[lastRef[vertInd * maxAccumulatedCP + j]] = count + (v+4) * numElements;
 					}
 					lastRef[vertInd * maxAccumulatedCP + j] = 4 * (numElements + count) + v;
+				}
+
+				if (numTetsPerElement == 5)
+				{
+					PxU32 ind = pullIndices[4 * count];
+					ind = setBit(ind, 31, flipped);
+					pullIndices[4 * count /*+ v*/] = ind;
 				}
 
 				count++;
@@ -1357,9 +1353,7 @@ for (PxU32 i = 0; i < numVerts; ++i)
 
 
 PX_ASSERT(count == numElements);
-
 simulationData.mGridModelMaxTetsPerPartitions = maxTetPerPartitions;
-
 simulationData.mGMPullIndices = pullIndices;
 
 //If this commented out, we don't use combined partition anymore
@@ -1371,6 +1365,111 @@ PX_FREE(tempPartitionTablePerVert);
 PX_FREE(tempRemapTablePerVert);
 PX_FREE(lastRef);
 
+}
+
+// simplified version of "combineGridModelPartitionsHexMesh" where we don't combine multiple partitions.
+void combineGridModelPartitionsHexMesh_parallelGS(const TetrahedronMeshData& simulationMesh,
+												  DeformableVolumeSimulationData& simulationData,
+												  PxU32** accumulatedTetrahedronPerPartitions)
+{
+	const PxU32 numTetsPerElement = simulationData.mNumTetsPerElement;
+	const PxU32 numElements = simulationMesh.mNbTetrahedrons / numTetsPerElement;
+
+	const PxU32 numVertsPerElement = 8;
+	const PxU32 nbPartitions = simulationData.mGridModelNbPartitions;
+
+	PxU32* accumulatedTetrahedronPerPartition = *accumulatedTetrahedronPerPartitions;
+
+	PxU32* combineAccumulatedTetraPerPartitions =
+	    PX_ALLOCATE(PxU32, nbPartitions, "combineAccumulatedTetraPerPartitions");
+	simulationData.mGMAccumulatedPartitionsCP = combineAccumulatedTetraPerPartitions;
+
+	PxMemZero(combineAccumulatedTetraPerPartitions, sizeof(PxU32) * nbPartitions);
+
+	PxU32* orderedTetrahedrons = simulationData.mGridModelOrderedTetrahedrons;
+	const TetrahedronT<PxU32>* tetrahedrons = reinterpret_cast<TetrahedronT<PxU32>*>(simulationMesh.mTetrahedrons);
+
+	const PxU32 totalVoxelVerts = numElements * numVertsPerElement;
+
+	PxU32* pullIndices = PX_ALLOCATE(PxU32, totalVoxelVerts, "pullIndices");
+	PxMemSet(pullIndices, 0xffffffff, sizeof(PxU32) * totalVoxelVerts);
+
+	PxU32 maxTetPerPartitions = 0;
+	PxU32 count = 0;
+
+	for(PxU32 partitionId = 0; partitionId < nbPartitions; ++partitionId)
+	{
+		PxU32 totalTets = 0;
+		const PxU32 startInd = partitionId == 0 ? 0 : accumulatedTetrahedronPerPartition[partitionId - 1];
+		const PxU32 endInd = accumulatedTetrahedronPerPartition[partitionId];
+
+		for(PxU32 k = startInd; k < endInd; ++k)
+		{
+			const PxU32 tetraInd = orderedTetrahedrons[k];
+
+			const PxI32* map = NULL;
+			const PxU32* tetInds = reinterpret_cast<const PxU32*>(&tetrahedrons[tetraInd]);
+
+			// If 5 tets are used per voxel, some voxels have a flipped tetrahedron configuration
+			// Tetmaker uses the following table to generate 5 tets per hex. The first row is the standard
+			// configuration, the second row the flipped config. To distinguish the two, a pattern must be found that is
+			// only present in one of the two configurations While 5 tets get created, this leads to 20 indices. The
+			// flipped configuration references the same vertex at indices[0] and indices[19] while the default config
+			// references different tets at indices[0] and indices[19]. This means that this comparsion can reliably
+			// detect flipped configurations. const PxU32 tets5PerVoxel[] = { 			 0, 6, 3, 5, 0, 1, 5, 3, 6, 7, 3, 5, 4, 5,
+			//6, 0, 2, 3, 0, 6, 			 1, 7, 4, 2, 1, 0, 2, 4, 7, 6, 4, 2, 5, 4, 1, 7, 3, 2, 7, 1
+
+			bool flipped = tetInds[0] == tetInds[19];
+			if(numTetsPerElement == 6)
+			{
+				map = tetIndicesFromVoxels;
+			}
+			else
+			{
+				if(!flipped)
+					map = tetIndicesFromVoxelsA;
+				else
+					map = tetIndicesFromVoxelsB;
+			}
+
+			for(PxU32 v = 0; v < 4; ++v)
+			{
+				PxU32 vertInd = tetInds[map[v]];
+				pullIndices[4 * count + v] = vertInd;
+			}
+
+			for(PxU32 v = 0; v < 4; ++v)
+			{
+				PxU32 vertInd = tetInds[map[v + 4]];
+				pullIndices[4 * (count + numElements) + v] = vertInd;
+			}
+
+			if(numTetsPerElement == 5)
+			{
+				PxU32 ind = pullIndices[4 * count];
+				ind = setBit(ind, 31, flipped);
+				pullIndices[4 * count] = ind;
+			}
+
+			++count;
+		}
+
+		totalTets += (endInd - startInd);
+		combineAccumulatedTetraPerPartitions[partitionId] = count;
+
+		if (partitionId != SB_PARTITION_LIMIT) // GS elements
+		{
+			maxTetPerPartitions = PxMax(maxTetPerPartitions, totalTets);
+		}
+	}
+
+	PX_ASSERT(count == numElements);
+
+	simulationData.mGMPullIndices = pullIndices;
+	simulationData.mGridModelMaxTetsPerPartitions = maxTetPerPartitions;
+
+	// unused data for hex mesh
+	simulationData.mGMRemapOutputSize = 0;
 }
 
 struct DistanceCheck
@@ -1574,7 +1673,7 @@ static bool gOverlapCallback(const AABBTreeNode* current, PxU32 /*depth*/, void*
 	return true;
 }
 
-void TetrahedronMeshBuilder::createCollisionModelMapping(const TetrahedronMeshData& collisionMesh, const SoftBodyCollisionData& collisionData, CollisionMeshMappingData& mappingData)
+void TetrahedronMeshBuilder::createCollisionModelMapping(const TetrahedronMeshData& collisionMesh, const DeformableVolumeCollisionData& collisionData, CollisionMeshMappingData& mappingData)
 {
 	const PxU32 nbVerts = collisionMesh.mNbVertices;
 
@@ -1751,14 +1850,6 @@ void TetrahedronMeshBuilder::createCollisionModelMapping(const TetrahedronMeshDa
 		}
 	}
 
-	PxU32 numSurfaceVerts = 0;
-	for (PxU32 i = 0; i < nbVerts; ++i)
-	{
-		PxU32 hint = surfaceVertsHint[i];
-		if (hint)
-			numSurfaceVerts++;
-	}
-
 	mappingData.mCollisionSurfaceVertsHint = PX_ALLOCATE(PxU8, nbVerts, "mCollisionSurfaceVertsHint");
 	mappingData.mCollisionSurfaceVertToTetRemap = PX_ALLOCATE(PxU32, nbVerts, "mCollisionSurfaceVertToTetRemap");
 
@@ -1779,7 +1870,7 @@ void TetrahedronMeshBuilder::createCollisionModelMapping(const TetrahedronMeshDa
 
 	if (!aabbTree.buildFromMesh(meshInterface, nbPrimsPerLeaf))
 	{
-		PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "BV4_AABBTree tree failed to build.");
+		PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, PX_FL, "BV4_AABBTree tree failed to build.");
 		return;
 	}
 
@@ -1815,7 +1906,7 @@ void writeTets(const char* path, const PxVec3* tetPoints, PxU32 numPoints, const
 }*/
 
 void TetrahedronMeshBuilder::computeModelsMapping(TetrahedronMeshData& simulationMesh,
-	const TetrahedronMeshData& collisionMesh, const SoftBodyCollisionData& collisionData, 
+	const TetrahedronMeshData& collisionMesh, const DeformableVolumeCollisionData& collisionData,
 	CollisionMeshMappingData& mappingData, bool buildGPUData, const PxBoundedData* vertexToTet)
 {
 	createCollisionModelMapping(collisionMesh, collisionData, mappingData);
@@ -1851,7 +1942,7 @@ void TetrahedronMeshBuilder::computeModelsMapping(TetrahedronMeshData& simulatio
 		
 		if (!aabbTree.buildFromMesh(meshInterface, nbPrimsPerLeaf))
 		{
-			PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "BV32 tree failed to build.");
+			PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, PX_FL, "BV32 tree failed to build.");
 			return;
 		}
 
@@ -1878,7 +1969,7 @@ void TetrahedronMeshBuilder::computeModelsMapping(TetrahedronMeshData& simulatio
 				const PxVec3& d = gridModelVertices[tetra.mRef[3]];
 
 				PxVec4 bary;
-				computeBarycentric(a, b, c, d, p, bary);
+				PxComputeBarycentric(a, b, c, d, p, bary);
 
 #if PX_DEBUG
 				const PxReal eps = 1e-4f;
@@ -1919,7 +2010,7 @@ void TetrahedronMeshBuilder::computeModelsMapping(TetrahedronMeshData& simulatio
 				const PxVec3& d = gridModelVertices[tetra.mRef[3]];
 
 				PxVec4 bary;
-				computeBarycentric(a, b, c, d, result.mOriginalVert, bary);
+				PxComputeBarycentric(a, b, c, d, result.mOriginalVert, bary);
 
 #if PX_DEBUG
 				const PxReal eps = 1e-4f;
@@ -2140,7 +2231,7 @@ void smoothMassRatiosWhilePreservingTotalMass( PxReal* massPerNode, PxU32 numNod
 	//printf("%i", counter);
 }
 
-void TetrahedronMeshBuilder::computeSimData(const PxTetrahedronMeshDesc& desc, TetrahedronMeshData& simulationMesh, SoftBodySimulationData& simulationData, const PxCookingParams& params)
+void TetrahedronMeshBuilder::computeSimData(const PxTetrahedronMeshDesc& desc, TetrahedronMeshData& simulationMesh, DeformableVolumeSimulationData& simulationData, const PxCookingParams& params)
 {
 	const PxU32 simTetMeshNbPoints = desc.points.count;
 	const PxU32 simTetMeshNbTets = desc.tetrahedrons.count;
@@ -2160,7 +2251,6 @@ void TetrahedronMeshBuilder::computeSimData(const PxTetrahedronMeshDesc& desc, T
 
 	TetrahedronT<PxU32>* dest = gridModelTetrahedrons;
 	const TetrahedronT<PxU32>* pastLastDest = gridModelTetrahedrons + simTetMeshNbTets;
-
 	const PxU8* source = reinterpret_cast<const PxU8*>(desc.tetrahedrons.data);
 	if (desc.flags & PxMeshFlag::e16_BIT_INDICES)
 	{
@@ -2187,12 +2277,20 @@ void TetrahedronMeshBuilder::computeSimData(const PxTetrahedronMeshDesc& desc, T
 
 	computeRestPoseAndPointMass(gridModelTetrahedrons, simulationMesh.mNbTetrahedrons,
 		simulationMesh.mVertices, simulationData.mGridModelInvMass, simulationData.mGridModelTetraRestPoses);
-				
-	PxU32* accumulatedTetrahedronPerPartition = computeGridModelTetrahedronPartitions(simulationMesh, simulationData);
-	if (simulationData.mNumTetsPerElement == 1)
+
+	PxU32* accumulatedTetrahedronPerPartition = NULL;
+	if(simulationData.mNumTetsPerElement == 1)
+	{
+		accumulatedTetrahedronPerPartition = computeGridModelTetrahedronPartitions(simulationMesh, simulationData);
 		combineGridModelPartitions(simulationMesh, simulationData, &accumulatedTetrahedronPerPartition);
+		PX_FREE(accumulatedTetrahedronPerPartition);
+	}
 	else
-		combineGridModelPartitionsHexMesh(simulationMesh, simulationData, &accumulatedTetrahedronPerPartition);
+	{
+		accumulatedTetrahedronPerPartition = computeGridModelVoxelPartitions(simulationMesh, simulationData);
+		combineGridModelPartitionsHexMesh_parallelGS(simulationMesh, simulationData, &accumulatedTetrahedronPerPartition);
+	}
+	PX_FREE(accumulatedTetrahedronPerPartition);
 
 	smoothMassRatiosWhilePreservingTotalMass(simulationData.mGridModelInvMass, simulationMesh.mNbVertices, reinterpret_cast<PxU32*>(gridModelTetrahedrons), simulationMesh.mNbTetrahedrons, params.maxWeightRatioInTet);
 
@@ -2213,27 +2311,9 @@ void TetrahedronMeshBuilder::computeSimData(const PxTetrahedronMeshDesc& desc, T
 	{
 		simulationData.mGridModelInvMass[i] = 1.0f / simulationData.mGridModelInvMass[i];
 	}
-
-	PX_FREE(accumulatedTetrahedronPerPartition);
-
-
-	//const PxU32 gridModelNbVerts = simulationMesh.mNbVertices;
-	//PxVec3* gridModelVertices = reinterpret_cast<PxVec3*>(PX_ALLOC(gridModelNbVerts * sizeof(PxVec3), "gridModelVertices"));
-
-	//PxVec4* gridModelVerticesInvMass = simulationMesh.mVerticesInvMass;
-
-	//for (PxU32 i = 0; i < gridModelNbVerts; ++i)
-	//{
-	//	gridModelVertices[i] = gridModelVerticesInvMass[i].getXYZ();
-	//}
-
-	//writeTets("C:\\tmp\\grid.tet", gridModelVertices, simulationMesh.mNbVertices, reinterpret_cast<IndTetrahedron32*>(simulationMesh.mTetrahedrons), simulationMesh.mNbTetrahedrons);
-	//writeTets("C:\\tmp\\col.tet", mVertices, mNbVertices, reinterpret_cast<IndTetrahedron32*>(mTetrahedrons), mNbTetrahedrons);
-
-	//PX_FREE(gridModelVertices);
 }
 
-bool TetrahedronMeshBuilder::computeCollisionData(const PxTetrahedronMeshDesc& collisionMeshDesc, TetrahedronMeshData& collisionMesh, SoftBodyCollisionData& collisionData,
+bool TetrahedronMeshBuilder::computeCollisionData(const PxTetrahedronMeshDesc& collisionMeshDesc, TetrahedronMeshData& collisionMesh, DeformableVolumeCollisionData& collisionData,
 	const PxCookingParams&	params, bool validateMesh)
 {
 	const PxU32 originalTetrahedronCount = collisionMeshDesc.tetrahedrons.count;
@@ -2275,14 +2355,16 @@ bool TetrahedronMeshBuilder::computeCollisionData(const PxTetrahedronMeshDesc& c
 
 	//copy the original tetrahedron indices to grb tetrahedron indices if buildGRBData is true
 		
-	createMidPhaseStructure(collisionMesh, collisionData, params);
+	if(!createMidPhaseStructure(collisionMesh, collisionData, params))
+		return false;
 
 	recordTetrahedronIndices(collisionMesh, collisionData, params.buildGPUData);
 
 	// Compute local bounds
 	computeLocalBoundsAndGeomEpsilon(collisionMesh.mVertices, collisionMesh.mNbVertices, collisionMesh.mAABB, collisionMesh.mGeomEpsilon);
 
-	createGRBMidPhaseAndData(originalTetrahedronCount, collisionMesh, collisionData, params);
+	if(!createGRBMidPhaseAndData(originalTetrahedronCount, collisionMesh, collisionData, params))
+		return false;
 	
 	// Use collisionData.mGRB_primIndices rather than collisionMesh.mTetrahedrons: we want rest poses for the topology-remapped mesh, which is the actual one in simulation.
 	computeRestPoseAndPointMass(reinterpret_cast<TetrahedronT<PxU32>*>(collisionData.mGRB_primIndices), collisionMesh.mNbTetrahedrons, collisionMesh.mVertices, NULL, collisionData.mTetraRestPoses);
@@ -2291,20 +2373,22 @@ bool TetrahedronMeshBuilder::computeCollisionData(const PxTetrahedronMeshDesc& c
 }
 
 bool TetrahedronMeshBuilder::loadFromDesc(const PxTetrahedronMeshDesc& simulationMeshDesc, const PxTetrahedronMeshDesc& collisionMeshDesc,
-	PxSoftBodySimulationDataDesc softbodyDataDesc, TetrahedronMeshData& simulationMesh, SoftBodySimulationData& simulationData, 
-	TetrahedronMeshData& collisionMesh, SoftBodyCollisionData& collisionData, CollisionMeshMappingData& mappingData, const PxCookingParams&	params, bool validateMesh)
+	PxDeformableVolumeSimulationDataDesc deformableVolumeDataDesc, TetrahedronMeshData& simulationMesh, DeformableVolumeSimulationData& simulationData,
+	TetrahedronMeshData& collisionMesh, DeformableVolumeCollisionData& collisionData, CollisionMeshMappingData& mappingData, const PxCookingParams&	params, bool validateMesh)
 {		
-	if (!simulationMeshDesc.isValid() || !collisionMeshDesc.isValid() || !softbodyDataDesc.isValid())
-		return PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "TetrahedronMesh::loadFromDesc: desc.isValid() failed!");
+	if (!simulationMeshDesc.isValid() || !collisionMeshDesc.isValid() || !deformableVolumeDataDesc.isValid())
+		return PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "TetrahedronMesh::loadFromDesc: desc.isValid() failed!");
 
 	// verify the mesh params
 	if (!params.midphaseDesc.isValid())
-		return PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "TetrahedronMesh::loadFromDesc: mParams.midphaseDesc.isValid() failed!");
+		return PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "TetrahedronMesh::loadFromDesc: mParams.midphaseDesc.isValid() failed!");
 
 	if (!computeCollisionData(collisionMeshDesc, collisionMesh, collisionData, params, validateMesh))
 		return false;
+
 	computeSimData(simulationMeshDesc, simulationMesh, simulationData, params);
-	computeModelsMapping(simulationMesh, collisionMesh, collisionData, mappingData, params.buildGPUData, &softbodyDataDesc.vertexToTet);
+
+	computeModelsMapping(simulationMesh, collisionMesh, collisionData, mappingData, params.buildGPUData, &deformableVolumeDataDesc.vertexToTet);
 
 #if PX_DEBUG
 	for (PxU32 i = 0; i < collisionMesh.mNbVertices; ++i) {
@@ -2389,12 +2473,12 @@ bool TetrahedronMeshBuilder::saveTetrahedronMeshData(PxOutputStream& stream, boo
 	return true;
 }
 	   
-bool TetrahedronMeshBuilder::saveSoftBodyMeshData(PxOutputStream& stream, bool platformMismatch, const PxCookingParams& params, 
-	const TetrahedronMeshData& simulationMesh, const SoftBodySimulationData& simulationData, const TetrahedronMeshData& collisionMesh, 
-	const SoftBodyCollisionData& collisionData, const CollisionMeshMappingData& mappingData)
+bool TetrahedronMeshBuilder::saveDeformableVolumeMeshData(PxOutputStream& stream, bool platformMismatch, const PxCookingParams& params, 
+	const TetrahedronMeshData& simulationMesh, const DeformableVolumeSimulationData& simulationData, const TetrahedronMeshData& collisionMesh, 
+	const DeformableVolumeCollisionData& collisionData, const CollisionMeshMappingData& mappingData)
 {
 	// Export header
-	if (!writeHeader('S', 'O', 'M', 'E', PX_SOFTBODY_MESH_VERSION, platformMismatch, stream))
+	if (!writeHeader('D', 'V', 'M', 'E', PX_DEFORMABLE_VOLUME_MESH_VERSION, platformMismatch, stream))
 		return false;
 
 	// Export serialization flags
@@ -2502,12 +2586,12 @@ bool TetrahedronMeshBuilder::saveSoftBodyMeshData(PxOutputStream& stream, bool p
 		writeDword(simulationData.mNumTetsPerElement, platformMismatch, stream);
 		writeDword(mappingData.mCollisionNbTetrahedronsReferences, platformMismatch, stream);
 		writeDword(mappingData.mTetsRemapSize, platformMismatch, stream);
-			
+
 		const PxU32 nbGridModeIndices = 4 * simulationMesh.mNbTetrahedrons;
 		const PxU32* gridModelTetIndices = reinterpret_cast<PxU32*>(simulationMesh.mTetrahedrons);
 		writeIndice(serialFlags, gridModelTetIndices, nbGridModeIndices, platformMismatch, stream);
 
-		const PxU32 numVertsPerElement = simulationData.mNumTetsPerElement == 6 ? 8 : 4;
+		const PxU32 numVertsPerElement = (simulationData.mNumTetsPerElement == 5 || simulationData.mNumTetsPerElement == 6) ? 8 : 4;
 		const PxU32 numElements = simulationMesh.mNbTetrahedrons / simulationData.mNumTetsPerElement;
 
 		writeFloatBuffer(&simulationMesh.mVertices->x, simulationMesh.mNbVertices * 3, platformMismatch, stream);
@@ -2515,18 +2599,23 @@ bool TetrahedronMeshBuilder::saveSoftBodyMeshData(PxOutputStream& stream, bool p
 		if (simulationMesh.mMaterialIndices)
 			writeWordBuffer(simulationMesh.mMaterialIndices, simulationMesh.mNbTetrahedrons, platformMismatch, stream);
 
-			
 		writeFloatBuffer(simulationData.mGridModelInvMass, simulationMesh.mNbVertices * 1, platformMismatch, stream);
 
 		stream.write(simulationData.mGridModelTetraRestPoses, simulationMesh.mNbTetrahedrons * sizeof(PxMat33));
 
 		stream.write(simulationData.mGridModelOrderedTetrahedrons, numElements * sizeof(PxU32));
-			
-		stream.write(simulationData.mGMRemapOutputCP, numElements * numVertsPerElement * sizeof(PxU32));
+
+		if (simulationData.mGMRemapOutputSize)
+		{
+			stream.write(simulationData.mGMRemapOutputCP, numElements* numVertsPerElement * sizeof(PxU32));
+		}
 
 		stream.write(simulationData.mGMAccumulatedPartitionsCP, simulationData.mGridModelNbPartitions * sizeof(PxU32));
 
-		stream.write(simulationData.mGMAccumulatedCopiesCP, simulationMesh.mNbVertices * sizeof(PxU32));
+		if (simulationData.mGMRemapOutputSize)
+		{
+			stream.write(simulationData.mGMAccumulatedCopiesCP, simulationMesh.mNbVertices * sizeof(PxU32));
+		}
 
 		stream.write(mappingData.mCollisionAccumulatedTetrahedronsRef, collisionMesh.mNbVertices * sizeof(PxU32));
 
@@ -2536,7 +2625,7 @@ bool TetrahedronMeshBuilder::saveSoftBodyMeshData(PxOutputStream& stream, bool p
 
 		stream.write(mappingData.mCollisionSurfaceVertToTetRemap, collisionMesh.mNbVertices * sizeof(PxU32));
 
-		stream.write(simulationData.mGMPullIndices, numElements * numVertsPerElement *sizeof(PxU32));
+		stream.write(simulationData.mGMPullIndices, numElements * numVertsPerElement * sizeof(PxU32));
 
 		writeFloatBuffer(mappingData.mVertsBarycentricInGridModel, collisionMesh.mNbVertices * 4, platformMismatch, stream);
 
@@ -2552,7 +2641,7 @@ bool TetrahedronMeshBuilder::saveSoftBodyMeshData(PxOutputStream& stream, bool p
 	return true;
 }
 
-void TetrahedronMeshBuilder::createMidPhaseStructure(TetrahedronMeshData& collisionMesh, SoftBodyCollisionData& collisionData, const PxCookingParams& params)
+bool TetrahedronMeshBuilder::createMidPhaseStructure(TetrahedronMeshData& collisionMesh, DeformableVolumeCollisionData& collisionData, const PxCookingParams& params)
 {
 	const PxReal gBoxEpsilon = 2e-4f;
 
@@ -2565,23 +2654,16 @@ void TetrahedronMeshBuilder::createMidPhaseStructure(TetrahedronMeshData& collis
 	IndTetrahedron32* tetrahedrons32 = NULL;
 	IndTetrahedron16* tetrahedrons16 = NULL;
 	if (collisionMesh.mFlags & PxTriangleMeshFlag::e16_BIT_INDICES)
-	{
 		tetrahedrons16 = reinterpret_cast<IndTetrahedron16*>(collisionMesh.mTetrahedrons);
-	}
 	else
-	{
 		tetrahedrons32 = reinterpret_cast<IndTetrahedron32*>(collisionMesh.mTetrahedrons);
-	}
 
 	collisionData.mMeshInterface.setPointers(tetrahedrons32, tetrahedrons16, collisionMesh.mVertices);
 
 	const PxU32 nbTetsPerLeaf = 15;
 
 	if (!BuildBV4Ex(collisionData.mBV4Tree, meshInterface, gBoxEpsilon, nbTetsPerLeaf, false))
-	{
-		PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "BV4 tree failed to build.");
-		return;
-	}
+		return PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, PX_FL, "BV4 tree failed to build.");
 			
 	const PxU32* order = meshInterface.getRemap();
 	if (!params.suppressTriangleMeshRemapTable || params.buildGPUData)
@@ -2594,9 +2676,10 @@ void TetrahedronMeshBuilder::createMidPhaseStructure(TetrahedronMeshData& collis
 	}
 
 	meshInterface.releaseRemap();
+	return true;
 }
 
-void TetrahedronMeshBuilder::saveMidPhaseStructure(PxOutputStream& stream, bool mismatch, const SoftBodyCollisionData& collisionData)
+void TetrahedronMeshBuilder::saveMidPhaseStructure(PxOutputStream& stream, bool mismatch, const DeformableVolumeCollisionData& collisionData)
 {
 	// PT: in version 1 we defined "mismatch" as:
 	// const bool mismatch = (littleEndian() == 1);
@@ -2638,7 +2721,7 @@ void TetrahedronMeshBuilder::saveMidPhaseStructure(PxOutputStream& stream, bool 
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BV32TetrahedronMeshBuilder::createMidPhaseStructure(const PxCookingParams& params, TetrahedronMeshData& collisionMesh, BV32Tree& bv32Tree, SoftBodyCollisionData& collisionData)
+bool BV32TetrahedronMeshBuilder::createMidPhaseStructure(const PxCookingParams& params, TetrahedronMeshData& collisionMesh, BV32Tree& bv32Tree, DeformableVolumeCollisionData& collisionData)
 {
 	PX_UNUSED(params);
 	PX_UNUSED(collisionMesh);
@@ -2663,16 +2746,13 @@ void BV32TetrahedronMeshBuilder::createMidPhaseStructure(const PxCookingParams& 
 	PxU32 nbTetrahedronPerLeaf = 32;
 
 	if (!BuildBV32Ex(bv32Tree, meshInterface, gBoxEpsilon, nbTetrahedronPerLeaf))
-	{
-		PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, __FILE__, __LINE__, "BV32 tree failed to build.");
-		return;
-	}
+		return PxGetFoundation().error(PxErrorCode::eINTERNAL_ERROR, PX_FL, "BV32 tree failed to build.");
 
 	const PxU32* order = meshInterface.getRemap();
 
 	if (collisionMesh.mMaterialIndices)
 	{
-		PxFEMMaterialTableIndex* newMat = PX_ALLOCATE(PxFEMMaterialTableIndex, collisionMesh.mNbTetrahedrons, "mMaterialIndices");
+		PxDeformableMaterialTableIndex* newMat = PX_ALLOCATE(PxDeformableMaterialTableIndex, collisionMesh.mNbTetrahedrons, "mMaterialIndices");
 		for (PxU32 i = 0; i < collisionMesh.mNbTetrahedrons; i++)
 			newMat[i] = collisionMesh.mMaterialIndices[order[i]];
 		PX_FREE(collisionMesh.mMaterialIndices);
@@ -2696,6 +2776,7 @@ void BV32TetrahedronMeshBuilder::createMidPhaseStructure(const PxCookingParams& 
 	}
 
 	meshInterface.releaseRemap();
+	return true;
 }
 
 void BV32TetrahedronMeshBuilder::saveMidPhaseStructure(BV32Tree* bv32Tree, PxOutputStream& stream, bool mismatch)
@@ -2756,26 +2837,26 @@ PxTetrahedronMesh* immediateCooking::createTetrahedronMesh(const PxCookingParams
 	return tetMesh;
 }
 
-bool immediateCooking::cookSoftBodyMesh(const PxCookingParams& params, const PxTetrahedronMeshDesc& simulationMeshDesc, const PxTetrahedronMeshDesc& collisionMeshDesc,
-											const PxSoftBodySimulationDataDesc& softbodyDataDesc, PxOutputStream& stream)
+bool immediateCooking::cookDeformableVolumeMesh(const PxCookingParams& params, const PxTetrahedronMeshDesc& simulationMeshDesc, const PxTetrahedronMeshDesc& collisionMeshDesc,
+												const PxDeformableVolumeSimulationDataDesc& softbodyDataDesc, PxOutputStream& stream)
 {
 	PX_FPU_GUARD;
 
 	TetrahedronMeshData simulationMesh;
-	SoftBodySimulationData simulationData;
+	DeformableVolumeSimulationData simulationData;
 	TetrahedronMeshData collisionMesh;
-	SoftBodyCollisionData collisionData;
+	DeformableVolumeCollisionData collisionData;
 	CollisionMeshMappingData mappingData;
-	SoftBodyMeshData data(simulationMesh, simulationData, collisionMesh, collisionData, mappingData);
+	DeformableVolumeMeshData data(simulationMesh, simulationData, collisionMesh, collisionData, mappingData);
 	if(!TetrahedronMeshBuilder::loadFromDesc(simulationMeshDesc, collisionMeshDesc, softbodyDataDesc, data.mSimulationMesh, data.mSimulationData, data.mCollisionMesh, data.mCollisionData, data.mMappingData, params, false))
 		return false;
 
-	TetrahedronMeshBuilder::saveSoftBodyMeshData(stream, platformMismatch(), params, data.mSimulationMesh, data.mSimulationData, data.mCollisionMesh, data.mCollisionData, data.mMappingData);
+	TetrahedronMeshBuilder::saveDeformableVolumeMeshData(stream, platformMismatch(), params, data.mSimulationMesh, data.mSimulationData, data.mCollisionMesh, data.mCollisionData, data.mMappingData);
 	return true;
 }
 
-PxSoftBodyMesh* immediateCooking::createSoftBodyMesh(const PxCookingParams& params, const PxTetrahedronMeshDesc& simulationMeshDesc, const PxTetrahedronMeshDesc& collisionMeshDesc,
-																const PxSoftBodySimulationDataDesc& softbodyDataDesc, PxInsertionCallback& insertionCallback)
+PxDeformableVolumeMesh* immediateCooking::createDeformableVolumeMesh(const PxCookingParams& params, const PxTetrahedronMeshDesc& simulationMeshDesc, const PxTetrahedronMeshDesc& collisionMeshDesc,
+																	 const PxDeformableVolumeSimulationDataDesc& softbodyDataDesc, PxInsertionCallback& insertionCallback)
 {
 	PX_UNUSED(simulationMeshDesc);
 	PX_UNUSED(collisionMeshDesc);
@@ -2786,33 +2867,33 @@ PxSoftBodyMesh* immediateCooking::createSoftBodyMesh(const PxCookingParams& para
 	PX_FPU_GUARD;
 
 	TetrahedronMeshData simulationMesh;
-	SoftBodySimulationData simulationData;
+	DeformableVolumeSimulationData simulationData;
 	TetrahedronMeshData collisionMesh;
-	SoftBodyCollisionData collisionData;
+	DeformableVolumeCollisionData collisionData;
 	CollisionMeshMappingData mappingData;
-	SoftBodyMeshData data(simulationMesh, simulationData, collisionMesh, collisionData, mappingData);
+	DeformableVolumeMeshData data(simulationMesh, simulationData, collisionMesh, collisionData, mappingData);
 	if(!TetrahedronMeshBuilder::loadFromDesc(simulationMeshDesc, collisionMeshDesc, softbodyDataDesc, data.mSimulationMesh, data.mSimulationData, data.mCollisionMesh, data.mCollisionData, data.mMappingData, params, false))
 		return NULL;
 
-	PxConcreteType::Enum type = PxConcreteType::eSOFTBODY_MESH; 
-	PxSoftBodyMesh* tetMesh = static_cast<PxSoftBodyMesh*>(insertionCallback.buildObjectFromData(type, &data));
+	PxConcreteType::Enum type = PxConcreteType::eDEFORMABLE_VOLUME_MESH;
+	PxDeformableVolumeMesh* tetMesh = static_cast<PxDeformableVolumeMesh*>(insertionCallback.buildObjectFromData(type, &data));
 	
 	/*SoftbodySimulationTetrahedronMesh simulationMesh(data.simulationMesh, data.simulationData);
 	SoftbodyCollisionTetrahedronMesh collisionMesh(data.collisionMesh, data.collisionData);
 	SoftbodyShapeMapping embedding(data.mappingData);
 
-	SoftBodyMesh* tetMesh = NULL;
-	PX_NEW_SERIALIZED(tetMesh, SoftBodyMesh)(simulationMesh, collisionMesh, embedding);*/
+	DeformableVolumeMesh* tetMesh = NULL;
+	PX_NEW_SERIALIZED(tetMesh, DeformableVolumeMesh)(simulationMesh, collisionMesh, embedding);*/
 
 	return tetMesh;
 }
 
 PxCollisionMeshMappingData* immediateCooking::computeModelsMapping(const PxCookingParams& params, PxTetrahedronMeshData& simulationMesh, const PxTetrahedronMeshData& collisionMesh, 
-																				const PxSoftBodyCollisionData& collisionData, const PxBoundedData* vertexToTet)
+																				const PxDeformableVolumeCollisionData& collisionData, const PxBoundedData* vertexToTet)
 {
 	CollisionMeshMappingData* mappingData = PX_NEW(CollisionMeshMappingData);
 	TetrahedronMeshBuilder::computeModelsMapping(*static_cast<TetrahedronMeshData*>(&simulationMesh),
-		*static_cast<const TetrahedronMeshData*>(&collisionMesh), *static_cast<const SoftBodyCollisionData*>(&collisionData), *mappingData, params.buildGPUData, vertexToTet);
+		*static_cast<const TetrahedronMeshData*>(&collisionMesh), *static_cast<const DeformableVolumeCollisionData*>(&collisionData), *mappingData, params.buildGPUData, vertexToTet);
 	return mappingData;
 }
 	
@@ -2821,7 +2902,7 @@ PxCollisionTetrahedronMeshData* immediateCooking::computeCollisionData(const PxC
 	PX_UNUSED(collisionMeshDesc);
 
 	TetrahedronMeshData* mesh = PX_NEW(TetrahedronMeshData);
-	SoftBodyCollisionData* collisionData = PX_NEW(SoftBodyCollisionData);
+	DeformableVolumeCollisionData* collisionData = PX_NEW(DeformableVolumeCollisionData);
 
 	if(!TetrahedronMeshBuilder::computeCollisionData(collisionMeshDesc, *mesh, *collisionData, params, false)) {
 		PX_FREE(mesh);
@@ -2837,7 +2918,7 @@ PxCollisionTetrahedronMeshData* immediateCooking::computeCollisionData(const PxC
 PxSimulationTetrahedronMeshData* immediateCooking::computeSimulationData(const PxCookingParams& params, const PxTetrahedronMeshDesc& simulationMeshDesc)
 {
 	TetrahedronMeshData* mesh = PX_NEW(TetrahedronMeshData);
-	SoftBodySimulationData* simulationData = PX_NEW(SoftBodySimulationData);
+	DeformableVolumeSimulationData* simulationData = PX_NEW(DeformableVolumeSimulationData);
 	//KS - This really needs the collision mesh as well. 
 	TetrahedronMeshBuilder::computeSimData(simulationMeshDesc, *mesh, *simulationData, params);
 	SimulationTetrahedronMeshData* data = PX_NEW(SimulationTetrahedronMeshData);
@@ -2846,23 +2927,18 @@ PxSimulationTetrahedronMeshData* immediateCooking::computeSimulationData(const P
 	return data;
 }
 
-PxSoftBodyMesh*	immediateCooking::assembleSoftBodyMesh(PxTetrahedronMeshData& simulationMesh, PxSoftBodySimulationData& simulationData, PxTetrahedronMeshData& collisionMesh,
-																	PxSoftBodyCollisionData& collisionData, PxCollisionMeshMappingData& mappingData, PxInsertionCallback& insertionCallback)
+PxDeformableVolumeMesh*	immediateCooking::assembleDeformableVolumeMesh(PxTetrahedronMeshData& simulationMesh, PxDeformableVolumeSimulationData& simulationData, PxTetrahedronMeshData& collisionMesh,
+	PxDeformableVolumeCollisionData& collisionData, PxCollisionMeshMappingData& mappingData, PxInsertionCallback& insertionCallback)
 {
-	SoftBodyMeshData data(static_cast<TetrahedronMeshData&>(simulationMesh),
-		static_cast<SoftBodySimulationData&>(simulationData),
+	DeformableVolumeMeshData data(static_cast<TetrahedronMeshData&>(simulationMesh),
+		static_cast<DeformableVolumeSimulationData&>(simulationData),
 		static_cast<TetrahedronMeshData&>(collisionMesh),
-		static_cast<SoftBodyCollisionData&>(collisionData),
+		static_cast<DeformableVolumeCollisionData&>(collisionData),
 		static_cast<CollisionMeshMappingData&>(mappingData));
 
-	PxConcreteType::Enum type = PxConcreteType::eSOFTBODY_MESH;
-	PxSoftBodyMesh* tetMesh = static_cast<PxSoftBodyMesh*>(insertionCallback.buildObjectFromData(type, &data));
+	PxConcreteType::Enum type = PxConcreteType::eDEFORMABLE_VOLUME_MESH;
+	PxDeformableVolumeMesh* tetMesh = static_cast<PxDeformableVolumeMesh*>(insertionCallback.buildObjectFromData(type, &data));
 
 	return tetMesh;
 }
-	
-PxSoftBodyMesh*	immediateCooking::assembleSoftBodyMesh_Sim(PxSimulationTetrahedronMeshData& simulationMesh, PxCollisionTetrahedronMeshData& collisionMesh, 
-															PxCollisionMeshMappingData& mappingData, PxInsertionCallback& insertionCallback)
-{
-	return assembleSoftBodyMesh(*simulationMesh.getMesh(), *simulationMesh.getData(), *collisionMesh.getMesh(), *collisionMesh.getData(), mappingData, insertionCallback);
-}
+

@@ -22,13 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #include "NpArticulationReducedCoordinate.h"
 #include "NpArticulationTendon.h"
-#include "NpArticulationSensor.h"
 
 #include "DyFeatherstoneArticulation.h"
 #include "ScArticulationSim.h"
@@ -39,6 +38,8 @@
 
 #include "PxPvdDataStream.h"
 #include "NpAggregate.h"
+
+#include "omnipvd/NpOmniPvdSetData.h"
 
 using namespace physx;
 
@@ -86,7 +87,7 @@ void NpArticulationReducedCoordinate::setArticulationFlags(PxArticulationFlags f
 
 	scSetArticulationFlags(flags);
 
-	OMNI_PVD_SET(articulation, articulationFlags, static_cast<const PxArticulationReducedCoordinate&>(*this), flags);
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxArticulationReducedCoordinate, articulationFlags, static_cast<const PxArticulationReducedCoordinate&>(*this), flags);
 }
 
 void NpArticulationReducedCoordinate::setArticulationFlag(PxArticulationFlag::Enum flag, bool value)
@@ -104,7 +105,7 @@ void NpArticulationReducedCoordinate::setArticulationFlag(PxArticulationFlag::En
 
 	scSetArticulationFlags(flags);
 
-	OMNI_PVD_SET(articulation, articulationFlags, static_cast<const PxArticulationReducedCoordinate&>(*this), flags);
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxArticulationReducedCoordinate, articulationFlags, static_cast<const PxArticulationReducedCoordinate&>(*this), flags);
 }
 
 PxArticulationFlags	NpArticulationReducedCoordinate::getArticulationFlags() const
@@ -155,17 +156,17 @@ void NpArticulationReducedCoordinate::applyCache(PxArticulationCache& cache, con
 
 	PX_CHECK_AND_RETURN(cache.version == mCacheVersion, "PxArticulationReducedCoordinate::applyCache: cache is invalid, articulation configuration has changed! ");
 
-	PX_CHECK_AND_RETURN(!(getScene()->getFlags() & PxSceneFlag::eSUPPRESS_READBACK), "PxArticulationReducedCoordinate::applyCache : it is illegal to call this method if PxSceneFlag::eSUPPRESS_ARTICULATION_READBACK is enabled!");
+	PX_CHECK_AND_RETURN(!(getScene()->getFlags() & PxSceneFlag::eENABLE_DIRECT_GPU_API), "PxArticulationReducedCoordinate::applyCache : it is illegal to call this method if PxSceneFlag::eENABLE_DIRECT_GPU_API is enabled!");
 
 	//if we try to do a bulk op when sim is running, return with error
 	if (getNpScene()->getSimulationStage() != Sc::SimulationStage::eCOMPLETE)
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__,
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL,
 			"PxArticulationReducedCoordinate::applyCache() not allowed while simulation is running. Call will be ignored.");
 		return;
 	}
 
-	if (!(getScene()->getFlags() & PxSceneFlag::eSUPPRESS_READBACK))
+	if (!(getScene()->getFlags() & PxSceneFlag::eENABLE_DIRECT_GPU_API))
 	{
 		const bool forceWake = mCore.applyCache(cache, flags);
 
@@ -195,7 +196,11 @@ void NpArticulationReducedCoordinate::copyInternalStateToCache(PxArticulationCac
 
 	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(getNpScene(), "PxArticulationReducedCoordinate::copyInternalStateToCache() not allowed while simulation is running. Call will be ignored.");
 
-	mCore.copyInternalStateToCache(cache, flags);
+	PX_CHECK_AND_RETURN(!(getScene()->getFlags() & PxSceneFlag::eENABLE_DIRECT_GPU_API), "PxArticulationReducedCoordinate::copyInternalStateToCache : it is illegal to call this method if PxSceneFlag::eENABLE_DIRECT_GPU_API is enabled!");
+
+	const bool isGpuSimEnabled = getNpScene()->getFlags() & PxSceneFlag::eENABLE_GPU_DYNAMICS;
+
+	mCore.copyInternalStateToCache(cache, flags, isGpuSimEnabled);
 }
 
 void NpArticulationReducedCoordinate::packJointData(const PxReal* maximum, PxReal* reduced) const
@@ -224,17 +229,30 @@ void NpArticulationReducedCoordinate::commonInit() const
 	mCore.commonInit();
 }
 
+// This function has been deprecated, replaced with NpArticulationReducedCoordinate::computeGravityCompensation
 void NpArticulationReducedCoordinate::computeGeneralizedGravityForce(PxArticulationCache& cache) const
 {
 	NP_READ_CHECK(getNpScene());
 	PX_CHECK_AND_RETURN(getNpScene(), "PxArticulationReducedCoordinate::computeGeneralizedGravityForce: Articulation must be in a scene.");
-	PX_CHECK_AND_RETURN(cache.version ==mCacheVersion, "PxArticulationReducedCoordinate::computeGeneralizedGravityForce: cache is invalid, articulation configuration has changed! ");
+	PX_CHECK_AND_RETURN(cache.version == mCacheVersion, "PxArticulationReducedCoordinate::computeGeneralizedGravityForce: cache is invalid, articulation configuration has changed! ");
 
 	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(getNpScene(), "PxArticulationReducedCoordinate::computeGeneralizedGravityForce() not allowed while simulation is running. Call will be ignored.");
 
-	mCore.computeGeneralizedGravityForce(cache);
+	mCore.computeGeneralizedGravityForce(cache, false);
 }
 
+void NpArticulationReducedCoordinate::computeGravityCompensation(PxArticulationCache& cache) const
+{
+	NP_READ_CHECK(getNpScene());
+	PX_CHECK_AND_RETURN(getNpScene(), "PxArticulationReducedCoordinate::computeGravityCompensation: Articulation must be in a scene.");
+	PX_CHECK_AND_RETURN(cache.version == mCacheVersion, "PxArticulationReducedCoordinate::computeGravityCompensation: cache is invalid, articulation configuration has changed! ");
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(getNpScene(), "PxArticulationReducedCoordinate::computeGravityCompensation() not allowed while simulation is running. Call will be ignored.");
+
+	mCore.computeGeneralizedGravityForce(cache, true);
+}
+
+// This function has been deprecated, replaced with NpArticulationReducedCoordinate::computeCoriolisCompensation
 void NpArticulationReducedCoordinate::computeCoriolisAndCentrifugalForce(PxArticulationCache& cache) const
 {
 	NP_READ_CHECK(getNpScene());
@@ -243,7 +261,18 @@ void NpArticulationReducedCoordinate::computeCoriolisAndCentrifugalForce(PxArtic
 
 	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(getNpScene(), "PxArticulationReducedCoordinate::computeCoriolisAndCentrifugalForce() not allowed while simulation is running. Call will be ignored.");
 
-	mCore.computeCoriolisAndCentrifugalForce(cache);
+	mCore.computeCoriolisAndCentrifugalForce(cache, false);
+}
+
+void NpArticulationReducedCoordinate::computeCoriolisCompensation(PxArticulationCache& cache) const
+{
+	NP_READ_CHECK(getNpScene());
+	PX_CHECK_AND_RETURN(getNpScene(), "PxArticulationReducedCoordinate::computeCoriolisCompensation: Articulation must be in a scene.");
+	PX_CHECK_AND_RETURN(cache.version == mCacheVersion, "PxArticulationReducedCoordinate::computeCoriolisCompensation: cache is invalid, articulation configuration has changed! ");
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(getNpScene(), "PxArticulationReducedCoordinate::computeCoriolisCompensation() not allowed while simulation is running. Call will be ignored.");
+
+	mCore.computeCoriolisAndCentrifugalForce(cache, true);
 }
 
 void NpArticulationReducedCoordinate::computeGeneralizedExternalForce(PxArticulationCache& cache) const
@@ -307,18 +336,19 @@ void NpArticulationReducedCoordinate::computeCoefficientMatrix(PxArticulationCac
 bool NpArticulationReducedCoordinate::computeLambda(PxArticulationCache& cache, PxArticulationCache& initialState, const PxReal* const jointTorque, const PxU32 maxIter) const
 {
 	if (!getNpScene())
-		return PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__,
+		return PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, PX_FL,
 								"PxArticulationReducedCoordinate::computeLambda: Articulation must be in a scene.");
 	NP_READ_CHECK(getNpScene());
 	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_AND_RETURN_VAL(getNpScene(), "PxArticulationReducedCoordinate::computeLambda() not allowed while simulation is running. Call will be ignored.", false);
 
 	if (cache.version != mCacheVersion)
-		return PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__,
+		return PxGetFoundation().error(physx::PxErrorCode::eINVALID_PARAMETER, PX_FL,
 								"PxArticulationReducedCoordinate::computeLambda: cache is invalid, articulation configuration has changed!");
 
 	return mCore.computeLambda(cache, initialState, jointTorque, getScene()->getGravity(), maxIter);
 }
 
+// This function has been deprecated, replaced with NpArticulationReducedCoordinate::computeMassMatrix
 void NpArticulationReducedCoordinate::computeGeneralizedMassMatrix(PxArticulationCache& cache) const
 {
 	NP_READ_CHECK(getNpScene());
@@ -327,7 +357,41 @@ void NpArticulationReducedCoordinate::computeGeneralizedMassMatrix(PxArticulatio
 
 	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(getNpScene(), "PxArticulationReducedCoordinate::computeGeneralizedMassMatrix() not allowed while simulation is running. Call will be ignored.");
 
-	mCore.computeGeneralizedMassMatrix(cache);
+	mCore.computeGeneralizedMassMatrix(cache, false);
+}
+
+void NpArticulationReducedCoordinate::computeMassMatrix(PxArticulationCache& cache) const
+{
+	NP_READ_CHECK(getNpScene());
+	PX_CHECK_AND_RETURN(getNpScene(), "PxArticulationReducedCoordinate::computeMassMatrix: Articulation must be in a scene.");
+	PX_CHECK_AND_RETURN(cache.version == mCacheVersion, "PxArticulationReducedCoordinate::computeMassMatrix: cache is invalid, articulation configuration has changed!");
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(getNpScene(), "PxArticulationReducedCoordinate::computeMassMatrix() not allowed while simulation is running. Call will be ignored.");
+
+	mCore.computeGeneralizedMassMatrix(cache, true);
+}
+
+PxVec3 NpArticulationReducedCoordinate::computeArticulationCOM(const bool rootFrame) const
+{
+	NP_READ_CHECK(getNpScene());
+	PX_CHECK_AND_RETURN_VAL(getNpScene(), "PxArticulationReducedCoordinate::computeArticulationCOM: Articulation must be in a scene.", PxVec3(0.0f));
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_AND_RETURN_VAL(getNpScene(), "PxArticulationReducedCoordinate::computeArticulationCOM() not allowed while simulation is running. Call will be ignored.", PxVec3(0.0f));
+
+	return mCore.computeArticulationCOM(rootFrame);
+}
+
+void NpArticulationReducedCoordinate::computeCentroidalMomentumMatrix(PxArticulationCache& cache) const
+{
+	NP_READ_CHECK(getNpScene());
+	PX_CHECK_AND_RETURN(getNpScene(), "PxArticulationReducedCoordinate::computeCentroidalMomentumMatrix: Articulation must be in a scene.");
+	PX_CHECK_AND_RETURN(cache.version == mCacheVersion, "PxArticulationReducedCoordinate::computeCentroidalMomentumMatrix: cache is invalid, articulation configuration has changed!");
+
+	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(getNpScene(), "PxArticulationReducedCoordinate::computeCentroidalMomentumMatrix() not allowed while simulation is running. Call will be ignored.");
+
+	PX_CHECK_AND_RETURN(!(mCore.getArticulationFlags() & PxArticulationFlag::eFIX_BASE), "PxArticulationReducedCoordinate::computeCentroidalMomentumMatrix() is not implemented for fixed-base articulations");
+
+	mCore.computeCentroidalMomentumMatrix(cache);
 }
 
 void NpArticulationReducedCoordinate::addLoopJoint(PxConstraint* joint)
@@ -447,6 +511,11 @@ void NpArticulationReducedCoordinate::setRootLinearVelocity(const PxVec3& linear
 
 	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_EXCEPT_SPLIT_SIM(getNpScene(), "PxArticulationReducedCoordinate::setRootLinearVelocity() not allowed while simulation is running, except in a split simulation in-between PxScene::fetchCollision() and PxScene::advance(). Call will be ignored.");
 
+	if (getNpScene() && (getNpScene()->getFlags() & PxSceneFlag::eENABLE_DIRECT_GPU_API) && getNpScene()->isDirectGPUAPIInitialized())
+	{
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "PxArticulationReducedCoordinate::setRootLinearVelocity(): it is illegal to call this method if PxSceneFlag::eENABLE_DIRECT_GPU_API is enabled!");
+	}
+
 	NpArticulationLink* root = mArticulationLinks[0];
 	root->scSetLinearVelocity(linearVelocity);
 	if(getNpScene())
@@ -463,6 +532,11 @@ void NpArticulationReducedCoordinate::setRootAngularVelocity(const PxVec3& angul
 	PX_CHECK_AND_RETURN(angularVelocity.isFinite(), "PxArticulationReducedCoordinate::setRootAngularVelocity velocity is not finite.");
 
 	PX_CHECK_SCENE_API_WRITE_FORBIDDEN_EXCEPT_SPLIT_SIM(getNpScene(), "PxArticulationReducedCoordinate::setRootAngularVelocity() not allowed while simulation is running, except in a split simulation in-between PxScene::fetchCollision() and PxScene::advance(). Call will be ignored.");
+
+	if (getNpScene() && (getNpScene()->getFlags() & PxSceneFlag::eENABLE_DIRECT_GPU_API) && getNpScene()->isDirectGPUAPIInitialized())
+	{
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "PxArticulationReducedCoordinate::setRootAngularVelocity(): it is illegal to call this method if PxSceneFlag::eENABLE_DIRECT_GPU_API is enabled!");
+	}
 
 	NpArticulationLink* root = mArticulationLinks[0];
 	root->scSetAngularVelocity(angularVelocity);
@@ -499,28 +573,28 @@ PxSpatialVelocity NpArticulationReducedCoordinate::getLinkAcceleration(const PxU
 {
 	NP_READ_CHECK(getNpScene());
 	PX_CHECK_AND_RETURN_VAL(getNpScene(), "PxArticulationReducedCoordinate::getLinkAcceleration: Articulation must be in a scene.", PxSpatialVelocity());
-	PX_CHECK_AND_RETURN_VAL(linkId < 64, "PxArticulationReducedCoordinate::getLinkAcceleration index is not valid.", PxSpatialVelocity());
+	PX_CHECK_AND_RETURN_VAL(linkId < mArticulationLinks.size(), "PxArticulationReducedCoordinate::getLinkAcceleration index is not valid.", PxSpatialVelocity());
 
 	PX_CHECK_SCENE_API_READ_FORBIDDEN_EXCEPT_COLLIDE_AND_RETURN_VAL(getNpScene(), "PxArticulationReducedCoordinate::getLinkAcceleration() not allowed while simulation is running, except in a split simulation during PxScene::collide() and up to PxScene::advance().", PxSpatialVelocity());
 
-	return mCore.getLinkAcceleration(linkId);
+	const bool isGpuSimEnabled = (getNpScene()->getFlags() & PxSceneFlag::eENABLE_GPU_DYNAMICS) ? true : false;
+
+	return mCore.getLinkAcceleration(linkId, isGpuSimEnabled);
 }
 
-PxU32 NpArticulationReducedCoordinate::getGpuArticulationIndex()
+PxArticulationGPUIndex NpArticulationReducedCoordinate::getGPUIndex() const
 {
 	NP_READ_CHECK(getNpScene());
-	PX_CHECK_AND_RETURN_VAL(getNpScene(), "PxArticulationReducedCoordinate::getGpuArticulationIndex: Articulation must be in a scene.", 0xffffffff);
-	
-	if (getScene()->getFlags() & PxSceneFlag::eSUPPRESS_READBACK)
-		return mCore.getGpuArticulationIndex();
-	return 0xffffffff;
+	PX_CHECK_AND_RETURN_VAL(getNpScene(), "PxArticulationReducedCoordinate::getGPUIndex: Articulation must be in a scene.", 0xffffffff);
+
+	return mCore.getGpuArticulationIndex();
 }
 
 PxArticulationSpatialTendon* NpArticulationReducedCoordinate::createSpatialTendon()
 {
 	if(getNpScene())
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__,
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL,
 								"PxArticulationReducedCoordinate::createSpatialTendon() not allowed while the articulation is in a scene. Call will be ignored.");
 		return NULL;
 	}
@@ -545,7 +619,7 @@ PxArticulationFixedTendon* NpArticulationReducedCoordinate::createFixedTendon()
 {
 	if(getNpScene())
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "PxArticulationReducedCoordinate::createFixedTendon() not allowed while the articulation is in a scene. Call will be ignored.");
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "PxArticulationReducedCoordinate::createFixedTendon() not allowed while the articulation is in a scene. Call will be ignored.");
 		return NULL;
 	}
 
@@ -565,70 +639,64 @@ void NpArticulationReducedCoordinate::removeFixedTendonInternal(NpArticulationFi
 	getNpScene()->scRemoveArticulationFixedTendon(*npTendon);
 }
 
-void NpArticulationReducedCoordinate::removeSensorInternal(NpArticulationSensor* npSensor)
+void NpArticulationReducedCoordinate::removeMimicJointInternal(NpArticulationMimicJoint* npMimicJoint)
 {
-	//we don't need to remove low-level sensor from the articulation sim because the only case the tendon can be removed is
+	//we don't need to remove low-level mimic joint from the articulation sim because the only case the mimic joint can be removed is
 	//when the whole articulation is removed from the scene and the ArticulationSim get destroyed
-	getNpScene()->scRemoveArticulationSensor(*npSensor);
+	getNpScene()->scRemoveArticulationMimicJoint(*npMimicJoint);
 }
 
-PxArticulationSensor* NpArticulationReducedCoordinate::createSensor(PxArticulationLink* link, const PxTransform& relativePose)
+PxArticulationMimicJoint* NpArticulationReducedCoordinate::createMimicJoint
+(const PxArticulationJointReducedCoordinate& jointA, PxArticulationAxis::Enum axisA, 
+ const PxArticulationJointReducedCoordinate& jointB, PxArticulationAxis::Enum axisB, PxReal gearRatio, PxReal offset,
+ PxReal naturalFrequency, PxReal dampingRatio)
 {
 	if (getNpScene())
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "PxArticulationReducedCoordinate::createSensor() not allowed while the articulation is in a scene. Call will be ignored.");
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "PxArticulationReducedCoordinate::createMimicJoint() not allowed while the articulation is in a scene. Call will be ignored.");
 		return NULL;
 	}
 
-	void* sensorMem = PX_ALLOC(sizeof(NpArticulationSensor), "NpArticulationSensor");
-	PxMarkSerializedMemory(sensorMem, sizeof(NpArticulationSensor));
-	NpArticulationSensor* sensor = PX_PLACEMENT_NEW(sensorMem, NpArticulationSensor)(link, relativePose);
-
-	sensor->setHandle(mSensors.size());
-	mSensors.pushBack(sensor);
-
-	mTopologyChanged = true;
-	return sensor;
-}
-
-void NpArticulationReducedCoordinate::releaseSensor(PxArticulationSensor& sensor)
-{
-	if (getNpScene())
+	if(&jointA == &jointB && axisA == axisB)
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "PxArticulationReducedCoordinate::releaseSensor() not allowed while the articulation is in a scene. Call will be ignored.");
-		return;
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "PxArticulationReducedCoordinate::createMimicJoint() cannot couple a joint dof to itself.");
+		return NULL;
 	}
 
-	NpArticulationSensor* npSensor = static_cast<NpArticulationSensor*>(&sensor);
+	if(&jointA.getChildArticulationLink().getArticulation() != &jointB.getChildArticulationLink().getArticulation())
+	{
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "PxArticulationReducedCoordinate::createMimicJoint() is only allowed to couple two joints of the same articulation instance.");
+		return NULL;
+	}
+	
+	if(0.0f == gearRatio)
+	{
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "PxArticulationReducedCoordinate::createMimicJoint() requires a non-zero gear ratio.");
+		return NULL;		
+	}
 
-	const PxU32 handle = npSensor->getHandle();
+	NpArticulationMimicJoint* mimicJoint = NpFactory::getInstance().createNpArticulationMimicJoint(jointA, axisA, jointB, axisB, gearRatio, offset, naturalFrequency, dampingRatio);
 
-	PX_CHECK_AND_RETURN(handle < mSensors.size() && mSensors[handle] == npSensor,
-		"PxArticulationReducedCoordinate::releaseSensor: Attempt to release sensor that is not part of this articulation.");
-
-	mSensors.back()->setHandle(handle);
-	mSensors.replaceWithLast(handle);
-	npSensor->~NpArticulationSensor();
-
-	if (npSensor->getBaseFlags() & PxBaseFlag::eOWNS_MEMORY)
-		PX_FREE(npSensor);
+	mimicJoint->setHandle(mMimicJoints.size());
+	mMimicJoints.pushBack(mimicJoint);
 
 	mTopologyChanged = true;
+	return mimicJoint;
 }
 
-PxU32 NpArticulationReducedCoordinate::getSensors(PxArticulationSensor** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
+PxU32 NpArticulationReducedCoordinate::getMimicJoints(PxArticulationMimicJoint** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
 {
-	return Cm::getArrayOfPointers(userBuffer, bufferSize, startIndex, mSensors.begin(), mSensors.size());
+	return Cm::getArrayOfPointers(userBuffer, bufferSize, startIndex, mMimicJoints.begin(), mMimicJoints.size());
 }
 
-PxU32 NpArticulationReducedCoordinate::getNbSensors()
+PxU32 NpArticulationReducedCoordinate::getNbMimicJoints() const
 {
-	return mSensors.size();
+	return mMimicJoints.size();
 }
 
-NpArticulationSensor* NpArticulationReducedCoordinate::getSensor(const PxU32 index) const
+NpArticulationMimicJoint* NpArticulationReducedCoordinate::getMimicJoint(const PxU32 index) const
 {
-	return mSensors[index];
+	return mMimicJoints[index];
 }
 
 PxU32 NpArticulationReducedCoordinate::getSpatialTendons(PxArticulationSpatialTendon** userBuffer, PxU32 bufferSize, PxU32 startIndex) const
@@ -636,7 +704,7 @@ PxU32 NpArticulationReducedCoordinate::getSpatialTendons(PxArticulationSpatialTe
 	return Cm::getArrayOfPointers(userBuffer, bufferSize, startIndex, mSpatialTendons.begin(), mSpatialTendons.size());
 }
 
-PxU32 NpArticulationReducedCoordinate::getNbSpatialTendons()
+PxU32 NpArticulationReducedCoordinate::getNbSpatialTendons() const
 {
 	return mSpatialTendons.size();
 }
@@ -651,7 +719,7 @@ PxU32 NpArticulationReducedCoordinate::getFixedTendons(PxArticulationFixedTendon
 	return Cm::getArrayOfPointers(userBuffer, bufferSize, startIndex, mFixedTendons.begin(), mFixedTendons.size());
 }
 
-PxU32 NpArticulationReducedCoordinate::getNbFixedTendons()
+PxU32 NpArticulationReducedCoordinate::getNbFixedTendons() const
 {
 	return mFixedTendons.size();
 }
@@ -661,6 +729,26 @@ NpArticulationFixedTendon* NpArticulationReducedCoordinate::getFixedTendon(const
 	return mFixedTendons[index];
 }
 
+void NpArticulationReducedCoordinate::updateKinematicInternal(PxArticulationKinematicFlags flags)
+{
+	PX_ASSERT(getNpScene());
+
+	mCore.updateKinematic(flags);
+
+	const PxU32 linkCount = mArticulationLinks.size();
+
+	//KS - the below code forces contact managers to be updated/cached data to be dropped and
+	//shape transforms to be updated.
+	for(PxU32 i = 0; i < linkCount; ++i)
+	{
+		NpArticulationLink* link = mArticulationLinks[i];
+		//in the lowlevel articulation, we have already updated bodyCore's body2World
+		const PxTransform internalPose = link->getCore().getBody2World();
+		link->scSetBody2World(internalPose);
+	}
+}
+
+
 void NpArticulationReducedCoordinate::updateKinematic(PxArticulationKinematicFlags flags)
 {
 	NP_WRITE_CHECK(getNpScene());
@@ -668,21 +756,14 @@ void NpArticulationReducedCoordinate::updateKinematic(PxArticulationKinematicFla
 
 	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(getNpScene(), "PxArticulationReducedCoordinate::updateKinematic() not allowed while simulation is running. Call will be ignored.");
 
+	if (getNpScene() && (getNpScene()->getFlags() & PxSceneFlag::eENABLE_DIRECT_GPU_API) && getNpScene()->isDirectGPUAPIInitialized())
+	{
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "PxArticulationReducedCoordinate::updateKinematic(): it is illegal to call this method if PxSceneFlag::eENABLE_DIRECT_GPU_API is enabled!");
+	}
+
 	if(getNpScene())
 	{
-		mCore.updateKinematic(flags);
-
-		const PxU32 linkCount = mArticulationLinks.size();
-
-		//KS - the below code forces contact managers to be updated/cached data to be dropped and
-		//shape transforms to be updated.
-		for(PxU32 i = 0; i < linkCount; ++i)
-		{
-			NpArticulationLink* link = mArticulationLinks[i];
-			//in the lowlevel articulation, we have already updated bodyCore's body2World
-			const PxTransform internalPose = link->getCore().getBody2World();
-			link->scSetBody2World(internalPose);
-		}
+		updateKinematicInternal(flags);
 	}
 }
 
@@ -709,15 +790,14 @@ NpArticulationReducedCoordinate::~NpArticulationReducedCoordinate()
 		}
 	}
 
-	for (PxU32 i = 0; i < mSensors.size(); ++i)
+	for (PxU32 i = 0; i < mMimicJoints.size(); ++i)
 	{
-		if (mSensors[i])
+		if (mMimicJoints[i])
 		{
-			mSensors[i]->~NpArticulationSensor();
-			if(mSensors[i]->getBaseFlags() & PxBaseFlag::eOWNS_MEMORY)
-				PX_FREE(mSensors[i]);
+			NpDestroyArticulationMimicJoint(mMimicJoints[i]);
 		}
 	}
+
 
 	NpFactory::getInstance().onArticulationRelease(this);
 }
@@ -763,10 +843,6 @@ void NpArticulationReducedCoordinate::requiresObjects(PxProcessPxBaseCallback& c
 	for (PxU32 i = 0; i < nbLinks; i++)
 		c.process(*mArticulationLinks[i]);
 
-	const PxU32 nbSensors = mSensors.size();
-	for (PxU32 i = 0; i < nbSensors; i++)
-		c.process(*mSensors[i]);
-
 	const PxU32 nbSpatialTendons = mSpatialTendons.size();
 	for (PxU32 i = 0; i < nbSpatialTendons; i++)
 		c.process(*mSpatialTendons[i]);
@@ -775,6 +851,10 @@ void NpArticulationReducedCoordinate::requiresObjects(PxProcessPxBaseCallback& c
 	for (PxU32 i = 0; i < nbFixedTendons; i++)
 		c.process(*mFixedTendons[i]);
 
+	const PxU32 nbMimicJoints = mMimicJoints.size();
+	for (PxU32 i = 0; i < nbMimicJoints; i++)
+		c.process(*mMimicJoints[i]);
+
 }
 
 void NpArticulationReducedCoordinate::exportExtraData(PxSerializationContext& stream)
@@ -782,7 +862,7 @@ void NpArticulationReducedCoordinate::exportExtraData(PxSerializationContext& st
 	Cm::exportInlineArray(mArticulationLinks, stream);
 	Cm::exportArray(mSpatialTendons, stream);
 	Cm::exportArray(mFixedTendons, stream);
-	Cm::exportArray(mSensors, stream);
+	Cm::exportArray(mMimicJoints, stream);
 
 	stream.writeName(mName);
 }
@@ -792,7 +872,7 @@ void NpArticulationReducedCoordinate::importExtraData(PxDeserializationContext& 
 	Cm::importInlineArray(mArticulationLinks, context);
 	Cm::importArray(mSpatialTendons, context);
 	Cm::importArray(mFixedTendons, context);
-	Cm::importArray(mSensors, context);
+	Cm::importArray(mMimicJoints, context);
 
 	context.readName(mName);
 }
@@ -806,11 +886,11 @@ void NpArticulationReducedCoordinate::resolveReferences(PxDeserializationContext
 		context.translatePxBase(link);
 	}
 
-	const PxU32 nbSensors = mSensors.size();
-	for (PxU32 i = 0; i < nbSensors; i++)
+	const PxU32 nbMimicJoints = mMimicJoints.size();
+	for (PxU32 i = 0; i < nbMimicJoints; i++)
 	{
-		NpArticulationSensor*& sensor = mSensors[i];
-		context.translatePxBase(sensor);
+		NpArticulationMimicJoint*& mimicJoint = mMimicJoints[i];
+		context.translatePxBase(mimicJoint);
 	}
 
 	const PxU32 nbSpatialTendons = mSpatialTendons.size();
@@ -860,8 +940,15 @@ void NpArticulationReducedCoordinate::release()
 
 	if (npScene)
 	{
+	#if PX_SUPPORT_OMNI_PVD
+		if (npScene->getFlags() & PxSceneFlag::eENABLE_DIRECT_GPU_API)
+		{
+			npScene->getSceneOvdClientInternal().removeArticulationReset(this);
+		}
+	#endif
+
 		npScene->removeArticulationTendons(*this);
-		npScene->removeArticulationSensors(*this);
+		npScene->removeArticulationMimicJoints(*this);
 		npScene->scRemoveArticulation(*this);
 		npScene->removeFromArticulationList(*this);
 	}
@@ -872,18 +959,18 @@ void NpArticulationReducedCoordinate::release()
 }
 
 
-PxArticulationLink*	 NpArticulationReducedCoordinate::createLink(PxArticulationLink* parent, const PxTransform& pose)
+PxArticulationLink* NpArticulationReducedCoordinate::createLink(PxArticulationLink* parent, const PxTransform& pose)
 {
 	if(getNpScene())
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "PxArticulationReducedCoordinate::createLink() not allowed while the articulation is in a scene. Call will be ignored.");
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "PxArticulationReducedCoordinate::createLink() not allowed while the articulation is in a scene. Call will be ignored.");
 		return NULL;
 	}
 	PX_CHECK_AND_RETURN_NULL(pose.isSane(), "PxArticulationReducedCoordinate::createLink: pose is not valid.");
 	
 	if (parent && mArticulationLinks.empty())
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__,
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL,
 								"PxArticulationReducedCoordinate::createLink: Root articulation link must have NULL parent pointer!");
 		return NULL;
 	}
@@ -891,7 +978,7 @@ PxArticulationLink*	 NpArticulationReducedCoordinate::createLink(PxArticulationL
 	// Check if parent is in same articulation is done internally for checked builds
 	if (!parent && !mArticulationLinks.empty())
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, __FILE__, __LINE__, "PxArticulationReducedCoordinate::createLink: Non-root articulation link must have valid parent pointer!");
+		PxGetFoundation().error(PxErrorCode::eINVALID_OPERATION, PX_FL, "PxArticulationReducedCoordinate::createLink: Non-root articulation link must have valid parent pointer!");
 		return NULL;
 	}
 
@@ -919,8 +1006,10 @@ void NpArticulationReducedCoordinate::setSolverIterationCounts(PxU32 positionIte
 
 	scSetSolverIterationCounts((velocityIters & 0xff) << 8 | (positionIters & 0xff));
 
-	OMNI_PVD_SET(articulation, positionIterations, static_cast<const PxArticulationReducedCoordinate&>(*this), positionIters);
-	OMNI_PVD_SET(articulation, velocityIterations, static_cast<const PxArticulationReducedCoordinate&>(*this), velocityIters);
+	OMNI_PVD_WRITE_SCOPE_BEGIN(pvdWriter, pvdRegData)
+	OMNI_PVD_SET_EXPLICIT(pvdWriter, pvdRegData, OMNI_PVD_CONTEXT_HANDLE, PxArticulationReducedCoordinate, positionIterations, static_cast<const PxArticulationReducedCoordinate&>(*this), positionIters);
+	OMNI_PVD_SET_EXPLICIT(pvdWriter, pvdRegData, OMNI_PVD_CONTEXT_HANDLE, PxArticulationReducedCoordinate, velocityIterations, static_cast<const PxArticulationReducedCoordinate&>(*this), velocityIters);
+	OMNI_PVD_WRITE_SCOPE_END
 }
 
 void NpArticulationReducedCoordinate::getSolverIterationCounts(PxU32& positionIters, PxU32& velocityIters) const
@@ -975,7 +1064,7 @@ void NpArticulationReducedCoordinate::setSleepThreshold(PxReal threshold)
 
 	scSetSleepThreshold(threshold);
 
-	OMNI_PVD_SET(articulation, sleepThreshold, static_cast<const PxArticulationReducedCoordinate&>(*this), threshold);
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxArticulationReducedCoordinate, sleepThreshold, static_cast<const PxArticulationReducedCoordinate&>(*this), threshold);
 }
 
 PxReal NpArticulationReducedCoordinate::getSleepThreshold() const
@@ -992,7 +1081,7 @@ void NpArticulationReducedCoordinate::setStabilizationThreshold(PxReal threshold
 
 	scSetFreezeThreshold(threshold);
 
-	OMNI_PVD_SET(articulation, stabilizationThreshold, static_cast<const PxArticulationReducedCoordinate&>(*this), threshold);
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxArticulationReducedCoordinate, stabilizationThreshold, static_cast<const PxArticulationReducedCoordinate&>(*this), threshold);
 }
 
 PxReal NpArticulationReducedCoordinate::getStabilizationThreshold() const
@@ -1014,7 +1103,7 @@ void NpArticulationReducedCoordinate::setWakeCounter(PxReal wakeCounterValue)
 
 	scSetWakeCounter(wakeCounterValue);
 
-	OMNI_PVD_SET(articulation, wakeCounter, static_cast<const PxArticulationReducedCoordinate&>(*this), wakeCounterValue);
+	OMNI_PVD_SET(OMNI_PVD_CONTEXT_HANDLE, PxArticulationReducedCoordinate, wakeCounter, static_cast<const PxArticulationReducedCoordinate&>(*this), wakeCounterValue);
 }
 
 PxReal NpArticulationReducedCoordinate::getWakeCounter() const
@@ -1027,7 +1116,7 @@ PxReal NpArticulationReducedCoordinate::getWakeCounter() const
 }
 
 // follows D6 wakeup logic and is used for joint and tendon autowake
-void NpArticulationReducedCoordinate::autoWakeInternal(void)
+void NpArticulationReducedCoordinate::autoWakeInternal()
 {
 	PxReal wakeCounter = mCore.getWakeCounter();
 	if (wakeCounter < getNpScene()->getWakeCounterResetValueInternal())
@@ -1101,40 +1190,6 @@ void NpArticulationReducedCoordinate::putToSleep()
 	mCore.putToSleep();
 }
 
-void NpArticulationReducedCoordinate::setMaxCOMLinearVelocity(const PxReal maxLinearVelocity)
-{
-	NP_WRITE_CHECK(getNpScene());
-
-	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(getNpScene(), "PxArticulationReducedCoordinate::setMaxCOMLinearVelocity() not allowed while simulation is running. Call will be ignored.");
-
-	scSetMaxLinearVelocity(maxLinearVelocity);
-
-	OMNI_PVD_SET(articulation, maxLinVelocity, static_cast<const PxArticulationReducedCoordinate&>(*this), maxLinearVelocity);
-}
-
-PxReal NpArticulationReducedCoordinate::getMaxCOMLinearVelocity() const
-{
-	NP_READ_CHECK(getNpScene());
-	return mCore.getMaxLinearVelocity();
-}
-
-void NpArticulationReducedCoordinate::setMaxCOMAngularVelocity(const PxReal maxAngularVelocity)
-{
-	NP_WRITE_CHECK(getNpScene());
-
-	PX_CHECK_SCENE_API_WRITE_FORBIDDEN(getNpScene(), "PxArticulationReducedCoordinate::setMaxCOMAngularVelocity() not allowed while simulation is running. Call will be ignored.");
-
-	scSetMaxAngularVelocity(maxAngularVelocity);
-
-	OMNI_PVD_SET(articulation, maxAngVelocity, static_cast<const PxArticulationReducedCoordinate&>(*this), maxAngularVelocity);
-}
-
-PxReal NpArticulationReducedCoordinate::getMaxCOMAngularVelocity() const
-{
-	NP_READ_CHECK(getNpScene());
-	return mCore.getMaxAngularVelocity();
-}
-
 PxU32 NpArticulationReducedCoordinate::getNbLinks() const
 {
 	NP_READ_CHECK(getNpScene());
@@ -1183,6 +1238,10 @@ void NpArticulationReducedCoordinate::setName(const char* debugName)
 {
 	NP_WRITE_CHECK(getNpScene());
 	mName = debugName;
+#if PX_SUPPORT_OMNI_PVD
+	PxArticulationReducedCoordinate & a = *this;
+	streamArticulationName(a, mName);
+#endif
 }
 
 const char* NpArticulationReducedCoordinate::getName() const
@@ -1190,17 +1249,6 @@ const char* NpArticulationReducedCoordinate::getName() const
 	NP_READ_CHECK(getNpScene());
 	return mName;
 }
-
-#if PX_ENABLE_DEBUG_VISUALIZATION
-void NpArticulationReducedCoordinate::visualize(PxRenderOutput& out, NpScene& scene, float scale) const
-{
-	const PxU32 nbLinks = mArticulationLinks.size();
-	for (PxU32 i = 0; i < nbLinks; i++)
-		mArticulationLinks[i]->visualize(out, scene, scale);
-}
-#else
-	PX_CATCH_UNDEFINED_ENABLE_DEBUG_VISUALIZATION
-#endif
 
 NpArticulationLink* NpArticulationReducedCoordinate::getRoot()
 {
@@ -1215,4 +1263,20 @@ void NpArticulationReducedCoordinate::setAggregate(PxAggregate* a)
 { 
 	mAggregate = static_cast<NpAggregate*>(a); 
 }
+
+PxArticulationResidual NpArticulationReducedCoordinate::getSolverResidual() const
+{
+	PxArticulationResidual result;
+
+	const Dy::ErrorAccumulator& errorAccumulatorVelIter = mCore.getSim()->getLowLevelArticulation()->mInternalErrorAccumulatorVelIter;
+	result.velocityIterationResidual.maxResidual = errorAccumulatorVelIter.mMaxError;
+	result.velocityIterationResidual.rmsResidual = PxSqrt(1.0f / PxMax(1, errorAccumulatorVelIter.mCounter) * errorAccumulatorVelIter.mErrorSumOfSquares);
+
+	const Dy::ErrorAccumulator& errorAccumulatorPosIter = mCore.getSim()->getLowLevelArticulation()->mInternalErrorAccumulatorPosIter;
+	result.positionIterationResidual.maxResidual = errorAccumulatorPosIter.mMaxError;
+	result.positionIterationResidual.rmsResidual = PxSqrt(1.0f / PxMax(1, errorAccumulatorPosIter.mCounter) * errorAccumulatorPosIter.mErrorSumOfSquares);
+
+	return result;
+}
+
 

@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -81,17 +81,17 @@ namespace
 		~ElemSimPtrTableStorageManager() {}
 
 		// PtrTableStorageManager
-		virtual	void**	allocate(PxU32 capacity)
+		virtual	void**	allocate(PxU32 capacity)	PX_OVERRIDE
 		{
 			return PX_ALLOCATE(void*, capacity, "CmPtrTable pointer array");
 		}
 
-		virtual	void	deallocate(void** addr, PxU32 /*capacity*/)
+		virtual	void	deallocate(void** addr, PxU32 /*capacity*/)	PX_OVERRIDE
 		{
 			PX_FREE(addr);
 		}
 
-		virtual	bool canReuse(PxU32 /*originalCapacity*/, PxU32 /*newCapacity*/)
+		virtual	bool canReuse(PxU32 /*originalCapacity*/, PxU32 /*newCapacity*/)	PX_OVERRIDE
 		{
 			return false;
 		}
@@ -143,23 +143,14 @@ Sc::ElementSim::~ElementSim()
 	mActor.onElementDetach(*this);
 }
 
-void Sc::ElementSim::setElementInteractionsDirty(InteractionDirtyFlag::Enum flag, PxU8 interactionFlag)
-{
-	ElementSim::ElementInteractionIterator iter = getElemInteractions();
-	ElementSimInteraction* interaction = iter.getNext();
-	while(interaction)
-	{
-		if(interaction->readInteractionFlag(interactionFlag))
-			interaction->setDirty(flag);
-
-		interaction = iter.getNext();
-	}
-}
-
 void Sc::ElementSim::addToAABBMgr(PxReal contactDistance, Bp::FilterGroup::Enum group, Bp::ElementType::Enum type)
 {
+	const ActorCore& actorCore = mActor.getActorCore();
+	const PxU32 aggregateID = actorCore.getAggregateID();
+	const PxU32 envID = actorCore.getEnvID();
+
 	Sc::Scene& scene = getScene();
-	if(!scene.getAABBManager()->addBounds(mElementID, contactDistance, group, this, mActor.getActorCore().getAggregateID(), type))
+	if(!scene.getAABBManager()->addBounds(mElementID, contactDistance, group, this, aggregateID, type, envID))
 		return;
 
 	mInBroadPhase = true;

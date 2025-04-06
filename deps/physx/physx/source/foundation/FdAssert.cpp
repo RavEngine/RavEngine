@@ -22,13 +22,14 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
 #include "foundation/PxAssert.h"
 #include "foundation/PxString.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 #if PX_WINDOWS_FAMILY
 #include <crtdbg.h>
@@ -36,53 +37,30 @@
 #include "foundation/switch/PxSwitchAbort.h"
 #endif
 
-namespace
+void physx::PxAssert(const char* expr, const char* file, int line, bool& ignore)
 {
-class DefaultAssertHandler : public physx::PxAssertHandler
-{
-	virtual void operator()(const char* expr, const char* file, int line, bool& ignore)
-	{
-		PX_UNUSED(ignore); // is used only in debug windows config
-		char buffer[1024];
+	PX_UNUSED(ignore); // is used only in debug windows config
+	char buffer[1024];
 #if PX_WINDOWS_FAMILY
-		sprintf_s(buffer, "%s(%d) : Assertion failed: %s\n", file, line, expr);
+	sprintf_s(buffer, "%s(%d) : Assertion failed: %s\n", file, line, expr);
 #else
-		sprintf(buffer, "%s(%d) : Assertion failed: %s\n", file, line, expr);
+	sprintf(buffer, "%s(%d) : Assertion failed: %s\n", file, line, expr);
 #endif
-		physx::PxPrintString(buffer);
+	physx::PxPrintString(buffer);
 #if PX_WINDOWS_FAMILY&& PX_DEBUG && PX_DEBUG_CRT
-		// _CrtDbgReport returns -1 on error, 1 on 'retry', 0 otherwise including 'ignore'.
-		// Hitting 'abort' will terminate the process immediately.
-		int result = _CrtDbgReport(_CRT_ASSERT, file, line, NULL, "%s", buffer);
-		int mode = _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_REPORT_MODE);
-		ignore = _CRTDBG_MODE_WNDW == mode && result == 0;
-		if(ignore)
-			return;
-		__debugbreak();
+	// _CrtDbgReport returns -1 on error, 1 on 'retry', 0 otherwise including 'ignore'.
+	// Hitting 'abort' will terminate the process immediately.
+	int result = _CrtDbgReport(_CRT_ASSERT, file, line, NULL, "%s", buffer);
+	int mode = _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_REPORT_MODE);
+	ignore = _CRTDBG_MODE_WNDW == mode && result == 0;
+	if(ignore)
+		return;
+	__debugbreak();
 #elif PX_WINDOWS_FAMILY&& PX_CHECKED
-		__debugbreak();
+	__debugbreak();
 #elif PX_SWITCH
-		abort(buffer);
+	abort(buffer);
 #else
-		abort();
+	abort();
 #endif
-	}
-};
-
-DefaultAssertHandler sAssertHandler;
-physx::PxAssertHandler* sAssertHandlerPtr = &sAssertHandler;
 }
-
-namespace physx
-{
-
-PxAssertHandler& PxGetAssertHandler()
-{
-	return *sAssertHandlerPtr;
-}
-
-void PxSetAssertHandler(PxAssertHandler& handler)
-{
-	sAssertHandlerPtr = &handler;
-}
-} // end of physx namespace

@@ -22,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_RIGID_BODY_H
 #define PX_RIGID_BODY_H
-/** \addtogroup physics
-@{
-*/
 
 #include "PxRigidActor.h"
 #include "PxForceMode.h"
@@ -44,7 +41,7 @@ namespace physx
 /**
 \brief Collection of flags describing the behavior of a rigid body.
 
-@see PxRigidBody.setRigidBodyFlag(), PxRigidBody.getRigidBodyFlags()
+\see PxRigidBody.setRigidBodyFlag(), PxRigidBody.getRigidBodyFlags()
 */
 struct PxRigidBodyFlag
 {
@@ -69,7 +66,7 @@ struct PxRigidBodyFlag
 
 		\note kinematic actors are incompatible with CCD so raising this flag will automatically clear eENABLE_CCD
 
-		@see PxRigidDynamic.setKinematicTarget()
+		\see PxRigidDynamic.setKinematicTarget()
 		*/
 		eKINEMATIC	= (1<<0),		//!< Enable kinematic mode for the body.
 
@@ -80,7 +77,7 @@ struct PxRigidBodyFlag
 		of the body (instead of using the actual pose). Without this flag, the kinematic target will only take 
 		effect with respect to scene queries after a simulation step.
 
-		@see PxRigidDynamic.setKinematicTarget()
+		\see PxRigidDynamic.setKinematicTarget()
 		*/
 		eUSE_KINEMATIC_TARGET_FOR_SCENE_QUERIES	= (1<<1),
 
@@ -92,6 +89,7 @@ struct PxRigidBodyFlag
 		individual interactions. 
 
 		\note kinematic actors are incompatible with CCD so this flag will be cleared automatically when raised on a kinematic actor
+		\note PxConvexCoreGeometry geometry type only supports eENABLE_SPECULATIVE_CCD at the moment. eENABLE_CCD will be ignored
 		*/
 		eENABLE_CCD	= (1<<2),		//!< Enable CCD for the body.
 
@@ -122,7 +120,7 @@ struct PxRigidBodyFlag
 		in #PxSimulationEventCallback::onAdvance(). Please refer to the documentation of that callback to understand
 		the behavior and limitations of this functionality.
 
-		@see PxSimulationEventCallback::onAdvance()
+		\see PxSimulationEventCallback::onAdvance()
 		*/
 		eENABLE_POSE_INTEGRATION_PREVIEW	= (1<<5),
 
@@ -132,7 +130,14 @@ struct PxRigidBodyFlag
 		eENABLE_CCD_MAX_CONTACT_IMPULSE = (1<<6),
 
 		/**
-		\brief Carries over forces/accelerations between frames, rather than clearing them
+		\brief Carries over forces/torques between frames, rather than clearing them
+
+		If this flag is raised, forces and torques will carry over between frames. Impulses applied with PxForceMode::eIMPULSE will not be retained.
+
+		\note Clearing this flag will retain the accelerations for an additional frame before clearing them. To reset the forces immediately for the next frame,
+		a call to PxRigidBody::clearForce() / PxRigidBody::clearTorque() is needed.
+
+		\see PxRigidBody::addForce(), PxRigidBody::AddTorque(), PxRigidBody::setForceAndTorque(), PxRigidBody::clearForce(), PxRigidBody::clearTorque()
 		*/
 		eRETAIN_ACCELERATIONS = (1<<7),
 
@@ -152,7 +157,7 @@ struct PxRigidBodyFlag
 
 		\warning Changing this flag at runtime will not have an effect until you remove and re-add the actor to the scene.
 
-		@see PxPairFilteringMode PxSceneDesc.kineKineFilteringMode
+		\see PxPairFilteringMode PxSceneDesc.kineKineFilteringMode
 		*/
 		eFORCE_KINE_KINE_NOTIFICATIONS = (1<<8),
 
@@ -165,7 +170,7 @@ struct PxRigidBodyFlag
 
 		\warning Changing this flag at runtime will not have an effect until you remove and re-add the actor to the scene.
 
-		@see PxPairFilteringMode PxSceneDesc.staticKineFilteringMode
+		\see PxPairFilteringMode PxSceneDesc.staticKineFilteringMode
 		*/
 		eFORCE_STATIC_KINE_NOTIFICATIONS = (1<<9),
 
@@ -184,7 +189,7 @@ struct PxRigidBodyFlag
 /**
 \brief collection of set bits defined in PxRigidBodyFlag.
 
-@see PxRigidBodyFlag
+\see PxRigidBodyFlag
 */
 typedef PxFlags<PxRigidBodyFlag::Enum,PxU16> PxRigidBodyFlags;
 PX_FLAGS_OPERATORS(PxRigidBodyFlag::Enum,PxU16)
@@ -192,7 +197,7 @@ PX_FLAGS_OPERATORS(PxRigidBodyFlag::Enum,PxU16)
 /**
 \brief PxRigidBody is a base class shared between dynamic rigid body objects.
 
-@see PxRigidActor
+\see PxRigidActor
 */
 
 class PxRigidBody : public PxRigidActor
@@ -201,7 +206,7 @@ public:
 	// Runtime modifications
 
 /************************************************************************************************/
-/** @name Mass Manipulation
+/** \name Mass Manipulation
 */
 
 	/**
@@ -212,11 +217,15 @@ public:
 	\note Setting an unrealistic center of mass which is a long way from the body can make it difficult for
 	the SDK to solve constraints. Perhaps leading to instability and jittering bodies.
 
+	\note Changing this transform will not update the linear velocity reported by getLinearVelocity() to account
+	for the shift in center of mass. If the shift should be accounted for, the user should update the velocity
+	using setLinearVelocity().
+
 	<b>Default:</b> the identity transform
 
 	\param[in] pose Mass frame offset transform relative to the actor frame. <b>Range:</b> rigid body transform.
 
-	@see getCMassLocalPose() PxRigidBodyDesc.massLocalPose
+	\see getCMassLocalPose() getLinearVelocity()
 	*/
 	virtual		void	setCMassLocalPose(const PxTransform& pose) = 0;
 
@@ -225,7 +234,7 @@ public:
 
 	\return The center of mass pose relative to the actor frame.
 
-	@see setCMassLocalPose() PxRigidBodyDesc.massLocalPose
+	\see setCMassLocalPose()
 	*/
 	virtual		PxTransform 	getCMassLocalPose() const = 0;
 
@@ -246,7 +255,7 @@ public:
 
 	\param[in] mass New mass value for the actor. <b>Range:</b> [0, PX_MAX_F32)
 
-	@see getMass() PxRigidBodyDesc.mass setMassSpaceInertiaTensor()
+	\see getMass() setMassSpaceInertiaTensor()
 	*/
 	virtual		void	setMass(PxReal mass) = 0;
 
@@ -257,7 +266,7 @@ public:
 
 	\return The mass of this actor.
 
-	@see setMass() PxRigidBodyDesc.mass setMassSpaceInertiaTensor()
+	\see setMass() setMassSpaceInertiaTensor()
 	*/
 	virtual		PxReal	getMass() const = 0;
 
@@ -266,7 +275,7 @@ public:
 
 	\return The inverse mass of this actor.
 
-	@see setMass() PxRigidBodyDesc.mass setMassSpaceInertiaTensor()
+	\see setMass() setMassSpaceInertiaTensor()
 	*/
 	virtual		PxReal	getInvMass() const = 0;
 
@@ -289,7 +298,7 @@ public:
 
 	\param[in] m New mass space inertia tensor for the actor.
 
-	@see PxRigidBodyDesc.massSpaceInertia getMassSpaceInertia() setMass() setCMassLocalPose()
+	\see getMassSpaceInertia() setMass() setCMassLocalPose()
 	*/
 	virtual		void	setMassSpaceInertiaTensor(const PxVec3& m) = 0;
 
@@ -302,7 +311,7 @@ public:
 
 	\note A value of 0 in an element is interpreted as infinite inertia along that axis.
 
-	@see PxRigidBodyDesc.massSpaceInertia setMassSpaceInertiaTensor() setMass() setCMassLocalPose()
+	\see setMassSpaceInertiaTensor() setMass() setCMassLocalPose()
 	*/
 	virtual		PxVec3	getMassSpaceInertiaTensor()			const = 0;
 
@@ -315,12 +324,12 @@ public:
 
 	\return The mass space inverse inertia tensor of this actor.
 
-	@see PxRigidBodyDesc.massSpaceInertia setMassSpaceInertiaTensor() setMass() setCMassLocalPose()
+	\see setMassSpaceInertiaTensor() setMass() setCMassLocalPose()
 	*/
 	virtual		PxVec3	getMassSpaceInvInertiaTensor()			const = 0;
 
 	/************************************************************************************************/
-	/** @name Damping
+	/** \name Damping
 	*/
 
 	/**
@@ -328,11 +337,11 @@ public:
 
 	Zero represents no damping. The damping coefficient must be nonnegative.
 
-	<b>Default:</b> 0.0
+	<b>Default:</b> 0.05 for PxArticulationLink, 0.0 for PxRigidDynamic 
 
 	\param[in] linDamp Linear damping coefficient. <b>Range:</b> [0, PX_MAX_F32)
 
-	@see getLinearDamping() setAngularDamping()
+	\see getLinearDamping() setAngularDamping()
 	*/
 	virtual		void	setLinearDamping(PxReal linDamp) = 0;
 
@@ -341,7 +350,7 @@ public:
 
 	\return The linear damping coefficient associated with this actor.
 
-	@see setLinearDamping() getAngularDamping()
+	\see setLinearDamping() getAngularDamping()
 	*/
 	virtual		PxReal	getLinearDamping() const = 0;
 
@@ -356,7 +365,7 @@ public:
 
 	\param[in] angDamp Angular damping coefficient. <b>Range:</b> [0, PX_MAX_F32)
 
-	@see getAngularDamping() setLinearDamping()
+	\see getAngularDamping() setLinearDamping()
 	*/
 	virtual		void	setAngularDamping(PxReal angDamp) = 0;
 
@@ -365,13 +374,13 @@ public:
 
 	\return The angular damping coefficient associated with this actor.
 
-	@see setAngularDamping() getLinearDamping()
+	\see setAngularDamping() getLinearDamping()
 	*/
 	virtual		PxReal	getAngularDamping() const = 0;
 
 
 /************************************************************************************************/
-/** @name Velocity
+/** \name Velocity
 */
 
 	/**
@@ -380,9 +389,11 @@ public:
 	\note It is not allowed to use this method while the simulation is running (except during PxScene::collide(),
 	in PxContactModifyCallback or in contact report callbacks).
 
+	\note The linear velocity is reported with respect to the rigid body's center of mass and not the actor frame origin.
+
 	\return The linear velocity of the actor.
 
-	@see PxRigidDynamic.setLinearVelocity() getAngularVelocity()
+	\see PxRigidDynamic.setLinearVelocity() getAngularVelocity()
 	*/
 	virtual		PxVec3	getLinearVelocity()		const = 0;
 
@@ -394,7 +405,7 @@ public:
 
 	\return The angular velocity of the actor.
 
-	@see PxRigidDynamic.setAngularVelocity() getLinearVelocity() 
+	\see PxRigidDynamic.setAngularVelocity() getLinearVelocity() 
 	*/
 	virtual		PxVec3	getAngularVelocity()	const = 0;
 
@@ -402,16 +413,19 @@ public:
 	\brief Lets you set the maximum linear velocity permitted for this actor.
 
 	With this function, you can set the  maximum linear velocity permitted for this rigid body.
-	Higher angular velocities are clamped to this value.
+	Higher linear velocities are clamped to this value.
 
-	Note: The angular velocity is clamped to the set value <i>before</i> the solver, which means that
+	Note: The linear velocity is clamped to the set value <i>before</i> the solver, which means that
 	the limit may still be momentarily exceeded.
 
-	<b>Default:</b> PX_MAX_F32
+	\note Enforcing the limit introduces momentum into the simulation, causing potentially unphysical behavior.
+		For articulation links, consider using joint damping and limits instead, which preserve momentum.
 
-	\param[in] maxLinVel Max allowable linear velocity for actor. <b>Range:</b> [0, PX_MAX_F32)
+	<b>Default:</b> 100 * PxTolerancesScale::length /s for PxArticulationLink, 1e^16 lengthUnits/s for PxRigidDynamic
 
-	@see getMaxAngularVelocity()
+	\param[in] maxLinVel Max allowable linear velocity for actor. <b>Range:</b> [0, 1e^16) lengthUnits/s
+
+	\see getMaxAngularVelocity()
 	*/
 	virtual		void	setMaxLinearVelocity(PxReal maxLinVel) = 0;
 
@@ -420,7 +434,7 @@ public:
 
 	\return The maximum allowed angular velocity for this actor.
 
-	@see setMaxLinearVelocity
+	\see setMaxLinearVelocity
 	*/
 	virtual		PxReal	getMaxLinearVelocity()	const = 0;
 
@@ -436,11 +450,16 @@ public:
 	Note: The angular velocity is clamped to the set value <i>before</i> the solver, which means that
 	the limit may still be momentarily exceeded.
 
-	<b>Default:</b> 100.0
+	\note Enforcing the limit introduces momentum into the simulation, causing potentially unphysical behavior.
+		For articulation links, consider using joint damping and limits instead, which preserve momentum.
 
-	\param[in] maxAngVel Max allowable angular velocity for actor. <b>Range:</b> [0, PX_MAX_F32)
+	<b>Default:</b> 50.0 rad/s for PxArticulationLink, 100.0 rad/s for PxRigidDynamic
 
-	@see getMaxAngularVelocity()
+	<b>Range:</b> [0, 1e^16) rad/s
+
+	\param[in] maxAngVel Max allowable angular velocity for actor. 
+
+	\see getMaxAngularVelocity()
 	*/
 	virtual		void	setMaxAngularVelocity(PxReal maxAngVel) = 0;
 
@@ -449,12 +468,44 @@ public:
 
 	\return The maximum allowed angular velocity for this actor.
 
-	@see setMaxAngularVelocity
+	\see setMaxAngularVelocity
 	*/
 	virtual		PxReal	getMaxAngularVelocity()	const = 0;
 
 /************************************************************************************************/
-/** @name Forces
+/** \name Acceleration
+*/
+
+	/**
+	\brief Retrieves the linear acceleration of an actor.
+
+	For PxArticulationLink objects, this function is always available.
+
+	For PxRigidDynamic actors, this function only returns valid results if PxSceneFlag::eENABLE_BODY_ACCELERATIONS is enabled.
+	If that flag is not enabled, the function returns zero for PxRigidDynamic actors.
+
+	\return The linear acceleration of the actor, or zero if PxSceneFlag::eENABLE_BODY_ACCELERATIONS is disabled and the object is a PxRigidDynamic.
+
+	\see PxRigidBody.getAngularAcceleration() PxSceneFlag::eENABLE_BODY_ACCELERATIONS
+	*/
+	virtual		PxVec3	getLinearAcceleration()		const = 0;
+
+	/**
+	\brief Retrieves the angular acceleration of an actor.
+
+	For PxArticulationLink objects, this function is always available.
+
+	For PxRigidDynamic actors, this function only returns valid results if PxSceneFlag::eENABLE_BODY_ACCELERATIONS is enabled.
+	If that flag is not enabled, the function returns zero for PxRigidDynamic actors.
+
+	\return The angular acceleration of the actor, or zero if PxSceneFlag::eENABLE_BODY_ACCELERATIONS is disabled and the object is a PxRigidDynamic.
+
+	\see PxRigidBody.getLinearAcceleration() PxSceneFlag::eENABLE_BODY_ACCELERATIONS
+	*/
+	virtual		PxVec3	getAngularAcceleration()	const = 0;
+
+/************************************************************************************************/
+/** \name Forces
 */
 
 	/**
@@ -478,6 +529,9 @@ public:
 	\note see #PxRigidBodyExt::computeVelocityDeltaFromImpulse for details of how to compute the change in linear velocity that 
 	will arise from the application of an impulsive force, where an impulsive force is applied force multiplied by a timestep.
 
+	\note Forces will be cleared automatically after they are applied during the next simulation step. If the forces should be retained for
+	the following steps, PxRigidBodyFlag::eRETAIN_ACCELERATIONS should be raised.
+
 	<b>Sleeping:</b> This call wakes the actor if it is sleeping, and the autowake parameter is true (default) or the force is non-zero.
 
 	\param[in] force Force/Impulse to apply defined in the global frame.
@@ -485,7 +539,7 @@ public:
 	\param[in] autowake Specify if the call should wake up the actor if it is currently asleep. If true and the current wake counter value
 	is smaller than #PxSceneDesc::wakeCounterResetValue it will get increased to the reset value.
 
-	@see PxForceMode addTorque
+	\see PxForceMode addTorque
 	*/
 	virtual		void	addForce(const PxVec3& force, PxForceMode::Enum mode = PxForceMode::eFORCE, bool autowake = true) = 0;
 
@@ -508,6 +562,9 @@ public:
 	\note see #PxRigidBodyExt::computeVelocityDeltaFromImpulse for details of how to compute the change in angular velocity that 
 	will arise from the application of an impulsive torque, where an impulsive torque is an applied torque multiplied by a timestep.
 
+	\note Torques will be cleared after they are applied during the next simulation step. If the Torques should be retained for the following 
+	steps, PxRigidBodyFlag::eRETAIN_ACCELERATIONS should be raised.
+
 	<b>Sleeping:</b> This call wakes the actor if it is sleeping, and the autowake parameter is true (default) or the torque is non-zero.
 
 	\param[in] torque Torque to apply defined in the global frame. <b>Range:</b> torque vector
@@ -515,7 +572,7 @@ public:
 	\param[in] autowake Specify if the call should wake up the actor if it is currently asleep. If true and the current wake counter value
 	is smaller than #PxSceneDesc::wakeCounterResetValue it will get increased to the reset value.
 
-	@see PxForceMode addForce()
+	\see PxForceMode addForce()
 	*/
 	virtual		void	addTorque(const PxVec3& torque, PxForceMode::Enum mode = PxForceMode::eFORCE, bool autowake = true) = 0;
 
@@ -536,7 +593,7 @@ public:
 
 	\param[in] mode The mode to use when clearing the force/impulse(see #PxForceMode)
 
-	@see PxForceMode addForce
+	\see PxForceMode addForce
 	*/
 	virtual		void	clearForce(PxForceMode::Enum mode = PxForceMode::eFORCE) = 0;
 
@@ -557,7 +614,7 @@ public:
 
 	\param[in] mode The mode to use when clearing the force/impulse(see #PxForceMode).
 
-	@see PxForceMode addTorque
+	\see PxForceMode addTorque
 	*/
 	virtual		void	clearTorque(PxForceMode::Enum mode = PxForceMode::eFORCE) = 0;
 
@@ -570,7 +627,10 @@ public:
 
 	\note It is invalid to use this method if the actor has not been added to a scene already or if PxActorFlag::eDISABLE_SIMULATION is set.
 
-	@see PxForceMode addTorque
+	\note Forces and torques will be cleared after they are applied during the next simulation step. If they should be retained for the following 
+	steps, PxRigidBodyFlag::eRETAIN_ACCELERATIONS should be raised.
+
+	\see PxForceMode addTorque
 	*/
 	virtual		void	setForceAndTorque(const PxVec3& force, const PxVec3& torque, PxForceMode::Enum mode = PxForceMode::eFORCE) = 0;
 
@@ -586,7 +646,7 @@ public:
 	\param[in] flag		The PxRigidBody flag to raise(set) or clear. See #PxRigidBodyFlag.
 	\param[in] value	The new boolean value for the flag.
 
-	@see PxRigidBodyFlag getRigidBodyFlags() 
+	\see PxRigidBodyFlag getRigidBodyFlags() 
 	*/
 	virtual		void	setRigidBodyFlag(PxRigidBodyFlag::Enum flag, bool value) = 0;
 	virtual		void	setRigidBodyFlags(PxRigidBodyFlags inFlags) = 0;
@@ -598,7 +658,7 @@ public:
 
 	\return The values of the PxRigidBody flags.
 
-	@see PxRigidBodyFlag setRigidBodyFlag()
+	\see PxRigidBodyFlag setRigidBodyFlag()
 	*/
 	virtual		PxRigidBodyFlags	getRigidBodyFlags()	const = 0;
 
@@ -618,7 +678,7 @@ public:
 	contact, this can lead to a large amount of time being dropped and increases the chances of jamming. Jamming occurs when the an object is persistently in contact with an object 
 	such that the time-of-impact is	0, which results in no time being advanced for those objects in that CCD pass.
 
-	The chances of jamming can be reduced by increasing the number of CCD mass @see PxSceneDesc.ccdMaxPasses. However, increasing this number increases the CCD overhead.
+	The chances of jamming can be reduced by increasing the number of CCD mass \see PxSceneDesc.ccdMaxPasses. However, increasing this number increases the CCD overhead.
 
 	\param[in] advanceCoefficient The CCD min advance coefficient. <b>Range:</b> [0, 1] <b>Default:</b> 0.15
 	*/
@@ -629,7 +689,7 @@ public:
 
 	\return The value of the CCD min advance coefficient.
 
-	@see setMinCCDAdvanceCoefficient
+	\see setMinCCDAdvanceCoefficient
 	*/
 	virtual PxReal getMinCCDAdvanceCoefficient() const = 0;
 
@@ -654,7 +714,7 @@ public:
 
 	\param[in] maxImpulse the maximum contact impulse. <b>Range:</b> [0, PX_MAX_F32] <b>Default:</b> PX_MAX_F32
 
-	@see getMaxContactImpulse
+	\see getMaxContactImpulse
 	*/
 	virtual void setMaxContactImpulse(PxReal maxImpulse) = 0;
 
@@ -663,7 +723,7 @@ public:
 
 	\return The maximum impulse that may be applied at a contact
 
-	@see setMaxContactImpulse
+	\see setMaxContactImpulse
 	*/
 	virtual PxReal getMaxContactImpulse() const = 0;
 
@@ -675,7 +735,7 @@ public:
 
 	\param[in] slopCoefficient the Slop coefficient. <b>Range:</b> [0, PX_MAX_F32] <b>Default:</b> 0
 
-	@see getContactSlopCoefficient
+	\see getContactSlopCoefficient
 	*/
 	virtual void setContactSlopCoefficient(PxReal slopCoefficient) = 0;
 
@@ -684,7 +744,7 @@ public:
 
 	\return The contact slop coefficient.
 
-	@see setContactSlopCoefficient
+	\see setContactSlopCoefficient
 	*/
 	virtual PxReal getContactSlopCoefficient() const = 0;
 
@@ -699,12 +759,11 @@ protected:
 	PX_INLINE			PxRigidBody(PxType concreteType, PxBaseFlags baseFlags) : PxRigidActor(concreteType, baseFlags) {}
 	PX_INLINE			PxRigidBody(PxBaseFlags baseFlags) : PxRigidActor(baseFlags) {}
 	virtual				~PxRigidBody()	{}
-	virtual		bool	isKindOf(const char* name)	const	{ return !::strcmp("PxRigidBody", name) || PxRigidActor::isKindOf(name); }
+	virtual		bool	isKindOf(const char* name)	const	{ PX_IS_KIND_OF(name, "PxRigidBody", PxRigidActor); }
 };
 
 #if !PX_DOXYGEN
 } // namespace physx
 #endif
 
-/** @} */
 #endif

@@ -22,7 +22,7 @@
 ## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ##
-## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+## Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 IF(NOT DEFINED PHYSX_LINUX_COMPILE_DEFS)
 	MESSAGE(FATAL ERROR "Snippets uses the PhysX compile defs, and they're not defined when they need to be.")
@@ -30,10 +30,6 @@ ENDIF()
 
 IF (NOT DEFINED PHYSX_CXX_FLAGS)
 	MESSAGE(FATAL ERROR "Snippets uses the PhysX CXX flags, and they're not defined when they need to be.")
-ENDIF()
-
-IF(NOT DEFINED TINYXML2_PATH)
-    SET(TINYXML2_PATH $ENV{PM_tinyxml2_PATH} CACHE INTERNAL "Path to tinyxml2")
 ENDIF()
 
 # Get the CXX Flags from the Cached variables set by the PhysX CMakeLists
@@ -50,6 +46,6 @@ SET(CMAKE_SHARED_LINKER_FLAGS "/DEBUG")
 SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-rpath='$ORIGIN'")
 
 # Include all of the projects
-SET(PLATFORM_SNIPPETS_LIST Convert LoadCollection)
+SET(PLATFORM_SNIPPETS_LIST LoadCollection)
 
 SET(SNIPPET_RENDER_ENABLED 1)

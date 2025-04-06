@@ -22,19 +22,19 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef NP_SHAPE_H
 #define NP_SHAPE_H
 
-#include "common/PxMetaData.h"
 #include "PxShape.h"
 #include "NpBase.h"
 #include "ScShapeCore.h"
 #include "NpPhysics.h"
 #include "CmPtrTable.h"
+#include "foundation/PxSimpleTypes.h"
 
 namespace physx
 {
@@ -42,12 +42,6 @@ class NpScene;
 
 class NpShape : public PxShape, public NpBase
 {
-//= ATTENTION! =====================================================================================
-// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-// accordingly.
-//==================================================================================================
 public:
 // PX_SERIALIZATION
 												NpShape(PxBaseFlags baseFlags);
@@ -57,7 +51,6 @@ public:
 	virtual			void						requiresObjects(PxProcessPxBaseCallback& c);
 					void						resolveReferences(PxDeserializationContext& context);
 	static			NpShape*					createObject(PxU8*& address, PxDeserializationContext& context);
-	static			void						getBinaryMetaData(PxOutputStream& stream);
 //~PX_SERIALIZATION
 												NpShape(const PxGeometry& geometry,
 													PxShapeFlags shapeFlags,
@@ -69,45 +62,47 @@ public:
 	virtual										~NpShape();
 
 	// PxRefCounted
-	virtual			PxU32						getReferenceCount() const	PX_OVERRIDE;
-	virtual			void						acquireReference()	PX_OVERRIDE;
+	virtual			PxU32						getReferenceCount() const	PX_OVERRIDE PX_FINAL;
+	virtual			void						acquireReference()	PX_OVERRIDE PX_FINAL;
 	//~PxRefCounted
 
 	// PxShape
-	virtual			void						release()	PX_OVERRIDE; //!< call to release from actor
-	virtual			void						setGeometry(const PxGeometry&)	PX_OVERRIDE;
-	virtual			const PxGeometry&			getGeometry() const	PX_OVERRIDE;
-	virtual			PxRigidActor*				getActor() const	PX_OVERRIDE;
-	virtual			void						setLocalPose(const PxTransform& pose)	PX_OVERRIDE;
-	virtual			PxTransform					getLocalPose() const	PX_OVERRIDE;
-	virtual			void						setSimulationFilterData(const PxFilterData& data)	PX_OVERRIDE;
-	virtual			PxFilterData				getSimulationFilterData() const	PX_OVERRIDE;
-	virtual			void						setQueryFilterData(const PxFilterData& data)	PX_OVERRIDE;
-	virtual			PxFilterData				getQueryFilterData() const	PX_OVERRIDE;
-	virtual			void						setMaterials(PxMaterial*const* materials, PxU16 materialCount)	PX_OVERRIDE;
-	virtual			void						setSoftBodyMaterials(PxFEMSoftBodyMaterial*const* materials, PxU16 materialCount)	PX_OVERRIDE;
-	virtual			void						setClothMaterials(PxFEMClothMaterial*const* materials, PxU16 materialCount)	PX_OVERRIDE;
-	virtual			PxU16						getNbMaterials()															const	PX_OVERRIDE;
-	virtual			PxU32						getMaterials(PxMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex=0)	const	PX_OVERRIDE;
-	virtual			PxU32						getSoftBodyMaterials(PxFEMSoftBodyMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex = 0)	const	PX_OVERRIDE;
-	virtual			PxU32						getClothMaterials(PxFEMClothMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex = 0)	const	PX_OVERRIDE;
-	virtual			PxBaseMaterial*				getMaterialFromInternalFaceIndex(PxU32 faceIndex)							const	PX_OVERRIDE;
-	virtual			void						setContactOffset(PxReal)	PX_OVERRIDE;
-	virtual			PxReal						getContactOffset() const	PX_OVERRIDE;
-	virtual			void						setRestOffset(PxReal)	PX_OVERRIDE;
-	virtual			PxReal						getRestOffset() const	PX_OVERRIDE;
-	virtual			void						setDensityForFluid(PxReal)	PX_OVERRIDE;
-	virtual			PxReal						getDensityForFluid() const	PX_OVERRIDE;
-	virtual			void						setTorsionalPatchRadius(PxReal)	PX_OVERRIDE;
-	virtual			PxReal						getTorsionalPatchRadius() const	PX_OVERRIDE;
-	virtual			void						setMinTorsionalPatchRadius(PxReal)	PX_OVERRIDE;
-	virtual			PxReal						getMinTorsionalPatchRadius() const	PX_OVERRIDE;
-	virtual			void						setFlag(PxShapeFlag::Enum flag, bool value)	PX_OVERRIDE;
-	virtual			void						setFlags(PxShapeFlags inFlags)	PX_OVERRIDE;
-	virtual			PxShapeFlags				getFlags() const	PX_OVERRIDE;
-	virtual			bool						isExclusive() const	PX_OVERRIDE;
-	virtual			void						setName(const char* debugName)	PX_OVERRIDE;
-	virtual			const char*					getName() const	PX_OVERRIDE;
+	virtual			void						release()	PX_OVERRIDE PX_FINAL; //!< call to release from actor
+	virtual			void						setGeometry(const PxGeometry&)	PX_OVERRIDE PX_FINAL;
+	virtual			const PxGeometry&			getGeometry() const	PX_OVERRIDE PX_FINAL;
+	virtual			PxRigidActor*				getActor() const	PX_OVERRIDE PX_FINAL;
+	virtual			void						setLocalPose(const PxTransform& pose)	PX_OVERRIDE PX_FINAL;
+	virtual			PxTransform					getLocalPose() const	PX_OVERRIDE PX_FINAL;
+	virtual			void						setSimulationFilterData(const PxFilterData& data)	PX_OVERRIDE PX_FINAL;
+	virtual			PxFilterData				getSimulationFilterData() const	PX_OVERRIDE PX_FINAL;
+	virtual			void						setQueryFilterData(const PxFilterData& data)	PX_OVERRIDE PX_FINAL;
+	virtual			PxFilterData				getQueryFilterData() const	PX_OVERRIDE PX_FINAL;
+	virtual			void						setMaterials(PxMaterial*const* materials, PxU16 materialCount)	PX_OVERRIDE PX_FINAL;
+	virtual			void						setDeformableSurfaceMaterials(PxDeformableSurfaceMaterial*const* materials, PxU16 materialCount)	PX_OVERRIDE PX_FINAL;
+	virtual			void						setDeformableVolumeMaterials(PxDeformableVolumeMaterial* const* materials, PxU16 materialCount)	PX_OVERRIDE PX_FINAL;
+	virtual			PxU16						getNbMaterials()															const	PX_OVERRIDE PX_FINAL;
+	virtual			PxU32						getMaterials(PxMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex=0)	const	PX_OVERRIDE PX_FINAL;
+	virtual			PxU32						getDeformableSurfaceMaterials(PxDeformableSurfaceMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex = 0) const	PX_OVERRIDE PX_FINAL;
+	virtual			PxU32						getDeformableVolumeMaterials(PxDeformableVolumeMaterial** userBuffer, PxU32 bufferSize, PxU32 startIndex = 0)	const	PX_OVERRIDE PX_FINAL;
+	virtual			PxBaseMaterial*				getMaterialFromInternalFaceIndex(PxU32 faceIndex)							const	PX_OVERRIDE PX_FINAL;
+	virtual			void						setContactOffset(PxReal)	PX_OVERRIDE PX_FINAL;
+	virtual			PxReal						getContactOffset() const	PX_OVERRIDE PX_FINAL;
+	virtual			void						setRestOffset(PxReal)	PX_OVERRIDE PX_FINAL;
+	virtual			PxReal						getRestOffset() const	PX_OVERRIDE PX_FINAL;
+	virtual			void						setDensityForFluid(PxReal)	PX_OVERRIDE PX_FINAL;
+	virtual			PxReal						getDensityForFluid() const	PX_OVERRIDE PX_FINAL;
+	virtual			void						setTorsionalPatchRadius(PxReal)	PX_OVERRIDE PX_FINAL;
+	virtual			PxReal						getTorsionalPatchRadius() const	PX_OVERRIDE PX_FINAL;
+	virtual			void						setMinTorsionalPatchRadius(PxReal)	PX_OVERRIDE PX_FINAL;
+	virtual			PxReal						getMinTorsionalPatchRadius() const	PX_OVERRIDE PX_FINAL;
+	virtual			PxShapeGPUIndex				getGPUIndex() const PX_OVERRIDE PX_FINAL;
+
+	virtual			void						setFlag(PxShapeFlag::Enum flag, bool value)	PX_OVERRIDE PX_FINAL;
+	virtual			void						setFlags(PxShapeFlags inFlags)	PX_OVERRIDE PX_FINAL;
+	virtual			PxShapeFlags				getFlags() const	PX_OVERRIDE PX_FINAL;
+	virtual			bool						isExclusive() const	PX_OVERRIDE PX_FINAL;
+	virtual			void						setName(const char* debugName)	PX_OVERRIDE PX_FINAL;
+	virtual			const char*					getName() const	PX_OVERRIDE PX_FINAL;
 	//~PxShape
 
 	// Ref counting for shapes works like this: 
@@ -120,18 +115,17 @@ public:
 	virtual			void						onRefCountZero()	PX_OVERRIDE;
 	//~PxBase
 
-	PX_FORCE_INLINE	PxShapeFlags				getFlagsFast()			const	{ return mCore.getFlags();									}
-	PX_FORCE_INLINE const PxTransform&			getLocalPoseFast()		const	{ return mCore.getShape2Actor();							}
-	PX_FORCE_INLINE	PxGeometryType::Enum		getGeometryTypeFast()	const	{ return mCore.getGeometryType();							}
-	PX_FORCE_INLINE	const PxFilterData&			getQueryFilterDataFast() const	{ return mQueryFilterData;									}
+	PX_FORCE_INLINE	PxShapeFlags				getFlagsFast()			const	{ return mCore.getFlags();			}
+	PX_FORCE_INLINE const PxTransform&			getLocalPoseFast()		const	{ return mCore.getShape2Actor();	}
+	PX_FORCE_INLINE	PxGeometryType::Enum		getGeometryTypeFast()	const	{ return mCore.getGeometryType();	}
+	PX_FORCE_INLINE	const PxFilterData&			getQueryFilterDataFast() const	{ return mQueryFilterData;			}
 
-	PX_FORCE_INLINE PxU32						getActorCount()			const	{ return mFreeSlot & ACTOR_COUNT_MASK;												}
+	PX_FORCE_INLINE PxU32						getActorCount()			const	{ return mFreeSlot;																	}
 	PX_FORCE_INLINE bool						isExclusiveFast()		const	{ return mCore.getCore().mShapeCoreFlags.isSet(PxShapeCoreFlag::eIS_EXCLUSIVE);		}
 
 	PX_FORCE_INLINE	const Sc::ShapeCore&		getCore()				const	{ return mCore;	}
 	PX_FORCE_INLINE	Sc::ShapeCore&				getCore()						{ return mCore;	}
 	static PX_FORCE_INLINE size_t				getCoreOffset()					{ return PX_OFFSET_OF_RT(NpShape, mCore); }
-
 
 	// PT: TODO: this one only used internally and by NpFactory
 	template <typename PxMaterialType, typename NpMaterialType>
@@ -144,9 +138,11 @@ public:
 												}
 
 					void						releaseInternal();	// PT: it's "internal" but called by the NpFactory
-					template <typename PxMaterialType>
-	static PX_INLINE bool						checkMaterialSetup(const PxGeometry& geom, const char* errorMsgPrefix, PxMaterialType*const* materials, PxU16 materialCount);
 
+#if PX_CHECKED
+	template <typename PxMaterialType>
+	static			bool						checkMaterialSetup(const PxGeometry& geom, const char* errorMsgPrefix, PxMaterialType*const* materials, PxU16 materialCount);
+#endif
 					void						onActorAttach(PxActor& actor);
 					void						onActorDetach();
 
@@ -181,15 +177,11 @@ public:
 													setBaseIndex(NP_UNUSED_BASE_INDEX);
 												}
 
-	PX_FORCE_INLINE PxRigidActor*				getRigidActor() const { return mActor->is<PxRigidActor>(); }
 private:
-					PxActor*					mActor;
+					PxActor*					mExclusiveShapeActor;
 					Sc::ShapeCore				mCore;
 					PxFilterData				mQueryFilterData;	// Query filter data PT: TODO: consider moving this to SQ structures
 
-					static const PxI32 EXCLUSIVE_MASK = 0x80000000;
-					static const PxI32 ACTOR_COUNT_MASK = 0x7fffffff;		
-private:
 					void						notifyActorAndUpdatePVD(Sc::ShapeChangeNotifyFlags notifyFlags);
 					void						notifyActorAndUpdatePVD(const PxShapeFlags oldShapeFlags);	// PT: for shape flags change
 					void						incMeshRefCount();
@@ -197,7 +189,7 @@ private:
 					PxRefCounted*				getMeshRefCountable();
 					bool						isWritable();
 					void						updateSQ(const char* errorMessage);
-					template <typename PxMaterialType, typename NpMaterialType>
+	template <typename PxMaterialType, typename NpMaterialType>
 					bool						setMaterialsHelper(PxMaterialType* const* materials, PxU16 materialCount);
 					void						setFlagsInternal(PxShapeFlags inFlags);
 					Sc::RigidCore&				getScRigidObjectExclusive() const;
@@ -222,124 +214,118 @@ private:
 													return matManager.getMaterial(matTableIndex);
 												}
 
-	// PT: TODO: this one only used internally
-	template <typename PxMaterialType, typename NpMaterialType>
-	PX_INLINE		PxU32						scGetMaterials(PxMaterialType** buffer, PxU32 bufferSize, PxU32 startIndex=0) const
-												{
-													const PxU16* materialIndices;
-													PxU32 matCount;
-													NpMaterialManager<NpMaterialType>& matManager = NpMaterialAccessor<NpMaterialType>::getMaterialManager(NpPhysics::getInstance());
-													materialIndices = mCore.getMaterialIndices();
-													matCount = mCore.getNbMaterialIndices();
-
-													// PT: this is copied from Cm::getArrayOfPointers(). We cannot use the Cm function here
-													// because of the extra indirection needed to access the materials.
-													PxU32 size = matCount;
-													const PxU32 remainder = PxU32(PxMax<PxI32>(PxI32(size - startIndex), 0));
-													const PxU32 writeCount = PxMin(remainder, bufferSize);
-													materialIndices += startIndex;
-													for(PxU32 i=0;i<writeCount;i++)
-														buffer[i] = matManager.getMaterial(materialIndices[i]);
-
-													return writeCount;
-												}
-
-	template<typename PxMaterialType, typename NpMaterialType> void setMaterialsInternal(PxMaterialType* const * materials, PxU16 materialCount);
+	template<typename PxMaterialType, typename NpMaterialType>
+					void						setMaterialsInternal(PxMaterialType* const * materials, PxU16 materialCount);
 };
 
+#if PX_CHECKED
 template <typename PxMaterialType>
-PX_INLINE bool NpShape::checkMaterialSetup(const PxGeometry& geom, const char* errorMsgPrefix, PxMaterialType*const* materials, PxU16 materialCount)
+bool NpShape::checkMaterialSetup(const PxGeometry& geom, const char* errorMsgPrefix, PxMaterialType*const* materials, PxU16 materialCount)
 {
-	for (PxU32 i = 0; i < materialCount; ++i)
+	for(PxU32 i=0; i<materialCount; ++i)
 	{
-		if (!materials[i])
+		if(!materials[i])
 		{
-			PxGetFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__,
+			PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL,
 				"material pointer %d is NULL!", i);
 			return false;
 		}
 	}
 
-	// check that simple shapes don't get assigned multiple materials
-	if (materialCount > 1 && (geom.getType() != PxGeometryType::eHEIGHTFIELD) && (geom.getType() != PxGeometryType::eTRIANGLEMESH) && (geom.getType() != PxGeometryType::eTETRAHEDRONMESH))
+	if(materialCount > 1)
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__,
-			"%s: multiple materials defined for single material geometry!", errorMsgPrefix);
-		return false;
-	}
+		const PxGeometryType::Enum type = geom.getType();
 
-	//  verify we provide all materials required
-	if (materialCount > 1 && (geom.getType() == PxGeometryType::eTRIANGLEMESH))
-	{
-		const PxTriangleMeshGeometry& meshGeom = static_cast<const PxTriangleMeshGeometry&>(geom);
-		const PxTriangleMesh& mesh = *meshGeom.triangleMesh;
-
-		// do not allow SDF multi-material tri-meshes:
-		if (mesh.getSDF())
+		//  verify we provide all materials required
+		if(type == PxGeometryType::eTRIANGLEMESH)
 		{
-			PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__,
-				"%s: multiple materials defined for an SDF triangle-mesh geometry!", errorMsgPrefix);
+			const PxTriangleMeshGeometry& meshGeom = static_cast<const PxTriangleMeshGeometry&>(geom);
+			const PxTriangleMesh& mesh = *meshGeom.triangleMesh;
+
+			// do not allow SDF multi-material tri-meshes:
+			if(mesh.getSDF())
+			{
+				PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL,
+					"%s: multiple materials defined for an SDF triangle-mesh geometry!", errorMsgPrefix);
+				return false;
+			}
+
+			const Gu::TriangleMesh& tmesh = static_cast<const Gu::TriangleMesh&>(mesh);
+			if(tmesh.hasPerTriangleMaterials())
+			{
+				const PxU32 nbTris = tmesh.getNbTrianglesFast();
+				for(PxU32 i=0; i<nbTris; i++)
+				{
+					const PxMaterialTableIndex meshMaterialIndex = mesh.getTriangleMaterialIndex(i);
+					if(meshMaterialIndex >= materialCount)
+					{
+						PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL,
+							"%s: PxTriangleMesh material indices reference more materials than provided!", errorMsgPrefix);
+						break;
+					}
+				}
+			}
+			else
+			{
+				PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL,
+					"%s: multiple materials defined for a triangle-mesh that does not have per-triangle materials!", errorMsgPrefix);
+			}
+		}
+		else if(type == PxGeometryType::eTETRAHEDRONMESH)
+		{
+			const PxTetrahedronMeshGeometry& meshGeom = static_cast<const PxTetrahedronMeshGeometry&>(geom);
+			const PxTetrahedronMesh& mesh = *meshGeom.tetrahedronMesh;
+			PX_UNUSED(mesh);
+			//Need to fill in material
+			/*if (mesh.getTriangleMaterialIndex(0) != 0xffff)
+			{
+				for (PxU32 i = 0; i < mesh.getNbTriangles(); i++)
+				{
+					const PxMaterialTableIndex meshMaterialIndex = mesh.getTriangleMaterialIndex(i);
+					if (meshMaterialIndex >= materialCount)
+					{
+						PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL,
+							"%s: PxTriangleMesh material indices reference more materials than provided!", errorMsgPrefix);
+						break;
+					}
+				}
+			}*/
+		}
+		else if(type == PxGeometryType::eHEIGHTFIELD)
+		{
+			const PxHeightFieldGeometry& meshGeom = static_cast<const PxHeightFieldGeometry&>(geom);
+			const PxHeightField& mesh = *meshGeom.heightField;
+			if (mesh.getTriangleMaterialIndex(0) != 0xffff)
+			{
+				const PxU32 nbTris = mesh.getNbColumns()*mesh.getNbRows() * 2;
+				for (PxU32 i = 0; i < nbTris; i++)
+				{
+					const PxMaterialTableIndex meshMaterialIndex = mesh.getTriangleMaterialIndex(i);
+					if (meshMaterialIndex != PxHeightFieldMaterial::eHOLE && meshMaterialIndex >= materialCount)
+					{
+						PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL,
+							"%s: PxHeightField material indices reference more materials than provided!", errorMsgPrefix);
+						break;
+					}
+				}
+			}
+			else
+			{
+				PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL,
+					"%s: multiple materials defined for a heightfield that does not have per-triangle materials!", errorMsgPrefix);
+			}
+		}
+		else
+		{
+			// check that simple shapes don't get assigned multiple materials
+			PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL,
+				"%s: multiple materials defined for single material geometry!", errorMsgPrefix);
 			return false;
 		}
-
-		if (mesh.getTriangleMaterialIndex(0) != 0xffff)
-		{
-			for (PxU32 i = 0; i < mesh.getNbTriangles(); i++)
-			{
-				const PxMaterialTableIndex meshMaterialIndex = mesh.getTriangleMaterialIndex(i);
-				if (meshMaterialIndex >= materialCount)
-				{
-					PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__,
-						"%s: PxTriangleMesh material indices reference more materials than provided!", errorMsgPrefix);
-					break;
-				}
-			}
-		}
 	}
-
-	if (materialCount > 1 && (geom.getType() == PxGeometryType::eTETRAHEDRONMESH))
-	{
-		const PxTetrahedronMeshGeometry& meshGeom = static_cast<const PxTetrahedronMeshGeometry&>(geom);
-		const PxTetrahedronMesh& mesh = *meshGeom.tetrahedronMesh;
-		PX_UNUSED(mesh);
-		//Need to fill in material
-		/*if (mesh.getTriangleMaterialIndex(0) != 0xffff)
-		{
-			for (PxU32 i = 0; i < mesh.getNbTriangles(); i++)
-			{
-				const PxMaterialTableIndex meshMaterialIndex = mesh.getTriangleMaterialIndex(i);
-				if (meshMaterialIndex >= materialCount)
-				{
-					PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__,
-						"%s: PxTriangleMesh material indices reference more materials than provided!", errorMsgPrefix);
-					break;
-				}
-			}
-		}*/
-	}
-
-	if (materialCount > 1 && (geom.getType() == PxGeometryType::eHEIGHTFIELD))
-	{
-		const PxHeightFieldGeometry& meshGeom = static_cast<const PxHeightFieldGeometry&>(geom);
-		const PxHeightField& mesh = *meshGeom.heightField;
-		if (mesh.getTriangleMaterialIndex(0) != 0xffff)
-		{
-			const PxU32 nbTris = mesh.getNbColumns()*mesh.getNbRows() * 2;
-			for (PxU32 i = 0; i < nbTris; i++)
-			{
-				const PxMaterialTableIndex meshMaterialIndex = mesh.getTriangleMaterialIndex(i);
-				if (meshMaterialIndex != PxHeightFieldMaterial::eHOLE && meshMaterialIndex >= materialCount)
-				{
-					PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__,
-						"%s: PxHeightField material indices reference more materials than provided!", errorMsgPrefix);
-					break;
-				}
-			}
-		}
-	}
-
 	return true;
 }
+#endif
 
 }
 

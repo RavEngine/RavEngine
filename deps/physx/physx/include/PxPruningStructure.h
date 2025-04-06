@@ -22,14 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_PRUNING_STRUCTURE_H
 #define PX_PRUNING_STRUCTURE_H
-/** \addtogroup physics
-@{ */
 
 #include "PxPhysXConfig.h"
 #include "common/PxBase.h"
@@ -55,7 +53,7 @@ doing queries against the newly added actors. This applies to both static and dy
 \note Changing the bounds of PxRigidBody objects assigned to a pruning structure that has not been added to a scene yet will 
 invalidate the pruning structure. Same happens if shape scene query flags change or shape gets removed from an actor.
 
-@see PxScene::addActors PxCollection
+\see PxScene::addActors PxCollection
 */
 class PxPruningStructure : public PxBase
 {
@@ -75,7 +73,7 @@ public:
 	\param[in] startIndex Index of first actor pointer to be retrieved
 	\return Number of rigid actor pointers written to the buffer.
 
-	@see PxRigidActor
+	\see PxRigidActor
 	*/
 	virtual PxU32				getRigidActors(PxRigidActor** userBuffer, PxU32 bufferSize, PxU32 startIndex=0) const = 0;
 
@@ -86,7 +84,7 @@ public:
 
 	\return Number of rigid actors in the pruning structure.
 
-	@see PxRigidActor
+	\see PxRigidActor
 	*/
 	virtual PxU32				getNbRigidActors() const = 0;
 
@@ -98,7 +96,7 @@ public:
 
 	\return Implementation-dependent merge data for static actors.
 
-	@see PxSceneQuerySystem::merge()
+	\see PxSceneQuerySystem::merge()
 	*/
 	virtual	const void*			getStaticMergeData()	const	= 0;
 
@@ -110,16 +108,16 @@ public:
 
 	\return Implementation-dependent merge data for dynamic actors.
 
-	@see PxSceneQuerySystem::merge()
+	\see PxSceneQuerySystem::merge()
 	*/
 	virtual	const void*			getDynamicMergeData()	const	= 0;
 
-	virtual	const char*			getConcreteTypeName() const	{ return "PxPruningStructure";	}
+	virtual	const char*			getConcreteTypeName() const	PX_OVERRIDE	PX_FINAL	{ return "PxPruningStructure";	}
 protected:
 	PX_INLINE					PxPruningStructure(PxType concreteType, PxBaseFlags baseFlags) : PxBase(concreteType, baseFlags) {}
 	PX_INLINE					PxPruningStructure(PxBaseFlags baseFlags) : PxBase(baseFlags) {}
 	virtual						~PxPruningStructure()	{}
-	virtual		bool			isKindOf(const char* name)	const		{ return !::strcmp("PxPruningStructure", name) || PxBase::isKindOf(name); }
+	virtual		bool			isKindOf(const char* name)	const		{ PX_IS_KIND_OF(name, "PxPruningStructure", PxBase); }
 };
 
 
@@ -127,6 +125,5 @@ protected:
 } // namespace physx
 #endif
 
-/** @} */ 
 #endif
 

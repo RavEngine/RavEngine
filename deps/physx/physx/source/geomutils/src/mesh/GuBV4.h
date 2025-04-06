@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -45,6 +45,8 @@ namespace physx
 {
 	class PxSerializationContext;
 	class PxDeserializationContext;
+	class PxOutputStream;
+	class PxInputStream;
 
 namespace Gu
 {
@@ -150,7 +152,6 @@ namespace Gu
 		 virtual						~SourceMeshBase();
 	
 										SourceMeshBase(const PxEMPTY) {}
-		static			void			getBinaryMetaData(PxOutputStream& stream);
 
 						PxU32			mNbVerts;
 						const PxVec3*	mVerts;
@@ -184,7 +185,6 @@ namespace Gu
 		 virtual						~SourceMesh();
 		// PX_SERIALIZATION
 										SourceMesh(const PxEMPTY) : SourceMeshBase(PxEmpty) {}
-		static			void			getBinaryMetaData(PxOutputStream& stream);
 		//~PX_SERIALIZATION
 
 						void			reset();
@@ -233,7 +233,6 @@ namespace Gu
 		virtual									~TetrahedronSourceMesh();
 		// PX_SERIALIZATION
 												TetrahedronSourceMesh(const PxEMPTY) : SourceMeshBase(TET_MESH) {}
-		static			void					getBinaryMetaData(PxOutputStream& stream);
 		//~PX_SERIALIZATION
 
 						void					reset();
@@ -344,7 +343,6 @@ namespace Gu
 								BV4Tree(const PxEMPTY);
 				void			exportExtraData(PxSerializationContext&);
 				void			importExtraData(PxDeserializationContext& context);
-		static	void			getBinaryMetaData(PxOutputStream& stream);
 		//~PX_SERIALIZATION
 								BV4Tree();
 								BV4Tree(SourceMesh* meshInterface, const PxBounds3& localBounds);

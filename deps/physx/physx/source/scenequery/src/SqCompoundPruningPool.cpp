@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -193,7 +193,7 @@ PoolIndex CompoundTreePool::addCompound(PrunerHandle* results, const BVH& bvh, c
 		if(!resize(PxMax<PxU32>(mMaxNbObjects*2, 32)))
 		{
 			// pool can return an invalid handle if memory alloc fails			
-			PxGetFoundation().error(PxErrorCode::eOUT_OF_MEMORY, __FILE__, __LINE__, "CompoundTreePool::addCompound memory allocation in resize failed.");
+			PxGetFoundation().error(PxErrorCode::eOUT_OF_MEMORY, PX_FL, "CompoundTreePool::addCompound memory allocation in resize failed.");
 			return INVALID_PRUNERHANDLE;
 		}
 	}

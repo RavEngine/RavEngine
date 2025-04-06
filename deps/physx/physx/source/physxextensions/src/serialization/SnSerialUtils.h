@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -41,6 +41,14 @@ namespace Sn
 	const char* getBinaryPlatformName(PxU32 platformTag);
 	const char* getBinaryVersionGuid();
 	bool checkCompatibility(const char* binaryVersionGuidCandidate);
+
+	PX_INLINE PxU32 getPadding(size_t value, PxU32 alignment)
+	{
+		const PxU32 mask = alignment - 1;
+		const PxU32 overhead = PxU32(value) & mask;
+		return (alignment - overhead) & mask;
+	}
+
 }
 
 }

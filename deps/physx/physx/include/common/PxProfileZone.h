@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #ifndef PX_PROFILE_ZONE_H
 #define PX_PROFILE_ZONE_H
@@ -39,12 +39,18 @@
 	#define PX_PROFILE_STOP_CROSSTHREAD(x, y)							\
 		if(PxGetProfilerCallback())										\
 			PxGetProfilerCallback()->zoneEnd(NULL, x, true, y)
+	#define PX_PROFILE_VALUE(x, y, z)									\
+		if(PxGetProfilerCallback())										\
+			PxGetProfilerCallback()->recordData(x, y, z)
+	#define PX_PROFILE_FRAME(x, y)                                                                                                         \
+		if(PxGetProfilerCallback())                                                                                                        \
+			PxGetProfilerCallback()->recordFrame(x, y)
 #else
 	#define PX_PROFILE_ZONE(x, y)
 	#define PX_PROFILE_START_CROSSTHREAD(x, y)
 	#define PX_PROFILE_STOP_CROSSTHREAD(x, y)
+	#define PX_PROFILE_VALUE(x, y, z)
+	#define PX_PROFILE_FRAME(x, y)
 #endif
-
-#define PX_PROFILE_POINTER_TO_U64(pointer) static_cast<uint64_t>(reinterpret_cast<size_t>(pointer))
 
 #endif

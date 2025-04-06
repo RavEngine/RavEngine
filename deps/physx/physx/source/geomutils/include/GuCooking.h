@@ -22,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef GU_COOKING_H
 #define GU_COOKING_H
-/** \addtogroup geomutils
-@{
-*/
 
 // PT: TODO: the SDK always had this questionable design decision that all APIs can include all high-level public headers,
 // regardless of where they fit in the header hierarchy. For example PhysXCommon can include headers from the higher-level
@@ -123,7 +120,7 @@ namespace physx
 			return createTriangleMesh(params, desc, *getInsertionCallback());
 		}
 
-		// Tetrahedron & soft body meshes
+		// Tetrahedron & deformable volume meshes
 		PX_C_EXPORT PX_PHYSX_COMMON_API	bool cookTetrahedronMesh(const PxCookingParams& params, const PxTetrahedronMeshDesc& meshDesc, PxOutputStream& stream);
 		PX_C_EXPORT PX_PHYSX_COMMON_API	PxTetrahedronMesh* createTetrahedronMesh(const PxCookingParams& params, const PxTetrahedronMeshDesc& meshDesc, PxInsertionCallback& insertionCallback);
 
@@ -132,32 +129,30 @@ namespace physx
 			return createTetrahedronMesh(params, meshDesc, *getInsertionCallback());
 		}
 
-		PX_C_EXPORT PX_PHYSX_COMMON_API	bool cookSoftBodyMesh(const PxCookingParams& params, const PxTetrahedronMeshDesc& simulationMeshDesc, const PxTetrahedronMeshDesc& collisionMeshDesc,
-																const PxSoftBodySimulationDataDesc& softbodyDataDesc, PxOutputStream& stream);
+		PX_C_EXPORT PX_PHYSX_COMMON_API	bool cookDeformableVolumeMesh(const PxCookingParams& params, const PxTetrahedronMeshDesc& simulationMeshDesc, const PxTetrahedronMeshDesc& collisionMeshDesc,
+																const PxDeformableVolumeSimulationDataDesc& softbodyDataDesc, PxOutputStream& stream);
 
-		PX_C_EXPORT PX_PHYSX_COMMON_API	PxSoftBodyMesh* createSoftBodyMesh(const PxCookingParams& params, const PxTetrahedronMeshDesc& simulationMeshDesc, const PxTetrahedronMeshDesc& collisionMeshDesc,
-																		const PxSoftBodySimulationDataDesc& softbodyDataDesc, PxInsertionCallback& insertionCallback);
+		PX_C_EXPORT PX_PHYSX_COMMON_API	PxDeformableVolumeMesh* createDeformableVolumeMesh(const PxCookingParams& params, const PxTetrahedronMeshDesc& simulationMeshDesc, const PxTetrahedronMeshDesc& collisionMeshDesc,
+																		const PxDeformableVolumeSimulationDataDesc& softbodyDataDesc, PxInsertionCallback& insertionCallback);
 
-		PX_FORCE_INLINE	PxSoftBodyMesh*	createSoftBodyMesh(const PxCookingParams& params, const PxTetrahedronMeshDesc& simulationMeshDesc, const PxTetrahedronMeshDesc& collisionMeshDesc,
-			const PxSoftBodySimulationDataDesc& softbodyDataDesc)
+		PX_FORCE_INLINE	PxDeformableVolumeMesh*	createDeformableVolumeMesh(const PxCookingParams& params, const PxTetrahedronMeshDesc& simulationMeshDesc, const PxTetrahedronMeshDesc& collisionMeshDesc,
+			const PxDeformableVolumeSimulationDataDesc& deformableVolumeDataDesc)
 		{
-			return createSoftBodyMesh(params, simulationMeshDesc, collisionMeshDesc, softbodyDataDesc, *getInsertionCallback());
+			return createDeformableVolumeMesh(params, simulationMeshDesc, collisionMeshDesc, deformableVolumeDataDesc, *getInsertionCallback());
 		}
 
-		PX_C_EXPORT PX_PHYSX_COMMON_API	PxCollisionMeshMappingData* computeModelsMapping(const PxCookingParams& params, PxTetrahedronMeshData& simulationMesh, const PxTetrahedronMeshData& collisionMesh, 
-																						const PxSoftBodyCollisionData& collisionData, const PxBoundedData* vertexToTet = NULL);
+		PX_C_EXPORT PX_PHYSX_COMMON_API	PxCollisionMeshMappingData* computeModelsMapping(const PxCookingParams& params, 
+			PxTetrahedronMeshData& simulationMesh, const PxTetrahedronMeshData& collisionMesh, 
+			const PxDeformableVolumeCollisionData& collisionData, const PxBoundedData* vertexToTet = NULL);
 	
 		PX_C_EXPORT PX_PHYSX_COMMON_API	PxCollisionTetrahedronMeshData* computeCollisionData(const PxCookingParams& params, const PxTetrahedronMeshDesc& collisionMeshDesc);
 
 		PX_C_EXPORT PX_PHYSX_COMMON_API	PxSimulationTetrahedronMeshData* computeSimulationData(const PxCookingParams& params, const PxTetrahedronMeshDesc& simulationMeshDesc);
 
-		PX_C_EXPORT PX_PHYSX_COMMON_API	PxSoftBodyMesh*	assembleSoftBodyMesh(PxTetrahedronMeshData& simulationMesh, PxSoftBodySimulationData& simulationData, PxTetrahedronMeshData& collisionMesh,
-																			PxSoftBodyCollisionData& collisionData, PxCollisionMeshMappingData& mappingData, PxInsertionCallback& insertionCallback);
-	
-		PX_C_EXPORT PX_PHYSX_COMMON_API	PxSoftBodyMesh*	assembleSoftBodyMesh_Sim(PxSimulationTetrahedronMeshData& simulationMesh, PxCollisionTetrahedronMeshData& collisionMesh, 
-																			PxCollisionMeshMappingData& mappingData, PxInsertionCallback& insertionCallback);
+		PX_C_EXPORT PX_PHYSX_COMMON_API	PxDeformableVolumeMesh*	assembleDeformableVolumeMesh(PxTetrahedronMeshData& simulationMesh,
+			PxDeformableVolumeSimulationData& simulationData, PxTetrahedronMeshData& collisionMesh, PxDeformableVolumeCollisionData& collisionData,
+			PxCollisionMeshMappingData& mappingData, PxInsertionCallback& insertionCallback);
 	}
 }
 
-/** @} */
 #endif

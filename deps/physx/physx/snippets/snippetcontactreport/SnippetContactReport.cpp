@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -38,7 +38,6 @@
 // 
 // ****************************************************************************
 
-#include <vector>
 #include "PxPhysicsAPI.h"
 #include "../snippetutils/SnippetUtils.h"
 #include "../snippetcommon/SnippetPrint.h"
@@ -55,8 +54,8 @@ static PxScene*					gScene		= NULL;
 static PxMaterial*				gMaterial	= NULL;
 static PxPvd*					gPvd        = NULL;
 
-std::vector<PxVec3> gContactPositions;
-std::vector<PxVec3> gContactImpulses;
+PxArray<PxVec3> gContactPositions;
+PxArray<PxVec3> gContactImpulses;
 
 static PxFilterFlags contactReportFilterShader(	PxFilterObjectAttributes attributes0, PxFilterData filterData0, 
 												PxFilterObjectAttributes attributes1, PxFilterData filterData1,
@@ -87,7 +86,7 @@ class ContactReportCallback: public PxSimulationEventCallback
 	void onContact(const PxContactPairHeader& pairHeader, const PxContactPair* pairs, PxU32 nbPairs) 
 	{
 		PX_UNUSED((pairHeader));
-		std::vector<PxContactPairPoint> contactPoints;
+		PxArray<PxContactPairPoint> contactPoints;
 		
 		for(PxU32 i=0;i<nbPairs;i++)
 		{
@@ -99,8 +98,8 @@ class ContactReportCallback: public PxSimulationEventCallback
 
 				for(PxU32 j=0;j<contactCount;j++)
 				{
-					gContactPositions.push_back(contactPoints[j].position);
-					gContactImpulses.push_back(contactPoints[j].impulse);
+					gContactPositions.pushBack(contactPoints[j].position);
+					gContactImpulses.pushBack(contactPoints[j].impulse);
 				}
 			}
 		}
@@ -132,7 +131,7 @@ void initPhysics(bool /*interactive*/)
 	gPvd = PxCreatePvd(*gFoundation);
 	PxPvdTransport* transport = PxDefaultPvdSocketTransportCreate(PVD_HOST, 5425, 10);
 	gPvd->connect(*transport,PxPvdInstrumentationFlag::eALL);
-	gPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *gFoundation, PxTolerancesScale(),true,gPvd);
+	gPhysics = PxCreatePhysics(PX_PHYSICS_VERSION, *gFoundation, PxTolerancesScale(), true, gPvd);
 	PxInitExtensions(*gPhysics,gPvd);
 	PxU32 numCores = SnippetUtils::getNbPhysicalCores();
 	gDispatcher = PxDefaultCpuDispatcherCreate(numCores == 0 ? 0 : numCores - 1);
@@ -167,6 +166,9 @@ void stepPhysics(bool /*interactive*/)
 	
 void cleanupPhysics(bool /*interactive*/)
 {
+	gContactPositions.reset();
+	gContactImpulses.reset();
+    
 	PX_RELEASE(gScene);
 	PX_RELEASE(gDispatcher);
 	PxCloseExtensions();
@@ -174,7 +176,7 @@ void cleanupPhysics(bool /*interactive*/)
 	if(gPvd)
 	{
 		PxPvdTransport* transport = gPvd->getTransport();
-		gPvd->release();	gPvd = NULL;
+		PX_RELEASE(gPvd);
 		PX_RELEASE(transport);
 	}
 	PX_RELEASE(gFoundation);

@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -35,9 +35,9 @@
 using namespace physx;
 
 // PT: TODO: SIMDify all this...
-void Dy::copyToSolverBodyData(const PxVec3& linearVelocity, const PxVec3& angularVelocity, const PxReal invMass, const PxVec3& invInertia, const PxTransform& globalPose,
-	const PxReal maxDepenetrationVelocity, const PxReal maxContactImpulse, const PxU32 nodeIndex, const PxReal reportThreshold, PxSolverBodyData& data, PxU32 lockFlags,
-	const PxReal dt, bool gyroscopicForces)
+void Dy::copyToSolverBodyData(const PxVec3& linearVelocity, const PxVec3& angularVelocity, PxReal invMass, const PxVec3& invInertia, const PxTransform& globalPose,
+	PxReal maxDepenetrationVelocity, PxReal maxContactImpulse, PxU32 nodeIndex, PxReal reportThreshold, PxSolverBodyData& data, PxU32 lockFlags,
+	PxReal dt, bool gyroscopicForces)
 {
 	data.nodeIndex = nodeIndex;
 
@@ -69,7 +69,6 @@ void Dy::copyToSolverBodyData(const PxVec3& linearVelocity, const PxVec3& angula
 		ang += newDeltaAngVel;
 	}	
 	
-
 	if (lockFlags)
 	{
 		if (lockFlags & PxRigidDynamicLockFlag::eLOCK_LINEAR_X)

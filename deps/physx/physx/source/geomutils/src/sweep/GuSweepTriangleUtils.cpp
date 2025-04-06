@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -37,7 +37,7 @@
 
 using namespace physx;
 using namespace Gu;
-using namespace physx::aos;
+using namespace aos;
 
 #define GU_SAFE_DISTANCE_FOR_NORMAL_COMPUTATION 0.1f
 
@@ -165,19 +165,11 @@ static PX_FORCE_INLINE void edgeEdgeDistNoZeroVector(	PxVec3& x, PxVec3& y,				/
 	// Compute t for the closest point on ray (p, a) to ray (q, b)
 	const PxReal Denom = ADotA*BDotB - ADotB*ADotB;
 
-	PxReal t;
+	PxReal t;	// We will clamp result so t is on the segment (p, a)
 	if(Denom!=0.0f)	
-	{
-		t = (ADotT*BDotB - BDotT*ADotB) / Denom;
-
-		// Clamp result so t is on the segment (p, a)
-				if(t<0.0f)	t = 0.0f;
-		else	if(t>1.0f)	t = 1.0f;
-	}
+		t = PxClamp((ADotT*BDotB - BDotT*ADotB) / Denom, 0.0f, 1.0f);
 	else
-	{
 		t = 0.0f;
-	}
 
 	// find u for point on ray (q, b) closest to point at t
 	PxReal u;
@@ -188,18 +180,12 @@ static PX_FORCE_INLINE void edgeEdgeDistNoZeroVector(	PxVec3& x, PxVec3& y,				/
 		if(u<0.0f)
 		{
 			u = 0.0f;
-			t = ADotT / ADotA;
-
-					if(t<0.0f)	t = 0.0f;
-			else	if(t>1.0f)	t = 1.0f;
+			t = PxClamp(ADotT / ADotA, 0.0f, 1.0f);
 		}
 		else if(u > 1.0f)
 		{
 			u = 1.0f;
-			t = (ADotB + ADotT) / ADotA;
-
-					if(t<0.0f)	t = 0.0f;
-			else	if(t>1.0f)	t = 1.0f;
+			t = PxClamp((ADotB + ADotT) / ADotA, 0.0f, 1.0f);
 		}
 	}
 

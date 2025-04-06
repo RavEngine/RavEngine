@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -49,11 +49,17 @@ BpFilter::BpFilter(bool discardKineKine, bool discardStaticKine)
 	mLUT[Bp::FilterType::DYNAMIC][Bp::FilterType::AGGREGATE] = mLUT[Bp::FilterType::AGGREGATE][Bp::FilterType::DYNAMIC] = true;
 	mLUT[Bp::FilterType::AGGREGATE][Bp::FilterType::AGGREGATE] = true;
 
-	//Enable soft body interactions
-	mLUT[Bp::FilterType::SOFTBODY][Bp::FilterType::DYNAMIC] = mLUT[Bp::FilterType::DYNAMIC][Bp::FilterType::SOFTBODY] = true;
-	mLUT[Bp::FilterType::SOFTBODY][Bp::FilterType::STATIC] = mLUT[Bp::FilterType::STATIC][Bp::FilterType::SOFTBODY] = true;
-	mLUT[Bp::FilterType::SOFTBODY][Bp::FilterType::KINEMATIC] = mLUT[Bp::FilterType::KINEMATIC][Bp::FilterType::SOFTBODY] = true;
-	mLUT[Bp::FilterType::SOFTBODY][Bp::FilterType::SOFTBODY] = true;
+	//Enable deformable surface interactions
+	mLUT[Bp::FilterType::DEFORMABLE_SURFACE][Bp::FilterType::DYNAMIC] = mLUT[Bp::FilterType::DYNAMIC][Bp::FilterType::DEFORMABLE_SURFACE] = true;
+	mLUT[Bp::FilterType::DEFORMABLE_SURFACE][Bp::FilterType::STATIC] = mLUT[Bp::FilterType::STATIC][Bp::FilterType::DEFORMABLE_SURFACE] = true;
+	mLUT[Bp::FilterType::DEFORMABLE_SURFACE][Bp::FilterType::KINEMATIC] = mLUT[Bp::FilterType::KINEMATIC][Bp::FilterType::DEFORMABLE_SURFACE] = true;
+	mLUT[Bp::FilterType::DEFORMABLE_SURFACE][Bp::FilterType::DEFORMABLE_SURFACE] = true;
+
+	//Enable deformable volume interactions
+	mLUT[Bp::FilterType::DEFORMABLE_VOLUME][Bp::FilterType::DYNAMIC] = mLUT[Bp::FilterType::DYNAMIC][Bp::FilterType::DEFORMABLE_VOLUME] = true;
+	mLUT[Bp::FilterType::DEFORMABLE_VOLUME][Bp::FilterType::STATIC] = mLUT[Bp::FilterType::STATIC][Bp::FilterType::DEFORMABLE_VOLUME] = true;
+	mLUT[Bp::FilterType::DEFORMABLE_VOLUME][Bp::FilterType::KINEMATIC] = mLUT[Bp::FilterType::KINEMATIC][Bp::FilterType::DEFORMABLE_VOLUME] = true;
+	mLUT[Bp::FilterType::DEFORMABLE_VOLUME][Bp::FilterType::DEFORMABLE_VOLUME] = true;
 
 	//Enable particle system interactions
 	mLUT[Bp::FilterType::PARTICLESYSTEM][Bp::FilterType::DYNAMIC] = mLUT[Bp::FilterType::DYNAMIC][Bp::FilterType::PARTICLESYSTEM] = true;

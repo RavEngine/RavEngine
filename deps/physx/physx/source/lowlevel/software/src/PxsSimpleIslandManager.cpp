@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -33,34 +33,61 @@
 #include "CmTask.h"
 #include "DyVArticulation.h"
 
+using namespace physx;
+using namespace IG;
 
-#define IG_SANITY_CHECKS 0
+///////////////////////////////////////////////////////////////////////////////
 
-namespace physx
+ThirdPassTask::ThirdPassTask(PxU64 contextID, SimpleIslandManager& islandManager, IslandSim& islandSim) : Cm::Task(contextID), mIslandManager(islandManager), mIslandSim(islandSim)
 {
-namespace IG
-{
-	ThirdPassTask::ThirdPassTask(PxU64 contextID, SimpleIslandManager& islandManager, IslandSim& islandSim) : Cm::Task(contextID), mIslandManager(islandManager), mIslandSim(islandSim)
-	{
-	}
+}
 
-	PostThirdPassTask::PostThirdPassTask(PxU64 contextID, SimpleIslandManager& islandManager) : Cm::Task(contextID), mIslandManager(islandManager)
-	{
-	}
-
-	SimpleIslandManager::SimpleIslandManager(bool useEnhancedDeterminism, PxU64 contextID) : 
-		mDestroyedNodes				("mDestroyedNodes"), 
-		mDestroyedEdges				("mDestroyedEdges"), 
-		mFirstPartitionEdges		("mFirstPartitionEdges"), 
-		mDestroyedPartitionEdges	("IslandSim::mDestroyedPartitionEdges"), 
-		mIslandManager				(&mFirstPartitionEdges, mEdgeNodeIndices, &mDestroyedPartitionEdges, contextID),
-		mSpeculativeIslandManager	(NULL, mEdgeNodeIndices, NULL, contextID),
-		mSpeculativeThirdPassTask	(contextID, *this, mSpeculativeIslandManager),
-		mAccurateThirdPassTask		(contextID, *this, mIslandManager),
-		mPostThirdPassTask			(contextID, *this),
-		mContextID					(contextID)
+void ThirdPassTask::runInternal()
 {
-	mFirstPartitionEdges.resize(1024);
+	PX_PROFILE_ZONE("Basic.thirdPassIslandGen", mContextID);
+
+	mIslandSim.removeDestroyedEdges();
+	mIslandSim.processLostEdges(mIslandManager.mDestroyedNodes, true, true, mIslandManager.mMaxDirtyNodesPerFrame);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+PostThirdPassTask::PostThirdPassTask(PxU64 contextID, SimpleIslandManager& islandManager) : Cm::Task(contextID), mIslandManager(islandManager)
+{
+}
+
+void PostThirdPassTask::runInternal()
+{
+	PX_PROFILE_ZONE("Basic.postThirdPassIslandGen", mContextID);
+
+	for (PxU32 a = 0; a < mIslandManager.mDestroyedNodes.size(); ++a)
+		mIslandManager.mNodeHandles.freeHandle(mIslandManager.mDestroyedNodes[a].index());
+
+	mIslandManager.mDestroyedNodes.clear();
+
+	for (PxU32 a = 0; a < mIslandManager.mDestroyedEdges.size(); ++a)
+		mIslandManager.mEdgeHandles.freeHandle(mIslandManager.mDestroyedEdges[a]);
+
+	mIslandManager.mDestroyedEdges.clear();
+
+	PX_ASSERT(mIslandManager.validateDeactivations());
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+SimpleIslandManager::SimpleIslandManager(bool useEnhancedDeterminism, bool gpu, PxU64 contextID) : 
+	mDestroyedNodes				("mDestroyedNodes"), 
+	mDestroyedEdges				("mDestroyedEdges"), 
+	mAccurateIslandManager		(mCpuData, gpu ? &mGpuData : NULL, contextID),
+	mSpeculativeIslandManager	(mCpuData, NULL, contextID),
+	mSpeculativeThirdPassTask	(contextID, *this, mSpeculativeIslandManager),
+	mAccurateThirdPassTask		(contextID, *this, mAccurateIslandManager),
+	mPostThirdPassTask			(contextID, *this),
+	mContextID					(contextID),
+	mGPU						(gpu)
+{
+	if(gpu)
+		mGpuData.mFirstPartitionEdges.resize(1024);
 	mMaxDirtyNodesPerFrame = useEnhancedDeterminism ? 0xFFFFFFFF : 1000u;
 }
 
@@ -68,12 +95,12 @@ SimpleIslandManager::~SimpleIslandManager()
 {
 }
 
-PxNodeIndex SimpleIslandManager::addRigidBody(PxsRigidBody* body, bool isKinematic, bool isActive)
+PxNodeIndex SimpleIslandManager::addNode(bool isActive, bool isKinematic, Node::NodeType type, void* object)
 {
-	PxU32 handle = mNodeHandles.getHandle();
-	PxNodeIndex nodeIndex(handle);
-	mIslandManager.addRigidBody(body, isKinematic, isActive, nodeIndex);
-	mSpeculativeIslandManager.addRigidBody(body, isKinematic, isActive, nodeIndex);
+	const PxU32 handle = mNodeHandles.getHandle();
+	const PxNodeIndex nodeIndex(handle);
+	mAccurateIslandManager		.addNode(isActive, isKinematic, type, nodeIndex, object);
+	mSpeculativeIslandManager	.addNode(isActive, isKinematic, type, nodeIndex, object);
 	return nodeIndex;
 }
 
@@ -83,141 +110,153 @@ void SimpleIslandManager::removeNode(const PxNodeIndex index)
 	mDestroyedNodes.pushBack(index);
 }
 
-PxNodeIndex SimpleIslandManager::addArticulation(Sc::ArticulationSim* articulation, Dy::FeatherstoneArticulation* llArtic, bool isActive)
+EdgeIndex SimpleIslandManager::addEdge(void* edge, PxNodeIndex nodeHandle1, PxNodeIndex nodeHandle2, Sc::Interaction* interaction)
 {
-	PxU32 handle = mNodeHandles.getHandle();
-	PxNodeIndex nodeIndex(handle);
-	mIslandManager.addArticulation(articulation, llArtic, isActive, nodeIndex);
-	mSpeculativeIslandManager.addArticulation(articulation, llArtic, isActive, nodeIndex);
-	return nodeIndex;
-}
+	const EdgeIndex handle = mEdgeHandles.getHandle();
 
-#if PX_SUPPORT_GPU_PHYSX
-PxNodeIndex SimpleIslandManager::addSoftBody(Dy::SoftBody* llSoftBody, bool isActive)
-{
-	PxU32 handle = mNodeHandles.getHandle();
-	PxNodeIndex nodeIndex(handle);
-	mIslandManager.addSoftBody(llSoftBody, isActive, nodeIndex);
-	mSpeculativeIslandManager.addSoftBody(llSoftBody, isActive, nodeIndex);
-	return nodeIndex;
-}
-
-PxNodeIndex SimpleIslandManager::addFEMCloth(Dy::FEMCloth* llFEMCloth, bool isActive)
-{
-	PxU32 handle = mNodeHandles.getHandle();
-	PxNodeIndex nodeIndex(handle);
-	mIslandManager.addFEMCloth(llFEMCloth, isActive, nodeIndex);
-	mSpeculativeIslandManager.addFEMCloth(llFEMCloth, isActive, nodeIndex);
-	return nodeIndex;
-}
-
-PxNodeIndex SimpleIslandManager::addParticleSystem(Dy::ParticleSystem* llParticleSystem, bool isActive)
-{
-	PxU32 handle = mNodeHandles.getHandle();
-	PxNodeIndex nodeIndex(handle);
-	mIslandManager.addParticleSystem(llParticleSystem, isActive, nodeIndex);
-	mSpeculativeIslandManager.addParticleSystem(llParticleSystem, isActive, nodeIndex);
-	return nodeIndex;
-}
-
-PxNodeIndex SimpleIslandManager::addHairSystem(Dy::HairSystem* llHairSystem, bool isActive)
-{
-	PxU32 handle = mNodeHandles.getHandle();
-	PxNodeIndex nodeIndex(handle);
-	mIslandManager.addHairSystem(llHairSystem, isActive, nodeIndex);
-	mSpeculativeIslandManager.addHairSystem(llHairSystem, isActive, nodeIndex);
-	return nodeIndex;
-}
-#endif //PX_SUPPORT_GPU_PHYSX
-
-EdgeIndex SimpleIslandManager::addContactManager(PxsContactManager* manager, PxNodeIndex nodeHandle1, PxNodeIndex nodeHandle2, Sc::Interaction* interaction,
-	Edge::EdgeType edgeType)
-{
-	EdgeIndex handle = mEdgeHandles.getHandle();
-
-	PxU32 nodeIds = 2 * handle;
-	if (mEdgeNodeIndices.size() == nodeIds)
+	const PxU32 nodeIds = 2 * handle;
+	if (mCpuData.mEdgeNodeIndices.size() == nodeIds)
 	{
-		PX_PROFILE_ZONE("ReserveEdges", getContextId());
+		PX_PROFILE_ZONE("ReserveEdges", mContextID);
 		const PxU32 newSize = nodeIds + 2048;
-		mEdgeNodeIndices.resize(newSize);
-		mConstraintOrCm.resize(newSize);
-		mInteractions.resize(newSize);
+		mCpuData.mEdgeNodeIndices.resize(newSize);
+		// PT: newSize is for mEdgeNodeIndices which holds two indices per edge. We only need half that size for regular edge-indexed buffers.
+		mAuxCpuData.mConstraintOrCm.resize(newSize/2);
+		mInteractions.resize(newSize/2);
 	}
 
-	mEdgeNodeIndices[nodeIds] = nodeHandle1;
-	mEdgeNodeIndices[nodeIds+1] = nodeHandle2;
-	mConstraintOrCm[handle] = manager;
+	mCpuData.mEdgeNodeIndices[nodeIds] = nodeHandle1;
+	mCpuData.mEdgeNodeIndices[nodeIds + 1] = nodeHandle2;
+	mAuxCpuData.mConstraintOrCm[handle] = edge;
 	mInteractions[handle] = interaction;
+
+	return handle;
+}
+
+EdgeIndex SimpleIslandManager::resizeEdgeArrays(EdgeIndex handle, bool flag)
+{
+	if(mConnectedMap.size() == handle)
+		mConnectedMap.resize(2 * (handle + 1));
+
+	if(mGPU && mGpuData.mFirstPartitionEdges.capacity() == handle)
+		mGpuData.mFirstPartitionEdges.resize(2 * (handle + 1));
+
+	if(flag)
+		mConnectedMap.reset(handle);	// PT: for contact manager
+	else
+		mConnectedMap.set(handle);		// PT: for constraint
+
+	return handle;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PT: the two functions below are to replicate SimpleIslandManager::addContactManager() multi-threaded
+void SimpleIslandManager::preallocateContactManagers(PxU32 nb, EdgeIndex* handles)
+{
+	// PT: part from SimpleIslandManager::addContactManager / addEdge
+	EdgeIndex maxHandle = 0;
+	{
+		{
+			PX_PROFILE_ZONE("getHandles", mContextID);
+			for(PxU32 i=0;i<nb;i++)
+			{
+				const EdgeIndex handle = mEdgeHandles.getHandle();	// PT: TODO: better version
+				handles[i] = handle;
+				if(handle>maxHandle)
+					maxHandle = handle;
+			}
+		}
+
+		const PxU32 nodeIds = 2 * maxHandle;
+		if (mCpuData.mEdgeNodeIndices.size() <= nodeIds)
+		{
+			PX_PROFILE_ZONE("ReserveEdges", mContextID);
+			const PxU32 newSize = nodeIds + 2048;
+			mCpuData.mEdgeNodeIndices.resize(newSize);
+			mAuxCpuData.mConstraintOrCm.resize(newSize/2);
+			mInteractions.resize(newSize/2);
+		}
+	}
+
+	// PT: part from SimpleIslandManager::addContactManager / mSpeculativeIslandManager.addConnection()
+	mSpeculativeIslandManager.preallocateConnections(maxHandle);
+
+	// PT: part from SimpleIslandManager::addContactManager / resizeEdgeArrays
+	// PT: TODO: refactor with regular code
+	if(mConnectedMap.size() <= maxHandle)
+		mConnectedMap.resize(2 * (maxHandle + 1));
+
+	if(mGPU && mGpuData.mFirstPartitionEdges.capacity() <= maxHandle)
+		mGpuData.mFirstPartitionEdges.resize(2 * (maxHandle + 1));
+}
+
+bool SimpleIslandManager::addPreallocatedContactManager(EdgeIndex handle, PxsContactManager* manager, PxNodeIndex nodeHandle1, PxNodeIndex nodeHandle2, Sc::Interaction* interaction, Edge::EdgeType edgeType)
+{
+	// PT: part of SimpleIslandManager::addEdge that can be multi-threaded
+	{
+		const PxU32 nodeIds = 2 * handle;
+		mCpuData.mEdgeNodeIndices[nodeIds] = nodeHandle1;
+		mCpuData.mEdgeNodeIndices[nodeIds + 1] = nodeHandle2;
+		mAuxCpuData.mConstraintOrCm[handle] = manager;
+		mInteractions[handle] = interaction;
+	}
+
+	// PT: part of mSpeculativeIslandManager.addConnection() that can be multi-threaded
+	bool status = mSpeculativeIslandManager.addConnectionPreallocated(nodeHandle1, nodeHandle2, edgeType, handle);
+	if (manager)
+		manager->getWorkUnit().mEdgeIndex = handle;
+
+	// PT: part of SimpleIslandManager::addContactManager / resizeEdgeArrays() for contact manager
+	{
+		// PT: this is effectively just: mConnectedMap.reset(handle);	// PT: for contact manager
+		// So just this, with atomics: map[index >> 5] &= ~(1 << (index & 31));
+		PxU32* map = mConnectedMap.getWords() + (handle >> 5);
+		PxAtomicAnd(reinterpret_cast<volatile PxI32*>(map), ~(1 << (handle & 31)));
+	}
+
+	return status;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+EdgeIndex SimpleIslandManager::addContactManager(PxsContactManager* manager, PxNodeIndex nodeHandle1, PxNodeIndex nodeHandle2, Sc::Interaction* interaction, Edge::EdgeType edgeType)
+{
+	const EdgeIndex handle = addEdge(manager, nodeHandle1, nodeHandle2, interaction);
 
 	mSpeculativeIslandManager.addConnection(nodeHandle1, nodeHandle2, edgeType, handle);
 
 	if (manager)
 		manager->getWorkUnit().mEdgeIndex = handle;
 
-	if (mConnectedMap.size() == handle)
-	{
-		mConnectedMap.resize(2 * (handle + 1));
-	}
-	if (mFirstPartitionEdges.capacity() == handle)
-	{
-		mFirstPartitionEdges.resize(2 * (handle + 1));
-	}
-
-	mConnectedMap.reset(handle);
-	return handle;
+	return resizeEdgeArrays(handle, true);
 }
 
 EdgeIndex SimpleIslandManager::addConstraint(Dy::Constraint* constraint, PxNodeIndex nodeHandle1, PxNodeIndex nodeHandle2, Sc::Interaction* interaction)
 {
-	EdgeIndex handle = mEdgeHandles.getHandle();
+	const EdgeIndex handle = addEdge(constraint, nodeHandle1, nodeHandle2, interaction);
 
-	PxU32 nodeIds = 2 * handle;
-	if (mEdgeNodeIndices.size() == nodeIds)
-	{
-		const PxU32 newSize = nodeIds + 2048;
-		mEdgeNodeIndices.resize(newSize);
-		mConstraintOrCm.resize(newSize);
-		mInteractions.resize(newSize);
-	}
+	mAccurateIslandManager.addConnection(nodeHandle1, nodeHandle2, Edge::eCONSTRAINT, handle);
+	mSpeculativeIslandManager.addConnection(nodeHandle1, nodeHandle2, Edge::eCONSTRAINT, handle);
 
-	mEdgeNodeIndices[nodeIds] = nodeHandle1;
-	mEdgeNodeIndices[nodeIds + 1] = nodeHandle2;
-
-	mConstraintOrCm[handle] = constraint;
-
-	mInteractions[handle] = interaction;
-
-	mIslandManager.addConstraint(constraint, nodeHandle1, nodeHandle2, handle);
-	mSpeculativeIslandManager.addConstraint(constraint, nodeHandle1, nodeHandle2, handle);
-	if(mConnectedMap.size() == handle)
-	{
-		mConnectedMap.resize(2*(mConnectedMap.size()+1));
-	}
-
-	if (mFirstPartitionEdges.capacity() == handle)
-	{
-		mFirstPartitionEdges.resize(2 * (mFirstPartitionEdges.capacity() + 1));
-	}
-	mConnectedMap.set(handle);
-	return handle;
+	return resizeEdgeArrays(handle, false);
 }
 
 void SimpleIslandManager::activateNode(PxNodeIndex index)
 {
-	mIslandManager.activateNode(index);
+	mAccurateIslandManager.activateNode(index);
 	mSpeculativeIslandManager.activateNode(index);
 }
 
 void SimpleIslandManager::deactivateNode(PxNodeIndex index)
 {
-	mIslandManager.deactivateNode(index);
+	mAccurateIslandManager.deactivateNode(index);
 	mSpeculativeIslandManager.deactivateNode(index);
 }
 
 void SimpleIslandManager::putNodeToSleep(PxNodeIndex index)
 {
-	mIslandManager.putNodeToSleep(index);
+	mAccurateIslandManager.putNodeToSleep(index);
 	mSpeculativeIslandManager.putNodeToSleep(index);
 }
 
@@ -229,20 +268,23 @@ void SimpleIslandManager::removeConnection(EdgeIndex edgeIndex)
 	mSpeculativeIslandManager.removeConnection(edgeIndex);
 	if(mConnectedMap.test(edgeIndex))
 	{
-		mIslandManager.removeConnection(edgeIndex);
+		mAccurateIslandManager.removeConnection(edgeIndex);
 		mConnectedMap.reset(edgeIndex);
 	}
 
-	mConstraintOrCm[edgeIndex] = NULL;
+	mAuxCpuData.mConstraintOrCm[edgeIndex] = NULL;
 	mInteractions[edgeIndex] = NULL;
 }
 
 void SimpleIslandManager::firstPassIslandGen()
 {
-	PX_PROFILE_ZONE("Basic.firstPassIslandGen", getContextId());
+	PX_PROFILE_ZONE("Basic.firstPassIslandGen", mContextID);
+
 	mSpeculativeIslandManager.clearDeactivations();
+
 	mSpeculativeIslandManager.wakeIslands();
 	mSpeculativeIslandManager.processNewEdges();
+
 	mSpeculativeIslandManager.removeDestroyedEdges();
 	mSpeculativeIslandManager.processLostEdges(mDestroyedNodes, false, false, mMaxDirtyNodesPerFrame);
 }
@@ -254,20 +296,59 @@ void SimpleIslandManager::additionalSpeculativeActivation()
 
 void SimpleIslandManager::secondPassIslandGen()
 {
-	PX_PROFILE_ZONE("Basic.secondPassIslandGen", getContextId());
+	PX_PROFILE_ZONE("Basic.secondPassIslandGen", mContextID);
 	
-	mIslandManager.wakeIslands();
-	mIslandManager.processNewEdges();
+	secondPassIslandGenPart1();
+	secondPassIslandGenPart2();
+}
 
-	mIslandManager.removeDestroyedEdges();
-	mIslandManager.processLostEdges(mDestroyedNodes, false, false, mMaxDirtyNodesPerFrame);
+// PT: first part of secondPassIslandGen().
+// We can put in this function any code that does not modify data we read in PxgIncrementalPartition::processLostFoundPatches(). 
+// The two will overlap / run in parallel.
+void SimpleIslandManager::secondPassIslandGenPart1()
+{
+	PX_PROFILE_ZONE("Basic.secondPassIslandGenPart1", mContextID);
+	
+	mAccurateIslandManager.wakeIslands();
+	mAccurateIslandManager.processNewEdges();
+}
+
+// PT: second part of secondPassIslandGen(). Will run serially after PxgIncrementalPartition::processLostFoundPatches(). 
+void SimpleIslandManager::secondPassIslandGenPart2()
+{
+	PX_PROFILE_ZONE("Basic.secondPassIslandGenPart2", mContextID);
+	
+	// PT: TODO: analyze remaining code below, maybe we can move more of it to Part1
+	mAccurateIslandManager.removeDestroyedEdges();
+	mAccurateIslandManager.processLostEdges(mDestroyedNodes, false, false, mMaxDirtyNodesPerFrame);
 
 	for(PxU32 a = 0; a < mDestroyedNodes.size(); ++a)
-	{
 		mNodeHandles.freeHandle(mDestroyedNodes[a].index());
-	}
+
 	mDestroyedNodes.clear();
 	//mDestroyedEdges.clear();
+}
+
+void SimpleIslandManager::thirdPassIslandGen(PxBaseTask* continuation)
+{
+	mAccurateIslandManager.clearDeactivations();
+
+	mPostThirdPassTask.setContinuation(continuation);
+	
+	mSpeculativeThirdPassTask.setContinuation(&mPostThirdPassTask);
+	mAccurateThirdPassTask.setContinuation(&mPostThirdPassTask);
+
+	mSpeculativeThirdPassTask.removeReference();
+	mAccurateThirdPassTask.removeReference();
+
+	mPostThirdPassTask.removeReference();
+
+	//PX_PROFILE_ZONE("Basic.thirdPassIslandGen", mContextID);
+	//mSpeculativeIslandManager.removeDestroyedEdges();
+	//mSpeculativeIslandManager.processLostEdges(mDestroyedNodes, true, true);
+
+	//mAccurateIslandManager.removeDestroyedEdges();
+	//mAccurateIslandManager.processLostEdges(mDestroyedNodes, true, true);
 }
 
 bool SimpleIslandManager::validateDeactivations() const
@@ -281,7 +362,7 @@ bool SimpleIslandManager::validateDeactivations() const
 	for(PxU32 i = 0; i < nbNodesToDeactivate; ++i)
 	{
 		//Node is active in accurate sim => mismatch between accurate and inaccurate sim!
-		const Node& node = mIslandManager.getNode(nodeIndices[i]);
+		const Node& node = mAccurateIslandManager.getNode(nodeIndices[i]);
 		const Node& speculativeNode = mSpeculativeIslandManager.getNode(nodeIndices[i]);
 		//KS - we need to verify that the bodies in the "deactivating" list are still candidates for deactivation. There are cases where they may not no longer be candidates, e.g. if the application
 		//put bodies to sleep and activated them
@@ -291,80 +372,17 @@ bool SimpleIslandManager::validateDeactivations() const
 	return true;
 }
 
-void ThirdPassTask::runInternal()
-{
-	PX_PROFILE_ZONE("Basic.thirdPassIslandGen", mIslandSim.getContextId());
-	mIslandSim.removeDestroyedEdges();
-	mIslandSim.processLostEdges(mIslandManager.mDestroyedNodes, true, true, mIslandManager.mMaxDirtyNodesPerFrame);
-}
-
-void PostThirdPassTask::runInternal()
-{
-	for (PxU32 a = 0; a < mIslandManager.mDestroyedNodes.size(); ++a)
-	{
-		mIslandManager.mNodeHandles.freeHandle(mIslandManager.mDestroyedNodes[a].index());
-	}
-	mIslandManager.mDestroyedNodes.clear();
-
-	for (PxU32 a = 0; a < mIslandManager.mDestroyedEdges.size(); ++a)
-	{
-		mIslandManager.mEdgeHandles.freeHandle(mIslandManager.mDestroyedEdges[a]);
-	}
-	mIslandManager.mDestroyedEdges.clear();
-
-	PX_ASSERT(mIslandManager.validateDeactivations());
-}
-
-void SimpleIslandManager::thirdPassIslandGen(PxBaseTask* continuation)
-{
-
-	mIslandManager.clearDeactivations();
-
-	mPostThirdPassTask.setContinuation(continuation);
-	
-	mSpeculativeThirdPassTask.setContinuation(&mPostThirdPassTask);
-	mAccurateThirdPassTask.setContinuation(&mPostThirdPassTask);
-
-	mSpeculativeThirdPassTask.removeReference();
-	mAccurateThirdPassTask.removeReference();
-
-	mPostThirdPassTask.removeReference();
-
-	//PX_PROFILE_ZONE("Basic.thirdPassIslandGen", getContextId());
-	//mSpeculativeIslandManager.removeDestroyedEdges();
-	//mSpeculativeIslandManager.processLostEdges(mDestroyedNodes, true, true);
-
-	//mIslandManager.removeDestroyedEdges();
-	//mIslandManager.processLostEdges(mDestroyedNodes, true, true);
-
-	
-}
-
 bool SimpleIslandManager::checkInternalConsistency()
 {
-	return mIslandManager.checkInternalConsistency() && mSpeculativeIslandManager.checkInternalConsistency();
+	return mAccurateIslandManager.checkInternalConsistency() && mSpeculativeIslandManager.checkInternalConsistency();
 }
 
 void SimpleIslandManager::setEdgeConnected(EdgeIndex edgeIndex, Edge::EdgeType edgeType)
 {
 	if(!mConnectedMap.test(edgeIndex))
 	{
-		mIslandManager.addConnection(mEdgeNodeIndices[edgeIndex * 2], mEdgeNodeIndices[edgeIndex * 2 + 1], edgeType, edgeIndex);
+		mAccurateIslandManager.addConnection(mCpuData.mEdgeNodeIndices[edgeIndex * 2], mCpuData.mEdgeNodeIndices[edgeIndex * 2 + 1], edgeType, edgeIndex);
 		mConnectedMap.set(edgeIndex);
-	}
-}
-
-bool SimpleIslandManager::getIsEdgeConnected(EdgeIndex edgeIndex)
-{
-	return !!mConnectedMap.test(edgeIndex);
-}
-
-void SimpleIslandManager::deactivateEdge(const EdgeIndex edgeIndex)
-{
-	if (mFirstPartitionEdges[edgeIndex])
-	{
-		mDestroyedPartitionEdges.pushBack(mFirstPartitionEdges[edgeIndex]);
-		mFirstPartitionEdges[edgeIndex] = NULL;
 	}
 }
 
@@ -372,41 +390,42 @@ void SimpleIslandManager::setEdgeDisconnected(EdgeIndex edgeIndex)
 {
 	if(mConnectedMap.test(edgeIndex))
 	{
-		//PX_ASSERT(!mIslandManager.getEdge(edgeIndex).isInDirtyList());
-		mIslandManager.removeConnection(edgeIndex);
+		//PX_ASSERT(!mAccurateIslandManager.getEdge(edgeIndex).isInDirtyList());
+		mAccurateIslandManager.removeConnection(edgeIndex);
 		mConnectedMap.reset(edgeIndex);
+	}
+}
+
+void SimpleIslandManager::deactivateEdge(const EdgeIndex edgeIndex)
+{
+	if (mGPU && mGpuData.mFirstPartitionEdges[edgeIndex])
+	{
+		//this is the partition edges created/updated by the gpu solver
+		mGpuData.mDestroyedPartitionEdges.pushBack(mGpuData.mFirstPartitionEdges[edgeIndex]);
+		mGpuData.mFirstPartitionEdges[edgeIndex] = NULL;
 	}
 }
 
 void SimpleIslandManager::setEdgeRigidCM(const EdgeIndex edgeIndex, PxsContactManager* cm)
 {
-	mConstraintOrCm[edgeIndex] = cm;
+	mAuxCpuData.mConstraintOrCm[edgeIndex] = cm;
 	cm->getWorkUnit().mEdgeIndex = edgeIndex;
 }
 
 void SimpleIslandManager::clearEdgeRigidCM(const EdgeIndex edgeIndex)
 {
-	mConstraintOrCm[edgeIndex] = NULL;
-	if (mFirstPartitionEdges[edgeIndex])
-	{
-		//this is the partition edges created/updated by the gpu solver
-		mDestroyedPartitionEdges.pushBack(mFirstPartitionEdges[edgeIndex]);
-		mFirstPartitionEdges[edgeIndex] = NULL;
-	}
+	mAuxCpuData.mConstraintOrCm[edgeIndex] = NULL;
+	deactivateEdge(edgeIndex);
 }
 
 void SimpleIslandManager::setKinematic(PxNodeIndex nodeIndex) 
 { 
-	mIslandManager.setKinematic(nodeIndex); 
+	mAccurateIslandManager.setKinematic(nodeIndex); 
 	mSpeculativeIslandManager.setKinematic(nodeIndex);
 }
 
 void SimpleIslandManager::setDynamic(PxNodeIndex nodeIndex) 
 { 
-	mIslandManager.setDynamic(nodeIndex); 
+	mAccurateIslandManager.setDynamic(nodeIndex); 
 	mSpeculativeIslandManager.setDynamic(nodeIndex);
 }
-
-}
-}
-

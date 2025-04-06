@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -34,11 +34,6 @@
 #include "DySolverConstraintDesc.h"
 #include "foundation/PxArray.h"
 #include "PxConstraint.h"
-
-#define DY_ARTICULATION_MIN_RESPONSE 1e-5f
-#define DY_ARTICULATION_CFM	2e-4f
-
-#define DY_ARTICULATION_BAD_RESPONSE 0.02f
 
 namespace physx
 {
@@ -71,17 +66,17 @@ namespace Dy
 		(SolverConstraintShaderPrepDesc* PX_RESTRICT constraintShaderDescs,
 		PxSolverConstraintPrepDesc* PX_RESTRICT constraintDescs,
 			const PxReal dt, const PxReal recipdt, PxU32& totalRows,
-			 PxConstraintAllocator& allocator);
+			 PxConstraintAllocator& allocator, bool residualReportingEnabled);
 
 	SolverConstraintPrepState::Enum setupSolverConstraint4
 		(PxSolverConstraintPrepDesc* PX_RESTRICT constraintDescs,
 		const PxReal dt, const PxReal recipdt, PxU32& totalRows,
-		PxConstraintAllocator& allocator, PxU32 maxRows);
+		PxConstraintAllocator& allocator, PxU32 maxRows, bool residualReportingEnabled);
 
 	PxU32 SetupSolverConstraint(SolverConstraintShaderPrepDesc& shaderDesc,
 								PxSolverConstraintPrepDesc& prepDesc,
 								   PxConstraintAllocator& allocator,
-								   PxReal dt, PxReal invdt, Cm::SpatialVectorF* Z);
+								   PxReal dt, PxReal invdt);
 
 
 	class ConstraintHelper
@@ -91,7 +86,7 @@ namespace Dy
 		static PxU32 setupSolverConstraint(
 			PxSolverConstraintPrepDesc& prepDesc,
 			PxConstraintAllocator& allocator,
-			PxReal dt, PxReal invdt, Cm::SpatialVectorF* Z);
+			PxReal dt, PxReal invdt);
 	};
 
 	template<class PrepDescT>

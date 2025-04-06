@@ -22,20 +22,18 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef DY_CONTACT_PREP_H
 #define DY_CONTACT_PREP_H
 
+#include "CmSpatialVector.h"
 #include "DySolverConstraintDesc.h"
-#include "PxSceneDesc.h"
-#include "DySolverContact4.h"
 
 namespace physx
 {
-
 struct PxcNpWorkUnit;
 class PxsConstraintBlockManager;
 class PxcConstraintBlockStream;
@@ -51,29 +49,28 @@ namespace Dy
 	class ThreadContext;
 	struct CorrelationBuffer;
 
-#define CREATE_FINALIZE_SOLVER_CONTACT_METHOD_ARGS			\
-	PxSolverContactDesc& contactDesc,						\
-	PxsContactManagerOutput& output,						\
-	ThreadContext& threadContext,							\
-	const PxReal invDtF32,									\
-	const PxReal dtF32,										\
-	PxReal bounceThresholdF32,								\
-	PxReal frictionOffsetThreshold,							\
-	PxReal correlationDistance,								\
-	PxConstraintAllocator& constraintAllocator,				\
+#define CREATE_FINALIZE_SOLVER_CONTACT_METHOD_ARGS	\
+	PxSolverContactDesc& contactDesc,				\
+	PxsContactManagerOutput& output,				\
+	ThreadContext& threadContext,					\
+	const PxReal invDtF32,							\
+	const PxReal dtF32,								\
+	PxReal bounceThresholdF32,						\
+	PxReal frictionOffsetThreshold,					\
+	PxReal correlationDistance,						\
+	PxConstraintAllocator& constraintAllocator,		\
 	Cm::SpatialVectorF* Z
 
-#define CREATE_FINALIZE_SOVLER_CONTACT_METHOD_ARGS_4									\
-								 PxsContactManagerOutput** outputs,						\
-								 ThreadContext& threadContext,							\
-								 PxSolverContactDesc* blockDescs,						\
-								 const PxReal invDtF32,									\
-								 const PxReal dtF32,									\
-								 PxReal bounceThresholdF32,								\
-								 PxReal	frictionThresholdF32,							\
-								 PxReal	correlationDistanceF32,							\
-								 PxConstraintAllocator& constraintAllocator				
-
+#define CREATE_FINALIZE_SOLVER_CONTACT_METHOD_ARGS_4	\
+	PxsContactManagerOutput** outputs,					\
+	ThreadContext& threadContext,						\
+	PxSolverContactDesc* blockDescs,					\
+	const PxReal invDtF32,								\
+	const PxReal dtF32,									\
+	PxReal bounceThresholdF32,							\
+	PxReal	frictionThresholdF32,						\
+	PxReal	correlationDistanceF32,						\
+	PxConstraintAllocator& constraintAllocator				
 	
 /*!
 Method prototype for create finalize solver contact
@@ -81,12 +78,7 @@ Method prototype for create finalize solver contact
 
 typedef	bool (*PxcCreateFinalizeSolverContactMethod)(CREATE_FINALIZE_SOLVER_CONTACT_METHOD_ARGS);
 
-extern PxcCreateFinalizeSolverContactMethod createFinalizeMethods[3];
-
-typedef	SolverConstraintPrepState::Enum (*PxcCreateFinalizeSolverContactMethod4)(CREATE_FINALIZE_SOVLER_CONTACT_METHOD_ARGS_4);
-
-extern PxcCreateFinalizeSolverContactMethod4 createFinalizeMethods4[3];
-
+typedef	SolverConstraintPrepState::Enum (*PxcCreateFinalizeSolverContactMethod4)(CREATE_FINALIZE_SOLVER_CONTACT_METHOD_ARGS_4);
 
 bool createFinalizeSolverContacts(	PxSolverContactDesc& contactDesc,
 									PxsContactManagerOutput& output,
@@ -128,8 +120,6 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4(	Dy::CorrelationBu
 																PxReal correlationDistance,
 																PxConstraintAllocator& constraintAllocator);
 
-
-
 bool createFinalizeSolverContactsCoulomb1D(PxSolverContactDesc& contactDesc,
 											 PxsContactManagerOutput& output,
 											 ThreadContext& threadContext,
@@ -152,7 +142,6 @@ bool createFinalizeSolverContactsCoulomb2D(PxSolverContactDesc& contactDesc,
 											PxConstraintAllocator& constraintAllocator,
 											Cm::SpatialVectorF* Z);
 
-
 SolverConstraintPrepState::Enum createFinalizeSolverContacts4Coulomb1D(	PxsContactManagerOutput** outputs,
 																		ThreadContext& threadContext,
 																		 PxSolverContactDesc* blockDescs,
@@ -173,8 +162,13 @@ SolverConstraintPrepState::Enum createFinalizeSolverContacts4Coulomb2D(PxsContac
 																		PxReal correlationDistance,
 																		PxConstraintAllocator& constraintAllocator);
 
-
 PxU32 getContactManagerConstraintDesc(const PxsContactManagerOutput& cmOutput, const PxsContactManager& cm, PxSolverConstraintDesc& desc);
+
+template <typename SolverContactDesc>
+void updateFrictionAnchorCountAndPosition(PxSolverConstraintDesc& desc, PxsContactManagerOutput& output, SolverContactDesc& blockDesc);
+
+template <typename SolverFriction>
+void writeBackContactFriction(const SolverFriction* PX_RESTRICT frictions, PxU32 numFrictionConstr, PxU32 frictionStride, PxVec3* PX_RESTRICT vFrictionWriteback);
 
 class BlockAllocator : public PxConstraintAllocator
 {
@@ -201,7 +195,6 @@ public:
 	}
 
 	PX_NOCOPY(BlockAllocator)
-
 };
 
 }

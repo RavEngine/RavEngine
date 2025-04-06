@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #ifndef PX_PVD_FOUNDATION_H
 #define PX_PVD_FOUNDATION_H
@@ -304,7 +304,7 @@ inline void PvdDeleteAndDeallocate(TDataType* inDType)
 }
 }
 
-#define PVD_NEW(dtype) new (PvdAllocate<dtype>(#dtype, __FILE__, __LINE__)) dtype
+#define PVD_NEW(dtype) new (PvdAllocate<dtype>(#dtype, PX_FL)) dtype
 #define PVD_DELETE(obj) PvdDeleteAndDeallocate(obj);
 //#define PVD_NEW(dtype) PX_NEW(dtype)
 //#define PVD_DELETE(obj) PX_DELETE(obj)

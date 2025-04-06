@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -35,6 +35,8 @@
 #include "foundation/PxMutex.h"
 #include "foundation/PxInlineArray.h"
 #include "foundation/PxFPU.h"
+
+// PT: this shouldn't be in Cm. The whole task manager is in the PhysX DLL so we cannot use any of these inside the Common DLL
 
 namespace physx
 {
@@ -266,6 +268,29 @@ namespace Cm
 	private:
 		T* mObj;
 	};
+
+	PX_FORCE_INLINE void startTask(Cm::Task* task, PxBaseTask* continuation)
+	{
+		if(continuation)
+		{
+			// PT: TODO: just make this a PxBaseTask function?
+			task->setContinuation(continuation);
+			task->removeReference();
+		}
+		else
+			task->runInternal();
+	}
+
+	template<class T>
+	PX_FORCE_INLINE void updateTaskLinkedList(T*& previousTask, T* task, T*& head)
+	{
+		if(previousTask)
+			previousTask->mNext = task;
+		else
+			head = task;
+
+		previousTask = task;
+	}
 
 } // namespace Cm
 

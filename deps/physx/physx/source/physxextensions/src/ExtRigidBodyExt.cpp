@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -79,7 +79,7 @@ static bool computeMassAndDiagInertia(Ext::InertiaTensorComputer& inertiaComp,
 		return true;
 	else
 	{
-		PxGetFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, 
+		PxGetFoundation().error(PxErrorCode::eDEBUG_WARNING, PX_FL, 
 								"%s: inertia tensor has negative components (ill-conditioned input expected). Approximation for inertia tensor will be used instead.", errorStr);
 
 		// keep center of mass but use the AABB as a crude approximation for the inertia tensor
@@ -120,7 +120,7 @@ static bool computeMassAndInertia(Ext::InertiaTensorComputer& inertiaComp, bool 
 		currentMassOrDensity = masses[0];
 	}
 	if (!PxIsFinite(currentMassOrDensity))
-		return PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "computeMassAndInertia: Provided mass or density has no valid value");
+		return PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "computeMassAndInertia: Provided mass or density has no valid value");
 
 	for(PxU32 i=0; i < shapes.size(); i++)
 	{
@@ -134,22 +134,20 @@ static bool computeMassAndInertia(Ext::InertiaTensorComputer& inertiaComp, bool 
 				currentMassOrDensity = massOrDensityArray[validShapeIndex];
 
 				if (!PxIsFinite(currentMassOrDensity))
-					return PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "computeMassAndInertia: Provided mass or density has no valid value");
+					return PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "computeMassAndInertia: Provided mass or density has no valid value");
 			}
 			else
-				return PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "computeMassAndInertia: Not enough mass/density values provided for all (simulation) shapes");
+				return PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "computeMassAndInertia: Not enough mass/density values provided for all (simulation) shapes");
 		}
 
 		Ext::InertiaTensorComputer it(false);
 
-		switch(shapes[i]->getGeometryType())
+		const PxGeometry& geom = shapes[i]->getGeometry();
+		switch(geom.getType())
 		{
 		case PxGeometryType::eSPHERE : 
 			{
-				PxSphereGeometry g;
-				bool ok = shapes[i]->getSphereGeometry(g);
-				PX_ASSERT(ok);
-				PX_UNUSED(ok);
+				const PxSphereGeometry& g = static_cast<const PxSphereGeometry&>(geom);
 				PxTransform temp(shapes[i]->getLocalPose());
 
 				it.setSphere(g.radius, &temp);
@@ -158,10 +156,7 @@ static bool computeMassAndInertia(Ext::InertiaTensorComputer& inertiaComp, bool 
 
 		case PxGeometryType::eBOX : 
 			{
-				PxBoxGeometry g;
-				bool ok = shapes[i]->getBoxGeometry(g);
-				PX_ASSERT(ok);
-				PX_UNUSED(ok);
+				const PxBoxGeometry& g = static_cast<const PxBoxGeometry&>(geom);
 				PxTransform temp(shapes[i]->getLocalPose());
 
 				it.setBox(g.halfExtents, &temp);
@@ -170,22 +165,24 @@ static bool computeMassAndInertia(Ext::InertiaTensorComputer& inertiaComp, bool 
 
 		case PxGeometryType::eCAPSULE : 
 			{
-				PxCapsuleGeometry g;
-				bool ok = shapes[i]->getCapsuleGeometry(g);
-				PX_ASSERT(ok);
-				PX_UNUSED(ok);
+				const PxCapsuleGeometry& g = static_cast<const PxCapsuleGeometry&>(geom);
 				PxTransform temp(shapes[i]->getLocalPose());
 
 				it.setCapsule(0, g.radius, g.halfHeight, &temp);
 			}
 			break;
 
+		case PxGeometryType::eCONVEXCORE:
+			{
+				PxMassProperties mp(shapes[i]->getGeometry());
+				it = Ext::InertiaTensorComputer(mp.inertiaTensor, mp.centerOfMass, mp.mass);
+				it.transform(shapes[i]->getLocalPose());
+			}
+			break;
+
 		case PxGeometryType::eCONVEXMESH : 
 			{
-				PxConvexMeshGeometry g;
-				bool ok = shapes[i]->getConvexMeshGeometry(g);
-				PX_ASSERT(ok);
-				PX_UNUSED(ok);
+				const PxConvexMeshGeometry& g = static_cast<const PxConvexMeshGeometry&>(geom);
 				PxConvexMesh& convMesh = *g.convexMesh;
 
 				PxReal convMass;
@@ -214,10 +211,7 @@ static bool computeMassAndInertia(Ext::InertiaTensorComputer& inertiaComp, bool 
 			break;
 		case PxGeometryType::eTRIANGLEMESH:
 			{
-				PxTriangleMeshGeometry g;
-				bool ok = shapes[i]->getTriangleMeshGeometry(g);
-				PX_ASSERT(ok);
-				PX_UNUSED(ok);
+				const PxTriangleMeshGeometry& g = static_cast<const PxTriangleMeshGeometry&>(geom);
 
 				PxReal mass;
 				PxMat33 inertia;
@@ -239,7 +233,7 @@ static bool computeMassAndInertia(Ext::InertiaTensorComputer& inertiaComp, bool 
 			break;
 		default:
 			{
-				return PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "computeMassAndInertia: Dynamic actor with illegal collision shapes");
+				return PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "computeMassAndInertia: Dynamic actor with illegal collision shapes");
 			}
 		}
 
@@ -283,7 +277,7 @@ static bool updateMassAndInertia(bool multipleMassOrDensity, PxRigidBody& body, 
 		}
 		else
 		{
-			PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+			PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, 
 				"%s: Mass and inertia computation failed, setting mass to 1 and inertia to (1,1,1)", errorStr);
 
 			success = false;
@@ -291,7 +285,7 @@ static bool updateMassAndInertia(bool multipleMassOrDensity, PxRigidBody& body, 
 	}
 	else
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, 
 			"%s: No density specified, setting mass to 1 and inertia to (1,1,1)", errorStr);
 
 		success = false;
@@ -345,7 +339,7 @@ static bool setMassAndUpdateInertia(bool multipleMassOrDensity, PxRigidBody& bod
 		}
 		else
 		{
-			PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+			PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, 
 				"%s: Mass and inertia computation failed, setting mass to 1 and inertia to (1,1,1)", errorStr);
 
 			success = false;
@@ -353,7 +347,7 @@ static bool setMassAndUpdateInertia(bool multipleMassOrDensity, PxRigidBody& bod
 	}
 	else
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, 
 			"%s: No mass specified, setting mass to 1 and inertia to (1,1,1)", errorStr);
 		success = false;
 	}
@@ -400,7 +394,7 @@ PX_INLINE void addForceAtPosInternal(PxRigidBody& body, const PxVec3& force, con
 {
 	if(mode == PxForceMode::eACCELERATION || mode == PxForceMode::eVELOCITY_CHANGE)
 	{
-		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, 
+		PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, 
 			"PxRigidBodyExt::addForce methods do not support eACCELERATION or eVELOCITY_CHANGE modes");
 		return;
 	}
@@ -509,6 +503,7 @@ void PxRigidBodyExt::computeVelocityDeltaFromImpulse(const PxRigidBody& body, co
 	{
 		const PxTransform globalPose = body.getGlobalPose();
 		const PxTransform cmLocalPose = body.getCMassLocalPose();
+		// PT:: tag: scalar transform*transform
 		const PxTransform body2World = globalPose*cmLocalPose;
 		const PxMat33Padded M(body2World.q);
 

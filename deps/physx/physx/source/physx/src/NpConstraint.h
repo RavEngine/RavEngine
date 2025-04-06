@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -41,17 +41,10 @@ class NpScene;
 
 class NpConstraint : public PxConstraint, public NpBase
 {
-//= ATTENTION! =====================================================================================
-// Changing the data layout of this class breaks the binary serialization format.  See comments for 
-// PX_BINARY_SERIAL_VERSION.  If a modification is required, please adjust the getBinaryMetaData 
-// function.  If the modification is made on a custom branch, please change PX_BINARY_SERIAL_VERSION
-// accordingly.
-//==================================================================================================
 public:
 // PX_SERIALIZATION
 												NpConstraint(PxBaseFlags baseFlags) : PxConstraint(baseFlags), NpBase(PxEmpty), mCore(PxEmpty) {}
 	static			NpConstraint*				createObject(PxU8*& address, PxDeserializationContext& context);
-	static			void						getBinaryMetaData(PxOutputStream& stream);
 					void						preExportDataReset() {}
 					void						exportExtraData(PxSerializationContext&) {}
 					void						importExtraData(PxDeserializationContext&) {}
@@ -62,22 +55,24 @@ public:
 												NpConstraint(PxRigidActor* actor0, PxRigidActor* actor1, PxConstraintConnector& connector, const PxConstraintShaderTable& shaders, PxU32 dataSize);
 	virtual										~NpConstraint();
 	// PxConstraint
-	virtual			void						release()	PX_OVERRIDE;
-	virtual			PxScene*					getScene()	const	PX_OVERRIDE;
-	virtual			void						getActors(PxRigidActor*& actor0, PxRigidActor*& actor1)	const	PX_OVERRIDE;
-	virtual			void						setActors(PxRigidActor* actor0, PxRigidActor* actor1)	PX_OVERRIDE;
-	virtual			void						markDirty()	PX_OVERRIDE;
-	virtual			PxConstraintFlags			getFlags()	const	PX_OVERRIDE;
-	virtual			void						setFlags(PxConstraintFlags flags)	PX_OVERRIDE;
-	virtual			void						setFlag(PxConstraintFlag::Enum flag, bool value)	PX_OVERRIDE;
-	virtual			void						getForce(PxVec3& linear, PxVec3& angular)	const	PX_OVERRIDE;
-	virtual			bool						isValid()	const	PX_OVERRIDE;
-	virtual			void						setBreakForce(PxReal linear, PxReal angular)	PX_OVERRIDE;
-	virtual			void						getBreakForce(PxReal& linear, PxReal& angular)	const	PX_OVERRIDE;
-	virtual			void						setMinResponseThreshold(PxReal threshold)	PX_OVERRIDE;
-	virtual			PxReal						getMinResponseThreshold()	const	PX_OVERRIDE;
-	virtual			void*						getExternalReference(PxU32& typeID)	PX_OVERRIDE;
-	virtual			void						setConstraintFunctions(PxConstraintConnector& n, const PxConstraintShaderTable& t)	PX_OVERRIDE;
+	virtual			void						release()	PX_OVERRIDE PX_FINAL;
+	virtual			PxScene*					getScene()	const	PX_OVERRIDE PX_FINAL;
+	virtual			void						getActors(PxRigidActor*& actor0, PxRigidActor*& actor1)	const	PX_OVERRIDE PX_FINAL;
+	virtual			void						setActors(PxRigidActor* actor0, PxRigidActor* actor1)	PX_OVERRIDE PX_FINAL;
+	virtual			void						markDirty()	PX_OVERRIDE PX_FINAL;
+	virtual			PxConstraintFlags			getFlags()	const	PX_OVERRIDE PX_FINAL;
+	virtual			void						setFlags(PxConstraintFlags flags)	PX_OVERRIDE PX_FINAL;
+	virtual			void						setFlag(PxConstraintFlag::Enum flag, bool value)	PX_OVERRIDE PX_FINAL;
+	virtual			void						getForce(PxVec3& linear, PxVec3& angular)	const	PX_OVERRIDE PX_FINAL;
+	virtual			bool						isValid()	const	PX_OVERRIDE PX_FINAL;
+	virtual			void						setBreakForce(PxReal linear, PxReal angular)	PX_OVERRIDE PX_FINAL;
+	virtual			void						getBreakForce(PxReal& linear, PxReal& angular)	const	PX_OVERRIDE PX_FINAL;
+	virtual			void						setMinResponseThreshold(PxReal threshold)	PX_OVERRIDE PX_FINAL;
+	virtual			PxReal						getMinResponseThreshold()	const	PX_OVERRIDE PX_FINAL;
+	virtual			void*						getExternalReference(PxU32& typeID)	PX_OVERRIDE PX_FINAL;
+	virtual			void						setConstraintFunctions(PxConstraintConnector& n, const PxConstraintShaderTable& t)	PX_OVERRIDE PX_FINAL;
+	virtual			PxConstraintResidual		getSolverResidual() const PX_OVERRIDE PX_FINAL { return mCore.getSolverResidual(); }
+	virtual			PxConstraintGPUIndex		getGPUIndex() const PX_OVERRIDE PX_FINAL;
 	//~PxConstraint
 
 					void						updateConstants(PxsSimulationController& simController);

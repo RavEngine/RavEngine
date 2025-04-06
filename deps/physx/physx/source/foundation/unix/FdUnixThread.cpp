@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -30,10 +30,9 @@
 #include "foundation/PxErrorCallback.h"
 #include "foundation/PxAtomic.h"
 #include "foundation/PxThread.h"
-#include <thread>
 
 #include <math.h>
-#if !PX_APPLE_FAMILY && !defined(__CYGWIN__) && !PX_EMSCRIPTEN && !__ANDROID__
+#if !PX_APPLE_FAMILY && !defined(__CYGWIN__) && !PX_EMSCRIPTEN
 #include <bits/local_lim.h> // PTHREAD_STACK_MIN
 #endif
 #include <stdio.h>
@@ -92,9 +91,7 @@ static void setTid(ThreadImpl& threadImpl)
 {
 // query TID
 // AM: TODO: neither of the below are implemented
-#if PX_PS4 || (defined (TARGET_OS_TV) && TARGET_OS_TV)
-    // do nothing
-#elif PX_APPLE_FAMILY
+#if PX_APPLE_FAMILY
 	threadImpl.tid = syscall(SYS_gettid);
 #elif PX_EMSCRIPTEN
 	threadImpl.tid = pthread_self();
@@ -247,11 +244,9 @@ __attribute__((noreturn))
 
 void PxThreadImpl::kill()
 {
-#if !__ANDROID__ // hope we never have to kill a thread on Android
 	if(getThread(this)->state == ePxThreadStarted)
 		pthread_cancel(getThread(this)->thread);
 	getThread(this)->state = ePxThreadStopped;
-#endif
 }
 
 void PxThreadImpl::sleep(uint32_t ms)
@@ -274,7 +269,7 @@ void PxThreadImpl::yieldProcessor()
 {
 #if (PX_ARM || PX_A64)
 	__asm__ __volatile__("yield");
-#elif (PX_X86 || PX_X64) && !PX_WASM
+#else
 	__asm__ __volatile__("pause");
 #endif
 }

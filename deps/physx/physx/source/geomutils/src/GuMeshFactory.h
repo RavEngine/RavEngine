@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -54,8 +54,8 @@ namespace Gu
 	class HeightField;
 	class TriangleMesh;
 	class TriangleMeshData;
-	class SoftBodyMesh;
-	class SoftBodyMeshData;
+	class DeformableVolumeMesh;
+	class DeformableVolumeMeshData;
 	class TetrahedronMesh;
 	class TetrahedronMeshData;
 	class BVH;
@@ -106,13 +106,13 @@ namespace Gu
 		PxU32							getNbTetrahedronMeshes()	const;
 		PxU32							getTetrahedronMeshes(PxTetrahedronMesh** userBuffer, PxU32 bufferSize, PxU32 startIndex)	const;
 
-		// SoftBody meshes
-		void							addSoftBodyMesh(Gu::SoftBodyMesh* np, bool lock = true);
-		PxSoftBodyMesh*					createSoftBodyMesh(PxInputStream& stream);
-		PxSoftBodyMesh*					createSoftBodyMesh(void* tetrahedronMeshData);
-		bool							removeSoftBodyMesh(PxSoftBodyMesh&);
-		PxU32							getNbSoftBodyMeshes()	const;
-		PxU32							getSoftBodyMeshes(PxSoftBodyMesh** userBuffer, PxU32 bufferSize, PxU32 startIndex)	const;
+		// Deformable volume meshes
+		void							addDeformableVolumeMesh(Gu::DeformableVolumeMesh* np, bool lock = true);
+		PxDeformableVolumeMesh*			createDeformableVolumeMesh(PxInputStream& stream);
+		PxDeformableVolumeMesh*			createDeformableVolumeMesh(void* tetrahedronMeshData);
+		bool							removeDeformableVolumeMesh(PxDeformableVolumeMesh&);
+		PxU32							getNbDeformableVolumeMeshes()	const;
+		PxU32							getDeformableVolumeMeshes(PxDeformableVolumeMesh** userBuffer, PxU32 bufferSize, PxU32 startIndex)	const;
 
 		// Convexes
 		void							addConvexMesh(Gu::ConvexMesh* np, bool lock=true);
@@ -148,20 +148,20 @@ namespace Gu
 
 		PxTriangleMesh*					createTriangleMesh(Gu::TriangleMeshData& data);
 		PxTetrahedronMesh*				createTetrahedronMesh(Gu::TetrahedronMeshData& data);
-		PxSoftBodyMesh*					createSoftBodyMesh(Gu::SoftBodyMeshData& data);
+		PxDeformableVolumeMesh*			createDeformableVolumeMesh(Gu::DeformableVolumeMeshData& data);
 		PxConvexMesh*					createConvexMesh(Gu::ConvexHullInitData& data);
 		PxBVH*							createBVH(Gu::BVHData& data);
 
 		mutable PxMutex					mTrackingMutex;
 	private:
-		PxCoalescedHashSet<Gu::TriangleMesh*>		mTriangleMeshes;
-		PxCoalescedHashSet<Gu::TetrahedronMesh*>	mTetrahedronMeshes;
-		PxCoalescedHashSet<Gu::SoftBodyMesh*>		mSoftBodyMeshes;
-		PxCoalescedHashSet<Gu::ConvexMesh*>			mConvexMeshes;
-		PxCoalescedHashSet<Gu::HeightField*>		mHeightFields;
-		PxCoalescedHashSet<Gu::BVH*>				mBVHs;
+		PxCoalescedHashSet<Gu::TriangleMesh*>			mTriangleMeshes;
+		PxCoalescedHashSet<Gu::TetrahedronMesh*>		mTetrahedronMeshes;
+		PxCoalescedHashSet<Gu::DeformableVolumeMesh*>	mDeformableVolumeMeshes;
+		PxCoalescedHashSet<Gu::ConvexMesh*>				mConvexMeshes;
+		PxCoalescedHashSet<Gu::HeightField*>			mHeightFields;
+		PxCoalescedHashSet<Gu::BVH*>					mBVHs;
 
-		PxArray<MeshFactoryListener*>				mFactoryListeners;
+		PxArray<MeshFactoryListener*>					mFactoryListeners;
 
 #if PX_SUPPORT_OMNI_PVD
 	protected:

@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved. 
 
@@ -324,7 +324,7 @@ namespace physx { namespace Sn {
 
 			if ( strstr( newItem.liveObject.typeName, "PxCloth" ) || strstr( newItem.liveObject.typeName, "PxClothFabric" ) )
 			{  
-				PxGetFoundation().error(PxErrorCode::eDEBUG_WARNING, __FILE__, __LINE__, "Didn't suppot PxCloth upgrate from 3.2 to 3.3! ");
+				PxGetFoundation().error(PxErrorCode::eDEBUG_WARNING, PX_FL, "Didn't suppot PxCloth upgrate from 3.2 to 3.3! ");
 				continue;
 			}
 

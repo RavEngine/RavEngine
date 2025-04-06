@@ -22,14 +22,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 #ifndef SN_JOINT_REPX_SERIALIZER_H
 #define SN_JOINT_REPX_SERIALIZER_H
-/** \addtogroup RepXSerializers
-  @{
-*/
 
 #include "extensions/PxRepXSimpleType.h"
 #include "SnRepXSerializerImpl.h"
@@ -45,7 +42,7 @@ namespace physx
 	class MemoryBuffer;
 	
 	template<typename TJointType>
-	struct PxJointRepXSerializer : public RepXSerializerImpl<TJointType>
+	struct PX_DEPRECATED PxJointRepXSerializer : public RepXSerializerImpl<TJointType>
 	{
 		PxJointRepXSerializer(PxAllocatorCallback& inAllocator) : RepXSerializerImpl<TJointType>(inAllocator) {}
 		virtual PxRepXObject fileToObject(XmlReader& inReader, XmlMemoryAllocator& inAllocator, PxRepXInstantiationArgs& inArgs, PxCollection* inCollection);
@@ -55,18 +52,16 @@ namespace physx
 
 #if PX_SUPPORT_EXTERN_TEMPLATE
 	// explicit template instantiations declarations
-	extern template struct PxJointRepXSerializer<PxD6Joint>;
-	extern template struct PxJointRepXSerializer<PxDistanceJoint>;
-	extern template struct PxJointRepXSerializer<PxContactJoint>;
-	extern template struct PxJointRepXSerializer<PxFixedJoint>;
-	extern template struct PxJointRepXSerializer<PxPrismaticJoint>;
-	extern template struct PxJointRepXSerializer<PxRevoluteJoint>;
-	extern template struct PxJointRepXSerializer<PxSphericalJoint>;
+	extern template struct PX_DEPRECATED PxJointRepXSerializer<PxD6Joint>;
+	extern template struct PX_DEPRECATED PxJointRepXSerializer<PxDistanceJoint>;
+	extern template struct PX_DEPRECATED PxJointRepXSerializer<PxFixedJoint>;
+	extern template struct PX_DEPRECATED PxJointRepXSerializer<PxPrismaticJoint>;
+	extern template struct PX_DEPRECATED PxJointRepXSerializer<PxRevoluteJoint>;
+	extern template struct PX_DEPRECATED PxJointRepXSerializer<PxSphericalJoint>;
 #endif
 
 #if !PX_DOXYGEN
 } // namespace physx
 #endif
 
-/** @} */
 #endif

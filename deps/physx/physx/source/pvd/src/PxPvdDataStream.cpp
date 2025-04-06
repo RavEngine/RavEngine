@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 
 #include "foundation/PxAssert.h"
 #include "PxPvdCommStreamEventSink.h"
@@ -853,7 +853,7 @@ PvdDataStream* PvdDataStream::create(PxPvd* pvd)
 {
 	if(pvd == NULL)
 	{
-        PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, __FILE__, __LINE__, "PvdDataStream::create - pvd must be non-NULL!");
+        PxGetFoundation().error(PxErrorCode::eINVALID_PARAMETER, PX_FL, "PvdDataStream::create - pvd must be non-NULL!");
 	    return NULL;
 	}
 

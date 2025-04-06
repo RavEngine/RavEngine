@@ -22,15 +22,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_TRIANGLE_MESH_GEOMETRY_H
 #define PX_TRIANGLE_MESH_GEOMETRY_H
-/** \addtogroup geomutils
-@{
-*/
 #include "geometry/PxGeometry.h"
 #include "geometry/PxMeshScale.h"
 #include "common/PxCoreUtilityTypes.h"
@@ -53,15 +50,16 @@ struct PxMeshGeometryFlag
 	{
 		eTIGHT_BOUNDS = (1<<0),	//!< Use tighter (but more expensive to compute) bounds around the triangle mesh geometry.
 		eDOUBLE_SIDED = (1<<1)	//!< Meshes with this flag set are treated as double-sided.
-								//!< This flag is currently only used for raycasts and sweeps (it is ignored for overlap queries).
+								//!< This flag is currently only used for raycasts and sweeps. It is ignored for overlap queries and has no effect on contact generation, i.e. simulation.
 								//!< For detailed specifications of this flag for meshes and heightfields please refer to the Geometry Query section of the user guide.
+								//!< For double-sided collision meshes, consider duplicating their faces with flipped normals.
 	};
 };
 
 /**
 \brief collection of set bits defined in PxMeshGeometryFlag.
 
-@see PxMeshGeometryFlag
+\see PxMeshGeometryFlag
 */
 typedef PxFlags<PxMeshGeometryFlag::Enum,PxU8> PxMeshGeometryFlags;
 PX_FLAGS_OPERATORS(PxMeshGeometryFlag::Enum,PxU8)
@@ -125,9 +123,9 @@ public:
 	\return  True if the current settings are valid for shape creation.
 
 	\note A valid triangle mesh has a positive scale value in each direction (scale.scale.x > 0, scale.scale.y > 0, scale.scale.z > 0).
-	It is illegal to call PxRigidActor::createShape and PxPhysics::createShape with a triangle mesh that has zero extents in any direction.
+	It is illegal to call PxPhysics::createShape with a triangle mesh that has zero extents in any direction.
 
-	@see PxRigidActor::createShape, PxPhysics::createShape
+	\see PxPhysics::createShape
 	*/
 	PX_INLINE bool isValid() const;
 
@@ -156,5 +154,4 @@ PX_INLINE bool PxTriangleMeshGeometry::isValid() const
 } // namespace physx
 #endif
 
-/** @} */
 #endif
