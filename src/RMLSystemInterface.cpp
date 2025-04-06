@@ -9,8 +9,17 @@
 using namespace RavEngine;
 
 void RMLSystemInterface::ActivateKeyboard(Rml::Vector2f caret_position, float line_height){
+    const auto& mainWindow = GetApp()->GetMainWindow();
+    const auto window = mainWindow->window;
+
+#if __APPLE__
+    // need to scale by window DPI. Values are in pixels but we need them in points.
+    auto dpiScale = mainWindow->GetDPIScale();
+    caret_position /= dpiScale;
+    line_height /= dpiScale;
+#endif
+    
     const SDL_Rect rect{int(caret_position.x), int(caret_position.y), 1, int(line_height)};
-    const auto window = GetApp()->GetMainWindow()->window;
     
     SDL_SetTextInputArea(window, &rect, 0);
     if (not SDL_TextInputActive(window)){
