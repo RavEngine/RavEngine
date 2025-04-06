@@ -81,7 +81,7 @@ PxU32 getBinaryPlatformTag()
 	return sBinaryPlatformTags[3];
 #elif PX_OSX && PX_X86
 	return sBinaryPlatformTags[4];
-#elif PX_OSX && PX_X64
+#elif PX_OSX
 	return sBinaryPlatformTags[5];
 #elif PX_SWITCH && !PX_A64
 	return sBinaryPlatformTags[6];

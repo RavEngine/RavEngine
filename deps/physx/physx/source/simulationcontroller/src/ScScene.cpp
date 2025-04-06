@@ -78,8 +78,6 @@ using namespace Cm;
 using namespace Dy;
 using namespace Sc;
 
-PX_IMPLEMENT_OUTPUT_ERROR
-
 namespace physx { 
 namespace Sc {
 

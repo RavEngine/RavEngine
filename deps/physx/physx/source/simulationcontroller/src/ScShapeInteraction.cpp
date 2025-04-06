@@ -33,8 +33,6 @@
 
 using namespace physx;
 
-PX_IMPLEMENT_OUTPUT_ERROR
-
 Sc::ShapeInteraction::ShapeInteraction(ShapeSimBase& s1, ShapeSimBase& s2, PxPairFlags pairFlags, PxsContactManager* contactManager) :
 	ElementSimInteraction	(s1, s2, InteractionType::eOVERLAP, InteractionFlag::eRB_ELEMENT|InteractionFlag::eFILTERABLE),
 	mActorPair				(NULL),
