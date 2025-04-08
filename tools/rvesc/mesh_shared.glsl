@@ -4,11 +4,25 @@
 #include "mesh_varyings.glsl"
 
 #if RVE_TRANSPARENT
-layout(binding = 23, rgba16f) uniform image2D mlabAccum0;
-layout(binding = 24, rgba8) uniform image2D mlabAccum1;
-layout(binding = 25, rgba8) uniform image2D mlabAccum2;
-layout(binding = 26, rgba8) uniform image2D mlabAccum3;
-layout(binding = 27, rgba16f) uniform image2D mlabDepth;
+#if RVE_TBDR
+    layout(input_attachment_index = 0, binding = 23) uniform subpassInput mlabAccum0;
+    layout(input_attachment_index = 1, binding = 24) uniform subpassInput mlabAccum1;
+    layout(input_attachment_index = 2, binding = 25) uniform subpassInput mlabAccum2;
+    layout(input_attachment_index = 3, binding = 26) uniform subpassInput mlabAccum3;
+    layout(input_attachment_index = 4, binding = 27) uniform subpassInput mlabDepth;
+
+    layout(location = 0) out vec4 mlabAccum0Out;
+    layout(location = 1) out vec4 mlabAccum1Out;
+    layout(location = 2) out vec4 mlabAccum2Out;
+    layout(location = 3) out vec4 mlabAccum3Out;
+    layout(location = 4) out vec4 mlabDepthOut;
+#else
+    layout(binding = 23, rgba16f) uniform image2D mlabAccum0;
+    layout(binding = 24, rgba8) uniform image2D mlabAccum1;
+    layout(binding = 25, rgba8) uniform image2D mlabAccum2;
+    layout(binding = 26, rgba8) uniform image2D mlabAccum3;
+    layout(binding = 27, rgba16f) uniform image2D mlabDepth;
+#endif
 layout(early_fragment_tests) in;
 #else
     #if !RVE_DEPTHONLY 
@@ -32,12 +46,21 @@ void writeTransparency(inout vec4 baseColorSample){
     //Read KBuffer
     const ivec2 pixelCoord = ivec2( gl_FragCoord.xy);
     OITData_4Layer oitData;
-    oitData.ACV[0] = imageLoad(mlabAccum0, pixelCoord);
-    oitData.ACV[1] = imageLoad(mlabAccum1, pixelCoord);
-    oitData.ACV[2] = imageLoad(mlabAccum2, pixelCoord);
-    oitData.ACV[3] = imageLoad(mlabAccum3, pixelCoord);
+    const vec4 depthValues
+    #if RVE_TBDR
+        = subpassLoad(mlabDepth);
+        oitData.ACV[0] = subpassLoad(mlabAccum0);
+        oitData.ACV[1] = subpassLoad(mlabAccum1);
+        oitData.ACV[2] = subpassLoad(mlabAccum2);
+        oitData.ACV[3] = subpassLoad(mlabAccum3);
+    #else
+        = imageLoad(mlabDepth, pixelCoord);
+        oitData.ACV[0] = imageLoad(mlabAccum0, pixelCoord);
+        oitData.ACV[1] = imageLoad(mlabAccum1, pixelCoord);
+        oitData.ACV[2] = imageLoad(mlabAccum2, pixelCoord);
+        oitData.ACV[3] = imageLoad(mlabAccum3, pixelCoord);
+    #endif
     
-    const vec4 depthValues = imageLoad(mlabDepth, pixelCoord);
     oitData.D[0] = depthValues.r;
     oitData.D[1] = depthValues.g;
     oitData.D[2] = depthValues.b;
@@ -75,12 +98,22 @@ void writeTransparency(inout vec4 baseColorSample){
     oitData.ACV[lastLayer] = vec4(firstACV.rgb + secondACV.rgb * firstACV.a, firstACV.a*secondACV.a);
     oitData.D[lastLayer] = firstD;
     
-    //Write KBuffer
-    imageStore(mlabAccum0, pixelCoord,  oitData.ACV[0]);
-    imageStore(mlabAccum1, pixelCoord,  oitData.ACV[1]);
-    imageStore(mlabAccum2, pixelCoord,  oitData.ACV[2]);
-    imageStore(mlabAccum3, pixelCoord,  oitData.ACV[3]);
+    const vec4 dvec = vec4(oitData.D[0], oitData.D[1], oitData.D[2], oitData.D[3]);
     
-    imageStore(mlabDepth, pixelCoord, vec4(oitData.D[0], oitData.D[1], oitData.D[2], oitData.D[3]));
+    //Write KBuffer
+    #if RVE_TBDR
+        mlabAccum0Out = oitData.ACV[0];
+        mlabAccum1Out = oitData.ACV[1];
+        mlabAccum2Out = oitData.ACV[2];
+        mlabAccum3Out = oitData.ACV[3];
+        mlabDepthOut = dvec;
+    #else
+        imageStore(mlabAccum0, pixelCoord,  oitData.ACV[0]);
+        imageStore(mlabAccum1, pixelCoord,  oitData.ACV[1]);
+        imageStore(mlabAccum2, pixelCoord,  oitData.ACV[2]);
+        imageStore(mlabAccum3, pixelCoord,  oitData.ACV[3]);
+        
+        imageStore(mlabDepth, pixelCoord, dvec);
+    #endif
     #endif
 }

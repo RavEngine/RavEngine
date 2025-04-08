@@ -269,6 +269,7 @@ namespace RGL {
 	struct ComputePipelineDescriptor {
 		ShaderStageDesc stage;
 		RGLPipelineLayoutPtr pipelineLayout;
+        std::string debugName;
 	};
 
 	struct IRenderPipeline {

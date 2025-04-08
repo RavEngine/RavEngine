@@ -36,6 +36,12 @@ namespace RavEngine {
         //get all shader files for this programs
         auto vertshaderName = Format("{}_vsh", vsh_name);
         auto fragShaderName = Format("{}_fsh", fsh_name);
+        
+#if RVE_TBDR
+        if (config.opacityMode == OpacityMode::Transparent) {
+            fragShaderName = Format("{}_tbdr",fragShaderName);
+        }
+#endif
 
         auto vertShader = LoadShaderByFilename(vertshaderName, device);
         auto fragShader = LoadShaderByFilename(fragShaderName, device);

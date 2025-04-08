@@ -171,7 +171,13 @@ RenderPipelineMTL::RenderPipelineMTL(decltype(owningDevice) owningDevice, const 
     pipelineDesc.depthAttachmentPixelFormat = rgl2mtlformat(desc.depthStencilConfig.depthFormat);
     pipelineDesc.stencilAttachmentPixelFormat = rgl2mtlformat(desc.depthStencilConfig.stencilFormat);
     
+    if (desc.debugName.data() != nullptr){
+        [pipelineDesc setLabel:[NSString stringWithUTF8String:desc.debugName.data()]];
+    }
+    
     MTL_CHECK(pipelineState = [owningDevice->device newRenderPipelineStateWithDescriptor:pipelineDesc error:&err]);
+    
+
     
     if (desc.depthStencilConfig.depthTestEnabled){
         auto depthDesc = [MTLDepthStencilDescriptor new];

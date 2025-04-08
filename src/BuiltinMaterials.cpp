@@ -104,7 +104,26 @@ STATIC(RavEngine::defaultColorBlendConfigLitPrepass) {
 };
 
 STATIC(RavEngine::defaultTransparentColorBlendConfig) {
-    .attachments = {}
+    .attachments = {
+#if RVE_TBDR
+        {
+            .format = RenderTargetCollection::formats[0],
+        },
+        {
+            .format = RenderTargetCollection::formats[1],
+        },
+        {
+            .format = RenderTargetCollection::formats[2],
+        },
+        {
+            .format = RenderTargetCollection::formats[3],
+        },
+        {
+            .format = RenderTargetCollection::mlabDepthFormat,
+        },
+#endif
+        // no attachments on non-tilers
+    }
 };
 
 STATIC(RavEngine::defaultUnlitColorBlendConfig) {
@@ -116,7 +135,26 @@ STATIC(RavEngine::defaultUnlitColorBlendConfig) {
 };
 
 STATIC(RavEngine::defaultTransparentUnlitColorBlendConfig) {
-    .attachments = {}   // no attachments
+    .attachments = {
+#if RVE_TBDR
+        {
+            .format = RenderTargetCollection::formats[0],
+        },
+        {
+            .format = RenderTargetCollection::formats[1],
+        },
+        {
+            .format = RenderTargetCollection::formats[2],
+        },
+        {
+            .format = RenderTargetCollection::formats[3],
+        },
+        {
+            .format = RenderTargetCollection::mlabDepthFormat,
+        },
+#endif
+        // no attachments on non-tilers
+    }
 };
 
 

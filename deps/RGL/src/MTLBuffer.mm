@@ -17,6 +17,10 @@ BufferMTL::BufferMTL(decltype(owningDevice) owningDevice, const BufferConfig& co
     
     MTL_CHECK(buffer = [owningDevice->device newBufferWithLength:config.nElements * config.stride options: mode]);
     
+    if (config.options.debugName != nullptr){
+        [buffer setLabel:[NSString stringWithUTF8String:config.options.debugName]];
+    }
+    
     data.size = config.nElements * config.stride;
     stride = config.stride;
     

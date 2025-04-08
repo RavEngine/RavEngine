@@ -440,7 +440,38 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	});
 
 	litTransparentPass = RGL::CreateRenderPass({
-		.attachments = {},
+		.attachments =
+#if RVE_TBDR
+        {
+            {
+                .format = RenderTargetCollection::formats[0],
+                .loadOp = RGL::LoadAccessOperation::Load,
+                .storeOp = RGL::StoreAccessOperation::Store,
+            },
+            {
+                .format = RenderTargetCollection::formats[1],
+                .loadOp = RGL::LoadAccessOperation::Load,
+                .storeOp = RGL::StoreAccessOperation::Store,
+            },
+            {
+                .format = RenderTargetCollection::formats[2],
+                .loadOp = RGL::LoadAccessOperation::Load,
+                .storeOp = RGL::StoreAccessOperation::Store,
+            },
+            {
+                .format = RenderTargetCollection::formats[3],
+                .loadOp = RGL::LoadAccessOperation::Load,
+                .storeOp = RGL::StoreAccessOperation::Store,
+            },
+            {
+                .format = RenderTargetCollection::mlabDepthFormat,
+                .loadOp = RGL::LoadAccessOperation::Load,
+                .storeOp = RGL::StoreAccessOperation::Store,
+            }
+        },
+#else
+        {},
+#endif
         .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
             .format = RGL::TextureFormat::D32SFloat,
             .loadOp = RGL::LoadAccessOperation::Load,
@@ -449,7 +480,38 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 	});
 
 	unlitTransparentPass = RGL::CreateRenderPass({
-		.attachments = {},
+		.attachments =
+#if RVE_TBDR
+        {
+            {
+                .format = RenderTargetCollection::formats[0],
+                .loadOp = RGL::LoadAccessOperation::Load,
+                .storeOp = RGL::StoreAccessOperation::Store,
+            },
+            {
+                .format = RenderTargetCollection::formats[1],
+                .loadOp = RGL::LoadAccessOperation::Load,
+                .storeOp = RGL::StoreAccessOperation::Store,
+            },
+            {
+                .format = RenderTargetCollection::formats[2],
+                .loadOp = RGL::LoadAccessOperation::Load,
+                .storeOp = RGL::StoreAccessOperation::Store,
+            },
+            {
+                .format = RenderTargetCollection::formats[3],
+                .loadOp = RGL::LoadAccessOperation::Load,
+                .storeOp = RGL::StoreAccessOperation::Store,
+            },
+            {
+                .format = RenderTargetCollection::mlabDepthFormat,
+                .loadOp = RGL::LoadAccessOperation::Load,
+                .storeOp = RGL::StoreAccessOperation::Store,
+            }
+        },
+#else
+        {},
+#endif
         .depthAttachment = RGL::RenderPassConfig::AttachmentDesc{
             .format = RGL::TextureFormat::D32SFloat,
             .loadOp = RGL::LoadAccessOperation::Load,
@@ -1073,7 +1135,8 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.type = RGL::ShaderStageDesc::Type::Compute,
 			.shaderModule = defaultCullCSH
 		},
-		.pipelineLayout = defaultCullingLayout
+		.pipelineLayout = defaultCullingLayout,
+        .debugName = "defaultcull"
 	});
 
 	auto blurKernelLayout = device->CreatePipelineLayout({
@@ -1097,14 +1160,16 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
 			.type = RGL::ShaderStageDesc::Type::Compute,
 			.shaderModule = LoadShaderByFilename("blur_kernel_x_csh", device)
 		},
-		.pipelineLayout = blurKernelLayout
+		.pipelineLayout = blurKernelLayout,
+        .debugName = "blur_kernel_x"
 	});
 	blurKernelY = device->CreateComputePipeline({
 		.stage = {
 			.type = RGL::ShaderStageDesc::Type::Compute,
 			.shaderModule = LoadShaderByFilename("blur_kernel_y_csh", device)
 		},
-		.pipelineLayout = blurKernelLayout
+		.pipelineLayout = blurKernelLayout,
+        .debugName = "blur_kernel_y"
 	});
 
 	auto skinningDrawCallPrepareLayout = device->CreatePipelineLayout({
@@ -1154,7 +1219,8 @@ RenderEngine::RenderEngine(const AppConfig& config, RGLDevicePtr device) : devic
             .type = RGL::ShaderStageDesc::Type::Compute,
             .shaderModule = depthPyramidCSH
         },
-        .pipelineLayout = depthPyramidLayout
+        .pipelineLayout = depthPyramidLayout,
+        .debugName = "Depth Pyramid"
     });
 
 	auto depthPyramidCopyVSH = LoadShaderByFilename("depthpyramidcopy_vsh", device);

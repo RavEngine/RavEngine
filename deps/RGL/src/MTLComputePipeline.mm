@@ -9,7 +9,13 @@ namespace RGL{
     ComputePipelineMTL::ComputePipelineMTL(decltype(owningDevice) owningDevice, const RGL::ComputePipelineDescriptor &desc) : owningDevice(owningDevice), settings(desc) {
         
         auto shadermodule = desc.stage.shaderModule;
-        MTL_CHECK(pipelineState = [owningDevice->device newComputePipelineStateWithFunction:shadermodule->function error:&err]);
+        auto cdesc = [MTLComputePipelineDescriptor new];
+        cdesc.computeFunction = shadermodule->function;
+        if (desc.debugName.data() != nullptr){
+            [cdesc setLabel:[NSString stringWithUTF8String:desc.debugName.data()]];
+        }
+        
+        MTL_CHECK(pipelineState = [owningDevice->device newComputePipelineStateWithDescriptor:cdesc options:MTLPipelineOptionNone reflection:nil error:&err]);
     }
     ComputePipelineMTL::~ComputePipelineMTL() {
     

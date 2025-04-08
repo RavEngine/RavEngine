@@ -151,6 +151,11 @@ function(rvesc_compile_meta infile shader_target)
 		rvesc_compile("${infile}" "${shader_target}" "${inshadername}" "${sh_name_only}_shadow" "--define \"RVE_DEPTHONLY 1\"")
 	endif()
 
+	# TBDR variants for MLAB
+	if (inopacity MATCHES "transparent")
+		rvesc_compile("${infile}" "${shader_target}" "${inshadername}" "${sh_name_only}_tbdr" "--define \"RVE_TBDR 1\"")
+	endif()
+
 endfunction()
 
 function(declare_shader infile shader_target)
