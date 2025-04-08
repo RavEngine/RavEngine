@@ -48,7 +48,12 @@ namespace RGL {
            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
            VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
            VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
+#if __aarch64__ || __arm__
+           VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME,  // tile memory optimization
+           VK_EXT_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_EXTENSION_NAME,
+#else
            VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME,
+#endif
            VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
            VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME,
 #if !__ANDROID__    // only 5% of android devices have this extension so we have to go without it
