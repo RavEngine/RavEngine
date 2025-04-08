@@ -427,13 +427,21 @@ SET(TF_BUILD_TESTS OFF CACHE INTERNAL "")
 SET(TF_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 add_subdirectory(deps/taskflow EXCLUDE_FROM_ALL)
 
+# zlib
+set(ZLIB_BUILD_EXAMPLES OFF)
+set(SKIP_INSTALL_ALL ON CACHE INTERNAL "")
+set(SKIP_INSTALL_LIBRARIES ON CACHE INTERNAL "")
+set(SKIP_INSTALL_HEADERS ON CACHE INTERNAL "")
+add_subdirectory(deps/zlib EXCLUDE_FROM_ALL)
+set(ZLIB_FOUND 1)
+
 # assimp
 SET(IGNORE_GIT_HASH ON CACHE INTERNAL "")
 SET(ASSIMP_BUILD_TESTS OFF CACHE INTERNAL "")
 set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE INTERNAL "")
-set(ASSIMP_INSTALL OFF CACHEN INTERNAL "")
+set(ASSIMP_INSTALL OFF CACHE INTERNAL "")
 set(ASSIMP_NO_EXPORT ON CACHE INTERNAL "")
-set(ASSIMP_BUILD_ZLIB ON CACHE INTERNAL "")
+set(ASSIMP_BUILD_ZLIB OFF CACHE INTERNAL "")
 add_subdirectory(deps/assimp EXCLUDE_FROM_ALL)
 
 add_subdirectory(deps/meshoptimizer EXCLUDE_FROM_ALL)
@@ -442,14 +450,14 @@ if (NOT RAVENGINE_SERVER)
 	# steam audio
 	set(SA_BUILD_ZLIB OFF CACHE INTERNAL "")
 	set(ZLIB_LIBRARY zlibstatic CACHE INTERNAL "")
-	set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/deps/assimp/contrib/zlib" CACHE INTERNAL "")
+	set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/deps/zlib" CACHE INTERNAL "")
 	set(CMAKE_DISABLE_FIND_PACKAGE_ZLIB OFF CACHE INTERNAL "")
 	if (RVE_CROSSCOMP)
 		set(SA_BUILD_FLATC OFF CACHE INTERNAL "")
 	endif()
 	add_subdirectory(deps/SteamAudio-All EXCLUDE_FROM_ALL)
 	target_link_libraries(mysofa-static PRIVATE zlibstatic)
-	target_include_directories(mysofa-static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/assimp/contrib/zlib/")
+	target_include_directories(mysofa-static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/zlib/")
 	target_link_libraries("${PROJECT_NAME}" PRIVATE phonon)
 
 	# resonance-audio
