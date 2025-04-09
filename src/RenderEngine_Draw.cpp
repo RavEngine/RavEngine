@@ -1477,6 +1477,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->BindBuffer(lightClusterBuffer, 16);
 						
 					}
+#if !RVE_TBDR && !__APPLE__
                     if constexpr(transparentMode){
                         assert(target != nullptr); // no target provided!
                         mainCommandBuffer->SetFragmentTexture(target->mlabAccum[0]->GetDefaultView(), 23);
@@ -1485,6 +1486,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                         mainCommandBuffer->SetFragmentTexture(target->mlabAccum[3]->GetDefaultView(), 26);
                         mainCommandBuffer->SetFragmentTexture(target->mlabDepth->GetDefaultView(), 27);
                     }
+#endif
                         
 					// set push constant data
 					auto pushConstantData = materialInstance.mat->GetPushConstantData();
@@ -1581,6 +1583,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 1);
 							mainCommandBuffer->SetFragmentTexture(device->GetGlobalBindlessTextureHeap(), 2);	// redundant on some backends, needed for DX
 						}
+#if !RVE_TBDR && !__APPLE__
                         if constexpr(transparentMode){
                             assert(target != nullptr); // no target provided!
                             mainCommandBuffer->SetFragmentTexture(target->mlabAccum[0]->GetDefaultView(), 23);
@@ -1589,6 +1592,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                             mainCommandBuffer->SetFragmentTexture(target->mlabAccum[3]->GetDefaultView(), 26);
                             mainCommandBuffer->SetFragmentTexture(target->mlabDepth->GetDefaultView(), 27);
                         }
+#endif
 
 						std::byte pushConstants[128]{  };
 

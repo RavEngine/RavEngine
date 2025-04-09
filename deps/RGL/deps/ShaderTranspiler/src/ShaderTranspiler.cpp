@@ -640,6 +640,7 @@ IMResult SPIRVtoMSL(const spirvbytes& bin, const Options& opt, spv::ExecutionMod
 	options.enable_decoration_binding = true;	// order textures / samplers by binding order, not by order of first use
     //options.argument_buffers = true;          // don't enable this. It will set everything to be an argument buffer.
     options.argument_buffers_tier = spirv_cross::CompilerMSL::Options::ArgumentBuffersTier::Tier2;
+    options.use_framebuffer_fetch_subpasses = true;
 	msl.set_msl_options(options);
     
     constexpr auto rgl2sc = [](Options::BindlessSettings::Type type) -> spirv_cross::SPIRType::BaseType{
