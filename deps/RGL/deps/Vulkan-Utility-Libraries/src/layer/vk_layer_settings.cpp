@@ -7,17 +7,19 @@
 // Author(s):
 // - Christophe Riccio <christophe@lunarg.com>
 #include "vulkan/layer/vk_layer_settings.h"
-#include "layer_settings_util.hpp"
 #include "layer_settings_manager.hpp"
+#include "layer_settings_util.hpp"
 
-#include <memory>
-#include <charconv>
-#include <cstdlib>
+#include <algorithm>
 #include <cassert>
-#include <cstring>
 #include <cctype>
-#include <cstring>
+#include <charconv>
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <cstring>
+#include <memory>
+#include <system_error>
 #include <unordered_map>
 
 // This is used only for unit tests in test_layer_setting_file

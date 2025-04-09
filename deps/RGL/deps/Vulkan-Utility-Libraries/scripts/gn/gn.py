@@ -23,19 +23,19 @@ def BuildGn():
 
     print("Updating Repo Dependencies and GN Toolchain\n", flush=True)
     update_cmd = './scripts/gn/update_deps.sh'
-    subprocess.call(update_cmd)
+    subprocess.check_call(update_cmd)
 
     print("Checking Header Dependencies\n", flush=True)
     gn_check_cmd = 'gn gen --check out/Debug'.split(" ")
-    subprocess.call(gn_check_cmd)
+    subprocess.check_call(gn_check_cmd)
 
     print("Generating Ninja Files\n", flush=True)
     gn_gen_cmd = 'gn gen out/Debug'.split(" ")
-    subprocess.call(gn_gen_cmd)
+    subprocess.check_call(gn_gen_cmd)
 
     print("Running Ninja Build\n", flush=True)
     ninja_build_cmd = 'ninja -C out/Debug'.split(" ")
-    subprocess.call(ninja_build_cmd)
+    subprocess.check_call(ninja_build_cmd)
 
 #
 # Module Entrypoint

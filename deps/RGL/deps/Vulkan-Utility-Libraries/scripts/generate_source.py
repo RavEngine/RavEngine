@@ -8,9 +8,15 @@
 import argparse
 import os
 import sys
+import shutil
+import common_ci
 from xml.etree import ElementTree
 
 def RunGenerators(api: str, registry: str, targetFilter: str) -> None:
+
+    has_clang_format = shutil.which('clang-format') is not None
+    if not has_clang_format:
+        print("WARNING: Unable to find clang-format!")
 
     # These live in the Vulkan-Docs repo, but are pulled in via the
     # Vulkan-Headers/registry folder
@@ -19,17 +25,24 @@ def RunGenerators(api: str, registry: str, targetFilter: str) -> None:
     scripts_directory_path = os.path.dirname(os.path.abspath(__file__))
     registry_headers_path = os.path.join(scripts_directory_path, scripts)
     sys.path.insert(0, registry_headers_path)
-    from reg import Registry
+    try:
+        from reg import Registry
+    except:
+        print("ModuleNotFoundError: No module named 'reg'") # normal python error message
+        print(f'{registry_headers_path} is not pointing to the Vulkan-Headers registry directory.')
+        print("Inside Vulkan-Headers there is a registry/reg.py file that is used.")
+        sys.exit(1) # Return without call stack so easy to spot error
 
-    from generators.base_generator import BaseGeneratorOptions
+    from base_generator import BaseGeneratorOptions
     from generators.dispatch_table_generator import DispatchTableOutputGenerator
     from generators.enum_string_helper_generator import EnumStringHelperOutputGenerator
     from generators.format_utils_generator import FormatUtilsOutputGenerator
     from generators.struct_helper_generator import StructHelperOutputGenerator
+    from generators.safe_struct_generator import SafeStructOutputGenerator
 
     # These set fields that are needed by both OutputGenerator and BaseGenerator,
     # but are uniform and don't need to be set at a per-generated file level
-    from generators.base_generator import (SetTargetApiName, SetMergedApiNames)
+    from base_generator import (SetTargetApiName, SetMergedApiNames)
     SetTargetApiName(api)
 
     # Build up a list of all generators and custom options
@@ -37,31 +50,63 @@ def RunGenerators(api: str, registry: str, targetFilter: str) -> None:
         'vk_dispatch_table.h' : {
            'generator' : DispatchTableOutputGenerator,
            'genCombined': True,
-           'directory' : f'include/{api}/utility',
+           'directory' : f'include/vulkan/utility',
         },
         'vk_enum_string_helper.h' : {
             'generator' : EnumStringHelperOutputGenerator,
             'genCombined': True,
-            'directory' : f'include/{api}',
+            'directory' : f'include/vulkan',
         },
         'vk_format_utils.h' : {
             'generator' : FormatUtilsOutputGenerator,
             'genCombined': True,
-            'directory' : f'include/{api}/utility',
+            'directory' : f'include/vulkan/utility',
         },
         'vk_struct_helper.hpp' : {
             'generator' : StructHelperOutputGenerator,
             'genCombined': True,
-            'directory' : f'include/{api}/utility',
+            'directory' : f'include/vulkan/utility',
+        },
+        'vk_safe_struct.hpp' : {
+            'generator' : SafeStructOutputGenerator,
+            'genCombined': True,
+            'directory' : f'include/vulkan/utility',
+        },
+        'vk_safe_struct_utils.cpp' : {
+            'generator' : SafeStructOutputGenerator,
+            'genCombined': True,
+            'directory' : f'src/vulkan',
+        },
+        'vk_safe_struct_core.cpp' : {
+            'generator' : SafeStructOutputGenerator,
+            'genCombined': True,
+            'regenerate' : True,
+            'directory' : f'src/vulkan',
+        },
+        'vk_safe_struct_khr.cpp' : {
+            'generator' : SafeStructOutputGenerator,
+            'genCombined': True,
+            'directory' : f'src/vulkan',
+        },
+        'vk_safe_struct_ext.cpp' : {
+            'generator' : SafeStructOutputGenerator,
+            'genCombined': True,
+            'directory' : f'src/vulkan',
+        },
+        'vk_safe_struct_vendor.cpp' : {
+            'generator' : SafeStructOutputGenerator,
+            'genCombined': True,
+            'directory' : f'src/vulkan',
         },
     }
 
-    if (targetFilter and targetFilter not in generators.keys()):
-        print(f'ERROR: No generator options for unknown target: {targetFilter}', file=sys.stderr)
-        sys.exit(1)
+    unknownTargets = [x for x in (targetFilter if targetFilter else []) if x not in generators.keys()]
+    if unknownTargets:
+        print(f'ERROR: No generator options for unknown target(s): {", ".join(unknownTargets)}', file=sys.stderr)
+        return 1
 
     # Filter if --target is passed in
-    targets = [x for x in generators.keys() if not targetFilter or x == targetFilter]
+    targets = [x for x in generators.keys() if not targetFilter or x in targetFilter]
 
     for index, target in enumerate(targets, start=1):
         print(f'[{index}|{len(targets)}] Generating {target}')
@@ -102,6 +147,9 @@ def RunGenerators(api: str, registry: str, targetFilter: str) -> None:
         # Finally, use the output generator to create the requested target
         reg.apiGen()
 
+        # Run clang-format on the file
+        if has_clang_format:
+            common_ci.RunShellCmd(f'clang-format -i {os.path.join(outDirectory, target)}')
 
 def main(argv):
     parser = argparse.ArgumentParser(description='Generate source code for this repository')
@@ -111,10 +159,16 @@ def main(argv):
                         help='Specify API name to generate')
     parser.add_argument('registry', metavar='REGISTRY_PATH', help='path to the Vulkan-Headers registry directory')
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('--target', help='only generate file name passed in')
+    group.add_argument('--target', nargs='+', help='only generate file name passed in')
     args = parser.parse_args(argv)
 
     registry = os.path.abspath(os.path.join(args.registry,  'vk.xml'))
+    if not os.path.isfile(registry):
+        registry = os.path.abspath(os.path.join(args.registry, 'Vulkan-Headers/registry/vk.xml'))
+        if not os.path.isfile(registry):
+            print(f'cannot find vk.xml in {args.registry}')
+            return -1
+
     RunGenerators(args.api, registry, args.target)
 
     return 0

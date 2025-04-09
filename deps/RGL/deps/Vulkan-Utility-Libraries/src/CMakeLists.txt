@@ -28,6 +28,7 @@ elseif(MSVC)
     target_compile_options(VulkanCompilerConfiguration INTERFACE
         /W4
         /we5038 # Enable warning about MIL ordering in constructors
+	/wd4324 # Disable warning about alignment padding
     )
 
     # Enforce stricter ISO C++
@@ -90,4 +91,7 @@ if (VUL_WERROR)
     endif()
 endif()
 
+option(VUL_MOCK_ANDROID "Enable building for Android on desktop for testing with MockICD setup")
+
 add_subdirectory(layer)
+add_subdirectory(vulkan)

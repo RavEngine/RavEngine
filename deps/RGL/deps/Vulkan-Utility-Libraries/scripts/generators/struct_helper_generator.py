@@ -19,7 +19,7 @@
 # limitations under the License.
 
 import os
-from generators.base_generator import BaseGenerator
+from base_generator import BaseGenerator
 from generators.generator_utils import PlatformGuardHelper
 
 class StructHelperOutputGenerator(BaseGenerator):
@@ -53,9 +53,9 @@ VkStructureType GetSType() {
         guard_helper = PlatformGuardHelper()
 
         for struct in [x for x in self.vk.structs.values() if x.sType]:
-            out.extend(guard_helper.addGuard(struct.protect))
+            out.extend(guard_helper.add_guard(struct.protect))
             out.append(f'template <> inline VkStructureType GetSType<{struct.name}>() {{ return {struct.sType}; }}\n')
-        out.extend(guard_helper.addGuard(None))
+        out.extend(guard_helper.add_guard(None))
         out.append('''
 // Find an entry of the given type in the const pNext chain
 // returns nullptr if the entry is not found
@@ -123,20 +123,24 @@ class InitStructHelper {
         return InitStruct<T>(p_next);
     }
 };
-
+#if VK_USE_64_BIT_PTR_DEFINES == 1
 template<typename T> VkObjectType GetObjectType() {
     static_assert(sizeof(T) == 0, "GetObjectType() is being used with an unsupported Type! Is the code-gen up to date?");
     return VK_OBJECT_TYPE_UNKNOWN;
 }
 
-#if VK_USE_64_BIT_PTR_DEFINES == 1
 ''')
         for handle in self.vk.handles.values():
-            out.extend(guard_helper.addGuard(handle.protect))
+            out.extend(guard_helper.add_guard(handle.protect))
             out.append(f'template<> inline VkObjectType GetObjectType<{handle.name}>() {{ return {handle.type}; }}\n')
-        out.extend(guard_helper.addGuard(None))
+        out.extend(guard_helper.add_guard(None))
         out.append('''
-#endif // VK_USE_64_BIT_PTR_DEFINES == 1
+# else // 32 bit
+template<typename T> VkObjectType GetObjectType() {
+    static_assert(sizeof(T) == 0, "GetObjectType() does not support 32 bit builds! This is a limitation of the vulkan.h headers");
+    return VK_OBJECT_TYPE_UNKNOWN;
+}
+# endif // VK_USE_64_BIT_PTR_DEFINES == 1
 } // namespace vku
 \n''')
 

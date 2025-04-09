@@ -7,7 +7,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from generators.base_generator import BaseGenerator
+from base_generator import BaseGenerator
 from generators.generator_utils import PlatformGuardHelper
 
 class EnumStringHelperOutputGenerator(BaseGenerator):
@@ -39,20 +39,20 @@ class EnumStringHelperOutputGenerator(BaseGenerator):
         # If there are no fields (empty enum) ignore
         for enum in [x for x in self.vk.enums.values() if len(x.fields) > 0]:
             groupType = enum.name if enum.bitWidth == 32 else 'uint64_t'
-            out.extend(guard_helper.addGuard(enum.protect))
+            out.extend(guard_helper.add_guard(enum.protect))
             out.append(f'static inline const char* string_{enum.name}({groupType} input_value) {{\n')
             out.append('    switch (input_value) {\n')
             enum_field_guard_helper = PlatformGuardHelper()
             for field in enum.fields:
-                out.extend(enum_field_guard_helper.addGuard(field.protect))
+                out.extend(enum_field_guard_helper.add_guard(field.protect))
                 out.append(f'        case {field.name}:\n')
                 out.append(f'            return "{field.name}";\n')
-            out.extend(enum_field_guard_helper.addGuard(None))
+            out.extend(enum_field_guard_helper.add_guard(None))
             out.append('        default:\n')
             out.append(f'            return "Unhandled {enum.name}";\n')
             out.append('    }\n')
             out.append('}\n')
-        out.extend(guard_helper.addGuard(None))
+        out.extend(guard_helper.add_guard(None))
         out.append('\n')
 
         # For bitmask, first create a string for FlagBits, then a Flags version that calls into it
@@ -65,26 +65,26 @@ class EnumStringHelperOutputGenerator(BaseGenerator):
             if groupType == 'uint64_t':
                 use_switch_statement = False
 
-            out.extend(guard_helper.addGuard(bitmask.protect))
+            out.extend(guard_helper.add_guard(bitmask.protect))
             out.append(f'static inline const char* string_{bitmask.name}({groupType} input_value) {{\n')
 
             bitmask_field_guard_helper = PlatformGuardHelper()
             if use_switch_statement:
                 out.append('    switch (input_value) {\n')
                 for flag in [x for x in bitmask.flags if not x.multiBit]:
-                    out.extend(bitmask_field_guard_helper.addGuard(flag.protect))
+                    out.extend(bitmask_field_guard_helper.add_guard(flag.protect))
                     out.append(f'        case {flag.name}:\n')
                     out.append(f'            return "{flag.name}";\n')
-                out.extend(bitmask_field_guard_helper.addGuard(None))
+                out.extend(bitmask_field_guard_helper.add_guard(None))
                 out.append('        default:\n')
                 out.append(f'            return "Unhandled {bitmask.name}";\n')
                 out.append('    }\n')
             else:
                 # We need to use if statements
                 for flag in [x for x in bitmask.flags if not x.multiBit]:
-                    out.extend(bitmask_field_guard_helper.addGuard(flag.protect))
+                    out.extend(bitmask_field_guard_helper.add_guard(flag.protect))
                     out.append(f'    if (input_value == {flag.name}) return "{flag.name}";\n')
-                out.extend(bitmask_field_guard_helper.addGuard(None))
+                out.extend(bitmask_field_guard_helper.add_guard(None))
                 out.append(f'    return "Unhandled {bitmask.name}";\n')
             out.append('}\n')
 
@@ -110,6 +110,6 @@ static inline std::string string_{bitmask.flagName}({bitmask.flagName} input_val
     return ret;
 }}\n''')
             out.append('#endif // __cplusplus\n')
-        out.extend(guard_helper.addGuard(None))
+        out.extend(guard_helper.add_guard(None))
         out.append('// clang-format on')
         self.write("".join(out))

@@ -10,6 +10,7 @@ build
 .vscode/
 **/.*.swp
 external
+.cache
 
 # Chromium build artifacts
 .cipd/
