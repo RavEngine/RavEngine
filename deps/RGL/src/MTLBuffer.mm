@@ -26,7 +26,9 @@ BufferMTL::BufferMTL(decltype(owningDevice) owningDevice, const BufferConfig& co
     
     // add to the bindless heap
     globalIndex = owningDevice->bufferFreelist.Allocate();
-    [owningDevice->globalBufferEncoder setBuffer:buffer offset:0 atIndex:globalIndex];
+    auto addr = buffer.gpuAddress;
+    static_cast<uint64_t*>(owningDevice->globalBufferBuffer.contents)[globalIndex] = addr;
+    
 }
 
 BufferMTL::~BufferMTL(){

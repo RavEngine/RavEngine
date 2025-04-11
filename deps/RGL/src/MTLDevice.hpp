@@ -14,7 +14,6 @@ namespace RGL{
         OBJC_ID(MTLLibrary) defaultLibrary = nullptr;
         OBJC_ID(MTLCommandQueue) uploadQueue = nullptr;
         OBJC_ID(MTLArgumentEncoder) globalTextureEncoder = nullptr;
-        OBJC_ID(MTLArgumentEncoder) globalBufferEncoder = nullptr;
         OBJC_ID(MTLBuffer) globalTextureBuffer = nullptr;
         OBJC_ID(MTLBuffer) globalBufferBuffer = nullptr;
 	
