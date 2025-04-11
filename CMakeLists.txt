@@ -434,6 +434,8 @@ set(SKIP_INSTALL_LIBRARIES ON CACHE INTERNAL "")
 set(SKIP_INSTALL_HEADERS ON CACHE INTERNAL "")
 add_subdirectory(deps/zlib EXCLUDE_FROM_ALL)
 set(ZLIB_FOUND 1)
+set(ZLIB_LIBRARY zlibstatic CACHE INTERNAL "")
+set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/deps/zlib" "${CMAKE_CURRENT_LIST_DIR}/deps/zlib" CACHE INTERNAL "")
 
 # assimp
 SET(IGNORE_GIT_HASH ON CACHE INTERNAL "")
@@ -449,15 +451,12 @@ add_subdirectory(deps/meshoptimizer EXCLUDE_FROM_ALL)
 if (NOT RAVENGINE_SERVER)
 	# steam audio
 	set(SA_BUILD_ZLIB OFF CACHE INTERNAL "")
-	set(ZLIB_LIBRARY zlibstatic CACHE INTERNAL "")
-	set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/deps/zlib" CACHE INTERNAL "")
 	set(CMAKE_DISABLE_FIND_PACKAGE_ZLIB OFF CACHE INTERNAL "")
 	if (RVE_CROSSCOMP)
 		set(SA_BUILD_FLATC OFF CACHE INTERNAL "")
 	endif()
 	add_subdirectory(deps/SteamAudio-All EXCLUDE_FROM_ALL)
 	target_link_libraries(mysofa-static PRIVATE zlibstatic)
-	target_include_directories(mysofa-static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/zlib/")
 	target_link_libraries("${PROJECT_NAME}" PRIVATE phonon)
 
 	# resonance-audio
