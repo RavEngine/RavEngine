@@ -5,6 +5,7 @@ project(GameNetworkingSocketsFull C CXX)
 # dependencies
 set(protobuf_BUILD_TESTS OFF CACHE INTERNAL "")
 set(protobuf_MODULE_COMPATIBLE ON CACHE INTERNAL "")
+set(protobuf_WITH_ZLIB OFF CACHE INTERNAL "")
 add_subdirectory(protobuf/cmake)
 
 option(LTO "Enable Link-Time Optimization" OFF)
