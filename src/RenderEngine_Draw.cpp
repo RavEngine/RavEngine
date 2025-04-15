@@ -2187,10 +2187,12 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 				// render unlits with transparency
 				RVE_PROFILE_SECTION(unlittrans, "Encode Unlit Transparents");
 				unlitTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+#if RVE_TBDR
                 for(auto [idx, tx] : Enumerate(target.mlabAccum)){
                     unlitTransparentPass->SetAttachmentTexture(idx, tx->GetDefaultView());
                 }
                 unlitTransparentPass->SetAttachmentTexture(4, target.mlabDepth->GetDefaultView());
+#endif
 				renderFromPerspective.template operator() < false, true > (camData.viewProj, camData.viewOnly, camData.projOnly, camData.camPos, {}, unlitTransparentPass, [](auto&& mat) {
 					return mat->GetMainRenderPipeline();
 					}, renderArea, { .Unlit = true, .Transparent = true }, target.depthPyramid, camData.layers, & target, {});
@@ -2602,12 +2604,13 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			mainCommandBuffer->BeginRenderDebugMarker("Lit Pass Transparent");
 			mainCommandBuffer->BeginRendering(transparentClearPass);
 			mainCommandBuffer->EndRendering();
-
             litTransparentPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
+#if RVE_TBDR
             for(auto [idx, tx] : Enumerate(target.mlabAccum)){
                 litTransparentPass->SetAttachmentTexture(idx, tx->GetDefaultView());
             }
             litTransparentPass->SetAttachmentTexture(4, target.mlabDepth->GetDefaultView());
+#endif
 			RVE_PROFILE_SECTION(littrans, "Encode Lit Pass Transparent");
 			for (const auto& camdata : view.camDatas) {
 				doPassWithCamData(camdata, renderLitPassTransparent);
