@@ -25,25 +25,38 @@ DeviceMTL::DeviceMTL(decltype(device) device)  : device(device){
     defaultLibrary = [device newDefaultLibrary];
     uploadQueue = [device newCommandQueue];
     
-    auto createArgEncoder = [device](MTLDataType type, uint32_t count, __strong id<MTLArgumentEncoder>& encoder, __strong id<MTLBuffer>& backingBuffer){
-        MTLArgumentDescriptor* desc = [MTLArgumentDescriptor new];
-        desc.index = 0;
-        desc.dataType = type;
-        desc.access = MTLBindingAccessReadWrite;
-        desc.arrayLength = count;
-
-        encoder = [device newArgumentEncoderWithArguments:@[desc]];
+    auto createArgEncoder = [device](MTLDataType type, uint32_t count, __strong id<MTLArgumentEncoder>* encoder, __strong id<MTLBuffer>& backingBuffer){
+        uint32_t length = 0;
+        if (encoder){
+            MTLArgumentDescriptor* desc = [MTLArgumentDescriptor new];
+            desc.index = 0;
+            desc.dataType = type;
+            desc.access = MTLBindingAccessReadWrite;
+            desc.arrayLength = count;
+            
+            *encoder = [device newArgumentEncoderWithArguments:@[desc]];
+            
+            length = [*encoder encodedLength];
+        }
+        else{
+            length = count * sizeof(uintptr_t);
+        }
         
         // create backing memory for encoder
-        backingBuffer = [device newBufferWithLength:[encoder encodedLength] options: MTLResourceStorageModeShared];
+        backingBuffer = [device newBufferWithLength:length options:MTLResourceStorageModeShared];
         
         // bind to encoder
-        [encoder setArgumentBuffer:backingBuffer offset:0];
+        if (encoder){
+            [*encoder setArgumentBuffer:backingBuffer offset:0];
+        }
     };
     
-    // create the arugment encoder for bindless rendering
-    createArgEncoder(MTLDataTypeTexture, 2048, globalTextureEncoder, globalTextureBuffer);
-    createArgEncoder(MTLDataTypePointer, 2048, globalBufferEncoder, globalBufferBuffer);
+    // create the argument encoder for bindless rendering
+    createArgEncoder(MTLDataTypeTexture, 2048, &globalTextureEncoder, globalTextureBuffer);
+    createArgEncoder(MTLDataTypePointer, 2048, nil, globalBufferBuffer);
+    
+    globalTextureBuffer.label = @"Bindless Texture Buffer";
+    globalBufferBuffer.label = @"Bindless Buffer Buffer";
 }
 
 std::string DeviceMTL::GetBrandString() {
