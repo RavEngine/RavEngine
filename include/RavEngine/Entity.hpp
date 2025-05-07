@@ -65,6 +65,11 @@ struct Entity : public AutoCTTI{
     World* GetWorld() const {
         return world;
     }
+
+    template<typename T, typename ... A>
+    auto Instantiate(A&& ... args) {
+        return GetWorld()->Instantiate<T>(std::forward<A>(args)...);
+    }
     
     void SetEntityRenderlayer(renderlayer_t layers) const{
         world->SetEntityRenderlayer(id, layers);

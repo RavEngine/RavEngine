@@ -98,13 +98,13 @@ namespace RavEngine {
 
         for (int ii = 0; ii < mesh->mNumFaces; ii++) {
             //alert if encounters a degenerate triangle
-            if (mesh->mFaces[ii].mNumIndices != 3) {
+            const auto numIndices = mesh->mFaces[ii].mNumIndices;
+            if (numIndices != 3) {
                 throw runtime_error("Cannot load model: Degenerate triangle (Num indices = " + to_string(mesh->mFaces[ii].mNumIndices) + ")");
             }
-
-            mp.indices.push_back(mesh->mFaces[ii].mIndices[0]);
-            mp.indices.push_back(mesh->mFaces[ii].mIndices[1]);
-            mp.indices.push_back(mesh->mFaces[ii].mIndices[2]);
+            for (int v = 0; v < numIndices; v++) {
+                mp.indices.push_back(mesh->mFaces[ii].mIndices[v]);
+            }
 
         }
         return mp;
