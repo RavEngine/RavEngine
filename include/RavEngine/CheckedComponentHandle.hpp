@@ -7,6 +7,7 @@ namespace RavEngine {
         Entity owner;
     public:
         CheckedComponentHandleBase(decltype(owner) owner) : owner(owner) {}
+        CheckedComponentHandleBase() = default;
 
         inline operator bool() const {
             return IsValid();
@@ -24,6 +25,7 @@ namespace RavEngine {
     template<typename T>
     struct CheckedComponentHandle : public CheckedComponentHandleBase {
         CheckedComponentHandle(decltype(owner) owner) : CheckedComponentHandleBase(owner) {}
+        CheckedComponentHandle() = default;
 
         template<typename ValidatorType>
         T* get(const ValidatorType& v) {

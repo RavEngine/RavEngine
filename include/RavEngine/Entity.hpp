@@ -14,7 +14,7 @@ struct Entity : public AutoCTTI{
     
     Entity(entity_t id, World* owner) : id(id), world(owner){}
     Entity(const Entity&) = default;
-    Entity(){}
+    Entity() = default;
     bool operator==(const Entity& other) const{
         return world == other.world && id == other.GetID();
     }
