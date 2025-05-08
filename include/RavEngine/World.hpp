@@ -740,7 +740,7 @@ namespace RavEngine {
             }
 #endif
             //detect if T constructor's first argument is an Entity, if it is, then we need to pass that before args (pass local_id again)
-            if constexpr(not std::is_trivially_constructible_v<T> && (std::is_constructible<T,Entity, A...>::value || (sizeof ... (A) == 0 && std::is_constructible<T,Entity>::value))){
+            if constexpr(has_user_defined_constructor<T> && (std::is_constructible<T,Entity, A...>::value || (sizeof ... (A) == 0 && std::is_constructible<T,Entity>::value))){
                 return ptr->Emplace(local_id.id, EntityRedir{this,local_id}, std::forward<A>(args)...);
             }
             else{

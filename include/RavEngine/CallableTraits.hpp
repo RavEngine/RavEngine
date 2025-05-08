@@ -50,4 +50,9 @@ namespace RavEngine {
     
 	template<is_mem_fun T>
     auto arguments(const T& t) -> typename signature<std::decay_t<T>>::type;
+
+
+	template <typename T>
+	concept has_user_defined_constructor = !std::is_trivially_constructible_v<T> && !std::is_aggregate_v<T>;
+
 }
