@@ -115,6 +115,7 @@ public Queryable<PhysicsBodyComponent
 
 		void SetGravityEnabled(bool);
 
+
 		/**
 		@returns true if gravity is enabled
 		*/
@@ -249,6 +250,12 @@ public Queryable<PhysicsBodyComponent
         
         void SetKinematicTarget(const vector3& targetPos, const quaternion& targetRot);
         std::pair<vector3, quaternion> GetKinematicTarget() const;
+
+		void SetLinearDamping(float);
+		float GetLinearDamping(float);
+
+		void SetAngularDamping(float);
+		float GetAngularDamping(float);
 
 		/**
 		Wake the body

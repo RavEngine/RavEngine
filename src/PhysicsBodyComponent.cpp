@@ -167,6 +167,39 @@ std::pair<vector3, quaternion> RigidBodyDynamicComponent::GetKinematicTarget() c
     return std::make_pair(vector3(trns.p.x,trns.p.y,trns.p.z),quaternion(trns.q.w,trns.q.x,trns.q.y,trns.q.z));
 }
 
+void RavEngine::RigidBodyDynamicComponent::SetLinearDamping(float damp)
+{
+	LockWrite([&] {
+		static_cast<PxRigidDynamic*>(rigidActor)->setLinearDamping(damp);
+	});
+}
+
+float RavEngine::RigidBodyDynamicComponent::GetLinearDamping(float)
+{
+	float ret = 0;
+	LockRead([&] {
+		ret = static_cast<PxRigidDynamic*>(rigidActor)->getLinearDamping();
+	});
+
+	return ret;
+}
+
+void RavEngine::RigidBodyDynamicComponent::SetAngularDamping(float damp) {
+	LockWrite([&] {
+		static_cast<PxRigidDynamic*>(rigidActor)->setAngularDamping(damp);
+	});
+}
+
+float RavEngine::RigidBodyDynamicComponent::GetAngularDamping(float)
+{
+	float ret = 0;
+	LockRead([&] {
+		ret = static_cast<PxRigidDynamic*>(rigidActor)->getAngularDamping();
+	});
+
+	return ret;
+}
+
 vector3 RavEngine::RigidBodyDynamicComponent::GetLinearVelocity() const
 {
 	rigidActor->getScene()->lockRead();
