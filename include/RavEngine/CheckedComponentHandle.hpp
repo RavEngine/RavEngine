@@ -33,6 +33,12 @@ namespace RavEngine {
             return &owner.GetComponent<T>();
         }
 
+        template<typename ValidatorType>
+        const T* get(const ValidatorType& v) const {
+            static_assert(ValidatorType::template IsValid<T>(), "Validator does not have the necessary types");
+            return &owner.GetComponent<T>();
+        }
+
         bool operator==(const CheckedComponentHandle<T>& other) const {
             return owner.id == other.owner.id;
         }
