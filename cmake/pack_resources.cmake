@@ -2,7 +2,7 @@
 function(pack_resources)
 	set(optional )
 	set(args TARGET OUTPUT_FILE STREAMING_INPUT_ROOT)
-	set(list_args SHADERS MESHES OBJECTS SKELETONS ANIMATIONS TEXTURES UIS FONTS SOUNDS STREAMING_ASSETS)
+	set(list_args SHADERS MESHES OBJECTS SKELETONS ANIMATIONS TEXTURES OPTIONAL_TEXTURES UIS FONTS SOUNDS STREAMING_ASSETS)
 	cmake_parse_arguments(
 		PARSE_ARGV 0
 		ARGS
@@ -42,22 +42,38 @@ function(pack_resources)
 	# clear copy-depends
 	set_property(GLOBAL PROPERTY COPY_DEPENDS "")
 
+	function(copy_file_impl FILE root_dir)
+		get_filename_component(output_name "${FILE}" NAME)
+		set(outname "${CMAKE_CURRENT_BINARY_DIR}/${ARGS_TARGET}/${root_dir}/${output_name}")
+		add_custom_command(PRE_BUILD 
+			OUTPUT "${outname}" 
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FILE} "${outname}"
+			)
+		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS ${outname})
+	endfunction()
+
 	function(copy_helper_impl FILE_LIST output_dir root_dir)
 		foreach(FILE ${FILE_LIST})
 			# copy objects pre-build if they are changed
-			get_filename_component(output_name "${FILE}" NAME)
-			set(outname "${CMAKE_CURRENT_BINARY_DIR}/${ARGS_TARGET}/${root_dir}/${output_name}")
-			add_custom_command(PRE_BUILD 
-				OUTPUT "${outname}" 
-				COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FILE} "${outname}"
-				DEPENDS ${FILE}
-				)
-			set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS ${outname})
+			copy_file_impl("${FILE}" "${root_dir}")
 		endforeach()
 	endfunction()
 
 	# helper for copying to staging directory
 	function(copy_helper FILE_LIST output_dir)
+		copy_helper_impl("${FILE_LIST}" ${ARGS_TARGET} "${output_dir}")
+	endfunction()
+
+	function(copy_helper_optional_impl FILE_LIST output_dir root_dir)
+		foreach(FILE ${FILE_LIST})
+			# copy objects pre-build if they are changed
+			if (EXISTS "${FILE}")
+				copy_file_impl("${FILE}" "${root_dir}")
+			endif()
+		endforeach()
+	endfunction()
+
+	function(copy_helper_optional FILE_LIST output_dir)
 		copy_helper_impl("${FILE_LIST}" ${ARGS_TARGET} "${output_dir}")
 	endfunction()
 
@@ -94,6 +110,7 @@ function(pack_resources)
 
 	copy_helper("${ARGS_OBJECTS}" "objects")
 	copy_helper("${ARGS_TEXTURES}" "textures")
+	copy_helper_optional("${ARGS_OPTIONAL_TEXTURES}" "textures")
 	copy_helper("${ARGS_UIS}" "uis")
 	copy_helper("${ENG_UIS}" "uis")
 	copy_helper("${ARGS_FONTS}" "fonts")
