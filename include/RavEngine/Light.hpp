@@ -144,6 +144,7 @@ struct DirectionalLight : public ShadowLightBase, public QueryableDelta<Queryabl
     } shadowData;
     Array<float, MAX_CASCADES> shadowCascades{0.1, 0.2, 0.3, 1};
     uint8_t numCascades = shadowCascades.size();
+    float maxShadowDistanceFactor = 1;
 #endif
 	
 	void DebugDraw(RavEngine::DebugDrawer&, const Transform&) const override;
