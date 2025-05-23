@@ -171,7 +171,9 @@ void main() {
 
 
     // is this entity part of a camera layer? if not, bail
-    if ((ubo.cameraRenderLayers & renderLayerBuffer[entityID]) == 0){
+    const uint cameraRenderLayers = ubo.cameraRenderLayers;
+    const uint entityLayerMask = renderLayerBuffer[entityID];
+    if ((cameraRenderLayers & entityLayerMask) == 0){
         return;
     }
 

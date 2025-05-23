@@ -48,6 +48,7 @@ function(pack_resources)
 		add_custom_command(PRE_BUILD 
 			OUTPUT "${outname}" 
 			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FILE} "${outname}"
+            DEPENDS ${FILE}
 			)
 		set_property(GLOBAL APPEND PROPERTY COPY_DEPENDS ${outname})
 	endfunction()

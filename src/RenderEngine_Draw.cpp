@@ -151,6 +151,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
         for(const auto& target : screenTargets){
             numVaryingElts += target.camDatas.size();
         }
+        // one varying per directional light per camera view
+        numVaryingElts *= wrd.directionalLightData.DenseSize();
         wrd.directionalLightPassVarying.Resize(numVaryingElts);
         if (wrd.directionalLightPassVaryingHostOnly.size() != numVaryingElts){
             wrd.directionalLightPassVaryingHostOnly.resize(numVaryingElts);
