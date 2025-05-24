@@ -163,9 +163,25 @@ void InputManager::ProcessInput(const SDL_Event& event, uint32_t windowflags, fl
 			break;
             
 		case SDL_EVENT_GAMEPAD_AXIS_MOTION:
-		case SDL_GAMEPAD_AXIS_LEFTX:
-		case SDL_GAMEPAD_AXIS_LEFTY:
-			ProcessAxisID(event.gaxis.axis + Special::CONTROLLER_AXIS_OFFSET, event.gaxis.value, Make_CID(event.gdevice.which + 1));
+        {
+            // need to remap values in range: https://wiki.libsdl.org/SDL3/SDL_GamepadAxis
+            float gaxisvalue = event.gaxis.value;
+            switch (event.gaxis.axis) {
+                case SDL_GAMEPAD_AXIS_LEFTX:
+                case SDL_GAMEPAD_AXIS_LEFTY:
+                case SDL_GAMEPAD_AXIS_RIGHTX:
+                case SDL_GAMEPAD_AXIS_RIGHTY:
+                    gaxisvalue = remap_range<float>(gaxisvalue, SDL_JOYSTICK_AXIS_MIN, SDL_JOYSTICK_AXIS_MAX, -1, 1);
+                    break;
+                case SDL_GAMEPAD_AXIS_LEFT_TRIGGER:
+                case SDL_GAMEPAD_AXIS_RIGHT_TRIGGER:
+                    gaxisvalue = remap_range<float>(gaxisvalue, 0, SDL_JOYSTICK_AXIS_MAX, 0, 1);
+                    break;
+                default:
+                    break;
+            }
+            ProcessAxisID(event.gaxis.axis + Special::CONTROLLER_AXIS_OFFSET, gaxisvalue, Make_CID(event.gdevice.which + 1));
+        }
 			break;
 		case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
 		case SDL_EVENT_GAMEPAD_BUTTON_UP:

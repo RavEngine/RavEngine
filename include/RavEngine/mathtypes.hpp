@@ -114,6 +114,11 @@ static inline quaternion RawToQuat(const RavEngine::RawQuat& raw) {
 	return quaternion(raw[0], raw[1], raw[2], raw[3]);
 }
 
+template<typename T>
+static inline T remap_range(T value, T low1, T high1, T low2, T high2) {
+    return low2 + (value - low1) * (high2 - low2) / (high1 - low1);
+}
+
 struct soatransform{
 	vector3 translate, scale;
 	quaternion rotate;
