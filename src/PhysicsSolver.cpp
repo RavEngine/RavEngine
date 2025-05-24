@@ -156,8 +156,22 @@ void PhysicsSolver::ReleaseStatics() {
 bool RavEngine::PhysicsSolver::Raycast(const vector3& origin, const vector3& direction, decimalType maxDistance, RaycastHit& out_hit)
 {
     PxRaycastBuffer hit;
-    bool result = scene->raycast(PxVec3(origin.x, origin.y, origin.z), PxVec3(direction.x, direction.y, direction.z), maxDistance, hit);
+    
+    struct RaycastCallback : PxQueryFilterCallback {
+        PxQueryHitType::Enum preFilter(const PxFilterData& filterData, const PxShape* shape, const PxRigidActor* actor, PxHitFlags& queryFlags) final {
+            return PxQueryHitType::eBLOCK; // Ignore
+        }
 
+        PxQueryHitType::Enum postFilter(const PxFilterData& filterData, const PxQueryHit& hit, const PxShape* shape, const PxRigidActor* actor) final {
+            return PxQueryHitType::eNONE; // Not needed for most cases
+        }
+    } callback;
+    
+    PxQueryFilterData filterData;
+    filterData.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC | PxQueryFlag::ePREFILTER;
+    
+    bool result = scene->raycast(PxVec3(origin.x, origin.y, origin.z), PxVec3(direction.x, direction.y, direction.z), maxDistance, hit, PxHitFlag::eDEFAULT, filterData, &callback);
+    
     //construct hit result
     out_hit = RaycastHit(hit,owner);
     return result;

@@ -97,6 +97,7 @@ namespace RavEngine {
     struct MeshCollectionSkinned;
     struct SkyLight;
     class World;
+    class PhysicsSolver;
 
     template <typename T, typename... Ts>
     struct Index;
@@ -151,7 +152,11 @@ namespace RavEngine {
     };
 
     struct WorldDataProvider {
-        World* world;
+        World* world = nullptr;
+    };
+
+    struct PhysicsSolverProvider {
+        PhysicsSolver* physicsSolver = nullptr;
     };
 
     // used for is_convertible checks
@@ -167,7 +172,7 @@ namespace RavEngine {
         // no copy
         ValidatorProvider(const ValidatorProvider&) = delete;
         void operator=(ValidatorProvider const&) = delete;
-    private:
+    protected:
         // private move, private construct
         ValidatorProvider(ValidatorProvider&&) = default;
         ValidatorProvider() {}
@@ -179,7 +184,7 @@ namespace RavEngine {
 
     template <typename T>
     concept IsEngineDataProvider = 
-        (std::is_convertible_v<T, WorldDataProvider> || std::is_convertible_v<T, ValidatorProviderBase>)
+        (std::is_convertible_v<T, WorldDataProvider> || std::is_convertible_v<T, ValidatorProviderBase> || std::is_convertible_v<T,PhysicsSolverProvider>)
         && not (std::is_convertible_v<T, DataProviderNone>);
 
 
@@ -932,6 +937,9 @@ namespace RavEngine {
             static_assert(not std::is_const_v<nc_provider_t>, "Internal error: instance cannot be const!");
             if constexpr (std::is_convertible_v<nc_provider_t, WorldDataProvider>) {
                 instance.world = this;
+            }
+            if constexpr (std::is_convertible_v<nc_provider_t, PhysicsSolverProvider>) {
+                instance.physicsSolver = Solver.get();
             }
             return instance;
         };
