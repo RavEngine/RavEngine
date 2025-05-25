@@ -331,15 +331,26 @@ decimalType RigidBodyDynamicComponent::GetMassInverse() const{
     return rigidMass;
 }
 
-void RigidBodyDynamicComponent::AddForce(const vector3 &force){
+constexpr static auto convForceMode(ForceMode forceMode) {
+    switch(forceMode){
+        case ForceMode::Force:          return PxForceMode::eFORCE;
+        case ForceMode::Impulse:        return PxForceMode::eIMPULSE;
+        case ForceMode::Acceleration:   return PxForceMode::eACCELERATION;
+        case ForceMode::VelocityChange: return PxForceMode::eVELOCITY_CHANGE;
+    }
+}
+
+void RigidBodyDynamicComponent::AddForce(const vector3 &force, ForceMode forceMode){
+    auto mode = convForceMode(forceMode);
 	LockWrite([&]{
-		static_cast<PxRigidDynamic*>(rigidActor)->addForce(PxVec3(force.x,force.y,force.z));
+		static_cast<PxRigidDynamic*>(rigidActor)->addForce(PxVec3(force.x,force.y,force.z), mode);
 	});
 }
 
-void RigidBodyDynamicComponent::AddTorque(const vector3 &torque){
+void RigidBodyDynamicComponent::AddTorque(const vector3 &torque, ForceMode forceMode){
+    auto mode = convForceMode(forceMode);
 	LockWrite([&]{
-		static_cast<PxRigidDynamic*>(rigidActor)->addTorque(PxVec3(torque.x,torque.y,torque.z));
+		static_cast<PxRigidDynamic*>(rigidActor)->addTorque(PxVec3(torque.x,torque.y,torque.z), mode);
 	});
 }
 

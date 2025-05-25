@@ -15,6 +15,13 @@ namespace physx {
 	struct PxContactPairPoint;
 }
 
+enum class ForceMode {
+    Force,
+    Impulse,
+    Acceleration,
+    VelocityChange
+};
+
 namespace RavEngine {
 	struct Transform;
 	// stores contact points
@@ -314,13 +321,13 @@ public Queryable<PhysicsBodyComponent
 		 Add a force to the object
 		 @param force the vector representing the force
 		 */
-		void AddForce(const vector3& force);
+		void AddForce(const vector3& force, ForceMode forceMode = ForceMode::Force);
 		
 		/**
 		 Add a torque to the object
 		 @param torque the vector representing the torque
 		 */
-		void AddTorque(const vector3& torque);
+		void AddTorque(const vector3& torque, ForceMode forceMode = ForceMode::Force);
 		
 		/**
 		 Reset all active forces on the object
