@@ -153,19 +153,29 @@ void PhysicsSolver::ReleaseStatics() {
     PX_RELEASE(foundation);
 }
 
-bool RavEngine::PhysicsSolver::Raycast(const vector3& origin, const vector3& direction, decimalType maxDistance, RaycastHit& out_hit)
+bool RavEngine::PhysicsSolver::Raycast(const vector3& origin, const vector3& direction, decimalType maxDistance, RaycastHit& out_hit, uint32_t layerMask)
 {
     PxRaycastBuffer hit;
     
     struct RaycastCallback : PxQueryFilterCallback {
+        RaycastCallback(uint32_t layerMask) : layerMask(layerMask) {}
+        uint32_t layerMask;
+        
         PxQueryHitType::Enum preFilter(const PxFilterData& filterData, const PxShape* shape, const PxRigidActor* actor, PxHitFlags& queryFlags) final {
-            return PxQueryHitType::eBLOCK; // Ignore
+            auto shapeFilterData = shape->getSimulationFilterData();
+            // we use WORD1 for the layers
+            if (layerMask & shapeFilterData.word1) {
+                return PxQueryHitType::eBLOCK;
+            }
+            else {
+                return PxQueryHitType::eNONE;
+            }
         }
 
         PxQueryHitType::Enum postFilter(const PxFilterData& filterData, const PxQueryHit& hit, const PxShape* shape, const PxRigidActor* actor) final {
             return PxQueryHitType::eNONE; // Not needed for most cases
         }
-    } callback;
+    } callback{layerMask};
     
     PxQueryFilterData filterData;
     filterData.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC | PxQueryFlag::ePREFILTER;

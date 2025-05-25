@@ -98,7 +98,7 @@ namespace RavEngine {
         @param out_hit the RaycastHit to write the data into
         @returns true if the Raycast hit, false otherwise
         */
-        bool Raycast(const vector3& origin, const vector3& direction, decimalType maxDistance, RaycastHit& out_hit);
+        bool Raycast(const vector3& origin, const vector3& direction, decimalType maxDistance, RaycastHit& out_hit, uint32_t layermask = ALL_LAYERS);
 
 
         struct OverlapHit {
