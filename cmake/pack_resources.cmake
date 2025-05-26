@@ -2,7 +2,7 @@
 function(pack_resources)
 	set(optional )
 	set(args TARGET OUTPUT_FILE STREAMING_INPUT_ROOT)
-	set(list_args SHADERS MESHES OBJECTS SKELETONS ANIMATIONS TEXTURES OPTIONAL_TEXTURES UIS FONTS SOUNDS STREAMING_ASSETS)
+	set(list_args SHADERS MESHES OBJECTS SKELETONS ANIMATIONS TEXTURES OPTIONAL_TEXTURES UIS FONTS SOUNDS STREAMING_ASSETS DATA_ASSETS)
 	cmake_parse_arguments(
 		PARSE_ARGV 0
 		ARGS
@@ -117,6 +117,7 @@ function(pack_resources)
 	copy_helper("${ARGS_FONTS}" "fonts")
 	copy_helper("${ENG_FONTS}" "fonts")
 	copy_helper("${ARGS_SOUNDS}" "sounds")
+	copy_helper("${ARGS_DATA_ASSETS}" "data")
 	
 	copy_streaming_helper("${ARGS_STREAMING_ASSETS}" "" "${ARGS_STREAMING_INPUT_ROOT}")
 
