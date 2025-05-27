@@ -295,13 +295,17 @@ void PhysicsBodyComponent::OnColliderExit(PhysicsBodyComponent& other, const Con
 
 void PhysicsBodyComponent::OnTriggerEnter(PhysicsBodyComponent& other){
 	for (auto& receiver : receivers) {
-        receiver->OnTriggerEnter(other);
+        if (receiver->OnTriggerEnter){
+            receiver->OnTriggerEnter(other);
+        }
 	}
 }
 
 void PhysicsBodyComponent::OnTriggerExit(PhysicsBodyComponent& other){
 	for (auto& receiver : receivers) {
-        receiver->OnTriggerExit(other);
+        if (receiver->OnTriggerExit) {
+            receiver->OnTriggerExit(other);
+        }
 	}
 }
 
