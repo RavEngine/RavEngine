@@ -121,7 +121,7 @@ std::variant<MeshPart, SkinnedMeshPart> LoadMesh(const std::filesystem::path& pa
 
             mesh.positions.insert(mesh.positions.end(), mp.positions.begin(), mp.positions.end());
             mesh.normals.insert(mesh.normals.end(), mp.normals.begin(), mp.normals.end());
-            mesh.tangents.insert(mesh.tangents.end(), mp.positions.begin(), mp.positions.end());
+            mesh.tangents.insert(mesh.tangents.end(), mp.tangents.begin(), mp.tangents.end());
             mesh.bitangents.insert(mesh.bitangents.end(), mp.bitangents.begin(), mp.bitangents.end());
             mesh.uv0.insert(mesh.uv0.end(), mp.uv0.begin(), mp.uv0.end());
             mesh.lightmapUVs.insert(mesh.lightmapUVs.end(), mp.lightmapUVs.begin(), mp.lightmapUVs.end());
