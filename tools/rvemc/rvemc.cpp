@@ -321,6 +321,10 @@ int main(int argc, char** argv){
         FATAL("no output file")
     }
     
+    if (!std::filesystem::exists(inputFile)) {
+        FATAL(fmt::format("input file does not exist: {}", inputFile.string()));
+    }
+    
     simdjson::ondemand::parser parser;
 
     auto json = simdjson::padded_string::load(inputFile.string());
