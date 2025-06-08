@@ -2,7 +2,7 @@
 function(pack_resources)
 	set(optional )
 	set(args TARGET OUTPUT_FILE STREAMING_INPUT_ROOT)
-	set(list_args SHADERS MESHES OBJECTS SKELETONS ANIMATIONS TEXTURES OPTIONAL_TEXTURES UIS FONTS SOUNDS STREAMING_ASSETS DATA_ASSETS)
+	set(list_args SHADERS MESHES OBJECTS SKELETONS ANIMATIONS TEXTURES UIS FONTS SOUNDS STREAMING_ASSETS DATA_ASSETS)
 	cmake_parse_arguments(
 		PARSE_ARGV 0
 		ARGS
@@ -65,19 +65,6 @@ function(pack_resources)
 		copy_helper_impl("${FILE_LIST}" ${ARGS_TARGET} "${output_dir}")
 	endfunction()
 
-	function(copy_helper_optional_impl FILE_LIST output_dir root_dir)
-		foreach(FILE ${FILE_LIST})
-			# copy objects pre-build if they are changed
-			if (EXISTS "${FILE}")
-				copy_file_impl("${FILE}" "${root_dir}")
-			endif()
-		endforeach()
-	endfunction()
-
-	function(copy_helper_optional FILE_LIST output_dir)
-		copy_helper_impl("${FILE_LIST}" ${ARGS_TARGET} "${output_dir}")
-	endfunction()
-
 	function(copy_streaming_helper FILE_LIST output_root input_root)
 		foreach(FILE ${FILE_LIST})
 			if (APPLE)
@@ -111,7 +98,6 @@ function(pack_resources)
 
 	copy_helper("${ARGS_OBJECTS}" "objects")
 	copy_helper("${ARGS_TEXTURES}" "textures")
-	copy_helper_optional("${ARGS_OPTIONAL_TEXTURES}" "textures")
 	copy_helper("${ARGS_UIS}" "uis")
 	copy_helper("${ENG_UIS}" "uis")
 	copy_helper("${ARGS_FONTS}" "fonts")
