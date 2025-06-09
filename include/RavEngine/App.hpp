@@ -33,6 +33,11 @@ struct AudioPlayer;
 		} preferredBackend = RenderBackend::AutoSelect;
 	};
 
+	enum class TickMode : uint8_t {
+		DynamicRate,
+		FixedRate
+	};
+
 	typedef std::chrono::high_resolution_clock clocktype;
 	typedef std::chrono::duration<double, std::micro> timeDiff;
 	typedef std::chrono::seconds deltaSeconds;
@@ -112,6 +117,8 @@ struct AudioPlayer;
 #endif
         };
 		
+		TickMode tickMode = TickMode::DynamicRate;
+
 		//networking interface
 		NetworkManager networkManager;
         

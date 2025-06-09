@@ -284,6 +284,11 @@ int App::run(int argc, char** argv) {
 		float deltaSeconds = std::chrono::duration<decltype(deltaSeconds)>(deltaTimeMicroseconds).count();
 		time += deltaSeconds;
 		currentScale = deltaSeconds * evalNormal;
+
+		if (tickMode == TickMode::FixedRate) {
+			currentScale = 1;
+		}
+
 #if !RVE_SERVER
 		RVE_PROFILE_SECTION(events, "Process all Events");
 		auto windowflags = SDL_GetWindowFlags(window->window);
