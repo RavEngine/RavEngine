@@ -167,7 +167,8 @@ namespace RavEngine {
 		};
 
 		struct GUIUBO {
-			glm::mat4 viewProj;
+			glm::mat4 transform, projection;
+            glm::vec2 translate;
 		};
 
 		struct DebugUBO {

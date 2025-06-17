@@ -148,12 +148,18 @@ void RenderEngine::RenderGeometry(Rml::CompiledGeometryHandle geometry, Rml::Vec
 	if (RMLScissor.enabled) {
 		mainCommandBuffer->SetScissor({ RMLScissor.x, RMLScissor.y, RMLScissor.width, RMLScissor.height });
 	}
-	auto drawmat = make_gui_matrix(translation);
-	drawmat = drawmat * currentGUIMatrix;		// apply requested transformation
+    
+    auto proj = glm::ortho<float>(0,currentRenderSize.width,currentRenderSize.height,0, -100, 100);
+    
+    GUIUBO ubo {
+        currentGUIMatrix,
+        proj,
+        {translation.x, translation.y}
+    };
 
 	mainCommandBuffer->SetVertexBuffer(cgs->vb);
 	mainCommandBuffer->SetIndexBuffer(cgs->ib);
-	mainCommandBuffer->SetVertexBytes(drawmat, 0);
+	mainCommandBuffer->SetVertexBytes(ubo, 0);
 	mainCommandBuffer->SetFragmentSampler(textureSampler, 0);
 	mainCommandBuffer->SetFragmentTexture(tx->GetDefaultView(), 1);
 	mainCommandBuffer->DrawIndexed(cgs->nindices);
@@ -217,9 +223,16 @@ void RenderEngine::ReleaseTexture(Rml::TextureHandle texture_handle) {
 
 /// Called by RmlUi when it wants to set the current transform matrix to a new matrix.
 void RenderEngine::SetTransform(const Rml::Matrix4f* transform){
+    
+    if (transform == nullptr) {
+        currentGUIMatrix = matrix4(1);
+    }
+    else {
+        auto data = transform->data();
+        currentGUIMatrix = glm::make_mat4(data);
+    }
 	
-	auto data = transform->data();
-	currentGUIMatrix = glm::make_mat4(data);
+	
 }
 
 
