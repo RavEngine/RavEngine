@@ -139,12 +139,18 @@ Enable or disable simulation for this body.
 */
 void RavEngine::PhysicsBodyComponent::SetSimulationEnabled(bool state)
 {
-	rigidActor->setActorFlag(PxActorFlag::eDISABLE_SIMULATION,state);
+    LockWrite([&] {
+        rigidActor->setActorFlag(PxActorFlag::eDISABLE_SIMULATION,state);
+    });
 }
 
 bool RavEngine::PhysicsBodyComponent::GetSimulationEnabled() const
 {
-	return rigidActor->getActorFlags() & PxActorFlag::eDISABLE_SIMULATION;
+    bool result;
+    LockRead([&]{
+        result = rigidActor->getActorFlags() & PxActorFlag::eDISABLE_SIMULATION;;
+    });
+    return result;
 }
 
 
