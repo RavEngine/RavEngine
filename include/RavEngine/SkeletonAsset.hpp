@@ -4,6 +4,7 @@
 #include <string>
 #include <optional>
 #include "Vector.hpp"
+#include "Manager.hpp"
 #include "mathtypes.hpp"
 #if !RVE_SERVER
 #include <RGL/Types.hpp>
@@ -63,4 +64,6 @@ public:
     
     std::optional<uint16_t> IndexForBone(const std::string_view boneName) const;
 };
+
+struct SkeletonManager : public GenericWeakReadThroughCache<std::string, SkeletonAsset> {};
 }

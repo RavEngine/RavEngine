@@ -6,6 +6,7 @@
 #include <ozz/animation/runtime/sampling_job.h>
 #include <ozz/base/memory/unique_ptr.h>
 #include "Function.hpp"
+#include "Manager.hpp"
 #include "mathtypes.hpp"
 
 namespace ozz::animation {
@@ -180,4 +181,7 @@ public:
 	bool Sample(float t, float start, float speed, bool looping, ozz::vector<ozz::math::SoaTransform>&, ozz::animation::SamplingJob::Context& cache, const ozz::animation::Skeleton* skeleton) const override;
 	
 };
+
+struct AnimationAssetManager : public GenericWeakReadThroughCache<std::string, AnimationAsset> {};
+
 }
