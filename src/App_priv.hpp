@@ -282,12 +282,17 @@ int App::run(int argc, char** argv) {
 		//will cause engine to run in slow motion if the frame rate is <= 1fps
 		deltaTimeMicroseconds = std::min(duration_cast<timeDiff>(now - lastFrameTime), maxTimeStep);
 		float deltaSeconds = std::chrono::duration<decltype(deltaSeconds)>(deltaTimeMicroseconds).count();
-		time += deltaSeconds;
 		currentScale = deltaSeconds * evalNormal;
 
 		if (tickMode == TickMode::FixedRate) {
 			currentScale = 1;
+            auto deltaSeconds = 1.0s/evalNormal;
+            deltaTimeMicroseconds = duration_cast<timeDiff>(deltaSeconds);
+            time += std::chrono::duration<float>(deltaTimeMicroseconds).count();
 		}
+        else {
+            time += deltaSeconds;
+        }
 
 #if !RVE_SERVER
 		RVE_PROFILE_SECTION(events, "Process all Events");
