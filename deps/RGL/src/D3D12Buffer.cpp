@@ -33,7 +33,7 @@ namespace RGL {
             debugName = config.options.debugName;
         }
 
-        const auto size_bytes = config.nElements * config.stride;
+        const auto size_bytes = std::max<uint32_t>(config.nElements * config.stride,sizeof(uint32_t));
         mappedMemory.size = size_bytes;
         if (config.type.IndexBuffer) {
             indexBufferView.SizeInBytes = size_bytes;
@@ -105,6 +105,8 @@ namespace RGL {
         indexBufferView.BufferLocation = vertexBufferView.BufferLocation;   //NOTE: if this is made a union, check this
 
         // add it to the SRV heap 
+        const uint32_t numElements = std::max<uint32_t>(size_bytes / sizeof(uint32_t),1);
+
         srvIdx = owningDevice->CBV_SRV_UAVHeap->AllocateSingle();
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {
             .Format = DXGI_FORMAT_R32_TYPELESS,
@@ -112,7 +114,7 @@ namespace RGL {
             .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
             .Buffer = {
                 .FirstElement = 0,
-                .NumElements = size_bytes / sizeof(uint32_t),
+                .NumElements = numElements,
                 .StructureByteStride = 0,
                 .Flags = D3D12_BUFFER_SRV_FLAG_RAW
             },
@@ -127,7 +129,7 @@ namespace RGL {
                 .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
                 .Buffer = {
                    .FirstElement = 0,
-                   .NumElements = size_bytes / sizeof(uint32_t),
+                   .NumElements = numElements,
                    .StructureByteStride = 0,
                    .CounterOffsetInBytes = 0,
                    .Flags = D3D12_BUFFER_UAV_FLAG_RAW

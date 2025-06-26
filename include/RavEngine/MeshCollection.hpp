@@ -48,6 +48,10 @@ namespace RavEngine {
 			meshes.at(i) = mesh;
 		}
 
+		auto Capacity() const {
+			return meshes.capacity();
+		}
+
 		float GetRadius() const;
 
 	private:
