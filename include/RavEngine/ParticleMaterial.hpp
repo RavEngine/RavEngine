@@ -276,6 +276,7 @@ namespace RavEngine {
 		PBRMeshParticleRenderMaterialInstance(Ref<PBRMeshParticleRenderMaterial> mat, Ref<MeshCollectionStatic> meshes, uint32_t bytesPerParticle, uint32_t positionOffsetBytes, uint32_t scaleOffsetBytes, uint32_t rotationOffsetBytes);
 		virtual uint8_t SetPushConstantData(std::span<std::byte, 128> data) const;
 
+
 		constexpr static uint8_t
 			kSamplerBinding = 0,
 			kDiffuseBinding = 1,
@@ -286,6 +287,28 @@ namespace RavEngine {
 			kAOBinding = 6,
 			kEmissiveBinding = 7
 			;
+
+		void SetAlbedoTexture(Ref<Texture> texture) {
+			textureBindings[kDiffuseBinding] = texture;
+		}
+		void SetNormalTexture(Ref<Texture> texture) {
+			textureBindings[kNormalBinding] = texture;
+		}
+		void SetSpecularTexture(Ref<Texture> texture) {
+			textureBindings[kSpecularBinding] = texture;
+		}
+		void SetMetallicTexture(Ref<Texture> texture) {
+			textureBindings[kMetallicBinding] = texture;
+		}
+		void SetRoughnessTexture(Ref<Texture> texture) {
+			textureBindings[kRoughnessBinding] = texture;
+		}
+		void SetAOTexture(Ref<Texture> texture) {
+			textureBindings[kAOBinding] = texture;
+		}
+		void SetEmissiveTexture(Ref<Texture> texture) {
+			textureBindings[kEmissiveBinding] = texture;
+		}
 
 	private:
 		const uint32_t bytesPerParticle;
