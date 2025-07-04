@@ -39,7 +39,9 @@ function(set_iterator_debug_level DIR)
 			${target_type} MATCHES "SHARED_LIBRARY" OR
 			${target_type} MATCHES "OBJECT_LIBRARY"
 		)
-		target_compile_definitions(${TG} PUBLIC $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=0>)
+		target_compile_definitions(${TG} PUBLIC 
+			$<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=0>
+		)
 		endif()
 	endforeach()
 

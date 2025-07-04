@@ -1418,16 +1418,15 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 					.height = static_cast<float>(viewportScissor.extent[1]),
 					});
 				mainCommandBuffer->SetScissor(viewportScissor);
-				
+				RVE_PROFILE_SECTION(iter_mat, "Iterate Material");
 				for (auto& [materialInstance, drawcommand] : renderData) {
-
 					bool shouldKeep = filterRenderData(currentLightingType, materialInstance);
 
 					// is this the correct material type? if not, skip
 					if (!shouldKeep) {
 						continue;
 					}
-
+					RVE_PROFILE_SECTION(bb, "Bind Buffers");
 					// bind the pipeline
 					auto pipeline = pipelineSelectorFunction(materialInstance.mat->GetMat());
 
@@ -1491,7 +1490,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
                         mainCommandBuffer->SetFragmentTexture(target->mlabDepth->GetDefaultView(), 27);
                     }
 #endif
-                        
+					RVE_PROFILE_SECTION_END(bb);
+					RVE_PROFILE_SECTION(pc, "Push constants");
 					// set push constant data
 					auto pushConstantData = materialInstance.mat->GetPushConstantData();
 
@@ -1515,8 +1515,10 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 						mainCommandBuffer->SetVertexBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
 						mainCommandBuffer->SetFragmentBytes({ totalPushConstantBytes ,pushConstantTotalSize }, 0);
 					}
+					RVE_PROFILE_SECTION_END(pc);
 
 					// bind textures and buffers
+					RVE_PROFILE_SECTION(tx, "Bind User Textures and Samplers");
 					auto& bufferBindings = materialInstance.mat->GetBufferBindings();
 					auto& textureBindings = materialInstance.mat->GetTextureBindings();
 					for (int i = 0; i < materialInstance.mat->maxBindingSlots; i++) {
@@ -1530,20 +1532,24 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 							mainCommandBuffer->SetFragmentTexture(texture->GetRHITexturePointer()->GetDefaultView(), i);
 						}
 					}
-
+					RVE_PROFILE_SECTION_END(tx);
 					// bind the culling buffer and the transform buffer
 					mainCommandBuffer->SetVertexBuffer(drawcommand.cullingBuffer, { .bindingPosition = ENTITY_INPUT_BINDING });
 					mainCommandBuffer->BindBuffer(worldTransformBuffer, 10);
 
+					RVE_PROFILE_SECTION(ex, "Encode draw call");
 					// do the indirect command
 					mainCommandBuffer->ExecuteIndirectIndexed({
 						.indirectBuffer = drawcommand.indirectBuffer,
 						.nDraws = uint32_t(drawcommand.indirectBuffer->getBufferSize() / sizeof(RGL::IndirectIndexedCommand))	// the number of structs in the buffer
 					});
+					RVE_PROFILE_SECTION_END(ex);
 				}
+				RVE_PROFILE_SECTION_END(iter_mat)
 
 				// render particles
 				mainCommandBuffer->BeginRenderDebugMarker("Render Particles");
+				RVE_PROFILE_SECTION(iter_particle, "Iterate Particle");
                 worldOwning->Filter([this, &viewproj, &particleBillboardMatrices, &currentLightingType, &pipelineSelectorFunction, &lightDataOffset, &worldOwning, &layers, &target, &camIdx, &worldTransformBuffer](const ParticleEmitter& emitter, const Transform& t) {
                     // check if the render layers match
                     auto renderLayers = worldOwning->renderData.renderLayers[emitter.GetOwner().GetID().id];
@@ -1688,6 +1694,7 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 							}
 						}, emitter.GetRenderMaterial());
 					});
+				RVE_PROFILE_SECTION_END(iter_particle);
 				mainCommandBuffer->EndRenderDebugMarker();
 			};
 

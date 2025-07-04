@@ -16,7 +16,7 @@ OPTION( BUILD_SHARED_LIBS "Build package with shared libraries." OFF)
 
 OPTION( RAVENGINE_BUILD_TESTS "Build tests" OFF)
 option( RAVENGINE_SERVER "Build as a headless server" ${RAVENGINE_BUILD_TESTS})
-option(RAVENGINE_MSVC_ITERATOR_DEBUG_LEVEL "Iterator debug level (MSVC only)" "0x0")
+option(RAVENGINE_MSVC_FAST_DEBUG_ITERATORS "Set iterator debug level to 0 (MSVC only)" ON)
 option(RAVENGINE_PROFILE_ALL_BUILDS "If disabled, instrumentation is only available in the Profile configuration" OFF)
 
 if (NOT RAVENGINE_ASSETS_DIR)
@@ -883,6 +883,6 @@ foreach(TGT ${all_targets})
 	endif()
 endforeach()
 
-if (MSVC)
+if (MSVC AND RAVENGINE_MSVC_FAST_DEBUG_ITERATORS)
 	set_iterator_debug_level("${CMAKE_CURRENT_LIST_DIR}/")
 endif()
