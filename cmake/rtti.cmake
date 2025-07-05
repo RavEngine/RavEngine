@@ -61,7 +61,8 @@ function(enable_debug_all DIR)
 			${target_type} MATCHES "SHARED_LIBRARY" OR
 			${target_type} MATCHES "OBJECT_LIBRARY"
 		)
-		 target_link_options(${TG} PUBLIC /DEBUG:FULL /dynamicdeopt)
+		 target_link_options(${TG} PUBLIC /DEBUG:FULL /DYNAMICDEOPT)
+		 target_compile_options(${TG} PRIVATE /Zi /dynamicdeopt)
 		endif()
 	endforeach()
 

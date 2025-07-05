@@ -18,6 +18,7 @@ OPTION( RAVENGINE_BUILD_TESTS "Build tests" OFF)
 option( RAVENGINE_SERVER "Build as a headless server" ${RAVENGINE_BUILD_TESTS})
 option(RAVENGINE_MSVC_FAST_DEBUG_ITERATORS "Set iterator debug level to 0 (MSVC only)" ON)
 option(RAVENGINE_PROFILE_ALL_BUILDS "If disabled, instrumentation is only available in the Profile configuration" OFF)
+option(RAVENGINE_MSVC_DEBUG_ALL_BUILDS "Enable debugging support in all configurations" OFF)
 
 if (NOT RAVENGINE_ASSETS_DIR)
 	set(RAVENGINE_ASSETS_DIR "${CMAKE_BINARY_DIR}" CACHE FILEPATH "")
@@ -54,10 +55,14 @@ endif()
 # call this macro to add IPO to profile and release builds
 macro(rve_enable_IPO target)
 
-	set_target_properties(${target} PROPERTIES
-		INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
-		INTERPROCEDURAL_OPTIMIZATION_PROFILE TRUE
-	)
+	if (MSVC AND RAVENGINE_MSVC_DEBUG_ALL_BUILDS)
+		# don't enable LTO
+	else()
+		set_target_properties(${target} PROPERTIES
+			INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
+			INTERPROCEDURAL_OPTIMIZATION_PROFILE TRUE
+		)
+	endif()
 
 endmacro()
 
@@ -887,6 +892,6 @@ if (MSVC AND RAVENGINE_MSVC_FAST_DEBUG_ITERATORS)
 	set_iterator_debug_level("${CMAKE_CURRENT_LIST_DIR}/")
 endif()
 
-if (MSVC)
+if (MSVC AND RAVENGINE_MSVC_DEBUG_ALL_BUILDS)
    enable_debug_all("${CMAKE_CURRENT_LIST_DIR}/")
 endif()
