@@ -12,6 +12,7 @@ namespace RGL {
 		std::shared_ptr<SurfaceVk> owningSurface;
 		VkSwapchainKHR swapChain = VK_NULL_HANDLE;
 		VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE, renderCompleteSemaphore = VK_NULL_HANDLE;
+		VkFence internalFence = VK_NULL_HANDLE;
 		std::vector<VkImage> swapChainImages;
 		std::vector<VkImageView> swapChainImageViews;
 		std::vector<TextureVk> RGLTextureResources;

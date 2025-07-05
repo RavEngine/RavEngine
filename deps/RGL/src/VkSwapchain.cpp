@@ -10,6 +10,8 @@ RGL::SwapchainVK::~SwapchainVK(){
     DestroySwapchainIfNeeded();
     vkDestroySemaphore(owningDevice->device, imageAvailableSemaphore, nullptr);
     vkDestroySemaphore(owningDevice->device, renderCompleteSemaphore, nullptr);
+    vkWaitForFences(owningDevice->device, 1, &internalFence, VK_TRUE, UINT64_MAX);
+    vkDestroyFence(owningDevice->device, internalFence, nullptr);
 }
 
 RGL::SwapchainVK::SwapchainVK(decltype(owningSurface) surface, decltype(owningDevice) owningDevice, int width, int height) : owningSurface(surface), owningDevice(owningDevice)
@@ -21,6 +23,9 @@ RGL::SwapchainVK::SwapchainVK(decltype(owningSurface) surface, decltype(owningDe
     };
     VK_CHECK(vkCreateSemaphore(owningDevice->device, &info, nullptr, &imageAvailableSemaphore));
     VK_CHECK(vkCreateSemaphore(owningDevice->device, &info, nullptr, &renderCompleteSemaphore));
+    VkFenceCreateInfo create_info{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+
+    VK_CHECK(vkCreateFence(owningDevice->device, &create_info, nullptr, &internalFence));
     Resize(width, height);
 }
 
@@ -170,14 +175,27 @@ void RGL::SwapchainVK::GetNextImage(uint32_t* index)
 void RGL::SwapchainVK::Present(const SwapchainPresentConfig& config)
 {
     VkSwapchainKHR swapChains[] = { swapChain };
+
+    VkSwapchainPresentModeInfoEXT  present_mode{
+        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_EXT
+    };
+    VkSwapchainPresentFenceInfoEXT fence_info{
+        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT,
+        .pNext = nullptr,
+        .swapchainCount = 1,
+        .pFences = &internalFence
+    };
+
+
     VkPresentInfoKHR presentInfo{
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .pNext = &fence_info,
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = &renderCompleteSemaphore,
         .swapchainCount = 1,
         .pSwapchains = swapChains,
         .pImageIndices = &(config.imageIndex),
-        .pResults = nullptr         // optional
+        .pResults = nullptr,     // optional
     };
     auto result = vkQueuePresentKHR(owningDevice->presentQueue, &presentInfo);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {

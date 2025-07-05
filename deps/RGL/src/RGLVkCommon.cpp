@@ -131,6 +131,8 @@ namespace RGL {
         // load GLFW's specific extensions for Vulkan
         const char* minExtensions[] = {
             "VK_KHR_surface",
+            VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
+            VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME,
     #if _WIN32
             "VK_KHR_win32_surface",
     #elif __ANDROID__
