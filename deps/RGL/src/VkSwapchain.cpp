@@ -10,8 +10,11 @@ RGL::SwapchainVK::~SwapchainVK(){
     DestroySwapchainIfNeeded();
     vkDestroySemaphore(owningDevice->device, imageAvailableSemaphore, nullptr);
     vkDestroySemaphore(owningDevice->device, renderCompleteSemaphore, nullptr);
-    vkWaitForFences(owningDevice->device, 1, &internalFence, VK_TRUE, UINT64_MAX);
-    vkDestroyFence(owningDevice->device, internalFence, nullptr);
+    vkWaitForFences(owningDevice->device, swapchainFences.size(), swapchainFences.data(), VK_TRUE, UINT64_MAX);
+
+    for (const auto fence : swapchainFences) {
+        vkDestroyFence(owningDevice->device, fence, nullptr);
+    }
 }
 
 RGL::SwapchainVK::SwapchainVK(decltype(owningSurface) surface, decltype(owningDevice) owningDevice, int width, int height) : owningSurface(surface), owningDevice(owningDevice)
@@ -28,8 +31,13 @@ RGL::SwapchainVK::SwapchainVK(decltype(owningSurface) surface, decltype(owningDe
         .flags = VK_FENCE_CREATE_SIGNALED_BIT
     };
 
-    VK_CHECK(vkCreateFence(owningDevice->device, &create_info, nullptr, &internalFence));
     Resize(width, height);
+    const auto& nFences = swapChainImages.size();
+    swapchainFences.resize(nFences);
+    for (uint32_t i = 0; i < nFences; i++) {
+        VK_CHECK(vkCreateFence(owningDevice->device, &create_info, nullptr, &swapchainFences[i]));
+
+    }
 }
 
 void RGL::SwapchainVK::Resize(uint32_t width, uint32_t height)
@@ -172,8 +180,8 @@ void RGL::SwapchainVK::Resize(uint32_t width, uint32_t height)
 
 void RGL::SwapchainVK::GetNextImage(uint32_t* index)
 {
-    vkWaitForFences(owningDevice->device, 1, &internalFence, VK_TRUE, UINT64_MAX);
-    vkResetFences(owningDevice->device, 1, &internalFence);
+    vkWaitForFences(owningDevice->device, 1, &swapchainFences[*index], VK_TRUE, UINT64_MAX);
+    vkResetFences(owningDevice->device, 1, &swapchainFences[*index]);
     vkAcquireNextImageKHR(owningDevice->device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, index);
 }
 
@@ -188,7 +196,7 @@ void RGL::SwapchainVK::Present(const SwapchainPresentConfig& config)
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT,
         .pNext = nullptr,
         .swapchainCount = 1,
-        .pFences = &internalFence
+        .pFences = &swapchainFences[config.imageIndex]
     };
 
 
