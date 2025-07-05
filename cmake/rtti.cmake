@@ -50,3 +50,23 @@ function(set_iterator_debug_level DIR)
 		set_iterator_debug_level("${SUBDIR}")
 	endforeach()
 endfunction()
+
+function(enable_debug_all DIR)
+	get_property(TGTS DIRECTORY "${DIR}" PROPERTY BUILDSYSTEM_TARGETS)
+	foreach(TG ${TGTS})
+		get_target_property(target_type ${TG} TYPE)
+		if (
+			${target_type} MATCHES "EXECUTABLE" OR 
+			${target_type} MATCHES "STATIC_LIBRARY" OR 
+			${target_type} MATCHES "SHARED_LIBRARY" OR
+			${target_type} MATCHES "OBJECT_LIBRARY"
+		)
+		 target_link_options(${TG} PUBLIC /DEBUG:FULL /dynamicdeopt)
+		endif()
+	endforeach()
+
+	get_property(SUBDIRS DIRECTORY "${DIR}" PROPERTY SUBDIRECTORIES)
+	foreach(SUBDIR IN LISTS SUBDIRS)
+		enable_debug_all("${SUBDIR}")
+	endforeach()
+endfunction()

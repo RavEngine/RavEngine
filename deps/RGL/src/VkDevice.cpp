@@ -181,9 +181,13 @@ namespace RGL {
             };
             queueCreateInfos.push_back(queueCreateInfo);
         }
+        VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR swfeatures{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR,
+            .pNext = nullptr
+        };
         VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT lib_features{
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT,
-            .pNext = nullptr
+            .pNext = &swfeatures
         };
 
         VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT fse_features{
@@ -237,6 +241,9 @@ namespace RGL {
         }
         if (lib_features.graphicsPipelineLibrary == VK_FALSE) {
             FatalError("Cannot init - Graphics Pipeline Library is not supported");
+        }
+        if (swfeatures.swapchainMaintenance1 == VK_FALSE) {
+            FatalError("Cannot init - VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR is not supported");
         }
 
         VkDeviceCreateInfo deviceCreateInfo{

@@ -886,3 +886,7 @@ endforeach()
 if (MSVC AND RAVENGINE_MSVC_FAST_DEBUG_ITERATORS)
 	set_iterator_debug_level("${CMAKE_CURRENT_LIST_DIR}/")
 endif()
+
+if (MSVC)
+   enable_debug_all("${CMAKE_CURRENT_LIST_DIR}/")
+endif()

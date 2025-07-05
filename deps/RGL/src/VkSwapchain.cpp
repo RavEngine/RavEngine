@@ -23,7 +23,10 @@ RGL::SwapchainVK::SwapchainVK(decltype(owningSurface) surface, decltype(owningDe
     };
     VK_CHECK(vkCreateSemaphore(owningDevice->device, &info, nullptr, &imageAvailableSemaphore));
     VK_CHECK(vkCreateSemaphore(owningDevice->device, &info, nullptr, &renderCompleteSemaphore));
-    VkFenceCreateInfo create_info{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+    VkFenceCreateInfo create_info{
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT
+    };
 
     VK_CHECK(vkCreateFence(owningDevice->device, &create_info, nullptr, &internalFence));
     Resize(width, height);
@@ -169,6 +172,8 @@ void RGL::SwapchainVK::Resize(uint32_t width, uint32_t height)
 
 void RGL::SwapchainVK::GetNextImage(uint32_t* index)
 {
+    vkWaitForFences(owningDevice->device, 1, &internalFence, VK_TRUE, UINT64_MAX);
+    vkResetFences(owningDevice->device, 1, &internalFence);
     vkAcquireNextImageKHR(owningDevice->device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, index);
 }
 
