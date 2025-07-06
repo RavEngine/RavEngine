@@ -294,7 +294,7 @@ public:
             return weight;
         }
         
-        bool SetAdditive(bool additive){
+        void SetAdditive(bool additive){
             isAdditive = additive;
         }
         

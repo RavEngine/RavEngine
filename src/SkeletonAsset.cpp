@@ -195,5 +195,5 @@ std::optional<uint16_t> SkeletonAsset::IndexForBone(const std::string_view boneN
             return i;
         }
     }
-    return {};
+    return std::nullopt;
 };
