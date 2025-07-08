@@ -191,7 +191,8 @@ bool SkeletonAsset::HasBone(const std::string_view boneName) const{
 
 std::optional<uint16_t> SkeletonAsset::IndexForBone(const std::string_view boneName) const{
     for (int i = 0; i < skeleton->num_joints(); i++) {
-        if (strncmp(skeleton->joint_names()[i], boneName.data(), boneName.size()) == 0) {
+		std::string_view jointName_n{skeleton->joint_names()[i]};
+        if (boneName == jointName_n) {
             return i;
         }
     }
