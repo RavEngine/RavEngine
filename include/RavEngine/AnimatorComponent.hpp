@@ -252,7 +252,7 @@ public:
          Otherwise, the state machine simply jumps to the target state without a transition.
          @param newState the state to switch to
          */
-        void Goto(anim_id_t newState, bool skipTransition = false);
+        void Goto(anim_id_t newState, bool skipTransition = false, bool restartAnimation = false);
         
         /**
          Add a state to the state machine

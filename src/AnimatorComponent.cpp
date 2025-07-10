@@ -43,7 +43,7 @@ RavEngine::AnimatorComponent::State& RavEngine::AnimatorComponent::Layer::GetSta
     }
 }
 
-void RavEngine::AnimatorComponent::Layer::Goto(anim_id_t newState, bool skipTransition) {
+void RavEngine::AnimatorComponent::Layer::Goto(anim_id_t newState, bool skipTransition, bool restartAnimation) {
 	auto prevState = currentState;
 	if (newState != currentState) {
         states.if_contains(currentState, [&newState](auto&& currentState){
@@ -52,6 +52,9 @@ void RavEngine::AnimatorComponent::Layer::Goto(anim_id_t newState, bool skipTran
     }
 	if (skipTransition || !(states.contains(newState) && GetStateForID(currentState).exitTransitions.contains(newState))) {	//just jump to the new state
 		currentState = newState;
+        if (restartAnimation) {
+            GetStateForID(newState).lastPlayTime = GetApp()->GetCurrentTime();
+        }
 	}
 	else {
 		//want to blend to the new state, so set up the blendingclip
@@ -61,12 +64,9 @@ void RavEngine::AnimatorComponent::Layer::Goto(anim_id_t newState, bool skipTran
 		//copy time or reset time on target?
 		auto& ns = GetStateForID(currentState).exitTransitions.at(newState);
 
-		switch (ns.type) {
-		case State::Transition::TimeMode::BeginNew:
-			GetStateForID(newState).lastPlayTime = GetApp()->GetCurrentTime();
-			break;
-		default: break;
-		}
+        if (ns.type == State::Transition::TimeMode::BeginNew || restartAnimation) {
+            GetStateForID(newState).lastPlayTime = GetApp()->GetCurrentTime();
+        }
 
 		//seek tween back to beginning
 		stateBlend.currentTween = ns.transition;
