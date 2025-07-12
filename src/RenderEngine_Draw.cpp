@@ -2353,7 +2353,8 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 
 				auto tonemapMaterial = tonemapPass->GetEffect();
 
-                finalRenderPassNoDepth->SetAttachmentTexture(0, target.finalFramebuffer->GetDefaultView());
+				target.ResolveFinalFB();
+                finalRenderPassNoDepth->SetAttachmentTexture(0, target.GetPresentedFB()->GetDefaultView());
 				mainCommandBuffer->BeginRendering(finalRenderPassNoDepth);
 				mainCommandBuffer->BeginRenderDebugMarker("Tonemap");
 				// start with the results of lighting
@@ -2634,10 +2635,11 @@ RGLCommandBufferPtr RenderEngine::Draw(Ref<RavEngine::World> worldOwning, const 
 			
 			// final render pass
 			RVE_PROFILE_SECTION(forward, "Render Encode Forward Pass");
-			finalRenderPass->SetAttachmentTexture(0, target.finalFramebuffer->GetDefaultView());
+			target.ResolveFinalFB();
+			finalRenderPass->SetAttachmentTexture(0, target.GetPresentedFB()->GetDefaultView());
 			finalRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
-			finalClearRenderPass->SetAttachmentTexture(0, target.finalFramebuffer->GetDefaultView());
+			finalClearRenderPass->SetAttachmentTexture(0, target.GetPresentedFB()->GetDefaultView());
 			finalClearRenderPass->SetDepthAttachmentTexture(target.depthStencil->GetDefaultView());
 
 			mainCommandBuffer->BeginRenderDebugMarker("Forward Pass");

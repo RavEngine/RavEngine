@@ -453,11 +453,16 @@ void App::Tick(){
         }
 #endif
 
-        auto nextTexture = window->BlockGetNextSwapchainImage(swapchainPresentConfig);
-        RVE_PROFILE_SECTION_END(getSwapchain);
-        mainWindowView.collection.finalFramebuffer = nextTexture.texture;
+		Window::SwapchainResult nextTexture;
+		auto finalFBCallback = [&] {
+			nextTexture = window->BlockGetNextSwapchainImage(swapchainPresentConfig);
+			return nextTexture.texture;
+		};
+
+		mainWindowView.collection.finalFramebufferFn = finalFBCallback;
         allViews.push_back(mainWindowView);
         auto mainCommandBuffer = Renderer->Draw(renderWorld, allViews, scale);
+		RVE_PROFILE_SECTION_END(getSwapchain);
 
 
         // show the results to the user

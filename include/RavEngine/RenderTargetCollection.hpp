@@ -6,6 +6,7 @@
 #include "DepthPyramid.hpp"
 #include "Vector.hpp"
 #include "Layer.hpp"
+#include "Function.hpp"
 
 namespace RavEngine{
     class RenderTexture;
@@ -22,8 +23,20 @@ namespace RavEngine{
         std::array<RGLTexturePtr, 4> mlabAccum;
         constexpr static std::array<RGL::TextureFormat, 4> formats = {RGL::TextureFormat::RGBA16_Sfloat, RGL::TextureFormat::RGBA8_Unorm, RGL::TextureFormat::RGBA8_Unorm, RGL::TextureFormat::RGBA8_Unorm};
         constexpr static auto mlabDepthFormat = RGL::TextureFormat::RGBA16_Sfloat;
-		RGL::ITexture* finalFramebuffer = nullptr;
+		Function<RGL::ITexture*(void)> finalFramebufferFn;
 		DepthPyramid depthPyramid;
+
+		void ResolveFinalFB() const{
+			if (!finalFB) {
+				finalFB = finalFramebufferFn();
+			}
+		}
+
+		auto GetPresentedFB() const{
+			return finalFB;
+		}
+	private:
+		mutable RGL::ITexture* finalFB = nullptr;
 	};
 
 	struct RenderViewCollection {

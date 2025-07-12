@@ -252,7 +252,10 @@ Texture::~Texture() {
 RenderTexture::RenderTexture(int width, int height) {
     collection = GetApp()->GetRenderEngine().CreateRenderTargetCollection({ static_cast<unsigned int>(width), static_cast<unsigned int>(height) });
     finalFB = New<Texture>(width, height, Texture::Config{ .enableRenderTarget = true, .format = RGL::TextureFormat::BGRA8_Unorm, .debugName = "Render Texture" });
-    collection.finalFramebuffer = finalFB->GetRHITexturePointer().get();
+    auto fb = finalFB->GetRHITexturePointer().get();
+    collection.finalFramebufferFn = [=] {
+        return fb;
+    };
 }
 
 Ref<Texture> RenderTexture::GetTexture() {

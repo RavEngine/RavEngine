@@ -505,7 +505,10 @@ namespace RavEngine {
 				collections[i].camDatas = {{ .viewProj = genProjMat(xr.projectionViews[i].fov, float(xr.viewConfigurationViews[i].recommendedImageRectWidth), float(xr.viewConfigurationViews[i].recommendedImageRectHeight)) * genViewMat(xr.projectionViews[i].pose), .camPos = genCamPos(xr.projectionViews[i].pose)} };
 
 				// update the collection's textures
-				collections[i].collection.finalFramebuffer = xr.rglSwapchainImages[i][color_acquired_index].get();
+				auto tx = xr.rglSwapchainImages[i][color_acquired_index].get();
+				collections[i].collection.finalFramebufferFn = [=] {
+					return tx;
+				};
 				collections[i].collection.depthStencil = xr.rglDepthSwapchainImages[i][depth_acquired_index];
 
 				XrSwapchainImageReleaseInfo release_info{
