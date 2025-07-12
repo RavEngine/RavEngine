@@ -445,10 +445,20 @@ void App::Tick(){
 
 #ifdef RVE_XR_AVAILABLE
         // update OpenXR data if it is requested
-        std::pair<std::vector<XrView>, XrFrameState> xrBeginData;
+        std::pair<std::vector<XrView>, XrFrameState> xrBeginData = OpenXRIntegration::BeginXRFrame();
         if (wantsXR) {
-            xrBeginData = OpenXRIntegration::BeginXRFrame();
             OpenXRIntegration::UpdateXRTargetCollections(xrRenderViewCollections, xrBeginData.first);
+			Debug::Assert(mainWindowView.camDatas.size() > 0, "XR: No active camera");
+			const auto& referenceCamData = mainWindowView.camDatas.back();	// the last camera is a non-rendertexture camera
+			for (auto& view : xrRenderViewCollections) {
+				for (auto& camData : view.camDatas) {
+					camData.postProcessingEffects = referenceCamData.postProcessingEffects;
+					camData.zNearFar = referenceCamData.zNearFar;
+					camData.layers = referenceCamData.layers;
+					camData.tonemap = referenceCamData.tonemap;
+					camData.indirectSettings = referenceCamData.indirectSettings;
+				}
+			}
             allViews.insert(allViews.end(), xrRenderViewCollections.begin(), xrRenderViewCollections.end());
         }
 #endif

@@ -502,7 +502,20 @@ namespace RavEngine {
 				const auto& viewState = views[i];
 
 				// update the collection's viewProj
-				collections[i].camDatas = {{ .viewProj = genProjMat(xr.projectionViews[i].fov, float(xr.viewConfigurationViews[i].recommendedImageRectWidth), float(xr.viewConfigurationViews[i].recommendedImageRectHeight)) * genViewMat(xr.projectionViews[i].pose), .camPos = genCamPos(xr.projectionViews[i].pose)} };
+				const auto width = xr.viewConfigurationViews[i].recommendedImageRectWidth;
+				const auto height = xr.viewConfigurationViews[i].recommendedImageRectHeight;
+				const auto proj = genProjMat(xr.projectionViews[i].fov, float(width), float(height));
+				const auto view = genViewMat(xr.projectionViews[i].pose);
+				collections[i].camDatas = {
+					{ 
+						.viewProj = proj * view,
+						.projOnly = proj,
+						.viewOnly = view,
+						.camPos = genCamPos(xr.projectionViews[i].pose),
+						.targetWidth = width,
+						.targetHeight = height,
+					} 
+				};
 
 				// update the collection's textures
 				auto tx = xr.rglSwapchainImages[i][color_acquired_index].get();
