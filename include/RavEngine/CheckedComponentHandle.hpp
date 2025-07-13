@@ -39,6 +39,15 @@ namespace RavEngine {
             return &owner.GetComponent<T>();
         }
 
+        /// Avoid using unless absolutely necessary!
+        const T* unsafe_get() const {
+            return  &owner.GetComponent<T>();
+        }
+
+        T* unsafe_get_mutable() {
+            return  &owner.GetComponent<T>();
+        }
+
         bool operator==(const CheckedComponentHandle<T>& other) const {
             return owner.id == other.owner.id;
         }
