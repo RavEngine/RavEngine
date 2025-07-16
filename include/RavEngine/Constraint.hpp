@@ -2,9 +2,10 @@
 #include "ComponentWithOwner.hpp"
 #include "ComponentHandle.hpp"
 #include "Queryable.hpp"
+#include "DataProvider.hpp"
 
 namespace RavEngine{
-
+	struct AnimatorComponent;
 /**
  Constraints are bound to a ConstraintTarget component
  */
@@ -62,6 +63,7 @@ struct SocketConstraint : public Constraint, public QueryableDelta<Constraint,So
  Executes all Socket Constraints
  */
 struct SocketSystem{
-	void operator()(const SocketConstraint&, Transform&);
+	struct DataProvider : public RavEngine::ValidatorProvider<RavEngine::AnimatorComponent> {};
+	void operator()(DataProvider&, const SocketConstraint&, Transform&);
 };
 }

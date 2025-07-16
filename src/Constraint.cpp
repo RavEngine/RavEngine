@@ -35,7 +35,7 @@ SocketConstraint::SocketConstraint(Entity id, decltype(target) t, const decltype
 	Debug::Assert(target.GetOwner().GetComponent<AnimatorComponent>().GetSkeleton()->HasBone(tgt), "Cannot add socket constraint to nonexistent bone {}", tgt);
 }
 
-void SocketSystem::operator()(const SocketConstraint& constraint, Transform& trns){
+void SocketSystem::operator()(DataProvider& dp, const SocketConstraint& constraint, Transform& trns){
 	if (constraint){
 		auto& animator = constraint.GetTarget()->GetOwner().GetComponent<AnimatorComponent>();
 		animator.UpdateSocket(constraint.boneTarget,trns);

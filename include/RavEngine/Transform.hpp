@@ -18,8 +18,13 @@
 
 namespace RavEngine {
 	struct Transform : public ComponentWithOwner, public Queryable<Transform> {
+		friend class AnimatorComponent;
     protected:
         mutable matrix4 matrix;				// defined as the world space transform of the PARENT
+		void _SetMatrix(const decltype(matrix)& m) {
+			matrix = m;
+			UpdateChildren();
+		}
         UnorderedVector<ComponentHandle<Transform>>  children;        //non-owning
         quaternion rotation;
         ComponentHandle<Transform> parent;    //non-owning

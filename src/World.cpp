@@ -78,7 +78,7 @@ RavEngine::World::World() : Solver(std::make_unique<PhysicsSolver>(this)){
     SetupTaskGraph();
     EmplacePolymorphicSystem<ScriptSystem>();
     EmplaceSystem<AnimatorSystem>();
-	EmplaceSystem<SocketSystem>();
+	EmplaceSerialSystem<SocketSystem>();
     CreateDependency<AnimatorSystem,ScriptSystem>();			// run scripts before animations
     CreateDependency<AnimatorSystem,PhysicsLinkSystemRead>();	// run physics reads before animator
     CreateDependency<PhysicsLinkSystemWrite,ScriptSystem>();	// run physics write before scripts
