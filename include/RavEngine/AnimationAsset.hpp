@@ -121,6 +121,19 @@ struct CustomSkeletonAnimationFunction {
 	* @return true if the animation has completed, false otherwise.
 	*/
 	virtual bool operator()(BoneTransforms transforms, const ozz::animation::Skeleton* skeleton, float t, float start, float end, bool loop) = 0;
+
+	virtual ~CustomSkeletonAnimationFunction() {}
+};
+
+template<typename T>
+struct LambdaSkeletonAnimationFunction : public CustomSkeletonAnimationFunction {
+	T fn;
+
+	LambdaSkeletonAnimationFunction(const decltype(fn)& f) : fn(f) {}
+
+	bool operator()(BoneTransforms transforms, const ozz::animation::Skeleton* skeleton, float t, float start, float end, bool loop) final {
+		return fn(transforms, skeleton, t, start, end, loop);
+	}
 };
 
 /**
