@@ -4,6 +4,7 @@
 #include "Texture.hpp"
 #include <RGL/Texture.hpp>
 #include <ravengine_shader_defs.h>
+#include "Defines.hpp"
 
 namespace RavEngine {
 	const RGL::RenderPipelineDescriptor::VertexConfig quadVertexConfig{
@@ -80,6 +81,13 @@ namespace RavEngine {
 			auto layout = device->CreatePipelineLayout(rpl);
 
 			bool hasDepthPrepass = config.opacityMode == OpacityMode::Opaque;
+            
+            auto fragShaderName = Format("{}_fsh",particleFS);
+#if RVE_TBDR
+            if (config.opacityMode == OpacityMode::Transparent) {
+                fragShaderName = Format("{}_tbdr",fragShaderName);
+            }
+#endif
 
 			RGL::RenderPipelineDescriptor rpd{
 				.stages = {
@@ -89,7 +97,7 @@ namespace RavEngine {
 					},
 					{
 						.type = RGL::ShaderStageDesc::Type::Fragment,
-						.shaderModule = LoadShaderByFilename(Format("{}_fsh",particleFS),device)
+						.shaderModule = LoadShaderByFilename(fragShaderName,device)
 					},
 				},
 				.vertexConfig = internalConfig.vertexConfig,

@@ -3,6 +3,7 @@
 
 namespace RavEngine {
     struct PhysicsSolver;
+    struct World;
 
     struct WorldDataProvider {
         World* world = nullptr;
