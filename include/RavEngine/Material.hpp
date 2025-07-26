@@ -217,5 +217,8 @@ namespace RavEngine {
 		MaterialVariant mat;
 		MaterialInstance(const decltype(mat)& m, const decltype(priority) p = 0) : mat(m), priority(p) {}
 	};
+
+	template<typename Matinst_T>
+	struct MaterialInstanceManager : public GenericWeakReadThroughCache<std::type_identity<Matinst_T>, Matinst_T, false> {};
 }
 #endif

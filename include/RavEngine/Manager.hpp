@@ -31,7 +31,17 @@ public:
      */
     template<typename ... A>
     static inline Ref<T> Get(const key_t& str, A ... extras){
-        return GetWithKey(str, 0, extras...);
+        return GetSetup(str, [](auto& var) {}, std::forward<A>(extras)...);
+    }
+
+    template<typename fn_t, typename ... A>
+    static inline Ref<T> GetSetup(const key_t& str, const fn_t& setupFunc, A ... extras) {
+        return GetWithKeySetup(str, 0, setupFunc, extras...);
+    }
+
+    template<typename ... A>
+    static inline Ref<T> GetWithKey(const key_t& str, unique_key_t unique_key, A ... extras) {
+        return GetWithKeySetup(str, unique_key, [](auto& var) {}, extras...);
     }
 
     /**
@@ -41,8 +51,8 @@ public:
      @param extras additional arguments to pass to meshasset constructor
      @note The cache does not pay attention to the values of `extras`. If you need to load a new asset, use a different unique key identifier.
      */
-    template<typename ... A>
-    static inline Ref<T> GetWithKey(const key_t& str, unique_key_t unique_key, A ... extras) {
+    template<typename fn_t, typename ... A>
+    static inline Ref<T> GetWithKeySetup(const key_t& str, unique_key_t unique_key, const fn_t& setupFunc, A ... extras) {
         auto key = std::tuple<key_t, unique_key_t>(str, unique_key);
        
         //TODO: optimize
@@ -60,6 +70,7 @@ public:
         else {
             m = std::make_shared<T>(extras...);
         }
+        setupFunc(m);
         items[key] = m;
         return m;
     }
@@ -94,3 +105,19 @@ RavEngine::SpinLock RavEngine::GenericWeakReadThroughCache<key,T,keyIsConstructi
 template<typename key,typename T, bool keyIsConstructionParam>
 RavEngine::UnorderedMap<std::tuple<key, RavEngine::CacheBase::unique_key_t>, WeakRef<T>> RavEngine::GenericWeakReadThroughCache<key, T, keyIsConstructionParam>::items;
 
+namespace std
+{
+    template <typename T>
+    struct hash<std::type_identity<T>>
+    {
+        size_t operator()(std::type_identity<T> const& t) const {
+            return CTTI<T>();
+        }
+    };
+
+    // type identities of the same type are always equal
+    template <typename T>
+    bool operator==(const std::type_identity<T>& a, const std::type_identity<T>& b) {
+        return true;
+    }
+}
