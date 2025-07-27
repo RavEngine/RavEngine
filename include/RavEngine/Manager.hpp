@@ -36,12 +36,12 @@ public:
 
     template<typename fn_t, typename ... A>
     static inline Ref<T> GetSetup(const key_t& str, const fn_t& setupFunc, A ... extras) {
-        return GetWithKeySetup(str, 0, setupFunc, extras...);
+        return GetWithKeySetup(str, 0, setupFunc, std::forward<A>(extras)...);
     }
 
     template<typename ... A>
     static inline Ref<T> GetWithKey(const key_t& str, unique_key_t unique_key, A ... extras) {
-        return GetWithKeySetup(str, unique_key, [](auto& var) {}, extras...);
+        return GetWithKeySetup(str, unique_key, [](auto& var) {}, std::forward<A>(extras)...);
     }
 
     /**
@@ -65,10 +65,10 @@ public:
         }
         Ref<T> m;
         if constexpr (keyIsConstructionParam) {
-            m = std::make_shared<T>(str, extras...);
+            m = std::make_shared<T>(str, std::forward<A>(extras)...);
         }
         else {
-            m = std::make_shared<T>(extras...);
+            m = std::make_shared<T>(std::forward<A>(extras)...);
         }
         setupFunc(m);
         items[key] = m;
