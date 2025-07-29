@@ -30,17 +30,17 @@ public:
      @note The cache does not pay attention to the values of `extras`. If you need to load a new asset, use GetWithKey where you can pass a unique key identifer. The unique key defaults to zero if accessed via this method.
      */
     template<typename ... A>
-    static inline Ref<T> Get(const key_t& str, A ... extras){
+    static inline Ref<T> Get(const key_t& str, A&& ... extras){
         return GetSetup(str, [](auto& var) {}, std::forward<A>(extras)...);
     }
 
     template<typename fn_t, typename ... A>
-    static inline Ref<T> GetSetup(const key_t& str, const fn_t& setupFunc, A ... extras) {
+    static inline Ref<T> GetSetup(const key_t& str, const fn_t& setupFunc, A&& ... extras) {
         return GetWithKeySetup(str, 0, setupFunc, std::forward<A>(extras)...);
     }
 
     template<typename ... A>
-    static inline Ref<T> GetWithKey(const key_t& str, unique_key_t unique_key, A ... extras) {
+    static inline Ref<T> GetWithKey(const key_t& str, unique_key_t unique_key, A&& ... extras) {
         return GetWithKeySetup(str, unique_key, [](auto& var) {}, std::forward<A>(extras)...);
     }
 
@@ -52,7 +52,7 @@ public:
      @note The cache does not pay attention to the values of `extras`. If you need to load a new asset, use a different unique key identifier.
      */
     template<typename fn_t, typename ... A>
-    static inline Ref<T> GetWithKeySetup(const key_t& str, unique_key_t unique_key, const fn_t& setupFunc, A ... extras) {
+    static inline Ref<T> GetWithKeySetup(const key_t& str, unique_key_t unique_key, const fn_t& setupFunc, A&& ... extras) {
         auto key = std::tuple<key_t, unique_key_t>(str, unique_key);
        
         //TODO: optimize
